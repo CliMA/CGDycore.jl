@@ -1,0 +1,4 @@
+name = "CGDycore"
+uuid = "110386ce-a5d9-49ed-97cd-70eaac72bd66"
+authors = ["Charles Kawczynski <kawczynski.charles@gmail.com>"]
+version = "0.1.0"
