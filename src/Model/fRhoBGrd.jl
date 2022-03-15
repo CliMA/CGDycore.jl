@@ -1,19 +1,11 @@
-function Rho = fRhoBGrd(x,Param)
-switch lower(Param.ProfRhoBGrd)
-  case 'baldaufcart'
+function fRhoBGrd(x,Param)
+if lower(Param.ProfRhoBGrd)== "baldaufcart"
     delta=Param.Grav/(Param.Rd*Param.T0);
-    p=Param.p0*exp(-delta*x(3));
+    p=Param.p0*exp(-delta*x[3]);
     TLoc=Param.T0;
     Rho=p/(Param.Rd*TLoc);
-  otherwise
+else
     Rho=0;
 end
+return Rho
 end
-
-
-
-
-
-
-
-

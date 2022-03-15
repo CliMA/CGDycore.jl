@@ -1,8 +1,8 @@
-function T = fTBGrd(x,Param)
-switch lower(Param.ProfTheta)
-  case 'baldaufcart'
-    T=Param.T0; 
+function fTBGrd(x,Param)
+if lower(Param.ProfTheta)== "baldaufcart"
+    T=Param.T0;
 end
+return T
 end
 
 

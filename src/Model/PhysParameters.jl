@@ -1,17 +1,101 @@
-function Param=PhysParameters()
-% Physical parameters
-Param.Grav=9.81; 
-Param.cS=360;
-Param.Grav=9.81d0;
-Param.Cpd=1004.0d0;
-Param.Cvd=717.0d0;
-Param.Rd=Param.Cpd-Param.Cvd;
-Param.p0=1.0d5;
-Param.Cpv=1885.0d0;
-Param.Gamma=Param.Cpd/Param.Cvd;
-Param.kappa=Param.Rd/Param.Cpd;
+Base.@kwdef mutable struct PhysParametersStruct
+    Lx = nothing
+    Ly = nothing
+    H = nothing
+    OrdPoly = nothing
+    hS = nothing
+    Grid = nothing
+    ProfRho = nothing
+    ProfRhoBGrd = nothing
+    ProfpBGrd = nothing
+    ProfTheta = nothing
+    ProfVel = nothing
+    Damping = nothing
+    Coriolis = nothing
+    Buoyancy = nothing
+    Source = nothing
+    xc = nothing
+    d = nothing
+    a = nothing
+    T0 = nothing
+    DeltaT = nothing
+    uMax = nothing
+    vMax = nothing
+    NBr = nothing
+    Equation = nothing
+    TopoS = nothing
+    NumV = nothing
+    RhoPos = nothing
+    uPos = nothing
+    vPos = nothing
+    wPos = nothing
+    ThPos = nothing
+    Thermo = nothing
+    HyperVisc = nothing
+    HyperDCurl = nothing
+    HyperDGrad = nothing
+    HyperDDiv = nothing
+    Upwind = nothing
+    Flat = nothing
+    vtkFileName = nothing
+    vtk = nothing
+    cNames = nothing
+    TBGrd = nothing
+    T = nothing
+    RhoBGrdF = nothing
+    pBGrd = nothing
+    EndTime = nothing
+    RK = nothing
+    ROS = nothing
+    Grav = nothing
+    cS = nothing
+    Cpd = nothing
+    Cvd = nothing
+    Rd = nothing
+    p0 = nothing
+    Cpv = nothing
+    Gamma = nothing
+    kappa = nothing
+    Omega = nothing
+    RadEarth = nothing
+    J = nothing
+    lat = nothing
+    X = nothing
+    dXdx = nothing
+    dXdxI = nothing
+    JC = nothing
+    JF = nothing
+    dXdxIC = nothing
+    dXdxIF = nothing
+    latN = nothing
+end
 
-% Sphere
-Param.Omega=2*pi/(24*3600);
-Param.RadEarth=6.37122d+6;
+function PhysParameters()
+# Physical parameters
+Grav=9.81;
+cS=360;
+Grav=9.81e0;
+Cpd=1004.0e0;
+Cvd=717.0e0;
+Rd=Cpd-Cvd;
+p0=1.0e5;
+Cpv=1885.0e0;
+Gamma=Cpd/Cvd;
+kappa=Rd/Cpd;
+
+# Sphere
+Omega=2*pi/(24*3600);
+RadEarth=6.37122e+6;
+
+return PhysParametersStruct(;Grav,
+cS,
+Cpd,
+Cvd,
+Rd,
+p0,
+Cpv,
+Gamma,
+kappa,
+Omega,
+RadEarth)
 end
