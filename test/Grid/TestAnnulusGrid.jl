@@ -5,7 +5,7 @@ ny=10;
 RadI=1;
 RadO=2;
 Boundary.X='Period';
-Param.Grid=AnnulusGrid(nx,ny,RadI,RadO,@OrientFaceCart,Boundary);
+Param.Grid=AnnulusGrid(nx,ny,RadI,RadO,OrientFaceCart,Boundary);
 fig=1;
 PlotFaceGrid(Param.Grid,4,@JacobiAnnulus,fig)
 DG.OrdPoly=2;

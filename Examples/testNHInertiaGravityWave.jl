@@ -14,7 +14,7 @@ Param.H=10*1.e3;
 Boundary.WE='Period';
 Boundary.BT='Period';
 Param.hS='';
-Param.Grid=CartGrid(nx,ny,Param.Lx,Param.Ly,x0,y0,@OrientFaceCart,Boundary,Param);
+Param.Grid=CartGrid(nx,ny,Param.Lx,Param.Ly,x0,y0,OrientFaceCart,Boundary,Param);
 
 Param.Grid.nz=nz;
 Param.Grid.zP=zeros(nz,1);

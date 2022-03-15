@@ -1,4 +1,5 @@
-function [Orient] = OrientFaceSphere(n,m)
+function OrientFaceSphere(n,m)
 Orient=n*m';
+return Orient
 end
 

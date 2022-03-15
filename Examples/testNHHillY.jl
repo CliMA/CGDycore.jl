@@ -38,7 +38,7 @@ CG.OrdPoly=OrdPoly;
 Boundary.WE='Period';
 Boundary.BT='Period';
 Param.hS='';
-Param.Grid=CartGrid(nx,ny,lx,ly,x0,y0,@OrientFaceCart,Boundary,Param);
+Param.Grid=CartGrid(nx,ny,lx,ly,x0,y0,OrientFaceCart,Boundary,Param);
 
 nz=40;
 zP=zeros(nz,1);

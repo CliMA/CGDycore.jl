@@ -10,7 +10,7 @@ nz=3;
 Param.nPanel=8;
 Param.H=3000;
 Param.RadEarth=3;
-Param.Grid=CubedGrid(Param.nPanel,@OrientFaceSphere,Param);
+Param.Grid=CubedGrid(Param.nPanel,OrientFaceSphere,Param);
 
 
 Param.Grid.nz=nz;

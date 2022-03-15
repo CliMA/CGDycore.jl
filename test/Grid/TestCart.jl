@@ -12,7 +12,7 @@ Param.hC=1;
 Param.x0C=5;
 Param.aC=1;
 
-Param.Grid=CartGrid(nx,nz,xU-xL,zU-zL,xL,zL,@OrientFaceCart,Boundary,Param);
+Param.Grid=CartGrid(nx,nz,xU-xL,zU-zL,xL,zL,OrientFaceCart,Boundary,Param);
 
 DG.OrdPoly=2;
 DG.OrdPolyX=2;

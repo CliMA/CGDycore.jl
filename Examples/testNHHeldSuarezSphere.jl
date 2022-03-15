@@ -9,7 +9,7 @@ Param=PhysParameters();
 nz=10;
 Param.nPanel=4;
 Param.H=30000;
-Param.Grid=CubedGrid(Param.nPanel,@OrientFaceSphere,Param);
+Param.Grid=CubedGrid(Param.nPanel,OrientFaceSphere,Param);
 
 
 Param.Grid.nz=nz;
