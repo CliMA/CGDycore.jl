@@ -124,10 +124,12 @@ nIter=Param.EndTime/dtau;
 PrintTime=100;
 PrintInt=PrintTime/dtau;
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+
+error("Success")
+
 Param.RK=RungeKuttaMethod("RK4");
 Param.ROS=RosenbrockMethod("ROSRK3");
 
-error("Success")
 
 switch IntMethod
   case "Rosenbrock"

@@ -1,7 +1,7 @@
 function vtkOutput(U,vtkGrid,CG,Param)
 nz=Param.Grid.nz;
-cOut=zeros(CG.NumG,nz,size(Param.cNames,2));
-for i=1:size(Param.cNames,2)
+cOut=zeros(CG.NumG,nz,length(Param.cNames));
+for i=1:length(Param.cNames)
   str = Param.cNames[i]
   if str == "Rho"
       cOut[:,:,i]=U[:,:,Param.RhoPos];

@@ -1,3 +1,5 @@
+# TODO: try/test with this
+
 function testNHBaroWaveSphere
 clear all
 close all
@@ -84,7 +86,7 @@ Param.z_D=20.0e3;
 
 
 % Output
-Param.Flat=true;
+Param.Flat=true; # false gives sphere in paraview
 Param.level=1;
 Param.fig=1;
 Param.vtk=1;

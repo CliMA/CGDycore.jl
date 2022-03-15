@@ -13,18 +13,37 @@ open(filename, "w") do fid
   @printf(fid, "POINTS %d float \n",size(X,2));
 
   # spec = ["%0.", precision, "f "];
-  # @printf(fid, " %d %d %d \n", X);
-  # #@printf(fid, "\n");
-  # @printf(fid, "CELLS %d %d \n",size(Connectivity,2),9*size(Connectivity,2));
-  # @printf(fid, "8 %d %d %d %d %d %d %d %d\n",Connectivity-1);
-  # @printf(fid, "CELL_TYPES %d \n",size(Connectivity,2));
+  for i in 1:size(X,2)
+    @printf(fid, " %d %d %d \n", X[:,i]...);
+  end
+  @printf(fid, "\n");
+  @printf(fid, "CELLS %d %d \n",size(Connectivity,2),9*size(Connectivity,2));
+  @show size(Connectivity)
+  for i in 1:size(Connectivity, 2)
+    @printf(fid, "8 %d %d %d %d %d %d %d %d\n",(Connectivity[:,i] .- 1)...);
+  end
+  @printf(fid, "CELL_TYPES %d \n",size(Connectivity,2));
   # @printf(fid, "%d  \n",12*ones(size(Connectivity,2),1));
-  # @printf(fid, "Cell_DATA %d \n",size(Connectivity,2));
-  # for i=1:size(c,2)
-  #   @printf(fid, "SCALARS %s double 1 \n",cNames[i]);
-  #   print(fid, "LOOKUP_TABLE default \n");
-  #   @printf(fid, "%6e %6e %6e %6e \n",c[:,i]);
-  # end
+  for i in 1:size(Connectivity,2)
+    @printf(fid, "%d  \n",12);
+  end
+  @printf(fid, "Cell_DATA %d \n",size(Connectivity,2));
+  for i=1:size(c,2)
+    @printf(fid, "SCALARS %s double 1 \n",cNames[i]);
+    print(fid, "LOOKUP_TABLE default \n");
+    @show size(c)
+    # @printf(fid, "%6e %6e %6e %6e \n",c[:,i]...);
+    for j=1:4:size(c,1)-3
+      # 1:4
+      # 4:8
+      # 4:8
+      @printf(fid, "%6e %6e %6e %6e \n",c[j:j+3,i]...);
+
+      # j = size(c,1)-3 = 9-3 = 6
+      # @printf(fid, "%6e %6e %6e %6e \n",c[j:j+3,i]...);
+      # @printf(fid, "%6e %6e %6e %6e \n",c[6:6+3,i]...);
+    end
+  end
 end
 
 end
