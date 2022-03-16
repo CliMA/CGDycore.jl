@@ -11,7 +11,7 @@ open(filename, "w") do fid
   @printf(fid, "POINTS %d float \n",size(X,2));
 
   for i in 1:size(X,2)
-    @printf(fid, " %d %d %d \n", X[:,i]...);
+    @printf(fid, " %6e %6e %6e \n", X[:,i]...);
   end
   @printf(fid, "\n");
   @printf(fid, "CELLS %d %d \n",size(Connectivity,2),9*size(Connectivity,2));

@@ -23,8 +23,8 @@ function Orient(iE,o,VisitE,OrientationE,Grid)
       iFEnd=0;
     end
     local iE1
-    for iE1_in=1:4
-      iE1 = iE1_in
+    for iE1_local=1:4
+      iE1 = iE1_local
       if iE==Grid.Faces[iF1].E[iE1]
         break
       end
@@ -60,13 +60,13 @@ function Orient(iE,o,VisitE,OrientationE,Grid)
       else
         iF1=Grid.Edges[iE].F[1];
       end
-      for iE1=1:4
+      for iE1_local=1:4
+        iE1 = iE1_local
         if iE==Grid.Faces[iF1].E[iE1]
           break
         end
       end
     end
-
     if iF1==iFEnd
       NF=[Grid.Faces[iF1].N...,Grid.Faces[iF1].N[1]];
       o=EdgeDirection(NF[iE1],NF[iE1+1],Grid.Edges[iE].N);

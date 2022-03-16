@@ -1,5 +1,4 @@
 function OrientFaceSphere(n,m)
-Orient=n*m';
+Orient=dot(n,m);
 return Orient
 end
-

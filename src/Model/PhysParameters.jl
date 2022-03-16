@@ -68,6 +68,43 @@ Base.@kwdef mutable struct PhysParametersStruct
     dXdxIC = nothing
     dXdxIF = nothing
     latN = nothing
+    nPanel = nothing
+    ModelType = nothing
+    Deep = nothing
+    HeightLimit = nothing
+    T0E = nothing
+    T0P = nothing
+    B = nothing
+    K = nothing
+    LapseRate = nothing
+    U0 = nothing
+    PertR = nothing
+    Up = nothing
+    PertExpR = nothing
+    PertLon = nothing
+    PertLat = nothing
+    PertZ = nothing
+    StrideDamp = nothing
+    Relax = nothing
+    CoriolisType = nothing
+    Th0 = nothing
+    ExpDist = nothing
+    lat0 = nothing
+    lon0 = nothing
+    day = nothing
+    k_a = nothing
+    k_f = nothing
+    k_s = nothing
+    DeltaT_y = nothing
+    DeltaTh_z = nothing
+    T_equator = nothing
+    T_min = nothing
+    sigma_b = nothing
+    z_D = nothing
+    level = nothing
+    fig = nothing
+    SliceXY = nothing
+    RadPrint = nothing
 end
 
 function PhysParameters()

@@ -20,11 +20,12 @@ Base.@kwdef mutable struct Face
     P = nothing
 end
 
-function Face(Edges,Grid,Pos,Dir,OrientFace,P=nothing)
+function Face(Edges,Grid,Pos,Dir,OrientFace=nothing,P=nothing)
   F = Face(;)
   if Edges[1]==0
     return (F,Grid)
   end
+  @assert !isnothing(OrientFace)
 
   F.DF=zeros(0,0);
   nE=size(Edges,2);
@@ -77,18 +78,15 @@ function Face(Edges,Grid,Pos,Dir,OrientFace,P=nothing)
   PT=[0, 0, 0];
   for i=1:nE-1
     #P=P+cross(Grid.Nodes(F.N(i)).P,Grid.Nodes(F.N(i+1)).P);
-    # @show size(cross(F.P[:,i],F.P[:,i+1]))
-    # @show size(F.P[:,i])
-    # @show size(PT)
     PT=PT+cross(F.P[:,i],F.P[:,i+1]);
   end
   #P=P+cross(Grid.Nodes(F.N(nE)).P,Grid.Nodes(F.N[1]).P);
   PT=PT+cross(F.P[:,nE],F.P[:,1]);
   F.a=0.5*norm(PT);
-  F.Mid=zeros(1,3);
+  F.Mid=zeros(3);
   for i=1:nE
     #F.Mid=F.Mid+Grid.Nodes(F.N(i)).P;
-    F.Mid=F.Mid+F.P[:,i]';
+    F.Mid=F.Mid+F.P[:,i];
   end
   F.Mid=F.Mid/nE;
 
@@ -100,11 +98,11 @@ function Face(Edges,Grid,Pos,Dir,OrientFace,P=nothing)
     F.n=F.n+cross(F.P[:,i],F.P[:,i+1]);
   end
   F.n=F.n/norm(F.n);
-  if OrientFace(F.n,F.Mid)<0
+  if OrientFace(F.n',F.Mid)<0 # TODO: check translation with Oswald
     #Change Orientation
-    NTemp=F.N;
-    ETemp=F.E;
-    PTemp=F.P;
+    NTemp=copy(F.N);
+    ETemp=copy(F.E);
+    PTemp=copy(F.P);
     for i=1:nE
       F.N[i]=NTemp[nE-i+1];
       F.P[:,i]=PTemp[:,nE-i+1];

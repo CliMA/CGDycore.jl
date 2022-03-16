@@ -3,3 +3,7 @@ strcat(s...) = prod(s)
 num2str(n) = "$n"
 lower(s) = lowercase(s)
 repmat(v,s...) = repeat(v, s...)
+
+function atan2(y, x)
+    return atan(y, x)
+end

@@ -1,5 +1,11 @@
 module CGDycore
 
+#=
+Look for
+
+# TODO: check translation with Oswald
+=#
+
 # using StatsBase
 using LinearAlgebra
 include("matlab_intrinsics.jl")
@@ -15,7 +21,7 @@ include("Grid/GridStruct.jl")
 # include("Grid/CFPToGrid.jl")
 # include("Grid/Cart.jl")
 include("Grid/CartGrid.jl")
-# include("Grid/CubedGrid.jl") # translate this
+include("Grid/CubedGrid.jl") # translate this
 # include("Grid/DGNodes.jl")
 # include("Grid/FacesInEdges.jl")
 include("Grid/FacesInNodes.jl")
@@ -39,7 +45,7 @@ include("Grid/JacobiDG3.jl")
 # include("Grid/JacobiSphere.jl")
 # include("Grid/JacobiSphere2.jl")
 # include("Grid/JacobiSphere2TT.jl")
-# include("Grid/JacobiSphere3.jl")
+include("Grid/JacobiSphere3.jl")
 # include("Grid/JacobiSphereDG.jl")
 # include("Grid/JacobiTri.jl")
 # include("Grid/MetricGuba.jl")
@@ -59,7 +65,7 @@ include("Grid/Renumbering.jl")
 include("Grid/Topo.jl")
 # include("Grid/Topo2.jl")
 include("Grid/TransCart.jl")
-# include("Grid/TransSphere.jl")
+include("Grid/TransSphere.jl")
 # include("Grid/TriGrid.jl")
 # include("Grid/cart2Radial.jl")
 include("Grid/cart2sphere.jl")
@@ -141,7 +147,7 @@ include("Model/fRhoBGrd.jl")
 include("Model/fT.jl")
 include("Model/fTBGrd.jl")
 include("Model/fTheta.jl")
-# include("Model/fThetaBGrd.jl")
+include("Model/fThetaBGrd.jl")
 # include("Model/fTr.jl")
 include("Model/fVel.jl")
 # include("Model/fVelW.jl")

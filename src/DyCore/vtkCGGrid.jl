@@ -38,11 +38,11 @@ for iF=1:Param.Grid.NumFaces
         X[8,:]=Trans(ksi0,eta1, Param.Grid.z[iz+1],Param.Grid.Faces[iF],Topo,Param);
         if strcmp(Param.Grid.Form,"Sphere") && Param.Flat
           for i=1:8
-          (lam[i],theta[i])=cart2sphere(X[i,1],X[i,2],X[i,3]);
+          (lam[i],theta[i], _)=cart2sphere(X[i,1],X[i,2],X[i,3]);
           end
 
-          lammin=min(lam);
-          lammax=max(lam);
+          lammin=minimum(lam);
+          lammax=maximum(lam);
           if abs(lammin-lammax)>2*pi-dTol
             for i=1:8
               if lam[i]<pi
