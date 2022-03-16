@@ -105,6 +105,8 @@ Base.@kwdef mutable struct PhysParametersStruct
     fig = nothing
     SliceXY = nothing
     RadPrint = nothing
+    RefProfile = nothing
+    Pres = nothing
 end
 
 function PhysParameters()

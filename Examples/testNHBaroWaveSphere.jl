@@ -8,9 +8,11 @@ using CGDycore
 # Physical parameters
 Param=CGDycore.PhysParameters();
 
+Param.Upwind = false
+Param.RefProfile = false
 # Grid
 nz=10;
-Param.nPanel=8;
+Param.nPanel=4;
 Param.H=30000;
 Param.Grid=CGDycore.CubedGrid(Param.nPanel,CGDycore.OrientFaceSphere,Param);
 
@@ -130,12 +132,11 @@ ThB=CGDycore.Project(CGDycore.fThetaBGrd,CG,Param);
 
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 
-error("Success!")
 
 # Integration
 CFL=0.125;
 dtau=500;
-time=0;
+time=[0];
 
 IntMethod="Rosenbrock";
 #IntMethod="RungeKutta";
@@ -147,47 +148,45 @@ end
 nIter=20000;
 #v = VideoWriter ("Galewsky.avi");
 #open (v);
-Param.RK=RungeKuttaMethod("RK4");
-Param.ROS=RosenbrockMethod("ROSRK3");
+Param.RK=CGDycore.RungeKuttaMethod("RK4");
+Param.ROS=CGDycore.RosenbrockMethod("ROSRK3");
 SimDays=10;
 PrintDay=.5;
 nIter=24*3600*SimDays/dtau;
 PrintInt=24*3600*PrintDay/dtau;
 # Print initial conditions
-Param.vtk=vtkCG(U(:,:,Param.vPos),CG,@TransSphere,@Topo,Param,Param.vtk);
+Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
-switch IntMethod
-  case "Rosenbrock"
-    tic
-    for i=1:nIter
-      i
-      U=RosenbrockSchur(U,dtau,@FcnNHCurlVec,@JacSchur,CG,Param);
-      time=time+dtau;
-      if mod(i,PrintInt)==0
-        #
-        Param.vtk=vtkCG(U(:,:,Param.vPos),CG,@TransSphere,@Topo,Param,Param.vtk);
-      end
-    end
-    toc
-  case "RungeKutta"
-    for i=1:nIter
-      i
-      U=RungeKuttaExplicit(U,dtau,@FcnNHCurlVec,CG,Param);
 
-      time=time+dtau;
-      if mod(i,1000)==0
-        Param.fig=PlotCG(U(:,:,Param.ThPos)./U(:,:,Param.RhoPos)...
-          ,CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-        Param.fig=PlotCG(U(:,:,Param.uPos),CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-        Param.fig=PlotCG(U(:,:,Param.vPos),CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-        W=zeros(size(U,1),nz+1);
-        W(:,2:nz+1)=U(:,:,Param.wPos);
-        Param.fig=PlotCG(0.5*(W(:,1:nz)+W(:,2:nz+1)),CG,@TransSphere...
-          ,@Topo,Param,Param.fig,Param.SliceXY);
+str = IntMethod
+if str == "Rosenbrock"
+    @time begin
+      for i=1:nIter
+        @info "Iteration: $i"
+        U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
+        time[1] += dtau;
+        if mod(i,PrintInt)==0
+          Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+        end
+        error("Success!")
       end
     end
+
+elseif str == "RungeKutta"
+    for i=1:nIter
+      @info "Iteration: $i"
+
+      U .= CGDycore.RungeKuttaExplicit(U,dtau,CGDycore.FcnNHCurlVec,CG,Param);
+
+      time[1] += dtau;
+      if mod(i,1000)==0
+        Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+      end
+    end
+else
+  error("Bad str")
 end
-#fig=PlotCG(U(:,1),CG,@JacobiSphere2,Param,fig);
+#fig=PlotCG(U(:,1),CG,CGDycore.JacobiSphere2,Param,fig);
 #close(v)
 end
 
