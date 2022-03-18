@@ -1,14 +1,19 @@
 #function testNHHeldSuarezSphere
 using CGDycore
 
+# Cache
+nz=10;
+OrdPoly=4;
+nPanel=4;
+cache=CGDycore.Cache(OrdPoly, nz, nPanel)
+
 # Physical parameters
-Param=CGDycore.PhysParameters();
+Param=CGDycore.PhysParameters(cache);
 
 Param.Upwind = false
 Param.RefProfile = false
 # Grid
-nz=10;
-Param.nPanel=4;
+Param.nPanel=nPanel;
 Param.H=30000;
 Param.Grid=CGDycore.CubedGrid(Param.nPanel,CGDycore.OrientFaceSphere,Param);
 
@@ -82,7 +87,6 @@ Param.sigma_b=7/10;
 Param.z_D=20.0e3;
 
 # Discretization
-OrdPoly=4;
 OrdPolyZ=1;
 (CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
 LRef=11*1.e5;
@@ -138,6 +142,12 @@ PrintInt=24*3600*PrintDay/dtau;
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 str = IntMethod
+using BenchmarkTools
+function single_step!()
+  U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
+end
+@benchmark single_step!()
+
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter

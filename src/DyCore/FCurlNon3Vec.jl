@@ -2,7 +2,8 @@ function FCurlNon3Vec(v1CG,v2CG,wCG,wCCG,CG,Param)
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 nz=Param.Grid.nz;
-
+dXdxIC = Param.cache.dXdxIC
+dXdxIF = Param.cache.dXdxIF
 # Fu(1)
 # -vv\left(DX(a^{12}u-a^{11}v)+(a^{22}u-a^{21}v)DY^T
 # +\frac{d(a^{32}u-a^{31}v)}{dz}\right)
@@ -19,12 +20,9 @@ nz=Param.Grid.nz;
 # -uu((DXa^{11}w+a^{21}wDY^T+\frac{da^{31}w}{dz}-\frac{da^{33}u}{dz})
 # -vv*((DXa^{12}w+a^{22}wDY^T+\frac{da^{32}w}{dz}-\frac{da^{33}v}{dz})
 
-vHat1=Param.dXdxIC[:,:,:,:,1,2].*v1CG-
-  Param.dXdxIC[:,:,:,:,1,1].*v2CG;
-vHat2=Param.dXdxIC[:,:,:,:,2,2].*v1CG-
-  Param.dXdxIC[:,:,:,:,2,1].*v2CG;
-vHat3=Param.dXdxIC[:,:,:,:,3,2].*v1CG-
-  Param.dXdxIC[:,:,:,:,3,1].*v2CG;
+vHat1 = dXdxIC[:,:,:,:,1,2].*v1CG .- dXdxIC[:,:,:,:,1,1].*v2CG;
+vHat2 = dXdxIC[:,:,:,:,2,2].*v1CG .- dXdxIC[:,:,:,:,2,1].*v2CG;
+vHat3 = dXdxIC[:,:,:,:,3,2].*v1CG .- dXdxIC[:,:,:,:,3,1].*v2CG;
 
 
 
@@ -49,12 +47,12 @@ end
 
 # DXa^{11}w
 DXwHat11=reshape(CG.DS*reshape(
-  Param.dXdxIF[:,:,:,:,1,1].*wCG
+  dXdxIF[:,:,:,:,1,1].*wCG
   ,OP,OP*NF*(nz+1))
   ,OP,OP,NF,nz+1);
 # DXa^{12}w
 DXwHat12=reshape(CG.DS*reshape(
-  Param.dXdxIF[:,:,:,:,1,2].*wCG
+  dXdxIF[:,:,:,:,1,2].*wCG
   ,OP,OP*NF*(nz+1))
   ,OP,OP,NF,nz+1);
 # a^{21}wDY^T
@@ -63,7 +61,7 @@ DYwHat21=  permute(
   CG.DS*reshape(
   permute(
   reshape(
-  Param.dXdxIF[:,:,:,:,2,1].*wCG
+  dXdxIF[:,:,:,:,2,1].*wCG
   ,OP,OP,NF,nz+1)
   ,[2,1,3,4])
   ,OP,OP*NF*(nz+1))
@@ -75,7 +73,7 @@ DYwHat22= permute(
   CG.DS*reshape(
   permute(
   reshape(
-  Param.dXdxIF[:,:,:,:,2,2].*wCG
+  dXdxIF[:,:,:,:,2,2].*wCG
   ,OP,OP,NF,nz+1)
   ,[2,1,3,4])
   ,OP,OP*NF*(nz+1))
@@ -84,7 +82,7 @@ DYwHat22= permute(
 
 # \frac{da^{31}w}{dz}-\frac{da^{33}u}{dz}
 #uHat1=reshape(Param.dXdxI(:,:,:,:,3,3),OP*OP*NF,nz).*v1CG;
-uHat1=Param.dXdxIC[:,:,:,:,3,3].*v1CG;
+uHat1=dXdxIC[:,:,:,:,3,3].*v1CG;
 DZuuHat31=zeros(OP,OP,NF,nz+1);
 if nz>1
   DZuuHat31[:,:,:,1]=0.5*(uHat1[:,:,:,2]-uHat1[:,:,:,1]);
@@ -92,18 +90,18 @@ if nz>1
   DZuuHat31[:,:,:,nz+1]=0.5*(uHat1[:,:,:,nz]-uHat1[:,:,:,nz-1]);
 end
 
-wwHat31=Param.dXdxIF[:,:,:,:,3,1].*wCG;
+wwHat31=dXdxIF[:,:,:,:,3,1].*wCG;
 DZwwHat31=0.5*(wwHat31[:,:,:,2:nz+1]-wwHat31[:,:,:,1:nz]);
 # \frac{da^{32}w}{dz}-\frac{da^{33}v}{dz}
 #uHat2=reshape(Param.dXdxI(:,:,:,:,3,3),OP*OP*NF,nz).*v2CG;
-uHat2=Param.dXdxIC[:,:,:,:,3,3].*v2CG;
+uHat2=dXdxIC[:,:,:,:,3,3].*v2CG;
 DZuuHat32=zeros(OP,OP,NF,nz+1);
 if nz>1
   DZuuHat32[:,:,:,1]=0.5*(uHat2[:,:,:,2]-uHat2[:,:,:,1]);
   DZuuHat32[:,:,:,2:nz]=0.5*(uHat2[:,:,:,2:nz]-uHat2[:,:,:,1:nz-1]);
   DZuuHat32[:,:,:,nz+1]=0.5*(uHat2[:,:,:,nz]-uHat2[:,:,:,nz-1]);
 end
-wwHat32=Param.dXdxIF[:,:,:,:,3,2].*wCG;
+wwHat32=dXdxIF[:,:,:,:,3,2].*wCG;
 DZwwHat32=0.5*(wwHat32[:,:,:,2:nz+1]-wwHat32[:,:,:,1:nz]);
 
 

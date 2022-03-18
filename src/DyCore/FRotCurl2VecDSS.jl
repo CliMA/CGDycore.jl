@@ -2,17 +2,18 @@ function FRotCurl2VecDSS(v1CG,v2CG,CG,Param)
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 nz=Param.Grid.nz;
+dXdxIC = Param.cache.dXdxIC
 
 vC1=reshape(
-  CG.DS*reshape(Param.dXdxIC[:,:,:,:,1,1].*v2CG -
-  Param.dXdxIC[:,:,:,:,1,2].*v1CG
+  CG.DS*reshape(dXdxIC[:,:,:,:,1,1].*v2CG -
+  dXdxIC[:,:,:,:,1,2].*v1CG
   ,OP,OP*NF*nz)
   ,OP,OP,NF,nz) -
   permute(
   reshape(
   CG.DS*reshape(
-  permute( -v2CG.*Param.dXdxIC[:,:,:,:,2,1] +
-  v1CG.*Param.dXdxIC[:,:,:,:,2,2]
+  permute( -v2CG.*dXdxIC[:,:,:,:,2,1] +
+  v1CG.*dXdxIC[:,:,:,:,2,2]
   ,[2 1 3 4])
   ,OP,OP*NF*nz)
   ,OP,OP,NF,nz)
@@ -30,16 +31,16 @@ D2cCG=permute(reshape(
   ,OP,OP,NF,nz)
   ,[2 1 3 4]);
 RotCG=zeros(OP,OP,NF,nz,2);
-RotCG[:,:,:,:,2]=(-Param.dXdxIC[:,:,:,:,1,1].*D1cCG -
-  Param.dXdxIC[:,:,:,:,2,1].*D2cCG)./Param.JC;
-RotCG[:,:,:,:,1]=(Param.dXdxIC[:,:,:,:,1,2].*D1cCG
-  +Param.dXdxIC[:,:,:,:,2,2].*D2cCG)./Param.JC;
+RotCG[:,:,:,:,2]=(-dXdxIC[:,:,:,:,1,1].*D1cCG -
+  dXdxIC[:,:,:,:,2,1].*D2cCG)./Param.JC;
+RotCG[:,:,:,:,1]=(dXdxIC[:,:,:,:,1,2].*D1cCG
+  +dXdxIC[:,:,:,:,2,2].*D2cCG)./Param.JC;
 Rot=zeros(CG.NumG,nz,2);
 
 for iM=1:size(CG.FaceGlob,1)
   i = CG.FaceGlob[iM].Ind
   arr = reshape(CG.Glob[:,i,:],OP*OP*size(i,1))
-  Rot[arr,:,:] = Rot[arr,:,:] .+ 
+  Rot[arr,:,:] = Rot[arr,:,:] .+
     reshape(RotCG[:,:,i,:,:]
     ,OP*OP*size(i,1),nz,2);
 end

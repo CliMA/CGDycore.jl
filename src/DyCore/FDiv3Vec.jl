@@ -3,23 +3,21 @@ function FDiv3Vec(cCG,v1CG,v2CG,v3CG,CG,Param)
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 nz=Param.Grid.nz;
+dXdxIF = Param.cache.dXdxIF;
+dXdxIC = Param.cache.dXdxIC;
 # Contravariant components
-v1Con=v1CG.*
-    Param.dXdxIC[:,:,:,:,1,1] +
-   v2CG.*
-    Param.dXdxIC[:,:,:,:,1,2];
-v2Con=v1CG.*
-    Param.dXdxIC[:,:,:,:,2,1] +
-   v2CG.*
-    Param.dXdxIC[:,:,:,:,2,2];
+v1Con=v1CG.* dXdxIC[:,:,:,:,1,1] +
+   v2CG.* dXdxIC[:,:,:,:,1,2];
+v2Con=v1CG.* dXdxIC[:,:,:,:,2,1] +
+   v2CG.* dXdxIC[:,:,:,:,2,2];
 
 
 v3Con=0.5*((v1CG[:,:,:,1:end-1]+v1CG[:,:,:,2:end]).*
-        Param.dXdxIF[:,:,:,2:nz,3,1]+
+        dXdxIF[:,:,:,2:nz,3,1]+
       (v2CG[:,:,:,1:end-1]+v2CG[:,:,:,2:end]).*
-        Param.dXdxIF[:,:,:,2:nz,3,2]) +
+        dXdxIF[:,:,:,2:nz,3,2]) +
        v3CG[:,:,:,2:nz].*
-        Param.dXdxIF[:,:,:,2:nz,3,3];
+        dXdxIF[:,:,:,2:nz,3,3];
 
 Dv1Con=reshape(
   CG.DS*reshape(v1Con.*cCG,OP,OP*NF*nz),

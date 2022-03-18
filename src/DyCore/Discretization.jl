@@ -30,6 +30,8 @@ CG = CGStruct(;)
 CG.OrdPoly=OrdPoly;
 CG.OrdPolyZ=OrdPolyZ;
 nz=Param.Grid.nz;
+dXdxIF = Param.cache.dXdxIF
+dXdxIC = Param.cache.dXdxIC
 
 (CG.Faces,CG.NumG,CG.NumI,CG.Glob,CG.FaceGlob,CG.Stencil) =
   NumberingFemCG(Param.Grid,OrdPoly);
@@ -59,12 +61,12 @@ for iF=1:Param.Grid.NumFaces
 end
 Param.JC=Average(Param.J);
 Param.JF=AverageFB(Param.J);
-Param.dXdxIC=zeros(OrdPoly+1,OrdPoly+1,Param.Grid.NumFaces,nz,3,3);
-Param.dXdxIF=zeros(OrdPoly+1,OrdPoly+1,Param.Grid.NumFaces,nz+1,3,3);
+dXdxIC .= 0;
+dXdxIF .= 0;
 for i=1:3
   for j=1:3
-    Param.dXdxIC[:,:,:,:,i,j] .= Average(Param.dXdxI[:,:,:,:,:,i,j]);
-    Param.dXdxIF[:,:,:,:,i,j] .= AverageFB(Param.dXdxI[:,:,:,:,:,i,j]);
+    dXdxIC[:,:,:,:,i,j] .= Average(Param.dXdxI[:,:,:,:,:,i,j]);
+    dXdxIF[:,:,:,:,i,j] .= AverageFB(Param.dXdxI[:,:,:,:,:,i,j]);
   end
 end
 
