@@ -1,29 +1,32 @@
-function testNHHeldSuarezSphere
-clear all
-close all
+#function testNHHeldSuarezSphere
 
-% Physical parameters
-Param=PhysParameters();
+# function testNHBaroWaveSphere
+# clear all
+# close all
+using CGDycore
 
-% Grid
+# Physical parameters
+Param=CGDycore.PhysParameters();
+
+Param.Upwind = false
+Param.RefProfile = false
+# Grid
 nz=10;
 Param.nPanel=4;
 Param.H=30000;
-Param.Grid=CubedGrid(Param.nPanel,OrientFaceSphere,Param);
-
+Param.Grid=CGDycore.CubedGrid(Param.nPanel,CGDycore.OrientFaceSphere,Param);
 
 Param.Grid.nz=nz;
 Param.Grid.zP=zeros(nz,1);
 Param.Grid.z=zeros(nz+1,1);
 Param.Grid.dz=Param.H/nz;
-Param.Grid.zP(1)=Param.Grid.dz/2;
+Param.Grid.zP[1]=Param.Grid.dz/2;
 for i=2:nz
-  Param.Grid.zP(i)=Param.Grid.zP(i-1)+Param.Grid.dz;
+  Param.Grid.zP[i]=Param.Grid.zP[i-1]+Param.Grid.dz;
 end
 for i=2:nz+1
-  Param.Grid.z(i)=Param.Grid.z(i-1)+Param.Grid.dz;
+  Param.Grid.z[i]=Param.Grid.z[i-1]+Param.Grid.dz;
 end
-
 
 % Model
 Param.ModelType='Curl';

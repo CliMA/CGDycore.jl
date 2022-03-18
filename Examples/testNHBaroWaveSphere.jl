@@ -98,13 +98,6 @@ Param.HyperDGrad=2.e17/4;
 Param.HyperDDiv=2.e17/4; # Scalars
 
 # Output
-# Param.Flat=true; # false gives sphere in paraview
-# Param.level=1;
-# Param.fig=1;
-# Param.vtk=1;
-# Param.SliceXY.Type="XY";
-# Param.SliceXY.iz=1;
-# Param.vtkFileName="Barowave";
 Param.RadPrint=Param.H;
 Param.Flat=true;
 Param.vtkFileName="BaroWaveSphere";
@@ -126,28 +119,20 @@ U[:,:,Param.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Param);
 U[:,:,Param.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Param).*U[:,:,Param.RhoPos];
 PresStart=CGDycore.Pressure(U[:,:,Param.ThPos],U[:,:,Param.ThPos],U[:,:,Param.ThPos],Param);
 ThB=CGDycore.Project(CGDycore.fThetaBGrd,CG,Param);
-# if strcmp(Param.Thermo,"Energy")
-#   U[:,:,Param.ThPos]=CGDycore.PotToEnergy(U,CG,Param);
-# end
 
-Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 
 
 # Integration
-CFL=0.125;
-dtau=500;
 time=[0];
 
-IntMethod="Rosenbrock";
-#IntMethod="RungeKutta";
+#IntMethod="Rosenbrock";
+IntMethod="RungeKutta";
 if strcmp(IntMethod,"Rosenbrock")
   dtau=200;
 else
   dtau=8;
 end
 nIter=20000;
-#v = VideoWriter ("Galewsky.avi");
-#open (v);
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("ROSRK3");
 SimDays=10;
@@ -168,9 +153,9 @@ if str == "Rosenbrock"
         if mod(i,PrintInt)==0
           Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
         end
-        error("Success!")
       end
     end
+    error("Success!")
 
 elseif str == "RungeKutta"
     for i=1:nIter
@@ -179,7 +164,7 @@ elseif str == "RungeKutta"
       U .= CGDycore.RungeKuttaExplicit(U,dtau,CGDycore.FcnNHCurlVec,CG,Param);
 
       time[1] += dtau;
-      if mod(i,1000)==0
+      if mod(i,PrintInt)==0
         Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
       end
     end

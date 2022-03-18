@@ -111,7 +111,7 @@ for k=1:10
     if IndFace[iF]==k
       for i=1:4
         iN=Grid.Faces[iF].N[i];
-        for j=1:size(Grid.Nodes[iN].F,2)
+        for j=1:size(Grid.Nodes[iN].F,1)
           if Grid.Nodes[iN].F[j]!=iF && IndFace[Grid.Nodes[iN].F[j]]>=k
             IndFace[Grid.Nodes[iN].F[j]]=k+1;
           end

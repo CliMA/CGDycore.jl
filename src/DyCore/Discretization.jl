@@ -71,7 +71,7 @@ end
 (CG.M,CG.MW)=MassCG(CG,Param);
 Param.latN=zeros(CG.NumG,1);
 OP=CG.OrdPoly+1;
-for iM=1:size(CG.FaceGlob,2)
+for iM=1:size(CG.FaceGlob,1)
   i = CG.FaceGlob[iM].Ind
   arr = reshape(CG.Glob[:,i,:,:] ,OP*OP*size(i,1),1)
   mat = Param.lat[:,:,i] .*Param.JC[:,:,i,1]

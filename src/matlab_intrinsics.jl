@@ -15,7 +15,7 @@ end
 
 # spdiags([reshape(-D,nJ,1) reshape(D,nJ,1)],[-1 0] ,nJ,nJ)
 function spdiags(mat, opt::Real, m, n)
-    return Diagonal(mat)
+    return spdiagm(m, n, 0 => mat[:,1])
 end
 function spdiags(mat, opt::AbstractArray, m, n)
     @assert length(opt) == 2
@@ -23,13 +23,15 @@ function spdiags(mat, opt::AbstractArray, m, n)
     # @show opt
     # error("Debugging spdiags")
     if opt[1] == -1 && opt[2] == 0
-        ev = mat[:,1][2:end] # TODO: verify
-        dv = mat[:,2]
-        return Bidiagonal(dv, ev, :L)
+        ev = mat[:,1][1:m-1] # TODO: verify
+        dv = mat[:,2][1:m]
+#       return Bidiagonal(dv, ev, :L)
+        return spdiagm(m, n, 0 => dv, -1 => ev)
     elseif opt[1] == 0 && opt[2] == 1
-        dv = mat[:,1]
-        ev = mat[:,2][1:end-1] # TODO: verify
-        return Bidiagonal(dv, ev, :U)
+        dv = mat[:,1][1:m]
+        ev = mat[:,2][2:m] # TODO: verify
+#       return Bidiagonal(dv, ev, :U)
+        return spdiagm(m, n, 0 => dv, 1 => ev)
     else
         error("Uncaught case")
     end

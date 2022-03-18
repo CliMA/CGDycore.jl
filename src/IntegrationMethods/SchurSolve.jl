@@ -11,14 +11,6 @@ if Param.Damping
   sw=(spdiags(repmat(invfac2,n,1),0,n,n)-invfac*J.JWW-J.JWRho*J.JRhoW-J.JWTh*J.JThW)\
     (invfac*rw+J.JWRho*rRho+J.JWTh*rTh);
 else
-  @show size(spdiags(repmat(invfac2,n,1),0,n,n))
-  @show size(J.JWRho)
-  @show size(J.JRhoW)
-  @show size(J.JWTh)
-  @show size(J.JThW)
-  @show size(J.rRho)
-  @show size(invfac)
-  @show size(rTh)
   sw=(spdiags(repmat(invfac2,n,1),0,n,n)-J.JWRho*J.JRhoW-J.JWTh*J.JThW)\
     (invfac*rw+J.JWRho*rRho+J.JWTh*rTh);
 end

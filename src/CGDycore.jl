@@ -10,6 +10,7 @@ Look for
 
 # using StatsBase
 using LinearAlgebra
+using SparseArrays
 include("matlab_intrinsics.jl")
 
 include("Grid/Node/Node.jl")
@@ -89,21 +90,21 @@ include("DyCore/Average.jl")
 include("DyCore/AverageFB.jl")
 include("DyCore/BoundaryW.jl")
 # include("DyCore/BoundaryWOutput.jl")
-# include("DyCore/DampingKoeff.jl")
+include("DyCore/DampingKoeff.jl")
 include("DyCore/Discretization.jl")
 # include("DyCore/Energy.jl")
 include("DyCore/FCurlNon3Vec.jl")
 # include("DyCore/FDiv3UpwindVec.jl")
 include("DyCore/FDiv3Vec.jl") # translate this
 # include("DyCore/FDivGrad2Vec.jl")
-# include("DyCore/FDivGrad2VecDSS.jl")
-# include("DyCore/FDivRhoGrad2Vec.jl")
+include("DyCore/FDivGrad2VecDSS.jl")
+include("DyCore/FDivRhoGrad2Vec.jl")
 include("DyCore/FGrad3Vec.jl") # translate this
-# include("DyCore/FGradDiv2Vec.jl")
-# include("DyCore/FGradDiv2VecDSS.jl")
-# include("DyCore/FRotCurl2Vec.jl")
-# include("DyCore/FRotCurl2VecDSS.jl")
-# include("DyCore/FVort2VecDSS.jl")
+include("DyCore/FGradDiv2Vec.jl")
+include("DyCore/FGradDiv2VecDSS.jl")
+include("DyCore/FRotCurl2Vec.jl")
+include("DyCore/FRotCurl2VecDSS.jl")
+include("DyCore/FVort2VecDSS.jl")
 # include("DyCore/FcnDiff.jl")
 include("DyCore/FcnNHCurlVec.jl")
 # include("DyCore/FcnVec.jl")
@@ -118,7 +119,7 @@ include("DyCore/Project.jl")
 include("DyCore/ProjectVec.jl")
 # include("DyCore/Source.jl")
 # include("DyCore/SphereGrid.jl")
-# include("DyCore/simpson.jl")
+include("DyCore/simpson.jl")
 include("DyCore/vtkCG.jl")
 include("DyCore/vtkCGGrid.jl")
 include("DyCore/vtkOutput.jl")
@@ -129,7 +130,7 @@ include("DyCore/vtkOutput.jl")
 include("IntegrationMethods/RosenbrockMethod.jl")
 include("IntegrationMethods/RosenbrockSchur.jl") # translate this
 # include("IntegrationMethods/RosenbrockSchur1.jl")
-# include("IntegrationMethods/RungeKuttaExplicit.jl") # translate this
+include("IntegrationMethods/RungeKuttaExplicit.jl") # translate this
 # include("IntegrationMethods/RungeKuttaHEVI.jl")
 include("IntegrationMethods/RungeKuttaMethod.jl")
 include("IntegrationMethods/SchurSolve.jl")

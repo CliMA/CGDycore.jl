@@ -112,15 +112,11 @@ function fVel(x,Param)
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
       (uS,vS)=harmonicVec(Param.lHar,Param.mHar,lat,lon,r);
     elseif str == "galewsky"
-      uM=80.0;
-      lat0G=pi/7.0;
-      lat1G=pi/2.0-lat0G;
-      eN=exp(-4.0/(lat1G-lat0G)^2.0);
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-      if (lat<=lat0G) || (lat>=lat1G)
+      if (lat<=Param.lat0G) || (lat>=Param.lat1G)
         uS=0;
       else
-        uS=uM/eN*exp(1.0/((lat-lat0G)*(lat-lat1G)));
+        uS=Param.uM/Param.eN*exp(1.0/((lat-Param.lat0G)*(lat-Param.lat1G)));
       end
       vS=0;
     elseif str == "rossbyhaurwitz"

@@ -16,7 +16,6 @@ v2CG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,vPos]
 wCG=zeros(OP,OP,NF,nz+1);
 wCG[:,:,:,2:nz+1]=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,wPos]
   ,OP,OP,NF,nz);
-#wCG[:,:,:,1]=BoundaryW(v1CG,v2CG,CG,Param);
 wCCG=0.5*(wCG[:,:,:,1:nz]+wCG[:,:,:,2:nz+1]);
 wCCG[:,:,:,1]=BoundaryW(v1CG,v2CG,CG,Param);
 wCG[:,:,:,1]=2*wCCG[:,:,:,1]-wCG[:,:,:,2];
@@ -62,16 +61,15 @@ end
 if Param.HyperVisc
   if strcmp(Param.Thermo,"Energy")
   else
-    # TODO: add back in (Charlie+Oswald)
-    # FCG[:,:,:,:,uPos:ThPos]=FCG[:,:,:,:,uPos:ThPos]+
-    #   HyperDiffusionVec(v1CG,v2CG,wCG,ThCG,RhoCG,CG,Param);
+    FCG[:,:,:,:,uPos:ThPos]=FCG[:,:,:,:,uPos:ThPos]+
+    HyperDiffusionVec(v1CG,v2CG,wCG,ThCG,RhoCG,CG,Param);
   end
 end
 
 
 
 F=zeros(size(U));
-for iM=1:size(CG.FaceGlob,2)
+for iM=1:size(CG.FaceGlob,1)
   i = CG.FaceGlob[iM].Ind
   arr = reshape(CG.Glob[:,i,:],OP*OP*size(i,1))
   mat = reshape(FCG[:,:,i,:,:] ,OP*OP*size(i,1),nz,Param.NumV)
@@ -93,9 +91,9 @@ return F
 end
 
 function Damping(W,Param)
-F=zeros(size(W,1),size(W,2)-2);
+F=zeros(size(W,1),size(W,2)-1);
 for iz=Param.Grid.nz-1:-1:1
-  zLoc=Param.Grid.z[iz+1];
+  zLoc=Param.Grid.z[iz];
   if zLoc>=Param.H-Param.StrideDamp
     Damp = Param.Relax*
       sin(0.5*pi*(1.0 - (Param.H - zLoc)/Param.StrideDamp))^2;

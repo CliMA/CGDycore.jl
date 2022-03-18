@@ -12,7 +12,7 @@ Pert=0.0;
 PertX=0.2;
 PertY=0.2;
 if strcmp(Boundary.WE,"Period") && strcmp(Boundary.BT,"Period")
-  NumNodes=(nx+1)*(ny+1);
+  NumNodes=nx*ny;
 elseif strcmp(Boundary.WE,"Period")
   NumNodes=nx*(ny+1);
 elseif strcmp(Boundary.BT,"Period")
@@ -36,7 +36,6 @@ for iy=1:ny+1
     P[1,ix,iy]=x;
     P[2,ix,iy]=y;
     P[3,ix,iy]=0;
-    P[2,ix,iy]=eta*(ly+y0)+(1-eta)*(hS(x,Param)+y0);
     x=x+dx;
   end
   y=y+dy;
@@ -46,14 +45,14 @@ y=y0;
 for iy=1:ny+1
   x=x0;
   if iy==ny+1 && strcmp(Boundary.BT,"Period")
-    for ix=1:nx+1
-      if ix==nx+1 && strcmp(Boundary.WE,"Period")
-      else
-        Nodes[NodeNumber]=Node([x;y;0],NodeNumber);
-        NodeNumber=NodeNumber+1;
-      end
-      x=x+dx;
-    end
+#   for ix=1:nx+1
+#     if ix==nx+1 && strcmp(Boundary.WE,"Period")
+#     else
+#       Nodes[NodeNumber]=Node([x;y;0],NodeNumber);
+#       NodeNumber=NodeNumber+1;
+#     end
+#     x=x+dx;
+#   end
   else
     for ix=1:nx+1
       if ix==nx+1 && strcmp(Boundary.WE,"Period")

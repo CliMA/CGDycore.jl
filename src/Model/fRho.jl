@@ -126,18 +126,10 @@ function fRho(x,Param)
     elseif str == "galewsky"
         Grav=Param.Grav;
         Omega=Param.Omega;
-        alphaG=1.0/3.0;
-        betaG=1.0/15.0;
-        hH=120.0;
-        H0G=10000.0;
-        uM=80.0;
-        lat0G=pi/7.0;
-        lat1G=pi/2.0-lat0G;
-        eN=exp(-4.0/(lat1G-lat0G)^2.0);
         (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
         r=Param.RadEarth;
-        Rho=(Grav*H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG)))/Grav +
-          hH*cos(lat)*exp(-((lon-pi)/alphaG)^2.0)*exp(-((pi/4.0-lat)/betaG)^2.0);
+        Rho=(Grav*Param.H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG,Param)))/Grav +
+          Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2.0)*exp(-((pi/4.0-lat)/Param.betaG)^2.0);
     elseif str == "rossbyhaurwitz"
         Grav=Param.Grav;
         Omega=Param.Omega;
@@ -213,13 +205,12 @@ function fRho(x,Param)
     return Rho
 end
 
-function integrandG(tau,RadEarth)
-    # global Omega uM lat0G lat1G eN
-    f=2.0*Omega*sin(tau);
-    if (tau<=lat0G) || (tau>=lat1G)
+function integrandG(tau,RadEarth,Param)
+    f=2.0*Param.Omega*sin(tau);
+    if (tau<=Param.lat0G) || (tau>=Param.lat1G)
       uStart=0.0;
     else
-      uStart=uM/eN*exp(1.0/((tau-lat0G)*(tau-lat1G)));
+      uStart=Param.uM/Param.eN*exp(1.0/((tau-Param.lat0G)*(tau-Param.lat1G)));
     end
     if abs(tau)<0.5*pi
       intG=(RadEarth*f+uStart*tan(tau))*uStart;

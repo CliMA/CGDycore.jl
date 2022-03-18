@@ -107,6 +107,21 @@ Base.@kwdef mutable struct PhysParametersStruct
     RadPrint = nothing
     RefProfile = nothing
     Pres = nothing
+    xC0 = nothing
+    zC0 = nothing
+    rC0 = nothing
+    DeltaTh = nothing
+    hC = nothing
+    x0C = nothing
+    aC = nothing
+    alphaG = nothing
+    betaG = nothing
+    hH = nothing
+    H0G = nothing
+    uM = nothing
+    lat0G = nothing
+    lat1G = nothing
+    eN = nothing
 end
 
 function PhysParameters()

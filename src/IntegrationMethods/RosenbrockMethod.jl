@@ -1,3 +1,6 @@
+Base.@kwdef mutable struct SSPStruct
+  alpha = nothing
+end
 Base.@kwdef mutable struct RosenbrockStruct
   transformed = nothing
   nStage = nothing
@@ -11,12 +14,30 @@ Base.@kwdef mutable struct RosenbrockStruct
   b2 = nothing
   beta0 = nothing
   beta = nothing
+  SSP = SSPStruct(;)
 end
 
 function RosenbrockMethod(Method)
   str = Method
   ROS = RosenbrockStruct(;)
-  if str == "RK3_H"
+if str == "SSP-Knoth"
+    ROS.transformed=true;
+    ROS.nStage=3;
+    ROS.alpha=[0 0 0
+      1 0 0
+      1/4 1/4 0];
+    ROS.d=ROS.alpha*ones(ROS.nStage,1);
+    ROS.b=[1/6 1/6 2/3];
+    ROS.Gamma=[1 0 0
+      0 1 0
+      -3/4 -3/4 1];
+    ROS.a=ROS.alpha/ROS.Gamma;
+    ROS.c=-inv(ROS.Gamma);
+    ROS.m=ROS.b/ROS.Gamma;
+    ROS.SSP.alpha=[1 0 0
+                   3/4 1/4 0
+                   1/3 0 2/3];
+elseif str == "RK3_H"
     ROS.transformed=true;
     ROS.nStage=3;
     ROS.alpha=[0 0 0

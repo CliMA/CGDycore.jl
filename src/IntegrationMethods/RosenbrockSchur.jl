@@ -1,5 +1,5 @@
 function RosenbrockSchur(V,dt,Fcn,Jac,CG,Param)
-Vn=V;
+Vn=deepcopy(V);
 ROS=Param.ROS;
 nV1=size(V,1);
 nV2=size(V,2);
@@ -20,7 +20,7 @@ if ROS.transformed
     for jStage=1:iStage-1
       fV=fV+(ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage];
     end
-    k[:,:,:,iStage]=SchurSolve(fV,JS,dt*ROS.d,Param);
+    k[:,:,:,iStage]=SchurSolve(fV,JS,dt*ROS.Gamma[iStage,iStage],Param);
   end
   V=Vn;
   for iStage=1:nStage

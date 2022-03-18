@@ -41,6 +41,7 @@ if strcmp(Param.ModelType,"Curl")
   D[1:nz-1,:]=-0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])/dz;
   J.JRhoW=spdiags([reshape(-D,nJ,1) reshape(D,nJ,1)],[-1 0]
     ,nJ,nJ);
+# J.JRhoW=spdiagm(nJ, nJ,  0 => reshape(D,nJ), -1 => reshape(-D,nJ)[1:end-1])
   if strcmp(Param.Thermo,"Energy")
     dPdTh=(Param.Rd/Param.Cvd)./RhoCol;
   else

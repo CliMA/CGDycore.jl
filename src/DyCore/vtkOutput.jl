@@ -20,6 +20,8 @@ for i=1:length(Param.cNames)
       cOut[:,:,i]=U[:,:,Param.ThPos]./U[:,:,Param.RhoPos]-Param.ThetaBGrd;
   elseif str == "Pres"
       cOut[:,:,i]=Pressure(U[:,:,Param.ThPos],U[:,:,Param.ThPos],U[:,:,Param.ThPos],Param);
+  elseif str == "Vort"
+      cOut[:,:,i]=FVort2VecDSS(U[:,:,Param.uPos],U[:,:,Param.vPos],CG,Param);
   end
 end
 vtk=vtkCG(cOut,CG,Param,vtkGrid,Param.vtk);
