@@ -7,7 +7,9 @@ else
 end
 sigma=Pres/Param.p0;
 T=Pres./(Param.Rd*U[:,:,Param.RhoPos]);
-height_factor=max(0,(sigma .- Param.sigma_b) ./ (1-Param.sigma_b)...);
+
+matlab_max2(X) = max.(X, 0)
+height_factor = matlab_max2((sigma .- Param.sigma_b) ./ (1-Param.sigma_b));
 
 temp = (Param.T_equator .-
     Param.DeltaT_y*repmat(sin.(Param.latN).^2,1,nz) .-
