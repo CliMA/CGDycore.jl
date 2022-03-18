@@ -92,6 +92,7 @@ OrdPolyZ=1;
 (CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
 LRef=11*1.e5;
 dx=2*pi*Param.RadEarth/4/Param.nPanel/OrdPoly;
+Param.Upwind=false;
 Param.HyperVisc=true;
 Param.HyperDCurl=2.e17/4; #1.e14*(dx/LRef)^3.2;
 Param.HyperDGrad=2.e17/4;
@@ -170,9 +171,6 @@ elseif str == "RungeKutta"
     end
 else
   error("Bad str")
-end
-#fig=PlotCG(U(:,1),CG,CGDycore.JacobiSphere2,Param,fig);
-#close(v)
 end
 
 
