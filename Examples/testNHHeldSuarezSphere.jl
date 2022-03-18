@@ -129,7 +129,7 @@ else
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=1000;
+SimDays=10;
 # SimDays=1;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
