@@ -130,25 +130,28 @@ end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
 SimDays=1000;
+# SimDays=1;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
 PrintInt=24*3600*PrintDay/dtau;
 # Print initial conditions
-vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphere,CGDycore.Topo,Param);
+Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 str = IntMethod
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
-        @info "Iteration: $i"
-        U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
-        time[1] += dtau;
-        if mod(i,PrintInt)==0
-          Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+        Δt = @elapsed begin
+          U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
+          time[1] += dtau;
+          if mod(i,PrintInt)==0
+            Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+          end
         end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-    error("Success!")
 
 elseif str == "RungeKutta"
     for i=1:nIter
@@ -164,5 +167,6 @@ elseif str == "RungeKutta"
 else
   error("Bad str")
 end
+Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param)
 
-
+@info "Success!"
