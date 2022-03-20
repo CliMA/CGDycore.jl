@@ -76,6 +76,20 @@ for i=1:3
     dXdxIF[:,:,:,:,i,j] .= AverageFB(dXdxI[:,:,:,:,:,i,j]);
   end
 end
+Param.dXdxIC11 = view(Param.dXdxIC,:,:,:,:,1,1)
+Param.dXdxIC12 = view(Param.dXdxIC,:,:,:,:,1,2)
+Param.dXdxIC21 = view(Param.dXdxIC,:,:,:,:,2,1)
+Param.dXdxIC22 = view(Param.dXdxIC,:,:,:,:,2,2)
+Param.dXdxIC31 = view(Param.dXdxIC,:,:,:,:,3,1)
+Param.dXdxIC32 = view(Param.dXdxIC,:,:,:,:,3,2)
+Param.dXdxIC33 = view(Param.dXdxIC,:,:,:,:,3,3)
+Param.dXdxIF11 = view(Param.dXdxIF,:,:,:,:,1,1)
+Param.dXdxIF12 = view(Param.dXdxIF,:,:,:,:,1,2)
+Param.dXdxIF21 = view(Param.dXdxIF,:,:,:,:,2,1)
+Param.dXdxIF22 = view(Param.dXdxIF,:,:,:,:,2,2)
+Param.dXdxIF31 = view(Param.dXdxIF,:,:,:,:,3,1)
+Param.dXdxIF32 = view(Param.dXdxIF,:,:,:,:,3,2)
+Param.dXdxIC33 = view(Param.dXdxIC,:,:,:,:,3,3)
 
 (CG.M,CG.MW)=MassCG(CG,Param);
 Param.latN=zeros(CG.NumG,1);

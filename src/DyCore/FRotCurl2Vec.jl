@@ -1,9 +1,36 @@
+function FRotCurl2Vec!(F,v1CG,v2CG,CG,Param)
+OP=CG.OrdPoly+1;
+NF=Grid.NumFaces;
+nz=Grid.nz;
+
+vCon = CacheC1
+DvCon = CacheC2
+vC1 = CacheC3
+D1vC1 = vCon
+D2vC1 = DvCon
+
+vCon .= v2CG.*dXdxIC11 .- v1CG.*dXdxIC12
+mul!(reshape(vC1,OP,OP*NF*nz),CG.DS,reshape(vCon,OP,OP*nz*NF))
+vCon .=  v2CG.*dXdxIC21 .- v1CG.*dXdxIC22
+mul!(reshape(PermutedDimsArray(DvCon,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(vCon,(2,1,3,4)),OP,OP*nz*NF))
+vC1 .= vC1 .+ DvCon
+
+mul!(reshape(D1vC1,OP,OP*NF*nz),CG.DW,reshape(vC1,OP,OP*nz*NF))
+mul!(reshape(PermutedDimsArray(D2vC1,(2,1,3,4)),OP,OP*NF*nz),CG.DW,reshape(PermutedDimsArray(vC1,(2,1,3,4)),OP,OP*nz*NF))
+@views F[:,:,:,:,2] .-= Param.HyperDCurl .* (.-Param.dXdxIC11.*D1vC1 .-
+  Param.dXdxIC21.*D2vC1)./Param.JC;
+@views F[:,:,:,:,1] .-= Param.HyperDCurl .* (Param.dXdxIC12.*D1vC1 .+
+  Param.dXdxIC22.*D2vC1)./Param.JC;
+
+
+end
+
 function FRotCurl2Vec(v1CG,v2CG,CG,Param)
 OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
-dXdxIC = Param.cache.dXdxIC
-JC = Param.cache.JC
+NF=Grid.NumFaces;
+nz=Grid.nz;
+dXdxIC = cache.dXdxIC
+JC = cache.JC
 
 vC1=reshape(
   CG.DS*reshape(v2CG.*dXdxIC[:,:,:,:,1,1] -
@@ -39,3 +66,4 @@ RotCG[:,:,:,:,1]=(dXdxIC[:,:,:,:,1,2].*D1cCG +
   dXdxIC[:,:,:,:,2,2].*D2cCG)./JC;
 return RotCG
 end
+
