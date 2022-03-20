@@ -24,30 +24,26 @@ ThCG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,ThPos]
 
 FCG=zeros(OP,OP,NF,nz,Param.NumV);
 KE=0.5*(v1CG.*v1CG+v2CG.*v2CG+wCCG.*wCCG);
-FCG[:,:,:,:,RhoPos]=-FDiv3Vec(RhoCG,v1CG,v2CG,wCG,CG,Param);
+FDiv3Vec!(view(FCG,:,:,:,:,RhoPos),RhoCG,v1CG,v2CG,wCG,CG,Param);
 
 if Param.RefProfile
-  Param.Pres=Pressure(ThCG,RhoCG,KE,Param)-Param.pBGrd;
-  FCG[:,:,:,:,uPos:wPos]=-FGrad3Vec(Param.Pres,CG,Param);
-  FCG[:,:,:,:,uPos]=FCG[:,:,:,:,uPos]./RhoCG;
-  FCG[:,:,:,:,vPos]=FCG[:,:,:,:,vPos]./RhoCG;
-  if Param.Buoyancy
-    RhoF=0.5*(RhoCG[:,:,:,1:nz-1]+RhoCG[:,:,:,2:nz]);
-    FCG[:,:,:,1:nz-1,wPos]=(FCG[:,:,:,1:nz-1,wPos]-
-      Param.Grav*Param.JF[:,:,:,2:nz].*(RhoF-Param.RhoBGrdF)) ./ RhoF;
-  end
+# Param.Pres=Pressure(ThCG,RhoCG,KE,Param)-Param.pBGrd;
+# FCG[:,:,:,:,uPos:wPos]=-FGrad3Vec(Param.Pres,CG,Param);
+# FCG[:,:,:,:,uPos]=FCG[:,:,:,:,uPos]./RhoCG;
+# FCG[:,:,:,:,vPos]=FCG[:,:,:,:,vPos]./RhoCG;
+# if Param.Buoyancy
+#   RhoF=0.5*(RhoCG[:,:,:,1:nz-1]+RhoCG[:,:,:,2:nz]);
+#   FCG[:,:,:,1:nz-1,wPos]=(FCG[:,:,:,1:nz-1,wPos]-
+#     Param.Grav*Param.JF[:,:,:,2:nz].*(RhoF-Param.RhoBGrdF)) ./ RhoF;
+# end
 else
   Param.Pres=Pressure(ThCG,RhoCG,KE,Param);
-  FCG[:,:,:,:,uPos:wPos]=-FGrad3Vec(Param.Pres,CG,Param);
-  FCG[:,:,:,:,uPos]=FCG[:,:,:,:,uPos]./RhoCG;
-  FCG[:,:,:,:,vPos]=FCG[:,:,:,:,vPos]./RhoCG;
+  FGrad3RhoVec!(FCG,Param.Pres,RhoCG,CG,Param)
   if Param.Buoyancy
-    FCG[:,:,:,1:nz-1,wPos]=FCG[:,:,:,1:nz-1,wPos] ./
-    (0.5*(RhoCG[:,:,:,1:nz-1]+RhoCG[:,:,:,2:nz]))-
-    Param.Grav*Param.JF[:,:,:,2:nz];
+    @views FCG[:,:,:,1:nz-1,wPos] .-= Param.Grav*Param.JF[:,:,:,2:nz];
   end
 end
-FCG[:,:,:,:,uPos:wPos]=FCG[:,:,:,:,uPos:wPos]-FGrad3Vec(KE,CG,Param);
+FGrad3Vec!(FCG,KE,CG,Param)
 FCG[:,:,:,:,uPos:wPos]=FCG[:,:,:,:,uPos:wPos]+
   FCurlNon3Vec(v1CG,v2CG,wCG,wCCG,CG,Param);
 if strcmp(Param.Thermo,"Energy")
@@ -55,7 +51,7 @@ else
   if Param.Upwind
     FCG[:,:,:,:,ThPos]=-FDiv3UpwindVec(ThCG,v1CG,v2CG,wCG,RhoCG,CG,Param);
   else
-    FCG[:,:,:,:,ThPos]=-FDiv3Vec(ThCG,v1CG,v2CG,wCG,CG,Param);
+    FDiv3Vec!(view(FCG,:,:,:,:,ThPos),ThCG,v1CG,v2CG,wCG,CG,Param);
   end
 end
 if Param.HyperVisc

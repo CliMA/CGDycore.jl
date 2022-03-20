@@ -116,6 +116,11 @@ PrintInt=PrintTime/dtau;
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 
+OP=CG.OrdPoly+1;
+NF=Param.Grid.NumFaces;
+nz=Param.Grid.nz;
+Param.CacheC=zeros(OP,OP,NF,nz,5);
+
 str = IntMethod
 if str == "RungeKutta"
     for i=1:nIter

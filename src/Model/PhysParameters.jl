@@ -122,6 +122,7 @@ Base.@kwdef mutable struct PhysParametersStruct
     lat0G = nothing
     lat1G = nothing
     eN = nothing
+    CacheC = nothing
 end
 
 function PhysParameters()
