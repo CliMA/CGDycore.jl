@@ -119,7 +119,11 @@ Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 nz=Param.Grid.nz;
-Param.CacheC=zeros(OP,OP,NF,nz,5);
+Param.CacheC1=zeros(OP,OP,NF,nz);
+Param.CacheC2=zeros(OP,OP,NF,nz);
+Param.CacheC3=zeros(OP,OP,NF,nz);
+Param.CacheC4=zeros(OP,OP,NF,nz);
+Param.CacheC5=zeros(OP,OP,NF,nz);
 
 str = IntMethod
 if str == "RungeKutta"

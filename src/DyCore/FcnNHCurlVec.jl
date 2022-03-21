@@ -24,7 +24,6 @@ ThCG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,ThPos]
 
 FCG=zeros(OP,OP,NF,nz,Param.NumV);
 KE=0.5*(v1CG.*v1CG+v2CG.*v2CG+wCCG.*wCCG);
-FDiv3Vec!(view(FCG,:,:,:,:,RhoPos),RhoCG,v1CG,v2CG,wCG,CG,Param);
 
 if Param.RefProfile
 # Param.Pres=Pressure(ThCG,RhoCG,KE,Param)-Param.pBGrd;
