@@ -24,5 +24,30 @@ steps:
 
   - wait
 
-  - label: "HS"
+  - label: "NHHeldSuarezSphere"
     command: "julia --color=yes --project Examples/testNHHeldSuarezSphere.jl"
+
+  - label: "NHBubbleX"
+    command: "julia --color=yes --project Examples/testNHBubbleX.jl"
+
+  - label: "NHHill_L"
+    command: "julia --color=yes --project Examples/testNHHill_L.jl"
+
+  - label: "NHHill_M"
+    command: "julia --color=yes --project Examples/testNHHill_M.jl"
+
+  - label: "NHHillX"
+    command: "julia --color=yes --project Examples/testNHHillX.jl"
+
+  - label: "NHHillY"
+    command: "julia --color=yes --project Examples/testNHHillY.jl"
+
+  - label: "NHDensityCurrent"
+    command: "julia --color=yes --project Examples/testNHDensityCurrent.jl"
+
+  - label: "NHHeldSuarezSphere"
+    command: "julia --color=yes --project Examples/testNHHeldSuarezSphere.jl"
+
+  - label: "NHInertiaGravityWave"
+    command: "julia --color=yes --project Examples/testNHInertiaGravityWave.jl"
+
