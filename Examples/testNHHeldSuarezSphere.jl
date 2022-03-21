@@ -138,18 +138,34 @@ PrintInt=24*3600*PrintDay/dtau;
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 str = IntMethod
+OP=CG.OrdPoly+1;
+NF=Param.Grid.NumFaces;
+nz=Param.Grid.nz;
+Param.CacheC1=zeros(OP,OP,NF,nz);
+Param.CacheC2=zeros(OP,OP,NF,nz);
+Param.CacheC3=zeros(OP,OP,NF,nz);
+Param.CacheC4=zeros(OP,OP,NF,nz);
+Param.CacheC5=zeros(OP,OP,NF,nz);
+Param.CacheC6=zeros(OP,OP,NF,nz);
+Param.Cache1=zeros(CG.NumG,nz)
+Param.Cache2=zeros(CG.NumG,nz)
+Param.Pres=zeros(OP,OP,NF,nz)
+Param.KE=zeros(OP,OP,NF,nz)
+Param.FCG=zeros(OP,OP,NF,nz,size(U,3))
+Param.k=zeros(size(U)..., Param.ROS.nStage);
+Param.fV=zeros(size(U))
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur,CG,Param);
           time[1] += dtau;
           if mod(i,PrintInt)==0
             Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
           end
         end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
+#       percent = i/nIter*100
+#       @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
 

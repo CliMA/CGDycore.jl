@@ -1,4 +1,4 @@
-function SchurSolve(v,J,fac,Param)
+function SchurSolve!(k,v,J,fac,Param)
 n1=size(v,1);
 n2=size(v,2);
 n=n1*n2;
@@ -16,10 +16,8 @@ else
 end
 sRho=fac*(rRho+J.JRhoW*sw);
 sTh=fac*(rTh+J.JThW*sw);
-k=zeros(size(v));
-k[:,:,1]=permute(reshape(sRho,n2,n1),[2,1]);
-k[:,:,2:3]=fac*v[:,:,2:3];
-k[:,:,4]=permute(reshape(sw,n2,n1),[2,1]);
-k[:,:,5]=permute(reshape(sTh,n2,n1),[2,1]);
-return k
+@views k[:,:,1]=permute(reshape(sRho,n2,n1),[2,1]);
+@views k[:,:,2:3]=fac*v[:,:,2:3];
+@views k[:,:,4]=permute(reshape(sw,n2,n1),[2,1]);
+@views k[:,:,5]=permute(reshape(sTh,n2,n1),[2,1]);
 end

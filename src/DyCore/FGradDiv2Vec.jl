@@ -1,3 +1,29 @@
+function FGradDiv2Vec!(F,v1CG,v2CG,CG,Param)
+OP=CG.OrdPoly+1;
+NF=Param.Grid.NumFaces;
+nz=Param.Grid.nz;
+
+vCon = Param.CacheC1
+DvCon = Param.CacheC2
+vC1 = Param.CacheC3
+D1vC1 = vCon
+D2vC1 = DvCon
+
+vCon .= v1CG.*Param.dXdxIC11 .+ v2CG.*Param.dXdxIC12;
+mul!(reshape(vC1,OP,OP*NF*nz),CG.DS,reshape(vCon,OP,OP*nz*NF))
+vCon .= v1CG.*Param.dXdxIC21 .+ v2CG.*Param.dXdxIC22;
+mul!(reshape(PermutedDimsArray(DvCon,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(vCon,(2,1,3,4)),OP,OP*nz*NF))
+vC1 .= vC1 .+ DvCon
+
+mul!(reshape(D1vC1,OP,OP*NF*nz),CG.DW,reshape(vC1,OP,OP*nz*NF))
+mul!(reshape(PermutedDimsArray(D2vC1,(2,1,3,4)),OP,OP*NF*nz),CG.DW,reshape(PermutedDimsArray(vC1,(2,1,3,4)),OP,OP*nz*NF))
+
+
+@views F[:,:,:,:,1] .-= Param.HyperDGrad .* (Param.dXdxIC11.*D1vC1 .+ Param.dXdxIC21.*D2vC1)./Param.JC;
+@views F[:,:,:,:,2] .-= Param.HyperDGrad .* (Param.dXdxIC12.*D1vC1 .+ Param.dXdxIC22.*D2vC1)./Param.JC;
+
+end
+
 function FGradDiv2Vec(v1CG,v2CG,CG,Param)
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;

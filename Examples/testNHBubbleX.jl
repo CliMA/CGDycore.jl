@@ -124,12 +124,18 @@ Param.CacheC2=zeros(OP,OP,NF,nz);
 Param.CacheC3=zeros(OP,OP,NF,nz);
 Param.CacheC4=zeros(OP,OP,NF,nz);
 Param.CacheC5=zeros(OP,OP,NF,nz);
+Param.CacheC6=zeros(OP,OP,NF,nz);
+Param.Cache1=zeros(CG.NumG,nz)
+Param.Cache2=zeros(CG.NumG,nz)
+Param.Pres=zeros(OP,OP,NF,nz)
+Param.KE=zeros(OP,OP,NF,nz)
+Param.FCG=zeros(OP,OP,NF,nz,size(U,3))
 
 str = IntMethod
 if str == "RungeKutta"
     for i=1:nIter
       @info "Iteration: $i"
-      U .= CGDycore.RungeKuttaExplicit(U,dtau,CGDycore.FcnNHCurlVec,CG,Param);
+      CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Param);
       if mod(i,PrintInt)==0
         Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
       end

@@ -1,12 +1,11 @@
-function Source(U,CG,Param)
-F=zeros(size(U));
+function Source!(F,U,CG,Param)
 nz=Param.Grid.nz;
 if strcmp(Param.Thermo,"Energy")
 else
-  Pres=Pressure(U[:,:,Param.ThPos],U[:,:,Param.RhoPos],U[:,:,Param.RhoPos],Param);
+  @views Pres=Pressure(U[:,:,Param.ThPos],U[:,:,Param.RhoPos],U[:,:,Param.RhoPos],Param);
 end
 sigma=Pres/Param.p0;
-T=Pres./(Param.Rd*U[:,:,Param.RhoPos]);
+@views T=Pres./(Param.Rd*U[:,:,Param.RhoPos]);
 
 matlab_max2(X) = max.(X, 0)
 height_factor = matlab_max2((sigma .- Param.sigma_b) ./ (1-Param.sigma_b));
@@ -18,14 +17,14 @@ temp = (Param.T_equator .-
 
 matlab_max(X) = max.(X, Param.T_min)
 
-DeltaRhoT=(Param.k_a .+ (Param.k_s - Param.k_a) .* height_factor .*
+@views DeltaRhoT=(Param.k_a .+ (Param.k_s - Param.k_a) .* height_factor .*
   repmat(cos.(Param.latN).^4,1,nz)) .* U[:,:,Param.RhoPos] .*
   (T .- matlab_max(temp));
 
-F[:,:,Param.uPos:Param.vPos]=-Param.k_f*height_factor.*U[:,:,Param.uPos:Param.vPos];
+@views F[:,:,Param.uPos:Param.vPos] .-= -Param.k_f*height_factor.*U[:,:,Param.uPos:Param.vPos];
 if strcmp(Param.Thermo,"Energy")
 else
-  F[:,:,Param.ThPos]=-DeltaRhoT.*(Param.p0./Pres).^Param.kappa;
+@views  F[:,:,Param.ThPos] .-= DeltaRhoT.*(Param.p0./Pres).^Param.kappa;
 end
-return F
 end
+
