@@ -3,6 +3,7 @@ OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 nz=Param.Grid.nz;
 dXdxIC = Param.cache.dXdxIC
+JC = Param.cache.JC
 
 vC1=reshape(
   CG.DS*reshape(v2CG.*dXdxIC[:,:,:,:,1,1] -
@@ -33,8 +34,8 @@ D2cCG=permute(reshape(
   ,[2 1 3 4]);
 RotCG=zeros(OP,OP,NF,nz,2);
 RotCG[:,:,:,:,2]=(-dXdxIC[:,:,:,:,1,1].*D1cCG -
-  dXdxIC[:,:,:,:,2,1].*D2cCG)./Param.JC;
+  dXdxIC[:,:,:,:,2,1].*D2cCG)./JC;
 RotCG[:,:,:,:,1]=(dXdxIC[:,:,:,:,1,2].*D1cCG +
-  dXdxIC[:,:,:,:,2,2].*D2cCG)./Param.JC;
+  dXdxIC[:,:,:,:,2,2].*D2cCG)./JC;
 return RotCG
 end

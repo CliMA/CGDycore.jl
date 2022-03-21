@@ -7,15 +7,11 @@ uPos=Param.uPos;
 vPos=Param.vPos;
 wPos=Param.wPos;
 ThPos=Param.ThPos;
-RhoCG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,RhoPos]
-  ,OP,OP,NF,nz);
-v1CG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,uPos]
-  ,OP,OP,NF,nz);
-v2CG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,vPos]
-  ,OP,OP,NF,nz);
+RhoCG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,RhoPos] ,OP,OP,NF,nz);
+v1CG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,uPos] ,OP,OP,NF,nz);
+v2CG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,vPos] ,OP,OP,NF,nz);
 wCG=zeros(OP,OP,NF,nz+1);
-wCG[:,:,:,2:nz+1]=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,wPos]
-  ,OP,OP,NF,nz);
+wCG[:,:,:,2:nz+1]=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,wPos] ,OP,OP,NF,nz);
 wCCG=0.5*(wCG[:,:,:,1:nz]+wCG[:,:,:,2:nz+1]);
 wCCG[:,:,:,1]=BoundaryW(v1CG,v2CG,CG,Param);
 wCG[:,:,:,1]=2*wCCG[:,:,:,1]-wCG[:,:,:,2];

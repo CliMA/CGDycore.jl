@@ -118,14 +118,22 @@ Vort3=DXvHat1+DYvHat2+DZvHat3;
 if Param.Coriolis
   str = Param.CoriolisType
   if str == "Sphere"
-      Vort3=Vort3-reshape(2.0*Param.Omega*sin.(
-        repmat(reshape(Param.lat[:,:,:],OP*OP*NF,1),1,nz))
+      lat = Param.cache.lat
+      JC = Param.cache.JC
+      Omega = Param.Omega
+      Vort3=Vort3-reshape(2.0*Omega*sin.(
+        repmat(reshape(lat[:,:,:],OP*OP*NF,1),1,nz))
         ,OP,OP,NF,nz).*
-        Param.JC;
+        JC;
   elseif str == "Beta-Plane"
-      Vort3=Vort3-reshape((Param.f0+Param.beta0*(
-        reshape(abs.(Param.X[:,:,2,:,:]),OP,OP,NF,nz)-Param.y0)).*
-        Param.J[:,:,:,:],OP*OP*NF,nz);
+      J = Param.cache.J
+      X = Param.cache.X
+      beta0 = Param.beta0
+      f0 = Param.f0
+      y0 = Param.y0
+      Vort3=Vort3-reshape((f0+beta0*(
+        reshape(abs.(X[:,:,2,:,:]),OP,OP,NF,nz)-y0)).*
+        J[:,:,:,:],OP*OP*NF,nz);
   end
 end
 FuHat[:,:,:,:,1]= -Vort3.*v2CG+

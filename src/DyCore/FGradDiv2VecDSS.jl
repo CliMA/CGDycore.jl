@@ -3,6 +3,7 @@ OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 nz=Param.Grid.nz;
 dXdxIC = Param.cache.dXdxIC
+JC = Param.cache.JC
 vC1=reshape(
   CG.DS*reshape(v1CG.*dXdxIC[:,:,:,:,1,1] +
   v2CG.*dXdxIC[:,:,:,:,1,2]
@@ -31,9 +32,9 @@ D2cCG=permute(reshape(
 
 gradCG=zeros(OP,OP,NF,nz,2);
 gradCG[:,:,:,:,1]=(dXdxIC[:,:,:,:,1,1].*D1cCG +
-  dXdxIC[:,:,:,:,2,1].*D2cCG)./Param.JC;
+  dXdxIC[:,:,:,:,2,1].*D2cCG)./JC;
 gradCG[:,:,:,:,2]=(dXdxIC[:,:,:,:,1,2].*D1cCG +
-  dXdxIC[:,:,:,:,2,2].*D2cCG)./Param.JC;
+  dXdxIC[:,:,:,:,2,2].*D2cCG)./JC;
 
 
 grad=zeros(CG.NumG,nz,2);

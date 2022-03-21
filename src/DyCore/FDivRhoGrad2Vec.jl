@@ -3,6 +3,7 @@ nz=Param.Grid.nz;
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 dXdxIC = Param.cache.dXdxIC
+JC = Param.cache.JC
 D1cCG=reshape(
   CG.DS*reshape(cCG,OP,OP*NF*nz)
   ,OP,OP,NF,nz);
@@ -37,7 +38,7 @@ divCG=(reshape(
   ,[2 1 3 4])
   ,OP,OP*NF*nz)
   ,OP,OP,NF,nz)
-  ,[2 1 3 4]))./Param.JC;
+  ,[2 1 3 4]))./JC;
 
 return divCG
 end

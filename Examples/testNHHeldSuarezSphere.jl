@@ -4,8 +4,9 @@ using CGDycore
 # Cache
 nz=10;
 OrdPoly=4;
+OrdPolyZ=1;
 nPanel=4;
-cache=CGDycore.Cache(OrdPoly, nz, nPanel)
+cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, nPanel)
 
 # Physical parameters
 Param=CGDycore.PhysParameters(cache);
@@ -87,7 +88,6 @@ Param.sigma_b=7/10;
 Param.z_D=20.0e3;
 
 # Discretization
-OrdPolyZ=1;
 (CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
 LRef=11*1.e5;
 dx=2*pi*Param.RadEarth/4/Param.nPanel/OrdPoly;
@@ -133,7 +133,7 @@ else
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=10;
+SimDays=1000;
 # SimDays=1;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
@@ -142,12 +142,6 @@ PrintInt=24*3600*PrintDay/dtau;
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 str = IntMethod
-using BenchmarkTools
-function single_step!()
-  U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
-end
-@benchmark single_step!()
-
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
