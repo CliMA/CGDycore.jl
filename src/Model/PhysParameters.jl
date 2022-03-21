@@ -1,4 +1,50 @@
-Base.@kwdef mutable struct PhysParametersStruct
+struct Cache{A3,A4,A5,A6,A7}
+    lat::A3
+    JC::A4
+    J::A5
+    X::A6
+    dXdxIF::A6
+    dXdxIC::A6
+    dXdx::A7
+    dXdxI::A7
+end
+function Cache(OrdPoly, OrdPolyZ, nz, nPanel)
+    NumFaces = 6*nPanel*nPanel
+    # 3
+    lat    = zeros(OrdPoly+1,OrdPoly+1,NumFaces)
+    # 4
+    JC     = zeros(OrdPoly+1,OrdPoly+1,NumFaces,nz)
+    # 5
+    J      = zeros(OrdPoly+1,OrdPoly+1,OrdPolyZ+1,NumFaces,nz)
+    # 6
+    X      = zeros(OrdPoly+1,OrdPoly+1,OrdPolyZ+1,3,NumFaces,nz)
+    dXdxIF = zeros(OrdPoly+1,OrdPoly+1,NumFaces,nz+1,3,3)
+    dXdxIC = zeros(OrdPoly+1,OrdPoly+1,NumFaces,nz,3,3)
+    # 7
+    dXdx   = zeros(OrdPoly+1,OrdPoly+1,OrdPolyZ+1,NumFaces,nz,3,3)
+    dXdxI  = zeros(OrdPoly+1,OrdPoly+1,OrdPolyZ+1,NumFaces,nz,3,3)
+    # dXdx   = nothing
+    # dXdxI  = nothing
+
+    A3 = typeof(lat)
+    A4 = typeof(JC)
+    A5 = typeof(J)
+    A6 = typeof(dXdxIF)
+    A7 = typeof(dXdx)
+    return Cache{A3,A4,A5,A6,A7}(
+        lat,
+        JC,
+        J,
+        X,
+        dXdxIF,
+        dXdxIC,
+        dXdx,
+        dXdxI,
+    )
+end
+
+Base.@kwdef mutable struct PhysParametersStruct{C}
+    cache::C
     Lx = nothing
     Ly = nothing
     H = nothing
@@ -58,15 +104,7 @@ Base.@kwdef mutable struct PhysParametersStruct
     kappa = nothing
     Omega = nothing
     RadEarth = nothing
-    J = nothing
-    lat = nothing
-    X = nothing
-    dXdx = nothing
-    dXdxI = nothing
-    JC = nothing
     JF = nothing
-    dXdxIC = nothing
-    dXdxIF = nothing
     latN = nothing
     nPanel = nothing
     ModelType = nothing
@@ -124,7 +162,7 @@ Base.@kwdef mutable struct PhysParametersStruct
     eN = nothing
 end
 
-function PhysParameters()
+function PhysParameters(cache)
 # Physical parameters
 Grav=9.81;
 cS=360;
@@ -141,7 +179,9 @@ kappa=Rd/Cpd;
 Omega=2*pi/(24*3600);
 RadEarth=6.37122e+6;
 
-return PhysParametersStruct(;Grav,
+return PhysParametersStruct{typeof(cache)}(;
+cache,
+Grav,
 cS,
 Cpd,
 Cvd,

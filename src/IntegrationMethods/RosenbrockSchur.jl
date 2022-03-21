@@ -12,7 +12,7 @@ JS=Jac(V,CG,Param);
 
 if ROS.transformed
   for iStage=1:nStage
-    V=Vn;
+    V .= Vn;
     for jStage=1:iStage-1
       V=V+ROS.a[iStage,jStage]*k[:,:,:,jStage];
     end
@@ -22,15 +22,15 @@ if ROS.transformed
     end
     k[:,:,:,iStage]=SchurSolve(fV,JS,dt*ROS.Gamma[iStage,iStage],Param);
   end
-  V=Vn;
+  V .= Vn;
   for iStage=1:nStage
     V=V+ROS.m[iStage]*k[:,:,:,iStage];
   end
 else
   for iStage=1:nStage
-    V=Vn;
+    V .= Vn;
     for jStage=1:iStage-1
-      V=V+ROS.alpha[iStage,jStage]*k(:,:,:,jStage);
+      V=V+ROS.alpha[iStage,jStage]*k[:,:,:,jStage];
     end
     fV=Fcn(V,CG,Param);
     if iStage>1
@@ -47,7 +47,7 @@ else
       k[:,:,:,iStage]=dt*fV;
     end
   end
-  V=Vn;
+  V .= Vn;
   for iStage=1:nStage
     V=V+ROS.b[iStage]*k[:,:,:,iStage];
   end

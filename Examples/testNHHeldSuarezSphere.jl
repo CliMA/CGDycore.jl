@@ -1,14 +1,20 @@
 #function testNHHeldSuarezSphere
 using CGDycore
 
+# Cache
+nz=10;
+OrdPoly=4;
+OrdPolyZ=1;
+nPanel=4;
+cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, nPanel)
+
 # Physical parameters
-Param=CGDycore.PhysParameters();
+Param=CGDycore.PhysParameters(cache);
 
 Param.Upwind = false
 Param.RefProfile = false
 # Grid
-nz=10;
-Param.nPanel=4;
+Param.nPanel=nPanel;
 Param.H=30000;
 Param.Grid=CGDycore.CubedGrid(Param.nPanel,CGDycore.OrientFaceSphere,Param);
 
@@ -82,8 +88,6 @@ Param.sigma_b=7/10;
 Param.z_D=20.0e3;
 
 # Discretization
-OrdPoly=4;
-OrdPolyZ=1;
 (CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
 LRef=11*1.e5;
 dx=2*pi*Param.RadEarth/4/Param.nPanel/OrdPoly;
@@ -129,7 +133,7 @@ else
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=10;
+SimDays=1000;
 # SimDays=1;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
