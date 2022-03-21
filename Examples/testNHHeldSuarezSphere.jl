@@ -101,7 +101,7 @@ Param.HyperDDiv=2.e17; # Scalars
 # Output
 Param.RadPrint=Param.H;
 Param.Flat=true;
-Param.vtkFileName="HeldSuarez";
+Param.vtkFileName="HeldSuarezNeu";
 Param.vtk=0;
 vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphere,CGDycore.Topo,Param);
 Param.cNames = [
@@ -168,8 +168,8 @@ if str == "Rosenbrock"
             Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
           end
         end
-#       percent = i/nIter*100
-#       @info "Iteration: $i took $Δt, $percent% complete"
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
 

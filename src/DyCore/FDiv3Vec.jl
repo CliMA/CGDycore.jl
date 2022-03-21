@@ -18,12 +18,9 @@ vCon .= (v1CG.*Param.dXdxIC21 .+ v2CG.*Param.dXdxIC22) .* cCG;
 mul!(reshape(PermutedDimsArray(DvCon,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(vCon,(2,1,3,4)),OP,OP*nz*NF))
 F .= F .- DvCon
 
-@views vCon[:,:,:,1:end-1] .= 0.5.*((v1CG[:,:,:,1:end-1] .+ v1CG[:,:,:,2:end]).*
-        Param.dXdxIF[:,:,:,2:end-1,3,1] .+
-      (v2CG[:,:,:,1:end-1] .+ v2CG[:,:,:,2:end]).*
-        Param.dXdxIF[:,:,:,2:end-1,3,2]) .+
-       v3CG[:,:,:,2:end-1].*
-        Param.dXdxIF[:,:,:,2:end-1,3,3];
+@views vCon[:,:,:,1:end-1] .= 0.5.*((v1CG[:,:,:,1:end-1] .+ v1CG[:,:,:,2:end]).* Param.dXdxIF31 .+
+      (v2CG[:,:,:,1:end-1] .+ v2CG[:,:,:,2:end]).* Param.dXdxIF32) .+
+       v3CG[:,:,:,2:end-1] .* Param.dXdxIF33;
 @views vCon[:,:,:,1:end-1] .= 0.5.*(cCG[:,:,:,1:end-1] .+ cCG[:,:,:,2:end]).*vCon[:,:,:,1:end-1];
 if nz>1
   @views DvCon[:,:,:,1] .= 0.5.*vCon[:,:,:,1];

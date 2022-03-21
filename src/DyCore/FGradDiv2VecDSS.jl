@@ -12,8 +12,8 @@ grad1TempCG = Param.CacheC3
 grad2TempCG = Param.CacheC4
 grad1 = Param.Cache1
 grad2 = Param.Cache2
+JC = Param.cache.JC 
 
-vCon .= v1CG.*Param.dXdxIC11 .+ v2CG.*Param.dXdxIC12 ;
 mul!(reshape(vC1,OP,OP*NF*nz),CG.DS,reshape(vCon,OP,OP*nz*NF))
 vCon .= v1CG.*Param.dXdxIC21 .+ v2CG.*Param.dXdxIC22;
 mul!(reshape(PermutedDimsArray(DvCon,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(vCon,(2,1,3,4)),OP,OP*nz*NF))
@@ -23,8 +23,8 @@ mul!(reshape(D1vC1,OP,OP*NF*nz),CG.DW,reshape(vC1,OP,OP*nz*NF))
 mul!(reshape(PermutedDimsArray(D2vC1,(2,1,3,4)),OP,OP*NF*nz),CG.DW,reshape(PermutedDimsArray(vC1,(2,1,3,4)),OP,OP*nz*NF))
 
 
-grad1TempCG .= (Param.dXdxIC11.*D1vC1 .+ Param.dXdxIC21.*D2vC1)./Param.JC;
-grad2TempCG .= (Param.dXdxIC12.*D1vC1 .+ Param.dXdxIC22.*D2vC1)./Param.JC;
+grad1TempCG .= (Param.dXdxIC11.*D1vC1 .+ Param.dXdxIC21.*D2vC1)./ JC;
+grad2TempCG .= (Param.dXdxIC12.*D1vC1 .+ Param.dXdxIC22.*D2vC1)./ JC;
 
 grad1 .= 0
 grad2 .= 0

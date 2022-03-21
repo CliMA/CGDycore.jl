@@ -9,9 +9,9 @@ D3cCG = Param.CacheC3
 D3cCGE =Param.CacheC4
 mul!(reshape(D1cCG,OP,OP*NF*nz),CG.DS,reshape(cCG,OP,OP*nz*NF))
 mul!(reshape(PermutedDimsArray(D2cCG,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(cCG,(2,1,3,4)),OP,OP*nz*NF))
-@views D3cCG[:,:,:,1:end-1] .= 0.5*(cCG[:,:,:,2:end] .- cCG[:,:,:,1:end-1])
+@views D3cCG[:,:,:,1:nz-1] .= 0.5*(cCG[:,:,:,2:nz] .- cCG[:,:,:,1:nz-1])
 
-@views F[:,:,:,1:end-1,Param.wPos] .= F[:,:,:,1:end-1,Param.wPos] .- Param.dXdxIF[:,:,:,2:end-1,3,3].*D3cCG[:,:,:,1:end-1];
+@views F[:,:,:,1:nz-1,Param.wPos] .= F[:,:,:,1:nz-1,Param.wPos] .- Param.dXdxIF33.*D3cCG[:,:,:,1:nz-1];
 
 if nz>1
 @views  D3cCGE[:,:,:,1] .= D3cCG[:,:,:,1];
@@ -26,8 +26,7 @@ end
   Param.dXdxIC31.*D3cCGE)
 
 @views F[:,:,:,:,Param.vPos] .= F[:,:,:,:,Param.vPos] .- (Param.dXdxIC12.*D1cCG .+
-  Param.dXdxIC22.*D2cCG .+
-  Param.dXdxIC32.*D3cCGE)
+  Param.dXdxIC22.*D2cCG .+ Param.dXdxIC32.*D3cCGE)
 
 end
 
@@ -47,7 +46,7 @@ mul!(reshape(PermutedDimsArray(D2cCG,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(Permu
 @views D3cCG[:,:,:,1:end-1] .= 0.5.*(cCG[:,:,:,2:end] .- cCG[:,:,:,1:end-1])
 
 @views F[:,:,:,1:nz-1,Param.wPos] .= F[:,:,:,1:nz-1,Param.wPos] .-
-    Param.dXdxIF[:,:,:,2:nz,3,3].*D3cCG[:,:,:,1:nz-1] ./ (0.5.*(RhoCG[:,:,:,1:nz-1]+RhoCG[:,:,:,2:nz]))
+    Param.dXdxIF33.*D3cCG[:,:,:,1:nz-1] ./ (0.5.*(RhoCG[:,:,:,1:nz-1]+RhoCG[:,:,:,2:nz]))
 if nz>1
 @views  D3cCGE[:,:,:,1] .= D3cCG[:,:,:,1];
 @views  D3cCGE[:,:,:,2:end-1] .= 0.5.*(D3cCG[:,:,:,1:nz-2] .+ D3cCG[:,:,:,2:nz-1]);

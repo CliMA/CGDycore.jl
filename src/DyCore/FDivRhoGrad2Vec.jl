@@ -11,6 +11,7 @@ D1gradCG = Param.CacheC1
 D2gradCG = Param.CacheC2
 vC1 = Param.CacheC3
 vC2 = Param.CacheC4
+JC = Param.cache.JC 
 
 mul!(reshape(D1cCG,OP,OP*NF*nz),CG.DS,reshape(cCG,OP,OP*nz*NF))
 mul!(reshape(PermutedDimsArray(D2cCG,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(cCG,(2,1,3,4)),OP,OP*nz*NF))
@@ -23,7 +24,7 @@ D2gradCG .= Param.dXdxIC21.*grad1CG .+ Param.dXdxIC22.*grad2CG
 
 mul!(reshape(vC1,OP,OP*NF*nz),CG.DW,reshape(D1gradCG,OP,OP*nz*NF))
 mul!(reshape(PermutedDimsArray(vC2,(2,1,3,4)),OP,OP*NF*nz),CG.DW,reshape(PermutedDimsArray(D2gradCG,(2,1,3,4)),OP,OP*nz*NF))
-F .= F .- Param.HyperDDiv .* (vC1 .+ vC2) ./ Param.JC
+F .= F .- Param.HyperDDiv .* (vC1 .+ vC2) ./ JC
 
 end
 
