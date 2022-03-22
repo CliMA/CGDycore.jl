@@ -8,8 +8,7 @@ struct Cache{A3,A4,A5,A6,A7}
     dXdx::A7
     dXdxI::A7
 end
-function Cache(OrdPoly, OrdPolyZ, nz, nPanel)
-    NumFaces = 6*nPanel*nPanel
+function Cache(OrdPoly, OrdPolyZ, nz, NumFaces)
     # 3
     lat    = zeros(OrdPoly+1,OrdPoly+1,NumFaces)
     # 4
@@ -184,11 +183,27 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     CacheC5 = nothing
     CacheC6 = nothing
     CacheC7 = nothing
+    CacheF1 = nothing
+    CacheF2 = nothing
+    CacheF3 = nothing
+    CacheF4 = nothing
+    CacheF5 = nothing
+    CacheF6 = nothing
+    CacheF7 = nothing
     Cache1 = nothing
     Cache2 = nothing
+    Cache3 = nothing
+    Cache4 = nothing
     FCG = nothing
     fV = nothing
     k = nothing
+    Vn = nothing
+    RhoCG = nothing
+    v1CG = nothing
+    v2CG = nothing
+    wCG = nothing
+    wCCG = nothing
+    ThCG = nothing
 end
 
 function PhysParameters(cache)

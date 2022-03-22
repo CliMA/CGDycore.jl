@@ -1,13 +1,18 @@
 # function testNHBubbleX()
 using CGDycore
 
-# Physical parameters
-Param=CGDycore.PhysParameters();
-
-
-# Grid
+OrdPoly = 4
+OrdPolyZ=1
 nx=20;
 ny=2;
+nz=40;
+NF = nx *ny
+# Caching
+cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, NF)
+# Physical parameters
+Param=CGDycore.PhysParameters(cache);
+
+# Grid
 lx=20000;
 ly=2000;
 x0=-10000;
@@ -18,7 +23,7 @@ Param.Grid=CGDycore.CartGrid(nx,ny,lx,ly,x0,y0,CGDycore.OrientFaceCart,Boundary,
 Param.TopoS="";
 
 Param.H=10000;
-nz=40;
+Param.Grid.nz = nz
 zP=zeros(nz,1);
 z=zeros(nz+1,1);
 dz=Param.H/nz;
@@ -30,10 +35,23 @@ for i=2:nz+1
   z[i]=z[i-1]+dz;
 end
 
+
 Param.Grid.nz=nz;
 Param.Grid.z=z;
 Param.Grid.zP=zP;
 Param.Grid.dz=dz;
+
+# Discretization
+OrdPoly=4;
+OrdPolyZ=1;
+(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Param);
+Param.HyperVisc=true;
+Param.HyperDCurl=1.e4;
+Param.HyperDGrad=1.e4;
+Param.HyperDDiv=1.e4;
+Param.Upwind=false
+
+
 
 # Model
 Param.ModelType="Curl";
@@ -56,16 +74,6 @@ Param.NBr=1.e-2;
 Param.Equation="Compressible";
 Param.RefProfile=false
 
-
-# Discretization
-OrdPoly=4;
-OrdPolyZ=1;
-(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Param);
-Param.HyperVisc=true;
-Param.HyperDCurl=1.e4;
-Param.HyperDGrad=1.e4;
-Param.HyperDDiv=1.e4;
-Param.Upwind=false
 
 # Initial conditions 
 Param.NumV=5;
@@ -117,19 +125,33 @@ Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 
 OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
-Param.CacheC1=zeros(OP,OP,NF,nz);
-Param.CacheC2=zeros(OP,OP,NF,nz);
-Param.CacheC3=zeros(OP,OP,NF,nz);
-Param.CacheC4=zeros(OP,OP,NF,nz);
-Param.CacheC5=zeros(OP,OP,NF,nz);
-Param.CacheC6=zeros(OP,OP,NF,nz);
+Param.CacheF1=zeros(OP,OP,NF,nz+1);
+Param.CacheF2=zeros(OP,OP,NF,nz+1);
+Param.CacheF3=zeros(OP,OP,NF,nz+1);
+Param.CacheF4=zeros(OP,OP,NF,nz+1);
+Param.CacheF5=zeros(OP,OP,NF,nz+1);
+Param.CacheF6=zeros(OP,OP,NF,nz+1);
+Param.CacheC1 = view(Param.CacheF1,:,:,:,1:nz)
+Param.CacheC2 = view(Param.CacheF2,:,:,:,1:nz)
+Param.CacheC3 = view(Param.CacheF3,:,:,:,1:nz)
+Param.CacheC4 = view(Param.CacheF4,:,:,:,1:nz)
+Param.CacheC5 = view(Param.CacheF5,:,:,:,1:nz)
+Param.CacheC6 = view(Param.CacheF6,:,:,:,1:nz)
 Param.Cache1=zeros(CG.NumG,nz)
 Param.Cache2=zeros(CG.NumG,nz)
+Param.Cache3=zeros(CG.NumG,nz)
+Param.Cache4=zeros(CG.NumG,nz)
 Param.Pres=zeros(OP,OP,NF,nz)
 Param.KE=zeros(OP,OP,NF,nz)
 Param.FCG=zeros(OP,OP,NF,nz,size(U,3))
+Param.fV=zeros(size(U)..., Param.RK.nStage);
+Param.Vn=zeros(size(U));
+Param.RhoCG=zeros(OP,OP,NF,nz)
+Param.v1CG=zeros(OP,OP,NF,nz)
+Param.v2CG=zeros(OP,OP,NF,nz)
+Param.wCG=zeros(OP,OP,NF,nz+1)
+Param.wCCG=zeros(OP,OP,NF,nz+1)
+Param.ThCG=zeros(OP,OP,NF,nz)
 
 str = IntMethod
 if str == "RungeKutta"

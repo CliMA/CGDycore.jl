@@ -7,6 +7,7 @@ D1cCG = Param.CacheC1
 D2cCG = Param.CacheC2
 D3cCG = Param.CacheC3
 D3cCGE =Param.CacheC4
+
 mul!(reshape(D1cCG,OP,OP*NF*nz),CG.DS,reshape(cCG,OP,OP*nz*NF))
 mul!(reshape(PermutedDimsArray(D2cCG,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(cCG,(2,1,3,4)),OP,OP*nz*NF))
 @views D3cCG[:,:,:,1:nz-1] .= 0.5*(cCG[:,:,:,2:nz] .- cCG[:,:,:,1:nz-1])

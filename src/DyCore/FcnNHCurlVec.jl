@@ -11,19 +11,25 @@ FCG = Param.FCG
 FCG .= 0
 KE = Param.KE
 Pres = Param.Pres
-RhoCG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,RhoPos]
+RhoCG = Param.RhoCG
+v1CG = Param.v1CG
+v2CG = Param.v2CG
+wCG = Param.wCG
+wCCG = Param.wCCG
+ThCG = Param.ThCG
+ 
+RhoCG.= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,RhoPos]
   ,OP,OP,NF,nz);
-v1CG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,uPos]
+v1CG .= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,uPos]
   ,OP,OP,NF,nz);
-v2CG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,vPos]
+v2CG .= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,vPos]
   ,OP,OP,NF,nz);
-wCG=zeros(OP,OP,NF,nz+1);
-wCG[:,:,:,2:nz+1]=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,wPos]
+@views wCG[:,:,:,2:nz+1] .= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,wPos]
   ,OP,OP,NF,nz);
-wCCG=0.5*(wCG[:,:,:,1:nz]+wCG[:,:,:,2:nz+1]);
-wCCG[:,:,:,1]=BoundaryW(v1CG,v2CG,CG,Param);
-wCG[:,:,:,1]=2*wCCG[:,:,:,1]-wCG[:,:,:,2];
-ThCG=reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,ThPos]
+@views wCCG = 0.5 .* (wCG[:,:,:,1:nz] .+ wCG[:,:,:,2:nz+1]);
+@views wCCG[:,:,:,1] .= BoundaryW(v1CG,v2CG,CG,Param);
+@views wCG[:,:,:,1] .= 2 .* wCCG[:,:,:,1] .- wCG[:,:,:,2];
+ThCG .= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,ThPos]
   ,OP,OP,NF,nz);
 
 KE .= 0.5 .* (v1CG.*v1CG+v2CG.*v2CG+wCCG.*wCCG);
@@ -47,8 +53,7 @@ else
   end
 end
 FGrad3Vec!(FCG,KE,CG,Param)
-FCG[:,:,:,:,uPos:wPos]=FCG[:,:,:,:,uPos:wPos]+
-  FCurlNon3Vec(v1CG,v2CG,wCG,wCCG,CG,Param);
+FCurlNon3Vec!(FCG,v1CG,v2CG,wCG,wCCG,CG,Param);
 if strcmp(Param.Thermo,"Energy")
 else
   if Param.Upwind
@@ -78,6 +83,7 @@ end
 @views F[:,:,vPos]=F[:,:,vPos]./CG.M;
 @views F[:,1:nz-1,wPos]=F[:,1:nz-1,wPos]./CG.MW;
 @views F[:,:,ThPos]=F[:,:,ThPos]./CG.M;
+
 
 if Param.Damping
   @views F[:,1:nz-1,wPos]=F[:,1:nz-1,wPos]+Damping(U[:,:,wPos],Param);
