@@ -65,8 +65,6 @@ end
 if Param.HyperVisc
   if strcmp(Param.Thermo,"Energy")
   else
-#   FCG[:,:,:,:,uPos:ThPos]=FCG[:,:,:,:,uPos:ThPos]+
-#   HyperDiffusionVec(v1CG,v2CG,wCG,ThCG,RhoCG,CG,Param);
     HyperDiffusionVec!(FCG,v1CG,v2CG,wCG,ThCG,RhoCG,CG,Param)  
   end
 end

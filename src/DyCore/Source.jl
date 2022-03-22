@@ -20,8 +20,7 @@ matlab_max(X) = max.(X, Param.T_min)
 @views DeltaRhoT=(Param.k_a .+ (Param.k_s - Param.k_a) .* height_factor .*
   repmat(cos.(Param.latN).^4,1,nz)) .* U[:,:,Param.RhoPos] .*
   (T .- matlab_max(temp));
-
-@views F[:,:,Param.uPos:Param.vPos] .-= -Param.k_f*height_factor.*U[:,:,Param.uPos:Param.vPos];
+@views F[:,:,Param.uPos:Param.vPos] .-= Param.k_f*height_factor.*U[:,:,Param.uPos:Param.vPos];
 if strcmp(Param.Thermo,"Energy")
 else
 @views  F[:,:,Param.ThPos] .-= DeltaRhoT.*(Param.p0./Pres).^Param.kappa;

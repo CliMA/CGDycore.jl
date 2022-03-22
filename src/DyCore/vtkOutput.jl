@@ -7,6 +7,8 @@ for i=1:length(Param.cNames)
       cOut[:,:,i]=U[:,:,Param.RhoPos];
   elseif str == "u"
       cOut[:,:,i]=U[:,:,Param.uPos];
+  elseif str == "v"
+      cOut[:,:,i]=U[:,:,Param.vPos];
   elseif str == "w"
       cOut[:,1,i]=0.5*U[:,1,Param.wPos];
       cOut[:,2:nz-1,i]=0.5*(U[:,1:nz-2,Param.wPos]+U[:,2:nz-1,Param.wPos]);
