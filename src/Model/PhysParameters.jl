@@ -204,6 +204,7 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     wCG = nothing
     wCCG = nothing
     ThCG = nothing
+    J = nothing
 end
 
 function PhysParameters(cache)

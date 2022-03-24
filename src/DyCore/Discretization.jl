@@ -17,6 +17,7 @@ Base.@kwdef mutable struct CGStruct
     xwZ = nothing
     DW = nothing
     DS = nothing
+    DST = nothing
     DWZ = nothing
     DSZ = nothing
     M = nothing
@@ -52,6 +53,7 @@ dXdxI .= 0;
 (CG.wY,CG.xwY)=GaussLobattoQuad(CG.OrdPoly);
 (CG.wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ);
 (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
+CG.DST=CG.DS'
 (CG.DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ);
 
 

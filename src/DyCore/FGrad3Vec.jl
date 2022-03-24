@@ -31,7 +31,6 @@ end
 
 end
 
-
 function FGrad3RhoVec!(F,cCG,RhoCG,CG,Param)
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;

@@ -31,6 +31,7 @@ for i=2:nz+1
   Param.Grid.z[i]=Param.Grid.z[i-1]+Param.Grid.dz;
 end
 
+
 # Discretization
 (CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
 LRef=11*1.e5;
@@ -115,6 +116,7 @@ Param.cNames = [
   "w",
   "Th"
 ]
+#SphericalGrid=
 
 # Initial conditions
 U=zeros(CG.NumG,nz,Param.NumV);
@@ -137,7 +139,7 @@ else
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=100;
+SimDays=10;
 # SimDays=1;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
@@ -177,6 +179,7 @@ Param.v2CG=zeros(OP,OP,NF,nz)
 Param.wCG=zeros(OP,OP,NF,nz+1)
 Param.wCCG=zeros(OP,OP,NF,nz+1)
 Param.ThCG=zeros(OP,OP,NF,nz)
+Param.J = CGDycore.JacStruct(CG.NumG,nz)
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
