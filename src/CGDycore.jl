@@ -11,6 +11,7 @@ Look for
 # using StatsBase
 using LinearAlgebra
 using SparseArrays
+using  SphericalGeometry
 include("matlab_intrinsics.jl")
 
 include("Grid/Node/Node.jl")
@@ -73,9 +74,10 @@ include("Grid/TransSphere.jl")
 # include("Grid/cart2Radial.jl")
 include("Grid/cart2sphere.jl")
 include("Grid/hS.jl")
-# include("Grid/sphere2cart.jl")
+include("Grid/sphere2cart.jl")
 include("Grid/vtkWriteHex.jl")
 # include("Grid/vtkWriteQuad.jl")
+#include("Grid/FindGridCell.jl")
 
 include("DG/DLagrange.jl")
 # include("DG/DerivativeMatrix.jl")

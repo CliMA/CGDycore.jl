@@ -30,10 +30,10 @@ Rot2 .= 0
 for iM=1:size(CG.FaceGlob,1)
   i = CG.FaceGlob[iM].Ind
   arr = reshape(CG.Glob[:,i,:],OP*OP*size(i,1))
-  Rot1[arr,:,:] .= Rot1[arr,:,:] .+ 
+  Rot1[arr,:] .= Rot1[arr,:] .+ 
     reshape(Rot1TempCG[:,:,i,:]
     ,OP*OP*size(i,1),nz);
-  Rot2[arr,:,:] .= Rot2[arr,:,:] .+ 
+  Rot2[arr,:] .= Rot2[arr,:] .+ 
     reshape(Rot2TempCG[:,:,i,:]
     ,OP*OP*size(i,1),nz);
 end

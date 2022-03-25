@@ -15,6 +15,8 @@ for i=1:length(Param.cNames)
       cOut[:,nz,i]=0.5*U[:,nz-1,Param.wPos];
   elseif str == "Th"
       cOut[:,:,i]=U[:,:,Param.ThPos]./U[:,:,Param.RhoPos];
+  elseif str == "RhoTh"
+      cOut[:,:,i]=U[:,:,Param.ThPos]
   elseif str == "TPrime"
       p=Pressure(U[:,:,Param.ThPos],U[:,:,Param.ThPos],U[:,:,Param.ThPos],Param);
       cOut[:,:,i]=p./(Param.Rd*U[:,:,Param.RhoPos])-Param.TBGrd;

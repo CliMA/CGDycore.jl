@@ -102,6 +102,9 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     Gamma = nothing
     kappa = nothing
     Omega = nothing
+    f0 = nothing
+    beta0 = nothing
+    y0 = nothing
     RadEarth = nothing
     JF = nothing
     dXdxIC = nothing
@@ -144,6 +147,7 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     ExpDist = nothing
     lat0 = nothing
     lon0 = nothing
+    # HeldSuarez
     day = nothing
     k_a = nothing
     k_f = nothing
@@ -154,6 +158,9 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     T_min = nothing
     sigma_b = nothing
     z_D = nothing
+    T_init =nothing
+    lapse_rate = nothing
+#
     level = nothing
     fig = nothing
     SliceXY = nothing
@@ -205,6 +212,7 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     wCCG = nothing
     ThCG = nothing
     J = nothing
+    CompTri = nothing
 end
 
 function PhysParameters(cache)

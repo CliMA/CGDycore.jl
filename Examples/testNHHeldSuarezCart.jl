@@ -1,12 +1,13 @@
-#function testNHHeldSuarezSphere
+#function testNHHeldSuarezCart
 using CGDycore
 
 
 OrdPoly = 4
 OrdPolyZ=1
+nx=10;
+ny=10;
 nz = 10
-nPanel = 4
-NF = 6 * nPanel * nPanel
+NF = nx *ny
 
 # Cache
 cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, NF)
@@ -15,9 +16,15 @@ cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, NF)
 Param=CGDycore.PhysParameters(cache);
 
 # Grid
-Param.nPanel=nPanel;
-Param.H=30000;
-Param.Grid=CGDycore.CubedGrid(Param.nPanel,CGDycore.OrientFaceSphere,Param);
+lx=2.4e7
+ly=2.4e7
+x0=0;
+y0=0;
+Param.H=30*1.e3
+Boundary = (;WE="Period", BT="Period")
+Param.hS="";
+Param.Grid=CGDycore.CartGrid(nx,ny,lx,ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Param);
+Param.TopoS="";
 
 Param.Grid.nz=nz;
 Param.Grid.zP=zeros(nz,1);
@@ -33,9 +40,9 @@ end
 
 
 # Discretization
-(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
+(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Param);
 LRef=11*1.e5;
-dx=2*pi*Param.RadEarth/4/Param.nPanel/OrdPoly;
+dx=lx/nx
 Param.HyperVisc=true;
 Param.HyperDCurl=2.e17; #1.e14*(dx/LRef)^3.2;
 Param.HyperDGrad=2.e17;
@@ -65,11 +72,14 @@ Param.StrideDamp=6000;
 Param.Relax=1.e-4;
 Param.Damping=false;
 Param.Coriolis=true;
-Param.CoriolisType="Sphere";
+Param.CoriolisType="Beta-Plane";
+Param.f0=Param.Omega
+Param.beta0=0
+Param.y0=0
 Param.Buoyancy=true;
 Param.Source=true;
 Param.Th0=300;
-Param.uMax=1;
+Param.uMax=0;
 Param.vMax=0;
 Param.NBr=1.e-2;
 Param.DeltaT=1;
@@ -79,9 +89,9 @@ Param.Equation="Compressible";
 Param.TopoS="";
 Param.lat0=0;
 Param.lon0=pi/2;
-Param.ProfVel="rand";
-Param.ProfRho="HeldSuarezSphere";
-Param.ProfTheta="HeldSuarezSphere";
+Param.ProfVel="Rand";
+Param.ProfRho="HeldSuarezCart";
+Param.ProfTheta="HeldSuarezCart";
 Param.NumV=5;
 Param.RhoPos=1;
 Param.uPos=2;
@@ -89,16 +99,15 @@ Param.vPos=3;
 Param.wPos=4;
 Param.ThPos=5;
 Param.Thermo="";#"Energy"
+#Held Suarez
 # Constants required for Held-Suarez initial
 Param.T_init = 315
 Param.lapse_rate = -0.008
-#Held Suarez
+# Constants required for Held-Suarez forcing
 Param.day=3600*24;
 Param.k_a=1/(40 * Param.day);
 Param.k_f=1/Param.day;
 Param.k_s=1/(4*Param.day);
-#Param.DeltaT_y=60;
-#Param.DeltaTh_z=10;
 Param.DeltaT_y=0;
 Param.DeltaTh_z=-5;
 Param.T_equator=315;
@@ -109,48 +118,16 @@ Param.z_D=20.0e3;
 
 
 # Output
-Param.RadPrint=Param.H;
-Param.Flat=true;
-Param.vtkFileName="HeldSuarezV1Neu"
+Param.vtkFileName="HeldSuarezCart";
 Param.vtk=0;
-vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphere,CGDycore.Topo,Param);
+vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransCart,CGDycore.Topo,Param);
 Param.cNames = [
   "Rho",
   "u",
   "v",
   "w",
-  "RhoTh"
+  "Th"
 ]
-#=
-#SphericalGrid
-NumLon=20
-NumLat=10
-dlon=2*pi/NumLon
-dlat=pi/NumLat
-lon=zeros(NumLon,1)
-lat=zeros(NumLat,1)
-ksi=zeros(2,NumLon,NumLat)
-Pos=zeros(Int,NumLon,NumLat)
-lon1=4.986
-lat1=0.342
-CGDycore.FindPointInCell(lon1,lat1,Param.Grid)
-println("iCell ",AAA)
-lon[1]=0.5*dlon
-for i=2:NumLon
-  lon[i]=lon[i-1]+dlon  
-end  
-lat[1]=-pi/2+dlat/2
-for j=2:NumLat
-  lat[j]=lat[j-1]+dlat  
-end  
-for i=1:NumLat
-  for j=1:NumLat
-    (Pos[i,j],ksi[:,i,j])=CGDycore.FindPointInCell(lon[i],lat[j],Param.Grid)
-  end
-end  
-println("iCell ",AAA)
-=#
-
 
 # Initial conditions
 U=zeros(CG.NumG,nz,Param.NumV);

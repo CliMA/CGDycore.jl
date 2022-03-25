@@ -16,7 +16,7 @@ if abs(abs(phi)-pi/2)>1.e-14
     lam=lam+2*pi;
   end
 end
-return (lam,phi,r)
+return (float(lam),float(phi),r)
 end
 
 

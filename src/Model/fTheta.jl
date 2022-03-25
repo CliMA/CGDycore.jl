@@ -25,6 +25,17 @@ function fTheta(x,Param)
     else
       Th=0.0;
     end
+  elseif str == "heldsuarezcart"
+        z = x[3]
+        temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
+        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
+        Th = temp * (Param.p0 / pres)^Param.kappa
+  elseif str == "heldsuarezsphere"
+        (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+        z=max(R-Param.RadEarth,0);
+        temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
+        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
+        Th = temp * (Param.p0 / pres)^Param.kappa
   elseif str == "barowavecart"
     eta=EtaFromZ(x[1],x[2],x[3],Param);
     p=Param.p0*eta;
