@@ -72,14 +72,13 @@ if Param.Coriolis
         repmat(reshape(lat[:,:,:],OP*OP*NF,1),1,nz))
         ,OP,OP,NF,nz).* JC
   elseif str == "Beta-Plane"
-      J = Param.cache.J
+      JC = Param.cache.JC
       X = Param.cache.X
       beta0 = Param.beta0
       f0 = Param.f0
       y0 = Param.y0
-      @views Vort3 .= Vort3 .- reshape((f0+beta0 .* (
-        reshape(abs.(X[:,:,2,:,:]),OP,OP,NF,nz) .- y0)).*
-        J[:,:,:,:],OP*OP*NF,nz)
+      @views Vort3 .= Vort3 .- (f0 .+ beta0 .* (
+        reshape(abs.(0.5.*(X[:,:,1,2,:,:] .+ X[:,:,2,2,:,:])),OP,OP,NF,nz) .- y0)) .* JC
   end
 end
 @views FuHat[:,:,:,:,uPos] .-= Vort3.*v2CG 

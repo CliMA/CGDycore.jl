@@ -68,11 +68,14 @@ if Param.Damping
 # sw=(spdiags(repmat(invfac2,n,1),0,n,n)-invfac*JWW-JWRho*JRhoW-JWTh*JThW)\
 #   (invfac*rw+JWRho*rRho+JWTh*rTh);
 else
-  @views tri[1,:] .= 0
-  @views tri[2,:] .= invfac2   
-  @views tri[3,:] .= 0
-  mulUL!(tri,JWRho,JRhoW)
-  mulUL!(tri,JWTh,JThW)
+  if Param.CompTri  
+    @views tri[1,:] .= 0
+    @views tri[2,:] .= invfac2   
+    @views tri[3,:] .= 0
+    mulUL!(tri,JWRho,JRhoW)
+    mulUL!(tri,JWTh,JThW)
+    Param.CompTri=false
+  end
   rw .= invfac .* rw
   mulbiUv!(rw,JWRho,rRho)
   mulbiUv!(rw,JWTh,rTh)

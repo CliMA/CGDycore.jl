@@ -10,6 +10,7 @@ fV=Param.fV
 Vn=Param.Vn
 
 J = Param.J
+Param.CompTri=true
 JacSchur!(J,V,CG,Param)
 Vn .= V
 for iStage=1:nStage

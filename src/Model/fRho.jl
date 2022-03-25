@@ -15,6 +15,57 @@ function fRho(x,Param)
         Rho=1;
     elseif str == "hyperdiff"
         Rho=1;
+    elseif str == "heldsuarezcart"
+        z = x[3]
+        temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
+        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
+        Rho = pres / Param.Rd / temp
+    elseif str == "heldsuarezsphere"
+        (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+        z=max(R-Param.RadEarth,0);
+        temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
+        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
+        Rho = pres / Param.Rd / temp
+    elseif str == "barowavecart"
+        eta=EtaFromZ(x[1],x[2],x[3],Param);
+        p=Param.p0*eta;
+        T=TBaroWave(x[1],x[2],eta,Param);
+        Rho=p/(Param.Rd*T);
+    elseif str == "barowavesphere"
+        (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+        Z=max(R-Param.RadEarth,0);
+        T0=0.5*(Param.T0E+Param.T0P);
+        ConstA=1.0/Param.LapseRate;
+        ConstB=(T0-Param.T0P)/(T0*Param.T0P);
+        ConstC=0.5*(Param.K+2.0)*(Param.T0E-Param.T0P)/(Param.T0E*Param.T0P);
+        ConstH=Param.Rd*T0/Param.Grav;
+        ScaledZ=Z/(Param.B*ConstH);
+        Tau1=ConstA*Param.LapseRate/T0*exp(Param.LapseRate/T0*Z)+
+          ConstB*(1.0-2.0*ScaledZ*ScaledZ)*exp(-ScaledZ*ScaledZ);
+        Tau2=ConstC*(1.0-2.0*ScaledZ*ScaledZ)*exp(-ScaledZ*ScaledZ);
+        IntTau1=ConstA*(exp(Param.LapseRate/T0*Z)-1.0)+
+          ConstB*Z*exp(-ScaledZ*ScaledZ);
+        IntTau2=ConstC*Z*exp(-ScaledZ*ScaledZ);
+        if Param.Deep
+          RRatio= R/Param.EarthRadius;
+        else
+          RRatio = 1.0;
+        end
+        InteriorTerm=(RRatio*cos(Lat))^Param.K -
+          Param.K/(Param.K+2.0)*(RRatio*cos(Lat))^(Param.K+2.0);
+        Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
+        Pressure=Param.p0*exp(-Param.Grav/Param.Rd *
+          (IntTau1-IntTau2*InteriorTerm));
+        Rho=Pressure/(Param.Rd*Temperature);
+    elseif str == "baldaufsphere"
+        (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
+        r=r-Param.RadEarth;
+        p=Param.p0*exp(-Param.Grav*r/(Param.Rd*Param.T0));
+        Rho=p/(Param.Rd*Param.T0);
+        T=p/(Rho*Param.Rd);
+        d=acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
+        T=T+Param.DeltaT*exp(-Param.ExpDist*d)*sin(pi*r/Param.H);
+        Rho=p/(Param.Rd*T);
     elseif str == "barowavecart"
         eta=EtaFromZ(x[1],x[2],x[3],Param);
         p=Param.p0*eta;
