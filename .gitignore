@@ -27,3 +27,4 @@ Manifest.toml
 *.vtk
 *.gz
 *.mp4
+*.swp

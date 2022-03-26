@@ -36,6 +36,25 @@ function spdiags(mat, opt::AbstractArray, m, n)
         error("Uncaught case")
     end
 end
+function spdiags1(mat, opt::AbstractArray, m, n)
+    @assert length(opt) == 2
+    # @show size(mat)
+    # @show opt
+    # error("Debugging spdiags")
+    if opt[1] == -1 && opt[2] == 0
+        ev = mat[:,1][1:m-1] # TODO: verify
+        dv = mat[:,2][1:m]
+        return Bidiagonal(dv, ev, :L)
+#       return spdiagm(m, n, 0 => dv, -1 => ev)
+    elseif opt[1] == 0 && opt[2] == 1
+        dv = mat[:,1][1:m]
+        ev = mat[:,2][2:m] # TODO: verify
+        return Bidiagonal(dv, ev, :U)
+#       return spdiagm(m, n, 0 => dv, 1 => ev)
+    else
+        error("Uncaught case")
+    end
+end
 # function spdiags(dv, v, m, n)
 #     Bidiagonal(dv, ev::V, uplo::Symbol)
 # end

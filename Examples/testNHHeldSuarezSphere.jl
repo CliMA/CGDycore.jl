@@ -1,18 +1,19 @@
 #function testNHHeldSuarezSphere
 using CGDycore
 
+
+OrdPoly = 4
+OrdPolyZ=1
+nz = 10
+nPanel = 4
+NF = 6 * nPanel * nPanel
+
 # Cache
-nz=10;
-OrdPoly=4;
-OrdPolyZ=1;
-nPanel=4;
-cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, nPanel)
+cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, NF)
 
 # Physical parameters
 Param=CGDycore.PhysParameters(cache);
 
-Param.Upwind = false
-Param.RefProfile = false
 # Grid
 Param.nPanel=nPanel;
 Param.H=30000;
@@ -30,8 +31,21 @@ for i=2:nz+1
   Param.Grid.z[i]=Param.Grid.z[i-1]+Param.Grid.dz;
 end
 
+
+# Discretization
+(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
+LRef=11*1.e5;
+dx=2*pi*Param.RadEarth/4/Param.nPanel/OrdPoly;
+Param.HyperVisc=true;
+Param.HyperDCurl=2.e17; #1.e14*(dx/LRef)^3.2;
+Param.HyperDGrad=2.e17;
+Param.HyperDDiv=2.e17; # Scalars
+Param.Upwind = false
+
+
 # Model
 Param.ModelType="Curl";
+Param.RefProfile = false
 Param.Deep=false;
 Param.HeightLimit=30000.0;
 Param.T0E=310.0;
@@ -87,21 +101,12 @@ Param.T_min=200;
 Param.sigma_b=7/10;
 Param.z_D=20.0e3;
 
-# Discretization
-(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
-LRef=11*1.e5;
-dx=2*pi*Param.RadEarth/4/Param.nPanel/OrdPoly;
-Param.Upwind=false;
-Param.HyperVisc=true;
-Param.HyperDCurl=2.e17; #1.e14*(dx/LRef)^3.2;
-Param.HyperDGrad=2.e17;
-Param.HyperDDiv=2.e17; # Scalars
 
 
 # Output
 Param.RadPrint=Param.H;
 Param.Flat=true;
-Param.vtkFileName="HeldSuarez";
+Param.vtkFileName="HeldSuarezNeu";
 Param.vtk=0;
 vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphere,CGDycore.Topo,Param);
 Param.cNames = [
@@ -111,6 +116,7 @@ Param.cNames = [
   "w",
   "Th"
 ]
+#SphericalGrid=
 
 # Initial conditions
 U=zeros(CG.NumG,nz,Param.NumV);
@@ -121,7 +127,7 @@ U[:,:,Param.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Param).*U[:,:,Param.RhoPo
 
 # Integration
 CFL=0.125;
-dtau=500;
+dtau=600;
 time=[0];
 
 IntMethod="Rosenbrock";
@@ -133,7 +139,7 @@ else
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=10;
+SimDays=100;
 # SimDays=1;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
@@ -142,18 +148,52 @@ PrintInt=24*3600*PrintDay/dtau;
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 str = IntMethod
+OP=CG.OrdPoly+1;
+NF=Param.Grid.NumFaces;
+nz=Param.Grid.nz;
+Param.CacheF1=zeros(OP,OP,NF,nz+1);
+Param.CacheF2=zeros(OP,OP,NF,nz+1);
+Param.CacheF3=zeros(OP,OP,NF,nz+1);
+Param.CacheF4=zeros(OP,OP,NF,nz+1);
+Param.CacheF5=zeros(OP,OP,NF,nz+1);
+Param.CacheF6=zeros(OP,OP,NF,nz+1);
+Param.CacheC1 = view(Param.CacheF1,:,:,:,1:nz)
+Param.CacheC2 = view(Param.CacheF2,:,:,:,1:nz)
+Param.CacheC3 = view(Param.CacheF3,:,:,:,1:nz)
+Param.CacheC4 = view(Param.CacheF4,:,:,:,1:nz)
+Param.CacheC5 = view(Param.CacheF5,:,:,:,1:nz)
+Param.CacheC6 = view(Param.CacheF6,:,:,:,1:nz)
+Param.Cache1=zeros(CG.NumG,nz)
+Param.Cache2=zeros(CG.NumG,nz)
+Param.Cache3=zeros(CG.NumG,nz)
+Param.Cache4=zeros(CG.NumG,nz)
+Param.Pres=zeros(OP,OP,NF,nz)
+Param.KE=zeros(OP,OP,NF,nz)
+Param.FCG=zeros(OP,OP,NF,nz,size(U,3))
+Param.k=zeros(size(U)..., Param.ROS.nStage);
+Param.fV=zeros(size(U))
+Param.Vn=zeros(size(U))
+Param.RhoCG=zeros(OP,OP,NF,nz)
+Param.v1CG=zeros(OP,OP,NF,nz)
+Param.v2CG=zeros(OP,OP,NF,nz)
+Param.wCG=zeros(OP,OP,NF,nz+1)
+Param.wCCG=zeros(OP,OP,NF,nz+1)
+Param.ThCG=zeros(OP,OP,NF,nz)
+Param.J = CGDycore.JacStruct(CG.NumG,nz)
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
-          time[1] += dtau;
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur,CG,Param);
           if mod(i,PrintInt)==0
             Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
           end
         end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
+        time[1] += dtau;
+        if mod(i,PrintInt)==0
+          percent = i/nIter*100
+          @info "Iteration: $i took $Δt, $percent% complete"
+        end
       end
     end
 

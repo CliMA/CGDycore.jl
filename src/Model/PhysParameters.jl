@@ -8,8 +8,7 @@ struct Cache{A3,A4,A5,A6,A7}
     dXdx::A7
     dXdxI::A7
 end
-function Cache(OrdPoly, OrdPolyZ, nz, nPanel)
-    NumFaces = 6*nPanel*nPanel
+function Cache(OrdPoly, OrdPolyZ, nz, NumFaces)
     # 3
     lat    = zeros(OrdPoly+1,OrdPoly+1,NumFaces)
     # 4
@@ -105,6 +104,22 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     Omega = nothing
     RadEarth = nothing
     JF = nothing
+    dXdxIC = nothing
+    dXdxIC11 = nothing
+    dXdxIC12 = nothing
+    dXdxIC21 = nothing
+    dXdxIC22 = nothing
+    dXdxIC31 = nothing
+    dXdxIC32 = nothing
+    dXdxIC33 = nothing
+    dXdxIF = nothing
+    dXdxIF11 = nothing
+    dXdxIF12 = nothing
+    dXdxIF21 = nothing
+    dXdxIF22 = nothing
+    dXdxIF31 = nothing
+    dXdxIF32 = nothing
+    dXdxIF33 = nothing
     latN = nothing
     nPanel = nothing
     ModelType = nothing
@@ -145,6 +160,7 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     RadPrint = nothing
     RefProfile = nothing
     Pres = nothing
+    KE = nothing
     xC0 = nothing
     zC0 = nothing
     rC0 = nothing
@@ -160,6 +176,35 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     lat0G = nothing
     lat1G = nothing
     eN = nothing
+    CacheC1 = nothing
+    CacheC2 = nothing
+    CacheC3 = nothing
+    CacheC4 = nothing
+    CacheC5 = nothing
+    CacheC6 = nothing
+    CacheC7 = nothing
+    CacheF1 = nothing
+    CacheF2 = nothing
+    CacheF3 = nothing
+    CacheF4 = nothing
+    CacheF5 = nothing
+    CacheF6 = nothing
+    CacheF7 = nothing
+    Cache1 = nothing
+    Cache2 = nothing
+    Cache3 = nothing
+    Cache4 = nothing
+    FCG = nothing
+    fV = nothing
+    k = nothing
+    Vn = nothing
+    RhoCG = nothing
+    v1CG = nothing
+    v2CG = nothing
+    wCG = nothing
+    wCCG = nothing
+    ThCG = nothing
+    J = nothing
 end
 
 function PhysParameters(cache)

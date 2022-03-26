@@ -17,6 +17,7 @@ Base.@kwdef mutable struct CGStruct
     xwZ = nothing
     DW = nothing
     DS = nothing
+    DST = nothing
     DWZ = nothing
     DSZ = nothing
     M = nothing
@@ -52,6 +53,7 @@ dXdxI .= 0;
 (CG.wY,CG.xwY)=GaussLobattoQuad(CG.OrdPoly);
 (CG.wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ);
 (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
+CG.DST=CG.DS'
 (CG.DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ);
 
 
@@ -76,6 +78,20 @@ for i=1:3
     dXdxIF[:,:,:,:,i,j] .= AverageFB(dXdxI[:,:,:,:,:,i,j]);
   end
 end
+Param.dXdxIC11 = view(Param.cache.dXdxIC,:,:,:,:,1,1)
+Param.dXdxIC12 = view(Param.cache.dXdxIC,:,:,:,:,1,2)
+Param.dXdxIC21 = view(Param.cache.dXdxIC,:,:,:,:,2,1)
+Param.dXdxIC22 = view(Param.cache.dXdxIC,:,:,:,:,2,2)
+Param.dXdxIC31 = view(Param.cache.dXdxIC,:,:,:,:,3,1)
+Param.dXdxIC32 = view(Param.cache.dXdxIC,:,:,:,:,3,2)
+Param.dXdxIC33 = view(Param.cache.dXdxIC,:,:,:,:,3,3)
+Param.dXdxIF11 = view(Param.cache.dXdxIF,:,:,:,2:nz,1,1)
+Param.dXdxIF12 = view(Param.cache.dXdxIF,:,:,:,2:nz,1,2)
+Param.dXdxIF21 = view(Param.cache.dXdxIF,:,:,:,2:nz,2,1)
+Param.dXdxIF22 = view(Param.cache.dXdxIF,:,:,:,2:nz,2,2)
+Param.dXdxIF31 = view(Param.cache.dXdxIF,:,:,:,2:nz,3,1)
+Param.dXdxIF32 = view(Param.cache.dXdxIF,:,:,:,2:nz,3,2)
+Param.dXdxIF33 = view(Param.cache.dXdxIF,:,:,:,2:nz,3,3)
 
 (CG.M,CG.MW)=MassCG(CG,Param);
 Param.latN=zeros(CG.NumG,1);
