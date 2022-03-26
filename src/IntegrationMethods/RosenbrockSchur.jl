@@ -17,11 +17,11 @@ for iStage=1:nStage
   for jStage=1:iStage-1
     @views V .= V .+ ROS.a[iStage,jStage] .* k[:,:,:,jStage];
   end
-  @time Fcn(fV,V,CG,Param);
+  Fcn(fV,V,CG,Param);
   for jStage=1:iStage-1
       @views fV .= fV .+ (ROS.c[iStage,jStage]/dt) .* k[:,:,:,jStage];
   end
-  @time SchurSolve!(view(k,:,:,:,iStage),fV,J,dt*ROS.Gamma[iStage,iStage],Param);
+  SchurSolve!(view(k,:,:,:,iStage),fV,J,dt*ROS.Gamma[iStage,iStage],Param);
   end
   V .= Vn;
   for iStage=1:nStage

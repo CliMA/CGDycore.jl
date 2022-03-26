@@ -139,7 +139,7 @@ else
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=10;
+SimDays=100;
 # SimDays=1;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
@@ -185,13 +185,15 @@ if str == "Rosenbrock"
       for i=1:nIter
         Δt = @elapsed begin
           CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur,CG,Param);
-          time[1] += dtau;
           if mod(i,PrintInt)==0
             Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
           end
         end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
+        time[1] += dtau;
+        if mod(i,PrintInt)==0
+          percent = i/nIter*100
+          @info "Iteration: $i took $Δt, $percent% complete"
+        end
       end
     end
 
