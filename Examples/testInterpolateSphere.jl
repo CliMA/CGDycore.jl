@@ -1,129 +1,103 @@
-# function testNHBubbleX()
+#function testNHHeldSuarezSphere
+using SphericalGeometry
 using CGDycore
 
+
 OrdPoly = 4
-OrdPolyZ=1
-nx=20;
-ny=2;
-nz=40;
-NF = nx *ny
-# Caching
+OrdPolyZ = 1
+nz = 2
+nPanel = 4
+NF = 6 * nPanel * nPanel
+
+# Cache
 cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, NF)
+
 # Physical parameters
 Param=CGDycore.PhysParameters(cache);
 
 # Grid
-lx=20000;
-ly=2000;
-x0=-10000;
-y0=0;
-Boundary = (;WE="Period", BT="Period")
-Param.hS="";
-Param.Grid=CGDycore.CartGrid(nx,ny,lx,ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Param);
-Param.TopoS="";
-
-Param.H=10000;
-Param.Grid.nz = nz
-zP=zeros(nz,1);
-z=zeros(nz+1,1);
-dz=Param.H/nz;
-zP[1]=dz/2;
-for i=2:nz
-  zP[i]=zP[i-1]+dz;
-end
-for i=2:nz+1
-  z[i]=z[i-1]+dz;
-end
-
+Param.nPanel=nPanel;
+Param.H=30000;
+Param.RadEarth=100
+Param.Grid=CGDycore.CubedGrid(Param.nPanel,CGDycore.OrientFaceSphere,Param);
 
 Param.Grid.nz=nz;
-Param.Grid.z=z;
-Param.Grid.zP=zP;
-Param.Grid.dz=dz;
-
-# Discretization
-OrdPoly=4;
-OrdPolyZ=1;
-(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Param);
-Param.HyperVisc=true;
-Param.HyperDCurl=1.e4;
-Param.HyperDGrad=1.e4;
-Param.HyperDDiv=1.e4;
-Param.Upwind=false
+Param.Grid.zP=zeros(nz,1);
+Param.Grid.z=zeros(nz+1,1);
+Param.Grid.dz=Param.H/nz;
+Param.Grid.zP[1]=Param.Grid.dz/2;
+for i=2:nz
+  Param.Grid.zP[i]=Param.Grid.zP[i-1]+Param.Grid.dz;
+end
+for i=2:nz+1
+  Param.Grid.z[i]=Param.Grid.z[i-1]+Param.Grid.dz;
+end
 
 
+# Output
+Param.RadPrint=Param.H;
+Param.Flat=true;
+#SphericalGrid
+NumLon=20
+NumLat=10
+dlon=360.0/NumLon
+dlat=180.0/NumLat
+lon=zeros(NumLon,1)
+lat=zeros(NumLat,1)
+ksi=zeros(2,NumLon,NumLat)
+Pos=zeros(Int,NumLon,NumLat)
+lon1=pi/3
+lat1=pi/10
+CGDycore.FindPointInCell(lon1,lat1,Param.Grid)
+lon[1]=0.5*dlon
+for i=2:NumLon
+  lon[i]=lon[i-1]+dlon  
+end  
+lat[1]=-pi/2+dlat/2
+for j=2:NumLat
+  lat[j]=lat[j-1]+dlat  
+end  
+for i=1:NumLat
+  for j=1:NumLat
+    (Pos[i,j],ksi[:,i,j])=CGDycore.FindPointInCell(lon[i],lat[j],Param.Grid)
+  end
+end  
+println("iCell ",AAA)
 
-# Model
-Param.ModelType="Curl";
-#Param.ModelType="Div";
-Param.Coriolis=false;
-Param.Thermo="";
-Param.Source=false;
-Param.Damping=false;
-Param.Flat=false;
-Param.Coriolis=false;
-Param.Buoyancy=true;
-Param.xC0=0;
-Param.zC0=2000;
-Param.rC0=2000;
-Param.Th0=300;
-Param.DeltaTh=2;
-Param.uMax=20;
-Param.vMax=0;
-Param.NBr=1.e-2;
-Param.Equation="Compressible";
-Param.RefProfile=false
 
-
-# Initial conditions 
-Param.NumV=5;
+# Initial conditions
 U=zeros(CG.NumG,nz,Param.NumV);
-Param.ProfRho="WarmBubble2D";
-Param.ProfTheta="WarmBubble2D";
-Param.ProfVel="Const";
-Param.RhoPos=1;
-Param.uPos=2;
-Param.vPos=3;
-Param.wPos=4;
-Param.ThPos=5;
 U[:,:,Param.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Param);
 (U[:,:,Param.uPos],U[:,:,Param.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Param);
 U[:,:,Param.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Param).*U[:,:,Param.RhoPos];
 
-# Output
-Param.vtkFileName="BubbleImp";
-Param.vtk=0;
-vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransCart,CGDycore.Topo,Param);
-Param.cNames = [
-  "Rho",
-  "u",
-  "v",
-  "w",
-  "Th"
-]
 
+# Integration
+CFL=0.125;
+dtau=600;
+time=[0];
 
-time=[0.];
 IntMethod="Rosenbrock";
-#IntMethod="RungeKutta";
+# IntMethod="RungeKutta";
 if strcmp(IntMethod,"Rosenbrock")
-  dtau=.4;
+  dtau=600;
 else
-  dtau=.4;
+  dtau=8;
 end
-nIter=10000;
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-CFL=0.125;
-SimTime=1000;
-PrintTime=100;
-nIter=SimTime/dtau;
-PrintInt=PrintTime/dtau;
+SimDays=1000;
+# SimDays=1;
+PrintDay=10;
+nIter=24*3600*SimDays/dtau;
+PrintInt=24*3600*PrintDay/dtau;
 # Print initial conditions
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
-
+str = IntMethod
 OP=CG.OrdPoly+1;
+NF=Param.Grid.NumFaces;
+nz=Param.Grid.nz;
 Param.CacheF1=zeros(OP,OP,NF,nz+1);
 Param.CacheF2=zeros(OP,OP,NF,nz+1);
 Param.CacheF3=zeros(OP,OP,NF,nz+1);
@@ -143,23 +117,16 @@ Param.Cache4=zeros(CG.NumG,nz)
 Param.Pres=zeros(OP,OP,NF,nz)
 Param.KE=zeros(OP,OP,NF,nz)
 Param.FCG=zeros(OP,OP,NF,nz,size(U,3))
-Param.Vn=zeros(size(U));
+Param.k=zeros(size(U)..., Param.ROS.nStage);
+Param.fV=zeros(size(U))
+Param.Vn=zeros(size(U))
 Param.RhoCG=zeros(OP,OP,NF,nz)
 Param.v1CG=zeros(OP,OP,NF,nz)
 Param.v2CG=zeros(OP,OP,NF,nz)
 Param.wCG=zeros(OP,OP,NF,nz+1)
 Param.wCCG=zeros(OP,OP,NF,nz+1)
 Param.ThCG=zeros(OP,OP,NF,nz)
-
-str = IntMethod
-if str == "Rosenbrock"
-  Param.J = CGDycore.JacStruct(CG.NumG,nz)
-  Param.k=zeros(size(U)..., Param.ROS.nStage);
-  Param.fV=zeros(size(U))
-elseif str == "RungeKutta"
-  Param.f=zeros(size(U)..., Param.RK.nStage);
-end
-
+Param.J = CGDycore.JacStruct(CG.NumG,nz)
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
@@ -178,11 +145,17 @@ if str == "Rosenbrock"
 elseif str == "RungeKutta"
     for i=1:nIter
       @info "Iteration: $i"
-      CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Param);
+
+      U .= CGDycore.RungeKuttaExplicit(U,dtau,CGDycore.FcnNHCurlVec,CG,Param);
+
+      time[1] += dtau;
       if mod(i,PrintInt)==0
         Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
       end
     end
+else
+  error("Bad str")
 end
+Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param)
 
-
+@info "Success!"

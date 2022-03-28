@@ -91,6 +91,14 @@ if Param.Source
 end
 end
 
+function FcnNHSourceVec!(F,U,CG,Param)
+ThPos=Param.ThPos;
+F .= 0
+if Param.Source
+  Source!(F,U,CG,Param);
+end
+end
+
 function FcnNHCurlVec(U,CG,Param)
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;

@@ -43,10 +43,12 @@ end
 (CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Param);
 LRef=11*1.e5;
 dx=lx/nx
+@show dx
+@show Param.RadEarth/(6*4)
 Param.HyperVisc=true;
-Param.HyperDCurl=2.e17; #1.e14*(dx/LRef)^3.2;
-Param.HyperDGrad=2.e17;
-Param.HyperDDiv=2.e17; # Scalars
+Param.HyperDCurl=2.e16; #1.e14*(dx/LRef)^3.2;
+Param.HyperDGrad=2.e16;
+Param.HyperDDiv=2.e16; # Scalars
 Param.Upwind = false
 
 
@@ -79,8 +81,8 @@ Param.y0=0
 Param.Buoyancy=true;
 Param.Source=true;
 Param.Th0=300;
-Param.uMax=0;
-Param.vMax=0;
+Param.uMax=1;
+Param.vMax=1;
 Param.NBr=1.e-2;
 Param.DeltaT=1;
 Param.ExpDist=5;
@@ -114,11 +116,12 @@ Param.T_equator=315;
 Param.T_min=200;
 Param.sigma_b=7/10;
 Param.z_D=20.0e3;
+Param.pert=10
 
 
 
 # Output
-Param.vtkFileName="HeldSuarezCart";
+Param.vtkFileName="HeldSuarezExCart";
 Param.vtk=0;
 vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransCart,CGDycore.Topo,Param);
 Param.cNames = [
@@ -142,23 +145,22 @@ dtau=600;
 time=[0];
 
 IntMethod="Rosenbrock";
-# IntMethod="RungeKutta";
+#IntMethod="RungeKutta";
 if strcmp(IntMethod,"Rosenbrock")
   dtau=600;
 else
-  dtau=8;
+  dtau=1000;
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=1000;
+SimDays=50;
 # SimDays=1;
-PrintDay=10;
+PrintDay=100;
 nIter=24*3600*SimDays/dtau;
 PrintInt=24*3600*PrintDay/dtau;
 # Print initial conditions
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
-str = IntMethod
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
 nz=Param.Grid.nz;
@@ -181,8 +183,6 @@ Param.Cache4=zeros(CG.NumG,nz)
 Param.Pres=zeros(OP,OP,NF,nz)
 Param.KE=zeros(OP,OP,NF,nz)
 Param.FCG=zeros(OP,OP,NF,nz,size(U,3))
-Param.k=zeros(size(U)..., Param.ROS.nStage);
-Param.fV=zeros(size(U))
 Param.Vn=zeros(size(U))
 Param.RhoCG=zeros(OP,OP,NF,nz)
 Param.v1CG=zeros(OP,OP,NF,nz)
@@ -190,7 +190,16 @@ Param.v2CG=zeros(OP,OP,NF,nz)
 Param.wCG=zeros(OP,OP,NF,nz+1)
 Param.wCCG=zeros(OP,OP,NF,nz+1)
 Param.ThCG=zeros(OP,OP,NF,nz)
-Param.J = CGDycore.JacStruct(CG.NumG,nz)
+str = IntMethod
+if str == "Rosenbrock"
+  Param.J = CGDycore.JacStruct(CG.NumG,nz)
+  Param.k=zeros(size(U)..., Param.ROS.nStage);
+  Param.fV=zeros(size(U))
+elseif str == "RungeKutta"
+  Param.f=zeros(size(U)..., Param.RK.nStage);
+end
+
+
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
@@ -207,14 +216,17 @@ if str == "Rosenbrock"
     end
 
 elseif str == "RungeKutta"
-    for i=1:nIter
-      @info "Iteration: $i"
-
-      U .= CGDycore.RungeKuttaExplicit(U,dtau,CGDycore.FcnNHCurlVec,CG,Param);
-
-      time[1] += dtau;
-      if mod(i,PrintInt)==0
-        Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHSourceVec!,CG,Param);
+          time[1] += dtau;
+          if mod(i,PrintInt)==0
+            Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
 else

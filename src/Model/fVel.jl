@@ -165,8 +165,10 @@ function fVel(x,Param)
       uS=Param.uMax;
       vS=Param.vMax;
     elseif str == "rand"
-      uS=Param.uMax*rand();
-      vS=Param.vMax*rand();
+      pert = Param.pert * rand()
+      uS=Param.uMax*pert;
+      pert = Param.pert * rand()
+      vS=Param.vMax*pert;
     elseif str == "linear"
       uS=x[3];
       vS=0;

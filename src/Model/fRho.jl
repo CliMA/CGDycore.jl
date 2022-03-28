@@ -17,7 +17,7 @@ function fRho(x,Param)
         Rho=1;
     elseif str == "heldsuarezcart"
         z = x[3]
-        temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
+        temp = Param.T_init + Param.lapse_rate * z 
         pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
         Rho = pres / Param.Rd / temp
     elseif str == "heldsuarezsphere"
