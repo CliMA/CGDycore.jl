@@ -5,6 +5,8 @@ function Source!(F,U,CG,Param)
     uPos=Param.uPos
     vPos=Param.vPos
     ThPos=Param.ThPos
+    Sigma=Param.Cache1
+    height_factor=Param.Cache2
     if str == "heldsuarezsphere"
        nz=Param.Grid.nz;
        p=Pressure(Th,Rho,Th,Param);
@@ -52,21 +54,20 @@ function Source!(F,U,CG,Param)
  #          @views  F[:,:,Param.ThPos] .-= DeltaRhoT.* (Param.p0./Pres).^Param.kappa;
  #      end
     elseif str == "heldsuarezcart"
-       p=Pressure(Th,Rho,Th,Param);
-       sigma = p / Param.p0
+       fac = Param.Rd / Param.p0
+       sigma =  Pressure(Th,Rho,Th,Param) ./ Param.p0
        height_factor = max.(0, (sigma .- Param.sigma_b) ./ (1 .- Param.sigma_b))
-       ΔρT =
+       @views  F[:,:,ThPos]  .-=
             (Param.k_a .+ (Param.k_s .- Param.k_a) .* height_factor) .*
             Rho .*
-            (p ./ (Rho .* Param.Rd) .- max.(
+            (sigma ./ (Rho .* fac) .- max.(
                 Param.T_min,
                 (Param.T_equator .- Param.DeltaT_y .- Param.DeltaTh_z .* log.(sigma)) .*
                 sigma.^(Param.Rd / Param.Cpd),
                 )
-            )
+            ) ./ sigma.^Param.kappa
 
-        @views  F[:,:,uPos:vPos] .-= (Param.k_f * height_factor) .* U[:,:,uPos:vPos]
-        @views  F[:,:,ThPos]  .-= ΔρT .*  (Param.p0 ./ p).^Param.kappa
+      @views  F[:,:,uPos:vPos] .-= (Param.k_f .* height_factor) .* U[:,:,uPos:vPos]
     end
 end
 

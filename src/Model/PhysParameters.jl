@@ -148,6 +148,7 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     lat0 = nothing
     lon0 = nothing
     # HeldSuarez
+    pert = nothing
     day = nothing
     k_a = nothing
     k_f = nothing
@@ -203,6 +204,7 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     Cache4 = nothing
     FCG = nothing
     fV = nothing
+    f = nothing
     k = nothing
     Vn = nothing
     RhoCG = nothing

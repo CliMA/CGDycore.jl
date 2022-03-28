@@ -27,7 +27,8 @@ function fTheta(x,Param)
     end
   elseif str == "heldsuarezcart"
         z = x[3]
-        temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
+        pert = Param.pert*rand() 
+        temp = Param.T_init + Param.lapse_rate * z + pert * 0.1 * (z < 5000)
         pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
         Th = temp * (Param.p0 / pres)^Param.kappa
   elseif str == "heldsuarezsphere"
