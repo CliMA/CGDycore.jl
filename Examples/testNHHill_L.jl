@@ -2,18 +2,29 @@
 
 using CGDycore
 
-# Physical parameters
-Param=CGDycore.PhysParameters();
-
+OrdPoly = 4
+OrdPolyZ=1
 nx=60;
 ny=2;
-lx=6000000;
-ly=200000;
+nz = 40
+NF = nx *ny
+
+# Cache
+cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, NF)
+
+# Physical parameters
+Param=CGDycore.PhysParameters(cache);
+
+# Grid
+Lx=6000000;
+Ly=200000;
 x0=-3000000;
 y0=0;
+Param.Lx=Lx
+Param.Ly=Ly
 
 Boundary = (;WE="Period", BT="Period")
-Param.Grid=CGDycore.CartGrid(nx,ny,lx,ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Param);
+Param.Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Param);
 Param.TopoS="AgnesiCartX";
 
 Param.H=15600;
@@ -40,7 +51,7 @@ Param.Coriolis=false;
 Param.Thermo="";
 Param.Source=false;
 Param.StrideDamp=6000;
-Param.Relax=1.e-1;
+Param.Relax=1.e0;
 Param.Damping=true;
 Param.Flat=false;
 Param.Coriolis=false;
@@ -106,28 +117,67 @@ nIter=6000;
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
 CFL=0.125;
-time=0;
+time=[0];
 Param.EndTime=216000;
 nIter=Param.EndTime/dtau;
 PrintTime=10000;
 PrintInt=floor(PrintTime/dtau);
-Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
-nIter=20
+
+#
+
+OP=CG.OrdPoly+1;
+NF=Param.Grid.NumFaces;
+nz=Param.Grid.nz;
+Param.CacheF1=zeros(OP,OP,NF,nz+1);
+Param.CacheF2=zeros(OP,OP,NF,nz+1);
+Param.CacheF3=zeros(OP,OP,NF,nz+1);
+Param.CacheF4=zeros(OP,OP,NF,nz+1);
+Param.CacheF5=zeros(OP,OP,NF,nz+1);
+Param.CacheF6=zeros(OP,OP,NF,nz+1);
+Param.CacheC1 = view(Param.CacheF1,:,:,:,1:nz)
+Param.CacheC2 = view(Param.CacheF2,:,:,:,1:nz)
+Param.CacheC3 = view(Param.CacheF3,:,:,:,1:nz)
+Param.CacheC4 = view(Param.CacheF4,:,:,:,1:nz)
+Param.CacheC5 = view(Param.CacheF5,:,:,:,1:nz)
+Param.CacheC6 = view(Param.CacheF6,:,:,:,1:nz)
+Param.Cache1=zeros(CG.NumG,nz)
+Param.Cache2=zeros(CG.NumG,nz)
+Param.Cache3=zeros(CG.NumG,nz)
+Param.Cache4=zeros(CG.NumG,nz)
+Param.Pres=zeros(OP,OP,NF,nz)
+Param.KE=zeros(OP,OP,NF,nz)
+Param.FCG=zeros(OP,OP,NF,nz,size(U,3))
+Param.Vn=zeros(size(U))
+Param.RhoCG=zeros(OP,OP,NF,nz)
+Param.v1CG=zeros(OP,OP,NF,nz)
+Param.v2CG=zeros(OP,OP,NF,nz)
+Param.wCG=zeros(OP,OP,NF,nz+1)
+Param.wCCG=zeros(OP,OP,NF,nz+1)
+Param.ThCG=zeros(OP,OP,NF,nz)
+str = IntMethod
+if str == "Rosenbrock"
+  Param.J = CGDycore.JacStruct(CG.NumG,nz)
+  Param.k=zeros(size(U)..., Param.ROS.nStage);
+  Param.fV=zeros(size(U))
+elseif str == "RungeKutta"
+  Param.f=zeros(size(U)..., Param.RK.nStage);
+end
 
 # Print initial conditions
 Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
-#
 
-str = IntMethod
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
-        @info "Iteration: $i"
-        @show dtau
-        U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
-        if mod(i,PrintInt)==0
-          Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+        Δt = @elapsed begin
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur,CG,Param);
+          time[1] += dtau;
+          if mod(i,PrintInt)==0
+            Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+          end
         end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
 

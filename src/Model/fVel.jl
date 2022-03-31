@@ -164,6 +164,9 @@ function fVel(x,Param)
     elseif str == "const"
       uS=Param.uMax;
       vS=Param.vMax;
+    elseif str == "sin"
+      uS=Param.uMax*sin(pi*x[1]/Param.Lx);
+      vS=Param.vMax*sin(pi*x[2]/Param.Ly);
     elseif str == "rand"
       pert = Param.pert * rand()
       uS=Param.uMax*pert;
@@ -172,6 +175,9 @@ function fVel(x,Param)
     elseif str == "linear"
       uS=x[3];
       vS=0;
+    else
+      uS=0
+      vS=0
     end
     return (uS,vS)
 end

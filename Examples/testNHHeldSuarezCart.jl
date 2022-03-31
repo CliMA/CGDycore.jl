@@ -16,14 +16,16 @@ cache=CGDycore.Cache(OrdPoly, OrdPolyZ, nz, NF)
 Param=CGDycore.PhysParameters(cache);
 
 # Grid
-lx=2.4e7
-ly=2.4e7
+Lx=2.4e7
+Ly=2.4e7
 x0=0;
 y0=0;
+Param.Lx=Lx
+Param.Ly=Ly
 Param.H=30*1.e3
 Boundary = (;WE="Period", BT="Period")
 Param.hS="";
-Param.Grid=CGDycore.CartGrid(nx,ny,lx,ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Param);
+Param.Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Param);
 Param.TopoS="";
 
 Param.Grid.nz=nz;
@@ -42,9 +44,7 @@ end
 # Discretization
 (CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Param);
 LRef=11*1.e5;
-dx=lx/nx
-@show dx
-@show Param.RadEarth/(6*4)
+dx=Lx/nx
 Param.HyperVisc=true;
 Param.HyperDCurl=2.e16; #1.e14*(dx/LRef)^3.2;
 Param.HyperDGrad=2.e16;
@@ -91,9 +91,10 @@ Param.Equation="Compressible";
 Param.TopoS="";
 Param.lat0=0;
 Param.lon0=pi/2;
-Param.ProfVel="Rand";
+Param.ProfVel="";
 Param.ProfRho="HeldSuarezCart";
 Param.ProfTheta="HeldSuarezCart";
+Param.ProfVelW="" #"HeldSuarezCart";
 Param.NumV=5;
 Param.RhoPos=1;
 Param.uPos=2;
@@ -116,7 +117,7 @@ Param.T_equator=315;
 Param.T_min=200;
 Param.sigma_b=7/10;
 Param.z_D=20.0e3;
-Param.pert=10
+Param.pert=1
 
 
 
@@ -136,6 +137,7 @@ Param.cNames = [
 U=zeros(CG.NumG,nz,Param.NumV);
 U[:,:,Param.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Param);
 (U[:,:,Param.uPos],U[:,:,Param.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Param);
+U[:,:,Param.wPos]=CGDycore.ProjectW(CGDycore.fVelW,CG,Param)
 U[:,:,Param.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Param).*U[:,:,Param.RhoPos];
 
 
@@ -153,9 +155,9 @@ else
 end
 Param.RK=CGDycore.RungeKuttaMethod("RK4");
 Param.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-SimDays=50;
+SimDays=1200;
 # SimDays=1;
-PrintDay=100;
+PrintDay=10;
 nIter=24*3600*SimDays/dtau;
 PrintInt=24*3600*PrintDay/dtau;
 # Print initial conditions

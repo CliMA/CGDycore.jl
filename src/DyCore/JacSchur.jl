@@ -83,7 +83,7 @@ end
 @views J.JThW[2,1:nJ-1] .= -reshape(PermutedDimsArray(D,(2,1)),nJ,1)[1:nJ-1]
 if Param.Damping
   K=permute(DampingKoeff(CG,Param),[2 1]);
-  J.JWW .= reshape(K,nJ,1)
+  J.JWW .= reshape(K,1,nJ)
 end
 end
 

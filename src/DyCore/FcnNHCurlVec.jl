@@ -26,9 +26,9 @@ v2CG .= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,vPos]
   ,OP,OP,NF,nz);
 @views wCG[:,:,:,2:nz+1] .= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,wPos]
   ,OP,OP,NF,nz);
+@views wCG[:,:,:,1] .= BoundaryW(v1CG,v2CG,CG,Param);
 @views wCCG = 0.5 .* (wCG[:,:,:,1:nz] .+ wCG[:,:,:,2:nz+1]);
-@views wCCG[:,:,:,1] .= BoundaryW(v1CG,v2CG,CG,Param);
-@views wCG[:,:,:,1] .= 2 .* wCCG[:,:,:,1] .- wCG[:,:,:,2];
+#@views wCG[:,:,:,1] .= 2 .* wCCG[:,:,:,1] .- wCG[:,:,:,2];
 ThCG .= reshape(U[reshape(CG.Glob,OP*OP*NF,1),:,ThPos]
   ,OP,OP,NF,nz);
 

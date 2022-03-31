@@ -55,6 +55,7 @@ Base.@kwdef mutable struct PhysParametersStruct{C}
     ProfpBGrd = nothing
     ProfTheta = nothing
     ProfVel = nothing
+    ProfVelW = nothing
     Damping = nothing
     Coriolis = nothing
     Buoyancy = nothing
