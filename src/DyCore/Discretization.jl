@@ -1,108 +1,130 @@
-Base.@kwdef mutable struct CGStruct
-    OrdPoly = nothing
-    OrdPolyZ = nothing
-    Faces = nothing
-    NumG = nothing
-    NumI = nothing
-    Glob = nothing
-    FaceGlob = nothing
-    Stencil = nothing
-    w = nothing
-    xw = nothing
-    wX = nothing
-    xwX = nothing
-    wY = nothing
-    xwY = nothing
-    wZ = nothing
-    xwZ = nothing
-    DW = nothing
-    DS = nothing
-    DST = nothing
-    DWZ = nothing
-    DSZ = nothing
-    M = nothing
-    MW = nothing
+mutable struct CGStruct
+    OrdPoly::Int
+    OrdPolyZ::Int
+    Glob::Array{Int, 2}
+    Stencil::Array{Float64, 2}
+    NumG::Int
+    NumI::Int
+    w::Array{Float64, 1}
+    xw::Array{Float64, 1}
+    xwZ::Array{Float64, 1}
+    DW::Array{Float64, 2}
+    DWT::Array{Float64, 2}
+    DS::Array{Float64, 2}
+    DST::Array{Float64, 2}
+    M::Array{Float64, 2}
+    MW::Array{Float64, 2}
 end
+function CGStruct()
+ OrdPoly=0
+OrdPolyZ=0
+Glob=zeros(0,0)
+Stencil=zeros(0,0)
+NumG=0
+NumI=0
+w=zeros(0)
+xw=zeros(0)
+xwZ=zeros(0)
+DW=zeros(0,0)
+DWT=zeros(0,0)
+DS=zeros(0,0)
+DST=zeros(0,0)
+M=zeros(0,0)
+MW=zeros(0,0)
+ return CGStruct(
+    OrdPoly,
+    OrdPolyZ,
+    Glob,
+    Stencil,
+    NumG,
+    NumI,
+    w,
+    xw,
+    xwZ,
+    DW,
+    DWT,
+    DS,
+    DST,
+    M,
+    MW
+ )
+end 
 
-function Discretization(OrdPoly,OrdPolyZ,Jacobi,Param)
+function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
 # Discretization
+OP=OrdPoly+1
+OPZ=OrdPolyZ+1
+nz=Global.Grid.nz;
+NF=Global.Grid.NumFaces
 
-CG = CGStruct(;)
+CG = CGStruct()
 CG.OrdPoly=OrdPoly;
 CG.OrdPolyZ=OrdPolyZ;
-nz=Param.Grid.nz;
-dXdxIF = Param.cache.dXdxIF
-dXdxIC = Param.cache.dXdxIC
 
-(CG.Faces,CG.NumG,CG.NumI,CG.Glob,CG.FaceGlob,CG.Stencil) =
-  NumberingFemCG(Param.Grid,OrdPoly);
-J = Param.cache.J;
-JC = Param.cache.JC;
-lat = Param.cache.lat;
-X = Param.cache.X;
-dXdx = Param.cache.dXdx;
-dXdxI = Param.cache.dXdxI;
-
-J .= 0;
-lat .= 0;
-X .= 0;
-dXdx .= 0;
-dXdxI .= 0;
 (CG.w,CG.xw)=GaussLobattoQuad(CG.OrdPoly);
-(CG.wX,CG.xwX)=GaussLobattoQuad(CG.OrdPoly);
-(CG.wY,CG.xwY)=GaussLobattoQuad(CG.OrdPoly);
-(CG.wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ);
+(wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ);
 (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
 CG.DST=CG.DS'
-(CG.DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ);
+CG.DWT=CG.DW'
+(CG.Glob,CG.NumG,CG.NumI,CG.Stencil) =
+  NumberingFemCG(Global.Grid,OrdPoly);
 
 
-for iF=1:Param.Grid.NumFaces
+dXdxIF = Global.Metric.dXdxIF
+dXdxIC = Global.Metric.dXdxIC
+J = Global.Metric.J;
+JC = Global.Metric.JC;
+JF = Global.Metric.JF;
+lat = Global.Metric.lat;
+X = Global.Metric.X;
+dXdx   = zeros(OP,OP,OPZ,nz,3,3,NF)
+dXdxI  = zeros(OP,OP,OPZ,nz,3,3,NF)
+
+for iF=1:Global.Grid.NumFaces
   for iz=1:nz
-    zI=[Param.Grid.z[iz],Param.Grid.z[iz+1]];
-    (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Param.Grid.Faces[iF],zI,Topo,Param);
-    X[:,:,:,:,iF,iz]=X_Fz;
-    J[:,:,:,iF,iz]=J_Fz;
-    dXdx[:,:,:,iF,iz,:,:]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
-    dXdxI[:,:,:,iF,iz,:,:]=reshape(dXdxI_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
+    zI=[Global.Grid.z[iz],Global.Grid.z[iz+1]];
+    (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Global.Grid.Faces[iF],zI,Topo,Global.Grid.Topography);
+    X[:,:,:,:,iz,iF]=X_Fz;
+    J[:,:,:,iz,iF]=J_Fz;
+    dXdx[:,:,:,iz,:,:,iF]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
+    dXdxI[:,:,:,iz,:,:,iF]=reshape(dXdxI_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
     lat[:,:,iF]=lat_Fz;
   end
 end
-JC .= Average(J);
-Param.JF=AverageFB(J);
+@views @. JC=0.5*(J[:,:,2,:,:] + J[:,:,1,:,:])
+@views @. JF[:,:,1,:] = J[:,:,1,1,:]
+@views @. JF[:,:,2:nz,:] = 0.5*(J[:,:,2,1:nz-1,:] + J[:,:,1,2:nz,:])
+@views @. JF[:,:,nz+1,:] = J[:,:,2,nz,:]
+
+AverageFB!(JF,J);
 dXdxIC .= 0;
 dXdxIF .= 0;
 for i=1:3
   for j=1:3
-    dXdxIC[:,:,:,:,i,j] .= Average(dXdxI[:,:,:,:,:,i,j]);
-    dXdxIF[:,:,:,:,i,j] .= AverageFB(dXdxI[:,:,:,:,:,i,j]);
+    @views @. dXdxIC[:,:,:,i,j,:] = 0.5*(dXdxI[:,:,1,:,i,j,:] + dXdxI[:,:,2,:,i,j,:])
+    @views @. dXdxIF[:,:,1,i,j,:] = dXdxI[:,:,1,1,i,j,:]
+    @views @. dXdxIF[:,:,2:nz,i,j,:] = 0.5*(dXdxI[:,:,2,1:nz-1,i,j,:] + dXdxI[:,:,1,2:nz,i,j,:])
+    @views @. dXdxIF[:,:,nz+1,i,j,:] = dXdxI[:,:,2,nz,i,j,:]
   end
 end
-Param.dXdxIC11 = view(Param.cache.dXdxIC,:,:,:,:,1,1)
-Param.dXdxIC12 = view(Param.cache.dXdxIC,:,:,:,:,1,2)
-Param.dXdxIC21 = view(Param.cache.dXdxIC,:,:,:,:,2,1)
-Param.dXdxIC22 = view(Param.cache.dXdxIC,:,:,:,:,2,2)
-Param.dXdxIC31 = view(Param.cache.dXdxIC,:,:,:,:,3,1)
-Param.dXdxIC32 = view(Param.cache.dXdxIC,:,:,:,:,3,2)
-Param.dXdxIC33 = view(Param.cache.dXdxIC,:,:,:,:,3,3)
-Param.dXdxIF11 = view(Param.cache.dXdxIF,:,:,:,2:nz,1,1)
-Param.dXdxIF12 = view(Param.cache.dXdxIF,:,:,:,2:nz,1,2)
-Param.dXdxIF21 = view(Param.cache.dXdxIF,:,:,:,2:nz,2,1)
-Param.dXdxIF22 = view(Param.cache.dXdxIF,:,:,:,2:nz,2,2)
-Param.dXdxIF31 = view(Param.cache.dXdxIF,:,:,:,2:nz,3,1)
-Param.dXdxIF32 = view(Param.cache.dXdxIF,:,:,:,2:nz,3,2)
-Param.dXdxIF33 = view(Param.cache.dXdxIF,:,:,:,2:nz,3,3)
 
-(CG.M,CG.MW)=MassCG(CG,Param);
-Param.latN=zeros(CG.NumG,1);
-lat = Param.cache.lat
+(CG.M,CG.MW)=MassCG(CG,Global);
+Global.latN=zeros(CG.NumG);
+lat = Global.Metric.lat
+latN = Global.latN
 OP=CG.OrdPoly+1;
-for iM=1:size(CG.FaceGlob,1)
-  i = CG.FaceGlob[iM].Ind
-  arr = reshape(CG.Glob[:,i,:,:] ,OP*OP*size(i,1),1)
-  mat = lat[:,:,i] .*JC[:,:,i,1]
-  Param.latN[arr,:,:]= Param.latN[arr,:,:] + reshape(mat ,OP*OP*size(i,1),1);
+for iF=1:NF
+  iG=0
+  for iP=1:OP
+    for jP=1:OP
+      iG=iG+1
+      ind=CG.Glob[iG,iF]
+      latN[ind] = latN[ind] + lat[iP,jP,iF]
+    end
+  end
 end
-Param.latN=Param.latN./CG.M[:,1];
-return (CG,Param)
+
+
+Global.latN=Global.latN./CG.M[1,:];
+return (CG,Global)
 end

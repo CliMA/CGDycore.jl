@@ -1,34 +1,34 @@
-function vtkOutput(U,vtkGrid,CG,Param)
-nz=Param.Grid.nz;
-cOut=zeros(CG.NumG,nz,length(Param.cNames));
-for i=1:length(Param.cNames)
-  str = Param.cNames[i]
+function vtkOutput(U,vtkGrid,CG,Global)
+nz=Global.Grid.nz;
+cOut=zeros(nz,CG.NumG,length(Global.Output.cNames));
+for i=1:length(Global.Output.cNames)
+  str = Global.Output.cNames[i]
   if str == "Rho"
-      @views cOut[:,:,i]=U[:,:,Param.RhoPos];
+      @views cOut[:,:,i]=U[:,:,Global.Model.RhoPos];
   elseif str == "u"
-      @views cOut[:,:,i]=U[:,:,Param.uPos];
+      @views cOut[:,:,i]=U[:,:,Global.Model.uPos];
   elseif str == "v"
-      @views cOut[:,:,i]=U[:,:,Param.vPos];
+      @views cOut[:,:,i]=U[:,:,Global.Model.vPos];
   elseif str == "w"
-      BoundaryWOutput!(cOut[:,1,i],U,CG,Param)
-      @views cOut[:,1,i] .= 0.5 .* (U[:,1,Param.wPos] .+ cOut[:,1,i])
-      @views cOut[:,2:nz-1,i] .= 0.5 .* (U[:,1:nz-2,Param.wPos] .+ U[:,2:nz-1,Param.wPos]);
-      @views cOut[:,nz,i] .=  0.5 .* U[:,nz-1,Param.wPos];
+      BoundaryWOutput!(view(cOut,1,:,i),U,CG,Global)
+      @views cOut[1,:,i] .= 0.5 .* (U[1,:,Global.Model.wPos] .+ cOut[1,:,i])
+      @views cOut[2:nz-1,:,i] .= 0.5 .* (U[1:nz-2,:,Global.Model.wPos] .+ U[2:nz-1,:,Global.Model.wPos]);
+      @views cOut[nz,:,i] .=  0.5 .* U[nz-1,:,Global.Model.wPos];
   elseif str == "Th"
-      @views cOut[:,:,i].=U[:,:,Param.ThPos]./U[:,:,Param.RhoPos];
+      @views cOut[:,:,i].=U[:,:,Global.Model.ThPos]./U[:,:,Global.Model.RhoPos];
   elseif str == "RhoTh"
-      @views cOut[:,:,i].=U[:,:,Param.ThPos]
+      @views cOut[:,:,i].=U[:,:,Global.Model.ThPos]
   elseif str == "TPrime"
-      p=Pressure(U[:,:,Param.ThPos],U[:,:,Param.ThPos],U[:,:,Param.ThPos],Param);
-      @views cOut[:,:,i]=p./(Param.Rd*U[:,:,Param.RhoPos])-Param.TBGrd;
+      p=Pressure(U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],Global);
+      @views cOut[:,:,i]=p./(Global.Rd*U[:,:,Global.Model.RhoPos])-Global.TBGrd;
   elseif str == "ThetaPrime"
-      @views cOut[:,:,i]=U[:,:,Param.ThPos]./U[:,:,Param.RhoPos]-Param.ThetaBGrd;
+      @views cOut[:,:,i]=U[:,:,Global.Model.ThPos]./U[:,:,Global.Model.RhoPos]-Global.ThetaBGrd;
   elseif str == "Pres"
-      @views cOut[:,:,i]=Pressure(U[:,:,Param.ThPos],U[:,:,Param.ThPos],U[:,:,Param.ThPos],Param);
+      @views cOut[:,:,i]=Pressure(U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],Global);
   elseif str == "Vort"
-      @views cOut[:,:,i]=FVort2VecDSS(U[:,:,Param.uPos],U[:,:,Param.vPos],CG,Param);
+      @views FVort2Vec!(cOut[:,:,i],U,CG,Global);
   end
 end
-vtk=vtkCG(cOut,CG,Param,vtkGrid,Param.vtk);
+vtk=vtkCG(cOut,CG,Global,vtkGrid,Global.Output.vtk);
 return vtk
 end

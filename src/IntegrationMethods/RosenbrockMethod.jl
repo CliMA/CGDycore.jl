@@ -1,42 +1,80 @@
-Base.@kwdef mutable struct SSPStruct
-  alpha = nothing
+mutable struct SSPStruct
+  alpha::Array{Float64, 2}
+end  
+function SSPMethod()
+ alpha=zeros(0,0)
+ return SSPStruct(
+   alpha,
+   )
 end
-Base.@kwdef mutable struct RosenbrockStruct
-  transformed = nothing
-  nStage = nothing
-  alpha = nothing
-  Gamma = nothing
-  b = nothing
-  a = nothing
-  c = nothing
-  m = nothing
-  d = nothing
-  b2 = nothing
-  beta0 = nothing
-  beta = nothing
-  SSP = SSPStruct(;)
+function SSPMethod(alpha::Array{Float64, 2})
+ return SSPStruct(
+   alpha,
+   )
+end 
+
+mutable struct RosenbrockStruct
+  transformed::Bool
+  nStage::Int
+  alpha::Array{Float64, 2}
+  Gamma::Array{Float64, 2}
+  b::Array{Float64, 1}
+  a::Array{Float64, 2}
+  c::Array{Float64, 2}
+  m::Array{Float64, 1}
+  d::Array{Float64, 1}
+  b2::Array{Float64, 1}
+  SSP::SSPStruct
+end
+function RosenbrockMethod()
+  transformed=false
+  nStage=0
+  alpha=zeros(0,0)
+  Gamma=zeros(0,0)
+  b=zeros(0)
+  a=zeros(0,0)
+  c=zeros(0,0)
+  m=zeros(0)
+  d=zeros(0)
+  b2=zeros(0)
+  SSP=SSPMethod()
+  return RosenbrockStruct(
+    transformed,
+    nStage,
+    alpha,
+    Gamma,
+    b,
+    a,
+    c,
+    m,
+    d,
+    b2,
+    SSP,
+  )
 end
 
+
 function RosenbrockMethod(Method)
-  str = Method
-  ROS = RosenbrockStruct(;)
+str = Method
 if str == "SSP-Knoth"
-    ROS.transformed=true;
-    ROS.nStage=3;
-    ROS.alpha=[0 0 0
+    transformed=true;
+    nStage=3;
+    alpha=[0 0 0
       1 0 0
       1/4 1/4 0];
-    ROS.d=ROS.alpha*ones(ROS.nStage,1);
-    ROS.b=[1/6 1/6 2/3];
-    ROS.Gamma=[1 0 0
+    d=alpha*ones(nStage);
+    b=[1/6,1/6,2/3];
+    Gamma=[1 0 0
       0 1 0
       -3/4 -3/4 1];
-    ROS.a=ROS.alpha/ROS.Gamma;
-    ROS.c=-inv(ROS.Gamma);
-    ROS.m=ROS.b/ROS.Gamma;
-    ROS.SSP.alpha=[1 0 0
-                   3/4 1/4 0
-                   1/3 0 2/3];
+    a=alpha/Gamma;
+    c=-inv(Gamma);
+    m=Gamma'\b;
+    SSP=SSPMethod([1 0 0
+                3/4 1/4 0
+                1/3 0 2/3])
+    b2=zeros(0)
+
 elseif str == "RK3_H"
     ROS.transformed=true;
     ROS.nStage=3;
@@ -217,5 +255,17 @@ elseif str == "ROSRK3"
     ROS.c=beta;
     ROS.d=1;
 end
-return ROS
+return RosenbrockStruct(
+  transformed,
+  nStage,
+  alpha,
+  Gamma,
+  b,
+  a,
+  c,
+  m,
+  d,
+  b2,
+  SSP,
+  )
 end

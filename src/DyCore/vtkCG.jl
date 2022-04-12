@@ -1,13 +1,13 @@
-function vtkCG(c,CG,Param,vtkGrid,vtk)
+function vtkCG(c,CG,Global,vtkGrid,vtk)
 OrdPoly=CG.OrdPoly;
-nz=Param.Grid.nz;
-NF=Param.Grid.NumFaces;
+nz=Global.Grid.nz;
+NF=Global.Grid.NumFaces;
 NumV=size(c,3);
 ivtkc=0;
 vtkc=zeros(nz*NF*OrdPoly*OrdPoly,NumV);
-for iF=1:Param.Grid.NumFaces
-  for iz=1:Param.Grid.nz
-    cLoc=reshape(c[CG.Faces[iF].Glob,iz,:],OrdPoly+1,OrdPoly+1,NumV);
+for iF=1:Global.Grid.NumFaces
+  for iz=1:Global.Grid.nz
+    cLoc=reshape(c[iz,CG.Glob[:,iF],:],OrdPoly+1,OrdPoly+1,NumV);
     dd=2/OrdPoly;
     eta0=-1;
     for jRef=1:OrdPoly
@@ -32,10 +32,10 @@ for iF=1:Param.Grid.NumFaces
   end
 end
 
-vtkS=num2str(vtk);
-vtkWriteHex(strcat(Param.vtkFileName,vtkS,".vtk"),
+vtkS="$vtk"
+vtkWriteHex(Global.Output.vtkFileName * vtkS * ".vtk",
   vtkGrid.vtkP,
-  vtkGrid.ConnectivityList,vtkc,Param.cNames)
+  vtkGrid.ConnectivityList,vtkc,Global.Output.cNames)
 vtk=vtk+1;
 return vtk
 end

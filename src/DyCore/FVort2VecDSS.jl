@@ -1,35 +1,59 @@
-function FVort2VecDSS(v1,v2,CG,Param)
+function FVort2VecDSS!(VortCG,v1CG,v2CG,CG,Global,iF)
 OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
-dXdxIC = Param.cache.dXdxIC
-v1CG=reshape(v1[reshape(CG.Glob,OP*OP*NF,1),:]
-  ,OP,OP,NF,nz);
-v2CG=reshape(v2[reshape(CG.Glob,OP*OP*NF,1),:]
-  ,OP,OP,NF,nz);
-vC1=reshape(
-  CG.DS*reshape(dXdxIC[:,:,:,:,1,1].*v2CG -
-  dXdxIC[:,:,:,:,1,2].*v1CG
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz) -
-  permute(
-  reshape(
-  CG.DS*reshape(
-  permute(-v2CG.*dXdxIC[:,:,:,:,2,1] +
-  v1CG.*dXdxIC[:,:,:,:,2,2]
-  ,[2 1 3 4])
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz)
-  ,[2 1 3 4]);
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
 
-Vort=zeros(CG.NumG,nz);
-for iM=1:size(CG.FaceGlob,1)
-  i = CG.FaceGlob[iM].Ind
-  arr = reshape(CG.Glob[:,i,:],OP*OP*size(i,1))
-  Vort[arr,:] = Vort[arr,:] .+
-    reshape(vC1[:,:,i,:]
-    ,OP*OP*size(i,1),nz);
+vCon = Global.Cache.CacheC1
+DvCon = Global.Cache.CacheC2
+@views JC = Global.Metric.JC[:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+
+@inbounds for iz=1:nz
+  @views @. vCon[:,:,iz] = v2CG[:,:,iz] * dXdxIC[:,:,iz,1,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,1,2]
+  @views mul!(VortCG[:,:,iz],CG.DS,vCon[:,:,iz])
+  @views @. vCon[:,:,iz] = v2CG[:,:,iz] * dXdxIC[:,:,iz,2,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,2,2]
+  @views mul!(DvCon[:,:,iz],vCon[:,:,iz],CG.DST)
+  @views @. VortCG[:,:,iz] += DvCon[:,:,iz]
 end
-Vort=Vort./CG.M;
-return Vort
 end
+
+
+function FVort2Vec!(Vort,U,CG,Global)
+(;  uPos,
+    vPos) = Global.Model
+
+OP=CG.OrdPoly+1;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
+v1CG = Global.Cache.v1CG
+v2CG = Global.Cache.v2CG
+VortCG = Global.Cache.DivCG
+Vort .= 0.0
+@inbounds for iF=1:NF
+  iG=0
+  @inbounds for jP=1:OP
+    @inbounds for iP=1:OP
+      iG=iG+1
+      ind=CG.Glob[iG,iF]
+      @inbounds for iz=1:nz
+        v1CG[iP,jP,iz] = U[iz,ind,uPos]
+        v2CG[iP,jP,iz] = U[iz,ind,vPos]
+      end
+    end
+  end
+  FVort2VecDSS!(VortCG,v1CG,v2CG,CG,Global,iF)
+
+  iG=0
+  @inbounds for jP=1:OP
+    @inbounds for iP=1:OP
+      iG=iG+1
+      ind=CG.Glob[iG,iF]
+      @inbounds for iz=1:nz
+        Vort[iz,ind] += VortCG[iP,jP,iz]
+      end
+    end
+  end
+end
+@. Vort = Vort / CG.M
+end
+

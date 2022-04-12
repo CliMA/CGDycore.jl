@@ -1,106 +1,98 @@
-function FGradDiv2VecDSS!(grad1CG,grad2CG,v1CG,v2CG,CG,Param)
+function FGradDiv2VecDSS!(grad1CG,grad2CG,v1CG,v2CG,CG,Global,iF)
 OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
 
-vCon = Param.CacheC1
-DvCon = Param.CacheC2
-vC1 = Param.CacheC3
+vCon = Global.Cache.CacheC1
+DvCon = Global.Cache.CacheC2
+vC1 = Global.Cache.CacheC3
 D1vC1 = vCon
 D2vC1 = DvCon
-grad1TempCG = Param.CacheC3
-grad2TempCG = Param.CacheC4
-grad1 = Param.Cache1
-grad2 = Param.Cache2
-JC = Param.cache.JC 
+@views JC = Global.Metric.JC[:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 
-vCon .= v1CG.*Param.dXdxIC11 .+ v2CG.*Param.dXdxIC12;
-mul!(reshape(vC1,OP,OP*NF*nz),CG.DS,reshape(vCon,OP,OP*nz*NF))
-vCon .= v1CG.*Param.dXdxIC21 .+ v2CG.*Param.dXdxIC22;
-mul!(reshape(PermutedDimsArray(DvCon,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(vCon,(2,1,3,4)),OP,OP*nz*NF))
-vC1 .= vC1 .+ DvCon
+@inbounds for iz=1:nz  
+  @views @. vCon[:,:,iz] = v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]
+  @views mul!(vC1[:,:,iz],CG.DS,vCon[:,:,iz])
+  @views @. vCon[:,:,iz] = v1CG[:,:,iz] * dXdxIC[:,:,iz,2,1] + v2CG[:,:,iz] * dXdxIC[:,:,iz,2,2]
+  @views mul!(DvCon[:,:,iz],vCon[:,:,iz],CG.DST)
+  @views @. vC1[:,:,iz] = vC1[:,:,iz] + DvCon[:,:,iz]
 
-mul!(reshape(D1vC1,OP,OP*NF*nz),CG.DW,reshape(vC1,OP,OP*nz*NF))
-mul!(reshape(PermutedDimsArray(D2vC1,(2,1,3,4)),OP,OP*NF*nz),CG.DW,reshape(PermutedDimsArray(vC1,(2,1,3,4)),OP,OP*nz*NF))
+  @views mul!(D1vC1[:,:,iz],CG.DW,vC1[:,:,iz])
+  @views mul!(D2vC1[:,:,iz],vC1[:,:,iz],CG.DWT)
 
+  @views @. grad1CG[:,:,iz] = (dXdxIC[:,:,iz,1,1] * D1vC1[:,:,iz] + 
+    dXdxIC[:,:,iz,2,1] * D2vC1[:,:,iz]) / JC[:,:,iz]
+  @views @. grad2CG[:,:,iz] = (dXdxIC[:,:,iz,1,2] * D1vC1[:,:,iz] + 
+    dXdxIC[:,:,iz,2,2] * D2vC1[:,:,iz]) / JC[:,:,iz]
+  end  
+end
 
-grad1TempCG .= (Param.dXdxIC11.*D1vC1 .+ Param.dXdxIC21.*D2vC1)./ JC;
-grad2TempCG .= (Param.dXdxIC12.*D1vC1 .+ Param.dXdxIC22.*D2vC1)./ JC;
+function FGradDiv2VecDSS1!(grad1CG,grad2CG,v1CG,v2CG,CG,Global)
+OP=CG.OrdPoly+1;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
+
+vCon = Global.Cache.CacheC1
+DvCon = Global.Cache.CacheC2
+vC1 = Global.Cache.CacheC3
+D1vC1 = vCon
+D2vC1 = DvCon
+grad1TempCG = Global.Cache.CacheC3
+grad2TempCG = Global.Cache.CacheC4
+grad1 = Global.Cache.Cache1
+grad2 = Global.Cache.Cache2
+JC = Global.Metric.JC 
+dXdxIC = Global.Metric.dXdxIC 
+
 
 grad1 .= 0
 grad2 .= 0
-for iM=1:size(CG.FaceGlob,1)
-  i = CG.FaceGlob[iM].Ind
-  arr = reshape(CG.Glob[:,i,:],OP*OP*size(i,1))
-  grad1[arr,:,:] .= grad1[arr,:,:] .+
-    reshape(grad1TempCG[:,:,i,:]
-    ,OP*OP*size(i,1),nz);
-  grad2[arr,:,:] .= grad2[arr,:,:] .+
-    reshape(grad2TempCG[:,:,i,:]
-    ,OP*OP*size(i,1),nz);
+@inbounds for iF=1:NF
+  @inbounds for iz=1:nz  
+    @views @. vCon[:,:,iz,iF] = v1CG[:,:,iz,iF] * dXdxIC[:,:,iz,1,1,iF] + v2CG[:,:,iz,iF] * dXdxIC[:,:,iz,1,2,iF]
+    @views mul!(vC1[:,:,iz,iF],CG.DS,vCon[:,:,iz,iF])
+    @views @. vCon[:,:,iz,iF] = v1CG[:,:,iz,iF] * dXdxIC[:,:,iz,2,1,iF] + v2CG[:,:,iz,iF] * dXdxIC[:,:,iz,2,2,iF]
+    @views mul!(DvCon[:,:,iz,iF],vCon[:,:,iz,iF],CG.DST)
+    @views @. vC1[:,:,iz,iF] = vC1[:,:,iz,iF] + DvCon[:,:,iz,iF]
+
+    @views mul!(D1vC1[:,:,iz,iF],CG.DW,vC1[:,:,iz,iF])
+    @views mul!(D2vC1[:,:,iz,iF],vC1[:,:,iz,iF],CG.DWT)
+
+
+    @views @. grad1TempCG[:,:,iz,iF] = (dXdxIC[:,:,iz,1,1,iF] * D1vC1[:,:,iz,iF] + 
+      dXdxIC[:,:,iz,2,1,iF] * D2vC1[:,:,iz,iF]) / JC[:,:,iz,iF]
+    @views @. grad2TempCG[:,:,iz,iF] = (dXdxIC[:,:,iz,1,2,iF] * D1vC1[:,:,iz,iF] + 
+      dXdxIC[:,:,iz,2,2,iF] * D2vC1[:,:,iz,iF]) / JC[:,:,iz,iF]
+  end  
+
+  iG=0
+  @inbounds for iP=1:OP
+    @inbounds for jP=1:OP
+      iG=iG+1
+      ind=CG.Glob[iG,iF]
+      @inbounds for iz=1:nz
+        grad1[iz,ind] += grad1TempCG[iP,jP,iz,iF]
+        grad2[iz,ind] += grad2TempCG[iP,jP,iz,iF]
+      end
+    end
+  end
 end
 
 grad1.=grad1./CG.M;
 grad2.=grad2./CG.M;
-grad1CG .= reshape(grad1[reshape(CG.Glob,OP*OP*NF,1),:]
-  ,OP,OP,NF,nz);
-grad2CG .= reshape(grad2[reshape(CG.Glob,OP*OP*NF,1),:]
-  ,OP,OP,NF,nz);
-
+@inbounds for iF=1:NF
+  iG=0
+  @inbounds for iP=1:OP
+    @inbounds for jP=1:OP
+      iG=iG+1
+      ind=CG.Glob[iG,iF]
+      @inbounds for iz=1:nz
+        grad1CG[iP,jP,iz,iF] = grad1[iz,iG]
+        grad2CG[iP,jP,iz,iF] = grad2[iz,iG]
+      end
+    end
+  end
 end
-
-function FGradDiv2VecDSS(v1CG,v2CG,CG,Param)
-OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
-dXdxIC = Param.cache.dXdxIC
-JC = Param.cache.JC
-vC1=reshape(
-  CG.DS*reshape(v1CG.*dXdxIC[:,:,:,:,1,1] +
-  v2CG.*dXdxIC[:,:,:,:,1,2]
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz) +
-  permute(
-  reshape(
-  CG.DS*reshape(
-  permute(v1CG.*dXdxIC[:,:,:,:,2,1] +
-  v2CG.*dXdxIC[:,:,:,:,2,2]
-  ,[2 1 3 4])
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz)
-  ,[2 1 3 4]);
-
-D1cCG=reshape(
-  CG.DW*reshape(vC1,OP,OP*NF*nz)
-  ,OP,OP,NF,nz);
-D2cCG=permute(reshape(
-  CG.DW*reshape(
-  permute(vC1
-  ,[2 1 3 4])
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz)
-  ,[2 1 3 4]);
-
-gradCG=zeros(OP,OP,NF,nz,2);
-gradCG[:,:,:,:,1]=(dXdxIC[:,:,:,:,1,1].*D1cCG +
-  dXdxIC[:,:,:,:,2,1].*D2cCG)./JC;
-gradCG[:,:,:,:,2]=(dXdxIC[:,:,:,:,1,2].*D1cCG +
-  dXdxIC[:,:,:,:,2,2].*D2cCG)./JC;
-
-
-grad=zeros(CG.NumG,nz,2);
-for iM=1:size(CG.FaceGlob,1)
-  i = CG.FaceGlob[iM].Ind
-  arr = reshape(CG.Glob[:,i,:],OP*OP*size(i,1))
-  grad[arr,:,:] = grad[arr,:,:] .+
-    reshape(gradCG[:,:,i,:,:],OP*OP*size(i,1),nz,2);
-end
-grad[:,:,1]=grad[:,:,1]./CG.M;
-grad[:,:,2]=grad[:,:,2]./CG.M;
-grad1CG=reshape(grad[reshape(CG.Glob,OP*OP*NF,1),:,1]
-  ,OP,OP,NF,nz);
-grad2CG=reshape(grad[reshape(CG.Glob,OP*OP*NF,1),:,2]
-  ,OP,OP,NF,nz);
-return (grad1CG,grad2CG)
 end
 

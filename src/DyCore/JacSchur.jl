@@ -1,193 +1,118 @@
-Base.@kwdef mutable struct JStruct
-    JRhoW = nothing
-    JWTh = nothing
-    JWRho = nothing
-    JThW = nothing
-    JRhoWB = nothing
-    JWThB = nothing
-    JWRhoB = nothing
-    JThWB = nothing
-    JWW = nothing
+mutable struct JStruct
+    JRhoW::Array{Float64, 3}
+    JWTh::Array{Float64, 3}
+    JWRho::Array{Float64, 3}
+    JThW::Array{Float64, 3}
+    JWW::Array{Float64, 3}
+    tri::Array{Float64, 3}
+    sw::Array{Float64, 2}
+    CompTri::Bool
+    CacheCol1::Array{Float64, 1}
+    CacheCol2::Array{Float64, 1}
+    CacheCol3::Array{Float64, 1}
 end
 
-function JacSchur!(J,U,CG,Param)
-nz=Param.Grid.nz;
-dz=Param.Grid.dz;
-nCol=size(U,1);
-nJ=nCol*nz;
-nz=Param.Grid.nz;
-RhoPos=Param.RhoPos;
-uPos=Param.uPos;
-vPos=Param.vPos;
-wPos=Param.wPos;
-ThPos=Param.ThPos;
+function JStruct()
+  JRhoW=zeros(0,0,0)
+  JWTh=zeros(0,0,0)
+  JWRho=zeros(0,0,0)
+  JThW=zeros(0,0,0)
+  JWW=zeros(0,0,0)
+  tri=zeros(0,0,0)
+  sw=zeros(0,0)
+  CompTri=false
+  CacheCol1=zeros(0)
+  CacheCol2=zeros(0)
+  CacheCol3=zeros(0)
+  return JStruct(
+    JRhoW,
+    JWTh,
+    JWRho,
+    JThW,
+    JWW,
+    tri,
+    sw,
+    CompTri,
+    CacheCol1,
+    CacheCol2,
+    CacheCol3,
+  )
+end  
 
-Pres = Param.Cache1
-D = Param.Cache2
-Dp = Param.Cache2
-Dm = Param.Cache3
-dPdTh = Param.Cache4
-
-Rho = view(U,:,:,RhoPos)
-Th = view(U,:,:,ThPos)
-if strcmp(Param.Thermo,"Energy")
-  W=[zeros(size(U,1),1)
-    ,U[:,:,wPos]];
-  WC=0.5*(W[:,1:nz]+W[:,2:nz+1]);
-  KE=0.5*(U[:,:,uPos].*U[:,:,uPos]+U[:,:,vPos].*U[:,:,vPos]+WC.*WC);
-  Pres=Pressure(U[:,:,ThPos],U[:,:,RhoPos],KE,Param);
-  PresCol=permute(Pres,[2 1]);
-  PhiCol=Param.Grav*repmat(Param.Grid.zP,1,size(U,1));
-else
-  @views Pres .= Pressure(U[:,:,ThPos],U[:,:,ThPos],U[:,:,ThPos],Param);
+function JStruct(NumG,nz)
+  JRhoW=zeros(2,nz,NumG)
+  JWTh=zeros(2,nz,NumG)
+  JWRho=zeros(2,nz,NumG)
+  JThW=zeros(2,nz,NumG)
+  JWW=zeros(1,nz,NumG)
+  tri=zeros(3,nz,NumG)
+  sw=zeros(nz,NumG)
+  CompTri=false
+  CacheCol1=zeros(nz)
+  CacheCol2=zeros(nz)
+  CacheCol3=zeros(nz)
+  return JStruct(
+    JRhoW,
+    JWTh,
+    JWRho,
+    JThW,
+    JWW,
+    tri,
+    sw,
+    CompTri,
+    CacheCol1,
+    CacheCol2,
+    CacheCol3,
+  )
 end
 
-@views D[:,1:nz-1] .= -0.5 .* (Rho[:,1:nz-1] .+ Rho[:,2:nz]) ./ dz;
-@views J.JRhoW[1,:] .= reshape(PermutedDimsArray(D,(2,1)),nJ,1)
-@views J.JRhoW[2,1:nJ-1] .= -reshape(PermutedDimsArray(D,(2,1)),nJ,1)[1:nJ-1]
-if strcmp(Param.Thermo,"Energy")
-  dPdTh .= (Param.Rd/Param.Cvd)./RhoCol;
-else
-  dPdTh .= dPresdTh(Th,Param);
-end
-@views Dp[:,1:nz-1] .= dPdTh[:,2:nz] ./  (0.5 .* (Rho[:,1:nz-1] .+ Rho[:,2:nz])) ./ dz;
-@views Dm[:,1:nz-1] .= dPdTh[:,1:nz-1] ./ (0.5 .* (Rho[:,1:nz-1]+Rho[:,2:nz])) ./ dz;
-@views J.JWTh[1,2:nJ] .= reshape(-PermutedDimsArray(Dp,(2,1)),nJ,1)[1:nJ-1] 
-@views J.JWTh[2,:] .= reshape(PermutedDimsArray(Dm,(2,1)),nJ,1) 
+function JacSchur!(J,U,CG,Global)
+  (;  RhoPos,
+      uPos,
+      vPos,
+      wPos,
+      ThPos,
+      NumV) = Global.Model
+  nz=Global.Grid.nz;
+  NF=Global.Grid.NumFaces
+  dz=Global.Grid.dz;
+  nCol=size(U,2);
+  nJ=nCol*nz;
 
-if strcmp(Param.Thermo,"Energy")
-# Dp[:,1:nz-1]=(Param.Rd/Param.Cvd)./
-#   (0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])).*
-#   (PhiCol[2:nz,:])/dz;
-# Dm[1:nz-1,:]=(Param.Rd/Param.Cvd)./
-#   (0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])).*
-#   (PhiCol[1:nz-1,:])/dz;
-# D[1:nz-1,:]=-0.5*Param.Grav./
-#   (0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:]));
-# J.JWRho=spdiags([[reshape(-Dm+D,nJ,1);0] [0;reshape(Dp+D,nJ,1)]],[0 1]
-#   ,nJ,nJ);
-else
-  @views D[:,1:nz-1] .= 0.5 .* (Pres[:,2:nz] .- Pres[:,1:nz-1])./ dz ./
-    (0.5 .* (Rho[:,1:nz-1] .+ Rho[:,2:nz])).^2;
-  @views J.JWRho[1,2:nJ] .= reshape(PermutedDimsArray(D,(2,1)),nJ,1)[1:nJ-1] 
-  @views J.JWRho[2,1:nJ] .= reshape(PermutedDimsArray(D,(2,1)),nJ,1) 
-end
+  Pres = J.CacheCol1
+  D = J.CacheCol2
+  Dp = J.CacheCol2
+  Dm = J.CacheCol3
+  dPdTh = J.CacheCol1
+  K = J.CacheCol1
 
-if strcmp(Param.Thermo,"Energy")
-# D[1:nz-1,:]=-0.5*(ThCol[1:nz-1,:]+ThCol[2:nz,:] +
-#     PresCol[1:nz-1,:]+PresCol[2:nz,:])/dz;
-else
-  @views D[:,1:nz-1] .= -0.5 .* (Th[:,1:nz-1] .+ Th[:,2:nz]) ./ dz;
-end
-@views J.JThW[1,:] .= reshape(PermutedDimsArray(D,(2,1)),nJ,1)
-@views J.JThW[2,1:nJ-1] .= -reshape(PermutedDimsArray(D,(2,1)),nJ,1)[1:nJ-1]
-if Param.Damping
-  K=permute(DampingKoeff(CG,Param),[2 1]);
-  J.JWW .= reshape(K,1,nJ)
-end
-end
+  @inbounds for iC=1:nCol
+    @views Rho = view(U,:,iC,RhoPos)
+    @views Th = view(U,:,iC,ThPos)
 
-function JacSchur(U,CG,Param)
-nz=Param.Grid.nz;
-dz=Param.Grid.dz;
-nCol=size(U,1);
-nJ=nCol*nz;
-nz=Param.Grid.nz;
-RhoPos=Param.RhoPos;
-uPos=Param.uPos;
-vPos=Param.vPos;
-wPos=Param.wPos;
-ThPos=Param.ThPos;
-# W=[zeros(size(U,1),1)
-#    ,U[:,:,wPos]];
+    @views @. D[1:nz-1] = -0.5*(Rho[1:nz-1] + Rho[2:nz]) / dz;
+    @views @. J.JRhoW[1,:,iC] = D
+    @views @. J.JRhoW[2,1:nz-1,iC] = -D[1:nz-1]
 
-RhoCol=permute(U[:,:,RhoPos],[2 1]);
-ThCol=permute(U[:,:,ThPos],[2 1]);
-if strcmp(Param.Thermo,"Energy")
-  W=[zeros(size(U,1),1)
-    ,U[:,:,wPos]];
-  WC=0.5*(W[:,1:nz]+W[:,2:nz+1]);
-  KE=0.5*(U[:,:,uPos].*U[:,:,uPos]+U[:,:,vPos].*U[:,:,vPos]+WC.*WC);
-  Pres=Pressure(U[:,:,ThPos],U[:,:,RhoPos],KE,Param);
-  PresCol=permute(Pres,[2 1]);
-  PhiCol=Param.Grav*repmat(Param.Grid.zP,1,size(U,1));
-else
-  Pres=Pressure(U[:,:,ThPos],U[:,:,ThPos],U[:,:,ThPos],Param);
-  PresCol=permute(Pres,[2 1]);
-end
+    dPresdTh!(dPdTh, Th, Global);
+    @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.5*(Rho[1:nz-1] + Rho[2:nz])) / dz;
+    @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.5*(Rho[1:nz-1] + Rho[2:nz])) / dz;
+    @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
+    @views @. J.JWTh[2,:,iC] = Dm
 
-J = JStruct(;)
-if strcmp(Param.ModelType,"Curl")
-  D=zeros(nz,nCol);
-  D[1:nz-1,:]=-0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])/dz;
-  J.JRhoW=spdiags([reshape(-D,nJ,1) reshape(D,nJ,1)],[-1 0]
-    ,nJ,nJ);
-# J.JRhoW=spdiagm(nJ, nJ,  0 => reshape(D,nJ), -1 => reshape(-D,nJ)[1:end-1])
-  if strcmp(Param.Thermo,"Energy")
-    dPdTh=(Param.Rd/Param.Cvd)./RhoCol;
-  else
-    dPdTh=dPresdTh(ThCol,Param);
+    @views Pressure!(Pres,Th, Th, Th, Global);
+    @views @. D[1:nz-1] = 0.5*(Pres[2:nz] - Pres[1:nz-1]) / dz  /
+      (0.5*(Rho[1:nz-1] + Rho[2:nz]))^2;
+    @views @. J.JWRho[1,2:nz,iC] = D[1:nz-1] 
+    @views @. J.JWRho[2,1:nz,iC] = D 
+
+    @views @. D[1:nz-1] = -0.5*(Th[1:nz-1] + Th[2:nz]) / dz;
+    @views @. J.JThW[1,:,iC] = D
+    @views @. J.JThW[2,1:nz-1,iC] = -D[1:nz-1]
+
+    if Global.Model.Damping
+      @views DampingKoeff!(J.JWW[1,:,iC],CG,Global)
+    end
   end
-  Dp=zeros(nz,nCol);
-  Dm=zeros(nz,nCol);
-  Dp[1:nz-1,:]=dPdTh[2:nz,:] ./(0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])) /dz;
-  Dm[1:nz-1,:]=dPdTh[1:nz-1,:] ./(0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])) /dz;
-  J.JWTh=spdiags([[reshape(Dm,nJ,1);0] [0;reshape(-Dp,nJ,1)]],[0 1]
-    ,nJ,nJ);
-
-  if strcmp(Param.Thermo,"Energy")
-    Dp=zeros(nz,nCol);
-    Dm=zeros(nz,nCol);
-    Dp[1:nz-1,:]=(Param.Rd/Param.Cvd)./
-      (0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])).*
-      (PhiCol[2:nz,:])/dz;
-    Dm[1:nz-1,:]=(Param.Rd/Param.Cvd)./
-      (0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])).*
-      (PhiCol[1:nz-1,:])/dz;
-    D[1:nz-1,:]=-0.5*Param.Grav./
-      (0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:]));
-    J.JWRho=spdiags([[reshape(-Dm+D,nJ,1);0] [0;reshape(Dp+D,nJ,1)]],[0 1]
-      ,nJ,nJ);
-  else
-    D[1:nz-1,:]=0.5*(PresCol[2:nz,:]-PresCol[1:nz-1,:])/Param.Grid.dz ./
-      (0.5*(RhoCol[1:nz-1,:]+RhoCol[2:nz,:])).^2;
-    J.JWRho=spdiags([[reshape(D,nJ,1);0] [0;reshape(D,nJ,1)]],[0 1]
-      ,nJ,nJ);
-  end
-
-  if strcmp(Param.Thermo,"Energy")
-    D[1:nz-1,:]=-0.5*(ThCol[1:nz-1,:]+ThCol[2:nz,:] +
-        PresCol[1:nz-1,:]+PresCol[2:nz,:])/dz;
-  else
-    D[1:nz-1,:]=-0.5*(ThCol[1:nz-1,:]+ThCol[2:nz,:])/dz;
-  end
-  J.JThW=spdiags([reshape(-D,nJ,1) reshape(D,nJ,1)],[-1 0]
-    ,nJ,nJ);
-  if Param.Damping
-    K=permute(DampingKoeff(CG,Param),[2 1]);
-    J.JWW=spdiags(reshape(K,nJ,1),0,nJ,nJ);
-  end
-else
-  # Conservative
-  D=zeros(nz,nCol);
-  D[1:nz-1,:]=-1/dz;
-  J.JRhoW=spdiags([reshape(-D,nJ,1) reshape(D,nJ,1)],[-1 0]
-    ,nJ,nJ);
-
-  dPdTh=dPresdTh(ThCol,Param);
-  Dp=zeros(nz,nCol);
-  Dm=zeros(nz,nCol);
-  Dp[1:nz-1,:]=dPdTh[2:nz,:]/dz;
-  Dm[1:nz-1,:]=dPdTh[1:nz-1,:]/dz;
-  J.JWTh=spdiags([[reshape(Dm,nJ,1);0] [0;reshape(-Dp,nJ,1)]],[0 1]
-    ,nJ,nJ);
-  D[1:nz-1,:]=-0.5*Param.Grav;
-  J.JWRho=spdiags([[reshape(D,nJ,1);0] [0;reshape(D,nJ,1)]],[0 1]
-    ,nJ,nJ);
-  Temp=ThCol./RhoCol;
-  D[1:nz-1,:]=-0.5*(Temp[1:nz-1,:]+Temp[2:nz,:])/dz;
-  J.JThW=spdiags([reshape(-D,nJ,1) reshape(D,nJ,1)],[-1 0]
-    ,nJ,nJ);
 end
-return J
-end
+

@@ -1,18 +1,18 @@
-function RungeKuttaExplicit!(V,dt,Fcn,CG,Param)
-RK=Param.RK;
-f=Param.f
-Vn=Param.Vn
+function RungeKuttaExplicit!(V,dt,Fcn,CG,Global)
+RK=Global.RK;
+f=Global.Cache.f
+Vn=Global.Cache.Vn
 
-Vn .= V
-for iStage=1:RK.nStage
-  V .= Vn;
-  for jStage=1:iStage-1
-    @views V .= V .+ dt*RK.ARKE[iStage,jStage] .* f[:,:,:,jStage];
+@. Vn = V
+@inbounds for iStage=1:RK.nStage
+  @. V = Vn;
+  @inbounds for jStage=1:iStage-1
+    @views @. V = V + dt*RK.ARKE[iStage,jStage]*f[:,:,:,jStage];
   end
-  Fcn(view(f,:,:,:,iStage),V,CG,Param);
+  @views Fcn(f[:,:,:,iStage],V,CG,Global);
 end
-V .= Vn;
-for iStage=1:RK.nStage
-  @views V .= V .+ dt*RK.bRKE[iStage] .* f[:,:,:,iStage];
+@. V = Vn;
+@inbounds for iStage=1:RK.nStage
+  @views @. V = V + dt*RK.bRKE[iStage]*f[:,:,:,iStage];
 end
 end

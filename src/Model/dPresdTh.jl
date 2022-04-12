@@ -1,4 +1,3 @@
-function dPresdTh(RhoTh,Param)
-p=Param.Rd*(Param.Rd*RhoTh/Param.p0).^(Param.kappa/(1-Param.kappa));
-return p
+function dPresdTh!(p,RhoTh,Param)
+  @. p=Param.Phys.Rd*(Param.Phys.Rd*RhoTh/Param.Phys.p0)^(Param.Phys.kappa/(1-Param.Phys.kappa));
 end

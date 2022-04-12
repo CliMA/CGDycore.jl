@@ -1,11 +1,3 @@
-Base.@kwdef mutable struct FaceInfo
-  Glob = nothing
-end
-
-Base.@kwdef mutable struct FaceGlobInfo
-  Ind = nothing
-end
-
 function NumberingFemCG(Grid,PolyOrd)
 if PolyOrd==0
 # 1
@@ -59,88 +51,39 @@ NumGlobN=Grid.NumNodes;
 NumGlobE=Grid.NumEdges*(PolyOrd-1);
 NumGlobF=Grid.NumFaces*(PolyOrd-1)*(PolyOrd-1);
 
-Faces = map(1:Grid.NumFaces) do i
-  FaceInfo(; Glob = 0)
-end
-# Faces[Grid.NumFaces].Glob=0;
+Glob=zeros(Int,(PolyOrd+1)*(PolyOrd+1),Grid.NumFaces)
 for iF=1:Grid.NumFaces
-  Faces[iF].Glob=zeros(Int, (PolyOrd+1)*(PolyOrd+1));
-end
-
-for iF=1:Grid.NumFaces
-  Faces[iF].Glob=zeros(Int, (PolyOrd+1)*(PolyOrd+1));
   Face=Grid.Faces[iF];
   ii=1;
-  for i=1:size(Face.N,2)
-    Faces[iF].Glob[ii]=Grid.Nodes[Face.N[i]].N;
+  for i=1:size(Face.N,1)
+    Glob[ii,iF]=Grid.Nodes[Face.N[i]].N;
     ii=ii+1;
   end
-  for i=1:size(Face.E,2)
+  for i=1:size(Face.E,1)
     iE=Face.E[i];
     if Grid.Edges[iE].N[1]==Face.N[i]
       for j=1:PolyOrd-1
-        Faces[iF].Glob[ii]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
+        Glob[ii,iF]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
         ii=ii+1;
       end
     else
       for j=PolyOrd-1:-1:1
-        Faces[iF].Glob[ii]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
+        Glob[ii,iF]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
         ii=ii+1;
       end
     end
   end
   for j=1:PolyOrd-1
     for i=1:PolyOrd-1
-      Faces[iF].Glob[ii]=NumGlobN+NumGlobE+i+(j-1)*(PolyOrd-1)+(iF-1)*(PolyOrd-1)*(PolyOrd-1);
+      Glob[ii,iF]=NumGlobN+NumGlobE+i+(j-1)*(PolyOrd-1)+(iF-1)*(PolyOrd-1)*(PolyOrd-1);
       ii=ii+1;
     end
   end
-  Faces[iF].Glob = Faces[iF].Glob[Per];
+  Glob[:,iF]=Glob[Per,iF];
 end
 
 NumG=NumGlobN+NumGlobE+NumGlobF;
 NumI=NumG;
-Glob=zeros(Int, (PolyOrd+1)^2,Grid.NumFaces);
-for iF=1:Grid.NumFaces
-  Glob[:,iF]=Faces[iF].Glob;
-end
-IndFace=ones(Int, Grid.NumFaces,1);
-
-for k=1:10
-  for iF=1:Grid.NumFaces
-    if IndFace[iF]==k
-      for i=1:4
-        iN=Grid.Faces[iF].N[i];
-        for j=1:size(Grid.Nodes[iN].F,1)
-          if Grid.Nodes[iN].F[j]!=iF && IndFace[Grid.Nodes[iN].F[j]]>=k
-            IndFace[Grid.Nodes[iN].F[j]]=k+1;
-          end
-        end
-      end
-    end
-  end
-end
-iMax=maximum(IndFace);
-FaceGlob = map(1:iMax) do i
-  FaceGlobInfo(; Ind = Int[0])
-end
-# FaceGlob[iMax].Ind[1]=0;
-for iM=1:iMax
-  iNum=0;
-  for iF=1:Grid.NumFaces
-    if IndFace[iF]==iM
-      iNum=iNum+1;
-    end
-  end
-  FaceGlob[iM].Ind=zeros(Int, iNum,1);
-  iNum=0;
-  for iF=1:Grid.NumFaces
-    if IndFace[iF]==iM
-      iNum=iNum+1;
-      FaceGlob[iM].Ind[iNum]=iF;
-    end
-  end
-end
 Stencil=zeros(Grid.NumFaces,9);
 
 for iF=1:Grid.NumFaces
@@ -150,7 +93,7 @@ for iF=1:Grid.NumFaces
   iS=0;
   for i=1:4
     iN=Grid.Faces[iF].N[i];
-    for j=1:size(Grid.Nodes[iN].F,2)
+    for j=1:size(Grid.Nodes[iN].F,1)
       jF=Grid.Nodes[iN].F[j];
       inside=false;
       for jS=1:iS
@@ -167,7 +110,7 @@ for iF=1:Grid.NumFaces
   end
   Stencil[iF,1:iS]=StencilLoc[1:iS];
 end
-return (Faces,NumG,NumI,Glob,FaceGlob,Stencil)
+return (Glob,NumG,NumI,Stencil)
 end
 
 

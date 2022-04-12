@@ -1,5 +1,5 @@
 function fTBGrd(x,Param)
-if lower(Param.ProfTheta)== "baldaufcart"
+if lowercase(Param.ProfTheta)== "baldaufcart"
     T=Param.T0;
 end
 return T

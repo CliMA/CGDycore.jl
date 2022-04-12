@@ -1,16 +1,19 @@
-function fRho(x,Param)
+function fRho(x,Global)
+    Model=Global.Model
+    Param=Global.Model.Param
+    Phys=Global.Phys
     # global Omega uM lat0G lat1G eN
-    str = lower(Param.ProfRho)
+    str = lowercase(Model.ProfRho)
     if str == "solidbody"
         (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-        z=max(R-Param.RadEarth,0);
+        z=max(R-Phys.RadEarth,0);
         NBr=Param.NBr;
         Th0=Param.Th0;
-        S=NBr*NBr/Param.Grav;
+        S=NBr*NBr/Phys.Grav;
         ThLoc=Th0*exp(z*S);
-        pLoc=Param.p0*(1-Param.Grav/(Param.Cpd*Param.Th0*S)*
-          (1-exp(-S*z))).^(Param.Cpd/Param.Rd);
-        Rho=pLoc./((pLoc/Param.p0).^Param.kappa*Param.Rd.*ThLoc);
+        pLoc=Phys.p0*(1-Phys.Grav/(Phys.Cpd*Param.Th0*S)*
+          (1-exp(-S*z))).^(Phys.Cpd/Phys.Rd);
+        Rho=pLoc./((pLoc/Phys.p0).^Phys.kappa*Phys.Rd.*ThLoc);
     elseif str == "hyperdiffcart"
         Rho=1;
     elseif str == "hyperdiff"
@@ -18,27 +21,27 @@ function fRho(x,Param)
     elseif str == "heldsuarezcart"
         z = x[3]
         temp = Param.T_init + Param.lapse_rate * z 
-        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
-        Rho = pres / Param.Rd / temp
+        pres = Phys.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Phys.Grav / Phys.Rd / Param.lapse_rate)
+        Rho = pres / Phys.Rd / temp
     elseif str == "heldsuarezsphere"
         (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-        z=max(R-Param.RadEarth,0);
+        z=max(R-Phys.RadEarth,0);
         temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
-        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
-        Rho = pres / Param.Rd / temp
+        pres = Phys.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Phys.Grav / Phys.Rd / Param.lapse_rate)
+        Rho = pres / Phys.Rd / temp
     elseif str == "barowavecart"
         eta=EtaFromZ(x[1],x[2],x[3],Param);
-        p=Param.p0*eta;
+        p=Phys.p0*eta;
         T=TBaroWave(x[1],x[2],eta,Param);
-        Rho=p/(Param.Rd*T);
+        Rho=p/(Phys.Rd*T);
     elseif str == "barowavesphere"
         (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-        Z=max(R-Param.RadEarth,0);
+        Z=max(R-Phys.RadEarth,0);
         T0=0.5*(Param.T0E+Param.T0P);
         ConstA=1.0/Param.LapseRate;
         ConstB=(T0-Param.T0P)/(T0*Param.T0P);
         ConstC=0.5*(Param.K+2.0)*(Param.T0E-Param.T0P)/(Param.T0E*Param.T0P);
-        ConstH=Param.Rd*T0/Param.Grav;
+        ConstH=Phys.Rd*T0/Phys.Grav;
         ScaledZ=Z/(Param.B*ConstH);
         Tau1=ConstA*Param.LapseRate/T0*exp(Param.LapseRate/T0*Z)+
           ConstB*(1.0-2.0*ScaledZ*ScaledZ)*exp(-ScaledZ*ScaledZ);
@@ -54,31 +57,31 @@ function fRho(x,Param)
         InteriorTerm=(RRatio*cos(Lat))^Param.K -
           Param.K/(Param.K+2.0)*(RRatio*cos(Lat))^(Param.K+2.0);
         Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
-        Pressure=Param.p0*exp(-Param.Grav/Param.Rd *
+        Pressure=Phys.p0*exp(-Phys.Grav/Phys.Rd *
           (IntTau1-IntTau2*InteriorTerm));
-        Rho=Pressure/(Param.Rd*Temperature);
+        Rho=Pressure/(Phys.Rd*Temperature);
     elseif str == "baldaufsphere"
         (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-        r=r-Param.RadEarth;
-        p=Param.p0*exp(-Param.Grav*r/(Param.Rd*Param.T0));
-        Rho=p/(Param.Rd*Param.T0);
-        T=p/(Rho*Param.Rd);
+        r=r-Phys.RadEarth;
+        p=Phys.p0*exp(-Phys.Grav*r/(Phys.Rd*Param.T0));
+        Rho=p/(Phys.Rd*Param.T0);
+        T=p/(Rho*Phys.Rd);
         d=acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
         T=T+Param.DeltaT*exp(-Param.ExpDist*d)*sin(pi*r/Param.H);
-        Rho=p/(Param.Rd*T);
+        Rho=p/(Phys.Rd*T);
     elseif str == "barowavecart"
         eta=EtaFromZ(x[1],x[2],x[3],Param);
-        p=Param.p0*eta;
+        p=Phys.p0*eta;
         T=TBaroWave(x[1],x[2],eta,Param);
-        Rho=p/(Param.Rd*T);
+        Rho=p/(Phys.Rd*T);
     elseif str == "barowavesphere"
         (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-        Z=max(R-Param.RadEarth,0);
+        Z=max(R-Phys.RadEarth,0);
         T0=0.5*(Param.T0E+Param.T0P);
         ConstA=1.0/Param.LapseRate;
         ConstB=(T0-Param.T0P)/(T0*Param.T0P);
         ConstC=0.5*(Param.K+2.0)*(Param.T0E-Param.T0P)/(Param.T0E*Param.T0P);
-        ConstH=Param.Rd*T0/Param.Grav;
+        ConstH=Phys.Rd*T0/Phys.Grav;
         ScaledZ=Z/(Param.B*ConstH);
         Tau1=ConstA*Param.LapseRate/T0*exp(Param.LapseRate/T0*Z)+
           ConstB*(1.0-2.0*ScaledZ*ScaledZ)*exp(-ScaledZ*ScaledZ);
@@ -87,39 +90,39 @@ function fRho(x,Param)
           ConstB*Z*exp(-ScaledZ*ScaledZ);
         IntTau2=ConstC*Z*exp(-ScaledZ*ScaledZ);
         if Param.Deep
-          RRatio= R/Param.EarthRadius;
+          RRatio= R/Phys.EarthRadius;
         else
           RRatio = 1.0;
         end
         InteriorTerm=(RRatio*cos(Lat))^Param.K -
           Param.K/(Param.K+2.0)*(RRatio*cos(Lat))^(Param.K+2.0);
         Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
-        Pressure=Param.p0*exp(-Param.Grav/Param.Rd *
+        Pressure=Phys.p0*exp(-Phys.Grav/Phys.Rd *
           (IntTau1-IntTau2*InteriorTerm));
-        Rho=Pressure/(Param.Rd*Temperature);
+        Rho=Pressure/(Phys.Rd*Temperature);
     elseif str == "baldaufsphere"
         (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-        r=r-Param.RadEarth;
-        p=Param.p0*exp(-Param.Grav*r/(Param.Rd*Param.T0));
-        Rho=p/(Param.Rd*Param.T0);
-        T=p/(Rho*Param.Rd);
+        r=r-Phys.RadEarth;
+        p=Phys.p0*exp(-Phys.Grav*r/(Phys.Rd*Param.T0));
+        Rho=p/(Phys.Rd*Param.T0);
+        T=p/(Rho*Phys.Rd);
         d=acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
         T=T+Param.DeltaT*exp(-Param.ExpDist*d)*sin(pi*r/Param.H);
-        Rho=p/(Param.Rd*T);
+        Rho=p/(Phys.Rd*T);
     elseif str == "baldaufcart"
-        delta=Param.Grav/(Param.Rd*Param.T0);
+        delta=Phys.Grav/(Phys.Rd*Param.T0);
 
-        p=Param.p0*exp(-delta*x[3]);
+        p=Phys.p0*exp(-delta*x[3]);
 
         dT=Param.DeltaT*exp(-(x[1]-Param.xc)^2/Param.d^2)*sin(pi*x[3]/Param.H);
 
         TLoc=Param.T0+exp(delta/2*x[3])*dT;
-        Rho=p/(Param.Rd*TLoc);
+        Rho=p/(Phys.Rd*TLoc);
     elseif str == "warmbubble2d"
-        Grav=Param.Grav;
-        p0=Param.p0;
-        Rd=Param.Rd;
-        kappa=Param.kappa;
+        Grav=Phys.Grav;
+        p0=Phys.p0;
+        Rd=Phys.Rd;
+        kappa=Phys.kappa;
         Th0=Param.Th0;
         DeltaTh=Param.DeltaTh;
         xC0=Param.xC0;
@@ -143,22 +146,22 @@ function fRho(x,Param)
         zrC0=Param.zrC0;
         x3=x[3];
         x1=x[1];
-        pLoc=Param.p0*(1-Param.kappa*Param.Grav*x[3] /
-          (Param.Rd*T0))^(Param.Cpd/Param.Rd);
+        pLoc=Phys.p0*(1-Phys.kappa*Phys.Grav*x[3] /
+          (Phys.Rd*T0))^(Phys.Cpd/Phys.Rd);
         Rad=sqrt(((x1-xC0)/xrC0)^2+((x3-zC0)/zrC0)^2);
         ThLoc=T0;
         if Rad<1.0e0
-          ThLoc=ThLoc+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Param.p0)^(-Param.kappa);
+          ThLoc=ThLoc+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Phys.p0)^(-Phys.kappa);
         end
-        Rho=pLoc/((pLoc/Param.p0)^Param.kappa*Param.Rd*ThLoc);
+        Rho=pLoc/((pLoc/Phys.p0)^Phys.kappa*Phys.Rd*ThLoc);
     elseif str == "gravityhill"
         z=x[3];
         NBr=Param.NBr;
-        Grav=Param.Grav;
-        p0=Param.p0;
-        Cpd=Param.Cpd;
-        Rd=Param.Rd;
-        kappa=Param.kappa;
+        Grav=Phys.Grav;
+        p0=Phys.p0;
+        Cpd=Phys.Cpd;
+        Rd=Phys.Rd;
+        kappa=Phys.kappa;
         Th0=Param.Th0;
         S=NBr*NBr/Grav;
         ThLoc=Th0*exp(z*S);
@@ -167,23 +170,23 @@ function fRho(x,Param)
     elseif str == "inertiagravitywave"
         z=x[3];
         NBr=Param.NBr;
-        Grav=Param.Grav;
+        Grav=Phys.Grav;
         Th0=Param.Th0;
         S=NBr*NBr/Grav;
         ThB=Th0*exp(z*S);
-        pLoc=Param.p0*(1-Param.Grav/(Param.Cpd*Th0*S)*(1-exp(-S*z))).^(Param.Cpd/Param.Rd);
+        pLoc=Phys.p0*(1-Phys.Grav/(Phys.Cpd*Th0*S)*(1-exp(-S*z))).^(Phys.Cpd/Phys.Rd);
         ThLoc=ThB+Param.DeltaTh*sin(pi*x[3]/Param.H)./(1+(x[1]-Param.xC).^2/Param.a^2);
-        Rho=pLoc./((pLoc/Param.p0).^Param.kappa*Param.Rd.*ThLoc);
+        Rho=pLoc./((pLoc/Phys.p0).^Phys.kappa*Phys.Rd.*ThLoc);
     elseif str == "galewsky"
-        Grav=Param.Grav;
-        Omega=Param.Omega;
+        Grav=Phys.Grav;
+        Omega=Phys.Omega;
         (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-        r=Param.RadEarth;
+        r=Phys.RadEarth;
         Rho=(Grav*Param.H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG,Param)))/Grav +
           Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2.0)*exp(-((pi/4.0-lat)/Param.betaG)^2.0);
     elseif str == "rossbyhaurwitz"
-        Grav=Param.Grav;
-        Omega=Param.Omega;
+        Grav=Phys.Grav;
+        Omega=Phys.Omega;
         H06=8000.0;
         omega6=7.8480e-6;
         K6=7.8480e-6;
@@ -211,8 +214,8 @@ function fRho(x,Param)
         r=sqrt(min(RadiusC*RadiusC,
           (rot_lon-rot_lon0)*(rot_lon-rot_lon0)+(rot_lat-rot_lat0)*(rot_lat-rot_lat0)));
         HeightLoc=hS*(1-r/RadiusC);
-        Rho=(Param.Grav*H05-(Param.RadEarth*Param.Omega*UMax+0.5*UMax*UMax)*sin(rot_lat)*sin(rot_lat))/
-          Param.Grav-HeightLoc;
+        Rho=(Phys.Grav*H05-(Phys.RadEarth*Phys.Omega*UMax+0.5*UMax*UMax)*sin(rot_lat)*sin(rot_lat))/
+          Phys.Grav-HeightLoc;
     elseif str == "spherical"
         (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
         d=acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
@@ -223,8 +226,8 @@ function fRho(x,Param)
         end
     elseif str == "cosinebell"
         (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-        r1=Param.RadEarth*acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
-        R3=Param.RadEarth/3.0e0;
+        r1=Phys.RadEarth*acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
+        R3=Phys.RadEarth/3.0e0;
         if r1<=R3
           Rho=1000.0e0/2.0e0*(1.0e0+cos(pi*r1/R3));
         else

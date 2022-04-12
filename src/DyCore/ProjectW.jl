@@ -14,7 +14,7 @@ for iz=1:nz-1
         fLoc[i,j]=Fun(x,Param)*det;
       end
     end
-    p[CG.Faces[iF].Glob,iz]=p[CG.Faces[iF].Glob,iz]+reshape(fLoc,(OrdPoly+1)*(OrdPoly+1),1);
+    p[CG.Glob[:,iF],iz]=p[CG.Glob[:,iF],iz]+reshape(fLoc,(OrdPoly+1)*(OrdPoly+1),1);
   end
 end
 @views p[:,1:nz-1] .= p[:,1:nz-1]./CG.MW;

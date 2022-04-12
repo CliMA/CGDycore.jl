@@ -1,5 +1,5 @@
 function fVelW(x,Param)
-  str = lower(Param.ProfVelW)
+  str = lowercase(Param.ProfVelW)
   if str == "linear"
     f=x[1];
   elseif str == "heldsuarezcart"

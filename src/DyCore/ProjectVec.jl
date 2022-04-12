@@ -1,26 +1,25 @@
-function ProjectVec(Fun,CG,Param)
+function ProjectVec(Fun,CG,Global)
 OrdPoly=CG.OrdPoly;
 OrdPolyZ=CG.OrdPolyZ;
-nz=Param.Grid.nz;
-uS=zeros(CG.NumG,nz,1);
-vS=zeros(CG.NumG,nz,1);
+nz=Global.Grid.nz;
+uS=zeros(nz,CG.NumG);
+vS=zeros(nz,CG.NumG);
 uLoc=zeros(OrdPoly+1,OrdPoly+1);
 vLoc=zeros(OrdPoly+1,OrdPoly+1);
-JC = Param.cache.JC
-X = Param.cache.X
+JC = Global.Metric.JC
+X = Global.Metric.X
 for iz=1:nz
-  for iF=1:Param.Grid.NumFaces
+  for iF=1:Global.Grid.NumFaces
     for j=1:OrdPoly+1
       for i=1:OrdPoly+1
-        x=0.5*(X[i,j,1,:,iF,iz]+X[i,j,2,:,iF,iz]);
-        det=JC[i,j,iF,iz];
-        (uLoc[i,j],vLoc[i,j])=Fun(x,Param);
-        uLoc[i,j]=uLoc[i,j]*det;
-        vLoc[i,j]=vLoc[i,j]*det;
+        x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
+        (uLoc[i,j],vLoc[i,j])=Fun(x,Global);
+        uLoc[i,j]=uLoc[i,j]*JC[i,j,iz,iF];
+        vLoc[i,j]=vLoc[i,j]*JC[i,j,iz,iF];
       end
     end
-    uS[CG.Faces[iF].Glob,iz]=uS[CG.Faces[iF].Glob,iz]+reshape(uLoc,(OrdPoly+1)*(OrdPoly+1),1);
-    vS[CG.Faces[iF].Glob,iz]=vS[CG.Faces[iF].Glob,iz]+reshape(vLoc,(OrdPoly+1)*(OrdPoly+1),1);
+    uS[iz,CG.Glob[:,iF]]+=reshape(uLoc,(OrdPoly+1)*(OrdPoly+1));
+    vS[iz,CG.Glob[:,iF]]+=reshape(vLoc,(OrdPoly+1)*(OrdPoly+1));
   end
 end
 uS=uS./CG.M;

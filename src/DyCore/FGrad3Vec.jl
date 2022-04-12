@@ -1,103 +1,220 @@
-function FGrad3Vec!(F,cCG,CG,Param)
+function FGrad3Vec!(F,cCG,CG,Global,iF)
+    (;  uPos,
+        vPos,
+        wPos) = Global.Model
+  OP=CG.OrdPoly+1;
+  NF=Global.Grid.NumFaces;
+  nz=Global.Grid.nz;
+
+  D1cCG = Global.Cache.CacheC1
+  D2cCG = Global.Cache.CacheC2
+  D3cCG = Global.Cache.CacheC3
+  D3cCGE = Global.Cache.CacheC4
+  @views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
+  @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+
+
+  @inbounds for iz=1:nz-1
+    @views @. D3cCG[:,:,iz] = 0.5*(cCG[:,:,iz+1] - cCG[:,:,iz])
+    @views @. F[:,:,iz,wPos] -= dXdxIF[:,:,iz+1,3,3]*D3cCG[:,:,iz] 
+  end  
+  @views mul!(D1cCG[:,:,1],CG.DS,cCG[:,:,1])
+  @views mul!(D2cCG[:,:,1],cCG[:,:,1],CG.DST)
+  if nz>1
+    @views  @. D3cCGE[:,:,1] = 1.5*D3cCG[:,:,1] - 0.5*D3cCG[:,:,2]
+    @views mul!(D1cCG[:,:,nz],CG.DS,cCG[:,:,nz])
+    @views mul!(D2cCG[:,:,nz],cCG[:,:,nz],CG.DST)
+    @views  @. D3cCGE[:,:,nz] = D3cCG[:,:,nz-1]
+    @views @. F[:,:,nz,uPos] -= (dXdxIC[:,:,nz,1,1]*D1cCG[:,:,nz] +
+      dXdxIC[:,:,nz,2,1]*D2cCG[:,:,nz] +
+      dXdxIC[:,:,nz,3,1]*D3cCGE[:,:,nz] )
+    @views @. F[:,:,nz,vPos] -= (dXdxIC[:,:,nz,1,2]*D1cCG[:,:,nz] +
+      dXdxIC[:,:,nz,2,2]*D2cCG[:,:,nz] +
+      dXdxIC[:,:,nz,3,2]*D3cCGE[:,:,nz] )
+  else
+    @views  @. D3cCGE[:,:,1] = 0.0  
+  end  
+  @views @. F[:,:,1,uPos] -= (dXdxIC[:,:,1,1,1]*D1cCG[:,:,1] +
+    dXdxIC[:,:,1,2,1]*D2cCG[:,:,1] +
+    dXdxIC[:,:,1,3,1]*D3cCGE[:,:,1] ) 
+  @views @. F[:,:,1,vPos] -= (dXdxIC[:,:,1,1,2]*D1cCG[:,:,1] +
+    dXdxIC[:,:,1,2,2]*D2cCG[:,:,1] +
+    dXdxIC[:,:,1,3,2].*D3cCGE[:,:,1] )
+  @inbounds for iz=2:nz-1
+    @views mul!(D1cCG[:,:,iz],CG.DS,cCG[:,:,iz])
+    @views mul!(D2cCG[:,:,iz],cCG[:,:,iz],CG.DST)
+    @views @. D3cCGE[:,:,iz] = 0.5*(D3cCG[:,:,iz-1] + D3cCG[:,:,iz]);
+    @views @. F[:,:,iz,uPos] -= (dXdxIC[:,:,iz,1,1]*D1cCG[:,:,iz] +
+      dXdxIC[:,:,iz,2,1]*D2cCG[:,:,iz] +
+      dXdxIC[:,:,iz,3,1]*D3cCGE[:,:,iz] )
+    @views @. F[:,:,iz,vPos] -= (dXdxIC[:,:,iz,1,2]*D1cCG[:,:,iz] +
+      dXdxIC[:,:,iz,2,2]*D2cCG[:,:,iz] +
+      dXdxIC[:,:,iz,3,2]*D3cCGE[:,:,iz] )
+  end
+end
+
+function FGrad3RhoVec!(F,cCG,RhoCG,CG,Global,iF)
+    (;  uPos,
+        vPos,
+        wPos) = Global.Model
+  OP=CG.OrdPoly+1;
+  NF=Global.Grid.NumFaces;
+  nz=Global.Grid.nz;
+
+  D1cCG = Global.Cache.CacheC1
+  D2cCG = Global.Cache.CacheC2
+  D3cCG = Global.Cache.CacheC3
+  D3cCGE = Global.Cache.CacheC4
+  @views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
+  @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+
+
+  @inbounds for iz=1:nz-1
+    @views @. D3cCG[:,:,iz] = 0.5*(cCG[:,:,iz+1] - cCG[:,:,iz])
+    @views @. F[:,:,iz,wPos] -= dXdxIF[:,:,iz+1,3,3]*D3cCG[:,:,iz] / 
+      (0.5*(RhoCG[:,:,iz]+RhoCG[:,:,iz+1]))
+  end  
+  @views mul!(D1cCG[:,:,1],CG.DS,cCG[:,:,1])
+  @views mul!(D2cCG[:,:,1],cCG[:,:,1],CG.DST)
+  if nz>1
+    @views  @. D3cCGE[:,:,1] = 1.5*D3cCG[:,:,1] - 0.5*D3cCG[:,:,2]
+    @views mul!(D1cCG[:,:,nz],CG.DS,cCG[:,:,nz])
+    @views mul!(D2cCG[:,:,nz],cCG[:,:,nz],CG.DST)
+    @views  @. D3cCGE[:,:,nz] = D3cCG[:,:,nz-1]
+    @views @. F[:,:,nz,uPos] -= (dXdxIC[:,:,nz,1,1]*D1cCG[:,:,nz] +
+      dXdxIC[:,:,nz,2,1]*D2cCG[:,:,nz] +
+      dXdxIC[:,:,nz,3,1]*D3cCGE[:,:,nz] ) / RhoCG[:,:,nz]
+    @views @. F[:,:,nz,vPos] -= (dXdxIC[:,:,nz,1,2]*D1cCG[:,:,nz] +
+      dXdxIC[:,:,nz,2,2]*D2cCG[:,:,nz] +
+      dXdxIC[:,:,nz,3,2]*D3cCGE[:,:,nz] ) / RhoCG[:,:,nz]
+  else
+    @views  @. D3cCGE[:,:,1] = 0.0  
+  end  
+  @views @. F[:,:,1,uPos] -= (dXdxIC[:,:,1,1,1]*D1cCG[:,:,1] +
+    dXdxIC[:,:,1,2,1]*D2cCG[:,:,1] +
+    dXdxIC[:,:,1,3,1].*D3cCGE[:,:,1] ) / RhoCG[:,:,1]
+  @views @. F[:,:,1,vPos] -= (dXdxIC[:,:,1,1,2]*D1cCG[:,:,1] +
+    dXdxIC[:,:,1,2,2]*D2cCG[:,:,1] +
+    dXdxIC[:,:,1,3,2].*D3cCGE[:,:,1] ) / RhoCG[:,:,1]
+  @inbounds for iz=2:nz-1
+    @views mul!(D1cCG[:,:,iz],CG.DS,cCG[:,:,iz])
+    @views mul!(D2cCG[:,:,iz],cCG[:,:,iz],CG.DST)
+    @views @. D3cCGE[:,:,iz] = 0.5*(D3cCG[:,:,iz-1] + D3cCG[:,:,iz]);
+    @views @. F[:,:,iz,uPos] -= (dXdxIC[:,:,iz,1,1]*D1cCG[:,:,iz] +
+      dXdxIC[:,:,iz,2,1]*D2cCG[:,:,iz] +
+      dXdxIC[:,:,iz,3,1].*D3cCGE[:,:,iz] ) / RhoCG[:,:,iz]
+    @views @. F[:,:,iz,vPos] -= (dXdxIC[:,:,iz,1,2]*D1cCG[:,:,iz] +
+      dXdxIC[:,:,iz,2,2]*D2cCG[:,:,iz] +
+      dXdxIC[:,:,iz,3,2]*D3cCGE[:,:,iz] ) / RhoCG[:,:,iz]
+  end
+end
+
+
+function FGrad3Vec1!(F,cCG,CG,Global)
+    (;  uPos,
+        vPos,
+        wPos) = Global.Model
 OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
 
-D1cCG = Param.CacheC1
-D2cCG = Param.CacheC2
-D3cCG = Param.CacheC3
-D3cCGE =Param.CacheC4
+D1cCG = Global.Cache.CacheC1
+D2cCG = Global.Cache.CacheC2
+D3cCG = Global.Cache.CacheC3
+D3cCGE = Global.Cache.CacheC4
+dXdxIF = Global.Metric.dXdxIF
+dXdxIC = Global.Metric.dXdxIC
 
-mul!(reshape(D1cCG,OP,OP*NF*nz),CG.DS,reshape(cCG,OP,OP*nz*NF))
-mul!(reshape(PermutedDimsArray(D2cCG,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(cCG,(2,1,3,4)),OP,OP*nz*NF))
-@views D3cCG[:,:,:,1:nz-1] .= 0.5*(cCG[:,:,:,2:nz] .- cCG[:,:,:,1:nz-1])
 
-@views F[:,:,:,1:nz-1,Param.wPos] .= F[:,:,:,1:nz-1,Param.wPos] .- Param.dXdxIF33.*D3cCG[:,:,:,1:nz-1];
-
-if nz>1
-@views  D3cCGE[:,:,:,1] .= D3cCG[:,:,:,1];
-@views  D3cCGE[:,:,:,2:end-1] .= 0.5.*(D3cCG[:,:,:,1:end-2] .+ D3cCG[:,:,:,2:end-1]);
-@views  D3cCGE[:,:,:,end] .= D3cCG[:,:,:,end-1];
-else
-    @views  D3cCGE[:,:,:,1] .= 0
+@inbounds for iF=1:NF
+  @inbounds for iz=1:nz-1
+    @views @. D3cCG[:,:,iz,iF] = 0.5*(cCG[:,:,iz+1,iF] - cCG[:,:,iz,iF])
+    @views @. F[:,:,iz,iF,wPos] -= dXdxIF[:,:,iz+1,3,3,iF]*D3cCG[:,:,iz,iF] 
+  end  
+  @views mul!(D1cCG[:,:,1,iF],CG.DS,cCG[:,:,1,iF])
+  @views mul!(D2cCG[:,:,1,iF],cCG[:,:,1,iF],CG.DST)
+  @views  @. D3cCGE[:,:,1,iF] = 1.5*D3cCG[:,:,1,iF] - 0.5*D3cCG[:,:,iF,2]
+  @views @. F[:,:,1,iF,uPos] -= (dXdxIC[:,:,1,1,1,iF]*D1cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,2,1,iF]*D2cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,3,1,iF].*D3cCGE[:,:,1,iF] ) 
+  @views @. F[:,:,1,iF,vPos] -= (dXdxIC[:,:,1,1,2,iF]*D1cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,2,2,iF]*D2cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,3,2,iF].*D3cCGE[:,:,1,iF] )
+  @inbounds for iz=2:nz-1
+    @views mul!(D1cCG[:,:,iz,iF],CG.DS,cCG[:,:,iz,iF])
+    @views mul!(D2cCG[:,:,iz,iF],cCG[:,:,iz,iF],CG.DST)
+    @views @. D3cCGE[:,:,:,iz] .= 0.5.*(D3cCG[:,:,:,iz-1] .+ D3cCG[:,:,:,iz]);
+    @views @. F[:,:,iz,iF,uPos] -= (dXdxIC[:,:,iz,1,1,iF]*D1cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,2,1,iF]*D2cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,3,1,iF].*D3cCGE[:,:,iz,iF] )
+    @views @. F[:,:,iz,iF,vPos] -= (dXdxIC[:,:,iz,1,2,iF]*D1cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,2,2,iF]*D2cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,3,2,iF].*D3cCGE[:,:,iz,iF] )
+  end
+  @views mul!(D1cCG[:,:,nz,iF],CG.DS,cCG[:,:,nz,iF])
+  @views mul!(D2cCG[:,:,nz,iF],cCG[:,:,nz,iF],CG.DST)
+  @views  @. D3cCGE[:,:,nz,iF] = D3cCG[:,:,nz-1,iF]
+  @views @. F[:,:,nz,iF,uPos] -= (dXdxIC[:,:,nz,1,1,iF]*D1cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,2,1,iF]*D2cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,3,1,iF].*D3cCGE[:,:,nz,iF] )
+  @views @. F[:,:,nz,iF,vPos] -= (dXdxIC[:,:,nz,1,2,iF]*D1cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,2,2,iF]*D2cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,3,2,iF].*D3cCGE[:,:,nz,iF] )
+end  
 end
 
-@views F[:,:,:,:,Param.uPos] .= F[:,:,:,:,Param.uPos] .- (Param.dXdxIC11.*D1cCG .+
-  Param.dXdxIC21.*D2cCG .+
-  Param.dXdxIC31.*D3cCGE)
-
-@views F[:,:,:,:,Param.vPos] .= F[:,:,:,:,Param.vPos] .- (Param.dXdxIC12.*D1cCG .+
-  Param.dXdxIC22.*D2cCG .+ Param.dXdxIC32.*D3cCGE)
-
-end
-
-function FGrad3RhoVec!(F,cCG,RhoCG,CG,Param)
+function FGrad3RhoVec1!(F,cCG,RhoCG,CG,Global)
+    (;  uPos,
+        vPos,
+        wPos) = Global.Model
 OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
 
-D1cCG = Param.CacheC1
-D2cCG = Param.CacheC2
-D3cCG = Param.CacheC3
-D3cCGE = Param.CacheC4
+D1cCG = Global.Cache.CacheC1
+D2cCG = Global.Cache.CacheC2
+D3cCG = Global.Cache.CacheC3
+D3cCGE = Global.Cache.CacheC4
+dXdxIF = Global.Metric.dXdxIF
+dXdxIC = Global.Metric.dXdxIC
 
-mul!(reshape(D1cCG,OP,OP*NF*nz),CG.DS,reshape(cCG,OP,OP*nz*NF))
-mul!(reshape(PermutedDimsArray(D2cCG,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(cCG,(2,1,3,4)),OP,OP*nz*NF))
-@views D3cCG[:,:,:,1:end-1] .= 0.5.*(cCG[:,:,:,2:end] .- cCG[:,:,:,1:end-1])
 
-@views F[:,:,:,1:nz-1,Param.wPos] .= F[:,:,:,1:nz-1,Param.wPos] .-
-    Param.dXdxIF33.*D3cCG[:,:,:,1:nz-1] ./ (0.5.*(RhoCG[:,:,:,1:nz-1]+RhoCG[:,:,:,2:nz]))
-if nz>1
-@views  D3cCGE[:,:,:,1] .= D3cCG[:,:,:,1];
-@views  D3cCGE[:,:,:,2:end-1] .= 0.5.*(D3cCG[:,:,:,1:nz-2] .+ D3cCG[:,:,:,2:nz-1]);
-@views  D3cCGE[:,:,:,end] .= D3cCG[:,:,:,nz-1];
-else
-    @views  D3cCGE[:,:,:,1] .= 0
+@inbounds for iF=1:NF
+  for iz=1:nz-1
+    @views @. D3cCG[:,:,iz,iF] = 0.5*(cCG[:,:,iz+1,iF] - cCG[:,:,iz,iF])
+    @views @. F[:,:,iz,iF,wPos] -= dXdxIF[:,:,iz+1,3,3,iF]*D3cCG[:,:,iz,iF] / 
+      (0.5*(RhoCG[:,:,iz,iF]+RhoCG[:,:,iz+1,iF]))
+  end  
+  @views mul!(D1cCG[:,:,1,iF],CG.DS,cCG[:,:,1,iF])
+  @views mul!(D2cCG[:,:,1,iF],cCG[:,:,1,iF],CG.DST)
+  @views  @. D3cCGE[:,:,1,iF] = 1.5*D3cCG[:,:,1,iF] - 0.5*D3cCG[:,:,iF,2]
+  @views @. F[:,:,1,iF,uPos] -= (dXdxIC[:,:,1,1,1,iF]*D1cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,2,1,iF]*D2cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,3,1,iF].*D3cCGE[:,:,1,iF] ) / RhoCG[:,:,1,iF]
+  @views @. F[:,:,1,iF,vPos] -= (dXdxIC[:,:,1,1,2,iF]*D1cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,2,2,iF]*D2cCG[:,:,1,iF] +
+    dXdxIC[:,:,1,3,2,iF].*D3cCGE[:,:,1,iF] ) / RhoCG[:,:,1,iF]
+  @inbounds for iz=2:nz-1
+    @views mul!(D1cCG[:,:,iz,iF],CG.DS,cCG[:,:,iz,iF])
+    @views mul!(D2cCG[:,:,iz,iF],cCG[:,:,iz,iF],CG.DST)
+    @views @. D3cCGE[:,:,:,iz] .= 0.5.*(D3cCG[:,:,:,iz-1] .+ D3cCG[:,:,:,iz]);
+    @views @. F[:,:,iz,iF,uPos] -= (dXdxIC[:,:,iz,1,1,iF]*D1cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,2,1,iF]*D2cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,3,1,iF].*D3cCGE[:,:,iz,iF] ) / RhoCG[:,:,iz,iF]
+    @views @. F[:,:,iz,iF,vPos] -= (dXdxIC[:,:,iz,1,2,iF]*D1cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,2,2,iF]*D2cCG[:,:,iz,iF] +
+      dXdxIC[:,:,iz,3,2,iF].*D3cCGE[:,:,iz,iF] ) / RhoCG[:,:,iz,iF]
+  end
+  @views mul!(D1cCG[:,:,nz,iF],CG.DS,cCG[:,:,nz,iF])
+  @views mul!(D2cCG[:,:,nz,iF],cCG[:,:,nz,iF],CG.DST)
+  @views  @. D3cCGE[:,:,nz,iF] = D3cCG[:,:,nz-1,iF]
+  @views @. F[:,:,nz,iF,uPos] -= (dXdxIC[:,:,nz,1,1,iF]*D1cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,2,1,iF]*D2cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,3,1,iF].*D3cCGE[:,:,nz,iF] ) / RhoCG[:,:,nz,iF]
+  @views @. F[:,:,nz,iF,vPos] -= (dXdxIC[:,:,nz,1,2,iF]*D1cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,2,2,iF]*D2cCG[:,:,nz,iF] +
+    dXdxIC[:,:,nz,3,2,iF].*D3cCGE[:,:,nz,iF] ) / RhoCG[:,:,nz,iF]
+end  
 end
 
-@views F[:,:,:,:,Param.uPos] .= F[:,:,:,:,Param.uPos] .- (Param.dXdxIC11.*D1cCG .+
-  Param.dXdxIC21.*D2cCG .+
-  Param.dXdxIC31.*D3cCGE) ./ RhoCG
-
-@views F[:,:,:,:,Param.vPos] .= F[:,:,:,:,Param.vPos] .- (Param.dXdxIC12.*D1cCG .+
-  Param.dXdxIC22.*D2cCG .+
-  Param.dXdxIC32.*D3cCGE) ./ RhoCG
-
-end
-
-function FGrad3Vec(cCG,CG,Param)
-OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
-D1cCG=reshape(
-  CG.DS*reshape(cCG,OP,OP*NF*nz)
-  ,OP,OP,NF,nz);
-D2cCG= permute(
-  reshape(
-  CG.DS *reshape(permute(cCG
-  ,[2 1 3 4])
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz)
-  ,[2 1 3 4]);
-
-D3cCG=0.5*(cCG[:,:,:,2:nz]-cCG[:,:,:,1:nz-1]);
-
-gradCG=zeros(OP,OP,NF,nz,3);
-gradCG[:,:,:,1:nz-1,3]=Param.dXdxIF[:,:,:,2:nz,3,3].*D3cCG;
-D3cCGE=zeros(OP,OP,NF,nz);
-if nz>1
-  D3cCGE[:,:,:,1]=D3cCG[:,:,:,1];
-  D3cCGE[:,:,:,2:nz-1]=0.5*(D3cCG[:,:,:,1:end-1]+D3cCG[:,:,:,2:end]);
-  D3cCGE[:,:,:,nz]=D3cCG[:,:,:,nz-1];
-end
-
-gradCG[:,:,:,:,1]=Param.dXdxIC[:,:,:,:,1,1].*D1cCG+
-  Param.dXdxIC[:,:,:,:,2,1].*D2cCG+
-  Param.dXdxIC[:,:,:,:,3,1].*D3cCGE;
-gradCG[:,:,:,:,2]=Param.dXdxIC[:,:,:,:,1,2].*D1cCG+
-  Param.dXdxIC[:,:,:,:,2,2].*D2cCG+
-  Param.dXdxIC[:,:,:,:,3,2].*D3cCGE;
-
-return gradCG
-end
 

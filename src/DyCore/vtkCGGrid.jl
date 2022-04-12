@@ -1,26 +1,26 @@
-Base.@kwdef mutable struct vtkGridStruct
-  vtkP = nothing
-  ConnectivityList = nothing
-end
-function vtkCGGrid(CG,Trans,Topo,Param)
+mutable struct vtkCGGridStruct
+  vtkP::Array{Float64, 2}
+  ConnectivityList::Array{Int64, 2}
+end  
+
+function vtkCGGrid(CG,Trans,Topo,Global)
 OrdPoly=CG.OrdPoly;
-nz=Param.Grid.nz;
-NF=Param.Grid.NumFaces;
-if strcmp(Param.Grid.Form,"Sphere") && Param.Flat
-  dTol=2*pi/max(Param.nPanel-1,1);
+nz=Global.Grid.nz;
+NF=Global.Grid.NumFaces;
+if Global.Grid.Form == "Sphere" && Global.Output.Flat
+  dTol=2*pi/max(Global.Output.nPanel-1,1);
 end
 lam=zeros(8,1);
 theta=zeros(8,1);
 
 ivtkP=0;
-vtkGrid = vtkGridStruct(;)
-vtkGrid.vtkP=zeros(3,8*Param.Grid.NumFaces*OrdPoly*OrdPoly*nz);
-vtkGrid.ConnectivityList=reshape(1:1:8*NF*OrdPoly*OrdPoly*nz,
+vtkP=zeros(3,8*NF*OrdPoly*OrdPoly*nz);
+ConnectivityList=reshape(1:1:8*NF*OrdPoly*OrdPoly*nz,
   8,NF*OrdPoly*OrdPoly*nz);
 ivtkc=0;
 X = zeros(8,3)
-for iF=1:Param.Grid.NumFaces
-  for iz=1:Param.Grid.nz
+for iF=1:Global.Grid.NumFaces
+  for iz=1:Global.Grid.nz
     dd=2/OrdPoly;
     eta0=-1;
     for jRef=1:OrdPoly
@@ -28,15 +28,15 @@ for iF=1:Param.Grid.NumFaces
       eta1=eta0+dd;
       for iRef=1:OrdPoly
         ksi1=ksi0+dd;
-        X[1,:]=Trans(ksi0,eta0, Param.Grid.z[iz],Param.Grid.Faces[iF],Topo,Param);
-        X[2,:]=Trans(ksi1,eta0, Param.Grid.z[iz],Param.Grid.Faces[iF],Topo,Param);
-        X[3,:]=Trans(ksi1,eta1, Param.Grid.z[iz],Param.Grid.Faces[iF],Topo,Param);
-        X[4,:]=Trans(ksi0,eta1, Param.Grid.z[iz],Param.Grid.Faces[iF],Topo,Param);
-        X[5,:]=Trans(ksi0,eta0, Param.Grid.z[iz+1],Param.Grid.Faces[iF],Topo,Param);
-        X[6,:]=Trans(ksi1,eta0, Param.Grid.z[iz+1],Param.Grid.Faces[iF],Topo,Param);
-        X[7,:]=Trans(ksi1,eta1, Param.Grid.z[iz+1],Param.Grid.Faces[iF],Topo,Param);
-        X[8,:]=Trans(ksi0,eta1, Param.Grid.z[iz+1],Param.Grid.Faces[iF],Topo,Param);
-        if strcmp(Param.Grid.Form,"Sphere") && Param.Flat
+        X[1,:]=Trans(ksi0,eta0, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
+        X[2,:]=Trans(ksi1,eta0, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
+        X[3,:]=Trans(ksi1,eta1, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
+        X[4,:]=Trans(ksi0,eta1, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
+        X[5,:]=Trans(ksi0,eta0, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
+        X[6,:]=Trans(ksi1,eta0, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
+        X[7,:]=Trans(ksi1,eta1, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
+        X[8,:]=Trans(ksi0,eta1, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
+        if Global.Grid.Form == "Sphere" && Global.Output.Flat
           for i=1:8
           (lam[i],theta[i], _)=cart2sphere(X[i,1],X[i,2],X[i,3]);
           end
@@ -55,16 +55,16 @@ for iF=1:Param.Grid.NumFaces
           end
           for i=1:4
             ivtkP=ivtkP+1;
-            vtkGrid.vtkP[:,ivtkP]=[lam[i],theta[i],Param.Grid.z[iz]/Param.H*3];
+            vtkP[:,ivtkP]=[lam[i],theta[i],Global.Grid.z[iz]/Global.Output.H*3];
           end
           for i=5:8
             ivtkP=ivtkP+1;
-            vtkGrid.vtkP[:,ivtkP]=[lam[i],theta[i],Param.Grid.z[iz+1]/Param.H*3];
+            vtkP[:,ivtkP]=[lam[i],theta[i],Global.Grid.z[iz+1]/Global.Output.H*3];
           end
         else
           for i=1:8
             ivtkP=ivtkP+1;
-            vtkGrid.vtkP[:,ivtkP]=[X[i,1],X[i,2],X[i,3]];
+            vtkP[:,ivtkP]=[X[i,1],X[i,2],X[i,3]];
           end
         end
         ivtkc=ivtkc+1;
@@ -73,7 +73,10 @@ for iF=1:Param.Grid.NumFaces
       eta0=eta1;
     end
   end
-end
-return vtkGrid
+end  
+return vtkCGGridStruct(
+  vtkP,
+  ConnectivityList,
+  )
 end
 

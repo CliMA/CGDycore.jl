@@ -160,8 +160,6 @@ SimDays=1200;
 PrintDay=10;
 nIter=24*3600*SimDays/dtau;
 PrintInt=24*3600*PrintDay/dtau;
-# Print initial conditions
-Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 #
 OP=CG.OrdPoly+1;
 NF=Param.Grid.NumFaces;
@@ -201,6 +199,8 @@ elseif str == "RungeKutta"
   Param.f=zeros(size(U)..., Param.RK.nStage);
 end
 
+# Print initial conditions
+Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
 
 if str == "Rosenbrock"
     @time begin

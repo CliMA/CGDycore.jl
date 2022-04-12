@@ -1,5 +1,5 @@
 function fThetaBGrd(x,Param)
-  str = lower(Param.ProfTheta)
+  str = lowercase(Param.ProfTheta)
   if str == "baldaufcart"
     delta=Param.Grav/(Param.Rd*Param.T0);
     p=Param.p0*exp(-delta*x[3]);

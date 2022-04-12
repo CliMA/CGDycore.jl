@@ -1,77 +1,60 @@
-function FRotCurl2Vec!(F,v1CG,v2CG,CG,Param)
+function FRotCurl2Vec!(F,v1CG,v2CG,CG,Global,iF)
 OP=CG.OrdPoly+1;
-NF=Param.Grid.NumFaces;
-nz=Param.Grid.nz;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
 
-vCon = Param.CacheC1
-DvCon = Param.CacheC2
-vC1 = Param.CacheC3
+vCon = Global.Cache.CacheC1
+DvCon = Global.Cache.CacheC2
+vC1 = Global.Cache.CacheC3
 D1vC1 = vCon
 D2vC1 = DvCon
-JC = Param.cache.JC 
-dXdxIC11 = Param.dXdxIC11
-dXdxIC21 = Param.dXdxIC21
-dXdxIC31 = Param.dXdxIC31
-dXdxIC12 = Param.dXdxIC12
-dXdxIC22 = Param.dXdxIC22
-dXdxIC32 = Param.dXdxIC32
-dXdxIC33 = Param.dXdxIC33
+@views JC = Global.Metric.JC[:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 
-vCon .= v2CG.*dXdxIC11 .- v1CG.*dXdxIC12
-mul!(reshape(vC1,OP,OP*NF*nz),CG.DS,reshape(vCon,OP,OP*nz*NF))
-vCon .=  v2CG.*dXdxIC21 .- v1CG.*dXdxIC22
-mul!(reshape(PermutedDimsArray(DvCon,(2,1,3,4)),OP,OP*NF*nz),CG.DS,reshape(PermutedDimsArray(vCon,(2,1,3,4)),OP,OP*nz*NF))
-vC1 .= vC1 .+ DvCon
+@inbounds for iz=1:nz
+  @views @. vCon[:,:,iz] = v2CG[:,:,iz] * dXdxIC[:,:,iz,1,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,1,2]
+  @views mul!(vC1[:,:,iz],CG.DS,vCon[:,:,iz])
+  @views @. vCon[:,:,iz] = v2CG[:,:,iz] * dXdxIC[:,:,iz,2,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,2,2]
+  @views mul!(DvCon[:,:,iz],vCon[:,:,iz],CG.DST)
+  @views @. vC1[:,:,iz] = vC1[:,:,iz] + DvCon[:,:,iz]
 
-mul!(reshape(D1vC1,OP,OP*NF*nz),CG.DW,reshape(vC1,OP,OP*nz*NF))
-mul!(reshape(PermutedDimsArray(D2vC1,(2,1,3,4)),OP,OP*NF*nz),CG.DW,reshape(PermutedDimsArray(vC1,(2,1,3,4)),OP,OP*nz*NF))
-@views F[:,:,:,:,2] .-= Param.HyperDCurl .* (.-dXdxIC11.*D1vC1 .-
-  dXdxIC21.*D2vC1) ./ JC;
-@views F[:,:,:,:,1] .-= Param.HyperDCurl .* (dXdxIC12.*D1vC1 .+
-  dXdxIC22.*D2vC1) ./ JC;
-
-
+  @views mul!(D1vC1[:,:,iz],CG.DW,vC1[:,:,iz])
+  @views mul!(D2vC1[:,:,iz],vC1[:,:,iz],CG.DWT)
+  @views @. F[:,:,iz,2] -= Global.Model.HyperDCurl*(-dXdxIC[:,:,iz,1,1] * D1vC1[:,:,iz] -
+    dXdxIC[:,:,iz,2,1] * D2vC1[:,:,iz]) / JC[:,:,iz];
+  @views @. F[:,:,iz,1] -= Global.Model.HyperDCurl*(dXdxIC[:,:,iz,1,2] * D1vC1[:,:,iz] +
+    dXdxIC[:,:,iz,2,2] * D2vC1[:,:,iz]) / JC[:,:,iz];
 end
+end  
 
-function FRotCurl2Vec(v1CG,v2CG,CG,Param)
+function FRotCurl2Vec1!(F,v1CG,v2CG,CG,Global)
 OP=CG.OrdPoly+1;
-NF=Grid.NumFaces;
-nz=Grid.nz;
-dXdxIC = cache.dXdxIC
-JC = cache.JC
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
 
-vC1=reshape(
-  CG.DS*reshape(v2CG.*dXdxIC[:,:,:,:,1,1] -
-  v1CG.*dXdxIC[:,:,:,:,1,2]
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz) -
-  permute(
-  reshape(
-  CG.DS*reshape(
-  permute(-v2CG.*dXdxIC[:,:,:,:,2,1] +
-  v1CG.*dXdxIC[:,:,:,:,2,2]
-  ,[2 1 3 4])
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz)
-  ,[2 1 3 4]);
+vCon = Global.Cache.CacheC1
+DvCon = Global.Cache.CacheC2
+vC1 = Global.Cache.CacheC3
+D1vC1 = vCon
+D2vC1 = DvCon
+JC = Global.Metric.JC 
+dXdxIC = Global.Metric.dXdxIC
 
-D1cCG=reshape(
-  CG.DW*reshape(vC1,OP,OP*NF*nz)
-  ,OP,OP,NF,nz);
-D2cCG=permute(reshape(
-  CG.DW
-  *reshape(
-  permute(
-  reshape(vC1,OP,OP,NF,nz)
-  ,[2 1 3 4])
-  ,OP,OP*NF*nz)
-  ,OP,OP,NF,nz)
-  ,[2 1 3 4]);
-RotCG=zeros(OP,OP,NF,nz,2);
-RotCG[:,:,:,:,2]=(-dXdxIC[:,:,:,:,1,1].*D1cCG -
-  dXdxIC[:,:,:,:,2,1].*D2cCG)./JC;
-RotCG[:,:,:,:,1]=(dXdxIC[:,:,:,:,1,2].*D1cCG +
-  dXdxIC[:,:,:,:,2,2].*D2cCG)./JC;
-return RotCG
+@inbounds for iF=1:NF
+  @inbounds for iz=1:nz
+    @views @. vCon[:,:,iz,iF] = v2CG[:,:,iz,iF] * dXdxIC[:,:,iz,1,1,iF] - v1CG[:,:,iz,iF] * dXdxIC[:,:,iz,1,2,iF]
+    @views mul!(vC1[:,:,iz,iF],CG.DS,vCon[:,:,iz,iF])
+    @views @. vCon[:,:,iz,iF] = v2CG[:,:,iz,iF] * dXdxIC[:,:,iz,2,1,iF] - v1CG[:,:,iz,iF] * dXdxIC[:,:,iz,2,2,iF]
+    @views mul!(DvCon[:,:,iz,iF],vCon[:,:,iz,iF],CG.DST)
+    @views @. vC1[:,:,iz,iF] = vC1[:,:,iz,iF] + DvCon[:,:,iz,iF]
+
+    @views mul!(D1vC1[:,:,iz,iF],CG.DW,vC1[:,:,iz,iF])
+    @views mul!(D2vC1[:,:,iz,iF],vC1[:,:,iz,iF],CG.DWT)
+    @views @. F[:,:,iz,iF,2] -= Global.Model.HyperDCurl*(-dXdxIC[:,:,iz,1,1,iF] * D1vC1[:,:,iz,iF] -
+      dXdxIC[:,:,iz,2,1,iF] * D2vC1[:,:,iz,iF]) / JC[:,:,iz,iF];
+    @views @. F[:,:,iz,iF,1] -= Global.Model.HyperDCurl*(dXdxIC[:,:,iz,1,2,iF] * D1vC1[:,:,iz,iF] +
+      dXdxIC[:,:,iz,2,2,iF] * D2vC1[:,:,iz,iF]) / JC[:,:,iz,iF];
+  end
+end  
 end
 

@@ -1,10 +1,13 @@
-function fTheta(x,Param)
-  str = lower(Param.ProfTheta)
+function fTheta(x,Global)
+  Model=Global.Model
+  Param=Global.Model.Param
+  Phys=Global.Phys
+  str = lowercase(Model.ProfTheta)
   if str == "solidbody"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-    z=max(R-Param.RadEarth,0);
+    z=max(R-Phys.RadEarth,0);
     NBr=Param.NBr;
-    Grav=Param.Grav;
+    Grav=Phys.Grav;
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);
@@ -29,27 +32,27 @@ function fTheta(x,Param)
         z = x[3]
         pert = Param.pert*rand() 
         temp = Param.T_init + Param.lapse_rate * z + pert * 0.1 * (z < 5000)
-        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
-        Th = temp * (Param.p0 / pres)^Param.kappa
+        pres = Phys.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Phys.Grav / Phys.Rd / Param.lapse_rate)
+        Th = temp * (Phys.p0 / pres)^Phys.kappa
   elseif str == "heldsuarezsphere"
         (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-        z=max(R-Param.RadEarth,0);
+        z=max(R-Phys.RadEarth,0);
         temp = Param.T_init + Param.lapse_rate * z + rand() * 0.1 * (z < 5000)
-        pres = Param.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Param.Grav / Param.Rd / Param.lapse_rate)
-        Th = temp * (Param.p0 / pres)^Param.kappa
+        pres = Phys.p0 * (1 + Param.lapse_rate / Param.T_init * z)^(-Phys.Grav / Phys.Rd / Param.lapse_rate)
+        Th = temp * (Phys.p0 / pres)^Phys.kappa
   elseif str == "barowavecart"
     eta=EtaFromZ(x[1],x[2],x[3],Param);
-    p=Param.p0*eta;
+    p=Phys.p0*eta;
     T=TBaroWave(x[1],x[2],eta,Param);
-    Th=T*(Param.p0/p)^(Param.Rd/Param.Cpd);
+    Th=T*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "barowavesphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-    Z=max(R-Param.RadEarth,0);
+    Z=max(R-Phys.RadEarth,0);
     T0=0.5*(Param.T0E+Param.T0P);
     ConstA=1.0/Param.LapseRate;
     ConstB=(T0-Param.T0P)/(T0*Param.T0P);
     ConstC=0.5*(Param.K+2.0)*(Param.T0E-Param.T0P)/(Param.T0E*Param.T0P);
-    ConstH=Param.Rd*T0/Param.Grav;
+    ConstH=Phys.Rd*T0/Phys.Grav;
     ScaledZ=Z/(Param.B*ConstH);
     Tau1=ConstA*Param.LapseRate/T0*exp(Param.LapseRate/T0*Z) +
       ConstB*(1.0-2.0*ScaledZ*ScaledZ)*exp(-ScaledZ*ScaledZ);
@@ -65,26 +68,26 @@ function fTheta(x,Param)
     InteriorTerm=(RRatio*cos(Lat))^Param.K -
       Param.K/(Param.K+2.0)*(RRatio*cos(Lat))^(Param.K+2.0);
     Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
-    Pressure=Param.p0*exp(-Param.Grav/Param.Rd *
+    Pressure=Phys.p0*exp(-Phys.Grav/Phys.Rd *
         (IntTau1-IntTau2*InteriorTerm));
-    Th=Temperature*(Param.p0/Pressure)^(Param.Rd/Param.Cpd);
+    Th=Temperature*(Phys.p0/Pressure)^(Phys.Rd/Phys.Cpd);
   elseif str == "baldaufsphere"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-    r=r-Param.RadEarth;
-    p=Param.p0*exp(-Param.Grav*r/(Param.Rd*Param.T0));
-    Rho=p/(Param.Rd*Param.T0);
-    T=p/(Rho*Param.Rd);
+    r=r-Phys.RadEarth;
+    p=Phys.p0*exp(-Phys.Grav*r/(Phys.Rd*Param.T0));
+    Rho=p/(Phys.Rd*Param.T0);
+    T=p/(Rho*Phys.Rd);
     d=acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
     T=T+Param.DeltaT*exp(-Param.ExpDist*d)*sin(pi*r/Param.H);
-    Th=T*(Param.p0/p)^(Param.Rd/Param.Cpd);
+    Th=T*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "baldaufcart"
-    delta=Param.Grav/(Param.Rd*Param.T0);
-    p=Param.p0*exp(-delta*x[3]);
+    delta=Phys.Grav/(Phys.Rd*Param.T0);
+    p=Phys.p0*exp(-delta*x[3]);
 
     dT=Param.DeltaT*exp(-(x[1]-Param.xc)^2/Param.d^2)*sin(pi*x[3]/Param.H);
 
     TLoc=Param.T0+exp(delta/2*x[3])*dT;
-    Th=TLoc*(Param.p0/p)^(Param.Rd/Param.Cpd);
+    Th=TLoc*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "warmbubble2d"
     Th0=Param.Th0;
     DeltaTh=Param.DeltaTh;
@@ -108,24 +111,24 @@ function fTheta(x,Param)
     zrC0=Param.zrC0;
     x3=x[3];
     x1=x[1];
-    pLoc=Param.p0*(1-Param.kappa*Param.Grav*x[3] /
-        (Param.Rd*T0))^(Param.Cpd/Param.Rd);
+    pLoc=Phys.p0*(1-Phys.kappa*Phys.Grav*x[3] /
+        (Phys.Rd*T0))^(Phys.Cpd/Phys.Rd);
     Rad=sqrt(((x1-xC0)/xrC0)^2+((x3-zC0)/zrC0)^2);
     Th=T0;
     if Rad<1.0e0
-      Th=Th+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Param.p0)^(-Param.kappa);
+      Th=Th+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Phys.p0)^(-Phys.kappa);
     end
   elseif str == "gravityhill"
     z=x[3];
     NBr=Param.NBr;
-    Grav=Param.Grav;
+    Grav=Phys.Grav;
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);
   elseif str == "inertiagravitywave"
     z=x[3];
     NBr=Param.NBr;
-    Grav=Param.Grav;
+    Grav=Phys.Grav;
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     ThB=Th0*exp(z*S);
@@ -133,8 +136,8 @@ function fTheta(x,Param)
   elseif str == "galewsky"
     Th=1;
   elseif str == "rossbyhaurwitz"
-    Grav=Param.Grav;
-    Omega=Param.Omega;
+    Grav=Phys.Grav;
+    Omega=Phys.Omega;
     H06=8000.0;
     omega6=7.8480e-6;
     K6=7.8480e-6;
@@ -162,7 +165,7 @@ function fTheta(x,Param)
     r=sqrt(min(RadiusC*RadiusC,
       (rot_lon-rot_lon0)*(rot_lon-rot_lon0)+(rot_lat-rot_lat0)*(rot_lat-rot_lat0)));
     HeightLoc=hS*(1-r/RadiusC);
-    Th=(Param.Grav*H05-(Param.RadEarth*Param.Omega*UMax+0.5*UMax*UMax)*sin(rot_lat)*sin(rot_lat)) /Param.Grav-HeightLoc;
+    Th=(Phys.Grav*H05-(Phys.RadEarth*Phys.Omega*UMax+0.5*UMax*UMax)*sin(rot_lat)*sin(rot_lat)) /Phys.Grav-HeightLoc;
   elseif str == "spherical"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
     d=acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
@@ -173,8 +176,8 @@ function fTheta(x,Param)
     end
   elseif str == "cosinebell"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-    r1=Param.RadEarth*acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
-    R3=Param.RadEarth/3.0e0;
+    r1=Phys.RadEarth*acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
+    R3=Phys.RadEarth/3.0e0;
     if r1<=R3
       Th=1000.0e0/2.0e0*(1.0e0+cos(pi*r1/R3));
     else

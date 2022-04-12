@@ -1,5 +1,8 @@
-function fVel(x,Param)
-    str = lower(Param.ProfVel)
+function fVel(x,Global)
+    Model=Global.Model
+    Param=Global.Model.Param
+    Phys=Global.Phys
+    str = lowercase(Model.ProfVel)
     if str == "solidbody"
       uS=0;
       vS=0;
@@ -26,22 +29,19 @@ function fVel(x,Param)
       end
     elseif str == "barowavesphere"
       (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
-      Z=max(R-Param.RadEarth,0);
-  #     if Z>27500 && abs(Lat-pi/4)<=.1
-  #       aa=3;
-  #     end
+      Z=max(R-Phys.RadEarth,0);
       T0=0.5*(Param.T0E+Param.T0P);
       ConstA=1.0/Param.LapseRate;
       ConstB=(T0-Param.T0P)/(T0*Param.T0P);
       ConstC=0.5*(Param.K+2.0)*(Param.T0E-Param.T0P)/(Param.T0E*Param.T0P);
-      ConstH=Param.Rd*T0/Param.Grav;
+      ConstH=Phys.Rd*T0/Phys.Grav;
       ScaledZ=Z/(Param.B*ConstH);
       Tau1=ConstA*Param.LapseRate/T0*exp(Param.LapseRate/T0*Z) +
         ConstB*(1.0-2.0*ScaledZ*ScaledZ)*exp(-ScaledZ*ScaledZ);
       Tau2=ConstC*(1.0-2.0*ScaledZ*ScaledZ)*exp(-ScaledZ*ScaledZ);
       IntTau2=ConstC*Z*exp(-ScaledZ*ScaledZ);
       if Param.Deep
-        RRatio= R/Param.EarthRadius;
+        RRatio= R/Phys.EarthRadius;
       else
         RRatio = 1.0;
       end
@@ -51,14 +51,14 @@ function fVel(x,Param)
 
       InteriorTermU=(RRatio*cos(Lat))^(Param.K-1.0) -
          (RRatio*cos(Lat))^(Param.K+1.0);
-      BigU=Param.Grav/Param.RadEarth*Param.K *
+      BigU=Phys.Grav/Phys.RadEarth*Param.K *
         IntTau2*InteriorTermU*Temperature;
       if Param.Deep
         RCosLat=R*cos(Lat);
       else
-        RCosLat=Param.RadEarth*cos(Lat);
+        RCosLat=Phys.RadEarth*cos(Lat);
       end
-      OmegaRCosLat =Param.Omega*RCosLat;
+      OmegaRCosLat =Phys.Omega*RCosLat;
 
       # 		if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
       # 			_EXCEPTIONT("Negative discriminant detected.");
@@ -158,7 +158,7 @@ function fVel(x,Param)
     elseif str == "cosinebell"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
       alpha0=pi/2;
-      u0=2*pi*Param.RadEarth/(86400*12);
+      u0=2*pi*Phys.RadEarth/(86400*12);
       uS=u0*(cos(alpha0)*cos(lat)+sin(alpha0)*cos(lon)*sin(lat));
       vS =-u0*sin(alpha0)*sin(lon);
     elseif str == "const"

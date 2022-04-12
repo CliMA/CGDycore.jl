@@ -1,6 +1,6 @@
 function GaussLobattoQuad(n)
-w=zeros(n+1,1);
-x=zeros(n+1,1);
+w=zeros(n+1);
+x=zeros(n+1);
 if n == 1
       w[1]=1;
       w[2]=1;

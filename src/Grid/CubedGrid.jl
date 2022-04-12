@@ -1,15 +1,14 @@
-function CubedGrid(n,OrientFace,Param)
-  Grid = GridStruct(;)
+function CubedGrid(n,OrientFace,Rad,Grid)
   Grid.nBar=[ 0  1   0   1
              -1  0  -1   0];
   Grid.Dim=3;
   Grid.Type="Quad";
-  Grid.Rad=Param.RadEarth;
+  Grid.Rad=Rad;
   Grid.Form="Sphere";
   dd=2.0e0/n;
   NumNodes=(6*(n-1)*(n-1)+12*(n-1)+8);
   Nodes = map(1:NumNodes) do i
-    Node([0 0 0],0);
+    Node();
   end
   NodeNumber=1;
   #Faces
@@ -237,7 +236,7 @@ function CubedGrid(n,OrientFace,Param)
   NumEdges=12*(n-1)*n+12*n;
   NumEdgesI=12*(n-1)*n+12*n;
   Edges = map(1:NumEdges) do i
-    Edge([1 2],Grid,0,0,"",0);
+    Edge([1,2],Grid,0,0,"",0);
   end
   EdgeNumber=1;
   # West
@@ -293,7 +292,7 @@ function CubedGrid(n,OrientFace,Param)
 
   NumFaces=6*n*n;
   Faces = map(1:NumFaces) do i
-    first(Face([0 0 0 0],Grid,0,"x"));
+    Face()
   end
 
   FaceNumber=1;
@@ -349,9 +348,9 @@ end
 if i3>0
   z=tan(i3*pi/(2*n)-0.25*pi);
 end
-N=[x;y;z];
+N=[x,y,z];
 N=N/norm(N)*Rad;
-return N
+return Point(N)
 end
 
 function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
@@ -375,7 +374,7 @@ function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
         NodeNumberE2=NodeNumberE2+1;
         NodeNumber=NodeNumber-1;
       end
-      Edges[EdgeNumber]=Edge([N1 N2],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumber);
+      Edges[EdgeNumber]=Edge([N1,N2],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumber);
       EdgeNumber=EdgeNumber+1;
       NodeNumber=NodeNumber+1;
     end
@@ -396,7 +395,7 @@ function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
         N2=NodeNumberE2;
         NodeNumberE2=NodeNumberE2+1;
       end
-      Edges[EdgeNumber]=Edge([N1 N2],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumber);
+      Edges[EdgeNumber]=Edge([N1,N2],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumber);
       EdgeNumber=EdgeNumber+1;
       NodeNumber=NodeNumber+1;
     end
@@ -418,7 +417,7 @@ function InsertEdgeEdge(n,EdgeNumber,
     if i==n
       N2=NodeNumberE2;
     end
-    Edges[EdgeNumber]=Edge([N1 N2],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumber);
+    Edges[EdgeNumber]=Edge([N1,N2],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumber);
     EdgeNumber=EdgeNumber+1;
     NodeNumber=NodeNumber+1;
   end
@@ -469,7 +468,7 @@ function InsertFaceFace(n,FaceNumber,Type,EdgeNumberStart1,EdgeNumberStart2,
       end
       EdgeNumber1=EdgeNumber1+1;
       EdgeNumber2=EdgeNumber2+1;
-      (Faces[FaceNumber],Grid)=Face([E1 E2 E3 E4],Grid,FaceNumber,Type,OrientFace);
+      (Faces[FaceNumber],Grid)=Face([E1,E2,E3,E4],Grid,FaceNumber,Type,OrientFace;P=zeros(Float64,0,0));
       FaceNumber=FaceNumber+1;
     end
   end

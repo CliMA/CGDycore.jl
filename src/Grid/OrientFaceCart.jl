@@ -1,5 +1,5 @@
-function OrientFaceCart(n,m)
-Orient=n[3];
+function OrientFaceCart(n::Point,m::Point)
+Orient=Int(n.z)
 return Orient
 end
 

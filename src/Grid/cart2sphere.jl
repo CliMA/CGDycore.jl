@@ -11,7 +11,7 @@ phi=asin(z/r);
 
 lam=0;
 if abs(abs(phi)-pi/2)>1.e-14
-  lam=atan2(y,x); # TODO: check translation with Oswald
+  lam=atan(y,x); # TODO: check translation with Oswald
   if lam<0.0
     lam=lam+2*pi;
   end

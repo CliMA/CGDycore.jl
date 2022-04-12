@@ -9,8 +9,8 @@ return Grid
 end
 
 function PosEdgeInFace(Edge,Grid)
-Edge.FE=zeros(1,2);
-for iF=1:size(Edge.F,2)
+Edge.FE=zeros(2);
+for iF=1:size(Edge.F,1)
   F=Edge.F[iF];
   for iE=1:4
     if Edge.EI==Grid.Edges[Grid.Faces[F].E[iE]].EI
@@ -19,7 +19,7 @@ for iF=1:size(Edge.F,2)
     end
   end
 end
-if size(Edge.F,2)>1
+if size(Edge.F,1)>1
   if Edge.FE[1] > Edge.FE[2]
     iTemp=Edge.FE[1];
     Edge.FE[1]=Edge.FE[2];
@@ -56,7 +56,7 @@ if iN>1
   for i=1:4
     Face.N[i]=NTemp[i+iN-1];
     Face.E[i]=ETemp[i+iN-1];
-    Face.P[:,i]=PTemp[:,i+iN-1];
+    Face.P[i]=PTemp[i+iN-1];
   end
 end
 OrientL=zeros(4,1);

@@ -1,176 +1,153 @@
-# TODO: try/test with this
+#function testNHBaroWaveSphere
 
-# function testNHBaroWaveSphere
-# clear all
-# close all
 using CGDycore
 
+OrdPoly = 4
+OrdPolyZ=1
+nz = 20
+nPanel = 8
+NF = 6 * nPanel * nPanel
+
+
 # Physical parameters
-Param=CGDycore.PhysParameters();
+Phys=CGDycore.PhysParameters();
 
-Param.Upwind = false
-Param.RefProfile = false
+#ModelParameters
+Param=(T0E=310.0,
+       T0P=240.0,
+       B=2.0,
+       K=3.0,
+       LapseRate=0.005,
+       U0=-0.5,
+       PertR=1.0/6.0,
+       Up=1.0,
+       PertExpR=0.1,
+       PertLon=pi/9.0,
+       PertLat=2.0*pi/9.0,
+       PertZ=15000.0,
+       NBr=1.e-2,
+       DeltaT=1,
+       ExpDist=5,
+       T0=300,
+       Deep=false,
+       )
+
+Model = CGDycore.Model(Param)
+Model.Coriolis=true
+Model.CoriolisType="Sphere";
+
 # Grid
-nz=10;
-Param.nPanel=4;
-Param.H=30000;
-Param.Grid=CGDycore.CubedGrid(Param.nPanel,CGDycore.OrientFaceSphere,Param);
+H = 30000.0
+Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
+Grid=CGDycore.Grid(nz,Topography)
+Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid);
+CGDycore.AddVerticalGrid!(Grid,nz,H)
 
-Param.Grid.nz=nz;
-Param.Grid.zP=zeros(nz,1);
-Param.Grid.z=zeros(nz+1,1);
-Param.Grid.dz=Param.H/nz;
-Param.Grid.zP[1]=Param.Grid.dz/2;
-for i=2:nz
-  Param.Grid.zP[i]=Param.Grid.zP[i-1]+Param.Grid.dz;
-end
-for i=2:nz+1
-  Param.Grid.z[i]=Param.Grid.z[i-1]+Param.Grid.dz;
-end
+Output=CGDycore.Output(Topography)
 
+Global = CGDycore.Global(Grid,Model,Phys,Output)
+Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 
-# Model
-Param.ModelType="Curl";
-Param.Deep=false;
-Param.HeightLimit=30000.0;
-Param.T0E=310.0;
-Param.T0P=240.0;
-Param.B=2.0;
-Param.K=3.0;
-Param.LapseRate=0.005;
-Param.U0=-0.5;
-Param.PertR=1.0/6.0;
-Param.Up=1.0;
-Param.PertExpR=0.1;
-Param.PertLon=pi/9.0;
-Param.PertLat=2.0*pi/9.0;
-Param.PertZ=15000.0;
-
-Param.StrideDamp=6000;
-Param.Relax=1.e-4;
-Param.Damping=false;
-Param.Coriolis=true;
-Param.CoriolisType="Sphere";
-Param.Buoyancy=true;
-Param.Source=false;
-Param.Th0=300;
-Param.uMax=10;
-Param.vMax=0;
-Param.NBr=1.e-2;
-Param.DeltaT=1;
-Param.ExpDist=5;
-Param.T0=300;
-Param.Equation="Compressible";
-Param.TopoS="";
-Param.lat0=0;
-Param.lon0=pi/2;
-Param.ProfVel="BaroWaveSphere";
-Param.ProfRho="BaroWaveSphere";
-Param.ProfTheta="BaroWaveSphere";
-Param.NumV=5;
-Param.RhoPos=1;
-Param.uPos=2;
-Param.vPos=3;
-Param.wPos=4;
-Param.ThPos=5;
-Param.Thermo="";#"Energy"
-#Held Suarez
-Param.day=3600*24;
-Param.k_a=1/(40 * Param.day);
-Param.k_f=1/Param.day;
-Param.k_s=1/(4*Param.day);
-Param.DeltaT_y=60;
-Param.DeltaTh_z=10;
-Param.T_equator=315;
-Param.T_min=200;
-Param.sigma_b=7/10;
-Param.z_D=20.0e3;
 
 # Discretization
-OrdPoly=4;
-OrdPolyZ=1;
-(CG,Param)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Param);
-LRef=11*1.e5;
-dx=2*pi*Param.RadEarth/4/Param.nPanel/OrdPoly;
-Param.Upwind=false;
-Param.HyperVisc=true;
-Param.HyperDCurl=2.e17/4; #1.e14*(dx/LRef)^3.2;
-Param.HyperDGrad=2.e17/4;
-Param.HyperDDiv=2.e17/4; # Scalars
+(CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global);
+Model.HyperVisc=true;
+Model.HyperDCurl=2.e17/4; #1.e14*(dx/LRef)^3.2;
+Model.HyperDGrad=2.e17/4;
+Model.HyperDDiv=2.e17/4; # Scalars
+
+
+# Initial conditions 
+Model.NumV=5;
+U=zeros(nz,CG.NumG,Model.NumV);
+Model.ProfRho="BaroWaveSphere"
+Model.ProfTheta="BaroWaveSphere"
+Model.ProfVel="BaroWaveSphere"
+Model.RhoPos=1;
+Model.uPos=2;
+Model.vPos=3;
+Model.wPos=4;
+Model.ThPos=5;
+U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Global);
+(U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Global);
+U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Global).*U[:,:,Model.RhoPos];
 
 # Output
-Param.RadPrint=Param.H;
-Param.Flat=true;
-Param.vtkFileName="BaroWaveSphere";
-Param.vtk=0;
-vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphere,CGDycore.Topo,Param);
-Param.cNames = [
+Output.vtkFileName="BaroWave";
+Output.vtk=0;
+Output.Flat=true
+Output.nPanel=nPanel
+Output.RadPrint=H
+Output.H=H
+Output.cNames = [
   "Rho",
   "u",
   "v",
   "w",
   "Th"
 ]
-
-# Initial conditions
-
-U=zeros(CG.NumG,nz,Param.NumV);
-U[:,:,Param.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Param);
-(U[:,:,Param.uPos],U[:,:,Param.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Param);
-U[:,:,Param.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Param).*U[:,:,Param.RhoPos];
-PresStart=CGDycore.Pressure(U[:,:,Param.ThPos],U[:,:,Param.ThPos],U[:,:,Param.ThPos],Param);
-ThB=CGDycore.Project(CGDycore.fThetaBGrd,CG,Param);
+vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphere,CGDycore.Topo,Global);
 
 
-
-# Integration
-time=[0];
-
-#IntMethod="Rosenbrock";
 IntMethod="RungeKutta";
-if strcmp(IntMethod,"Rosenbrock")
+IntMethod="Rosenbrock";
+if IntMethod == "Rosenbrock"
   dtau=200;
 else
-  dtau=8;
+  dtau=1;
 end
-nIter=20000;
-Param.RK=CGDycore.RungeKuttaMethod("RK4");
-Param.ROS=CGDycore.RosenbrockMethod("ROSRK3");
+Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
+Global.RK=CGDycore.RungeKuttaMethod("RK4");
+time=[0.0];
 SimDays=10;
-PrintDay=.5;
+PrintDay=.25;
 nIter=24*3600*SimDays/dtau;
 PrintInt=24*3600*PrintDay/dtau;
-# Print initial conditions
-Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
-#
 
+
+Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV)
 str = IntMethod
+if str == "Rosenbrock"
+  Global.J = CGDycore.JStruct(CG.NumG,nz)
+  Global.Cache.k=zeros(size(U)..., Global.ROS.nStage);
+  Global.Cache.fV=zeros(size(U))
+elseif str == "RungeKutta"
+  Global.Cache.f=zeros(size(U)..., Global.RK.nStage);
+end
+
+# Print initial conditions
+Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global);
+
 if str == "Rosenbrock"
     @time begin
       for i=1:nIter
-        @info "Iteration: $i"
-        U .= CGDycore.RosenbrockSchur(U,dtau,CGDycore.FcnNHCurlVec,CGDycore.JacSchur,CG,Param);
-        time[1] += dtau;
-        if mod(i,PrintInt)==0
-          Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+        Δt = @elapsed begin
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau;
+          if mod(i,PrintInt)==0
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global);
+          end
         end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-    error("Success!")
 
 elseif str == "RungeKutta"
-    for i=1:nIter
-      @info "Iteration: $i"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          @time CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global);
 
-      U .= CGDycore.RungeKuttaExplicit(U,dtau,CGDycore.FcnNHCurlVec,CG,Param);
-
-      time[1] += dtau;
-      if mod(i,PrintInt)==0
-        Param.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Param);
+          time[1] += dtau;
+          if mod(i,PrintInt)==0
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global);
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
 else
   error("Bad str")
 end
-
-
