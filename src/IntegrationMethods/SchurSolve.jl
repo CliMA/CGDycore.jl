@@ -46,6 +46,7 @@ end
 function SchurSolve!(k,v,J,fac,Global)
 #   sw=(spdiags(repmat(invfac2,n,1),0,n,n)-invfac*JWW-JWRho*JRhoW-JWTh*JThW)\
 #     (invfac*rw+JWRho*rRho+JWTh*rTh);
+  @unpack TCacheC1 = Global.ThreadCache
   n1=size(v,1);
   n2=size(v,2);
   n=n1*n2;
@@ -57,6 +58,7 @@ function SchurSolve!(k,v,J,fac,Global)
   JWW=J.JWW
 
  Threads.@threads for in2=1:n2
+    CacheC1 = TCacheC1[Threads.threadid()]
     @views rRho=v[:,in2,1];
     @views rTh=v[:,in2,5];
     @views rw=v[:,in2,4];

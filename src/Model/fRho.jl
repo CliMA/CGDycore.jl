@@ -14,6 +14,12 @@ function fRho(x,Global)
         pLoc=Phys.p0*(1-Phys.Grav/(Phys.Cpd*Param.Th0*S)*
           (1-exp(-S*z))).^(Phys.Cpd/Phys.Rd);
         Rho=pLoc./((pLoc/Phys.p0).^Phys.kappa*Phys.Rd.*ThLoc);
+    elseif str == "schaersphere"
+        (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+        Z=max(R-Param.RadEarth,0);
+        pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(Lat)^2 - 
+          Phys.Grav * Z / (Phys.Rd * Param.TEq))
+        Rho = pLoc / (Phys.Rd * Param.TEq)
     elseif str == "hyperdiffcart"
         Rho=1;
     elseif str == "hyperdiff"
@@ -154,7 +160,7 @@ function fRho(x,Global)
           ThLoc=ThLoc+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Phys.p0)^(-Phys.kappa);
         end
         Rho=pLoc/((pLoc/Phys.p0)^Phys.kappa*Phys.Rd*ThLoc);
-    elseif str == "gravityhill"
+    elseif str == "gravityhill" || str == "schaercart"
         z=x[3];
         NBr=Param.NBr;
         Grav=Phys.Grav;
@@ -255,6 +261,11 @@ function fRho(x,Global)
         Rho=x[1]+1;
     elseif str == "bickley"
         Rho=Param.RhoTheta;
+    elseif str == "isothermal"
+      pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
+      Rho = pLoc / (Phys.Rd * Param.TEq)
+    else
+      Rho=1.0  
     end
     return Rho
 end

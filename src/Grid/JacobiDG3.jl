@@ -23,7 +23,7 @@ for j=1:n
                     (1+ksi[i])*(1+eta[j])*F.P[3].y+
                     (1-ksi[i])*(1+eta[j])*F.P[4].y);
     z=0.5*((1-zeta[k])*z1+(1+zeta[k])*z2);
-    (X[i,j,k,3],dXdx[i,j,k,3,3])=Topo(X[i,j,k,1],X[i,j,k,2],z,Topography);
+    (X[i,j,k,3],dXdx[i,j,k,3,3])=Topo(X[i,j,k,1],X[i,j,k,2],z,z,Topography);
     dXdx[i,j,k,3,3]=0.5*dXdx[i,j,k,3,3]*(z2-z1);
     end
   end

@@ -1,4 +1,6 @@
 function FCurlNon3Vec!(FuHat,v1CG,v2CG,wCG,wCCG,CG,Global,iF)
+@unpack TCacheCC1, TCacheCC2, TCacheCC3, TCacheCC4, TCacheCC5,
+TCacheCF1, TCacheCF2, TCacheCF3, TCacheCF4 = Global.ThreadCache
 OP=CG.OrdPoly+1
 nz=Global.Grid.nz
 
@@ -11,21 +13,21 @@ wPos = Global.Model.wPos
 @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 @views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
 
-vHat = Global.Cache.CacheC1
-Vort3 = Global.Cache.CacheC2
-Temp = Global.Cache.CacheC3
-DZvHat3 = Global.Cache.CacheC4
+vHat = TCacheCC1[Threads.threadid()]
+Vort3 = TCacheCC2[Threads.threadid()]
+Temp = TCacheCC3[Threads.threadid()]
+DZvHat3 = TCacheCC4[Threads.threadid()]
 
-wHat = Global.Cache.CacheF1
-DXwHat11 = Global.Cache.CacheF2
-DYwHat21 = Global.Cache.CacheF3
-DZuuHat31 = Global.Cache.CacheF4
-DZwwHat31 = Global.Cache.CacheC5
+wHat = TCacheCF1[Threads.threadid()]
+DXwHat11 = TCacheCF2[Threads.threadid()]
+DYwHat21 = TCacheCF3[Threads.threadid()]
+DZuuHat31 = TCacheCF4[Threads.threadid()]
+DZwwHat31 = TCacheCC5[Threads.threadid()]
 
-DXwHat12 = Global.Cache.CacheF2
-DYwHat22 = Global.Cache.CacheF3
-DZuuHat32 = Global.Cache.CacheF4
-DZwwHat32 = Global.Cache.CacheC5
+DXwHat12 = TCacheCF2[Threads.threadid()]
+DYwHat22 = TCacheCF3[Threads.threadid()]
+DZuuHat32 = TCacheCF4[Threads.threadid()]
+DZwwHat32 = TCacheCC5[Threads.threadid()]
 
 
 # Fu(1)

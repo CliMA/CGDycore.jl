@@ -3,24 +3,38 @@ ksi=DG.xw;
 eta=DG.xw;
 zeta=DG.xwZ;
 n=DG.OrdPoly+1;
-nz=DG.OrdPolyZ+1;
-X=zeros(n,n,nz,3);
-dXdx=zeros(n,n,nz,3,3);
-dXdxI=zeros(n,n,nz,3,3);
-J=zeros(n,n,nz);
+n3=DG.OrdPolyZ+1;
+X=zeros(n,n,n3,3);
+dXdx=zeros(n,n,n3,3,3);
+dXdxI=zeros(n,n,n3,3,3);
+J=zeros(n,n,n3);
+hR=zeros(n,n,n3);
 theta=zeros(n,n);
 for j=1:n
   for i=1:n
-    for k=1:nz
-      (X[i,j,k,:],J[i,j,k],dXdx[i,j,k,:,:],dXdxI[i,j,k,:,:],theta[i,j]) =
-        JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Topography.Rad);
+    for k=1:n3
+      (X[i,j,k,:],dXdx[i,j,k,:,:],theta[i,j],hR[i,j,k]) =
+        JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Topography.Rad,Topography);
     end
   end
 end
+for k=1:n3
+  dXdx[:,:,k,3,1]=DG.DS*hR[:,:,k];
+  dXdx[:,:,k,3,2]=reshape(hR[:,:,k],n,n)*DG.DST;
+end
+for j=1:n
+  for i=1:n
+    for k=1:n3
+      J[i,j,k]=det(reshape(dXdx[i,j,k,:,:],3,3));
+      dXdxI[i,j,k,:,:]=inv(reshape(dXdx[i,j,k,:,:],3,3))*J[i,j,k];
+    end
+  end
+end
+
 return (X,J,dXdx,dXdxI,theta)
 end
 
-function JacobiSphere3Loc(ksi1,ksi2,ksi3,F,z,Rad)
+function JacobiSphere3Loc(ksi1,ksi2,ksi3,F,z,Rad,Topography)
 
 X1=0.25*(F.P[1].x .*(1-ksi1)*(1-ksi2)+
   F.P[2].x .*(1+ksi1)*(1-ksi2)+
@@ -35,6 +49,8 @@ X3=0.25*(F.P[1].z .*(1-ksi1)*(1-ksi2)+
   F.P[3].z .*(1+ksi1)*(1+ksi2)+
   F.P[4].z .*(1-ksi1)*(1+ksi2));
 zLoc=0.5*((1-ksi3)*z[1]+(1+ksi3)*z[2]);
+(hR,D33)=Topo(X1,X2,X3,zLoc,Topography);
+D33=0.5*D33*(z[2]-z[1]);
 
 r=sqrt(X1^2+X2^2+X3^2);
 f=Rad/r;
@@ -77,13 +93,11 @@ C=0.25*[-1+ksi2  -1+ksi1
   -1-ksi2   1-ksi1];
 D=f*DD*A*B*C;
 D=[D [0;0]
-  0 0 0.5*(z[2]-z[1])];
-J=abs(det(D));
-X=[X1 X2 X3]*(Rad+zLoc);
+  0 0 D33];
+X=[X1 X2 X3]*(Rad+hR);
 
-DI=inv(D)*J;
 
-return (X,J,D,DI,theta)
+return (X,D,theta,hR)
 
 end
 

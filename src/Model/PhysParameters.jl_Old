@@ -22,8 +22,7 @@ Cache3::Array{Float64, 2}
 Cache4::Array{Float64, 2}
 Pres::Array{Float64, 3}
 KE::Array{Float64, 3}
-FCG::Array{Float64, 5}
-FCC::Array{Float64, 4}
+FCG::Array{Float64, 4}
 Vn::Array{Float64, 3}
 RhoCG::Array{Float64, 3}
 v1CG::Array{Float64, 3}
@@ -31,16 +30,11 @@ v2CG::Array{Float64, 3}
 wCG::Array{Float64, 3}
 wCCG::Array{Float64, 3}
 ThCG::Array{Float64, 3}
-Rot1CG::Array{Float64, 4}
-Rot2CG::Array{Float64, 4}
-Grad1CG::Array{Float64, 4}
-Grad2CG::Array{Float64, 4}
-DivCG::Array{Float64, 4}
-Rot1C::Array{Float64, 3}
-Rot2C::Array{Float64, 3}
-Grad1C::Array{Float64, 3}
-Grad2C::Array{Float64, 3}
-DivC::Array{Float64, 3}
+Rot1CG::Array{Float64, 3}
+Rot2CG::Array{Float64, 3}
+Grad1CG::Array{Float64, 3}
+Grad2CG::Array{Float64, 3}
+DivCG::Array{Float64, 3}
 Rot1::Array{Float64, 2}
 Rot2::Array{Float64, 2}
 Grad1::Array{Float64, 2}
@@ -74,8 +68,7 @@ Cache3=zeros(0,0)
 Cache4=zeros(0,0)
 Pres=zeros(0,0,0)
 KE=zeros(0,0,0)
-FCG=zeros(0,0,0,0,0)
-FCC=zeros(0,0,0,0)
+FCG=zeros(0,0,0,0)
 Vn=zeros(0,0,0)
 RhoCG=zeros(0,0,0)
 v1CG=zeros(0,0,0)
@@ -83,16 +76,11 @@ v2CG=zeros(0,0,0)
 wCG=zeros(0,0,0)
 wCCG=zeros(0,0,0)
 ThCG=zeros(0,0,0)
-Rot1CG=zeros(0,0,0,0)
-Rot2CG=zeros(0,0,0,0)
-Grad1CG=zeros(0,0,0,0)
-Grad2CG=zeros(0,0,0,0)
-DivCG=zeros(0,0,0,0)
-Rot1C=zeros(0,0,0)
-Rot2C=zeros(0,0,0)
-Grad1C=zeros(0,0,0)
-Grad2C=zeros(0,0,0)
-DivC=zeros(0,0,0)
+Rot1CG=zeros(0,0,0)
+Rot2CG=zeros(0,0,0)
+Grad1CG=zeros(0,0,0)
+Grad2CG=zeros(0,0,0)
+DivCG=zeros(0,0,0)
 Rot1=zeros(0,0)
 Rot2=zeros(0,0)
 Grad1=zeros(0,0)
@@ -126,7 +114,6 @@ return CacheStruct(
   Pres,
   KE,
   FCG,
-  FCC,
   Vn,
   RhoCG,
   v1CG,
@@ -139,11 +126,6 @@ return CacheStruct(
   Grad1CG,
   Grad2CG,
   DivCG,
-  Rot1C,
-  Rot2C,
-  Grad1C,
-  Grad2C,
-  DivC,
   Rot1,
   Rot2,
   Grad1,
@@ -179,8 +161,7 @@ Cache3=zeros(nz,NumG)
 Cache4=zeros(nz,NumG)
 Pres=zeros(OP,OP,nz)
 KE=zeros(OP,OP,nz)
-FCG=zeros(OP,OP,nz,NF,NumV)
-FCC=zeros(OP,OP,nz,NumV)
+FCG=zeros(OP,OP,nz,NumV)
 Vn=zeros(nz,NumG,NumV)
 RhoCG=zeros(OP,OP,nz)
 v1CG=zeros(OP,OP,nz)
@@ -188,16 +169,11 @@ v2CG=zeros(OP,OP,nz)
 wCG=zeros(OP,OP,nz+1)
 wCCG=zeros(OP,OP,nz)
 ThCG=zeros(OP,OP,nz)
-Rot1CG=zeros(OP,OP,nz,NF)
-Rot2CG=zeros(OP,OP,nz,NF)
-Grad1CG=zeros(OP,OP,nz,NF)
-Grad2CG=zeros(OP,OP,nz,NF)
-DivCG=zeros(OP,OP,nz,NF)
-Rot1C=zeros(OP,OP,nz)
-Rot2C=zeros(OP,OP,nz)
-Grad1C=zeros(OP,OP,nz)
-Grad2C=zeros(OP,OP,nz)
-DivC=zeros(OP,OP,nz)
+Rot1CG=zeros(OP,OP,nz)
+Rot2CG=zeros(OP,OP,nz)
+Grad1CG=zeros(OP,OP,nz)
+Grad2CG=zeros(OP,OP,nz)
+DivCG=zeros(OP,OP,nz)
 Rot1=zeros(nz,NumG)
 Rot2=zeros(nz,NumG)
 Grad1=zeros(nz,NumG)
@@ -231,7 +207,6 @@ return CacheStruct(
   Pres,
   KE,
   FCG,
-  FCC,
   Vn,
   RhoCG,
   v1CG,
@@ -244,11 +219,6 @@ return CacheStruct(
   Grad1CG,
   Grad2CG,
   DivCG,
-  Rot1C,
-  Rot2C,
-  Grad1C,
-  Grad2C,
-  DivC,
   Rot1,
   Rot2,
   Grad1,
@@ -268,7 +238,6 @@ mutable struct OutputStruct
   nPanel::Int
   RadPrint::Float64
   H::Float64
-  OrdPrint::Int
   Topography::NamedTuple
 end
 function Output(Topography::NamedTuple)
@@ -279,7 +248,6 @@ function Output(Topography::NamedTuple)
   nPanel=1
   RadPrint=1000.0
   H=1000.0
-  OrdPrint=1
   return OutputStruct(
   vtk,
   vtkFileName,
@@ -288,7 +256,6 @@ function Output(Topography::NamedTuple)
   nPanel,
   RadPrint,
   H,
-  OrdPrint,
   Topography,
   )
 end  
@@ -458,7 +425,7 @@ function Model(Param::NamedTuple)
    )
 end  
 
-mutable struct GlobalStruct{TCache}
+mutable struct GlobalStruct
   Metric::MetricStruct
   Grid::GridStruct
   Model::ModelStruct
@@ -469,20 +436,20 @@ mutable struct GlobalStruct{TCache}
   Cache::CacheStruct
   J::JStruct
   latN::Array{Float64, 1}
-  ThreadCache::TCache
+  ThreadCache::NamedTuple
 end
 function Global(Grid::GridStruct,
                 Model::ModelStruct,
                 Phys::PhysParameters,
-                Output::OutputStruct,OP,nz,NumV,NumTr,init_tcache=NamedTuple())
+                Output::OutputStruct,OP,nz,NumV)
   Metric=MetricStruct()
   ROS=RosenbrockMethod()
   RK=RungeKuttaMethod()
   Cache=CacheStruct()
   J=JStruct()
   latN=zeros(0)
-  tcache=(;CreateCache(OP,nz,NumV,NumTr)...,init_tcache)
-  return GlobalStruct{typeof(tcache)}(
+  ThreadCache=CreateCache(OP,nz,NumV)
+  return GlobalStruct(
     Metric,
     Grid,
     Model,
@@ -493,6 +460,6 @@ function Global(Grid::GridStruct,
     Cache,
     J,
     latN,
-    tcache,
+    ThreadCache,
     )
 end  

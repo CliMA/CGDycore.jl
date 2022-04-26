@@ -10,11 +10,11 @@ Grid.Form="Planar";
 Pert=0.0;
 PertX=0.2;
 PertY=0.2;
-if strcmp(Boundary.WE,"Period") && strcmp(Boundary.SN,"Period")
+if Boundary.WE == "Period" && Boundary.SN == "Period"
   NumNodes=nx*ny;
-elseif strcmp(Boundary.WE,"Period")
+elseif Boundary.WE == "Period"
   NumNodes=nx*(ny+1);
-elseif strcmp(Boundary.SN,"Period")
+elseif Boundary.SN == "Period"
   NumNodes=(nx+1)*ny;
 else
   NumNodes=(nx+1)*(ny+1);
@@ -44,10 +44,10 @@ end
 y=y0;
 for iy=1:ny+1
   x=x0;
-  if iy==ny+1 && strcmp(Boundary.SN,"Period")
+  if iy==ny+1 && Boundary.SN == "Period"
   else
     for ix=1:nx+1
-      if ix==nx+1 && strcmp(Boundary.WE,"Period")
+      if ix==nx+1 && Boundary.WE == "Period"
       else
         Nodes[NodeNumber]=Node(Point([x,y,0.0]),NodeNumber);
         NodeNumber=NodeNumber+1;
@@ -61,10 +61,10 @@ end
 Grid.Nodes=Nodes;
 Grid.NumNodes=NumNodes;
 
-if strcmp(Boundary.WE,"Period" ) && strcmp(Boundary.SN,"Period")
+if Boundary.WE == "Period"  && Boundary.SN == "Period"
   NumEdges=2*nx*ny;
   NumEdgesX=nx*ny;
-elseif strcmp(Boundary.WE,"Period")
+elseif Boundary.WE == "Period"
   NumEdges=nx*ny+nx*(ny+1);
   NumEdgesX=nx*(ny+1);
 else
@@ -81,7 +81,7 @@ EdgeNumber=1;
 EdgeNumberX=1;
 EdgeNumberY=1;
 BC="";
-if strcmp(Boundary.WE,"Period")
+if Boundary.WE == "Period"
   N1=1;
   N2=nx+1;
 else
@@ -90,9 +90,9 @@ else
 end
 for iy=1:ny
   for ix=1:nx+1
-    if ix==nx+1 && strcmp(Boundary.WE,"Period")
+    if ix==nx+1 && Boundary.WE == "Period"
     else
-      if iy==ny && strcmp(Boundary.SN,"Period")
+      if iy==ny && Boundary.SN == "Period"
         Edges[EdgeNumber]=Edge([N1,1+(ix-1)],Grid,EdgeNumber,EdgeNumber,"Y",EdgeNumberY);
         EdgeNumber=EdgeNumber+1;
         EdgeNumberY=EdgeNumberY+1;
@@ -111,10 +111,10 @@ end
 N1=1;
 N2=2;
 for iy=1:ny+1
-  if iy==ny+1 && strcmp(Boundary.SN,"Period")
+  if iy==ny+1 && Boundary.SN == "Period"
   else
     for ix=1:nx
-      if ix==nx && strcmp(Boundary.WE,"Period")
+      if ix==nx && Boundary.WE == "Period"
         Edges[EdgeNumber]=Edge([N1,1+(iy-1)*nx],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumberX);
         EdgeNumber=EdgeNumber+1;
         EdgeNumberX=EdgeNumberX+1;
@@ -146,7 +146,7 @@ Faces=map(1:NumFaces) do i
 # F
 end
 # Faces[1:NumFaces]=Face([0 0 0 0],Grid,0,"x",[]);
-if strcmp(Boundary.WE,"Period")
+if Boundary.WE == "Period"
   E1=nx*ny+1;
   E3=nx*ny+1+nx;
 else
@@ -158,9 +158,9 @@ E4=1;
 FaceNumber=1;
 Type="o";
 for iy=1:ny
-  if iy==ny && strcmp(Boundary.SN,"Period")
+  if iy==ny && Boundary.SN == "Period"
     for ix=1:nx
-      if ix==nx && strcmp(Boundary.WE,"Period")
+      if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,NumEdgesX+1+(ix-1),E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]]);
         FaceNumber=FaceNumber+1;
@@ -177,7 +177,7 @@ for iy=1:ny
     end
   else
     for ix=1:nx
-      if ix==nx && strcmp(Boundary.WE,"Period")
+      if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,E3,E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]]);
         FaceNumber=FaceNumber+1;

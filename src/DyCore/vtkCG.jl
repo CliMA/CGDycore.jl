@@ -1,26 +1,26 @@
 function vtkCG(c,CG,Global,vtkGrid,vtk)
 OrdPoly=CG.OrdPoly;
+OrdPrint=Global.Output.OrdPrint
 nz=Global.Grid.nz;
 NF=Global.Grid.NumFaces;
 NumV=size(c,3);
 ivtkc=0;
-vtkc=zeros(nz*NF*OrdPoly*OrdPoly,NumV);
+vtkc=zeros(nz*NF*OrdPrint*OrdPrint,NumV);
 for iF=1:Global.Grid.NumFaces
   for iz=1:Global.Grid.nz
-    cLoc=reshape(c[iz,CG.Glob[:,iF],:],OrdPoly+1,OrdPoly+1,NumV);
-    dd=2/OrdPoly;
+    dd=2/OrdPrint;
     eta0=-1;
-    for jRef=1:OrdPoly
+    for jRef=1:OrdPrint
       ksi0=-1;
       eta1=eta0+dd;
-      for iRef=1:OrdPoly
+      for iRef=1:OrdPrint
         ksi1=ksi0+dd;
         cc=zeros(NumV,1);
         for j=1:OrdPoly+1
           for i=1:OrdPoly+1
             cc[:]=cc[:]+reshape(Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
               Lagrange(0.5*(eta0+eta1),CG.xw,j)*
-              cLoc[i,j,:],NumV,1);
+              c[iz,CG.Glob[i,j,iF],:],NumV,1)
           end
         end
         ivtkc=ivtkc+1;

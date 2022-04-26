@@ -6,6 +6,10 @@ function fVel(x,Global)
     if str == "solidbody"
       uS=0;
       vS=0;
+    elseif str == "schaersphere"
+      (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
+      uS = Param.uEq * cos(Lat)
+      vS = 0.0
     elseif str == "hyperdiffcart"
       if abs(x[1]-3000. * 1.e3)<=1000 * 1.e3 && abs(x[2])<=1000 * 1.e3
         uS=sqrt(5000);

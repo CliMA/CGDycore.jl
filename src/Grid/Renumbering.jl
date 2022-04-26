@@ -1,3 +1,11 @@
+function Reordering!(Grid)
+#  Order faces with HilbertOrdering
+#  Old ordering is lexicographic per panel
+#
+  FaceOrderNew=zeros(Int,Grid.NumFaces)
+  NodeOrderNew=zeros(Int,Grid.NumNodes)
+
+end
 function Renumbering(Grid)
 for iF=1:Grid.NumFaces
   Grid.Faces[iF]=RenumberingFace4(Grid.Faces[iF],Grid);

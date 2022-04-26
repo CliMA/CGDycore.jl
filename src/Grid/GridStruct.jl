@@ -19,6 +19,7 @@ mutable struct GridStruct
     nBar3::Array{Float64, 2}
     nBar::Array{Float64, 2}
     Topography::NamedTuple
+    colors::Array{Array{Int, 1}, 1}
 end
 function Grid(nz,Topography)
   zP=zeros(nz)
@@ -39,6 +40,7 @@ function Grid(nz,Topography)
   NumEdgesB=0
   nBar3=zeros(0,0)
   nBar=zeros(0,0)
+  colors=[[]]
    return GridStruct(
     nz,
     zP,
@@ -59,7 +61,8 @@ function Grid(nz,Topography)
     NumEdgesB,
     nBar3,
     nBar,
-    Topography
+    Topography,
+    colors
     )
 end   
     

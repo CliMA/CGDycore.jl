@@ -10,10 +10,9 @@ for iF=1:Global.Grid.NumFaces
     for j=1:OrdPoly+1
       for i=1:OrdPoly+1
         x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
-        fLoc[i,j]=Fun(x,Global)*JC[i,j,iz,iF];
+        p[iz,CG.Glob[i,j,iF]]+=Fun(x,Global)*JC[i,j,iz,iF]
       end
     end
-    p[iz,CG.Glob[:,iF]]=p[iz,CG.Glob[:,iF]]+reshape(fLoc,(OrdPoly+1)*(OrdPoly+1));
   end
 end
 p=p./CG.M;

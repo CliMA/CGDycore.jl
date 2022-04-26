@@ -1,7 +1,7 @@
 mutable struct CGStruct
     OrdPoly::Int
     OrdPolyZ::Int
-    Glob::Array{Int, 2}
+    Glob::Array{Int, 3}
     Stencil::Array{Float64, 2}
     NumG::Int
     NumI::Int
@@ -18,7 +18,7 @@ end
 function CGStruct()
  OrdPoly=0
 OrdPolyZ=0
-Glob=zeros(0,0)
+Glob=zeros(0,0,0)
 Stencil=zeros(0,0)
 NumG=0
 NumI=0
@@ -114,11 +114,9 @@ lat = Global.Metric.lat
 latN = Global.latN
 OP=CG.OrdPoly+1;
 for iF=1:NF
-  iG=0
-  for iP=1:OP
-    for jP=1:OP
-      iG=iG+1
-      ind=CG.Glob[iG,iF]
+  for jP=1:OP
+    for iP=1:OP
+      ind=CG.Glob[iP,jP,iF]
       latN[ind] = latN[ind] + lat[iP,jP,iF]
     end
   end

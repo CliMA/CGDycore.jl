@@ -5,11 +5,9 @@ M=zeros(nz,CG.NumG);
 J = Global.Metric.J
 for iF=1:Global.Grid.NumFaces
   for iz=1:nz  
-    iG=0
     for j=1:OrdPoly+1
       for i=1:OrdPoly+1
-        iG += 1  
-        ind = CG.Glob[iG,iF]  
+        ind = CG.Glob[i,j,iF]  
           M[iz,ind] += 0.5*(J[i,j,1,iz,iF]+J[i,j,2,iz,iF])
       end
     end

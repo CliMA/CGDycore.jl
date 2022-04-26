@@ -1,3 +1,16 @@
+function Damping!(F,W,Global)
+for iz=Global.Grid.nz-1:-1:1
+  zLoc=Global.Grid.z[iz+1];
+  if zLoc>=Global.Grid.H-Global.Model.StrideDamp
+    Damp = Global.Model.Relax*
+      sin(0.5*pi*(1.0 - (Global.Grid.H - zLoc)/Global.Model.StrideDamp))^2;
+    F[iz]-=Damp*W[iz];
+  else
+    break
+  end
+end
+end
+
 function DampingKoeff!(K,CG,Global)
 StrideDamp = Global.Model.StrideDamp
 Relax = Global.Model.Relax

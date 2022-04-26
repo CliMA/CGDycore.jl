@@ -51,35 +51,37 @@ NumGlobN=Grid.NumNodes;
 NumGlobE=Grid.NumEdges*(PolyOrd-1);
 NumGlobF=Grid.NumFaces*(PolyOrd-1)*(PolyOrd-1);
 
-Glob=zeros(Int,(PolyOrd+1)*(PolyOrd+1),Grid.NumFaces)
+Glob=zeros(Int,PolyOrd+1,PolyOrd+1,Grid.NumFaces)
+GlobLoc=zeros(Int,(PolyOrd+1)*(PolyOrd+1))
 for iF=1:Grid.NumFaces
   Face=Grid.Faces[iF];
   ii=1;
   for i=1:size(Face.N,1)
-    Glob[ii,iF]=Grid.Nodes[Face.N[i]].N;
+    GlobLoc[ii]=Grid.Nodes[Face.N[i]].N;
     ii=ii+1;
   end
   for i=1:size(Face.E,1)
     iE=Face.E[i];
     if Grid.Edges[iE].N[1]==Face.N[i]
       for j=1:PolyOrd-1
-        Glob[ii,iF]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
+        GlobLoc[ii]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
         ii=ii+1;
       end
     else
       for j=PolyOrd-1:-1:1
-        Glob[ii,iF]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
+        GlobLoc[ii]=(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN;
         ii=ii+1;
       end
     end
   end
   for j=1:PolyOrd-1
     for i=1:PolyOrd-1
-      Glob[ii,iF]=NumGlobN+NumGlobE+i+(j-1)*(PolyOrd-1)+(iF-1)*(PolyOrd-1)*(PolyOrd-1);
+      GlobLoc[ii]=NumGlobN+NumGlobE+i+(j-1)*(PolyOrd-1)+(iF-1)*(PolyOrd-1)*(PolyOrd-1);
       ii=ii+1;
     end
   end
-  Glob[:,iF]=Glob[Per,iF];
+  GlobLoc=GlobLoc[Per]
+  Glob[:,:,iF]=reshape(GlobLoc,PolyOrd+1,PolyOrd+1);
 end
 
 NumG=NumGlobN+NumGlobE+NumGlobF;

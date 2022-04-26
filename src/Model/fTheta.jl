@@ -11,6 +11,12 @@ function fTheta(x,Global)
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);
+  elseif str == "schaersphere"
+    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+    Z=max(R-Param.RadEarth,0);
+    pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(Lat)^2 -
+      Phys.Grav * Z / (Phys.Rd * Param.TEq))
+    Th=Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
   elseif str == "hyperdiffcart"
     if abs(x[1]-3000. * 1.e3)<=1000 * 1.e3 && abs(x[2])<=1000 * 1.e3
       Th=100.;
@@ -118,7 +124,7 @@ function fTheta(x,Global)
     if Rad<1.0e0
       Th=Th+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Phys.p0)^(-Phys.kappa);
     end
-  elseif str == "gravityhill"
+  elseif str == "gravityhill" || str == "schaercart"
     z=x[3];
     NBr=Param.NBr;
     Grav=Phys.Grav;
@@ -205,6 +211,9 @@ function fTheta(x,Global)
     Th=x[1]+1;
   elseif str == "bickley"
     Th=Param.RhoTheta;
+  elseif str == "isothermal"
+    pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
+    Th=Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)  
 end
 return Th
 end

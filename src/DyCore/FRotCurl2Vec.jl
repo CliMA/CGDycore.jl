@@ -1,60 +1,89 @@
 function FRotCurl2Vec!(F,v1CG,v2CG,CG,Global,iF)
+@unpack TCacheC1, TCacheC2, TCacheC3 = Global.ThreadCache
 OP=CG.OrdPoly+1;
 NF=Global.Grid.NumFaces;
 nz=Global.Grid.nz;
 
-vCon = Global.Cache.CacheC1
-DvCon = Global.Cache.CacheC2
-vC1 = Global.Cache.CacheC3
-D1vC1 = vCon
-D2vC1 = DvCon
+vCon = TCacheC1[Threads.threadid()]
+DvCon = TCacheC2[Threads.threadid()]
+vC1 = TCacheC3[Threads.threadid()]
+D1vC1 = TCacheC1[Threads.threadid()]
+D2vC1 = TCacheC2[Threads.threadid()]
 @views JC = Global.Metric.JC[:,:,:,iF];
 @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 
 @inbounds for iz=1:nz
-  @views @. vCon[:,:,iz] = v2CG[:,:,iz] * dXdxIC[:,:,iz,1,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,1,2]
-  @views mul!(vC1[:,:,iz],CG.DS,vCon[:,:,iz])
-  @views @. vCon[:,:,iz] = v2CG[:,:,iz] * dXdxIC[:,:,iz,2,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,2,2]
-  @views mul!(DvCon[:,:,iz],vCon[:,:,iz],CG.DST)
-  @views @. vC1[:,:,iz] = vC1[:,:,iz] + DvCon[:,:,iz]
+  @views @. vCon = v2CG[:,:,iz] * dXdxIC[:,:,iz,1,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,1,2]
+  mul!(vC1,CG.DS,vCon)
+  @views @. vCon = v2CG[:,:,iz] * dXdxIC[:,:,iz,2,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,2,2]
+  mul!(DvCon,vCon,CG.DST)
+  @views @. vC1 = vC1 + DvCon
 
-  @views mul!(D1vC1[:,:,iz],CG.DW,vC1[:,:,iz])
-  @views mul!(D2vC1[:,:,iz],vC1[:,:,iz],CG.DWT)
-  @views @. F[:,:,iz,2] -= Global.Model.HyperDCurl*(-dXdxIC[:,:,iz,1,1] * D1vC1[:,:,iz] -
-    dXdxIC[:,:,iz,2,1] * D2vC1[:,:,iz]) / JC[:,:,iz];
-  @views @. F[:,:,iz,1] -= Global.Model.HyperDCurl*(dXdxIC[:,:,iz,1,2] * D1vC1[:,:,iz] +
-    dXdxIC[:,:,iz,2,2] * D2vC1[:,:,iz]) / JC[:,:,iz];
+  @views mul!(D1vC1,CG.DW,vC1)
+  @views mul!(D2vC1,vC1,CG.DWT)
+  @views @. F[:,:,iz,2] -= Global.Model.HyperDCurl*(-dXdxIC[:,:,iz,1,1] * D1vC1 -
+    dXdxIC[:,:,iz,2,1] * D2vC1) / JC[:,:,iz];
+  @views @. F[:,:,iz,1] -= Global.Model.HyperDCurl*( dXdxIC[:,:,iz,1,2] * D1vC1 +
+    dXdxIC[:,:,iz,2,2] * D2vC1) / JC[:,:,iz];
 end
 end  
 
-function FRotCurl2Vec1!(F,v1CG,v2CG,CG,Global)
+function FRotCurl2VecDSS!(Rot1CG,Rot2CG,v1CG,v2CG,CG,Global,iF)
+@unpack TCacheC1, TCacheC2, TCacheC3 = Global.ThreadCache
 OP=CG.OrdPoly+1;
 NF=Global.Grid.NumFaces;
 nz=Global.Grid.nz;
 
-vCon = Global.Cache.CacheC1
-DvCon = Global.Cache.CacheC2
-vC1 = Global.Cache.CacheC3
-D1vC1 = vCon
-D2vC1 = DvCon
-JC = Global.Metric.JC 
-dXdxIC = Global.Metric.dXdxIC
 
-@inbounds for iF=1:NF
-  @inbounds for iz=1:nz
-    @views @. vCon[:,:,iz,iF] = v2CG[:,:,iz,iF] * dXdxIC[:,:,iz,1,1,iF] - v1CG[:,:,iz,iF] * dXdxIC[:,:,iz,1,2,iF]
-    @views mul!(vC1[:,:,iz,iF],CG.DS,vCon[:,:,iz,iF])
-    @views @. vCon[:,:,iz,iF] = v2CG[:,:,iz,iF] * dXdxIC[:,:,iz,2,1,iF] - v1CG[:,:,iz,iF] * dXdxIC[:,:,iz,2,2,iF]
-    @views mul!(DvCon[:,:,iz,iF],vCon[:,:,iz,iF],CG.DST)
-    @views @. vC1[:,:,iz,iF] = vC1[:,:,iz,iF] + DvCon[:,:,iz,iF]
+vCon = TCacheC1[Threads.threadid()]
+DvCon = TCacheC2[Threads.threadid()]
+vC1 = TCacheC3[Threads.threadid()]
+D1vC1 = TCacheC1[Threads.threadid()]
+D2vC1 = TCacheC2[Threads.threadid()]
 
-    @views mul!(D1vC1[:,:,iz,iF],CG.DW,vC1[:,:,iz,iF])
-    @views mul!(D2vC1[:,:,iz,iF],vC1[:,:,iz,iF],CG.DWT)
-    @views @. F[:,:,iz,iF,2] -= Global.Model.HyperDCurl*(-dXdxIC[:,:,iz,1,1,iF] * D1vC1[:,:,iz,iF] -
-      dXdxIC[:,:,iz,2,1,iF] * D2vC1[:,:,iz,iF]) / JC[:,:,iz,iF];
-    @views @. F[:,:,iz,iF,1] -= Global.Model.HyperDCurl*(dXdxIC[:,:,iz,1,2,iF] * D1vC1[:,:,iz,iF] +
-      dXdxIC[:,:,iz,2,2,iF] * D2vC1[:,:,iz,iF]) / JC[:,:,iz,iF];
-  end
-end  
+@views JC = Global.Metric.JC[:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+
+@inbounds for iz=1:nz
+  @views @. vCon = v2CG[:,:,iz] * dXdxIC[:,:,iz,1,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,1,2]
+  @views mul!(vC1,CG.DS,vCon)
+  @views @. vCon = v2CG[:,:,iz] * dXdxIC[:,:,iz,2,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,2,2]
+  @views mul!(DvCon,vCon,CG.DST)
+  @views @. vC1 = vC1 + DvCon
+
+  @views mul!(D1vC1,CG.DW,vC1)
+  @views mul!(D2vC1,vC1,CG.DWT)
+  @views @. Rot2CG[:,:,iz] = (-dXdxIC[:,:,iz,1,1] * D1vC1 -
+    dXdxIC[:,:,iz,2,1] * D2vC1) / JC[:,:,iz];
+  @views @. Rot1CG[:,:,iz] = (dXdxIC[:,:,iz,1,2] * D1vC1 +
+    dXdxIC[:,:,iz,2,2] * D2vC1) / JC[:,:,iz];
 end
+
+end
+
+
+function FRotCurl2VecDSS!(Rot1CG,Rot2CG,v1CG,v2CG,dXdxIC,JC,CG,ThreadCache)
+@unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
+
+vCon = TCacheC1[Threads.threadid()]
+DvCon = TCacheC2[Threads.threadid()]
+vC1 = TCacheC3[Threads.threadid()]
+D1vC1 = TCacheC1[Threads.threadid()]
+D2vC1 = TCacheC2[Threads.threadid()]
+
+  @views @fastmath @. vCon = v2CG * dXdxIC[:,:,1,1] - v1CG * dXdxIC[:,:,1,2]
+  @views mul!(vC1,CG.DS,vCon)
+  @views @fastmath @. vCon = v2CG * dXdxIC[:,:,2,1] - v1CG * dXdxIC[:,:,2,2]
+  @views mul!(DvCon,vCon,CG.DST)
+  @views @fastmath @. vC1 = vC1 + DvCon
+
+  @views mul!(D1vC1,CG.DW,vC1)
+  @views mul!(D2vC1,vC1,CG.DWT)
+  @views @fastmath @. Rot2CG = (-dXdxIC[:,:,1,1] * D1vC1 -
+    dXdxIC[:,:,2,1] * D2vC1) / JC
+  @views @fastmath @. Rot1CG = (dXdxIC[:,:,1,2] * D1vC1 +
+    dXdxIC[:,:,2,2] * D2vC1) / JC
+
+end
+
 

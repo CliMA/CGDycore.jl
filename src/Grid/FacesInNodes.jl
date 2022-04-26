@@ -13,6 +13,19 @@ for iF=1:Grid.NumFaces
   for iN=1:size(Face.N,1)
     NumFacesPerNode[Face.N[iN]]=NumFacesPerNode[Face.N[iN]]+1;
     FacesPerNode[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=iF;
+#   if iN == 1
+#     Ind1[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=1
+#     Ind2[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=1
+#   elseif iN == 2
+#     Ind1[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=OrdPoly+1
+#     Ind2[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=1
+#   elseif iN == 3
+#     Ind1[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=OrdPoly+1
+#     Ind2[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=OrdPoly+1
+#   elseif iN == 4
+#     Ind1[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=1
+#     Ind2[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=OrdPoly+1
+#   end
   end
 end
 for iN=1:Grid.NumNodes

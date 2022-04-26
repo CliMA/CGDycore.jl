@@ -1,15 +1,9 @@
 module CGDycore
 
-
-#=
-Look for
-
-# TODO: check translation with Oswald
-=#
-
 using LinearAlgebra
 using SparseArrays
-#include("matlab_intrinsics.jl")
+using UnPack
+using StaticArrays
 
 include("Grid/Node.jl")
 include("Grid/Edge.jl")
@@ -32,6 +26,7 @@ include("Grid/cart2sphere.jl")
 include("Grid/hS.jl")
 include("Grid/sphere2cart.jl")
 include("Grid/vtkWriteHex.jl")
+include("Grid/Connectivity.jl")
 
 include("DG/DLagrange.jl")
 include("DG/DerivativeMatrixSingle.jl")
@@ -42,18 +37,15 @@ include("DyCore/Average.jl")
 include("DyCore/AverageFB.jl")
 include("DyCore/BoundaryW.jl")
 include("DyCore/BoundaryWOutput.jl")
-include("DyCore/DampingKoeff.jl")
+include("DyCore/Damping.jl")
 include("DyCore/Discretization.jl")
 # include("DyCore/Energy.jl")
 include("DyCore/FCurlNon3Vec.jl")
 include("DyCore/FDiv3Vec.jl")
-include("DyCore/FDivGrad2VecDSS.jl")
 include("DyCore/FDivRhoGrad2Vec.jl")
 include("DyCore/FGrad3Vec.jl")
 include("DyCore/FGradDiv2Vec.jl")
-include("DyCore/FGradDiv2VecDSS.jl")
 include("DyCore/FRotCurl2Vec.jl")
-include("DyCore/FRotCurl2VecDSS.jl")
 include("DyCore/FVort2VecDSS.jl")
 include("DyCore/FcnNHCurlVec.jl")
 # include("DyCore/HyperDiffusionVec.jl")
@@ -68,6 +60,7 @@ include("DyCore/simpson.jl")
 include("DyCore/vtkCG.jl")
 include("DyCore/vtkCGGrid.jl")
 include("DyCore/vtkOutput.jl")
+include("DyCore/ThreadCache.jl")
 
 include("IntegrationMethods/RosenbrockMethod.jl")
 include("IntegrationMethods/RosenbrockSchur.jl")
@@ -88,5 +81,7 @@ include("Model/fThetaBGrd.jl")
 include("Model/fVel.jl")
 include("Model/fVelW.jl")
 include("Model/fpBGrd.jl")
+
+#include("DyCoreStatic/ColumnElement.jl")
 
 end

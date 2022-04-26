@@ -1,5 +1,6 @@
 mutable struct RungeKuttaStruct
   nStage::Int
+  Type::String
   ARKE::Array{Float64, 2}
   bRKE::Array{Float64, 1}
   ARKI::Array{Float64, 2}
@@ -8,6 +9,7 @@ mutable struct RungeKuttaStruct
 end
 function RungeKuttaMethod()
   nStage=0
+  Type=""
   ARKE=zeros(0,0)
   bRKE=zeros(0)
   ARKI=zeros(0,0)
@@ -15,6 +17,7 @@ function RungeKuttaMethod()
   gRKI=zeros(0)
   return RungeKuttaStruct(
   nStage,
+  Type,
   ARKE,
   bRKE,
   ARKI,
@@ -73,11 +76,24 @@ elseif str == "RK1I"
     RK.bRKE[1]=1;
 elseif str == "RK4"
     nStage=4;
+    Type=""
     ARKE=zeros(nStage,nStage);
     ARKE[2,1]=1/2;
     ARKE[3,2]=1/2;
     ARKE[4,3]=1;
     bRKE=[1/6,1/3,1/3,1/6];
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
+elseif str == "Kinnmark"
+    nStage=5;
+    Type="LowStorage"
+    ARKE=zeros(nStage,nStage);
+    ARKE[2,1]=1/5;
+    ARKE[3,2]=1/5;
+    ARKE[4,3]=1/3;
+    ARKE[5,4]=1/2;
+    bRKE=[0,0,0,0,1];
     ARKI=zeros(0,0)
     bRKI=zeros(0)
     gRKI=zeros(0)
@@ -132,6 +148,7 @@ elseif str == "DBM453"
 end
   return RungeKuttaStruct(
   nStage,
+  Type,
   ARKE,
   bRKE,
   ARKI,

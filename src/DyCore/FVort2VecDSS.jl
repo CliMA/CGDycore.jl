@@ -19,12 +19,12 @@ end
 
 
 function FVort2Vec!(Vort,U,CG,Global)
-(;  uPos,
-    vPos) = Global.Model
 
 OP=CG.OrdPoly+1;
 NF=Global.Grid.NumFaces;
 nz=Global.Grid.nz;
+uPos=Global.Model.uPos
+vPos=Global.Model.vPos
 v1CG = Global.Cache.v1CG
 v2CG = Global.Cache.v2CG
 VortCG = Global.Cache.DivCG

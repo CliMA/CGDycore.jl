@@ -13,13 +13,11 @@ for iz=1:nz
     for j=1:OrdPoly+1
       for i=1:OrdPoly+1
         x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
-        (uLoc[i,j],vLoc[i,j])=Fun(x,Global);
-        uLoc[i,j]=uLoc[i,j]*JC[i,j,iz,iF];
-        vLoc[i,j]=vLoc[i,j]*JC[i,j,iz,iF];
+        (uLoc,vLoc)=Fun(x,Global);
+        uS[iz,CG.Glob[i,j,iF]]+=uLoc*JC[i,j,iz,iF]
+        vS[iz,CG.Glob[i,j,iF]]+=vLoc*JC[i,j,iz,iF]
       end
     end
-    uS[iz,CG.Glob[:,iF]]+=reshape(uLoc,(OrdPoly+1)*(OrdPoly+1));
-    vS[iz,CG.Glob[:,iF]]+=reshape(vLoc,(OrdPoly+1)*(OrdPoly+1));
   end
 end
 uS=uS./CG.M;
