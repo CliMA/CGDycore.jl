@@ -1,73 +1,79 @@
-function Source!(F,U,CG,Param)
-    str = lower(Param.ProfRho)
-    Rho=view(U,:,:,Param.RhoPos)
-    Th=view(U,:,:,Param.ThPos)
-    uPos=Param.uPos
-    vPos=Param.vPos
-    ThPos=Param.ThPos
-    Sigma=Param.Cache1
-    height_factor=Param.Cache2
-    if str == "heldsuarezsphere"
-       nz=Param.Grid.nz;
-       p=Pressure(Th,Rho,Th,Param);
-       sigma = p / Param.p0
-       height_factor = max.(0, (sigma .- Param.sigma_b) ./ (1 .- Param.sigma_b))
-       ΔρT =
-        (Param.k_a .+ (Param.k_s .- Param.k_a) .* height_factor .*
-        repmat(cos.(Param.latN).^4,1,nz)) .*
-        Rho .*
-        ( # ᶜT - ᶜT_equil
-            p ./ (Rho .* Param.Rd) .- max.(
-                Param.T_min,
-                (Param.T_equator .- Param.DeltaT_y .* repmat(sin.(Param.latN).^2,1,nz) .- 
-                Param.DeltaTh_z .* log.(sigma) .* repmat(cos.(Param.latN).^2,1,nz)) .*
-                sigma.^(Param.Rd / Param.Cpd),
-            )
-        )
-        @views  F[:,:,uPos:vPos] .-= (Param.k_f * height_factor) .* U[:,:,uPos:vPos]
-        @views  F[:,:,ThPos]  .-= ΔρT .*  (Param.p0 ./ p).^Param.kappa
+function Source!(F,U,CG,Global,iG)
+  Model = Global.Model
+  Param = Global.Model.Param
+  Phys = Global.Phys
+  RhoPos = Model.RhoPos
+  uPos = Model.uPos
+  vPos = Model.vPos
+  ThPos = Model.ThPos
+  nz = Global.Grid.nz
 
- #      nz=Param.Grid.nz;
- #      if strcmp(Param.Thermo,"Energy")
- #      else
- #        @views Pres=Pressure(U[:,:,Param.ThPos],U[:,:,Param.RhoPos],U[:,:,Param.RhoPos],Param);
- #      end
- #      sigma=Pres/Param.p0;
- #      @views T=Pres./(Param.Rd*U[:,:,Param.RhoPos]);
-
- #      matlab_max2(X) = max.(X, 0)
- #      height_factor = matlab_max2((sigma .- Param.sigma_b) ./ (1-Param.sigma_b));
-
- #      temp = (Param.T_equator .-
- #          Param.DeltaT_y*repmat(sin.(Param.latN).^2,1,nz) .-
- #          Param.DeltaTh_z*log.(sigma).*repmat(cos.(Param.latN).^2,1,nz)) .*
- #          sigma.^(Param.Rd/Param.Cpd)
-
- #      matlab_max(X) = max.(X, Param.T_min)
-
- #      @views DeltaRhoT=(Param.k_a .+ (Param.k_s - Param.k_a) .* height_factor .*
- #        repmat(cos.(Param.latN).^4,1,nz)) .* U[:,:,Param.RhoPos] .*
- #        (T .- matlab_max(temp));
- #      @views F[:,:,Param.uPos:Param.vPos] .-= Param.k_f*height_factor.*U[:,:,Param.uPos:Param.vPos];
- #      if strcmp(Param.Thermo,"Energy")
- #      else
- #          @views  F[:,:,Param.ThPos] .-= DeltaRhoT.* (Param.p0./Pres).^Param.kappa;
- #      end
-    elseif str == "heldsuarezcart"
-       fac = Param.Rd / Param.p0
-       sigma =  Pressure(Th,Rho,Th,Param) ./ Param.p0
-       height_factor = max.(0, (sigma .- Param.sigma_b) ./ (1 .- Param.sigma_b))
-       @views  F[:,:,ThPos]  .-=
-            (Param.k_a .+ (Param.k_s .- Param.k_a) .* height_factor) .*
-            Rho .*
-            (sigma ./ (Rho .* fac) .- max.(
-                Param.T_min,
-                (Param.T_equator .- Param.DeltaT_y .- Param.DeltaTh_z .* log.(sigma)) .*
-                sigma.^(Param.Rd / Param.Cpd),
-                )
-            ) ./ sigma.^Param.kappa
-
-      @views  F[:,:,uPos:vPos] .-= (Param.k_f .* height_factor) .* U[:,:,uPos:vPos]
-    end
+  str = lowercase(Model.ProfRho)
+  @views Rho = U[:,Model.RhoPos]
+  @views Th = U[:,Model.ThPos]
+  @views Sigma = Global.Cache.Cache1[:,1]
+  @views height_factor = Global.Cache.Cache2[:,1]
+  @views ΔρT = Global.Cache.Cache3[:,1]
+  if str == "heldsuarezsphere"
+    Pressure!(Sigma,Th,Rho,Th,Global)
+    Sigma = Sigma / Phys.p0
+    @. height_factor = max(0.0, (Sigma - Param.sigma_b) / (1.0 - Param.sigma_b))
+    @. ΔρT =
+      (Param.k_a + (Param.k_s - Param.k_a) * height_factor *
+      cos(Global.latN[iG])^4) *
+      Rho *
+      (                  # ᶜT - ᶜT_equil
+         Phys.p0 * Sigma / (Rho * Phys.Rd) - 
+         max(Param.T_min,
+         (Param.T_equator - Param.DeltaT_y * sin(Global.latN[iG])^2 - 
+         Param.DeltaTh_z * log(Sigma) * cos(Global.latN[iG])^2) *
+         Sigma^Phys.kappa)
+      )
+     @views @. F[:,uPos:vPos] -= (Param.k_f * height_factor) * U[:,uPos:vPos]
+     @views @. F[:,ThPos]  -= ΔρT / Sigma^Phys.kappa
+  end
 end
+
+function SourceMicroPhysics(F,U,CG,Global,iG)
+  (; Rd,
+     Cpd,
+     Rv,
+     Cpv,
+     Cpl,
+     p0,
+     L00,
+     kappa) = Global.Phys
+  ThPos=Global.Model.ThPos
+  RhoPos=Global.Model.RhoPos
+  RhoVPos=Global.Model.RhoVPos
+  RhoCPos=Global.Model.RhoCPos
+  NumV=Global.Model.NumV
+  @views @. Microphysics(F[:,ThPos],F[:,RhoPos],F[:,RhoVPos+NumV],F[:,RhoCPos+NumV],
+    U[:,ThPos],U[:,RhoPos], U[:,NumV+RhoVPos], U[:,NumV+RhoCPos], 
+      Rd,Cpd,Rv,Cpv,Cpl,L00,p0)
+end
+
+function Microphysics(FTh,FRho,FRhoV,FRhoC,RhoTh,Rho,RhoV,RhoC,Rd,
+     Cpd,Rv,Cpv,Cpl,L00,p0)
+  RhoD = Rho - RhoV - RhoC
+  Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
+  Rm = Rd * RhoD + Rv * RhoV
+  kappaM = Rm / Cpml
+  p = (Rd * RhoTh / p0^kappaM)^(1 / (1 - kappaM))
+  T = p / Rm
+  T_C = T - 273.15
+  p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
+  a = p_vs / (Rv * T) - RhoV
+  b = 0.0
+  RelCloud = 1.e-1
+  FRhoV = RelCloud * (a + b - sqrt(a * a + b * b))
+  L = L00 - (Cpl - Cpv) * T
+  FRhoTh = RhoTh * ((-L / (Cpml * T) -
+                        log(p / p0) * kappaM * (Rv / Rm - Cpv / Cpml) +
+                        Rv / Rm) * FRhoV +
+                        (log(p / p0) * kappaM * (Cpl / Cpml)) * (-FRhoV))
+  FRho = FRhoV
+  FRhoC = 0.0
+end  
+
 

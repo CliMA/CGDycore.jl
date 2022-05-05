@@ -60,18 +60,18 @@ D2vC1 = TCacheC2[Threads.threadid()]
   end
 end
 
-function FGradDiv2VecDSS!(grad1CG,grad2CG,v1CG,v2CG,dXdxIC,JC,CG,ThreadCache)
+function FGradDiv2VecDSS!(grad1CG,grad2CG,v1CG,v2CG,dXdxIC,JC,CG,ThreadCache,::Val{NPOLY}) where {NPOLY}
 @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
 
-  vCon = TCacheC1[Threads.threadid()]
+  #vCon = TCacheC1[Threads.threadid()]
   DvCon = TCacheC2[Threads.threadid()]
   vC1 = TCacheC3[Threads.threadid()]
   D1vC1 = TCacheC1[Threads.threadid()]
   D2vC1 = TCacheC2[Threads.threadid()]
-
-  @views @. @fastmath vCon = v1CG * dXdxIC[:,:,1,1] + v2CG * dXdxIC[:,:,1,2]
+ 
+  @views vCon = SMatrix{NPOLY,NPOLY}(v1CG .* dXdxIC[:,:,1,1] .+ v2CG .* dXdxIC[:,:,1,2])
   mul!(vC1,CG.DS,vCon)
-  @views @. @fastmath vCon = v1CG * dXdxIC[:,:,2,1] + v2CG * dXdxIC[:,:,2,2]
+  @views vCon = SMatrix{NPOLY,NPOLY}(v1CG .* dXdxIC[:,:,2,1] .+ v2CG .* dXdxIC[:,:,2,2])
   mul!(DvCon,vCon,CG.DST)
   @. vC1 = vC1 + DvCon
 

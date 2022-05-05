@@ -2,7 +2,6 @@ function Project(Fun,CG,Global)
 OrdPoly=CG.OrdPoly;
 nz=Global.Grid.nz;
 p=zeros(nz,CG.NumG);
-fLoc=zeros(OrdPoly+1,OrdPoly+1);
 X = Global.Metric.X
 JC = Global.Metric.JC
 for iF=1:Global.Grid.NumFaces

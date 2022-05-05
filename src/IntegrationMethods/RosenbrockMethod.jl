@@ -1,15 +1,19 @@
 mutable struct SSPStruct
   alpha::Array{Float64, 2}
+  beta::Array{Float64, 2}
 end  
 function SSPMethod()
  alpha=zeros(0,0)
+ beta=zeros(0,0)
  return SSPStruct(
    alpha,
+   beta,
    )
 end
-function SSPMethod(alpha::Array{Float64, 2})
+function SSPMethod(alpha::Array{Float64, 2},beta::Array{Float64, 2})
  return SSPStruct(
    alpha,
+   beta,
    )
 end 
 
@@ -70,9 +74,14 @@ if str == "SSP-Knoth"
     a=alpha/Gamma;
     c=-inv(Gamma);
     m=Gamma'\b;
+    a=[a
+       m']
     SSP=SSPMethod([1 0 0
                 3/4 1/4 0
-                1/3 0 2/3])
+                1/3 0 2/3],
+                [1 0 0
+                0 1/4 0
+                0 0 2/3])
     b2=zeros(0)
 
 elseif str == "RK3_H"

@@ -1,5 +1,10 @@
 function vtkOutput(U,vtkGrid,CG,Global)
 nz=Global.Grid.nz;
+NG=CG.NumG
+NumV=Global.Model.NumV
+NumTr=Global.Model.NumTr
+RhoPos=Global.Model.RhoPos
+ThPos=Global.Model.ThPos
 cOut=zeros(nz,CG.NumG,length(Global.Output.cNames));
 for i=1:length(Global.Output.cNames)
   str = Global.Output.cNames[i]
@@ -18,6 +23,10 @@ for i=1:length(Global.Output.cNames)
       end
   elseif str == "Th"
       @views cOut[:,:,i].=U[:,:,Global.Model.ThPos]./U[:,:,Global.Model.RhoPos];
+  elseif str == "Tr1"
+      @views cOut[:,:,i].=U[:,:,Global.Model.NumV + 1]./U[:,:,Global.Model.RhoPos];
+  elseif str == "Tr2"
+      @views cOut[:,:,i].=U[:,:,Global.Model.NumV + 2]./U[:,:,Global.Model.RhoPos];
   elseif str == "RhoTh"
       @views cOut[:,:,i].=U[:,:,Global.Model.ThPos]
   elseif str == "TPrime"
@@ -26,7 +35,8 @@ for i=1:length(Global.Output.cNames)
   elseif str == "ThetaPrime"
       @views cOut[:,:,i]=U[:,:,Global.Model.ThPos]./U[:,:,Global.Model.RhoPos]-Global.ThetaBGrd;
   elseif str == "Pres"
-      @views cOut[:,:,i]=Pressure(U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],Global);
+      @views Pressure!(reshape(cOut[:,:,i],nz*NG,1),reshape(U[:,:,Global.Model.ThPos],nz*NG,1),
+        reshape(U[:,:,Global.Model.RhoPos],nz*NG,1),reshape(U[:,:,NumV+1:end],nz*NG,NumTr),Global);
   elseif str == "Vort"
       @views FVort2Vec!(cOut[:,:,i],U,CG,Global);
   end

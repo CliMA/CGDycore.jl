@@ -5,7 +5,6 @@ mutable struct vtkCGGridStruct
 end  
 
 function vtkCGGrid(CG,Trans,Topo,Global)
-OrdPoly=CG.OrdPoly;
 OrdPrint=Global.Output.OrdPrint
 nz=Global.Grid.nz;
 NF=Global.Grid.NumFaces;
@@ -17,9 +16,9 @@ theta=zeros(8,1);
 z=zeros(8,1);
 
 ivtkP=0;
-vtkP=zeros(Float32,3,8*NF*OrdPoly*OrdPoly*nz);
-ConnectivityList=reshape(1:1:8*NF*OrdPoly*OrdPoly*nz,
-  8,NF*OrdPoly*OrdPoly*nz);
+vtkP=zeros(Float32,3,8*NF*OrdPrint*OrdPrint*nz);
+ConnectivityList=reshape(1:1:8*NF*OrdPrint*OrdPrint*nz,
+  8,NF*OrdPrint*OrdPrint*nz);
 ivtkc=0;
 X = zeros(8,3)
 for iF=1:Global.Grid.NumFaces
@@ -31,14 +30,6 @@ for iF=1:Global.Grid.NumFaces
       eta1=eta0+dd;
       for iRef=1:OrdPrint
         ksi1=ksi0+dd;
-#       X[1,:]=Trans(ksi0,eta0, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
-#       X[2,:]=Trans(ksi1,eta0, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
-#       X[3,:]=Trans(ksi1,eta1, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
-#       X[4,:]=Trans(ksi0,eta1, Global.Grid.z[iz],Global.Grid.Faces[iF],Topo,Global.Output);
-#       X[5,:]=Trans(ksi0,eta0, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
-#       X[6,:]=Trans(ksi1,eta0, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
-#       X[7,:]=Trans(ksi1,eta1, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
-#       X[8,:]=Trans(ksi0,eta1, Global.Grid.z[iz+1],Global.Grid.Faces[iF],Topo,Global.Output);
         X[1,:]=Trans(ksi0,eta0, -1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global);
         X[2,:]=Trans(ksi1,eta0, -1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global);
         X[3,:]=Trans(ksi1,eta1, -1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global);

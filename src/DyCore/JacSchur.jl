@@ -3,6 +3,7 @@ mutable struct JStruct
     JWTh::Array{Float64, 3}
     JWRho::Array{Float64, 3}
     JThW::Array{Float64, 3}
+    JTrW::Array{Float64, 4}
     JWW::Array{Float64, 3}
     tri::Array{Float64, 3}
     sw::Array{Float64, 2}
@@ -17,6 +18,7 @@ function JStruct()
   JWTh=zeros(0,0,0)
   JWRho=zeros(0,0,0)
   JThW=zeros(0,0,0)
+  JTrW=zeros(0,0,0,0)
   JWW=zeros(0,0,0)
   tri=zeros(0,0,0)
   sw=zeros(0,0)
@@ -29,6 +31,7 @@ function JStruct()
     JWTh,
     JWRho,
     JThW,
+    JTrW,
     JWW,
     tri,
     sw,
@@ -39,11 +42,12 @@ function JStruct()
   )
 end  
 
-function JStruct(NumG,nz)
+function JStruct(NumG,nz,NumTr)
   JRhoW=zeros(2,nz,NumG)
   JWTh=zeros(2,nz,NumG)
   JWRho=zeros(2,nz,NumG)
   JThW=zeros(2,nz,NumG)
+  JTrW=zeros(2,nz,NumG,NumTr)
   JWW=zeros(1,nz,NumG)
   tri=zeros(3,nz,NumG)
   sw=zeros(nz,NumG)
@@ -56,6 +60,7 @@ function JStruct(NumG,nz)
     JWTh,
     JWRho,
     JThW,
+    JTrW,
     JWW,
     tri,
     sw,
@@ -87,8 +92,9 @@ function JacSchur!(J,U,CG,Global)
   K = J.CacheCol1
 
   @inbounds for iC=1:nCol
-    @views Rho = view(U,:,iC,RhoPos)
-    @views Th = view(U,:,iC,ThPos)
+    @views Rho = U[:,iC,RhoPos]
+    @views Th = U[:,iC,ThPos]
+    @views Tr = U[:,iC,NumV+1:end]
 
     @views @. D[1:nz-1] = -0.5*(Rho[1:nz-1] + Rho[2:nz]) / dz;
     @views @. J.JRhoW[1,:,iC] = D
@@ -100,7 +106,7 @@ function JacSchur!(J,U,CG,Global)
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
 
-    @views Pressure!(Pres,Th, Th, Th, Global);
+    @views Pressure!(Pres,Th, Rho, Tr, Global);
     @views @. D[1:nz-1] = 0.5*(Pres[2:nz] - Pres[1:nz-1]) / dz  /
       (0.5*(Rho[1:nz-1] + Rho[2:nz]))^2;
     @views @. J.JWRho[1,2:nz,iC] = D[1:nz-1] 

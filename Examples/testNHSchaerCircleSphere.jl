@@ -5,10 +5,11 @@ using SimpleGraphAlgorithms
 
 OrdPoly = 4
 OrdPolyZ=1
-nz = 60
-nPanel = 20
+nz = 10 #30 #60
+nPanel = 5 #10 #20
 NF = 6 * nPanel * nPanel
 NumV = 5
+NumTr = 1
 
 
 # Physical parameters
@@ -48,7 +49,6 @@ CGDycore.AddVerticalGrid!(Grid,nz,H)
 
 Output=CGDycore.Output(Topography)
 
-NumTr=0
 Global = CGDycore.Global(Grid,Model,Phys,Output,OrdPoly+1,nz,NumV,NumTr,())
 #Global.ThreadCache=CGDycore.CreateCache(OrdPoly+1,nz,NumV)
 Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
@@ -67,7 +67,8 @@ Model.Damping=true;
 
 # Initial conditions 
 Model.NumV=NumV;
-U=zeros(nz,CG.NumG,Model.NumV);
+Model.NumTr=NumTr;
+U=zeros(nz,CG.NumG,Model.NumV+Model.NumTr);
 Model.ProfRho="SchaerSphere"
 Model.ProfTheta="SchaerSphere"
 Model.ProfVel="SchaerSphere"
@@ -79,6 +80,7 @@ Model.ThPos=5;
 U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Global);
 (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Global);
 U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Global).*U[:,:,Model.RhoPos];
+U[:,:,Model.NumV+1]=CGDycore.Project(CGDycore.fTheta,CG,Global).*U[:,:,Model.RhoPos];
 
 # Output
 Output.vtkFileName="SchaerSphereCircle";
@@ -115,7 +117,7 @@ nIter=SimHours*3600/dtau;
 PrintInt=PrintHours*3600/dtau;
 
 
-Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV)
+Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 str = IntMethod
 if str == "Rosenbrock"
   Global.J = CGDycore.JStruct(CG.NumG,nz)

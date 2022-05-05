@@ -24,7 +24,7 @@ function RungeKuttaExplicitLS!(V,dt,Fcn,CG,Global)
 
   @. Vn = V
   @inbounds for iStage=1:RK.nStage-1
-    Fcn(f,V,CG,Global);
+    @time Fcn(f,V,CG,Global);
     @. V = Vn + dt * RK.ARKE[iStage+1,iStage] * f
   end
   Fcn(f,V,CG,Global);

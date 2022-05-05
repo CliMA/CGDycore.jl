@@ -8,6 +8,8 @@ nx=80;
 ny=2;
 nz = 60
 NF = nx *ny
+NumV = 5
+NumTr = 1
 
 
 # Physical parameters
@@ -40,7 +42,7 @@ CGDycore.AddVerticalGrid!(Grid,nz,H)
 
 Output=CGDycore.Output(Topography)
 
-Global = CGDycore.Global(Grid,Model,Phys,Output)
+Global = CGDycore.Global(Grid,Model,Phys,Output,OrdPoly+1,nz,NumV,NumTr,())
 Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 
 
@@ -54,8 +56,9 @@ Model.Upwind=true
 
 
 # Initial conditions 
-Model.NumV=5;
-U=zeros(nz,CG.NumG,Model.NumV);
+Model.NumV = NumV
+Model.NumTr = NumTr
+U=zeros(nz,CG.NumG,Model.NumV + Model.NumTr);
 Model.ProfRho="DensityCurrent";
 Model.ProfTheta="DensityCurrent";
 Model.ProfVel="Const";
@@ -67,6 +70,7 @@ Model.ThPos=5;
 U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Global);
 (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Global);
 U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Global).*U[:,:,Model.RhoPos];
+U[:,:,Model.NumV + 1]=CGDycore.Project(CGDycore.fTheta,CG,Global).*U[:,:,Model.RhoPos];
 
 # Output
 Output.vtkFileName="DensityCurrentU";
@@ -76,9 +80,11 @@ Output.cNames = [
   "u",
   "v",
   "w",
-  "Th"
+  "Th",
+  "Tr1",
 ]
-vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransCart,CGDycore.Topo,Global);
+Output.OrdPrint=CG.OrdPoly
+vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransCartX,CGDycore.Topo,Global);
 
 
 #IntMethod="Rosenbrock";
@@ -89,7 +95,8 @@ else
   dtau=0.3;
 end
 Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth");
-Global.RK=CGDycore.RungeKuttaMethod("RK4");
+#Global.RK=CGDycore.RungeKuttaMethod("RK4");
+Global.RK=CGDycore.RungeKuttaMethod("Kinnmark");
 time=[0.0];
 EndTime=900;
 nIter=EndTime/dtau;
@@ -97,7 +104,7 @@ PrintTime=90;
 PrintInt=floor(PrintTime/dtau);
 
 
-Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV)
+Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 str = IntMethod
 if str == "Rosenbrock"
   Global.J = CGDycore.JStruct(CG.NumG,nz)
@@ -124,22 +131,36 @@ if str == "Rosenbrock"
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-
 elseif str == "RungeKutta"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global);
-
-          time[1] += dtau;
-          if mod(i,PrintInt)==0
-            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global);
+    if Global.RK.Type == "LowStorage"
+      @time begin
+        for i=1:nIter
+          Δt = @elapsed begin
+            CGDycore.RungeKuttaExplicitLS!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global);
+            time[1] += dtau;
+            if mod(i,PrintInt)==0
+              Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global);
+            end
           end
+          percent = i/nIter*100
+          @info "Iteration: $i took $Δt, $percent% complete"
         end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
       end
-    end
+    else
+      @time begin
+        for i=1:nIter
+          Δt = @elapsed begin
+            CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global);
+            time[1] += dtau;
+            if mod(i,PrintInt)==0
+              Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global);
+            end
+          end
+          percent = i/nIter*100
+          @info "Iteration: $i took $Δt, $percent% complete"
+        end
+      end
+    end   
 else
   error("Bad str")
 end

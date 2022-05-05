@@ -20,8 +20,10 @@ Cache1::Array{Float64, 2}
 Cache2::Array{Float64, 2}
 Cache3::Array{Float64, 2}
 Cache4::Array{Float64, 2}
-Pres::Array{Float64, 3}
+Pres::Array{Float64, 4}
 KE::Array{Float64, 3}
+uStar::Array{Float64, 3}
+cTrS::Array{Float64, 4}
 FCG::Array{Float64, 5}
 FCC::Array{Float64, 4}
 Vn::Array{Float64, 3}
@@ -31,6 +33,7 @@ v2CG::Array{Float64, 3}
 wCG::Array{Float64, 3}
 wCCG::Array{Float64, 3}
 ThCG::Array{Float64, 3}
+TrCG::Array{Float64, 4}
 Rot1CG::Array{Float64, 4}
 Rot2CG::Array{Float64, 4}
 Grad1CG::Array{Float64, 4}
@@ -46,8 +49,13 @@ Rot2::Array{Float64, 2}
 Grad1::Array{Float64, 2}
 Grad2::Array{Float64, 2}
 Div::Array{Float64, 2}
+DivTr::Array{Float64, 3}
 k::Array{Float64, 4}
 fV::Array{Float64, 3}
+fS::Array{Float64, 4}
+fRhoS::Array{Float64, 3}
+VS::Array{Float64, 4}
+RhoS::Array{Float64, 3}
 f::Array{Float64, 4}
 end
 function CacheStruct()
@@ -72,8 +80,10 @@ Cache1=zeros(0,0)
 Cache2=zeros(0,0)
 Cache3=zeros(0,0)
 Cache4=zeros(0,0)
-Pres=zeros(0,0,0)
+Pres=zeros(0,0,0,0)
 KE=zeros(0,0,0)
+uStar=zeros(0,0,0)
+cTrS=zeros(0,0,0,0)
 FCG=zeros(0,0,0,0,0)
 FCC=zeros(0,0,0,0)
 Vn=zeros(0,0,0)
@@ -83,6 +93,7 @@ v2CG=zeros(0,0,0)
 wCG=zeros(0,0,0)
 wCCG=zeros(0,0,0)
 ThCG=zeros(0,0,0)
+TrCG=zeros(0,0,0,0)
 Rot1CG=zeros(0,0,0,0)
 Rot2CG=zeros(0,0,0,0)
 Grad1CG=zeros(0,0,0,0)
@@ -98,8 +109,13 @@ Rot2=zeros(0,0)
 Grad1=zeros(0,0)
 Grad2=zeros(0,0)
 Div=zeros(0,0)
+DivTr=zeros(0,0,0)
 k=zeros(0,0,0,0)
 fV=zeros(0,0,0)
+fS=zeros(0,0,0,0)
+fRhoS=zeros(0,0,0)
+VS=zeros(0,0,0,0)
+RhoS=zeros(0,0,0)
 f=zeros(0,0,0,0)
 return CacheStruct(
   CacheE1,
@@ -125,6 +141,8 @@ return CacheStruct(
   Cache4,
   Pres,
   KE,
+  uStar,
+  cTrS,
   FCG,
   FCC,
   Vn,
@@ -134,6 +152,7 @@ return CacheStruct(
   wCG,
   wCCG,
   ThCG,
+  TrCG,
   Rot1CG,
   Rot2CG,
   Grad1CG,
@@ -149,13 +168,18 @@ return CacheStruct(
   Grad1,
   Grad2,
   Div,
+  DivTr,
   k,
   fV,
+  fS,
+  fRhoS,
+  VS,
+  RhoS,
   f,
 )
 end
 
-function CacheCreate(OP,NF,NumG,nz,NumV)
+function CacheCreate(OP,NF,NumG,nz,NumV,NumTr)
 CacheE1=zeros(OP,OP);
 CacheE2=zeros(OP,OP);
 CacheE3=zeros(OP,OP);
@@ -177,17 +201,20 @@ Cache1=zeros(nz,NumG)
 Cache2=zeros(nz,NumG)
 Cache3=zeros(nz,NumG)
 Cache4=zeros(nz,NumG)
-Pres=zeros(OP,OP,nz)
+Pres=zeros(OP,OP,nz,NF)
 KE=zeros(OP,OP,nz)
-FCG=zeros(OP,OP,nz,NF,NumV)
-FCC=zeros(OP,OP,nz,NumV)
-Vn=zeros(nz,NumG,NumV)
+uStar=zeros(OP,OP,NF)
+cTrS=zeros(OP,OP,NF,NumTr)
+FCG=zeros(OP,OP,nz,NF,NumV+NumTr)
+FCC=zeros(OP,OP,nz,NumV+NumTr)
+Vn=zeros(nz,NumG,NumV+NumTr)
 RhoCG=zeros(OP,OP,nz)
 v1CG=zeros(OP,OP,nz)
 v2CG=zeros(OP,OP,nz)
 wCG=zeros(OP,OP,nz+1)
 wCCG=zeros(OP,OP,nz)
 ThCG=zeros(OP,OP,nz)
+TrCG=zeros(OP,OP,nz,NumTr)
 Rot1CG=zeros(OP,OP,nz,NF)
 Rot2CG=zeros(OP,OP,nz,NF)
 Grad1CG=zeros(OP,OP,nz,NF)
@@ -203,8 +230,13 @@ Rot2=zeros(nz,NumG)
 Grad1=zeros(nz,NumG)
 Grad2=zeros(nz,NumG)
 Div=zeros(nz,NumG)
+DivTr=zeros(nz,NumG,NumTr)
 k=zeros(0,0,0,0)
 fV=zeros(0,0,0)
+fS=zeros(0,0,0,0)
+fRhoS=zeros(0,0,0)
+VS=zeros(0,0,0,0)
+RhoS=zeros(0,0,0)
 f=zeros(0,0,0,0)
 return CacheStruct(
   CacheE1,
@@ -230,6 +262,8 @@ return CacheStruct(
   Cache4,
   Pres,
   KE,
+  uStar,
+  cTrS,
   FCG,
   FCC,
   Vn,
@@ -239,6 +273,7 @@ return CacheStruct(
   wCG,
   wCCG,
   ThCG,
+  TrCG,
   Rot1CG,
   Rot2CG,
   Grad1CG,
@@ -254,8 +289,13 @@ return CacheStruct(
   Grad1,
   Grad2,
   Div,
+  DivTr,
   k,
   fV,
+  fS,
+  fRhoS,
+  VS,
+  RhoS,
   f,
 )
 end
@@ -301,6 +341,8 @@ mutable struct MetricStruct
   X::Array{Float64, 6}
   dXdxIF::Array{Float64, 6}
   dXdxIC::Array{Float64, 6}
+  nS::Array{Float64, 4}
+  dz::Array{Float64, 4}
 end
 function MetricStruct()
     lat    = zeros(0,0,0)
@@ -310,6 +352,8 @@ function MetricStruct()
     X      = zeros(0,0,0,0,0,0)
     dXdxIF = zeros(0,0,0,0,0,0)
     dXdxIC = zeros(0,0,0,0,0,0)
+    nS = zeros(0,0,0,0)
+    dz = zeros(0,0,0,0)
     return MetricStruct(
         lat,
         JC,
@@ -318,6 +362,8 @@ function MetricStruct()
         X,
         dXdxIF,
         dXdxIC,
+        nS,
+        dz,
     )
 end
 function Metric(OP,OPZ,NF,nz)
@@ -328,6 +374,8 @@ function Metric(OP,OPZ,NF,nz)
     X      = zeros(OP,OP,OPZ,3,nz,NF)
     dXdxIF = zeros(OP,OP,nz+1,3,3,NF)
     dXdxIC = zeros(OP,OP,nz,3,3,NF)
+    nS = zeros(OP,OP,3,NF)
+    dz = zeros(OP,OP,nz,NF)
     return MetricStruct(
         lat,
         JC,
@@ -336,6 +384,8 @@ function Metric(OP,OPZ,NF,nz)
         X,
         dXdxIF,
         dXdxIC,
+        nS, 
+        dz,
     )
 end
 
@@ -344,7 +394,12 @@ mutable struct PhysParameters
   Grav::Float64 
   Cpd::Float64
   Cvd::Float64
+  Cpv::Float64
+  Cvv::Float64
+  Cpl::Float64
   Rd::Float64
+  Rv::Float64
+  L00::Float64
   p0::Float64
   Gamma::Float64
   kappa::Float64
@@ -355,7 +410,12 @@ function PhysParameters()
   Grav = 9.81e0
   Cpd=1004.0e0
   Cvd=717.0e0
+  Cpv=1885.0e0
+  Cvv=1424.0e0
+  Cpl=4186.0e0
   Rd=Cpd-Cvd
+  Rv=Cpv-Cvv
+  L00 = 2.5000e6 + (Cpl - Cpv) * 273.15
   p0=1.0e5
   Gamma=Cpd/Cvd
   kappa=Rd/Cpd
@@ -365,7 +425,12 @@ function PhysParameters()
   Grav,
   Cpd,
   Cvd,
+  Cpv,
+  Cvv,
+  Cpl,
   Rd,
+  Rv,
+  L00,
   p0,
   Gamma,
   kappa,
@@ -374,15 +439,20 @@ function PhysParameters()
 end 
 
 mutable struct ModelStruct
+  Problem::String
   ProfRho::String
   ProfTheta::String
+  ProfTr::String
   ProfVel::String
   RhoPos::Int
   uPos::Int
   vPos::Int
   wPos::Int
   ThPos::Int
+  RhoVPos::Int
+  RhoCPos::Int
   NumV::Int
+  NumTr::Int
   Equation::String
   Thermo::String
   ModelType::String
@@ -399,18 +469,26 @@ mutable struct ModelStruct
   HyperDGrad::Float64
   HyperDDiv::Float64
   Upwind::Bool
+  HorLimit::Bool
+  Microphysics::Bool
+  VerticalDiffusion::Bool
   Param::NamedTuple
 end
 function Model(Param::NamedTuple)
+  Problem=""
   ProfRho=""
   ProfTheta=""
+  ProfTr=""
   ProfVel=""
   RhoPos = 0
   uPos = 0
   vPos = 0
   wPos = 0
   ThPos = 0
+  RhoVPos = 0
+  RhoCPos = 0
   NumV = 0
+  NumTr = 0
   Equation="Compressible"
   Thermo=""
   ModelType="Curl"
@@ -427,16 +505,24 @@ function Model(Param::NamedTuple)
   HyperDGrad=0.0
   HyperDDiv=0.0
   Upwind=false
+  HorLimit=false
+  Microphysics=false
+  VerticalDiffusion=false
   return ModelStruct(
+   Problem,
    ProfRho,
    ProfTheta,
+   ProfTr,
    ProfVel,
    RhoPos,
    uPos,
    vPos,
    wPos,
    ThPos,
+   RhoVPos,
+   RhoCPos,
    NumV,
+   NumTr,
    Equation,
    Thermo,
    ModelType,
@@ -453,6 +539,9 @@ function Model(Param::NamedTuple)
    HyperDGrad,
    HyperDDiv,
    Upwind,
+   HorLimit,
+   Microphysics,
+   VerticalDiffusion,
    Param,
 
    )
