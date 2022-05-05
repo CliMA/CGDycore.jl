@@ -166,6 +166,8 @@ Global.RK=CGDycore.RungeKuttaMethod("RK4")
 # Boundary values
  Global.Cache.cTS=zeros(OrdPoly+1,OrdPoly+1,NF)
  Global.Cache.cTS=CGDycore.ProjectS(CGDycore.fSeaT,CG,Global)
+ Global.Cache.TotalPrec=zeros(OrdPoly+1,OrdPoly+1,NF)
+ Global.Cache.qvSSurf=zeros(OrdPoly+1,OrdPoly+1,NF)
 
 # Print initial conditions
   Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)

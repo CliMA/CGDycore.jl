@@ -21,6 +21,7 @@ Cache2::Array{Float64, 2}
 Cache3::Array{Float64, 2}
 Cache4::Array{Float64, 2}
 Pres::Array{Float64, 4}
+Temp::Array{Float64, 4}
 KE::Array{Float64, 3}
 uStar::Array{Float64, 3}
 cTrS::Array{Float64, 4}
@@ -81,6 +82,7 @@ Cache2=zeros(0,0)
 Cache3=zeros(0,0)
 Cache4=zeros(0,0)
 Pres=zeros(0,0,0,0)
+Temp=zeros(0,0,0,0)
 KE=zeros(0,0,0)
 uStar=zeros(0,0,0)
 cTrS=zeros(0,0,0,0)
@@ -140,6 +142,7 @@ return CacheStruct(
   Cache3,
   Cache4,
   Pres,
+  Temp,
   KE,
   uStar,
   cTrS,
@@ -202,6 +205,7 @@ Cache2=zeros(nz,NumG)
 Cache3=zeros(nz,NumG)
 Cache4=zeros(nz,NumG)
 Pres=zeros(OP,OP,nz,NF)
+Temp=zeros(OP,OP,nz,NF)
 KE=zeros(OP,OP,nz)
 uStar=zeros(OP,OP,NF)
 cTrS=zeros(OP,OP,NF,NumTr)
@@ -261,6 +265,7 @@ return CacheStruct(
   Cache3,
   Cache4,
   Pres,
+  Temp,
   KE,
   uStar,
   cTrS,

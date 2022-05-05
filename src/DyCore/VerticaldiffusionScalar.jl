@@ -18,10 +18,54 @@ qCG = Global.Cache.CacheC3
   @views @. Fc[:,:,nz] -= 0.5 * gradc[:,:,nz] * dXdxIF33[:,:,nz]
 end
 
-function BoundaryFluxSaclar!(Fc,c,cS,CG,Global,iF)
+function BoundaryFluxScalar!(Fc,c,cS,CG,Global,iF)
   @views @. Fc -= Global.Model.Param.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
     Global.Metric.dXdxIF[:,:,1,3,3,iF]
 end
+
+function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,iF)
+  if Global.Model == "HeldSuarezMoist"
+    println(" Hello ")  
+    ThPos=Global.Model.ThPos  
+    RhoPos=Global.Model.RhoPos  
+    RhoVPos=Global.Model.RhoVPos  
+    NumV=Global.Model.NumV  
+    TSurf = Global.Cache.TSurf
+    uStar = Global.Cache.uStar
+    CE = Global.Model.Param.CE
+    CH = Global.Model.Param.CH
+    Rd = Global.Phys.Rd
+    Cpd = Global.Phys.Cpd
+    Rv = Global.Phys.Rv
+    Cpv = Global.Phys.Cpv
+    p0 = Global.Phys.p0
+    p = Global.Cache.Pres(:,:,1,iF)
+    T = Global.Cache.Temp(:,:,1,iF)
+    dXdxIF = Global.Metric.dXdxIF[:,:,1,iF,3,3]
+    JF = Global.Metric.JF[:,:,1,iF]
+    @. BoundaryFluxHeldSuarez!(Fc[:,:,ThPos],Fc[:,:,RhoPos],Fc[:,:,RhoVPos+NumV],
+      Th,Rho,Tr[:,:,RhoVPos],p,T,dXdxIF,JF,CH,CE,TSurf ,uStar, Rd, Cpd, Rv, Cpv, p0)
+    stop
+      
+  end    
+end
+
+BoundaryFluxHeldSuarez!(FTh,FRho,FRhoV,Th,Rho,RhoV,TSea,p,T,dXdxIF,JF,CH,CE,TS,uStar, Rd, Cpd, Rv, Cpv, p0)
+  T_C = TS - 273.15
+  p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
+  RhoVSurface = Rho * p_vs / (Rv * TS) 
+  LatFlux = 0.25 * CE * uStar * dXdxIF^2 /JF  *(RhoV(ix,iy,iz,1)-RhoVSurface) 
+  SensFlux = 0.25 * CH * uStar * dXdxIF^2 /JF  *(T-Ts) 
+  FRho = LatFlux
+  FRhoV = LatFlux
+  RhoDry = Rho - RhoV
+  rrv=RhoV/RhoDry
+  Rm=Rd+rrv*Rv
+  Cpml=Cpd+Cpv*rrv
+  PrePi=(p / p0)^(Rm / Cpml)
+  FTh = Th / T * SensFlux + ((Rv / Rm) - log(PrePi)*(Rv / Rm - Cpv / Cpml)) / Rho * MoistFlux  
+end
+
 
 function uStarCoefficient!(uStar,U,V,WC,CG,Global,iF)
 # Computation norm_v_a
