@@ -15,6 +15,7 @@ mutable struct CGStruct
     M::Array{Float64, 2}
     MMass::Array{Float64, 2}
     MW::Array{Float64, 2}
+    Boundary::Array{Int, 1}
 end
 function CGStruct()
  OrdPoly=0
@@ -33,6 +34,7 @@ DST=zeros(0,0)
 M=zeros(0,0)
 MMass=zeros(0,0)
 MW=zeros(0,0)
+Boundary=zeros(0)
  return CGStruct(
     OrdPoly,
     OrdPolyZ,
@@ -49,16 +51,18 @@ MW=zeros(0,0)
     DST,
     M,
     MMass,
-    MW
+    MW,
+    Boundary,
  )
 end 
 
 function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
 # Discretization
+  Grid = Global.Grid
   OP=OrdPoly+1
   OPZ=OrdPolyZ+1
-  nz=Global.Grid.nz;
-  NF=Global.Grid.NumFaces
+  nz=Grid.nz;
+  NF=Grid.NumFaces
 
   CG = CGStruct()
   CG.OrdPoly=OrdPoly;
@@ -70,7 +74,7 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
   CG.DST=CG.DS'
   CG.DWT=CG.DW'
   (CG.Glob,CG.NumG,CG.NumI,CG.Stencil) =
-    NumberingFemCG(Global.Grid,OrdPoly);
+    NumberingFemCG(Grid,OrdPoly);
 
 
   dXdxIF = Global.Metric.dXdxIF
@@ -85,10 +89,10 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
   dXdx   = zeros(OP,OP,OPZ,nz,3,3,NF)
   dXdxI  = zeros(OP,OP,OPZ,nz,3,3,NF)
 
-  for iF=1:Global.Grid.NumFaces
+  for iF=1:Grid.NumFaces
     for iz=1:nz
-      zI=[Global.Grid.z[iz],Global.Grid.z[iz+1]];
-      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Global.Grid.Faces[iF],zI,Topo,Global.Grid.Topography);
+      zI=[Grid.z[iz],Grid.z[iz+1]];
+      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography);
       X[:,:,:,:,iz,iF]=X_Fz;
       J[:,:,:,iz,iF]=J_Fz;
       dXdx[:,:,:,iz,:,:,iF]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
@@ -138,5 +142,31 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
     end
   end
   Global.latN=Global.latN./CG.M[1,:];
+# Boundary nodes
+  for iF = 1 : NF
+    Side = 0
+    for iE in Grid.Faces[iF].E
+       Side += 1 
+       if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+         if Side == 1
+           for i in CG.Glob[1:OP-1,1,iF]   
+             push!(CG.Boundary,i)
+           end
+         elseif Side == 2  
+           for i in CG.Glob[OP,1:OP-1,iF]
+             push!(CG.Boundary,i)
+           end
+         elseif Side == 3  
+           for i in CG.Glob[2:OP,OP,iF]
+             push!(CG.Boundary,i)
+           end
+         elseif Side == 4  
+           for i in CG.Glob[1,2:OP,iF]
+             push!(CG.Boundary,i)
+           end
+         end  
+       end  
+    end
+  end  
   return (CG,Global)
 end

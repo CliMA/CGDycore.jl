@@ -1,4 +1,4 @@
-function fVel(x,Global)
+function fVel(x,time,Global)
     Model=Global.Model
     Param=Global.Model.Param
     Phys=Global.Phys
@@ -6,6 +6,19 @@ function fVel(x,Global)
     if str == "solidbody"
       uS=0;
       vS=0;
+    elseif str == "advectiontestdeform"  
+      uS = -Param.uMax * (x[2] - Param.yC) * cospi(time / Param.EndTime)
+      vS = Param.uMax * (x[1] - Param.xC) * cospi(time / Param.EndTime)
+    elseif str == "advectionschaer"  
+      vS = 0
+      if x[3] <= Param.z1
+        uS = 0  
+      elseif x[3] <= Param.z2
+        uS = Param.uMax * sin(0.5 * pi * (x[3] - Param.z1) / (Param.z2 - Param.z1))^2   
+      else
+        uS = Param.uMax      
+      end  
+      uS = Param.uMax      
     elseif str == "schaersphere"
       (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
       uS = Param.uEq * cos(Lat)

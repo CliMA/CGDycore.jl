@@ -1,21 +1,56 @@
-mutable struct SSPStruct
+mutable struct SSPRungeKuttaStruct
+  nStage::Int
   alpha::Array{Float64, 2}
   beta::Array{Float64, 2}
+  c::Array{Float64, 1}
 end  
-function SSPMethod()
+function SSPRungeKuttaMethod()
+ nStage=0
  alpha=zeros(0,0)
  beta=zeros(0,0)
- return SSPStruct(
+ c=zeros(0)
+ return SSPRungeKuttaStruct(
+   nStage,
    alpha,
    beta,
+   c,
    )
 end
-function SSPMethod(alpha::Array{Float64, 2},beta::Array{Float64, 2})
- return SSPStruct(
+function SSPRungeKuttaMethod(alpha::Array{Float64, 2},beta::Array{Float64, 2})
+ c=zeros(size(alpha,1)) 
+ for i = 2:size(alpha,1)
+   c[i] = sum(beta[i-1,:])  
+ end  
+ return SSPRungeKuttaStruct(
+   size(alpha,1),
    alpha,
    beta,
+   c,
    )
 end 
+
+function SSPRungeKuttaMethod(Method)
+  if Method == "SSP-Knoth"
+    nStage = 3  
+    alpha = [1 0 0
+             3/4 1/4 0
+             1/3 0 2/3]
+    beta = [1 0 0
+            0 1/4 0
+            0 0 2/3]
+  end          
+  c=zeros(size(alpha,1)) 
+  for i = 2:size(alpha,1)
+    c[i] = sum(beta[i-1,:])  
+  end  
+ return SSPRungeKuttaStruct(
+   nStage,
+   alpha,
+   beta,
+   c,
+   )
+end 
+  
 
 mutable struct RosenbrockStruct
   transformed::Bool
@@ -28,7 +63,7 @@ mutable struct RosenbrockStruct
   m::Array{Float64, 1}
   d::Array{Float64, 1}
   b2::Array{Float64, 1}
-  SSP::SSPStruct
+  SSP::SSPRungeKuttaStruct
 end
 function RosenbrockMethod()
   transformed=false
@@ -41,7 +76,7 @@ function RosenbrockMethod()
   m=zeros(0)
   d=zeros(0)
   b2=zeros(0)
-  SSP=SSPMethod()
+  SSP=SSPRungeKuttaMethod()
   return RosenbrockStruct(
     transformed,
     nStage,
@@ -76,7 +111,7 @@ if str == "SSP-Knoth"
     m=Gamma'\b;
     a=[a
        m']
-    SSP=SSPMethod([1 0 0
+    SSP=SSPRungeKuttaMethod([1 0 0
                 3/4 1/4 0
                 1/3 0 2/3],
                 [1 0 0

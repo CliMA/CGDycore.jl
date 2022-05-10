@@ -81,7 +81,8 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   Model.HyperVisc=true
   Model.HyperDCurl=2.e17/4 #1.e14*(dx/LRef)^3.2;
   Model.HyperDGrad=2.e17/4
-  Model.HyperDDiv=2.e17/4 # Scalars
+  Model.HyperDDiv=0.0 #2.e17/4 # Scalars
+
 
 
 # Initial conditions 
@@ -102,7 +103,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   Model.HorLimit = false
   Model.Source = false
   Model.Upwind = true
-  Model.Microphysics = true
+  Model.Microphysics = false
 
   U=zeros(nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Global)

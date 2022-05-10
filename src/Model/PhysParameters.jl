@@ -25,6 +25,7 @@ Temp::Array{Float64, 4}
 KE::Array{Float64, 3}
 uStar::Array{Float64, 3}
 cTrS::Array{Float64, 4}
+TSurf::Array{Float64, 3}
 FCG::Array{Float64, 5}
 FCC::Array{Float64, 4}
 Vn::Array{Float64, 3}
@@ -86,6 +87,7 @@ Temp=zeros(0,0,0,0)
 KE=zeros(0,0,0)
 uStar=zeros(0,0,0)
 cTrS=zeros(0,0,0,0)
+TSurf=zeros(0,0,0)
 FCG=zeros(0,0,0,0,0)
 FCC=zeros(0,0,0,0)
 Vn=zeros(0,0,0)
@@ -146,6 +148,7 @@ return CacheStruct(
   KE,
   uStar,
   cTrS,
+  TSurf,
   FCG,
   FCC,
   Vn,
@@ -209,6 +212,7 @@ Temp=zeros(OP,OP,nz,NF)
 KE=zeros(OP,OP,nz)
 uStar=zeros(OP,OP,NF)
 cTrS=zeros(OP,OP,NF,NumTr)
+TSurf=zeros(0,0,0)
 FCG=zeros(OP,OP,nz,NF,NumV+NumTr)
 FCC=zeros(OP,OP,nz,NumV+NumTr)
 Vn=zeros(nz,NumG,NumV+NumTr)
@@ -269,6 +273,7 @@ return CacheStruct(
   KE,
   uStar,
   cTrS,
+  TSurf,
   FCG,
   FCC,
   Vn,
@@ -449,6 +454,7 @@ mutable struct ModelStruct
   ProfTheta::String
   ProfTr::String
   ProfVel::String
+  ProfVelW::String
   RhoPos::Int
   uPos::Int
   vPos::Int
@@ -477,6 +483,7 @@ mutable struct ModelStruct
   HorLimit::Bool
   Microphysics::Bool
   VerticalDiffusion::Bool
+  SurfaceFlux::Bool
   Param::NamedTuple
 end
 function Model(Param::NamedTuple)
@@ -485,6 +492,7 @@ function Model(Param::NamedTuple)
   ProfTheta=""
   ProfTr=""
   ProfVel=""
+  ProfVelW=""
   RhoPos = 0
   uPos = 0
   vPos = 0
@@ -513,12 +521,14 @@ function Model(Param::NamedTuple)
   HorLimit=false
   Microphysics=false
   VerticalDiffusion=false
+  SurfaceFlux=false
   return ModelStruct(
    Problem,
    ProfRho,
    ProfTheta,
    ProfTr,
    ProfVel,
+   ProfVelW,
    RhoPos,
    uPos,
    vPos,
@@ -547,6 +557,7 @@ function Model(Param::NamedTuple)
    HorLimit,
    Microphysics,
    VerticalDiffusion,
+   SurfaceFlux,
    Param,
 
    )
@@ -560,6 +571,7 @@ mutable struct GlobalStruct{TCache}
   Output::OutputStruct
   ROS::RosenbrockStruct
   RK::RungeKuttaStruct
+  SSP::SSPRungeKuttaStruct
   Cache::CacheStruct
   J::JStruct
   latN::Array{Float64, 1}
@@ -572,6 +584,7 @@ function Global(Grid::GridStruct,
   Metric=MetricStruct()
   ROS=RosenbrockMethod()
   RK=RungeKuttaMethod()
+  SSP=SSPRungeKuttaMethod()
   Cache=CacheStruct()
   J=JStruct()
   latN=zeros(0)
@@ -584,6 +597,7 @@ function Global(Grid::GridStruct,
     Output,
     ROS,
     RK,
+    SSP,
     Cache,
     J,
     latN,

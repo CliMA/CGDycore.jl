@@ -24,14 +24,14 @@ function BoundaryFluxScalar!(Fc,c,cS,CG,Global,iF)
 end
 
 function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,iF)
-  if Global.Model == "HeldSuarezMoist"
-    println(" Hello ")  
+  if Global.Model.Problem == "HeldSuarezMoistSphere"
+    OP = CG.OrdPoly+1  
     ThPos=Global.Model.ThPos  
     RhoPos=Global.Model.RhoPos  
     RhoVPos=Global.Model.RhoVPos  
     NumV=Global.Model.NumV  
-    TSurf = Global.Cache.TSurf
-    uStar = Global.Cache.uStar
+    @views TSurf = Global.Cache.TSurf[:,:,iF]
+    @views uStar = Global.Cache.uStar[:,:,iF]
     CE = Global.Model.Param.CE
     CH = Global.Model.Param.CH
     Rd = Global.Phys.Rd
@@ -39,31 +39,36 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,iF)
     Rv = Global.Phys.Rv
     Cpv = Global.Phys.Cpv
     p0 = Global.Phys.p0
-    p = Global.Cache.Pres(:,:,1,iF)
-    T = Global.Cache.Temp(:,:,1,iF)
-    dXdxIF = Global.Metric.dXdxIF[:,:,1,iF,3,3]
-    JF = Global.Metric.JF[:,:,1,iF]
-    @. BoundaryFluxHeldSuarez!(Fc[:,:,ThPos],Fc[:,:,RhoPos],Fc[:,:,RhoVPos+NumV],
-      Th,Rho,Tr[:,:,RhoVPos],p,T,dXdxIF,JF,CH,CE,TSurf ,uStar, Rd, Cpd, Rv, Cpv, p0)
-    stop
-      
+    @views p = Global.Cache.Pres[:,:,1,iF]
+    @views dXdxIF = Global.Metric.dXdxIF[:,:,1,3,3,iF]
+    for j = 1:OP
+      for i = 1:OP
+       (FTh,FRho,FRhoV) = BoundaryFluxHeldSuarez(
+         Th[i,j],Rho[i,j],Tr[i,j,RhoVPos],TSurf[i,j],p[i,j],dXdxIF[i,j],CH,CE,uStar[i,j], Rd, Cpd, Rv, Cpv, p0)
+       Fc[i,j,ThPos] += FTh
+       Fc[i,j,RhoPos] += FRho
+       Fc[i,j,RhoVPos+NumV] += FRhoV
+      end   
+    end   
   end    
 end
 
-BoundaryFluxHeldSuarez!(FTh,FRho,FRhoV,Th,Rho,RhoV,TSea,p,T,dXdxIF,JF,CH,CE,TS,uStar, Rd, Cpd, Rv, Cpv, p0)
-  T_C = TS - 273.15
-  p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
-  RhoVSurface = Rho * p_vs / (Rv * TS) 
-  LatFlux = 0.25 * CE * uStar * dXdxIF^2 /JF  *(RhoV(ix,iy,iz,1)-RhoVSurface) 
-  SensFlux = 0.25 * CH * uStar * dXdxIF^2 /JF  *(T-Ts) 
-  FRho = LatFlux
-  FRhoV = LatFlux
+function BoundaryFluxHeldSuarez(Th,Rho,RhoV,TSurf,p,dXdxIF,CH,CE,uStar, Rd, Cpd, Rv, Cpv, p0)
   RhoDry = Rho - RhoV
   rrv=RhoV/RhoDry
   Rm=Rd+rrv*Rv
   Cpml=Cpd+Cpv*rrv
+  T = p / (RhoDry * Rd + RhoV * Rv)
+  T_C = TSurf - 273.15
+  p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
+  RhoVSurface = p_vs / (Rv * TSurf) 
+  LatFlux = -0.5 * CE * uStar * dXdxIF  * (RhoV - RhoVSurface) 
+  SensFlux = -0.5 * CH * uStar * dXdxIF  * (T - TSurf) 
+  FRho = LatFlux
+  FRhoV = LatFlux
   PrePi=(p / p0)^(Rm / Cpml)
-  FTh = Th / T * SensFlux + ((Rv / Rm) - log(PrePi)*(Rv / Rm - Cpv / Cpml)) / Rho * MoistFlux  
+  FTh = Th / T * SensFlux + ((Rv / Rm) - log(PrePi)*(Rv / Rm - Cpv / Cpml)) / Rho * LatFlux  
+  return (FTh,FRhoV,FRhoV)
 end
 
 

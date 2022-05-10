@@ -3,6 +3,7 @@ mutable struct RungeKuttaStruct
   Type::String
   ARKE::Array{Float64, 2}
   bRKE::Array{Float64, 1}
+  cRKE::Array{Float64, 1}
   ARKI::Array{Float64, 2}
   bRKI::Array{Float64, 1}
   gRKI::Array{Float64, 1}
@@ -12,6 +13,7 @@ function RungeKuttaMethod()
   Type=""
   ARKE=zeros(0,0)
   bRKE=zeros(0)
+  cRKE=zeros(0)
   ARKI=zeros(0,0)
   bRKI=zeros(0)
   gRKI=zeros(0)
@@ -20,6 +22,7 @@ function RungeKuttaMethod()
   Type,
   ARKE,
   bRKE,
+  cRKE,
   ARKI,
   bRKI,
   gRKI,
@@ -64,10 +67,14 @@ elseif str == "Trap2(2,3,2)"
     RK.bRKE[3]=1/2;
     RK.bRKE[4]=0;
 elseif str == "RK1"
-    RK.nStage=1;
-    RK.ARKE=zeros(RK.nStage,RK.nStage);
-    RK.bRKE=zeros(1,RK.nStage);
-    RK.bRKE[1]=1;
+    nStage=1
+    Type=""
+    ARKE=zeros(nStage,nStage);
+    bRKE=[1];
+    cRKE=[0];
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "RK1I"
     RK.nStage=1;
     RK.ARKE=zeros(RK.nStage,RK.nStage);
@@ -82,6 +89,7 @@ elseif str == "RK4"
     ARKE[3,2]=1/2;
     ARKE[4,3]=1;
     bRKE=[1/6,1/3,1/3,1/6];
+    cRKE=[0,1/2,1/2,1];
     ARKI=zeros(0,0)
     bRKI=zeros(0)
     gRKI=zeros(0)
@@ -151,6 +159,7 @@ end
   Type,
   ARKE,
   bRKE,
+  cRKE,
   ARKI,
   bRKI,
   gRKI,

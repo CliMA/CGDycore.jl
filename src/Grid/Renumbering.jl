@@ -17,13 +17,15 @@ return Grid
 end
 
 function PosEdgeInFace(Edge,Grid)
-Edge.FE=zeros(2);
-for iF=1:size(Edge.F,1)
-  F=Edge.F[iF];
-  for iE=1:4
-    if Edge.EI==Grid.Edges[Grid.Faces[F].E[iE]].EI
-      Edge.FE[iF]=iE;
-      break
+Edge.FE=zeros(2)
+for i=1:size(Edge.F,1)
+  iF=Edge.F[i];
+  if iF > 0
+    for iE=1:4
+      if Edge.EI==Grid.Edges[Grid.Faces[iF].E[iE]].EI
+        Edge.FE[i]=iE;
+        break
+      end
     end
   end
 end

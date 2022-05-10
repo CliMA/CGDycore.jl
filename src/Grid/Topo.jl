@@ -16,6 +16,13 @@ elseif Topography.TopoS == "SchaerSphereRidge"
     h = Topography.h0 * exp( -(GreatCircleR  / Topography.d0)^2) * cos(pi * GreatCircleR / Topography.ksi0)^2 * cos(Lat)
 elseif Topography.TopoS == "SchaerCart"
    h = Topography.h0 * exp( -(x  / Topography.d0)^2) * cos(pi * x / Topography.ksi0)^2
+elseif Topography.TopoS == "AdvectionSchaer"
+   h = Topography.h0 * cos(pi * x /Topography.lambda)^2 
+   if abs(x) <= Topography.a
+     h = h * cos(0.5 * pi * x / Topography.a)^2
+   else
+     h = 0.0
+   end  
 else
     h=0;
 end

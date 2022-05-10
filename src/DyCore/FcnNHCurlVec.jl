@@ -502,19 +502,21 @@ function FcnNHCurlVec!(F,U,CG,Global)
 #   Pressure
     @views Pres = Global.Cache.Pres[:,:,:,iF]  
     Pres1D = reshape(Pres,OP*OP*nz,1)
-    Temp1D = reshape(Temp,OP*OP*nz,1)
+    @views Temp = Global.Cache.Temp[:,:,:,iF]  
     Th1D = reshape(ThCG,OP*OP*nz,1)
     Rho1D = reshape(RhoCG,OP*OP*nz,1)
     Tr1D = reshape(TrCG,OP*OP*nz,NumTr)
-    PressureTemp!(Pres1D,Temp1D,Th1D,Rho1D,Tr1D,Global)
+    Pressure!(Pres1D,Th1D,Rho1D,Tr1D,Global)
 #   Temperature
 #   uStar
     @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
     
 
 #   Vertical Diffusion coefficient    
-    KV = Global.Cache.DivC
-    eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+    if Global.Model.VerticalDiffusion
+      KV = Global.Cache.DivC
+      eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+    end   
 
     @views FDiv3Vec!(FCG[:,:,:,RhoPos],RhoCG,v1CG,v2CG,wCG,CG,Global,iF);
 
@@ -546,12 +548,15 @@ function FcnNHCurlVec!(F,U,CG,Global)
 
 #   Divergence of Thermodynamic Variable
     if Global.Model.Thermo == "Energy"
-      else
+    else
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
       else
         @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
       end
+      if Global.Model.VerticalDiffusion
+        @views VerticalDiffusionSaclar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+      end  
     end  
 
 #   Tracer transport
@@ -575,7 +580,9 @@ function FcnNHCurlVec!(F,U,CG,Global)
         @views VerticalDiffusionSaclar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
       end  
     end
-    @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,iF)
+    if Global.Model.SurfaceFlux
+      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,iF)
+    end  
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP

@@ -1,9 +1,9 @@
-function fQv(x,Global)
+function fQv(x,time,Global)
   Model=Global.Model
   Param=Global.Model.Param
   Phys=Global.Phys
   str = lowercase(Model.Problem)
-  if str == "barowavemoistsphere"
+  if str == "barowavemoistsphere" || str == "heldsuarezmoistsphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])  
     q_0 = 0.018                # Maximum specific humidity (default: 0.018)
     q_t = 1e-12                # Specific humidity above artificial tropopause

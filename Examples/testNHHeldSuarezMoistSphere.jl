@@ -42,18 +42,23 @@ Param=(T0E=310.0,
        pert = 0.1,
        uMax = 1.0,
        vMax = 0.0,
-       DeltaT_y=0,
+       DeltaT_y=65,
        DeltaTh_z=-5,
-       T_equator=315,
+       T_equator=294,
        T_min=200,
        sigma_b=7/10,
        z_D=20.0e3,
 #      Boundary layer       
-       C_E = 0.0044,
+       CE = 0.0044,
+       CH = 0.0044,
        p_pbl = 85000.0,
        p_strato = 10000.0,
 #      Surface flux       
        CTr = 0.004,
+       DeltaTS = 29.0,
+       TSMin = 271.0,
+       DeltaLat = 26.0 * pi / 180.0,
+       RelCloud = 1.0 / 500.0,
        )
 
 Model = CGDycore.Model(Param)
@@ -88,7 +93,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   Model.Equation="CompressibleMoist"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="HeldSuarezMoist"
+  Model.Problem="HeldSuarezMoistSphere"
   Model.ProfRho="BaroWaveSphere"
   Model.ProfTheta="BaroWaveSphere"
   Model.ProfVel="BaroWaveSphere"
@@ -104,11 +109,13 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   Model.Upwind = true
   Model.Microphysics = true
   Model.VerticalDiffusion = true
+  Model.SurfaceFlux = true
 
   U=zeros(nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Global)
   (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Global)
   U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Global).*U[:,:,Model.RhoPos]
+  U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,CG,Global).*U[:,:,Model.RhoPos]
 
 # Output
   Output.vtkFileName="HeldSuarezMoist"
@@ -134,7 +141,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
 if IntMethod == "Rosenbrock"
-  dtau=400
+  dtau=500
 else
   dtau=1
 end
@@ -143,16 +150,16 @@ Global.RK=CGDycore.RungeKuttaMethod("RK4")
 
 # Simulation period
   time=[0.0]
-  SimDays=1000
-  PrintDay=10
+  SimDays=100
+  PrintDay=1
   nIter=24*3600*SimDays/dtau
-  PrintInt=24*3600*PrintDay/dtau
+  PrintInt=ceil(24*3600*PrintDay/dtau)
 
 
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
   if IntMethod == "Rosenbrock"
-    Global.J = CGDycore.JStruct(CG.NumG,nz)
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
     Global.Cache.k=zeros(size(U[:,:,1:NumV])..., Global.ROS.nStage);
     Global.Cache.fV=zeros(size(U))
     Global.Cache.VS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage+1);
@@ -164,10 +171,8 @@ Global.RK=CGDycore.RungeKuttaMethod("RK4")
   end
 
 # Boundary values
- Global.Cache.cTS=zeros(OrdPoly+1,OrdPoly+1,NF)
- Global.Cache.cTS=CGDycore.ProjectS(CGDycore.fSeaT,CG,Global)
- Global.Cache.TotalPrec=zeros(OrdPoly+1,OrdPoly+1,NF)
- Global.Cache.qvSSurf=zeros(OrdPoly+1,OrdPoly+1,NF)
+  Global.Cache.TSurf=CGDycore.ProjectSurf(CGDycore.fTSurf,CG,Global)
+# Global.Cache.TotalPrec=zeros(OrdPoly+1,OrdPoly+1,NF)
 
 # Print initial conditions
   Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)

@@ -1,4 +1,4 @@
-function ProjectVec(Fun,CG,Global)
+function ProjectVec(Fun,time,CG,Global)
 OrdPoly=CG.OrdPoly;
 OrdPolyZ=CG.OrdPolyZ;
 nz=Global.Grid.nz;
@@ -13,7 +13,7 @@ for iz=1:nz
     for j=1:OrdPoly+1
       for i=1:OrdPoly+1
         x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
-        (uLoc,vLoc)=Fun(x,Global);
+        (uLoc,vLoc)=Fun(x,time,Global);
         uS[iz,CG.Glob[i,j,iF]]+=uLoc*JC[i,j,iz,iF]
         vS[iz,CG.Glob[i,j,iF]]+=vLoc*JC[i,j,iz,iF]
       end
