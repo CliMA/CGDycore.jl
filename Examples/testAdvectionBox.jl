@@ -76,6 +76,7 @@ Model.vPos=3;
 Model.wPos=4;
 U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global);
 (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global);
+U[:,:,Model.wPos]=CGDycore.ProjectW(CGDycore.fVelW,0.0,CG,Global);
 U[:,:,Model.NumV+1]=CGDycore.Project(CGDycore.fTr,0.0,CG,Global).*U[:,:,Model.RhoPos];
 
 # Output

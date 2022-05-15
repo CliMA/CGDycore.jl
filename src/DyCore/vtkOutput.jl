@@ -37,6 +37,10 @@ for i=1:length(Global.Output.cNames)
   elseif str == "Pres"
       @views Pressure!(reshape(cOut[:,:,i],nz*NG,1),reshape(U[:,:,Global.Model.ThPos],nz*NG,1),
         reshape(U[:,:,Global.Model.RhoPos],nz*NG,1),reshape(U[:,:,NumV+1:end],nz*NG,NumTr),Global);
+  elseif str == "Temp"
+      @views Temperature!(reshape(cOut[:,:,i],nz*NG,1),reshape(U[:,:,Global.Model.ThPos],nz*NG,1),
+        reshape(U[:,:,Global.Model.RhoPos],nz*NG,1),reshape(U[:,:,NumV+1:end],nz*NG,NumTr),Global);
+  elseif str == "Vort"
   elseif str == "Vort"
       @views FVort2Vec!(cOut[:,:,i],U,CG,Global);
   end
@@ -44,3 +48,4 @@ end
 vtk=vtkCG(cOut,CG,Global,vtkGrid,Global.Output.vtk);
 return vtk
 end
+

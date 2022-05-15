@@ -14,6 +14,11 @@ function fRho(x,time,Global)
         pLoc=Phys.p0*(1-Phys.Grav/(Phys.Cpd*Param.Th0*S)*
           (1-exp(-S*z))).^(Phys.Cpd/Phys.Rd);
         Rho=pLoc./((pLoc/Phys.p0).^Phys.kappa*Phys.Rd.*ThLoc);
+    elseif str == "advectionspheredcmip"
+      (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
+      Z=max(R-Phys.RadEarth,0);    
+      p = Phys.p0 * exp(-Z / Param.ScaleHeight)
+      Rho = p / Phys.Rd / Param.T_0
     elseif str == "advectionschaer"
       Rho = 1.0
     elseif str == "schaersphere"

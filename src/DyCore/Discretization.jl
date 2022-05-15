@@ -80,6 +80,7 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
   dXdxIF = Global.Metric.dXdxIF
   dXdxIC = Global.Metric.dXdxIC
   nS = Global.Metric.nS
+  Global.Metric.dz = zeros(nz,CG.NumG)
   dz = Global.Metric.dz
   J = Global.Metric.J;
   JC = Global.Metric.JC;
@@ -124,10 +125,6 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
     end
   end
 
-  @views @. dz = 2.0 * JC / dXdxIC[:,:,:,3,3,:]
-
-
-
   (CG.M,CG.MW,CG.MMass)=MassCG(CG,Global);
   Global.latN=zeros(CG.NumG);
   lat = Global.Metric.lat
@@ -138,10 +135,12 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
       for iP=1:OP
         ind=CG.Glob[iP,jP,iF]
         latN[ind] = latN[ind] + lat[iP,jP,iF]
+        @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF]
       end
     end
   end
   Global.latN=Global.latN./CG.M[1,:];
+  @. dz = dz / CG.M
 # Boundary nodes
   for iF = 1 : NF
     Side = 0

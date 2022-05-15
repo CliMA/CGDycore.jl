@@ -76,13 +76,36 @@ function Microphysics(RhoTh,Rho,RhoV,RhoC,Rd,
   b = 0.0
   FRhoV = RelCloud * (a + b - sqrt(a * a + b * b))
   L = L00 - (Cpl - Cpv) * T
-  FRhoTh = RhoTh * ((-L / (Cpml * T) -
-                        log(p / p0) * kappaM * (Rv / Rm - Cpv / Cpml) +
-                        Rv / Rm) * FRhoV +
-                        (log(p / p0) * kappaM * (Cpl / Cpml)) * (-FRhoV))
+  FRhoTh = RhoTh*(Rv/Rm-log(p/p0)*(Rv/Rm+(Cpl-Cpv)/Cpml)-L/(Cpml*T))*FRhoV
   FRho = FRhoV
   FRhoC = 0.0
   return (FRhoTh,FRho,FRhoV,FRhoC)
 end  
+
+function MicrophysicsDCMIP(RhoTh,Rho,RhoV,RhoC,Rd,
+     Cpd,Rv,Cpv,Cpl,L00,p0,RelCloud)
+  RhoD = Rho - RhoV - RhoC
+  Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
+  Rm = Rd * RhoD + Rv * RhoV
+  kappaM = Rm / Cpml
+  p = (Rd * RhoTh / p0^kappaM)^(1 / (1 - kappaM))
+  T = p / Rm
+  T_C = T - 273.15
+  p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
+  RhoVS = p_vs / (Rv * T) - RhoV
+  if RhoV > RhoVS
+    L = L00 - (Cpl - Cpv) * T
+    Cond = (RhoV - RhoVS) / (1.0+(L/Cpd)*(L*(RhoVS/Rho)/(Rv*T^2)))
+    FRhoV = -RelCloud * Cond
+    FRhoTh = RhoTh*(Rv/Rm-log(p/p0)*(Rv/Rm+(Cpl-Cpv)/Cpml)-L/(Cpml*T))*FRhoV
+    FRho = FRhoV
+  else
+    FRhoV = 0.0
+    FRhoTh = 0.0
+    FRho = 0.0
+  end  
+  FRhoC = 0.0
+  return (FRhoTh,FRho,FRhoV,FRhoC)
+end
 
 

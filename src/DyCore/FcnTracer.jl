@@ -28,10 +28,10 @@ function FcnTracer!(F,U,time,CG,Global)
   DivTr .= 0.0
   F .= 0.0
   if Global.Model.Param.TimeDependent
-    (U[:,:,uPos],U[:,:,vPos])=ProjectVec(fVel,time,CG,Global)
-    U[:,:,wPos]=ProjectW(fVelW,time,CG,Global)
-    U[:,CG.Boundary,NumV+1:end] .= 0.0
-    U[:,CG.Boundary,RhoPos] .= 1.0
+    @views ProjectVec!(U[:,:,uPos],U[:,:,vPos],fVel,time,CG,Global)
+    @views ProjectW!(U[:,:,wPos],fVelW,time,CG,Global)
+    @views @. U[:,CG.Boundary,NumV+1:end] = 0.0
+    @views @. U[:,CG.Boundary,RhoPos] = 1.0
   end
   # Hyperdiffusion 
   @inbounds for iF = 1:NF

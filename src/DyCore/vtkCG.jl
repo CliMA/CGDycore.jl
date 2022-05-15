@@ -39,3 +39,10 @@ vtkWriteHex(Global.Output.vtkFileName * vtkS * ".vtk",
 vtk=vtk+1;
 return vtk
 end
+
+function vtkElem(c,vtkGrid)
+
+vtkWriteQuad("Elem" * ".vtk",
+  vtkGrid.vtkP,
+  vtkGrid.ConnectivityList,c,"Elem")
+end

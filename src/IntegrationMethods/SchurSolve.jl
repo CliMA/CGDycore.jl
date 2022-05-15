@@ -55,7 +55,13 @@ function SchurSolve!(k,v,J,fac,Global)
   JRhoW=J.JRhoW
   JWTh=J.JWTh
   JThW=J.JThW
+  JTrW=J.JTrW
   JWW=J.JWW
+  if size(k,3) > Global.Model.NumV
+    NumTr = Global.Model.NumTr
+  else
+    NumTr = 0
+  end  
 
  Threads.@threads for in2=1:n2
     CacheC1 = TCacheC1[Threads.threadid()]
@@ -96,6 +102,10 @@ function SchurSolve!(k,v,J,fac,Global)
     @views k[:,in2,1] .= fac .* rRho
     @views k[:,in2,2:3] .= fac .* v[:,in2,2:3];
     @views k[:,in2,5] .= fac .* rTh
+    for iT = 1 : NumTr
+      @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
+      @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
+    end  
   end
   J.CompTri=false
 end

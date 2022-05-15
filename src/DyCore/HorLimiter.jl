@@ -2,14 +2,14 @@ function HorLimiter!(RhoqNew,Fac1,Rhoq,Fac2,dRhoq,Rho,CG,Global)
   OP=CG.OrdPoly+1
   NF=Global.Grid.NumFaces
   nz=Global.Grid.nz
-  cLoc=zeros(OP,OP,NF)
-  qMin=zeros(nz,NF)
-  qMax=zeros(nz,NF)
-  qStarCG=zeros(OP,OP)
-  RhoCG=zeros(OP,OP)
-  cCorrCG=zeros(OP,OP)
-  JCMass=zeros(OP,OP)
-  for iT = 1:size(RhoqNew,3)
+  cLoc = Global.Cache.uStar
+  @views qMin = Global.Cache.Pres[1,1,:,:]
+  @views qMax = Global.Cache.Pres[1,2,:,:]
+  qStarCG = Global.Cache.CacheE1
+  RhoCG = Global.Cache.CacheE2
+  cCorrCG = Global.Cache.CacheE3
+  JCMass = Global.Cache.CacheE4
+  @inbounds for iT = 1:size(RhoqNew,3)
     @. qMin = 1.e40
     @. qMax = -1.e40
     @inbounds for iF = 1:NF
@@ -23,10 +23,10 @@ function HorLimiter!(RhoqNew,Fac1,Rhoq,Fac2,dRhoq,Rho,CG,Global)
         end
       end
     end
-    for iF=1:NF
-      for iz=1:nz  
-        qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
-        qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
+    @inbounds for iF=1:NF
+      @inbounds for iz=1:nz  
+        @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
+        @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
         @inbounds for jP=1:OP
           @inbounds for iP=1:OP
             ind = CG.Glob[iP,jP,iF]
@@ -51,8 +51,8 @@ function QP!(RhoQCorr,RhoQStar,J,QMin,QMax,Rho)
 # QStar (m^3/kg)
 # Rho  (m^3/kg) 
   tol_limiter=5e-14
-  JRho=similar(RhoQStar)
-  Q=similar(RhoQStar)
+  JRho = J
+  Q = Rho
   MassRho=0.0
   MassQ=0.0
   for i in eachindex(RhoQStar) 
@@ -90,17 +90,6 @@ function QP!(RhoQCorr,RhoQStar,J,QMin,QMax,Rho)
         addMassQ=addMassQ-(QMin-Q[i])*JRho[i]
         Q[i]=QMin
       end
-    end
-  
-    if abs(addMassQ)<=tol_limiter*abs(MassQ)
-#     @show iter   
-#     @show addMassQ
-#     @show MassQ
-#     @show MassRho
-#     @show QMin
-#     @show QMax
-#     @show Q
-      break
     end
   
     weightssum=0.0

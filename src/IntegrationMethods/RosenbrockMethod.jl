@@ -39,10 +39,7 @@ function SSPRungeKuttaMethod(Method)
             0 1/4 0
             0 0 2/3]
   end          
-  c=zeros(size(alpha,1)) 
-  for i = 2:size(alpha,1)
-    c[i] = sum(beta[i-1,:])  
-  end  
+  c = [0,1,1/2]
  return SSPRungeKuttaStruct(
    nStage,
    alpha,

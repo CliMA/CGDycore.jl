@@ -18,3 +18,22 @@ end
 @views p[1:nz-1,:] .= p[1:nz-1,:]./CG.MW;
 return p
 end
+
+function ProjectW!(w,Fun,time,CG,Global)
+  OrdPoly=CG.OrdPoly;
+  nz=Global.Grid.nz;
+  X = Global.Metric.X
+  JF = Global.Metric.JF
+  @. w = 0.0
+  @inbounds for iz=1:nz-1
+    @inbounds for iF=1:Global.Grid.NumFaces
+      @inbounds for j=1:OrdPoly+1
+        @inbounds for i=1:OrdPoly+1
+          x=0.5*(X[i,j,2,:,iz,iF]+X[i,j,1,:,iz+1,iF])
+          ind = CG.Glob[i,j,iF]
+          w[iz,ind]+=Fun(x,time,Global)*JF[i,j,iz+1,iF]/CG.MW[iz,ind]
+        end
+      end
+    end
+  end
+end

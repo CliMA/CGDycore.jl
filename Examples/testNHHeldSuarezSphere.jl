@@ -82,9 +82,10 @@ Model.HyperDDiv=2.e17/4 # Scalars
 Model.NumV=NumV
 Model.NumTr=NumTr
 U=zeros(nz,CG.NumG,Model.NumV)
-Model.ProfRho="HeldSuarezSphere"
-Model.ProfTheta="HeldSuarezSphere"
-Model.ProfVel="Rand"
+Model.Problem="HeldSuarezSphere"
+Model.ProfRho="BaroWaveSphere"
+Model.ProfTheta="BaroWaveSphere"
+Model.ProfVel="BaroWaveSphere"
 Model.RhoPos=1
 Model.uPos=2
 Model.vPos=3
@@ -93,9 +94,9 @@ Model.ThPos=5
 Model.HorLimit=true
 Model.Source = true
 
-U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,CG,Global)
-(U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Global)
-U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,CG,Global).*U[:,:,Model.RhoPos]
+U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global)
+(U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global)
+U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global).*U[:,:,Model.RhoPos]
 
 # Output
 Output.vtkFileName="HeldSuarez"
@@ -135,7 +136,7 @@ Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Glob
 
 str = IntMethod
 if str == "Rosenbrock"
-  Global.J = CGDycore.JStruct(CG.NumG,nz)
+  Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
   Global.Cache.k=zeros(size(U[:,:,1:NumV])..., Global.ROS.nStage);
   Global.Cache.fV=zeros(size(U))
   Global.Cache.VS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage+1);

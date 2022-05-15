@@ -1,21 +1,21 @@
 function VerticalDiffusionSaclar!(Fc,c,Rho,K,CG,Global,iF)
 
 nz = Global.Grid.nz
-gradc = Global.Cache.CacheC1
+gradqCG = Global.Cache.CacheC1
 @views dXdxIF33 = Global.Metric.dXdxIF[:,:,:,3,3,iF] 
 @views JF = Global.Metric.JF[:,:,:,iF] 
 qCG = Global.Cache.CacheC3
 @. qCG = c / Rho 
 # Gradient
   @inbounds for iz = 1:nz-1
-    @views @. gradc[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (c[:,:,iz+1] - c[:,:,iz]) * dXdxIF33[:,:,iz+1] / JF[:,:,iz+1] 
+    @views @. gradqCG[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * dXdxIF33[:,:,iz+1] / JF[:,:,iz+1] 
   end
 # Divergence  
-  @views @. Fc[:,:,1] += 0.5 * gradc[:,:,2] * dXdxIF33[:,:,2]
+  @views @. Fc[:,:,1] += 0.5 * gradqCG[:,:,2] * dXdxIF33[:,:,2]
   @inbounds for iz = 2:nz-1
-    @views @. Fc[:,:,iz] += 0.5 * (gradc[:,:,iz+1] * dXdxIF33[:,:,iz+1] - gradc[:,:,iz] * dXdxIF33[:,:,iz])
+    @views @. Fc[:,:,iz] += 0.5 * (gradqCG[:,:,iz+1] * dXdxIF33[:,:,iz+1] - gradqCG[:,:,iz] * dXdxIF33[:,:,iz])
   end
-  @views @. Fc[:,:,nz] -= 0.5 * gradc[:,:,nz] * dXdxIF33[:,:,nz]
+  @views @. Fc[:,:,nz] -= 0.5 * gradqCG[:,:,nz] * dXdxIF33[:,:,nz]
 end
 
 function BoundaryFluxScalar!(Fc,c,cS,CG,Global,iF)
@@ -41,8 +41,8 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,iF)
     p0 = Global.Phys.p0
     @views p = Global.Cache.Pres[:,:,1,iF]
     @views dXdxIF = Global.Metric.dXdxIF[:,:,1,3,3,iF]
-    for j = 1:OP
-      for i = 1:OP
+    @inbounds for j = 1:OP
+      @inbounds for i = 1:OP
        (FTh,FRho,FRhoV) = BoundaryFluxHeldSuarez(
          Th[i,j],Rho[i,j],Tr[i,j,RhoVPos],TSurf[i,j],p[i,j],dXdxIF[i,j],CH,CE,uStar[i,j], Rd, Cpd, Rv, Cpv, p0)
        Fc[i,j,ThPos] += FTh
@@ -80,19 +80,19 @@ function uStarCoefficient!(uStar,U,V,WC,CG,Global,iF)
 end
 
 function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,iF) 
-  if Global.Model.Problem == "HeldSuarezMoist"
-    C_E = Global.Model.Param.C_E 
+  if Global.Model.Problem == "HeldSuarezMoistSphere"
+    CE = Global.Model.Param.CE 
     p_pbl = Global.Model.Param.p_pbl 
     p_strato = Global.Model.Param.p_strato 
 #   Computation norm_v_a  
 #   |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)  
     @views uStar = Global.Cache.uStar[:,:,iF]
-    @views @. K[:,:,1] = 0.5 * C_E * uStar * Global.Metric.dz[:,:,1,iF]
+    @views @. K[:,:,1] = 0.5 * CE * uStar * 2.0 * Global.Metric.JC[:,:,1,iF] / Global.Metric.dXdxIC[:,:,1,3,3,iF]
     @views p = Global.Cache.Pres[:,:,:,iF]
-    for iz = size(K,3) : -1 : 1
-      for jP = 1 : size(K,2)
-        for iP = 1 : size(K,1)
-          if p[iP,jP,iz] < p_pbl
+    @inbounds for iz = size(K,3) : -1 : 1
+      @inbounds for jP = 1 : size(K,2)
+        @inbounds for iP = 1 : size(K,1)
+          if p[iP,jP,iz] > p_pbl
             K[iP,jP,iz] = K[iP,jP,1]
           else
             K[iP,jP,iz] = K[iP,jP,1] * exp(-((p_pbl - p[iP,jP,iz]) / p_strato)^2)  
@@ -104,6 +104,7 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,iF)
     @views @. K = 1.0  
   end   
   @. K = K * Rho
+
 end
 
 

@@ -10,7 +10,9 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Global)
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
   RhoPos=Global.Model.RhoPos
+  @views RhoTemp = fV[:,:,RhoPos]
 
+  @views @. RhoS[:,:,1] = V[:,:,RhoPos]
   if NumTr>0
     @views @. VS[:,:,:,1] = V[:,:,NumV+1:end]
   end  
@@ -21,6 +23,7 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Global)
       @views @. fS[:,:,:,iStage] = fV[:,:,NumV+1:end]
     end
     @views @. RhoS[:,:,iStage+1] = 0.0 
+    @views @. VS[:,:,:,iStage+1] = 0.0 
     @inbounds for jStage = 1:iStage
       if SSP.beta[iStage,jStage] > 0
         @views @. RhoS[:,:,iStage+1] += (SSP.alpha[iStage,jStage] * RhoS[:,:,jStage] +
@@ -28,18 +31,13 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Global)
       else
         @views @. RhoS[:,:,iStage+1] += SSP.alpha[iStage,jStage] * RhoS[:,:,jStage]
       end    
-    end
-    if NumTr > 0
-      @views @. fS[:,:,:,iStage] = fV[:,:,NumV+1:end]
-    end  
-    if NumTr>0
-      @views @. VS[:,:,:,iStage+1] = 0.0 
-      @inbounds for jStage = 1:iStage
+      if NumTr>0
         if SSP.beta[iStage,jStage] > 0
           if Global.Model.HorLimit  
             Fac = SSP.beta[iStage,jStage]/SSP.alpha[iStage,jStage]
+            @. RhoTemp = RhoS[:,:,jStage] + Fac*dt * fRhoS[:,:,jStage]
             @views HorLimiter!(VS[:,:,:,iStage+1],SSP.alpha[iStage,jStage],VS[:,:,:,jStage],Fac*dt,
-              fS[:,:,:,jStage],RhoS[:,:,jStage],CG,Global)            
+              fS[:,:,:,jStage],RhoTemp,CG,Global)            
           else 
             @views @. VS[:,:,:,iStage+1] += (SSP.alpha[iStage,jStage] * VS[:,:,:,jStage] +
               dt * SSP.beta[iStage,jStage] * fS[:,:,:,jStage])
@@ -48,8 +46,9 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Global)
           @views @. VS[:,:,:,iStage+1] += SSP.alpha[iStage,jStage] * VS[:,:,:,jStage]
         end    
       end
-      @views @. V[:,:,NumV+1:end] = VS[:,:,:,iStage+1]
     end  
+    @views @. V[:,:,RhoPos] = RhoS[:,:,iStage+1]
+    @views @. V[:,:,NumV+1:end] = VS[:,:,:,iStage+1]
   end
 end
 

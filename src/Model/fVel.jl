@@ -2,14 +2,28 @@ function fVel(x,time,Global)
     Model=Global.Model
     Param=Global.Model.Param
     Phys=Global.Phys
-    str = lowercase(Model.ProfVel)
-    if str == "solidbody"
+    if Model.ProfVel == "SolidBody"
       uS=0;
       vS=0;
-    elseif str == "advectiontestdeform"  
+    elseif Model.ProfVel == "AdvectionSphereDCMIP"  
+      (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
+      Z=max(R-Phys.RadEarth,0);
+      pZ = Phys.p0 * exp(-Z / Param.ScaleHeight)
+      LonP = Lon - 360 * time / Param.tau
+      k = 10 * Phys.RadEarth / Param.tau
+      ua = k * sin(LonP)^2 * sin(2 * Lat) * cos(pi * time / Param.tau) +
+       2 * pi * Phys.RadEarth / Param.tau * cos(Lat)
+       ud = Param.omega_0 * Phys.RadEarth / Param.b / Param.p_top *
+       cos(LonP) *
+       cos(Lat)^2 *
+       cos(2 * pi * time / Param.tau) *
+       (-exp((pZ - Phys.p0) / Param.b / Param.p_top) + exp((Param.p_top - pZ) / Param.b / Param.p_top))
+       uS = ua + ud
+       vS = k * sin(2 * LonP) * cos(Lat) * cos(pi * time / Param.tau)
+    elseif Model.ProfVel == "AdvectionTestDeform"  
       uS = -Param.uMax * (x[2] - Param.yC) * cospi(time / Param.EndTime)
       vS = Param.uMax * (x[1] - Param.xC) * cospi(time / Param.EndTime)
-    elseif str == "advectionschaer"  
+    elseif Model.ProfVel == "AdvectionSchaer"  
       vS = 0
       if x[3] <= Param.z1
         uS = 0  
@@ -19,11 +33,11 @@ function fVel(x,time,Global)
         uS = Param.uMax      
       end  
       uS = Param.uMax      
-    elseif str == "schaersphere"
+    elseif Model.ProfVel == "SchaerSphere"
       (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
       uS = Param.uEq * cos(Lat)
       vS = 0.0
-    elseif str == "hyperdiffcart"
+    elseif Model.ProfVel == "hyperdiffcart"
       if abs(x[1]-3000. * 1.e3)<=1000 * 1.e3 && abs(x[2])<=1000 * 1.e3
         uS=sqrt(5000);
         vS=sqrt(5000);
@@ -31,7 +45,7 @@ function fVel(x,time,Global)
         uS=0;
         vS=0;
       end
-    elseif str == "hyperdiff"
+    elseif Model.ProfVel == "hyperdiff"
       (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
       GreatCircleR=acos(sin(Param.PertLat)*sin(Lat)+
         cos(Param.PertLat)*cos(Lat)*cos(Lon-Param.PertLon));
@@ -44,7 +58,7 @@ function fVel(x,time,Global)
         uS=0.0;
         vS=0.0;
       end
-    elseif str == "barowavesphere"
+    elseif Model.ProfVel == "BaroWaveSphere"
       (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
       Z=max(R-Phys.RadEarth,0);
       T0=0.5*(Param.T0E+Param.T0P);
@@ -105,7 +119,7 @@ function fVel(x,time,Global)
       end
       uS=uS+uSPert;
 
-    elseif str == "barowavecart"
+    elseif Model.ProfVel == "barowavecart"
       eta=EtaFromZ(x[1],x[2],x[3],Param);
       uS=-Param.u0*sin(pi*x[2]/Param.Ly)^2*log(eta) *
         exp(-(log(eta)/Param.b)^2);
@@ -116,19 +130,19 @@ function fVel(x,time,Global)
           (x[2]-Param.yC)^2)/Param.Lp^2);
       end
       vS=0;
-    elseif str == "baldauf"
+    elseif Model.ProfVel == "baldauf"
       uS=0;
       vS=0;
-    elseif str == "barowavesphere"
+    elseif Model.ProfVel == "barowavesphere"
   #     # parameters
 
-    elseif str == "gravityhill"
+    elseif Model.ProfVel == "gravityhill"
       uS=Param.uMax;
       vS=0;
-    elseif str == "sphericalharmonics"
+    elseif Model.ProfVel == "sphericalharmonics"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
       (uS,vS)=harmonicVec(Param.lHar,Param.mHar,lat,lon,r);
-    elseif str == "galewsky"
+    elseif Model.ProfVel == "galewsky"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
       if (lat<=Param.lat0G) || (lat>=Param.lat1G)
         uS=0;
@@ -136,7 +150,7 @@ function fVel(x,time,Global)
         uS=Param.uM/Param.eN*exp(1.0/((lat-Param.lat0G)*(lat-Param.lat1G)));
       end
       vS=0;
-    elseif str == "rossbyhaurwitz"
+    elseif Model.ProfVel == "rossbyhaurwitz"
       omega6=7.8480e-6;
       K6=7.8480e-6;
       R6=4.0;
@@ -144,7 +158,7 @@ function fVel(x,time,Global)
       uS=r*omega6*cos(lat) + r*K6*(cos(lat))^(R6-1.0) *
         (R6*sin(lat)*sin(lat)-cos(lat)*cos(lat))*cos(R6*lon);
        vS=-r*K6*R6*(cos(lat))^(R6-1.0)*sin(lat)*sin(R6*lon);
-    elseif str == "hill"
+    elseif Model.ProfVel == "hill"
       uMax=20;
       rotation_angle=0;
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
@@ -161,7 +175,7 @@ function fVel(x,time,Global)
           uS=0.0e0;
         end
       end
-    elseif str == "bickley"
+    elseif Model.ProfVel == "bickley"
       U1 = cosh(x[2])^(-2);
 
       # ?? = exp(-(x2 + Param.l / 10)^2 / 2p.l^2) * cos(p.k * x1) * cos(p.k * x2)
@@ -172,24 +186,24 @@ function fVel(x,time,Global)
       u2 = -Param.k * gaussian * sin(Param.k * x[1]) * cos(Param.k * x[2]);
       uS=U1+Param.Eps*u1;
       vS=Param.Eps*u2;
-    elseif str == "cosinebell"
+    elseif Model.ProfVel == "cosinebell"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
       alpha0=pi/2;
       u0=2*pi*Phys.RadEarth/(86400*12);
       uS=u0*(cos(alpha0)*cos(lat)+sin(alpha0)*cos(lon)*sin(lat));
       vS =-u0*sin(alpha0)*sin(lon);
-    elseif str == "const"
+    elseif Model.ProfVel == "const"
       uS=Param.uMax;
       vS=Param.vMax;
-    elseif str == "sin"
+    elseif Model.ProfVel == "sin"
       uS=Param.uMax*sin(pi*x[1]/Param.Lx);
       vS=Param.vMax*sin(pi*x[2]/Param.Ly);
-    elseif str == "rand"
+    elseif Model.ProfVel == "rand"
       pert = Param.pert * rand()
       uS=Param.uMax*pert;
       pert = Param.pert * rand()
       vS=Param.vMax*pert;
-    elseif str == "linear"
+    elseif Model.ProfVel == "linear"
       uS=x[3];
       vS=0;
     else

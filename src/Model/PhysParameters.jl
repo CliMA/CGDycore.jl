@@ -352,7 +352,7 @@ mutable struct MetricStruct
   dXdxIF::Array{Float64, 6}
   dXdxIC::Array{Float64, 6}
   nS::Array{Float64, 4}
-  dz::Array{Float64, 4}
+  dz::Array{Float64, 2}
 end
 function MetricStruct()
     lat    = zeros(0,0,0)
@@ -363,7 +363,7 @@ function MetricStruct()
     dXdxIF = zeros(0,0,0,0,0,0)
     dXdxIC = zeros(0,0,0,0,0,0)
     nS = zeros(0,0,0,0)
-    dz = zeros(0,0,0,0)
+    dz = zeros(0,0)
     return MetricStruct(
         lat,
         JC,
@@ -385,7 +385,7 @@ function Metric(OP,OPZ,NF,nz)
     dXdxIF = zeros(OP,OP,nz+1,3,3,NF)
     dXdxIC = zeros(OP,OP,nz,3,3,NF)
     nS = zeros(OP,OP,3,NF)
-    dz = zeros(OP,OP,nz,NF)
+    dz = zeros(0,0)
     return MetricStruct(
         lat,
         JC,

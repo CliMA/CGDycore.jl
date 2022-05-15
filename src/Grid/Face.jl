@@ -2,6 +2,7 @@ mutable struct Face
   N::Array{Int, 1}
   E::Array{Int, 1}
   F::Int
+  FG::Int
   n::Point
   a::Float64
   Mid::Point
@@ -14,6 +15,7 @@ function Face()
   N=zeros(Int,0)
   E=zeros(Int,0)
   F=0
+  FG=0
   n=Point()
   a=0.0
   Mid=Point()
@@ -24,6 +26,7 @@ function Face()
     N,
     E,
     F,
+    FG,
     n,
     a,
     Mid,

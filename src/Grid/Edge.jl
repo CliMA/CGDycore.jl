@@ -1,6 +1,7 @@
 mutable struct Edge
   N::Array{Int, 1}
   E::Int
+  EG::Int
   EI::Int
   ET::Int
   NumF::Int
@@ -15,6 +16,7 @@ end
 function Edge()
   N=zeros(Int,2)
   E=0
+  EG=0
   EI=0
   ET=0
   NumF=0
@@ -27,6 +29,7 @@ function Edge()
   return Edge(
     N,
     E,
+    EG,
     EI,
     ET,
     NumF,

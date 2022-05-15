@@ -508,14 +508,16 @@ function FcnNHCurlVec!(F,U,CG,Global)
     Tr1D = reshape(TrCG,OP*OP*nz,NumTr)
     Pressure!(Pres1D,Th1D,Rho1D,Tr1D,Global)
 #   Temperature
-#   uStar
-    @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
-    
 
-#   Vertical Diffusion coefficient    
-    if Global.Model.VerticalDiffusion
-      KV = Global.Cache.DivC
-      eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
+#     uStar
+      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
+
+#     Vertical Diffusion coefficient    
+      if Global.Model.VerticalDiffusion
+        KV = Global.Cache.DivC
+        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+      end   
     end   
 
     @views FDiv3Vec!(FCG[:,:,:,RhoPos],RhoCG,v1CG,v2CG,wCG,CG,Global,iF);

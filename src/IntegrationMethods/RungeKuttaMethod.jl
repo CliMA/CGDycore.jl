@@ -93,6 +93,18 @@ elseif str == "RK4"
     ARKI=zeros(0,0)
     bRKI=zeros(0)
     gRKI=zeros(0)
+elseif str == "SSP3"
+    nStage=3;
+    Type=""
+    ARKE=zeros(nStage,nStage);
+    ARKE[2,1] = 1.0
+    ARKE[3,1] = 0.25
+    ARKE[3,2] = 0.25
+    bRKE = [1/6,1/6,1/3]
+    cRKE = [0,1,1/2]
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "Kinnmark"
     nStage=5;
     Type="LowStorage"

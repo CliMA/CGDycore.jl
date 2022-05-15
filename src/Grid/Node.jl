@@ -38,6 +38,7 @@ cross(P1::Point,P2::Point)=Point([P1.y*P2.z-P1.z*P2.y,P1.z*P2.x-P1.x*P2.z,P1.x*P
 mutable struct Node
     P::Point
     N::Int
+    NG::Int
     E::Array{Int, 1}
     F::Array{Int, 1}
 end
@@ -45,11 +46,13 @@ end
 function Node()
   P=Point()
   N=0
+  NG=0
   E=zeros(Int,0)
   F=zeros(Int,0)
   return Node(
     P,
     N,
+    NG,
     E,
     F,
   )

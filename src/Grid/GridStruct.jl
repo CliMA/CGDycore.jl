@@ -2,7 +2,7 @@ mutable struct GridStruct
     nz::Int
     zP::Array{Float64, 1}
     z::Array{Float64, 1}
-    dz::Float64
+    dzeta::Array{Float64, 1}
     H::Float64
     NumFaces::Int
     Faces::Array{Face, 1}
@@ -24,7 +24,7 @@ end
 function Grid(nz,Topography)
   zP=zeros(nz)
   z=zeros(nz+1)
-  dz=0.0
+  dzeta=zeros(nz)
   H=0.0
   NumFaces=0
   Faces=Array{Face}(undef, 0)
@@ -45,7 +45,7 @@ function Grid(nz,Topography)
     nz,
     zP,
     z,
-    dz,
+    dzeta,
     H,
     NumFaces,
     Faces,
