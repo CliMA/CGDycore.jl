@@ -3,7 +3,7 @@
 using CGDycore
 
 OrdPoly = 4
-nz = 60
+nz = 30
 
 OrdPolyZ=1
 nPanel = 8
@@ -61,7 +61,7 @@ Model.Coriolis=true
 Model.CoriolisType="Sphere"
 
 # Grid
-#H = 30000.0
+H = 30000.0
 H = 45000.0
 Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 Grid=CGDycore.Grid(nz,Topography)
@@ -80,9 +80,9 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 # Discretization
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=2.e17/4/4 #1.e14*(dx/LRef)^3.2;
-  Model.HyperDGrad=2.e17/4/4
-  Model.HyperDDiv=2.e17/4/4 # Scalars
+  Model.HyperDCurl=2.e17/4 #1.e14*(dx/LRef)^3.2;
+  Model.HyperDGrad=2.e17/4
+  Model.HyperDDiv=0.0 #2.e17/4 # Scalars
 
 
 
@@ -137,30 +137,32 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 
 
   IntMethod="RungeKutta"
-  IntMethod="RosenbrockD"
-  IntMethod="LinIMEX"
   IntMethod="Rosenbrock"
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau=200
+  IntMethod="RosenbrockD"
+# IntMethod="LinIMEX"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP"
+    dtau=500
   else
     dtau=1
   end
-  Global.ROS=CGDycore.RosenbrockMethod("RODAS")
-  Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
   Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
+  Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
   Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
   Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
 
 # Simulation period
   time=[0.0]
-  SimDays=0.5 #100
-  PrintDay=1
+  SimDays=100
+  PrintDay=.1
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
+
+  PrintInt = 1
+  PrintStartInt=3050
+  nIter = 6000
 
 
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
@@ -205,7 +207,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
         Δt = @elapsed begin
           CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt)==0
             Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
           end
         end
@@ -219,7 +221,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
         Δt = @elapsed begin
           CGDycore.RosenbrockDSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt)==0
             Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
           end
         end
@@ -233,7 +235,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
         Δt = @elapsed begin
           CGDycore.RosenbrockSchurSSP!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt)==0
             Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
           end
         end
@@ -247,7 +249,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
         Δt = @elapsed begin
           CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt)==0
             Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
           end
         end
@@ -262,7 +264,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
           @time CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global)
 
           time[1] += dtau
-          if mod(i,PrintInt)==0 && i >= PrintStartInt
+          if mod(i,PrintInt)==0
             Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
           end
         end
@@ -270,6 +272,6 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-  else
-    error("Bad IntMethod")
-  end
+else
+  error("Bad IntMethod")
+end

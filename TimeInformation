@@ -15,4 +15,13 @@ Varibales 5 + 2
 1000 days
 
 
-
+Moist
+Order 4
+nElem 4
+nz    15 Stretched Grid
+Varibales 5 + 2
+1000 days
+400 s
+Mit Microphysics
+52360.751331 seconds (584.62 G allocations: 10.334 TiB, 3.63% gc time, 0.05% compilation time)
+14.54 h

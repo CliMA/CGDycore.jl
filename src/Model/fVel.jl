@@ -9,7 +9,7 @@ function fVel(x,time,Global)
       (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
       Z=max(R-Phys.RadEarth,0);
       pZ = Phys.p0 * exp(-Z / Param.ScaleHeight)
-      LonP = Lon - 360 * time / Param.tau
+      LonP = Lon - 2* pi * time / Param.tau
       k = 10 * Phys.RadEarth / Param.tau
       ua = k * sin(LonP)^2 * sin(2 * Lat) * cos(pi * time / Param.tau) +
        2 * pi * Phys.RadEarth / Param.tau * cos(Lat)

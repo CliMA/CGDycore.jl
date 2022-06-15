@@ -96,17 +96,17 @@ U[:,:,Model.NumV+2]=CGDycore.Project(CGDycore.fTr,0.0,CG,Global).*U[:,:,Model.Rh
   Output.Flat=false
   vtkGridC=CGDycore.vtkGridElem(CG,CGDycore.TransSphereX,CGDycore.Topo,Global);
   Output.Flat=true
-  Proc=zeros(NF)
-  for i=1:NF
-   if i <= NF/2   
-     Proc[i] = 1
-   else
-     Proc[i] = 2
-   end  
-  end 
-  CGDycore.vtkElem(Proc,vtkGridC);
-  OwnGrid = CGDycore.ConstructSubGrid(Grid,Proc,1)
-  stop 
+# Proc=zeros(NF)
+# for i=1:NF
+#  if i <= NF/2   
+#    Proc[i] = 1
+#  else
+#    Proc[i] = 2
+#  end  
+# end 
+# CGDycore.vtkElem(Proc,vtkGridC);
+# OwnGrid = CGDycore.ConstructSubGrid(Grid,Proc,1)
+# stop 
 
 IntMethod="RungeKutta";
 IntMethod="SSPRungeKutta";
@@ -137,7 +137,6 @@ end
 Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global);
 
 
-@. U1 = U
 if str == "SSPRungeKutta"
     @time begin
       for i=1:nIter

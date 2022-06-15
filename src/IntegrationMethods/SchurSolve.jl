@@ -46,7 +46,6 @@ end
 function SchurSolve!(k,v,J,fac,Global)
 #   sw=(spdiags(repmat(invfac2,n,1),0,n,n)-invfac*JWW-JWRho*JRhoW-JWTh*JThW)\
 #     (invfac*rw+JWRho*rRho+JWTh*rTh);
-  @unpack TCacheC1 = Global.ThreadCache
   n1=size(v,1);
   n2=size(v,2);
   n=n1*n2;
@@ -63,8 +62,7 @@ function SchurSolve!(k,v,J,fac,Global)
     NumTr = 0
   end  
 
- Threads.@threads for in2=1:n2
-    CacheC1 = TCacheC1[Threads.threadid()]
+  @inbounds for in2=1:n2
     @views rRho=v[:,in2,1];
     @views rTh=v[:,in2,5];
     @views rw=v[:,in2,4];
@@ -74,7 +72,7 @@ function SchurSolve!(k,v,J,fac,Global)
     if Global.Model.Damping
       if J.CompTri
         @views tri[1,:,in2] .= 0
-        @views tri[2,:,in2] .= invfac2 .- invfac .* JWW[1,:,in2]
+        @views tri[2,:,in2] .= invfac2  .- invfac .* JWW[1,:,in2]
         @views tri[3,:,in2] .= 0
         @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
         @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
@@ -102,9 +100,12 @@ function SchurSolve!(k,v,J,fac,Global)
     @views k[:,in2,1] .= fac .* rRho
     @views k[:,in2,2:3] .= fac .* v[:,in2,2:3];
     @views k[:,in2,5] .= fac .* rTh
-    for iT = 1 : NumTr
+    @inbounds for iT = 1 : NumTr
       @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
       @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
+    end  
+    if Global.Model.Damping
+      @views @. sw = sw / (1.0 - invfac * JWW[1,:,in2])   
     end  
   end
   J.CompTri=false

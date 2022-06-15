@@ -363,8 +363,6 @@ function FcnNHCurlVecThreads!(F,U,CG,Global)
 end
 
 function FcnNHCurlVec!(F,U,CG,Global)
-  @unpack TRhoCG, Tv1CG, Tv2CG, TwCG, TwCCG, TThCG, TFCG,
-  TCacheCC1, TCacheCC2, TCacheCC3, TCacheCC4, TCacheCC5 = Global.ThreadCache
 
 (;  RhoPos,
     uPos,
@@ -392,13 +390,13 @@ function FcnNHCurlVec!(F,U,CG,Global)
   Grad2CG=Global.Cache.Grad2C
   DivCG=Global.Cache.DivC
   DivTrCG=Global.Cache.DivC
-  RhoCG = Global.Cache.RhoCG
+  @views RhoCG = Global.Cache.RhoCG[:,:,:]
   v1CG = Global.Cache.v1CG
   v2CG = Global.Cache.v2CG
   wCG = Global.Cache.wCG
   wCCG = Global.Cache.wCCG
-  ThCG = Global.Cache.ThCG
-  TrCG = Global.Cache.TrCG
+  @views ThCG = Global.Cache.ThCG[:,:,:]
+  @views TrCG = Global.Cache.TrCG[:,:,:,:]
   KE = Global.Cache.KE
   Pres = Global.Cache.Pres
   Temp = Global.Cache.Temp
@@ -443,7 +441,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
         end
       end
     end
-    for iT=1:NumTr
+    @inbounds for iT=1:NumTr
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
@@ -498,15 +496,10 @@ function FcnNHCurlVec!(F,U,CG,Global)
     BoundaryW!(view(wCG,:,:,1),v1CG,v2CG,CG,Global,iF)
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Kinetic energy
-    @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + wCCG*wCCG);
+#   @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + wCCG*wCCG)
+    @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
 #   Pressure
-    @views Pres = Global.Cache.Pres[:,:,:,iF]  
-    Pres1D = reshape(Pres,OP*OP*nz,1)
-    @views Temp = Global.Cache.Temp[:,:,:,iF]  
-    Th1D = reshape(ThCG,OP*OP*nz,1)
-    Rho1D = reshape(RhoCG,OP*OP*nz,1)
-    Tr1D = reshape(TrCG,OP*OP*nz,NumTr)
-    Pressure!(Pres1D,Th1D,Rho1D,Tr1D,Global)
+    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,Global)
 #   Temperature
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
@@ -533,7 +526,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
   #       Global.Grav*Global.JF[:,:,:,2:nz].*(RhoF-Global.RhoBGrdF)) ./ RhoF;
   #   end
     else
-      @views FGrad3RhoVec!(FCG,Pres,RhoCG,CG,Global,iF)
+      @views FGrad3RhoVec!(FCG,Pres[:,:,:,iF],RhoCG,CG,Global,iF)
       if Global.Model.Buoyancy
         @inbounds for iz=1:nz-1  
           @inbounds for j=1:OP  
@@ -594,7 +587,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos] / CG.M[iz,ind]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos] / CG.M[iz,ind]
           F[iz,ind,ThPos] += FCG[iP,jP,iz,ThPos] / CG.M[iz,ind]
-          for iT = 1:NumTr
+          @inbounds for iT = 1:NumTr
             F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.M[iz,ind]
           end
         end

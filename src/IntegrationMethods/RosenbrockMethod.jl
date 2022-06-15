@@ -117,20 +117,20 @@ if str == "SSP-Knoth"
     b2=zeros(0)
 
 elseif str == "RK3_H"
-    ROS.transformed=true;
-    ROS.nStage=3;
-    ROS.alpha=[0 0 0
+    transformed=true;
+    nStage=3;
+    alpha=[0 0 0
       1/3 0 0
       0 1/2 0];
     g=(3.0+sqrt(3.0))/6.0;
-    ROS.Gamma=[g 0 0
+    Gamma=[g 0 0
                (1-12*g^2)/(-9+36*g) g 0
                -1/4+2*g 1/4-3*g g];
-    ROS.b=[0,0,1];
-    ROS.a=ROS.alpha/ROS.Gamma;
-    ROS.c=-inv(ROS.Gamma);
-    ROS.m=ROS.b/ROS.Gamma;
-    ROS.d=ROS.Gamma[1,1];
+    b=[0,0,1];
+    a=alpha/Gamma;
+    c=-inv(Gamma);
+    m=ROS.b/Gamma;
+    d=Gamma[1,1];
 elseif str == "RODAS_N"
     ROS.transformed=false;
     ROS.nStage=4;
@@ -144,21 +144,25 @@ elseif str == "RODAS_N"
       1.0 / 12 1.0 / 12 -2. / 3 0.5];
     ROS.b  = [5. / 6 -1.0 / 6 -1.0 / 6 0.5];
 elseif str == "RODAS"
-    ROS.transformed=true;
-    ROS.nStage=4;
-    ROS.alpha=[0 0 0 0
+    transformed=true;
+    nStage=4;
+    alpha=[0 0 0 0
       0 0 0 0
       1. 0 0 0
       0.75 -0.25 0.5 0];
-    ROS.Gamma=[0.5 0 0 0
+    d=alpha*ones(nStage);
+    Gamma=[0.5 0 0 0
       1. 0.5 0 0
       -0.25 -0.25 0.5 0
       1.0 / 12 1.0 / 12 -2. / 3 0.5];
-    ROS.b  = [5. / 6 -1.0 / 6 -1.0 / 6 0.5];
-    ROS.a=ROS.alpha/ROS.Gamma;
-    ROS.c=-inv(ROS.Gamma);
-    ROS.m=ROS.b/ROS.Gamma;
-    ROS.d=ROS.Gamma[1,1];
+    b  = [5. / 6, -1.0 / 6, -1.0 / 6, 0.5];
+    a=alpha/Gamma;
+    c=-inv(Gamma);
+    m=Gamma'\b;
+    a=[a
+       m']
+    SSP=SSPRungeKuttaMethod()
+    b2=zeros(0)
 elseif str == "TSROSWSANDU3_N"
     ROS.transformed=false;
     ROS.nStage=3;
@@ -295,6 +299,43 @@ elseif str == "ROSRK3"
     ROS.m=alpha[3,:];
     ROS.c=beta;
     ROS.d=1;
+elseif str == "M1HOMME"
+    nStage = 5
+    transformed = true
+    AHat = [  0   0   0   0   0   0
+             1/5  0   0   0   0   0
+              0  1/5  0   0   0   0
+              0   0  1/3  0   0   0
+              0   0   0  1/2  0   0
+              0   0   0   0   1   0]
+    bHat = [  0   0   0   0   1   0]          
+    A    = [  0       0     0   0   0    0
+              0      1/5    0   0   0    0
+              0       0    1/5  0   0    0
+              0       0     0  1/3  0    0
+              0       0     0   0  1/2   0
+              5/18   5/18   0   0   0   8/18]
+    b    =  [ 5/18   5/18   0   0   0   8/18]
+
+    alpha = AHat[2:end,1:end-1]
+    Gamma = A[2:end,2:end] - AHat[2:end,2:end]
+
+    d=alpha*ones(nStage);
+    b = [0,0,  0,  0,  1,  0]          
+
+    Gamma = alpha \ Gamma * alpha       
+    alpha = AHat[1:end,1:end-1]
+
+    a = alpha / Gamma
+    c = -inv(Gamma)
+#   m=Gamma'\bHat';
+    m = a[end,:]
+#   @show m
+#   a=[a
+#      m']
+    SSP = SSPRungeKuttaMethod()
+    b2 = zeros(0)   
+    
 end
 return RosenbrockStruct(
   transformed,

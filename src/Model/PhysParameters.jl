@@ -53,6 +53,7 @@ Grad2::Array{Float64, 2}
 Div::Array{Float64, 2}
 DivTr::Array{Float64, 3}
 k::Array{Float64, 4}
+Ymyn::Array{Float64, 4}
 fV::Array{Float64, 3}
 fS::Array{Float64, 4}
 fRhoS::Array{Float64, 3}
@@ -115,6 +116,7 @@ Grad2=zeros(0,0)
 Div=zeros(0,0)
 DivTr=zeros(0,0,0)
 k=zeros(0,0,0,0)
+Ymyn=zeros(0,0,0,0)
 fV=zeros(0,0,0)
 fS=zeros(0,0,0,0)
 fRhoS=zeros(0,0,0)
@@ -176,6 +178,7 @@ return CacheStruct(
   Div,
   DivTr,
   k,
+  Ymyn,
   fV,
   fS,
   fRhoS,
@@ -240,6 +243,7 @@ Grad2=zeros(nz,NumG)
 Div=zeros(nz,NumG)
 DivTr=zeros(nz,NumG,NumTr)
 k=zeros(0,0,0,0)
+Ymyn=zeros(0,0,0,0)
 fV=zeros(0,0,0)
 fS=zeros(0,0,0,0)
 fRhoS=zeros(0,0,0)
@@ -301,6 +305,7 @@ return CacheStruct(
   Div,
   DivTr,
   k,
+  Ymyn,
   fV,
   fS,
   fRhoS,
@@ -570,6 +575,7 @@ mutable struct GlobalStruct{TCache}
   Phys::PhysParameters
   Output::OutputStruct
   ROS::RosenbrockStruct
+  LinIMEX::LinIMEXStruct
   RK::RungeKuttaStruct
   SSP::SSPRungeKuttaStruct
   Cache::CacheStruct
@@ -583,6 +589,7 @@ function Global(Grid::GridStruct,
                 Output::OutputStruct,OP,nz,NumV,NumTr,init_tcache=NamedTuple())
   Metric=MetricStruct()
   ROS=RosenbrockMethod()
+  LinIMEX=LinIMEXMethod()
   RK=RungeKuttaMethod()
   SSP=SSPRungeKuttaMethod()
   Cache=CacheStruct()
@@ -596,6 +603,7 @@ function Global(Grid::GridStruct,
     Phys,
     Output,
     ROS,
+    LinIMEX,
     RK,
     SSP,
     Cache,

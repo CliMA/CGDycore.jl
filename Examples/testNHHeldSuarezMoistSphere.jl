@@ -3,7 +3,7 @@
 using CGDycore
 
 OrdPoly = 4
-nz = 20
+nz = 25
 
 OrdPolyZ=1
 nPanel = 4
@@ -66,13 +66,16 @@ Model.Coriolis=true
 Model.CoriolisType="Sphere"
 
 # Grid
-H = 30000.0
+H = 45000.0
 Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 Grid.colors = CGDycore.Coloring(Grid)
 
-CGDycore.AddVerticalGrid!(Grid,nz,H)
+#CGDycore.AddVerticalGrid!(Grid,nz,H)
+sigma = 1.0
+lambda = 3.16
+CGDycore.AddStretchICONVerticalGrid!(Grid,nz,H,sigma,lambda)
 
 Output=CGDycore.Output(Topography)
 
@@ -110,18 +113,18 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   Model.Microphysics = true
   Model.VerticalDiffusion = true
   Model.SurfaceFlux = true
-  Model.Damping = false
-  Model.StrideDamp=6000
-  Model.Relax = 1.0/3600.0
+  Model.Damping = true
+  Model.StrideDamp=20000.0
+  Model.Relax = 1.0/100.0
 
   U=zeros(nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global)
   (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global)
   U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global).*U[:,:,Model.RhoPos]
-# U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global).*U[:,:,Model.RhoPos]
+  U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global).*U[:,:,Model.RhoPos]
 
 # Output
-  Output.vtkFileName="HeldSuarezMoistMM"
+  Output.vtkFileName="HeldSuarezMoist45kM"
   Output.vtk=0
   Output.Flat=true
   Output.nPanel=nPanel
@@ -155,7 +158,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 # Simulation period
   time=[0.0]
   SimDays=1000
-  PrintDay=10
+  PrintDay=1
   nIter=24*3600*SimDays/dtau
   PrintInt=ceil(24*3600*PrintDay/dtau)
 

@@ -67,6 +67,8 @@ include("DyCore/vtkOutput.jl")
 include("DyCore/ThreadCache.jl")
 
 include("IntegrationMethods/JacStruc.jl")
+include("IntegrationMethods/LinIMEXMethod.jl")
+include("IntegrationMethods/LinIMEXSchur.jl")
 include("IntegrationMethods/RosenbrockMethod.jl")
 include("IntegrationMethods/RosenbrockSchur.jl")
 include("IntegrationMethods/RungeKuttaExplicit.jl")
@@ -89,6 +91,11 @@ include("Model/fTr.jl")
 include("Model/fVel.jl")
 include("Model/fVelW.jl")
 include("Model/fpBGrd.jl")
+
+#include("Parallel/Label.jl")
+#include("Parallel/Section.jl")
+#include("Parallel/DM.jl")
+#include("Parallel/GridInternal.jl")
 
 #include("DyCoreStatic/ColumnElement.jl")
 

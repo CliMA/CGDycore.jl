@@ -10,7 +10,7 @@ function fVelW(x,time,Global)
     Z=max(R-Phys.RadEarth,0);
     pZ = Phys.p0 * exp(-Z / Param.ScaleHeight)
     RhoZ = pZ / Phys.Rd / Param.T_0
-    LonP = Lon - 360 * time / Param.tau
+    LonP = Lon - 2 * pi * time / Param.tau
     k = 10 * Phys.RadEarth / Param.tau
     sp =
        1 + exp((Param.p_top - Phys.p0) / Param.b / Param.p_top) - exp((pZ - Phys.p0) / Param.b / Param.p_top) -

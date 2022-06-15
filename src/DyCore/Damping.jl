@@ -4,11 +4,16 @@ for iz=Global.Grid.nz-1:-1:1
   if zLoc>=Global.Grid.H-Global.Model.StrideDamp
     Damp = Global.Model.Relax*
       sin(0.5*pi*(1.0 - (Global.Grid.H - zLoc)/Global.Model.StrideDamp))^2;
+# @show zLoc
+# @show iz
+# @show size(F)
+# @show Damp
     F[iz]-=Damp*W[iz];
   else
     break
   end
 end
+# stop
 end
 
 function DampingKoeff!(K,CG,Global)
