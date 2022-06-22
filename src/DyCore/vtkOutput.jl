@@ -35,8 +35,8 @@ for i=1:length(Global.Output.cNames)
   elseif str == "ThetaPrime"
       @views cOut[:,:,i]=U[:,:,Global.Model.ThPos]./U[:,:,Global.Model.RhoPos]-Global.ThetaBGrd;
   elseif str == "Pres"
-      @views Pressure!(reshape(cOut[:,:,i],nz*NG,1),reshape(U[:,:,Global.Model.ThPos],nz*NG,1),
-        reshape(U[:,:,Global.Model.RhoPos],nz*NG,1),reshape(U[:,:,NumV+1:end],nz*NG,NumTr),Global);
+      @views Pressure!(reshape(cOut[:,:,i],nz*NG),reshape(U[:,:,Global.Model.ThPos],nz*NG),
+        reshape(U[:,:,Global.Model.RhoPos],nz*NG),reshape(U[:,:,NumV+1:end],nz*NG,NumTr),Global);
   elseif str == "Temp"
       @views Temperature!(reshape(cOut[:,:,i],nz*NG,1),reshape(U[:,:,Global.Model.ThPos],nz*NG,1),
         reshape(U[:,:,Global.Model.RhoPos],nz*NG,1),reshape(U[:,:,NumV+1:end],nz*NG,NumTr),Global);

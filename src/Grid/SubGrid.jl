@@ -29,7 +29,6 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Nodes[i].NG = Nodes[i].N
     Nodes[i].N = i
   end  
-  @show Nodes[1]
   NumEdges = size(EdgeNumbers,1)
   Edges = map(1:NumEdges) do i
     Edge()
@@ -42,7 +41,6 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Edges[i].N[1] = GlobalGrid.Nodes[Edges[i].N[1]].N
     Edges[i].N[2] = GlobalGrid.Nodes[Edges[i].N[2]].N
   end  
-  @show Edges[1]
 
   Faces = map(1:NumFaces) do i
     Face()
@@ -61,11 +59,46 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Faces[i].N[3] = GlobalGrid.Nodes[Faces[i].N[3]].N
     Faces[i].N[4] = GlobalGrid.Nodes[Faces[i].N[4]].N
   end
-  @show Faces[1]
+  # Physischer Rand und Prozessor Rand 
   for i = 1:NumEdges
-    Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
-    Edges[i].F[2] = GlobalGrid.Faces[Edges[i].F[2]].F
+    if Proc[Edges[i].F[1]] == ProcNumber  
+      Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
+    else
+      Edges[i].F[1] = 0  
+    end  
+    if Proc[Edges[i].F[2]] == ProcNumber  
+      Edges[i].F[2] = GlobalGrid.Faces[Edges[i].F[2]].F
+    else
+      Edges[i].F[2] = 0  
+    end  
   end
 
+  SubGrid.NumFaces = NumFaces
+  SubGrid.Faces = Faces
+  SubGrid.NumEdges = NumEdges
+  SubGrid.Edges = Edges
+  SubGrid.NumNodes = NumNodes
+  SubGrid.Nodes = Nodes
+
+  SubGrid.Dim=3;
+  SubGrid=Renumbering(SubGrid);
+  SubGrid=FacesInNodes(SubGrid);
+
   return SubGrid
+end
+
+function Decompose(Grid,NumProc)
+
+  NumFaces=Grid.NumFaces
+  LocalNumfaces=zeros(Int,NumProc)
+  LocalNumfaces.=NumFaces / NumProc
+  Rest = mod(NumFaces, NumProc)
+  for iP=1:Rest
+    LocalNumfaces[iP]+=1
+  end
+  CellToProc = zeros(Int,NumFaces)
+  for ic = 1 : NumProc
+    CellToProc[sum(LocalNumfaces[1:ic-1])+1:sum(LocalNumfaces[1:ic])] .= ic
+  end  
+  return CellToProc
 end

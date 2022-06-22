@@ -1,4 +1,4 @@
-function JacobiSphere3(DG,F,z,Topo,Topography)
+function JacobiSphere3(DG,F,z,Topo,Topography,zs)
 ksi=DG.xw;
 eta=DG.xw;
 zeta=DG.xwZ;
@@ -14,7 +14,7 @@ for j=1:n
   for i=1:n
     for k=1:n3
       (X[i,j,k,:],dXdx[i,j,k,:,:],theta[i,j],hR[i,j,k]) =
-        JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Topography.Rad,Topography);
+        JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Topography.Rad,Topography,zs[i,j]);
     end
   end
 end
@@ -34,7 +34,7 @@ end
 return (X,J,dXdx,dXdxI,theta)
 end
 
-function JacobiSphere3Loc(ksi1,ksi2,ksi3,F,z,Rad,Topography)
+function JacobiSphere3Loc(ksi1,ksi2,ksi3,F,z,Rad,Topography,zs)
 
 X1=0.25*(F.P[1].x .*(1-ksi1)*(1-ksi2)+
   F.P[2].x .*(1+ksi1)*(1-ksi2)+
@@ -49,7 +49,7 @@ X3=0.25*(F.P[1].z .*(1-ksi1)*(1-ksi2)+
   F.P[3].z .*(1+ksi1)*(1+ksi2)+
   F.P[4].z .*(1-ksi1)*(1+ksi2));
 zLoc=0.5*((1-ksi3)*z[1]+(1+ksi3)*z[2]);
-(hR,D33)=Topo(X1,X2,X3,zLoc,Topography);
+(hR,D33)=Topo(X1,X2,X3,zLoc,Topography,zs);
 D33=0.5*D33*(z[2]-z[1]);
 
 r=sqrt(X1^2+X2^2+X3^2);

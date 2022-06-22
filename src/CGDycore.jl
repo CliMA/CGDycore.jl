@@ -4,6 +4,9 @@ using LinearAlgebra
 using SparseArrays
 using UnPack
 using StaticArrays
+using NCDatasets
+using DelimitedFiles
+using Dierckx
 
 include("Grid/Node.jl")
 include("Grid/Edge.jl")
@@ -65,6 +68,7 @@ include("DyCore/vtkCG.jl")
 include("DyCore/vtkCGGrid.jl")
 include("DyCore/vtkOutput.jl")
 include("DyCore/ThreadCache.jl")
+include("DyCore/TopographySmoothing.jl")
 
 include("IntegrationMethods/JacStruc.jl")
 include("IntegrationMethods/LinIMEXMethod.jl")

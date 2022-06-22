@@ -36,7 +36,7 @@ function Source!(F,U,CG,Global,iG)
   end
 end
 
-function SourceMicroPhysics(F,U,CG,Global,iG)
+function SourceMicroPhysicsv1(F,U,CG,Global,iG)
   (; Rd,
      Cpd,
      Rv,
@@ -49,17 +49,55 @@ function SourceMicroPhysics(F,U,CG,Global,iG)
   RhoPos=Global.Model.RhoPos
   RhoVPos=Global.Model.RhoVPos
   RhoCPos=Global.Model.RhoCPos
-  RelCloud = Global.Model.Param.RelCloud
+  RelCloud = Global.Model.RelCloud
   NumV=Global.Model.NumV
-  nz = Global.Grid.nz
-  for i = 1:nz
-    (FTh,FRho,FRhoV,FRhoC) = 
-      Microphysics( U[i,ThPos],U[i,RhoPos], U[i,NumV+RhoVPos], U[i,NumV+RhoCPos], 
-        Rd,Cpd,Rv,Cpv,Cpl,L00,p0,RelCloud)
-    F[i,ThPos] += FTh   
-    F[i,RhoPos] += FRho
-    F[i,RhoVPos+NumV] += FRhoV
-    F[i,RhoCPos+NumV] += FRhoC
+  @views  Rho = U[:,..,RhoPos]  
+  @views  RhoV = U[:,..,RhoVPos+NumV]  
+  @views  RhoC = U[:,..,RhoCPos+NumV]  
+  @inbounds for i in eachindex(Rho)
+    RhoD = Rho[i] - RhoV[i] - RhoC[i]
+  end   
+end   
+function SourceMicroPhysics(F,U,CG,Global,iG)
+  (; Rd,
+     Cpd,
+     Rv,
+     Cpv,
+     Cpl,
+     p0,
+     L00,
+     kappa) = Global.Phys
+   ThPos=Global.Model.ThPos
+   RhoPos=Global.Model.RhoPos
+   RhoVPos=Global.Model.RhoVPos
+   RhoCPos=Global.Model.RhoCPos
+   RelCloud = Global.Model.RelCloud
+   NumV=Global.Model.NumV
+   nz = Global.Grid.nz
+   @inbounds for i = 1:nz
+     Rho = U[i,RhoPos]  
+     RhoTh = U[i,ThPos]  
+     RhoV = U[i,NumV+RhoVPos]  
+     RhoC = U[i,NumV+RhoCPos]  
+     RhoD = Rho - RhoV - RhoC
+     Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
+     Rm = Rd * RhoD + Rv * RhoV
+     kappaM = Rm / Cpml
+     p = (Rd * RhoTh / p0^kappaM)^(1 / (1 - kappaM))
+     T = p / Rm
+     T_C = T - 273.15
+     p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
+     a = p_vs / (Rv * T) - RhoV
+     b = 0.0
+     FRhoV = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
+     L = L00 - (Cpl - Cpv) * T
+     FRhoTh = RhoTh*(-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) *(Rv / Rm  - Cpv / Cpml) + Rv / Rm)*FRhoV
+     FRho = FRhoV
+     FRhoC = 0.0
+     F[i,ThPos] += FRhoTh   
+     F[i,RhoPos] += FRho
+     F[i,RhoVPos+NumV] += FRhoV
+     F[i,RhoCPos+NumV] += FRhoC
   end  
 end
 

@@ -102,8 +102,9 @@ function fTheta(x,time,Global)
     Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
     Pressure=Phys.p0*exp(-Phys.Grav/Phys.Rd *
         (IntTau1-IntTau2*InteriorTerm));
-    q_0 = 0.018                # Maximum specific humidity (default: 0.018)
-    q_t = 1e-12                # Specific humidity above artificial tropopause
+    Rho=Pressure/(Phys.Rd*Temperature)
+    q_0 = Param.q_0                # Maximum specific humidity (default: 0.018)
+    q_t = Param.q_t                # Specific humidity above artificial tropopause
     lat_w = 2.0*pi / 9.0
     p_w = 34.0e3
     eta_crit = p_w / Phys.p0
@@ -113,7 +114,14 @@ function fTheta(x,time,Global)
     else
       qv = q_t
     end
-    Rho=Pressure/(Phys.Rd*Temperature)
+    Mvap = 0.608e0               #  Ratio of molar mass of dry air/water
+    Temperature = Temperature / (1.0 + Mvap * qv)
+
+    #!-----------------------------------------------------
+    #!   Initialize virtual potential temperature
+    #!-----------------------------------------------------
+    #thetav = t * (1.d0 + 0.61d0 * q) * (p0 / p)**(Rd / cp)
+
     RhoV=Rho * qv
     RhoD = Rho - RhoV 
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV

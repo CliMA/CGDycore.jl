@@ -9,6 +9,7 @@ function Pressure!(p,RhoTh,Rho,Tr,Global)
      p0,
      kappa) = Global.Phys
 
+  
   Equation = Global.Model.Equation
   if Global.Model.Equation == "Compressible"
      if Global.Model.Thermo == "Energy"
@@ -21,8 +22,17 @@ function Pressure!(p,RhoTh,Rho,Tr,Global)
        @. p = (Rd * RhoTh / p0^kappa)^(1.0 / (1.0 - kappa))
     end
   elseif Equation == "CompressibleMoist"
-    @views p = PressureMoist(RhoTh,Rho,Tr[:,Global.Model.RhoVPos],
-      Tr[:,Global.Model.RhoCPos],Rd,Cpd,Rv,Cpv,Cpl,p0)
+    @views TrRhoV = Tr[size(p)...,Global.Model.RhoVPos]
+    @views TrRhoC = Tr[size(p)...,Global.Model.RhoVPos]
+    @inbounds for i in eachindex(p)  
+      RhoV = TrRhoV[i]
+      RhoC = TrRhoC[i]
+      RhoD = Rho[i] - RhoV - RhoC
+      Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
+      Rm  = Rd * RhoD + Rv * RhoV
+      kappaM = Rm / Cpml
+      p[i] = (Rd * RhoTh[i] / p0^kappaM)^(1.0 / (1.0 - kappaM))
+    end  
   elseif Equation == "Shallow"
       p = 0.5 * Grav * RhoTh^2;
   end

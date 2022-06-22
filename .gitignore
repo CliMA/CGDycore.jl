@@ -29,3 +29,7 @@ Manifest.toml
 *.mp4
 *.swp
 src/Grid/FindGridCell.jl
+ETOPO1_Ice_g_gdal.grd
+list
+*.nc
+list

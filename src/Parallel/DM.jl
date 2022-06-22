@@ -133,12 +133,6 @@ struct _p_DM {
     )
   end  
 
-  function SetChart!(dm::DM, pStart::Int, pEnd::Int)
-    mesh = dm.data
-    SectionSetChart!(mesh.ConeSection, pStart, pEnd)
-    SectionSetChart!(mesh.SupportSection, pStart, pEnd)
-  end
-
   function SetConeSize!(dm::DM, p::Int, size::Int)
     mesh = dm.data
     SectionSetDof!(mesh.ConeSection, p, size)
@@ -154,14 +148,20 @@ struct _p_DM {
     end  
   end
 
-  function GetChart(dm::DM)
-    mesh = dm.data
-    (pStart, pEnd) = SectionGetChart(mesh.ConeSection)
-  end
-
   function GetConeSize(dm::DM, p::Int)
     mesh = dm.data
     SectionGetDof(mesh.ConeSection, p)
+  end
+
+  function SetChart!(dm::DM, pStart::Int, pEnd::Int)
+    mesh = dm.data
+    SectionSetChart!(mesh.ConeSection, pStart, pEnd)
+    SectionSetChart!(mesh.SupportSection, pStart, pEnd)
+  end
+
+  function GetChart(dm::DM)
+    mesh = dm.data
+    (pStart, pEnd) = SectionGetChart(mesh.ConeSection)
   end
 
   function GetSupportSize(dm::DM, p::Int)

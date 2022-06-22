@@ -57,6 +57,10 @@ Boundary=zeros(0)
 end 
 
 function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
+  Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zeros(OrdPoly+1,OrdPoly+1,Global.Grid.NumFaces))
+end  
+
+function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
 # Discretization
   Grid = Global.Grid
   OP=OrdPoly+1
@@ -93,7 +97,7 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
   for iF=1:Grid.NumFaces
     for iz=1:nz
       zI=[Grid.z[iz],Grid.z[iz+1]];
-      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography);
+      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
       X[:,:,:,:,iz,iF]=X_Fz;
       J[:,:,:,iz,iF]=J_Fz;
       dXdx[:,:,:,iz,:,:,iF]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);

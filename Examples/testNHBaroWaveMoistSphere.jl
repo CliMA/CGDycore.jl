@@ -3,13 +3,13 @@
 using CGDycore
 
 OrdPoly = 4
-nz = 60
+nz = 20
 
 OrdPolyZ=1
-nPanel = 8
+nPanel = 32
 NF = 6 * nPanel * nPanel
 NumV = 5
-NumTr = 0
+NumTr = 2
 
 
 # Physical parameters
@@ -54,16 +54,40 @@ Param=(T0E=310.0,
        p_strato = 10000.0,
 #      Surface flux       
        CTr = 0.004,
+#      Moist
+       q_0 = 0.018,                # Maximum specific humidity (default: 0.018)
+       q_t = 1e-12,
        )
 
 Model = CGDycore.Model(Param)
 Model.Coriolis=true
 Model.CoriolisType="Sphere"
 
+# Flat grid for topography smoothing
+H = 1000.0
+TopographyF=(TopoS="",H=1000.0,Rad=Phys.RadEarth)
+GridF=CGDycore.Grid(1,TopographyF)
+CGDycore.AddVerticalGrid!(GridF,1,H)
+OutputF=CGDycore.Output(TopographyF)
+GridF=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,GridF)
+GlobalF = CGDycore.Global(GridF,Model,Phys,OutputF,OrdPoly+1,1,NumV,NumTr,())
+GlobalF.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,GridF.NumFaces,1)
+(CGF,GlobalF)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,GlobalF)
+zs = CGDycore.EarthTopography(OrdPoly,GridF)
+Fzs = similar(zs)
+@show maximum(zs)  
+@show minimum(zs)  
+for i = 1 : 100
+  CGDycore.TopographySmoothing!(Fzs,zs,CGF,GlobalF,1.e16)
+  @. zs = zs + Fzs
+end  
+@show maximum(zs)  
+@show minimum(zs)  
+
 # Grid
-#H = 30000.0
-H = 45000.0
-Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
+H = 30000.0
+#H = 45000.0
+Topography=(TopoS="EarthOrography",H=H,Rad=Phys.RadEarth)
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 Grid.colors = CGDycore.Coloring(Grid)
@@ -78,16 +102,17 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 
 
 # Discretization
-  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  @show "Discretization"
+  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zs)
   Model.HyperVisc=true
-  Model.HyperDCurl=2.e17/4/4 #1.e14*(dx/LRef)^3.2;
-  Model.HyperDGrad=2.e17/4/4
-  Model.HyperDDiv=2.e17/4/4 # Scalars
+  Model.HyperDCurl=2.e17/4/4/4/4 #1.e14*(dx/LRef)^3.2;
+  Model.HyperDGrad=2.e17/4/4/4/4
+  Model.HyperDDiv=2.e17/4/4/4/4 # Scalars
 
 
 
 # Initial conditions 
-  Model.Equation="Compressible" #"CompressibleMoist"
+  Model.Equation="CompressibleMoist"
   Model.NumV=NumV
   Model.NumTr=NumTr
   Model.Problem="BaroWaveMoistSphere"
@@ -103,17 +128,21 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   Model.RhoCPos = 2
   Model.HorLimit = false
   Model.Source = false
-  Model.Upwind = false
+  Model.Upwind = true
   Model.Microphysics = false
+  Model.RelCloud = 0.01
   Model.Damping = false
   Model.StrideDamp=20000.0
   Model.Relax = 1.0/100.0
 
+  @show "Initial conditions"
   U=zeros(nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global)
   (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global)
   U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global).*U[:,:,Model.RhoPos]
-# U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global).*U[:,:,Model.RhoPos]
+  if NumTr>0
+    U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global).*U[:,:,Model.RhoPos]
+  end  
 
 # Output
   Output.vtkFileName="BaroWaveMoist"
@@ -129,10 +158,11 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
     "w",
     "Th",
     "Pres",
-#   "Tr1",
-#   "Tr2",
+    "Tr1",
+    "Tr2",
 ]
   Output.OrdPrint=CG.OrdPoly
+  @show "Compute vtkGrid"
   vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
 
 
@@ -141,7 +171,7 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
   IntMethod="LinIMEX"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau=200
+    dtau=50
   else
     dtau=1
   end
@@ -155,13 +185,13 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 
 # Simulation period
   time=[0.0]
-  SimDays=0.5 #100
-  PrintDay=1
+  SimDays=10
+  PrintDay=.1
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
-
+  PrintInt = 20
 
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
@@ -196,9 +226,11 @@ Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
  end
 
 # Print initial conditions
+  @show "Print initial conditions"
   Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
 
 
+  @show "Choose integration method"
   if IntMethod == "Rosenbrock"
     @time begin
       for i=1:nIter

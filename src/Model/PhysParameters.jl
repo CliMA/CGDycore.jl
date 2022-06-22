@@ -487,6 +487,7 @@ mutable struct ModelStruct
   Upwind::Bool
   HorLimit::Bool
   Microphysics::Bool
+  RelCloud::Float64
   VerticalDiffusion::Bool
   SurfaceFlux::Bool
   Param::NamedTuple
@@ -525,6 +526,7 @@ function Model(Param::NamedTuple)
   Upwind=false
   HorLimit=false
   Microphysics=false
+  RelCloud=0.0
   VerticalDiffusion=false
   SurfaceFlux=false
   return ModelStruct(
@@ -561,6 +563,7 @@ function Model(Param::NamedTuple)
    Upwind,
    HorLimit,
    Microphysics,
+   RelCloud,
    VerticalDiffusion,
    SurfaceFlux,
    Param,

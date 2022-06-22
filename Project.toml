@@ -4,7 +4,9 @@ authors = ["Charles Kawczynski <kawczynski.charles@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
