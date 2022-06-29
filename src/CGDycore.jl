@@ -3,10 +3,10 @@ module CGDycore
 using LinearAlgebra
 using SparseArrays
 using UnPack
-using StaticArrays
 using NCDatasets
 using DelimitedFiles
 using Dierckx
+using MPI
 
 include("Grid/Node.jl")
 include("Grid/Edge.jl")

@@ -20,8 +20,13 @@ mutable struct GridStruct
     nBar::Array{Float64, 2}
     Topography::NamedTuple
     colors::Array{Array{Int, 1}, 1}
-#   Spline_2d::Array{Float64, 3}
     Spline_2d::Dierckx.Spline2D
+#   Parallel
+    NumInBoundEdges::Int
+    InBoundEdges::Array{Int,1}
+    InBoundEdgesP::Array{Int,1}
+    NumNeiProc::Int
+    NeiProc::Array{Int,1}
 end
 function Grid(nz,Topography)
   zP=zeros(nz)
@@ -44,6 +49,11 @@ function Grid(nz,Topography)
   nBar=zeros(0,0)
   colors=[[]]
   Spline_2d = Spline2D(zeros(0),zeros(0),zeros(0),0,0,0.0)
+  NumInBoundEdges = 0
+  InBoundEdges = zeros(Int,0)
+  InBoundEdgesP = zeros(Int,0)
+  NumNeiProc = 0
+  NeiProc = zeros(Int,0)
    return GridStruct(
     nz,
     zP,
@@ -67,6 +77,11 @@ function Grid(nz,Topography)
     Topography,
     colors,
     Spline_2d,
+    NumInBoundEdges,
+    InBoundEdges,
+    InBoundEdgesP,
+    NumNeiProc,
+    NeiProc,
     )
 end   
     

@@ -37,6 +37,9 @@ if size(Edge.F,1)>1
     iTemp=Edge.F[1];
     Edge.F[1]=Edge.F[2];
     Edge.F[2]=iTemp;
+    iTemp=Edge.FG[1];
+    Edge.FG[1]=Edge.FG[2];
+    Edge.FG[2]=iTemp;
   end
 end
 return Edge

@@ -41,6 +41,8 @@ mutable struct Node
     NG::Int
     E::Array{Int, 1}
     F::Array{Int, 1}
+    FG::Array{Int, 1}
+    FP::Array{Int, 1}
 end
 
 function Node()
@@ -49,12 +51,16 @@ function Node()
   NG=0
   E=zeros(Int,0)
   F=zeros(Int,0)
+  FG=zeros(Int,0)
+  FP=zeros(Int,0)
   return Node(
     P,
     N,
     NG,
     E,
     F,
+    FG,
+    FP,
   )
 end  
   

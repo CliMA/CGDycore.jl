@@ -6,6 +6,8 @@ mutable struct Edge
   ET::Int
   NumF::Int
   F::Array{Int, 1}
+  FG::Array{Int, 1}
+  FP::Array{Int, 1}
   t::Point
   a::Float64
   Mid::Point
@@ -21,6 +23,8 @@ function Edge()
   ET=0
   NumF=0
   F=zeros(Int,2)
+  FG=zeros(Int,2)
+  FP=zeros(Int,2)
   t=Point()
   a=0.0
   Mid=Point()
@@ -34,6 +38,8 @@ function Edge()
     ET,
     NumF,
     F,
+    FG,
+    FP,
     t,
     a,
     Mid,

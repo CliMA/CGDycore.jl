@@ -27,6 +27,10 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Nodes[i] = deepcopy(GlobalGrid.Nodes[NodeNumbers[i]])  
     GlobalGrid.Nodes[NodeNumbers[i]].N = i
     Nodes[i].NG = Nodes[i].N
+    Nodes[i].FG = similar(Nodes[i].F)
+    Nodes[i].FP = similar(Nodes[i].F)
+    Nodes[i].FG .= Nodes[i].F
+    Nodes[i].FP .= Proc[Nodes[i].F]
     Nodes[i].N = i
   end  
   NumEdges = size(EdgeNumbers,1)
@@ -40,6 +44,8 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Edges[i].E = i
     Edges[i].N[1] = GlobalGrid.Nodes[Edges[i].N[1]].N
     Edges[i].N[2] = GlobalGrid.Nodes[Edges[i].N[2]].N
+    Edges[i].FG .= Edges[i].F
+    Edges[i].FP .= Proc[Edges[i].F]
   end  
 
   Faces = map(1:NumFaces) do i
@@ -60,18 +66,40 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Faces[i].N[4] = GlobalGrid.Nodes[Faces[i].N[4]].N
   end
   # Physischer Rand und Prozessor Rand 
+  NumInBoundEdges = 0
   for i = 1:NumEdges
     if Proc[Edges[i].F[1]] == ProcNumber  
       Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
     else
       Edges[i].F[1] = 0  
+      NumInBoundEdges += 1
     end  
     if Proc[Edges[i].F[2]] == ProcNumber  
       Edges[i].F[2] = GlobalGrid.Faces[Edges[i].F[2]].F
     else
       Edges[i].F[2] = 0  
+      NumInBoundEdges += 1
     end  
   end
+  InBoundEdges = zeros(Int,NumInBoundEdges)
+  InBoundEdgesP = zeros(Int,NumInBoundEdges)
+  NumInBoundEdges = 0
+  for i = 1:NumEdges
+    if Proc[Edges[i].FG[1]] == ProcNumber  
+    else
+      NumInBoundEdges += 1
+      InBoundEdges[NumInBoundEdges] = i
+      InBoundEdgesP[NumInBoundEdges] = Proc[Edges[i].FG[1]]
+    end  
+    if Proc[Edges[i].FG[2]] == ProcNumber  
+    else
+      NumInBoundEdges += 1
+      InBoundEdges[NumInBoundEdges] = i
+      InBoundEdgesP[NumInBoundEdges] = Proc[Edges[i].FG[2]]
+    end  
+  end
+  SubGrid.NumNeiProc = size(unique(InBoundEdgesP),1)
+  SubGrid.NeiProc = unique(InBoundEdgesP)
 
   SubGrid.NumFaces = NumFaces
   SubGrid.Faces = Faces
@@ -79,10 +107,14 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   SubGrid.Edges = Edges
   SubGrid.NumNodes = NumNodes
   SubGrid.Nodes = Nodes
+  SubGrid.NumInBoundEdges = NumInBoundEdges
+  SubGrid.InBoundEdges = InBoundEdges
+  SubGrid.InBoundEdgesP = InBoundEdgesP
 
   SubGrid.Dim=3;
   SubGrid=Renumbering(SubGrid);
   SubGrid=FacesInNodes(SubGrid);
+  SubGrid.Form = GlobalGrid.Form
 
   return SubGrid
 end
