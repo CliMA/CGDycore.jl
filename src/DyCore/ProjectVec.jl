@@ -49,5 +49,7 @@ function ProjectVec!(uS,vS,Fun,time,CG,Global)
       end
     end
   end
+  ExchangeData!(uS,Global.Exchange)
+  ExchangeData!(vS,Global.Exchange)
 end
 

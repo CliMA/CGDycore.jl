@@ -3,7 +3,7 @@ OrdPoly=CG.OrdPoly;
 w=CG.w
 nz=Global.Grid.nz;
 M=zeros(nz,CG.NumG);
-MMass=zeros(nz,CG.NumG);
+MMass=zeros(Float64,nz,CG.NumG);
 J = Global.Metric.J
 for iF=1:Global.Grid.NumFaces
   for iz=1:nz  
@@ -16,6 +16,8 @@ for iF=1:Global.Grid.NumFaces
     end
   end
 end
+
+ExchangeData!(M,Global.Exchange)
 MW=0.5*(M[1:end-1,:]+M[2:end,:]);
 return (M,MW,MMass)
 end

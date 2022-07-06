@@ -26,8 +26,8 @@ open(filename, "w") do fid
   for i=1:size(c,2)
     @printf(fid, "SCALARS %s double 1 \n",cNames[i]);
     print(fid, "LOOKUP_TABLE default \n");
-    for j=1:4:size(c,1)-3
-      @printf(fid, "%6e %6e %6e %6e \n",c[j:j+3,i]...);
+    for j=1:size(c,1)
+      @printf(fid, "%6e \n",c[j,i]...);
     end
   end
 end
@@ -60,8 +60,8 @@ open(filename, "w") do fid
   for i=1:size(c,2)
     @printf(fid, "SCALARS %s double 1 \n",cNames[i]);
     print(fid, "LOOKUP_TABLE default \n");
-    for j=1:4:size(c,1)-3
-      @printf(fid, "%6e %6e %6e %6e \n",c[j:j+3,i]...);
+    for j=1:size(c,1)
+      @printf(fid, "%6e  \n",c[j,i]...);
     end
   end
 end

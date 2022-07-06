@@ -4,22 +4,20 @@ using MPI
 #function testDecompose()
 MPI.Init()
 comm = MPI.COMM_WORLD
-rank = MPI.Comm_rank(comm)
-print("$rank: \n")
-size = MPI.Comm_size(comm)
-ProcNumber = size
-Proc = rank + 1
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
 print("$Proc: \n")
 print("$ProcNumber: \n")
 
 OrdPoly = 4
-nz = 1
+nz = 20
 
 OrdPolyZ=1
 nPanel = 8
 NF = 6 * nPanel * nPanel
 NumV = 5
-NumTr = 2
+NumTr = 0
+Parallel = true
 
 
 # Physical parameters
@@ -70,7 +68,7 @@ Param=(T0E=310.0,
        )
 Model = CGDycore.Model(Param)
 # Initial conditions
-  Model.Equation="CompressibleMoist"
+  Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
   Model.Problem="BaroWaveMoistSphere"
@@ -92,204 +90,209 @@ Model = CGDycore.Model(Param)
   Model.Damping = false
   Model.StrideDamp=20000.0
   Model.Relax = 1.0/100.0
+  Model.Coriolis=true
+  Model.CoriolisType="Sphere"
 
 # Grid
 H = 30000.0
 #H = 45000.0
-Topography=(TopoS="EarthOrography",H=H,Rad=Phys.RadEarth)
+Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 
 
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-CellToProc = CGDycore.Decompose(Grid,ProcNumber)
-SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
-CGDycore.AddVerticalGrid!(SubGrid,nz,H)
-Output=CGDycore.Output(Topography)
-Global = CGDycore.Global(SubGrid,Model,Phys,Output,OrdPoly+1,nz,NumV,NumTr,())
-Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-(CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
-# Output
-  Output.vtkFileName=string("BaroWaveMoist",string(rank))
-  Output.vtk=0
-  Output.Flat=false
-  Output.nPanel=nPanel
-  Output.RadPrint=H
-  Output.H=H
-  Output.cNames = [
-    "u",
-]
-@show Output.vtkFileName
+if Parallel
+  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
+  CGDycore.AddVerticalGrid!(SubGrid,nz,H)
+  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Output=CGDycore.Output(Topography)
+  Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
+else
+  CellToProc=zeros(0)
+  Proc = 0
+  ProcNumber = 0
+  CGDycore.AddVerticalGrid!(Grid,nz,H)
+  Exchange = CGDycore.InitExchange(Grid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Output=CGDycore.Output(Topography)
+  Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
+end  
+  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  Model.HyperVisc=true
+  Model.HyperDCurl=2.e17/4/4 #1.e14*(dx/LRef)^3.2;
+  Model.HyperDGrad=2.e17/4/4
+  Model.HyperDDiv=2.e17/4/4 # Scalars
 
 # Output
   Output.OrdPrint=CG.OrdPoly
   vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
 
 
-  U = zeros(nz,CG.NumG,Model.NumV+Model.NumTr)
+  U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global)
   (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global)
   U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global).*U[:,:,Model.RhoPos]
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global).*U[:,:,Model.RhoPos]
   end   
-  U[:,:,2] .= Proc
 
-  DictE=Dict()
-  for iE = 1 : SubGrid.NumInBoundEdges
-    DictE[SubGrid.Edges[SubGrid.InBoundEdges[iE]].EG] = (SubGrid.Edges[SubGrid.InBoundEdges[iE]].E,
-      SubGrid.InBoundEdgesP[iE])
-  end  
+# Output
+  Output.vtkFileName=string("BaroWaveMoist",string(Proc),"_")
+  Output.vtk=0
+  Output.Flat=true
+  Output.nPanel=nPanel
+  Output.RadPrint=H
+  Output.H=H
+  Output.cNames = [
+    "Rho",
+    "u",
+    "v",
+    "w",
+    "Th",
+]
+  Output.OrdPrint=CG.OrdPoly
+  @show "Compute vtkGrid"
+  vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
 
-   NumNeiProc = SubGrid.NumNeiProc
-   NeiProc = SubGrid.NeiProc
-   GlobBuffer = Dict()
-   LocBuffer = Dict()
-   for iP = 1 : NumNeiProc
-     LocTemp=zeros(Int,0)  
-     GlobTemp=zeros(Int,0)  
-     for iEB = 1 : SubGrid.NumInBoundEdges
-       if SubGrid.InBoundEdgesP[iEB] == NeiProc[iP]
-         iE = SubGrid.InBoundEdges[iEB] 
-         push!(GlobTemp,SubGrid.Edges[iE].EG)
-         for k = 1 : OrdPoly - 1
-           push!(LocTemp,k + SubGrid.NumNodes + (iE - 1)*(OrdPoly - 1))
-         end
-       end  
-     end
-     LocBuffer[NeiProc[iP]] = LocTemp
-     GlobBuffer[NeiProc[iP]] = GlobTemp
-   end  
+  IntMethod="RungeKutta"
+  IntMethod="RosenbrockD"
+  IntMethod="LinIMEX"
+  IntMethod="Rosenbrock"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
+    dtau = 200
+  else
+    dtau=1
+  end
+  Global.ROS=CGDycore.RosenbrockMethod("RODAS")
+  Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
+  Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
+  Global.RK=CGDycore.RungeKuttaMethod("RK4")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
 
-   GlobGetBuffer = Dict()
-   rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
-   for iP = 1 : NumNeiProc
-     GlobGetBuffer[NeiProc[iP]] = similar(GlobBuffer[NeiProc[iP]])
-     tag = Proc + ProcNumber*NeiProc[iP]
-     rreq[iP] = MPI.Irecv!(GlobGetBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, comm)
-   end  
-   sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
-   for iP = 1 : NumNeiProc
-     tag = NeiProc[iP] + ProcNumber*Proc
-     sreq[iP] = MPI.Isend(GlobBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, comm)
-   end  
+# Simulation period
+  time=[0.0]
+  SimDays=10
+  PrintDay=.1
+  PrintStartDay = 0
+  nIter=ceil(24*3600*SimDays/dtau)
+  PrintInt=ceil(24*3600*PrintDay/dtau)
+  PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
 
-   stats = MPI.Waitall!(rreq)
-   stats = MPI.Waitall!(sreq)
+  Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
-   MPI.Barrier(comm)
-#=
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., Global.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+  elseif IntMethod == "RosenbrockSSP"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV])..., Global.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.VS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage+1);
+    Global.Cache.fS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage);
+    Global.Cache.fRhoS=zeros(size(U[:,:,1])..., Global.ROS.nStage);
+    Global.Cache.RhoS=zeros(size(U[:,:,1])..., Global.ROS.nStage+1);
+  elseif IntMethod == "LinIMEX"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.Ymyn=zeros(size(U[:,:,1:NumV+NumTr])..., Global.LinIMEX.nStage-1);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.f=zeros(size(U)..., Global.LinIMEX.nStage)
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+  elseif IntMethod == "RungeKutta"
+    Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
+  end
 
-   GlobGetBuffer1 = Dict()
-   GlobGetBuffer1[2] = GlobBuffer2[1]
-   GlobGetBuffer1[3] = GlobBuffer3[1]
-   GlobGetBuffer2 = Dict()
-   GlobGetBuffer2[1] = GlobBuffer1[2]
-   GlobGetBuffer2[3] = GlobBuffer3[2]
-   GlobGetBuffer3 = Dict()
-   GlobGetBuffer3[1] = GlobBuffer1[3]
-   GlobGetBuffer3[2] = GlobBuffer2[3]
+# Boundary values
+ if Model.NumTr > 0
+   @views @. Global.Cache.cTrS[:,:,:,1] = 0.0
+   @views @. Global.Cache.cTrS[:,:,1:20,2] = 0.0
+ end
+
+# Print initial conditions
+  @show "Print initial conditions"
+  Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
 
 
-   #Proc1
-   GetBuffer1 = Dict()
-   for iP = 1 : NumNeiProc1
-     GlobInd = GlobGetBuffer1[NeiProc1[iP]]  
-     LocTemp=zeros(Int,0)
-     iEB1 = 0
-     for iEB = 1 : SubGrid1.NumInBoundEdges
-       if SubGrid1.InBoundEdgesP[iEB] == NeiProc1[iP]
-         iEB1 += 1  
-         (iE,) = DictE1[GlobInd[iEB1]]  
-         for k = 1 : OrdPoly - 1
-           push!(LocTemp,k + SubGrid1.NumNodes + (iE - 1)*(OrdPoly - 1))
-         end
-       end
-     end
-     GetBuffer1[NeiProc1[iP]] = LocTemp
-   end
+  @show "Choose integration method"
+  if IntMethod == "Rosenbrock"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "RosenbrockD"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.RosenbrockDSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end  
+  elseif IntMethod == "RosenbrockSSP"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.RosenbrockSchurSSP!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "LinIMEX"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "RungeKutta"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          @time CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global)
 
-   #Proc2
-   GetBuffer2 = Dict()
-   for iP = 1 : NumNeiProc2
-     GlobInd = GlobGetBuffer2[NeiProc2[iP]]  
-     LocTemp=zeros(Int,0)
-     iEB2 = 0
-     for iEB = 1 : SubGrid2.NumInBoundEdges
-       if SubGrid2.InBoundEdgesP[iEB] == NeiProc2[iP]
-         iEB2 += 1 
-         (iE,) = DictE2[GlobInd[iEB2]]  
-         for k = 1 : OrdPoly - 1
-           push!(LocTemp,k + SubGrid1.NumNodes + (iE - 1)*(OrdPoly - 1))
-         end
-       end
-     end
-     GetBuffer2[NeiProc2[iP]] = LocTemp
-   end
-
-   #Proc3
-   GetBuffer3 = Dict()
-   for iP = 1 : NumNeiProc3
-     GlobInd = GlobGetBuffer3[NeiProc3[iP]]  
-     LocTemp=zeros(Int,0)
-     iEB3 = 0
-     for iEB = 1 : SubGrid3.NumInBoundEdges
-       if SubGrid3.InBoundEdgesP[iEB] == NeiProc3[iP]
-         iEB3 += 1   
-         (iE,) = DictE3[GlobInd[iEB3]]  
-         for k = 1 : OrdPoly - 1
-           push!(LocTemp,k + SubGrid1.NumNodes + (iE - 1)*(OrdPoly - 1))
-         end
-       end
-     end
-     GetBuffer3[NeiProc3[iP]] = LocTemp
-   end
-
-  #Send
-  #Proc1
-   SendBuffer1 = Dict()
-   for iP = 1 : NumNeiProc1
-     SendBuffer1[NeiProc1[iP]] = U1[1,LocBuffer1[NeiProc1[iP]],2]
-   end
-  #Proc2
-   SendBuffer2 = Dict()
-   for iP = 1 : NumNeiProc2
-     SendBuffer2[NeiProc2[iP]] = U2[1,LocBuffer2[NeiProc2[iP]],2]
-   end
-  #Proc3
-   SendBuffer3 = Dict()
-   for iP = 1 : NumNeiProc3
-     SendBuffer3[NeiProc3[iP]] = U3[1,LocBuffer3[NeiProc3[iP]],2]
-   end
-
-  #Exchange 
-   RecvBuffer1 = Dict()
-   RecvBuffer1[2] = SendBuffer2[1]
-   RecvBuffer1[3] = SendBuffer3[1]
-   RecvBuffer2 = Dict()
-   RecvBuffer2[1] = SendBuffer1[2]
-   RecvBuffer2[3] = SendBuffer3[2]
-   RecvBuffer3 = Dict()
-   RecvBuffer3[1] = SendBuffer1[3]
-   RecvBuffer3[2] = SendBuffer2[3]
-
-  #Receive 
-  #Proc1
-   for iP = 1 : NumNeiProc1
-     U1[1,GetBuffer1[NeiProc1[iP]],2] .+= RecvBuffer1[NeiProc1[iP]]
-   end
-  #Proc2
-   for iP = 1 : NumNeiProc2
-     U2[1,GetBuffer2[NeiProc2[iP]],2] .+= RecvBuffer2[NeiProc2[iP]]
-   end
-  #Proc3
-   for iP = 1 : NumNeiProc3
-     U3[1,GetBuffer3[NeiProc3[iP]],2] .+= RecvBuffer3[NeiProc3[iP]]
-   end
-
-  Global1.Output.vtk=CGDycore.vtkOutput(U1,vtkGrid1,CG1,Global1)
-  Global2.Output.vtk=CGDycore.vtkOutput(U2,vtkGrid2,CG2,Global2)
-  Global3.Output.vtk=CGDycore.vtkOutput(U3,vtkGrid3,CG3,Global3)
-  =#
-#end
+          time[1] += dtau
+          if mod(i,PrintInt)==0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  else
+    error("Bad IntMethod")
+  end

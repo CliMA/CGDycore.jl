@@ -80,6 +80,7 @@ include("IntegrationMethods/RungeKuttaMethod.jl")
 include("IntegrationMethods/SchurSolve.jl")
 include("IntegrationMethods/SSPRungeKutta.jl")
 
+include("Parallel/Exchange.jl")
 include("Model/PhysParameters.jl")
 include("Model/Pressure.jl")
 #include("Model/dPresdTh.jl")

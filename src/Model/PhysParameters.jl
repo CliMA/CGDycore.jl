@@ -46,12 +46,7 @@ Rot2C::Array{Float64, 3}
 Grad1C::Array{Float64, 3}
 Grad2C::Array{Float64, 3}
 DivC::Array{Float64, 3}
-Rot1::Array{Float64, 2}
-Rot2::Array{Float64, 2}
-Grad1::Array{Float64, 2}
-Grad2::Array{Float64, 2}
-Div::Array{Float64, 2}
-DivTr::Array{Float64, 3}
+Temp1::Array{Float64, 3}
 k::Array{Float64, 4}
 Ymyn::Array{Float64, 4}
 fV::Array{Float64, 3}
@@ -109,12 +104,7 @@ Rot2C=zeros(0,0,0)
 Grad1C=zeros(0,0,0)
 Grad2C=zeros(0,0,0)
 DivC=zeros(0,0,0)
-Rot1=zeros(0,0)
-Rot2=zeros(0,0)
-Grad1=zeros(0,0)
-Grad2=zeros(0,0)
-Div=zeros(0,0)
-DivTr=zeros(0,0,0)
+Temp1=zeros(0,0,0)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
 fV=zeros(0,0,0)
@@ -171,12 +161,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
-  Rot1,
-  Rot2,
-  Grad1,
-  Grad2,
-  Div,
-  DivTr,
+  Temp1,
   k,
   Ymyn,
   fV,
@@ -236,12 +221,7 @@ Rot2C=zeros(OP,OP,nz)
 Grad1C=zeros(OP,OP,nz)
 Grad2C=zeros(OP,OP,nz)
 DivC=zeros(OP,OP,nz)
-Rot1=zeros(nz,NumG)
-Rot2=zeros(nz,NumG)
-Grad1=zeros(nz,NumG)
-Grad2=zeros(nz,NumG)
-Div=zeros(nz,NumG)
-DivTr=zeros(nz,NumG,NumTr)
+Temp1=zeros(nz,NumG,5+NumTr)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
 fV=zeros(0,0,0)
@@ -298,12 +278,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
-  Rot1,
-  Rot2,
-  Grad1,
-  Grad2,
-  Div,
-  DivTr,
+  Temp1,
   k,
   Ymyn,
   fV,
@@ -577,6 +552,7 @@ mutable struct GlobalStruct{TCache}
   Model::ModelStruct
   Phys::PhysParameters
   Output::OutputStruct
+  Exchange::ExchangeStruct
   ROS::RosenbrockStruct
   LinIMEX::LinIMEXStruct
   RK::RungeKuttaStruct
@@ -589,7 +565,9 @@ end
 function Global(Grid::GridStruct,
                 Model::ModelStruct,
                 Phys::PhysParameters,
-                Output::OutputStruct,OP,nz,NumV,NumTr,init_tcache=NamedTuple())
+                Output::OutputStruct,
+                Exchange::ExchangeStruct,
+                OP,nz,NumV,NumTr,init_tcache=NamedTuple())
   Metric=MetricStruct()
   ROS=RosenbrockMethod()
   LinIMEX=LinIMEXMethod()
@@ -605,6 +583,7 @@ function Global(Grid::GridStruct,
     Model,
     Phys,
     Output,
+    Exchange,
     ROS,
     LinIMEX,
     RK,
