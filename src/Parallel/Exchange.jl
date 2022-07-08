@@ -198,7 +198,47 @@ function ExchangeData!(U::Array{Float64,3},Exchange)
     nT = size(U,3)
     SendBuffer = Dict()
     for iP in eachindex(NeiProc)
-      SendBuffer[NeiProc[iP]] = U[:,IndSendBuffer[NeiProc[iP]],:]
+      SendBuffer[NeiProc[iP]] = deepcopy(U[:,IndSendBuffer[NeiProc[iP]],:])
+    end
+
+    RecvBuffer = Dict()
+    rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
+    for iP in eachindex(NeiProc)
+      RecvBuffer[NeiProc[iP]] = zeros(nz,length(IndRecvBuffer[NeiProc[iP]]),nT)
+      tag = Proc + ProcNumber*NeiProc[iP]
+      rreq[iP] = MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
+    end  
+    sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
+    for iP in eachindex(NeiProc)
+      tag = NeiProc[iP] + ProcNumber*Proc
+      sreq[iP] = MPI.Isend(SendBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
+    end
+
+    stats = MPI.Waitall!(rreq)
+    stats = MPI.Waitall!(sreq)
+
+    MPI.Barrier(MPI.COMM_WORLD)
+    #Receive
+    for iP in eachindex(NeiProc)
+      @views @. U[:,IndRecvBuffer[NeiProc[iP]],:] += RecvBuffer[NeiProc[iP]]
+    end
+  end  
+end    
+
+function ExchangeData3D!(U,Exchange)
+
+  if Exchange.Parallel
+
+    IndSendBuffer = Exchange.SendBuffer
+    IndRecvBuffer = Exchange.RecvBuffer
+    NeiProc = Exchange.NeiProc
+    Proc = Exchange.Proc
+    ProcNumber = Exchange.ProcNumber
+    nz = size(U,1)
+    nT = size(U,3)
+    SendBuffer = Dict()
+    for iP in eachindex(NeiProc)
+      SendBuffer[NeiProc[iP]] = deepcopy(U[:,IndSendBuffer[NeiProc[iP]],:])
     end
 
     RecvBuffer = Dict()
@@ -262,4 +302,57 @@ function ExchangeData!(U::Array{Float64,2},Exchange)
       U[:,IndRecvBuffer[NeiProc[iP]]] .+= RecvBuffer[NeiProc[iP]]
     end
   end  
+end  
+function ExchangeData!(U::Array{Float64,1},Exchange)
+
+  if Exchange.Parallel
+
+    IndSendBuffer = Exchange.SendBuffer
+    IndRecvBuffer = Exchange.RecvBuffer
+    NeiProc = Exchange.NeiProc
+    Proc = Exchange.Proc
+    ProcNumber = Exchange.ProcNumber
+    SendBuffer = Dict()
+    for iP in eachindex(NeiProc)
+      SendBuffer[NeiProc[iP]] = deepcopy(U[IndSendBuffer[NeiProc[iP]]])
+    end
+
+    RecvBuffer = Dict()
+    rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
+    for iP in eachindex(NeiProc)
+      RecvBuffer[NeiProc[iP]] = zeros(length(IndRecvBuffer[NeiProc[iP]]))
+      tag = Proc + ProcNumber*NeiProc[iP]
+      rreq[iP] = MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
+    end  
+    sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
+    for iP in eachindex(NeiProc)
+      tag = NeiProc[iP] + ProcNumber*Proc
+      sreq[iP] = MPI.Isend(SendBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
+    end
+
+    stats = MPI.Waitall!(rreq)
+    stats = MPI.Waitall!(sreq)
+
+    MPI.Barrier(MPI.COMM_WORLD)
+    #Receive
+    for iP in eachindex(NeiProc)
+      U[IndRecvBuffer[NeiProc[iP]]] .+= RecvBuffer[NeiProc[iP]]
+    end
+  end  
+end  
+
+function GlobalSum2D(U,CG)
+  SumLoc = 0.0
+  @inbounds for iG = 1 : CG.NumG
+    SumLoc += sum(abs.(U[:,iG] .* CG.MasterSlave[iG]))
+  end  
+  Sum = MPI.Allreduce(SumLoc, +, MPI.COMM_WORLD)
+end  
+
+function GlobalSum3D(U,CG)
+  SumLoc = 0.0
+  @inbounds for iG = 1 : CG.NumG
+    SumLoc += sum(abs.(U[:,iG,:] .* CG.MasterSlave[iG]))
+  end  
+  Sum = MPI.Allreduce(SumLoc, +, MPI.COMM_WORLD)
 end  

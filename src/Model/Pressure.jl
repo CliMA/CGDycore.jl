@@ -15,11 +15,11 @@ function Pressure!(p,RhoTh,Rho,Tr,Global)
      if Global.Model.Thermo == "Energy"
        p=(Rd/Cvd)*(RhoTh-Rho.*(KE+Grav*repmat(Grid.zP,1,size(Rho,1))'));
      else
-#      @inbounds for i in eachindex(p)  
-#        p[i] = p0 * (Rd * RhoTh[i] / p0)^(1.0 / (1.0 - kappa));
-#      end  
+       @inbounds for i in eachindex(p)  
+         p[i] = p0 * (Rd * RhoTh[i] / p0)^(1.0 / (1.0 - kappa));
+       end  
 #      @. p = p0 * (Rd * RhoTh / p0)^(1.0 / (1.0 - kappa)) 
-       @. p = (Rd * RhoTh / p0^kappa)^(1.0 / (1.0 - kappa))
+#      @. p = (Rd * RhoTh / p0^kappa)^(1.0 / (1.0 - kappa))
     end
   elseif Equation == "CompressibleMoist"
     @views TrRhoV = Tr[size(p)...,Global.Model.RhoVPos]

@@ -32,6 +32,13 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Nodes[i].FG .= Nodes[i].F
     Nodes[i].FP .= Proc[Nodes[i].F]
     Nodes[i].N = i
+    Nodes[i].MasterSlave = 1
+    for j in eachindex(Nodes[i].FP)
+      if ProcNumber > Nodes[i].FP[j]
+        Nodes[i].MasterSlave = 0
+        exit
+      end
+    end  
   end  
   NumEdges = size(EdgeNumbers,1)
   Edges = map(1:NumEdges) do i
@@ -46,6 +53,13 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Edges[i].N[2] = GlobalGrid.Nodes[Edges[i].N[2]].N
     Edges[i].FG .= Edges[i].F
     Edges[i].FP .= Proc[Edges[i].F]
+    Edges[i].MasterSlave = 1
+    for j in eachindex(Edges[i].FP)
+      if ProcNumber > Edges[i].FP[j]
+        Edges[i].MasterSlave = 0
+        exit
+      end
+    end  
   end  
 
   Faces = map(1:NumFaces) do i

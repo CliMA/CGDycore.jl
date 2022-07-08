@@ -16,6 +16,7 @@ mutable struct CGStruct
     MMass::Array{Float64, 2}
     MW::Array{Float64, 2}
     Boundary::Array{Int, 1}
+    MasterSlave::Array{Int, 1}
 end
 function CGStruct()
  OrdPoly=0
@@ -35,6 +36,7 @@ M=zeros(0,0)
 MMass=zeros(0,0)
 MW=zeros(0,0)
 Boundary=zeros(0)
+MasterSlave = zeros(0)
  return CGStruct(
     OrdPoly,
     OrdPolyZ,
@@ -53,6 +55,7 @@ Boundary=zeros(0)
     MMass,
     MW,
     Boundary,
+    MasterSlave,
  )
 end 
 
@@ -77,7 +80,7 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
   CG.DST=CG.DS'
   CG.DWT=CG.DW'
-  (CG.Glob,CG.NumG,CG.NumI,CG.Stencil) =
+  (CG.Glob,CG.NumG,CG.NumI,CG.Stencil,CG.MasterSlave) =
     NumberingFemCG(Grid,OrdPoly);
 
 
@@ -138,13 +141,13 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
     for jP=1:OP
       for iP=1:OP
         ind=CG.Glob[iP,jP,iF]
-        latN[ind] = latN[ind] + lat[iP,jP,iF]
-        @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF]
+        latN[ind] = latN[ind] + lat[iP,jP,iF] * JC[iP,jP,1,iF] / CG.M[1,ind]
+        @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF] / CG.M[:,ind]
       end
     end
   end
-  Global.latN=Global.latN./CG.M[1,:];
-  @. dz = dz / CG.M
+  ExchangeData!(dz,Global.Exchange)
+  ExchangeData!(latN,Global.Exchange)
 # Boundary nodes
   for iF = 1 : NF
     Side = 0

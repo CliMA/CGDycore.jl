@@ -71,9 +71,9 @@ Model = CGDycore.Model(Param)
   Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="BaroWaveMoistSphere"
+  Model.Problem="BaroWaveSphere"
   Model.ProfRho="BaroWaveSphere"
-  Model.ProfTheta="BaroWaveMoistSphere"
+  Model.ProfTheta="BaroWaveSphere"
   Model.ProfVel="BaroWaveSphere"
   Model.RhoPos=1
   Model.uPos=2
@@ -161,11 +161,12 @@ end
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
   IntMethod="LinIMEX"
+  IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
     dtau = 200
   else
-    dtau=1
+    dtau=3
   end
   Global.ROS=CGDycore.RosenbrockMethod("RODAS")
   Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
@@ -183,6 +184,9 @@ end
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
+
+  nIter = 100
+  PrintInt = 100
 
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 

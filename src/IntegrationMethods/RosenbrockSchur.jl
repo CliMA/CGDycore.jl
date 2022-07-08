@@ -11,6 +11,13 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global)
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
 
+# SumVS = GlobalSum3D(V, CG)
+# Sumdz = GlobalSum2D(Global.Metric.dz, CG)
+
+# if Global.Exchange.Proc == 1
+#   @show SumVS  
+#   @show Sumdz  
+# end  
   J = Global.J
   J.CompTri=true
   Jac(J,V,CG,Global)
@@ -21,15 +28,28 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global)
       @views @. V = V + ROS.a[iStage,jStage]*k[:,:,:,jStage];
     end
     Fcn(fV,V,CG,Global);
+#   SumFv = GlobalSum3D(fV, CG)
+#   if Global.Exchange.Proc == 1
+#     @show SumFv  
+#   end  
     @inbounds for jStage=1:iStage-1
         @views @. fV = fV + (ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage];
     end
     @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.Gamma[iStage,iStage],Global);
+#   Sumk = GlobalSum3D(k[:,:,:,iStage], CG)
+#   if Global.Exchange.Proc == 1
+#     @show Sumk  
+#   end  
   end
   V .= Vn;
   @inbounds for iStage=1:nStage
     @views @. V[:,:,1:NumV+NumTr] = V[:,:,1:NumV+NumTr] + ROS.m[iStage] * k[:,:,:,iStage];
   end
+# SumV = GlobalSum3D(V, CG)
+# if Global.Exchange.Proc == 1
+#   @show SumV  
+# end  
+  
 end
 
 function RosenbrockDSchur!(V,dt,Fcn,Jac,CG,Global)

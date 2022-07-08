@@ -112,7 +112,29 @@ for iF=1:Grid.NumFaces
   end
   Stencil[iF,1:iS]=StencilLoc[1:iS];
 end
-return (Glob,NumG,NumI,Stencil)
+
+MasterSlave=zeros(Int,NumG)
+ii=1
+for iN=1:Grid.NumNodes
+  MasterSlave[ii] = Grid.Nodes[iN].MasterSlave
+  ii = ii + 1
+end  
+for iE = 1 : Grid.NumEdges
+  for i=1:PolyOrd-1
+    MasterSlave[ii] = Grid.Edges[iE].MasterSlave 
+    ii = ii +1
+  end
+end  
+for iF = 1 : Grid.NumFaces
+  for j=1:PolyOrd-1
+    for i=1:PolyOrd-1
+      MasterSlave[ii] = 1
+      ii = ii +1
+    end  
+  end
+end  
+    
+return (Glob,NumG,NumI,Stencil,MasterSlave)
 end
 
 

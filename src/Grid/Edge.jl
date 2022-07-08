@@ -13,6 +13,7 @@ mutable struct Edge
   Mid::Point
   FE::Array{Int,1}
   Type::String
+  MasterSlave::Int
 end
 
 function Edge()
@@ -30,6 +31,7 @@ function Edge()
   Mid=Point()
   FE=zeros(Int,0)
   Type=""
+  MasterSlave = 0
   return Edge(
     N,
     E,
@@ -45,6 +47,7 @@ function Edge()
     Mid,
     FE,
     Type,
+    MasterSlave,
   )
 end  
 

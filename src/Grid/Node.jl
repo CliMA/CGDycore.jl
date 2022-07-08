@@ -43,6 +43,7 @@ mutable struct Node
     F::Array{Int, 1}
     FG::Array{Int, 1}
     FP::Array{Int, 1}
+    MasterSlave::Int
 end
 
 function Node()
@@ -53,6 +54,7 @@ function Node()
   F=zeros(Int,0)
   FG=zeros(Int,0)
   FP=zeros(Int,0)
+  MasterSlave = 0
   return Node(
     P,
     N,
@@ -61,6 +63,7 @@ function Node()
     F,
     FG,
     FP,
+    MasterSlave,
   )
 end  
   

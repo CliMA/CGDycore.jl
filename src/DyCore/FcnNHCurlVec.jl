@@ -98,7 +98,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
       end
     end
   end
-  ExchangeData!(Temp1,Global.Exchange)
+  ExchangeData3D!(Temp1,Global.Exchange)
 
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP
@@ -190,7 +190,6 @@ function FcnNHCurlVec!(F,U,CG,Global)
         @views VerticalDiffusionSaclar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
       end  
     end  
-
 #   Tracer transport
     @inbounds for iT = 1:NumTr
       @inbounds for jP=1:OP
@@ -235,7 +234,8 @@ function FcnNHCurlVec!(F,U,CG,Global)
     end
   end  
 
-  ExchangeData!(F,Global.Exchange)
+  ExchangeData3D!(F,Global.Exchange)
+
 
   if Global.Model.Damping
     @inbounds for iG=1:CG.NumG

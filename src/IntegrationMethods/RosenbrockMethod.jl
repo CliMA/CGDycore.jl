@@ -206,8 +206,18 @@ elseif str == "TROSWLASSP3P4S2C"
 
     #ROS.m
 elseif str == "ROSEul"
-    ROS.nStage=1;
-
+    transformed = true
+    nStage=1;
+    alpha=zeros(nStage,nStage)
+    a=zeros(nStage,nStage)
+    Gamma=zeros(nStage,nStage)
+    c=zeros(nStage,nStage)
+    Gamma[1,1]=1.0
+    m=[1.0]
+    b=[0.0]
+    b2=[0.0]
+    d=[0.0]
+    SSP=SSPRungeKuttaMethod()
 elseif str == "ROS3Pw"
     ROS.nStage=3;
     ROS.beta0=7.88675134594812865529e-01;
