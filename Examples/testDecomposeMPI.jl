@@ -10,7 +10,7 @@ print("$Proc: \n")
 print("$ProcNumber: \n")
 
 OrdPoly = 4
-nz = 20
+nz = 45
 
 OrdPolyZ=1
 nPanel = 24
@@ -183,7 +183,7 @@ end
 # Simulation period
   time=[0.0]
   SimDays=10
-  PrintDay=10
+  PrintDay=1
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
