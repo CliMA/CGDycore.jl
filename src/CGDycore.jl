@@ -7,6 +7,7 @@ using NCDatasets
 using DelimitedFiles
 using Dierckx
 using MPI
+using StaticArrays
 
 include("Grid/Node.jl")
 include("Grid/Edge.jl")
@@ -81,6 +82,7 @@ include("IntegrationMethods/SchurSolve.jl")
 include("IntegrationMethods/SSPRungeKutta.jl")
 
 include("Parallel/Exchange.jl")
+include("Parallel/Hilbert.jl")
 include("Model/PhysParameters.jl")
 include("Model/Pressure.jl")
 #include("Model/dPresdTh.jl")

@@ -98,7 +98,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
       end
     end
   end
-  ExchangeData3D!(Temp1,Global.Exchange)
+  @allocated ExchangeData3D!(Temp1,Global.Exchange)
 
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP

@@ -114,6 +114,18 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   SubGrid=FacesInNodes(SubGrid);
   SubGrid.Form = GlobalGrid.Form
 
+  #Boundary/Interior faces
+  BoundaryFaces = zeros(Int,0)
+  for iE = 1 : SubGrid.NumEdges
+    if SubGrid.Edges[iE].F[1] == 0
+      push!(BoundaryFaces,SubGrid.Edges[iE].F[2])  
+    elseif SubGrid.Edges[iE].F[2] == 0
+      push!(BoundaryFaces,SubGrid.Edges[iE].F[1])  
+    end
+  end  
+  SubGrid.BoundaryFaces = BoundaryFaces
+  SubGrid.InteriorFaces = setdiff(collect(UnitRange(1,SubGrid.NumFaces)),SubGrid.BoundaryFaces)
+
   return SubGrid
 end
 

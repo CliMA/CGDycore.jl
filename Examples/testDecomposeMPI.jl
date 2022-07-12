@@ -13,7 +13,7 @@ OrdPoly = 4
 nz = 20
 
 OrdPolyZ=1
-nPanel = 8
+nPanel = 24
 NF = 6 * nPanel * nPanel
 NumV = 5
 NumTr = 0
@@ -71,7 +71,7 @@ Model = CGDycore.Model(Param)
   Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="BaroWaveSphere"
+  Model.Problem="HeldSuarez"
   Model.ProfRho="BaroWaveSphere"
   Model.ProfTheta="BaroWaveSphere"
   Model.ProfVel="BaroWaveSphere"
@@ -103,6 +103,9 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+P0Sph = [   0.0,-0.5*pi,Phys.RadEarth]
+P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth]
+CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -121,11 +124,12 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
+  Grid = nothing
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=2.e17/4/4 #1.e14*(dx/LRef)^3.2;
-  Model.HyperDGrad=2.e17/4/4
-  Model.HyperDDiv=2.e17/4/4 # Scalars
+  Model.HyperDCurl=2.e17/4/2^4 #1.e14*(dx/LRef)^3.2;
+  Model.HyperDGrad=2.e17/4/2^4
+  Model.HyperDDiv=2.e17/4/2^4 # Scalars
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -164,7 +168,7 @@ end
   IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 200
+    dtau = 50
   else
     dtau=3
   end
@@ -179,14 +183,11 @@ end
 # Simulation period
   time=[0.0]
   SimDays=10
-  PrintDay=.1
+  PrintDay=10
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
-
-  nIter = 100
-  PrintInt = 100
 
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
@@ -223,7 +224,6 @@ end
 # Print initial conditions
   @show "Print initial conditions"
   Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
-
 
   @show "Choose integration method"
   if IntMethod == "Rosenbrock"

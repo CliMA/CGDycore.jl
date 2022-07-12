@@ -8,7 +8,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   dd=2.0e0/n;
   NumNodes=(6*(n-1)*(n-1)+12*(n-1)+8);
   Nodes = map(1:NumNodes) do i
-    Node();
+    Node()
   end
   NodeNumber=1;
   #Faces
