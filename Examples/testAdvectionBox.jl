@@ -1,6 +1,13 @@
-#function testNHDensityCurrent()
-
+#function testAdvectionBox()
 using CGDycore
+using MPI
+
+MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+print("$Proc: \n")
+print("$ProcNumber: \n")
 
 OrdPoly = 4
 OrdPolyZ = 1
@@ -39,11 +46,18 @@ Model = CGDycore.Model(Param)
 
 # Grid
 
-Boundary = (;WE="FreeSlip", SN="FreeSlip")
-Topography=(TopoS="",h0=3000.0,lambda=8000.0,a=25000.0,H=H)
-Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid);
-CGDycore.AddVerticalGrid!(Grid,nz,H)
+  Boundary = (;WE="FreeSlip", SN="FreeSlip")
+  Topography=(TopoS="",H=H)
+  Grid=CGDycore.Grid(nz,Topography)
+  Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid);
+
+  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
+  CGDycore.AddVerticalGrid!(SubGrid,nz,H)
+  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Output=CGDycore.Output(Topography)
+  Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
 
 Output=CGDycore.Output(Topography)
 

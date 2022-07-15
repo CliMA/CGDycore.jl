@@ -52,12 +52,20 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Edges[i].N[1] = GlobalGrid.Nodes[Edges[i].N[1]].N
     Edges[i].N[2] = GlobalGrid.Nodes[Edges[i].N[2]].N
     Edges[i].FG .= Edges[i].F
-    Edges[i].FP .= Proc[Edges[i].F]
+    Edges[i].FP .= 0
+    for j = 1:2
+      iF = Edges[i].F[j]
+      if iF > 0
+        Edges[i].FP[j] = Proc[iF]
+      end
+    end  
     Edges[i].MasterSlave = 1
     for j in eachindex(Edges[i].FP)
-      if ProcNumber > Edges[i].FP[j]
-        Edges[i].MasterSlave = 0
-        exit
+      if Edges[i].FP[j] >0  
+        if ProcNumber > Edges[i].FP[j] 
+          Edges[i].MasterSlave = 0
+          exit
+        end
       end
     end  
   end  
@@ -81,25 +89,20 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   end
   # Physischer Rand und Prozessor Rand 
   for i = 1:NumEdges
-    if Proc[Edges[i].F[1]] == ProcNumber  
-      Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
-    else
-      Edges[i].F[1] = 0  
-    end  
-    if Proc[Edges[i].F[2]] == ProcNumber  
-      Edges[i].F[2] = GlobalGrid.Faces[Edges[i].F[2]].F
-    else
-      Edges[i].F[2] = 0  
-    end  
-  end
-
-  for i = 1:NumEdges
-    if Proc[Edges[i].FG[1]] == ProcNumber  
-    else
-    end  
-    if Proc[Edges[i].FG[2]] == ProcNumber  
-    else
-    end  
+    if Edges[i].F[1] > 0  
+      if Proc[Edges[i].F[1]] == ProcNumber  
+        Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
+      else
+        Edges[i].F[1] = 0  
+      end  
+    end
+    if Edges[i].F[2] > 0  
+      if Proc[Edges[i].F[2]] == ProcNumber  
+        Edges[i].F[2] = GlobalGrid.Faces[Edges[i].F[2]].F
+      else
+        Edges[i].F[2] = 0  
+      end  
+    end
   end
 
   SubGrid.NumFaces = NumFaces
@@ -117,12 +120,15 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   #Boundary/Interior faces
   BoundaryFaces = zeros(Int,0)
   for iE = 1 : SubGrid.NumEdges
-    if SubGrid.Edges[iE].F[1] == 0
-      push!(BoundaryFaces,SubGrid.Edges[iE].F[2])  
-    elseif SubGrid.Edges[iE].F[2] == 0
-      push!(BoundaryFaces,SubGrid.Edges[iE].F[1])  
+    if SubGrid.Edges[iE].F[1] == 0 || SubGrid.Edges[iE].F[2] == 0
+      for iN in SubGrid.Edges[iE].N
+        for iF in SubGrid.Nodes[iN].F  
+          push!(BoundaryFaces,iF)
+        end
+      end
     end
   end  
+  BoundaryFaces = unique(BoundaryFaces)
   SubGrid.BoundaryFaces = BoundaryFaces
   SubGrid.InteriorFaces = setdiff(collect(UnitRange(1,SubGrid.NumFaces)),SubGrid.BoundaryFaces)
 

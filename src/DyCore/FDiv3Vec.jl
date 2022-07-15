@@ -1,3 +1,43 @@
+function FDiv3LowOrderVec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
+@unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
+OP=CG.OrdPoly+1;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+# Contravariant components
+
+vCon1 = TCacheC1[Threads.threadid()]
+vCon2 = TCacheC2[Threads.threadid()]
+DvCon1 = TCacheC3[Threads.threadid()]
+DvCon2 = TCacheC4[Threads.threadid()]
+vConV = TCacheC1[Threads.threadid()]
+
+@inbounds for iz=1:nz
+  @views @. vCon1 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
+    v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]) 
+  @views @. vCon1[1:OP-1,:] = 0.5 * (vCon1[1:OP-1,:] + vCon1[2:OP,:])
+  @views @. vCon2 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,2,1] + 
+    v2CG[:,:,iz] * dXdxIC[:,:,iz,2,2]) 
+  @views @. vCon2[:,OP-1] = 0.5 * (vCon2[:,1:OP-1] + vCon2[:,2:OP])
+  @. DvCon1 = 0.0
+  @views @. DvCon1[1:OP-1,:] += -0.5 * (abs(vCon1[1:OP-1,:])+vCon1[1:OP-1,:])*cCG[1:OP-1,:] 
+  @views @. DvCon1[2:OP,:] += 0.5 * (abs(vCon1[1:OP-1,:])-vCon1[1:OP-1,:])*cCG[2:OP,:] 
+  @. DvCon2 = 0.0
+  @views @. DvCon2[:,1:OP-1] += -0.5 * (abs(vCon1[:,1:OP-1])+vCon1[:,1:OP-1])*cCG[:,1:OP-1] 
+  @views @. DvCon2[:,2:OP] += 0.5 * (abs(vCon2[:,1:OP-1])-vCon2[:,1:OP-1])*cCG[:,2:OP] 
+  @views @. F[:,:,iz]  = F[:,:,iz]  - DvCon1 - DvCon2 
+end
+@inbounds for iz=1:nz-1
+  @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
+    (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
+     v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
+  @views @. vConV = 0.5*(cCG[:,:,iz] + cCG[:,:,iz+1]) * vConV
+  @views @. F[:,:,iz] -= 0.5*vConV
+  @views @. F[:,:,iz+1] += 0.5*vConV
+end
+end
+
 function FDiv3Vec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
 @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
 OP=CG.OrdPoly+1;

@@ -9,7 +9,7 @@ function Source!(F,U,CG,Global,iG)
   ThPos = Model.ThPos
   nz = Global.Grid.nz
 
-  str = lowercase(Model.ProfRho)
+  str = lowercase(Model.Problem)
   @views Rho = U[:,Model.RhoPos]
   @views Th = U[:,Model.ThPos]
   @views Tr = U[:,Model.NumV+1:end]
@@ -18,7 +18,7 @@ function Source!(F,U,CG,Global,iG)
   @views ΔρT = Global.Cache.Cache3[:,1]
   if str == "heldsuarezsphere"
     Pressure!(Sigma,Th,Rho,Tr,Global)
-    Sigma = Sigma / Phys.p0
+    @. Sigma = Sigma / Phys.p0
     @. height_factor = max(0.0, (Sigma - Param.sigma_b) / (1.0 - Param.sigma_b))
     @. ΔρT =
       (Param.k_a + (Param.k_s - Param.k_a) * height_factor *

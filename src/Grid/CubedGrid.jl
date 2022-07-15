@@ -335,6 +335,21 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   Grid=Renumbering(Grid);
   Grid=FacesInNodes(Grid);
 
+  #Boundary/Interior faces
+  BoundaryFaces = zeros(Int,0)
+  for iE = 1 : Grid.NumEdges
+    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+      for iN in Grid.Edges[iE].N
+        for iF in Grid.Nodes[iN].F
+          push!(BoundaryFaces,iF)
+        end
+      end
+    end
+  end
+  BoundaryFaces = unique(BoundaryFaces)
+  Grid.BoundaryFaces = BoundaryFaces
+  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
+  return Grid
 end
 
 function CubePoint(i1,i2,i3,n,x,y,z,Rad)

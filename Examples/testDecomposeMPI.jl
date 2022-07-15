@@ -13,7 +13,7 @@ OrdPoly = 4
 nz = 45
 
 OrdPolyZ=1
-nPanel = 24
+nPanel = 12
 NF = 6 * nPanel * nPanel
 NumV = 5
 NumTr = 0
@@ -24,7 +24,7 @@ Parallel = true
 Phys=CGDycore.PhysParameters()
 
 #ModelParameters
-day=3600*24
+day=3600.0*24.0
 Param=(T0E=310.0,
        T0P=240.0,
        B=2.0,
@@ -44,17 +44,17 @@ Param=(T0E=310.0,
        T_init = 315,
        lapse_rate = -0.008,
        Deep=false,
-       k_a=1/(40 * day),
-       k_f=1/day,
+       k_a=1.0/(40.0 * day),
+       k_f=1.0/day,
        k_s=1/(4 * day),
        pert = 0.1,
        uMax = 1.0,
        vMax = 0.0,
        DeltaT_y=0,
-       DeltaTh_z=-5,
-       T_equator=315,
-       T_min=200,
-       sigma_b=7/10,
+       DeltaTh_z=-5.0,
+       T_equator=315.0,
+       T_min=200.0,
+       sigma_b=7.0/10.0,
        z_D=20.0e3,
 #      Boundary layer       
        C_E = 0.0044,
@@ -71,7 +71,7 @@ Model = CGDycore.Model(Param)
   Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="HeldSuarez"
+  Model.Problem="HeldSuarezSphere"
   Model.ProfRho="BaroWaveSphere"
   Model.ProfTheta="BaroWaveSphere"
   Model.ProfVel="BaroWaveSphere"
@@ -83,7 +83,7 @@ Model = CGDycore.Model(Param)
   Model.RhoVPos = 1
   Model.RhoCPos = 2
   Model.HorLimit = false
-  Model.Source = false
+  Model.Source = true
   Model.Upwind = true
   Model.Microphysics = false
   Model.RelCloud = 0.01
@@ -109,7 +109,9 @@ CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
-  CGDycore.AddVerticalGrid!(SubGrid,nz,H)
+  sigma = 1.0
+  lambda = 3.16
+  CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
   Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
@@ -118,18 +120,19 @@ else
   CellToProc=zeros(0)
   Proc = 0
   ProcNumber = 0
-  CGDycore.AddVerticalGrid!(Grid,nz,H)
+  sigma = 1.0
+  lambda = 3.16
+  CGDycore.AddStretchICONVerticalGrid!(Grid,nz,H,sigma,lambda)
   Exchange = CGDycore.InitExchange(Grid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-  Grid = nothing
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=2.e17/4/2^4 #1.e14*(dx/LRef)^3.2;
-  Model.HyperDGrad=2.e17/4/2^4
-  Model.HyperDDiv=2.e17/4/2^4 # Scalars
+  Model.HyperDCurl=2.e17/4/2^2 #1.e14*(dx/LRef)^3.2;
+  Model.HyperDGrad=2.e17/4/2^2
+  Model.HyperDDiv=2.e17/4/2^2 # Scalars
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -147,7 +150,7 @@ end
 # Output
   Output.vtkFileName=string("BaroWaveMoist",string(Proc),"_")
   Output.vtk=0
-  Output.Flat=true
+  Output.Flat=false
   Output.nPanel=nPanel
   Output.RadPrint=H
   Output.H=H
@@ -158,7 +161,7 @@ end
     "w",
     "Th",
 ]
-  Output.OrdPrint=CG.OrdPoly
+  Output.OrdPrint=1 #CG.OrdPoly
   @show "Compute vtkGrid"
   vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
 
@@ -168,7 +171,7 @@ end
   IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 50
+    dtau = 120
   else
     dtau=3
   end
@@ -182,8 +185,8 @@ end
 
 # Simulation period
   time=[0.0]
-  SimDays=10
-  PrintDay=1
+  SimDays=1000
+  PrintDay=10
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
@@ -230,7 +233,7 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
