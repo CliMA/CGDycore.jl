@@ -32,7 +32,7 @@ Param=(T0E=310.0,
        LapseRate=0.005,
        U0=-0.5,
        PertR=1.0/6.0,
-       Up=1.0,
+       Up=0.0, #1.0,
        PertExpR=0.1,
        PertLon=pi/9.0,
        PertLat=2.0*pi/9.0,
@@ -48,7 +48,7 @@ Param=(T0E=310.0,
        k_f=1.0/day,
        k_s=1/(4 * day),
        pert = 0.1,
-       uMax = 1.0,
+       uMax = 0.0,
        vMax = 0.0,
        DeltaT_y=0,
        DeltaTh_z=-5.0,
@@ -65,6 +65,9 @@ Param=(T0E=310.0,
 #      Moist
        q_0 = 0.018,                # Maximum specific humidity (default: 0.018)
        q_t = 1e-12,
+       T_virt_surf = 290.0,
+       T_min_ref = 220.0,
+       H_t = 8.e3,
        )
 Model = CGDycore.Model(Param)
 # Initial conditions
@@ -72,9 +75,9 @@ Model = CGDycore.Model(Param)
   Model.NumV=NumV
   Model.NumTr=NumTr
   Model.Problem="HeldSuarezSphere"
-  Model.ProfRho="BaroWaveSphere"
-  Model.ProfTheta="BaroWaveSphere"
-  Model.ProfVel="BaroWaveSphere"
+  Model.ProfRho="DecayingTemperatureProfile"
+  Model.ProfTheta="DecayingTemperatureProfile"
+  Model.ProfVel="Const"
   Model.RhoPos=1
   Model.uPos=2
   Model.vPos=3
@@ -130,9 +133,9 @@ else
 end  
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=2.e17/4/2^2 #1.e14*(dx/LRef)^3.2;
-  Model.HyperDGrad=2.e17/4/2^2
-  Model.HyperDDiv=2.e17/4/2^2 # Scalars
+  Model.HyperDCurl=7.e15
+  Model.HyperDGrad=7.e15
+  Model.HyperDDiv=7.e15
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -150,7 +153,7 @@ end
 # Output
   Output.vtkFileName=string("BaroWaveMoist",string(Proc),"_")
   Output.vtk=0
-  Output.Flat=false
+  Output.Flat=true
   Output.nPanel=nPanel
   Output.RadPrint=H
   Output.H=H
@@ -161,7 +164,7 @@ end
     "w",
     "Th",
 ]
-  Output.OrdPrint=1 #CG.OrdPoly
+  Output.OrdPrint=CG.OrdPoly
   @show "Compute vtkGrid"
   vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
 

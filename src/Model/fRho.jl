@@ -271,6 +271,19 @@ function fRho(x,time,Global)
     elseif str == "isothermal"
       pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
       Rho = pLoc / (Phys.Rd * Param.TEq)
+    elseif str == "decayingtemperatureprofile"
+      H_sfc = Phys.Rd * Param.T_virt_surf / Phys.Grav
+      (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
+      z=r-Phys.RadEarth;
+      zprime = z / Param.H_t
+      tanh_zprime = tanh(zprime)
+      Delta_Tv = Param.T_virt_surf - Param.T_min_ref
+      Tv = Param.T_virt_surf - Delta_Tv * tanh_zprime
+      Delta_Tvprime = Delta_Tv / Param.T_virt_surf
+      p = -Param.H_t * (zprime + Delta_Tvprime * (log(1 - Delta_Tvprime * tanh_zprime) - log(1 + tanh_zprime) + zprime))
+      p /= H_sfc * (1 - Delta_Tvprime^2)
+      p = Phys.p0 * exp(p)
+      Rho = p / (Phys.Rd * Tv)
     else
       Rho=1.0  
     end
