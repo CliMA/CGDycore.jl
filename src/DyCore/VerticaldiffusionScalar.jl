@@ -6,7 +6,7 @@ gradqCG = Global.Cache.CacheC1
 @views JF = Global.Metric.JF[:,:,:,iF] 
 qCG = Global.Cache.CacheC3
 @. qCG = c / Rho 
-# Gradient
+# Gradient computation
   @inbounds for iz = 1:nz-1
     @views @. gradqCG[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * dXdxIF33[:,:,iz+1] / JF[:,:,iz+1] 
   end
