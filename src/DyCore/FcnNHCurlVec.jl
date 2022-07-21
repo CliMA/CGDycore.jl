@@ -241,7 +241,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
       end  
     end  
 #   Tracer transport
@@ -262,7 +262,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux
@@ -375,7 +375,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
       end  
     end  
 #   Tracer transport
@@ -396,7 +396,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux
@@ -686,7 +686,7 @@ function FcnNHCurlVecI!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
       end  
     end  
 #   Tracer transport
@@ -707,7 +707,7 @@ function FcnNHCurlVecI!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux
@@ -822,7 +822,7 @@ function FcnNHCurlVecI!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
       end  
     end  
 #   Tracer transport
@@ -843,7 +843,7 @@ function FcnNHCurlVecI!(F,U,CG,Global)
         @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionSaclar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux

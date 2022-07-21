@@ -1,40 +1,82 @@
 using NLsolve
 function Source!(F,U,CG,Global,iG)
   Model = Global.Model
-  Param = Global.Model.Param
-  Phys = Global.Phys
+  Param1 = Global.Model.Param1
   RhoPos = Model.RhoPos
   uPos = Model.uPos
   vPos = Model.vPos
+  NumV = Model.NumV
+  NumTr = Model.NumTr
   ThPos = Model.ThPos
   nz = Global.Grid.nz
+  Problem = Model.Problem == "HeldSuarezSphere" || Model.Problem == "HeldSuarezMoistSphere"
 
-  str = lowercase(Model.Problem)
-  @views Rho = U[:,Model.RhoPos]
-  @views Th = U[:,Model.ThPos]
-  @views Tr = U[:,Model.NumV+1:end]
+  @views Rho = U[:,RhoPos]
+  @views Th = U[:,ThPos]
+  @views Tr = U[:,NumV+1:NumV+NumTr]
+# @time if Problem  == "HeldSuarezSphere" || Problem == "HeldSuarezMoistSphere"
+# if Problem  
+    @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,
+      Param1.sigma_b,Param1.k_s,Param1.k_a,Param1.k_f,Param1.T_min,Param1.T_equator,
+      Param1.DeltaT_y,Param1.DeltaTh_z,
+      Global.latN[iG],Global)
+# end
+end
+
+function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,
+  sigma_b,k_s,k_a,k_f,T_min,T_equator,DeltaT_y,DeltaTh_z,latN,Global)
+  Phys = Global.Phys
   @views Sigma = Global.Cache.Cache1[:,1]
   @views height_factor = Global.Cache.Cache2[:,1]
   @views ΔρT = Global.Cache.Cache3[:,1]
-  if str == "heldsuarezsphere"
-    Pressure!(Sigma,Th,Rho,Tr,Global)
-    @. Sigma = Sigma / Phys.p0
-    @. height_factor = max(0.0, (Sigma - Param.sigma_b) / (1.0 - Param.sigma_b))
-    @. ΔρT =
-      (Param.k_a + (Param.k_s - Param.k_a) * height_factor *
-      cos(Global.latN[iG])^4) *
-      Rho *
-      (                  # ᶜT - ᶜT_equil
-         Phys.p0 * Sigma / (Rho * Phys.Rd) - 
-         max(Param.T_min,
-         (Param.T_equator - Param.DeltaT_y * sin(Global.latN[iG])^2 - 
-         Param.DeltaTh_z * log(Sigma) * cos(Global.latN[iG])^2) *
-         Sigma^Phys.kappa)
-      )
-     @views @. F[:,uPos:vPos] -= (Param.k_f * height_factor) * U[:,uPos:vPos]
-     @views @. F[:,ThPos]  -= ΔρT / Sigma^Phys.kappa
-  end
-end
+  Pressure!(Sigma,Th,Rho,Tr,Global)
+  @. Sigma = Sigma / Phys.p0
+  @. height_factor = max(0.0, (Sigma - sigma_b) / (1.0 - sigma_b))
+  @. FV -= (k_f * height_factor) * V 
+  @. height_factor = (T_equator - DeltaT_y * sin(latN)^2 -   
+      DeltaTh_z * log(Sigma) * cos(latN)^2) *
+      Sigma^Phys.kappa
+  @. ΔρT =
+    (k_a + (k_s - k_a) * height_factor *
+    cos(latN)^4) *
+    Rho 
+  @. ΔρT *=  Phys.p0 * Sigma / (Rho * Phys.Rd) - 
+     max(T_min,height_factor)
+  @. FTh  -= ΔρT / Sigma^Phys.kappa
+
+end  
+
+
+function SourceHeldSuarez1!(FTh,FV,Rho,Th,V,Tr,latN,Global)
+  Phys = Global.Phys
+  @views Sigma = Global.Cache.Cache1[:,1]
+  @views height_factor = Global.Cache.Cache2[:,1]
+  @views ΔρT = Global.Cache.Cache3[:,1]
+  day = 3600.0 * 24.0
+  k_a=1.0/(40.0 * day)
+  k_f=1.0/day
+  k_s=1.0/(4.0 * day)
+  DeltaT_y=0.0
+  DeltaTh_z=-5.0
+  T_equator=315.0
+  T_min=200.0
+  sigma_b=7.0/10.0
+  Pressure!(Sigma,Th,Rho,Tr,Global)
+  @. Sigma = Sigma / Phys.p0
+  @. height_factor = max(0.0, (Sigma - sigma_b) / (1.0 - sigma_b))
+  @. FV -= (k_f * height_factor) * V
+  @. height_factor = (T_equator - DeltaT_y * sin(latN)^2 -   
+      DeltaTh_z * log(Sigma) * cos(latN)^2) *
+      Sigma^Phys.kappa
+  @. ΔρT =
+    (k_a + (k_s - k_a) * height_factor *
+    cos(latN)^4) *
+    Rho 
+  @. ΔρT *=  Phys.p0 * Sigma / (Rho * Phys.Rd) - 
+     max(T_min,height_factor)
+  @. FTh  -= ΔρT / Sigma^Phys.kappa
+end  
+
 
 function SourceMicroPhysicsv1(F,U,CG,Global,iG)
   (; Rd,

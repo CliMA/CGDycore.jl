@@ -1,4 +1,4 @@
-function VerticalDiffusionSaclar!(Fc,c,Rho,K,CG,Global,iF)
+function VerticalDiffusionScalar!(Fc,c,Rho,K,CG,Global,iF)
 
 nz = Global.Grid.nz
 gradqCG = Global.Cache.CacheC1
@@ -19,7 +19,7 @@ qCG = Global.Cache.CacheC3
 end
 
 function BoundaryFluxScalar!(Fc,c,cS,CG,Global,iF)
-  @views @. Fc -= Global.Model.Param.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
+  @views @. Fc -= Global.Model.Param1.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
     Global.Metric.dXdxIF[:,:,1,3,3,iF]
 end
 
@@ -32,8 +32,8 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,iF)
     NumV=Global.Model.NumV  
     @views TSurf = Global.Cache.TSurf[:,:,iF]
     @views uStar = Global.Cache.uStar[:,:,iF]
-    CE = Global.Model.Param.CE
-    CH = Global.Model.Param.CH
+    CE = Global.Model.Param1.CE
+    CH = Global.Model.Param1.CH
     Rd = Global.Phys.Rd
     Cpd = Global.Phys.Cpd
     Rv = Global.Phys.Rv
@@ -75,23 +75,34 @@ end
 function uStarCoefficient!(uStar,U,V,WC,CG,Global,iF)
 # Computation norm_v_a
 # |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)
-  @views @. uStar =  sqrt(U * U + V * V + WC * WC -
-   (Global.Metric.nS[:,:,1,iF] * U + Global.Metric.nS[:,:,2,iF] * V + Global.Metric.nS[:,:,3,iF] * WC)^2)
+  OP = CG.OrdPoly+1  
+  @inbounds for j = 1:OP
+    @inbounds for i = 1:OP
+      uStar[i,j] = sqrt(U[i,j] * U[i,j] + V[i,j] * V[i,j] + WC[i,j] * WC[i,j] - 
+        (Global.Metric.nS[i,j,1,iF] * U[i,j] + Global.Metric.nS[i,j,2,iF] * V[i,j] + Global.Metric.nS[i,j,3,iF] * WC[i,j])^2)
+    end
+  end  
 end
 
 function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,iF) 
   if Global.Model.Problem == "HeldSuarezMoistSphere"
-    CE = Global.Model.Param.CE 
-    p_pbl = Global.Model.Param.p_pbl 
-    p_strato = Global.Model.Param.p_strato 
+    CE = Global.Model.Param1.CE 
+    p_pbl = Global.Model.Param1.p_pbl 
+    p_strato = Global.Model.Param1.p_strato 
+    OP = CG.OrdPoly+1  
+    nz = Global.Grid.nz
 #   Computation norm_v_a  
 #   |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)  
     @views uStar = Global.Cache.uStar[:,:,iF]
-    @views @. K[:,:,1] = 0.5 * CE * uStar * 2.0 * Global.Metric.JC[:,:,1,iF] / Global.Metric.dXdxIC[:,:,1,3,3,iF]
+    @inbounds for jP = 1 : OP
+      @inbounds for iP = 1 : OP
+        K[iP,jP,1] = 0.5 * CE * uStar[iP,jP] * 2.0 * Global.Metric.JC[iP,jP,1,iF] / Global.Metric.dXdxIC[iP,jP,1,3,3,iF]
+      end
+    end  
     @views p = Global.Cache.Pres[:,:,:,iF]
-    @inbounds for iz = size(K,3) : -1 : 1
-      @inbounds for jP = 1 : size(K,2)
-        @inbounds for iP = 1 : size(K,1)
+    @inbounds for iz = nz : -1 : 1
+      @inbounds for jP = 1 : OP
+        @inbounds @fastmath for iP = 1 : OP
           if p[iP,jP,iz] > p_pbl
             K[iP,jP,iz] = K[iP,jP,1]
           else

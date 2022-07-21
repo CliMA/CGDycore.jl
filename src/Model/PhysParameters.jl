@@ -1,3 +1,49 @@
+mutable struct ParamStruct
+  k_a::Float64
+  k_f::Float64
+  k_s::Float64
+  DeltaT_y::Float64
+  DeltaTh_z::Float64
+  T_equator::Float64
+  T_min::Float64
+  sigma_b::Float64
+  CE::Float64
+  CH::Float64
+  CTr::Float64
+  p_pbl::Float64
+  p_strato::Float64
+end
+function ParamStruct()
+  day = 3600.0 * 24.0
+  k_a=1.0/(40.0 * day)
+  k_f=1.0/day
+  k_s=1.0/(4.0 * day)
+  DeltaT_y=0.0
+  DeltaTh_z=-5.0
+  T_equator=315.0
+  T_min=200.0
+  sigma_b=7.0/10.0
+  CE = 0.0044
+  CH = 0.0044
+  CTr = 0.004
+  p_pbl = 85000.0
+  p_strato = 10000.0
+  return ParamStruct(
+    k_a,
+    k_f,
+    k_s,
+    DeltaT_y,
+    DeltaTh_z,
+    T_equator,
+    T_min,
+    sigma_b,
+    CE,
+    CH,
+    CTr,
+    p_pbl,
+    p_strato,
+  )
+end 
 mutable struct CacheStruct
 CacheE1::Array{Float64, 2}
 CacheE2::Array{Float64, 2}
@@ -466,8 +512,9 @@ mutable struct ModelStruct
   VerticalDiffusion::Bool
   SurfaceFlux::Bool
   Param::NamedTuple
+  Param1::ParamStruct
 end
-function Model(Param::NamedTuple)
+function Model(Param::NamedTuple,Param1::ParamStruct)
   Problem=""
   ProfRho=""
   ProfTheta=""
@@ -542,6 +589,7 @@ function Model(Param::NamedTuple)
    VerticalDiffusion,
    SurfaceFlux,
    Param,
+   Param1,
 
    )
 end  
