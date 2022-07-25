@@ -1,4 +1,4 @@
-function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global)
+function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
   ROS=Global.ROS;
   nV1=size(V,1);
   nV2=size(V,2);
@@ -13,14 +13,14 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global)
 
   J = Global.J
   J.CompTri=true
-  Jac(J,V,CG,Global)
+  Jac(J,V,CG,Global,Param)
   Vn .= V
   @inbounds for iStage=1:nStage
     V .= Vn;
     @inbounds for jStage=1:iStage-1
       @views @. V = V + ROS.a[iStage,jStage]*k[:,:,:,jStage];
     end
-    Fcn(fV,V,CG,Global);
+    Fcn(fV,V,CG,Global,Param);
     @inbounds for jStage=1:iStage-1
         @views @. fV = fV + (ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage];
     end

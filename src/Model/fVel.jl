@@ -1,6 +1,5 @@
-function fVel(x,time,Global)
+function fVel(x,time,Global,Param)
     Model=Global.Model
-    Param=Global.Model.Param
     Phys=Global.Phys
     if Model.ProfVel == "SolidBody"
       uS=0;

@@ -1,4 +1,4 @@
-function FcnNHCurlVec!(F,U,CG,Global)
+function FcnNHCurlVec!(F,U,CG,Global,Param)
 
 (;  RhoPos,
     uPos,
@@ -195,12 +195,12 @@ function FcnNHCurlVec!(F,U,CG,Global)
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
 #     uStar
-      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
+      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,Param,iF)
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
         KV = Global.Cache.DivC
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
 
@@ -266,7 +266,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,iF)
+      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,Param,iF)
     end  
 
     @inbounds for jP=1:OP
@@ -400,7 +400,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,iF)
+      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,Param,iF)
     end  
 
     @inbounds for jP=1:OP
@@ -431,7 +431,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
   end
   if Global.Model.Source
     @inbounds for iG=1:CG.NumG
-      @views Source!(F[:,iG,:],U[:,iG,:],CG,Global,iG)
+      @views Source!(F[:,iG,:],U[:,iG,:],CG,Global,Param,iG)
     end
   end
   if Global.Model.Microphysics
@@ -441,7 +441,7 @@ function FcnNHCurlVec!(F,U,CG,Global)
   end
 end
 
-function FcnNHCurlVecI!(F,U,CG,Global)
+function FcnNHCurlVecI!(F,U,CG,Global,Param)
 
 (;  RhoPos,
     uPos,
@@ -781,7 +781,7 @@ function FcnNHCurlVecI!(F,U,CG,Global)
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
         KV = Global.Cache.DivC
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
 
@@ -847,7 +847,7 @@ function FcnNHCurlVecI!(F,U,CG,Global)
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,iF)
+      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,Param,iF)
     end  
 
     @inbounds for jP=1:OP
@@ -877,7 +877,7 @@ function FcnNHCurlVecI!(F,U,CG,Global)
   end
   if Global.Model.Source
     @inbounds for iG=1:CG.NumG
-      @views Source!(F[:,iG,:],U[:,iG,:],CG,Global,iG)
+      @views Source!(F[:,iG,:],U[:,iG,:],CG,Global,Param,iG)
     end
   end
   if Global.Model.Microphysics

@@ -1,6 +1,5 @@
-function fRho(x,time,Global)
+function fRho(x,time,Global,Param)
     Model=Global.Model
-    Param=Global.Model.Param
     Phys=Global.Phys
     # global Omega uM lat0G lat1G eN
     str = lowercase(Model.ProfRho)
@@ -188,7 +187,7 @@ function fRho(x,time,Global)
         S=NBr*NBr/Grav;
         ThB=Th0*exp(z*S);
         pLoc=Phys.p0*(1-Phys.Grav/(Phys.Cpd*Th0*S)*(1-exp(-S*z))).^(Phys.Cpd/Phys.Rd);
-        ThLoc=ThB+Param.DeltaTh*sin(pi*x[3]/Param.H)./(1+(x[1]-Param.xC).^2/Param.a^2);
+        ThLoc=ThB+Param.DeltaTh*sin(pi*x[3]/Param.H)./(1+(x[2]-Param.yC).^2/Param.a^2);
         Rho=pLoc./((pLoc/Phys.p0).^Phys.kappa*Phys.Rd.*ThLoc);
     elseif str == "galewsky"
         Grav=Phys.Grav;

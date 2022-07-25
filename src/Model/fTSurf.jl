@@ -1,6 +1,5 @@
-function fTSurf(x,time,Global)
+function fTSurf(x,time,Global,Param)
   Model=Global.Model
-  Param=Global.Model.Param
   Phys=Global.Phys
   str = lowercase(Model.Problem)
   if str == "heldsuarezmoistsphere"

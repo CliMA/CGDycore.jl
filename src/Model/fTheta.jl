@@ -1,6 +1,5 @@
-function fTheta(x,time,Global)
+function fTheta(x,time,Global,Param)
   Model=Global.Model
-  Param=Global.Model.Param
   Phys=Global.Phys
   str = lowercase(Model.ProfTheta)
   if str == "solidbody"
@@ -188,7 +187,7 @@ function fTheta(x,time,Global)
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     ThB=Th0*exp(z*S);
-    Th=ThB+Param.DeltaTh*sin(pi*x[3]/Param.H)/(1+(x[1]-Param.xC)^2/Param.a^2);
+    Th=ThB+Param.DeltaTh*sin(pi*x[3]/Param.H)/(1+(x[2]-Param.yC)^2/Param.a^2);
   elseif str == "galewsky"
     Th=1;
   elseif str == "rossbyhaurwitz"

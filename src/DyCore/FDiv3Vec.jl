@@ -103,7 +103,8 @@ end
 if nz>1
   @inbounds for j=1:OP
     @inbounds for i=1:OP  
-      (cL[i,j,1],cR[i,j,1]) = Rec3(qCG[i,j,1],qCG[i,j,1],qCG[i,j,2],JC[i,j,1],JC[i,j,1],JC[i,j,2])  
+      qCG0 = ((3.0 * qCG[i,j,1] - 2.0 * qCG[i,j,2]) * JC[i,j,1] + qCG[i,j,1] * JC[i,j,2]) / (JC[i,j,1] + JC[i,j,2]) 
+      (cL[i,j,1],cR[i,j,1]) = Rec3(qCG0,qCG[i,j,1],qCG[i,j,2],JC[i,j,1],JC[i,j,1],JC[i,j,2])  
     end
   end  
   @inbounds for iz=2:nz-1
@@ -115,7 +116,8 @@ if nz>1
   end  
   @inbounds for j=1:OP
     @inbounds for i=1:OP  
-      (cL[i,j,nz],cR[i,j,nz]) = Rec3(qCG[i,j,nz-1],qCG[i,j,nz],qCG[i,j,nz],JC[i,j,nz-1],JC[i,j,nz],JC[i,j,nz])  
+      qCG1 = ((3.0 * qCG[i,j,nz] - 2.0 * qCG[i,j,nz-1]) * JC[i,j,nz] + qCG[i,j,nz] * JC[i,j,nz-1]) / (JC[i,j,nz-1] + JC[i,j,nz]) 
+      (cL[i,j,nz],cR[i,j,nz]) = Rec3(qCG[i,j,nz-1],qCG[i,j,nz],qCG1,JC[i,j,nz-1],JC[i,j,nz],JC[i,j,nz])  
     end
   end  
 end

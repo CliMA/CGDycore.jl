@@ -1,12 +1,11 @@
-function fQv(x,time,Global)
+function fQv(x,time,Global,Param)
   Model=Global.Model
-  Param=Global.Model.Param
   Phys=Global.Phys
   str = lowercase(Model.Problem)
   if str == "barowavemoistsphere" || str == "heldsuarezmoistsphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])  
-    q_0 = Global.Model.Param.q_0                # Maximum specific humidity (default: 0.018)
-    q_t = Global.Model.Param.q_t                # Specific humidity above artificial tropopause
+    q_0 = Param.q_0                # Maximum specific humidity (default: 0.018)
+    q_t = Param.q_t                # Specific humidity above artificial tropopause
     lat_w = 2.0*pi / 9.0
     p_w = 34.0e3
     eta_crit = p_w / Phys.p0
@@ -23,7 +22,7 @@ function fQv(x,time,Global)
     IntTau1=ConstA*(exp(Param.LapseRate/T0*Z)-1.0)+
       ConstB*Z*exp(-ScaledZ*ScaledZ)
     IntTau2=ConstC*Z*exp(-ScaledZ*ScaledZ)
-    if Param.Deep
+    if Model.Deep
       RRatio= R/Param.EarthRadius
     else
       RRatio = 1.0

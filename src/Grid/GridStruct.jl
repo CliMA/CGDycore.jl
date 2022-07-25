@@ -1,3 +1,19 @@
+mutable struct BoundaryStruct
+ WE::String
+ SN::String
+ BT::String
+end
+function Boundary()
+  WE = ""
+  SN = ""
+  BT = ""
+  return BoundaryStruct(
+    WE,
+    SN,
+    BT
+  )
+end  
+
 mutable struct GridStruct
     nz::Int
     zP::Array{Float64, 1}

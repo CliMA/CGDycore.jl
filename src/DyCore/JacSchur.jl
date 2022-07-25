@@ -71,7 +71,7 @@ function JStruct(NumG,nz,NumTr)
   )
 end
 
-function JacSchur!(J,U,CG,Global)
+function JacSchur!(J,U,CG,Global,Param)
   (;  RhoPos,
       uPos,
       vPos,

@@ -1,7 +1,6 @@
 using NLsolve
-function Source!(F,U,CG,Global,iG)
+function Source!(F,U,CG,Global,Param,iG)
   Model = Global.Model
-  Param1 = Global.Model.Param1
   RhoPos = Model.RhoPos
   uPos = Model.uPos
   vPos = Model.vPos
@@ -17,8 +16,8 @@ function Source!(F,U,CG,Global,iG)
 # @time if Problem  == "HeldSuarezSphere" || Problem == "HeldSuarezMoistSphere"
 # if Problem  
     @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,
-      Param1.sigma_b,Param1.k_s,Param1.k_a,Param1.k_f,Param1.T_min,Param1.T_equator,
-      Param1.DeltaT_y,Param1.DeltaTh_z,
+      Param.sigma_b,Param.k_s,Param.k_a,Param.k_f,Param.T_min,Param.T_equator,
+      Param.DeltaT_y,Param.DeltaTh_z,
       Global.latN[iG],Global)
 # end
 end

@@ -119,18 +119,19 @@ for iy=1:ny
 end
 N1=1
 N2=2
+TypeE = "X"
 for iy=1:ny+1
   if iy==ny+1 && Boundary.SN == "Period"
   else
     for ix=1:nx
       if ix==nx && Boundary.WE == "Period"
-        Edges[EdgeNumber]=Edge([N1,1+(iy-1)*nx],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumberX)
+        Edges[EdgeNumber]=Edge([N1,1+(iy-1)*nx],Grid,EdgeNumber,EdgeNumber,TypeE,EdgeNumberX)
         EdgeNumber=EdgeNumber+1
         EdgeNumberX=EdgeNumberX+1
         N1=N1+1
         N2=N2+1
       else
-        Edges[EdgeNumber]=Edge([N1,N2],Grid,EdgeNumber,EdgeNumber,"X",EdgeNumberX)
+        Edges[EdgeNumber]=Edge([N1,N2],Grid,EdgeNumber,EdgeNumber,TypeE,EdgeNumberX)
         EdgeNumber=EdgeNumber+1
         EdgeNumberX=EdgeNumberX+1
         N1=N1+1
@@ -143,6 +144,7 @@ for iy=1:ny+1
     end
   end
 end
+@show EdgeNumber,NumEdges
 
 Grid.Edges=Edges
 Grid.NumEdges=NumEdges
@@ -172,12 +174,14 @@ for iy=1:ny
       if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,NumEdgesX+1+(ix-1),E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
+        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E4=E4+1
       else
         (Faces[FaceNumber],Grid)=Face([E1,E2,NumEdgesX+1+(ix-1),E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
+        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E2=E2+1
@@ -189,12 +193,14 @@ for iy=1:ny
       if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,E3,E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
+        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E3=E3+1
       else
         (Faces[FaceNumber],Grid)=Face([E1,E2,E3,E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
+        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E2=E2+1
@@ -206,10 +212,17 @@ for iy=1:ny
     E4=E4+1
   end
 end
+
+
 Grid.Faces=Faces
 Grid.NumFaces=NumFaces
 Grid=Orientation(Grid)
 Grid=Renumbering(Grid)
 Grid=FacesInNodes(Grid)
-return Grid
+#Boundary/Interior faces
+  BoundaryFaces = zeros(Int,0)
+  Grid.BoundaryFaces = BoundaryFaces
+  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
+  return Grid
+
 end

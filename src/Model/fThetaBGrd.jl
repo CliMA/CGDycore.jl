@@ -1,5 +1,7 @@
-function fThetaBGrd(x,Param)
-  str = lowercase(Param.ProfTheta)
+function fThetaBGrd(x,time,Global,Param)
+  Model=Global.Model
+  Phys=Global.Phys
+  str = lowercase(Model.ProfTheta)
   if str == "baldaufcart"
     delta=Param.Grav/(Param.Rd*Param.T0);
     p=Param.p0*exp(-delta*x[3]);
@@ -65,7 +67,7 @@ function fThetaBGrd(x,Param)
   elseif str == "inertiagravitywave"
     z=x[3];
     NBr=Param.NBr;
-    Grav=Param.Grav;
+    Grav=Phys.Grav;
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);

@@ -18,12 +18,12 @@ qCG = Global.Cache.CacheC3
   @views @. Fc[:,:,nz] -= 0.5 * gradqCG[:,:,nz] * dXdxIF33[:,:,nz]
 end
 
-function BoundaryFluxScalar!(Fc,c,cS,CG,Global,iF)
-  @views @. Fc -= Global.Model.Param1.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
+function BoundaryFluxScalar!(Fc,c,cS,CG,Global,Param,iF)
+  @views @. Fc -= Param.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
     Global.Metric.dXdxIF[:,:,1,3,3,iF]
 end
 
-function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,iF)
+function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
   if Global.Model.Problem == "HeldSuarezMoistSphere"
     OP = CG.OrdPoly+1  
     ThPos=Global.Model.ThPos  
@@ -32,8 +32,8 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,iF)
     NumV=Global.Model.NumV  
     @views TSurf = Global.Cache.TSurf[:,:,iF]
     @views uStar = Global.Cache.uStar[:,:,iF]
-    CE = Global.Model.Param1.CE
-    CH = Global.Model.Param1.CH
+    CE = Param.CE
+    CH = Param.CH
     Rd = Global.Phys.Rd
     Cpd = Global.Phys.Cpd
     Rv = Global.Phys.Rv
@@ -84,11 +84,11 @@ function uStarCoefficient!(uStar,U,V,WC,CG,Global,iF)
   end  
 end
 
-function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,iF) 
+function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF) 
   if Global.Model.Problem == "HeldSuarezMoistSphere"
-    CE = Global.Model.Param1.CE 
-    p_pbl = Global.Model.Param1.p_pbl 
-    p_strato = Global.Model.Param1.p_strato 
+    CE = Param.CE 
+    p_pbl = Param.p_pbl 
+    p_strato = Param.p_strato 
     OP = CG.OrdPoly+1  
     nz = Global.Grid.nz
 #   Computation norm_v_a  
