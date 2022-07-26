@@ -144,7 +144,6 @@ for iy=1:ny+1
     end
   end
 end
-@show EdgeNumber,NumEdges
 
 Grid.Edges=Edges
 Grid.NumEdges=NumEdges
@@ -174,14 +173,12 @@ for iy=1:ny
       if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,NumEdgesX+1+(ix-1),E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
-        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E4=E4+1
       else
         (Faces[FaceNumber],Grid)=Face([E1,E2,NumEdgesX+1+(ix-1),E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
-        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E2=E2+1
@@ -193,14 +190,12 @@ for iy=1:ny
       if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,E3,E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
-        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E3=E3+1
       else
         (Faces[FaceNumber],Grid)=Face([E1,E2,E3,E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
-        @show Faces[FaceNumber].E
         FaceNumber=FaceNumber+1
         E1=E1+1
         E2=E2+1

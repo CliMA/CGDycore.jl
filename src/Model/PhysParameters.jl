@@ -563,6 +563,7 @@ mutable struct GlobalStruct{TCache}
   latN::Array{Float64, 1}
   ThreadCache::TCache
   ThetaBGrd::Array{Float64, 2}
+  TBGrd::Array{Float64, 2}
 end
 function Global(Grid::GridStruct,
                 Model::ModelStruct,
@@ -580,6 +581,7 @@ function Global(Grid::GridStruct,
   latN=zeros(0)
   tcache=(;CreateCache(OP,nz,NumV,NumTr)...,init_tcache)
   ThetaBGrd = zeros(0,0)
+  TBGrd = zeros(0,0)
   return GlobalStruct{typeof(tcache)}(
     Metric,
     Grid,
@@ -596,5 +598,6 @@ function Global(Grid::GridStruct,
     latN,
     tcache,
     ThetaBGrd,
+    TBGrd,
     )
 end  

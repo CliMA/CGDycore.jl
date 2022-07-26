@@ -32,16 +32,30 @@ function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,
   @. Sigma = Sigma / Phys.p0
   @. height_factor = max(0.0, (Sigma - sigma_b) / (1.0 - sigma_b))
   @. FV -= (k_f * height_factor) * V 
-  @. height_factor = (T_equator - DeltaT_y * sin(latN)^2 -   
-      DeltaTh_z * log(Sigma) * cos(latN)^2) *
-      Sigma^Phys.kappa
   @. ΔρT =
     (k_a + (k_s - k_a) * height_factor *
     cos(latN)^4) *
     Rho 
+  @. height_factor = (T_equator - DeltaT_y * sin(latN)^2 -   
+      DeltaTh_z * log(Sigma) * cos(latN)^2) *
+      Sigma^Phys.kappa
   @. ΔρT *=  Phys.p0 * Sigma / (Rho * Phys.Rd) - 
      max(T_min,height_factor)
   @. FTh  -= ΔρT / Sigma^Phys.kappa
+
+
+# . ᶜheight_factor = max(0, (ᶜσ - σ_b) / (1 - σ_b))
+#   @. ᶜΔρT =
+#       (k_a + (k_s - k_a) * ᶜheight_factor * cos(ᶜφ)^4) *
+#       Y.c.ρ *
+#       ( # ᶜT - ᶜT_equil
+#           ᶜp / (Y.c.ρ * R_d) - max(
+#               T_min,
+#               (T_equator - ΔT_y * sin(ᶜφ)^2 - Δθ_z * log(ᶜσ) * cos(ᶜφ)^2) *
+#               ᶜσ^κ_d,
+#           )
+#       )
+
 
 end  
 

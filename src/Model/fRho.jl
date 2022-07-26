@@ -126,7 +126,7 @@ function fRho(x,time,Global,Param)
 
         p=Phys.p0*exp(-delta*x[3]);
 
-        dT=Param.DeltaT*exp(-(x[1]-Param.xc)^2/Param.d^2)*sin(pi*x[3]/Param.H);
+        dT=Param.DeltaT*exp(-(x[2]-Param.yc)^2/Param.d^2)*sin(pi*x[3]/Param.H);
 
         TLoc=Param.T0+exp(delta/2*x[3])*dT;
         Rho=p/(Phys.Rd*TLoc);

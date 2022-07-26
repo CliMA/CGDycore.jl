@@ -30,8 +30,10 @@ for i=1:length(Global.Output.cNames)
   elseif str == "RhoTh"
       @views cOut[:,:,i].=U[:,:,Global.Model.ThPos]
   elseif str == "TPrime"
-      p=Pressure(U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],Global);
-      @views cOut[:,:,i]=p./(Global.Rd*U[:,:,Global.Model.RhoPos])-Global.TBGrd;
+      @views Pressure!(reshape(cOut[:,:,i],nz*NG),reshape(U[:,:,Global.Model.ThPos],nz*NG),
+        reshape(U[:,:,Global.Model.RhoPos],nz*NG),reshape(U[:,:,NumV+1:end],nz*NG,NumTr),Global);
+#     p=Pressure(U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],U[:,:,Global.Model.ThPos],Global);
+      @views cOut[:,:,i]=cOut[:,:,i]./(Global.Phys.Rd*U[:,:,Global.Model.RhoPos])-Global.TBGrd;
   elseif str == "ThetaPrime"
       @views cOut[:,:,i]=U[:,:,Global.Model.ThPos]./U[:,:,Global.Model.RhoPos]-Global.ThetaBGrd;
   elseif str == "Pres"

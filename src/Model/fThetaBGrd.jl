@@ -3,10 +3,10 @@ function fThetaBGrd(x,time,Global,Param)
   Phys=Global.Phys
   str = lowercase(Model.ProfTheta)
   if str == "baldaufcart"
-    delta=Param.Grav/(Param.Rd*Param.T0);
-    p=Param.p0*exp(-delta*x[3]);
+    delta=Phys.Grav/(Phys.Rd*Param.T0);
+    p=Phys.p0*exp(-delta*x[3]);
     TLoc=Param.T0;
-    Th=TLoc*(Param.p0/p)^(Param.Rd/Param.Cpd);
+    Th=TLoc*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "hyperdiff"
     Th=1;
   elseif str == "barowavecart"
