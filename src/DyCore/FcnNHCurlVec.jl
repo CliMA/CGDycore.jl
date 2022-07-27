@@ -711,7 +711,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,iF)
+      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,Param,iF)
     end  
 
     @inbounds for jP=1:OP
