@@ -1,0 +1,1 @@
+mpiexec -n 6  julia --project Examples/testDecomposeMoistMPI.jl | tee list

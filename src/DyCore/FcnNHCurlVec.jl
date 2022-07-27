@@ -334,7 +334,7 @@ function FcnNHCurlVec!(F,U,CG,Global,Param)
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
         KV = Global.Cache.DivC
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
 
@@ -645,7 +645,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
         KV = Global.Cache.DivC
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,iF)
+        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
 
