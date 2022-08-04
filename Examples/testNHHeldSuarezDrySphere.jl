@@ -31,78 +31,6 @@ Base.@kwdef struct ParamStruct
   TSMin = 271.0
   DeltaLat = 26.0 * pi / 180.0
 end  
-# k_a::Float64
-# k_f::Float64
-# k_s::Float64
-# DeltaT_y::Float64
-# DeltaTh_z::Float64
-# T_equator::Float64
-# T_min::Float64
-# sigma_b::Float64
-# CE::Float64
-# CH::Float64
-# CTr::Float64
-# p_pbl::Float64
-# p_strato::Float64
-# T_virt_surf::Float64
-# T_min_ref::Float64
-# H_t::Float64
-# q_0::Float64
-# q_t::Float64
-# T0E::Float64
-# T0P::Float64
-#nd
-
-#Base.@kwdef struct ParamStruct1
-#  B=2.0
-#  K=3.0
-#  LapseRate=0.005
-#end  
-#function ParamStruct()
-#  day = 3600.0 * 24.0
-#  k_a=1.0/(40.0 * day)
-#  k_f=1.0/day
-#  k_s=1.0/(4.0 * day)
-##  DeltaT_y=0.0
-#  DeltaTh_z=-5.0
-#  T_equator=315.0
-#  T_min=200.0
-#  sigma_b=7.0/10.0
-#  CE = 0.0044
-##  CH = 0.0044
-#  CTr = 0.004
-#  p_pbl = 85000.0
-#  p_strato = 10000.0
-#  T_virt_surf = 290.0
-#  T_min_ref = 220.0
-#  H_t = 8.e3
-#  q_0 = 0.018                # Maximum specific humidity (default: 0.018)
-#  q_t = 1e-12
-#  T0E = 310.0
-#  T0P = 240.0
-#  return ParamStruct(
-#    k_a,
-#    k_f,
-#    k_s,
-##    DeltaT_y,
-#    DeltaTh_z,
-#    T_equator,
-##    T_min,
-#    sigma_b,
-#    CE,
-#    CH,
-##    CTr,
-#    p_pbl,
-#    p_strato,
-#    T_virt_surf,
-#    T_min_ref,
-#    H_t,
-##    q_0,
-#    q_t,
-#    T0E,
-#    T0P,
-#  )
-#end 
 
 MPI.Init()
 comm = MPI.COMM_WORLD
@@ -118,7 +46,7 @@ OrdPolyZ=1
 nPanel = 12
 NF = 6 * nPanel * nPanel
 NumV = 5
-NumTr = 2
+NumTr = 0
 Parallel = true
 
 
@@ -128,62 +56,12 @@ Phys=CGDycore.PhysParameters()
 
 #ModelParameters
 Param = ParamStruct()
-#day=3600.0*24.0
-#Param=(T0E=310.0,
-#       T0P=240.0,
-#       B=2.0,
-#       K=3.0,
-#       LapseRate=0.005,
-#       U0=-0.5,
-#       PertR=1.0/6.0,
-#       Up=0.0, #1.0,
-#       PertExpR=0.1,
-#       PertLon=pi/9.0,
-#       PertLat=2.0*pi/9.0,
-#       PertZ=15000.0,
-#       NBr=1.e-2,
-#       DeltaT=1,
-#       ExpDist=5,
-#       T0=300,
-#       T_init = 315,
-#       lapse_rate = -0.008,
-#       Deep=false,
-#       k_a=1.0/(40.0 * day),
-#       k_f=1.0/day,
-#       k_s=1/(4 * day),
-#       pert = 0.1,
-#       uMax = 0.0,
-#       vMax = 0.0,
-#       DeltaT_y=0,
-#       DeltaTh_z=-5.0,
-#       T_equator=315.0,
-#       T_min=200.0,
-#       sigma_b=7.0/10.0,
-#       z_D=20.0e3,
-##      Moist
-#       q_0 = 0.018,                # Maximum specific humidity (default: 0.018)
-#       q_t = 1e-12,
-#       T_virt_surf = 290.0,
-#       T_min_ref = 220.0,
-#       H_t = 8.e3,
-##      Boundary layer       
-#       CE = 0.0044,
-#       CH = 0.0044,
-#       p_pbl = 85000.0,
-#       p_strato = 10000.0,
-##      Surface flux       
-#       CTr = 0.004,
-#       DeltaTS = 29.0,
-#       TSMin = 271.0,
-#       DeltaLat = 26.0 * pi / 180.0,
-#       RelCloud = 1.0 / 1000.0,       
-#       )
 Model = CGDycore.Model()
 # Initial conditions
-  Model.Equation="CompressibleMoist"
+  Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="HeldSuarezMoistSphere"
+  Model.Problem="HeldSuarezDrySphere"
   Model.ProfRho="DecayingTemperatureProfile"
   Model.ProfTheta="DecayingTemperatureProfile"
   Model.ProfVel="Const"
@@ -192,20 +70,15 @@ Model = CGDycore.Model()
   Model.vPos=3
   Model.wPos=4
   Model.ThPos=5
-  Model.RhoVPos = 1
-  Model.RhoCPos = 2
   Model.HorLimit = false
   Model.Source = true
   Model.Upwind = true
-  Model.Microphysics = true
-  Model.RelCloud = 1.0 / 1000.0       
   Model.Damping = false
   Model.StrideDamp=20000.0
   Model.Relax = 1.0/100.0
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
-  Model.VerticalDiffusion = true
-  Model.SurfaceFlux = true
+  Model.VerticalDiffusion = false
 
 # Grid
 H = 30000.0
@@ -262,7 +135,7 @@ end
   end   
 
 # Output
-  Output.vtkFileName=string("HeldSuarezMoist",string(Proc),"_")
+  Output.vtkFileName=string("HeldSuarezDry",string(Proc),"_")
   Output.vtk=0
   Output.Flat=true
   Output.nPanel=nPanel
@@ -274,7 +147,6 @@ end
     "v",
     "w",
     "Th",
-    "Tr1",
 ]
   Output.OrdPrint=CG.OrdPoly
   @show "Compute vtkGrid"
@@ -334,8 +206,9 @@ end
   end
 
  # Boundary values
-  Global.Cache.TSurf=CGDycore.ProjectSurf(CGDycore.fTSurf,0.0,CG,Global,Param)
-
+  if Model.SurfaceFlux
+    Global.Cache.TSurf=CGDycore.ProjectSurf(CGDycore.fTSurf,0.0,CG,Global,Param)
+  end
 # Print initial conditions
   @show "Print initial conditions"
   Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)

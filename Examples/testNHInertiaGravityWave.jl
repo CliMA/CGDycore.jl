@@ -138,7 +138,7 @@ end
   IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 0.4
+    dtau = 0.65
   else
     dtau=3
   end
@@ -196,6 +196,8 @@ end
       for i=1:nIter
         Δt = @elapsed begin
           CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          MassRho = CGDycore.GlobalIntegral(U[:,:,1],CG,Global)
+          @show MassRho
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
