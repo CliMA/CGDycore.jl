@@ -7,8 +7,8 @@ Base.@kwdef struct ParamStruct
   k_a=1.0/(40.0 * day)
   k_f=1.0/day
   k_s=1.0/(4.0 * day)
-  DeltaT_y=0.0
-  DeltaTh_z=-5.0
+  DeltaT_y=60.0
+  DeltaTh_z=10.0
   T_equator=315.0
   T_min=200.0
   sigma_b=7.0/10.0
@@ -147,6 +147,7 @@ end
     "v",
     "w",
     "Th",
+    "T",
 ]
   Output.OrdPrint=CG.OrdPoly
   @show "Compute vtkGrid"

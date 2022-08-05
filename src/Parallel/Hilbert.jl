@@ -122,7 +122,7 @@ end
 
 function HilbertFaceSphere!(Grid,P0Sph,P1Sph)
   hilbert_table = InitHilbert()
-  lev = 10
+  lev = 12
   FaceOrder = zeros(Int,Grid.NumFaces)
   PointSph = zeros(3)
   for iF = 1 : Grid.NumFaces
