@@ -159,7 +159,7 @@ end
   IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 120
+    dtau = 100
   else
     dtau=3
   end
