@@ -35,3 +35,5 @@ list
 list
 :1
 src/DyCore/FcnNHCurlVec.jl_Old
+*.vtu
+*.pvtu

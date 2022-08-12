@@ -1,8 +1,23 @@
-function unstructured_vtkSphere(U,CG,Global, filename::String)
+mutable struct vtkStruct
+  vtkInter::Array{Float64,4}
+  cells
+  pts::Array{Float64,2}
+end
+function vtkStruct()
+  vtkInter = zeros(Float64,0,0,0,0)
+  pts = Array{Float64,2}(undef,0,0)
+  cells = MeshCell[]
+    return vtkStruct(
+    vtkInter,
+    cells,
+    pts,
+  )
+end
+
+function vtkInit(OrdPrint::Int,Trans,CG,Global)
+  OrdPoly = CG.OrdPoly
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
-  OrdPrint = Global.Output.OrdPrint
-
   Npts = 8 * NF * nz * OrdPrint * OrdPrint
   pts = Array{Float64,2}(undef,3,Npts)
   ipts = 1
@@ -10,8 +25,11 @@ function unstructured_vtkSphere(U,CG,Global, filename::String)
   lam=zeros(8,1)
   theta=zeros(8,1)
   z=zeros(8,1)
+  if Global.Grid.Form == "Sphere" && Global.Output.Flat
+    dTol=2*pi/max(Global.Output.nPanel-1,1)
+  end
 
-  for iF = 1 : NumFaces
+  for iF = 1 : NF
     for iz = 1 : nz
       dd = 2 / OrdPrint
       eta0 = -1
@@ -59,70 +77,94 @@ function unstructured_vtkSphere(U,CG,Global, filename::String)
         eta0=eta1
       end
     end
-    celltype = VTKCellTypes.VTK_HEX
+  end
+  celltype = VTKCellTypes.VTK_HEXAHEDRON
 
+  ConnectivityList=reshape(1:1:8*NF*OrdPrint*OrdPrint*nz,8,NF*OrdPrint*OrdPrint*nz)
+  cells = MeshCell[]
 
+  for k in 1 : NF * nz * OrdPrint * OrdPrint
+    inds = Vector(1 : 8) .+ 8 * (k -1)
+    push!(cells, MeshCell(celltype, inds))
+  end
 
-
-    ConnectivityList=reshape(1:1:8*NF*OrdPrint*OrdPrint*nz,
-    8,NF*OrdPrint*OrdPrint*nz)
-    cells = MeshCell[]
-    inc=m.topology.incidence["20"];
-    off=m.topology.offset["20"];
-    nf=m.topology.size[3];
-    for k in 1 : NF * nz * OrdPrint * OrdPrint
-        inds = 1 : 8 + 8 * (k -1)
-        push!(cells, MeshCell(celltype, inds))
+  vtkInter = zeros(Float64,OrdPrint,OrdPrint,OrdPoly+1,OrdPoly+1)
+  dd=2/OrdPrint;
+  eta0=-1;
+  for jRef=1:OrdPrint
+    ksi0=-1;
+    eta1=eta0+dd;
+    for iRef=1:OrdPrint
+      ksi1=ksi0+dd;
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
+                Lagrange(0.5*(eta0+eta1),CG.xw,j)
+        end
+      end
+      ksi0 = ksi1
     end
-
-#   fComp=Array{Array{Float64},1}(undef, length(comp))
-#   for l in 1:length(comp)
-#       fComp[l]=getElementProperties(p.femType[comp[l]][1],m.meshType,m.geometry.dim,mx,my);
-#   end
-#   J=Array{Float64,2}(undef,m.geometry.dim,m.topology.dim);
-#   dJ=0.0;
-#   coord=Array{Float64,2}(undef,m.geometry.dim,m.meshType);
-
-#   vtk_filename_noext = pwd()*"/output/VTK/"*filename;
-#   vtk = vtk_grid(vtk_filename_noext, pts, cells,compress=3)
-
-#   sol=p.solution[tend];
-#   for l in 1:length(comp)
-#       solc=getfield(sol,comp[l]);
-#       if isa(p.degFBoundary[p.femType[comp[l]][1]],degF{1})
-#           cvtk=zeros(Float64, nf)
-#           for k in 1:nf
-#               cLoc=solc[l2g(p.degFBoundary[p.femType[comp[l]][1]], k)]
-#               cvtk[k]=dot(fComp[l],cLoc);
-#           end
-#           vtk_cell_data(vtk, cvtk, name[l])
-#       else
-#           cvtk=zeros(Float64, m.geometry.dim, nf)
-#           for k in 1:nf
-#               cLoc=solc[l2g(p.degFBoundary[p.femType[comp[l]][1]], k)]
-#               dJ=jacobi!(J,m,k,mx,my,coord);
-#               fLoc=(1/dJ)*J*fComp[l]
-#               if printSpherical
-#                   xyz=transformation(m,coord,mx,my)
-#                   lon,lat,r=cart2sphere(xyz[1],xyz[2],xyz[3]);
-#                   cvtk[:,k]=velSp(fLoc*cLoc,lon,lat)
-#               else
-#                   cvtk[:,k]=fLoc*cLoc;
-#               end
-#           end
-#           if size(cvtk,1)==2
-#               vtk_cell_data(vtk, cvtk[1,:], name[l]*" x")
-#               vtk_cell_data(vtk, cvtk[2,:], name[l]*" z")
-#               vtk_cell_data(vtk, (cvtk[1,:],cvtk[2,:],zeros(Float64,nf)), name[l])
-#           else
-#               vtk_cell_data(vtk, cvtk[1,:], name[l]*" x")
-#               vtk_cell_data(vtk, cvtk[2,:], name[l]*" y")
-#               vtk_cell_data(vtk, cvtk[3,:], name[l]*" z")
-#               vtk_cell_data(vtk, (cvtk[1,:],cvtk[2,:],cvtk[3,:]), name[l])
-#           end
-#       end
-#   end
-
-#   outfiles=vtk_save(vtk);
-#   return outfiles::Vector{String}
+    eta0 = eta1
+  end
+  return vtkStruct(
+    vtkInter,
+    cells,
+    pts,
+  )  
 end
+
+function unstructured_vtkSphere(U,Trans,CG,Global, filename::String, part::Int, nparts::Int)
+
+  @show "unstructured_vtkSphere"
+  NF = Global.Grid.NumFaces
+  nz = Global.Grid.nz
+  NG = CG.NumG
+  OrdPoly = CG.OrdPoly 
+  NumV = Global.Model.NumV
+  NumTr = Global.Model.NumTr
+  RhoPos = Global.Model.RhoPos
+  OrdPrint = Global.Output.OrdPrint
+  vtkInter = Global.vtkCache.vtkInter
+  cells = Global.vtkCache.cells
+  pts = Global.vtkCache.pts
+
+
+  @show Global.Output.vtk
+  step = Global.Output.vtk
+  stepS="$step"
+  vtk_filename_noext = pwd()*"/"*filename * stepS;
+  @show vtk_filename_noext
+  vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+
+
+  RhoCell = zeros(OrdPrint*OrdPrint*nz*NF) 
+  @views Interpolate!(RhoCell,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+  vtk["Rho", VTKCellData()] = RhoCell
+
+  uPos = Global.Model.uPos
+  uCell = zeros(OrdPrint*OrdPrint*nz*NF)
+  @views Interpolate!(uCell,U[:,:,uPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+  vtk["u", VTKCellData()] = uCell
+
+  outfiles=vtk_save(vtk);
+  Global.Output.vtk = Global.Output.vtk + 1
+  return outfiles::Vector{String}
+end
+
+function Interpolate!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    for iz=1:nz
+      @. cc = 0.0
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          @views @. cc = cc + Inter[:,:,i,j]*c[iz,Glob[i,j,iF]]
+        end
+      end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+

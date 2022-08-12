@@ -554,6 +554,7 @@ mutable struct GlobalStruct{TCache}
   Phys::PhysParameters
   Output::OutputStruct
   Exchange::ExchangeStruct
+  vtkCache::vtkStruct
   ROS::RosenbrockStruct
   LinIMEX::LinIMEXStruct
   RK::RungeKuttaStruct
@@ -577,6 +578,7 @@ function Global(Grid::GridStruct,
   RK=RungeKuttaMethod()
   SSP=SSPRungeKuttaMethod()
   Cache=CacheStruct()
+  vtkCache = vtkStruct()
   J=JStruct()
   latN=zeros(0)
   tcache=(;CreateCache(OP,nz,NumV,NumTr)...,init_tcache)
@@ -589,6 +591,7 @@ function Global(Grid::GridStruct,
     Phys,
     Output,
     Exchange,
+    vtkCache,
     ROS,
     LinIMEX,
     RK,

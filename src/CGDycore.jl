@@ -8,6 +8,7 @@ using DelimitedFiles
 using Dierckx
 using MPI
 using StaticArrays
+using WriteVTK
 
 include("Grid/Node.jl")
 include("Grid/Edge.jl")
@@ -68,7 +69,7 @@ include("DyCore/VerticalDiffusionScalar.jl")
 include("DyCore/vtkCG.jl")
 include("DyCore/vtkCGGrid.jl")
 include("DyCore/vtkOutput.jl")
-#include("DyCore/vtkSphere.jl")
+include("DyCore/vtkSphere.jl")
 include("DyCore/ThreadCache.jl")
 include("DyCore/TopographySmoothing.jl")
 
