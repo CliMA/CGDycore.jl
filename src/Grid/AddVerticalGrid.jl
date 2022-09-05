@@ -8,6 +8,7 @@ for i=2:nz+1
   Grid.z[i] = Grid.z[i-1] + Grid.dzeta[i-1]
 end
 for i=1:nz
+  Grid.dzeta[i] = Grid.z[i+1] - Grid.z[i]  
   Grid.zP[i] = 0.5 * (Grid.z[i] + Grid.z[i+1])
 end
 end

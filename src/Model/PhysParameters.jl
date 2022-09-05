@@ -21,6 +21,7 @@ Cache2::Array{Float64, 2}
 Cache3::Array{Float64, 2}
 Cache4::Array{Float64, 2}
 Pres::Array{Float64, 4}
+PresG::Array{Float64, 2}
 Temp::Array{Float64, 4}
 KE::Array{Float64, 3}
 uStar::Array{Float64, 3}
@@ -36,11 +37,12 @@ wCG::Array{Float64, 3}
 wCCG::Array{Float64, 3}
 ThCG::Array{Float64, 3}
 TrCG::Array{Float64, 4}
-Rot1CG::Array{Float64, 4}
-Rot2CG::Array{Float64, 4}
-Grad1CG::Array{Float64, 4}
-Grad2CG::Array{Float64, 4}
-DivCG::Array{Float64, 4}
+Rot1CG::Array{Float64, 3}
+Rot2CG::Array{Float64, 3}
+Grad1CG::Array{Float64, 3}
+Grad2CG::Array{Float64, 3}
+DivCG::Array{Float64, 3}
+zPG::Array{Float64, 3}
 Rot1C::Array{Float64, 3}
 Rot2C::Array{Float64, 3}
 Grad1C::Array{Float64, 3}
@@ -79,6 +81,7 @@ Cache2=zeros(0,0)
 Cache3=zeros(0,0)
 Cache4=zeros(0,0)
 Pres=zeros(0,0,0,0)
+PresG=zeros(0,0)
 Temp=zeros(0,0,0,0)
 KE=zeros(0,0,0)
 uStar=zeros(0,0,0)
@@ -94,11 +97,12 @@ wCG=zeros(0,0,0)
 wCCG=zeros(0,0,0)
 ThCG=zeros(0,0,0)
 TrCG=zeros(0,0,0,0)
-Rot1CG=zeros(0,0,0,0)
-Rot2CG=zeros(0,0,0,0)
-Grad1CG=zeros(0,0,0,0)
-Grad2CG=zeros(0,0,0,0)
-DivCG=zeros(0,0,0,0)
+Rot1CG=zeros(0,0,0)
+Rot2CG=zeros(0,0,0)
+Grad1CG=zeros(0,0,0)
+Grad2CG=zeros(0,0,0)
+DivCG=zeros(0,0,0)
+zPG=zeros(0,0,0)
 Rot1C=zeros(0,0,0)
 Rot2C=zeros(0,0,0)
 Grad1C=zeros(0,0,0)
@@ -136,6 +140,7 @@ return CacheStruct(
   Cache3,
   Cache4,
   Pres,
+  PresG,
   Temp,
   KE,
   uStar,
@@ -156,6 +161,7 @@ return CacheStruct(
   Grad1CG,
   Grad2CG,
   DivCG,
+  zPG,
   Rot1C,
   Rot2C,
   Grad1C,
@@ -196,6 +202,7 @@ Cache2=zeros(nz,NumG)
 Cache3=zeros(nz,NumG)
 Cache4=zeros(nz,NumG)
 Pres=zeros(OP,OP,nz,NF)
+PresG=zeros(nz,NumG)
 Temp=zeros(OP,OP,nz,NF)
 KE=zeros(OP,OP,nz)
 uStar=zeros(OP,OP,NF)
@@ -211,11 +218,12 @@ wCG=zeros(OP,OP,nz+1)
 wCCG=zeros(OP,OP,nz)
 ThCG=zeros(OP,OP,nz)
 TrCG=zeros(OP,OP,nz,NumTr)
-Rot1CG=zeros(OP,OP,nz,NF)
-Rot2CG=zeros(OP,OP,nz,NF)
-Grad1CG=zeros(OP,OP,nz,NF)
-Grad2CG=zeros(OP,OP,nz,NF)
-DivCG=zeros(OP,OP,nz,NF)
+Rot1CG=zeros(OP,OP,nz)
+Rot2CG=zeros(OP,OP,nz)
+Grad1CG=zeros(OP,OP,nz)
+Grad2CG=zeros(OP,OP,nz)
+DivCG=zeros(OP,OP,nz)
+zPG=zeros(OP,OP,nz)
 Rot1C=zeros(OP,OP,nz)
 Rot2C=zeros(OP,OP,nz)
 Grad1C=zeros(OP,OP,nz)
@@ -253,6 +261,7 @@ return CacheStruct(
   Cache3,
   Cache4,
   Pres,
+  PresG,
   Temp,
   KE,
   uStar,
@@ -273,6 +282,7 @@ return CacheStruct(
   Grad1CG,
   Grad2CG,
   DivCG,
+  zPG,
   Rot1C,
   Rot2C,
   Grad1C,
@@ -333,6 +343,7 @@ mutable struct MetricStruct
   dXdxIC::Array{Float64, 6}
   nS::Array{Float64, 4}
   dz::Array{Float64, 2}
+  zP::Array{Float64, 2}
 end
 function MetricStruct()
     lat    = zeros(0,0,0)
@@ -344,6 +355,7 @@ function MetricStruct()
     dXdxIC = zeros(0,0,0,0,0,0)
     nS = zeros(0,0,0,0)
     dz = zeros(0,0)
+    zP = zeros(0,0)
     return MetricStruct(
         lat,
         JC,
@@ -354,6 +366,7 @@ function MetricStruct()
         dXdxIC,
         nS,
         dz,
+        zP,
     )
 end
 function Metric(OP,OPZ,NF,nz)
@@ -366,6 +379,7 @@ function Metric(OP,OPZ,NF,nz)
     dXdxIC = zeros(OP,OP,nz,3,3,NF)
     nS = zeros(OP,OP,3,NF)
     dz = zeros(0,0)
+    zP = zeros(0,0)
     return MetricStruct(
         lat,
         JC,
@@ -376,6 +390,7 @@ function Metric(OP,OPZ,NF,nz)
         dXdxIC,
         nS, 
         dz,
+        zP,
     )
 end
 

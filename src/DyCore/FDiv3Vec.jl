@@ -72,6 +72,39 @@ end
 end
 end
 
+function SourceIntEnergy!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
+@unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
+OP=CG.OrdPoly+1;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+# Contravariant components
+
+vCon1 = TCacheC1[Threads.threadid()]
+vCon2 = TCacheC2[Threads.threadid()]
+DvCon1 = TCacheC3[Threads.threadid()]
+DvCon2 = TCacheC4[Threads.threadid()]
+vConV = TCacheC1[Threads.threadid()]
+
+@inbounds for iz=1:nz
+  @views @. vCon1 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
+    v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]) 
+  @views @. vCon2 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,2,1] + 
+    v2CG[:,:,iz] * dXdxIC[:,:,iz,2,2]) 
+  mul!(DvCon1,CG.DS,vCon1)
+  mul!(DvCon2,vCon2,CG.DST)
+  @views @. F[:,:,iz]  = F[:,:,iz]  - (DvCon1 + DvCon2) * cCG[:,:,iz] 
+end
+@inbounds for iz=1:nz-1
+  @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
+    (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
+     v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
+  @views @. F[:,:,iz] -= 0.5*vConV * cCG[:,:,iz]
+  @views @. F[:,:,iz+1] += 0.5*vConV * cCG[:,:,iz+1]
+end
+end
+
 function FDiv3UpwindVec!(F,cCG,v1CG,v2CG,v3CG,RhoCG,CG,Global,iF)
 OP=CG.OrdPoly+1;
 nz=Global.Grid.nz;

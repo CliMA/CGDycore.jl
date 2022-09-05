@@ -143,7 +143,7 @@ function fTheta(x,time,Global,Param)
 
     TLoc=Param.T0+exp(delta/2*x[3])*dT;
     Th=TLoc*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
-  elseif str == "warmbubble2d"
+  elseif str == "warmbubble2dx"
     Th0=Param.Th0;
     DeltaTh=Param.DeltaTh;
     xC0=Param.xC0;
@@ -152,6 +152,20 @@ function fTheta(x,time,Global,Param)
     x3=x[3];
     x1=x[1];
     rr=sqrt((x1-xC0)^2+(x3-zC0)^2);
+    ThLoc=Th0;
+    if rr<rC0
+      ThLoc=ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2;
+    end
+    Th=ThLoc;
+  elseif str == "warmbubble2dy"
+    Th0=Param.Th0;
+    DeltaTh=Param.DeltaTh;
+    yC0=Param.yC0;
+    zC0=Param.zC0;
+    rC0=Param.rC0;
+    x3=x[3];
+    x2=x[2];
+    rr=sqrt((x2-yC0)^2+(x3-zC0)^2);
     ThLoc=Th0;
     if rr<rC0
       ThLoc=ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2;

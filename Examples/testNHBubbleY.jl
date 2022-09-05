@@ -3,7 +3,7 @@ using MPI
 using Base
 
 Base.@kwdef struct ParamStruct
-  xC0=0.0
+  yC0=0.0
   zC0=2000.0
   rC0=2000.0
   Th0=300.0
@@ -21,8 +21,8 @@ print("$Proc: \n")
 print("$ProcNumber: \n")
 
 OrdPoly = 4
-nx=40
-ny=2
+nx=2
+ny=40
 nz=80
 OrdPolyZ=1
 NumV = 5
@@ -53,8 +53,8 @@ Model = CGDycore.Model()
   Model.Upwind = true
 
 # Grid
-Lx=2*10000.0
-Ly=2000.0
+Lx=2000.0
+Ly=2*10000.0
 H=10000.0
 x0=0.0;
 y0=-10000.0

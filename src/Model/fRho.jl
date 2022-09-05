@@ -130,7 +130,7 @@ function fRho(x,time,Global,Param)
 
         TLoc=Param.T0+exp(delta/2*x[3])*dT;
         Rho=p/(Phys.Rd*TLoc);
-    elseif str == "warmbubble2d"
+    elseif str == "warmbubble2dx"
         Grav=Phys.Grav;
         p0=Phys.p0;
         Rd=Phys.Rd;
@@ -144,6 +144,25 @@ function fRho(x,time,Global,Param)
         x1=x[1];
         pLoc=p0*(1-Grav*x3*kappa/(Rd*Th0))^(1/kappa);
         rr=sqrt((x1-xC0)^2+(x3-zC0)^2);
+        ThLoc=Th0;
+        if rr<rC0
+          ThLoc=ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2;
+        end
+        Rho=pLoc/((pLoc/p0)^kappa*Rd.*ThLoc);
+    elseif str == "warmbubble2dy"
+        Grav=Phys.Grav;
+        p0=Phys.p0;
+        Rd=Phys.Rd;
+        kappa=Phys.kappa;
+        Th0=Param.Th0;
+        DeltaTh=Param.DeltaTh;
+        yC0=Param.yC0;
+        zC0=Param.zC0;
+        rC0=Param.rC0;
+        x3=x[3];
+        x2=x[2];
+        pLoc=p0*(1-Grav*x3*kappa/(Rd*Th0))^(1/kappa);
+        rr=sqrt((x2-yC0)^2+(x3-zC0)^2);
         ThLoc=Th0;
         if rr<rC0
           ThLoc=ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2;

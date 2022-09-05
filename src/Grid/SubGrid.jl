@@ -132,6 +132,8 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   SubGrid.BoundaryFaces = BoundaryFaces
   SubGrid.InteriorFaces = setdiff(collect(UnitRange(1,SubGrid.NumFaces)),SubGrid.BoundaryFaces)
 
+  SubGrid.Rad = GlobalGrid.Rad
+
   return SubGrid
 end
 

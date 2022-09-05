@@ -100,6 +100,8 @@ include("Model/fTr.jl")
 include("Model/fVel.jl")
 include("Model/fVelW.jl")
 include("Model/fpBGrd.jl")
+include("Model/Energy.jl")
+include("Model/KineticEnergy.jl")
 
 #include("Parallel/Label.jl")
 #include("Parallel/Section.jl")

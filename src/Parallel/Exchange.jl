@@ -352,9 +352,6 @@ function ExchangeData3DSend(U,Exchange)
       sreq = Exchange.sreq
     end    
 
-#   @time @inbounds for iP in eachindex(NeiProc)
-#     @views SendBuffer[NeiProc[iP]] .= U[:,IndSendBuffer[NeiProc[iP]],:]
-#   end
     @inbounds for iP in NeiProc
       i = 0
       @inbounds for Ind in IndSendBuffer[iP]

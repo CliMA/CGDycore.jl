@@ -46,10 +46,6 @@ function EarthTopography()
   elevation = data["z"][:]
   lon = collect(x_range[1]:spacing[1]:x_range[2])
   lat = collect(y_range[1]:spacing[2]:y_range[2])
-  @show maximum(lon)
-  @show minimum(lon)
-  @show maximum(lat)
-  @show minimum(lat)
   nlon = dimension[1]
   nlat = dimension[2]
   zlevels = reshape(elevation, (nlon, nlat))
@@ -58,7 +54,6 @@ function EarthTopography()
   map_source[map_source .< 0.0] .= 0.0
   spline_2d=Spline2D(lon, lat, reverse(map_source, dims=2);kx=3, ky=3, s=0.0)
   h = evaluate(spline_2d,11.9,51.0)
-  @show h
   stop
 
 

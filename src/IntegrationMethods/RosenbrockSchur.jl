@@ -13,7 +13,6 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
 
   J = Global.J
   J.CompTri=true
-  Jac(J,V,CG,Global,Param)
   Vn .= V
   @inbounds for iStage=1:nStage
     V .= Vn;
@@ -21,6 +20,9 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
       @views @. V = V + ROS.a[iStage,jStage]*k[:,:,:,jStage];
     end
     Fcn(fV,V,CG,Global,Param);
+    if iStage == 1
+      Jac(J,V,CG,Global,Param)
+    end  
     @inbounds for jStage=1:iStage-1
         @views @. fV = fV + (ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage];
     end
@@ -89,13 +91,15 @@ function RosenbrockSchurSSP!(V,dt,Fcn,Jac,CG,Global)
 
   J = Global.J
   J.CompTri=true
-  Jac(J,V,CG,Global)
   Vn .= V
   if NumTr>0
     @views @. VS[:,:,:,1] = V[:,:,NumV+1:end]
   end  
   @inbounds for iStage = 1:nStage
     Fcn(fV,V,CG,Global);
+    if iStage == 1
+      Jac(J,V,CG,Global)
+    end  
     if NumTr > 0
       @views @. fS[:,:,:,iStage] = fV[:,:,NumV+1:end]
     end  

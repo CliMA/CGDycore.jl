@@ -84,7 +84,6 @@ function JacSchur!(J,U,CG,Global,Param)
   nCol=size(U,2);
   nJ=nCol*nz;
 
-  Pres = J.CacheCol1
   D = J.CacheCol2
   Dp = J.CacheCol2
   Dm = J.CacheCol3
@@ -92,6 +91,7 @@ function JacSchur!(J,U,CG,Global,Param)
   K = J.CacheCol1
 
   @inbounds for iC=1:nCol
+    @views Pres = Global.Cache.PresG[:,iC]
     @views Rho = U[:,iC,RhoPos]
     @views Th = U[:,iC,ThPos]
     @views Tr = U[:,iC,NumV+1:end]
@@ -107,13 +107,15 @@ function JacSchur!(J,U,CG,Global,Param)
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
 
-    @views Pressure!(Pres,Th, Rho, Tr, Global);
     @views @. D[1:nz-1] = 0.5*(Pres[2:nz] - 2.0 * Pres[1:nz-1]) / (dz[1:nz-1] + dz[2:nz]) /
       (0.5*(Rho[1:nz-1] + Rho[2:nz]))^2;
     @views @. J.JWRho[1,2:nz,iC] = D[1:nz-1] 
     @views @. J.JWRho[2,1:nz,iC] = D 
 
     @views @. D[1:nz-1] = -0.5*(Th[1:nz-1] + Th[2:nz]) 
+    if Global.Model.Thermo == "TotalEnergy" 
+      @views @. D[1:nz-1] -= 0.5*(Pres[1:nz-1] + Pres[2:nz]) 
+    end  
     @views @. J.JThW[1,:,iC] = D / dz
     @views @. J.JThW[2,1:nz-1,iC] = -D[1:nz-1] / dz[1:nz-1]
 

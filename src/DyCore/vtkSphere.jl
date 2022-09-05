@@ -113,7 +113,7 @@ function vtkInit(OrdPrint::Int,Trans,CG,Global)
   )  
 end
 
-function unstructured_vtkSphere(U,Trans,CG,Global, filename::String, part::Int, nparts::Int)
+function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
 
   @show "unstructured_vtkSphere"
   NF = Global.Grid.NumFaces
@@ -122,34 +122,87 @@ function unstructured_vtkSphere(U,Trans,CG,Global, filename::String, part::Int, 
   OrdPoly = CG.OrdPoly 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
-  RhoPos = Global.Model.RhoPos
   OrdPrint = Global.Output.OrdPrint
   vtkInter = Global.vtkCache.vtkInter
   cells = Global.vtkCache.cells
   pts = Global.vtkCache.pts
+  filename = Global.Output.vtkFileName
 
-
-  @show Global.Output.vtk
   step = Global.Output.vtk
   stepS="$step"
   vtk_filename_noext = pwd()*"/"*filename * stepS;
-  @show vtk_filename_noext
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
 
-
-  RhoCell = zeros(OrdPrint*OrdPrint*nz*NF) 
-  @views Interpolate!(RhoCell,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
-  vtk["Rho", VTKCellData()] = RhoCell
-
-  uPos = Global.Model.uPos
-  uCell = zeros(OrdPrint*OrdPrint*nz*NF)
-  @views Interpolate!(uCell,U[:,:,uPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
-  vtk["u", VTKCellData()] = uCell
+  for i=1:length(Global.Output.cNames)
+    str = Global.Output.cNames[i]
+    if str == "Rho"
+      RhoPos = Global.Model.RhoPos
+      RhoCell = zeros(OrdPrint*OrdPrint*nz*NF) 
+      @views Interpolate!(RhoCell,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["Rho", VTKCellData()] = RhoCell
+    elseif  str == "u" 
+      uPos = Global.Model.uPos
+      uCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views Interpolate!(uCell,U[:,:,uPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["u", VTKCellData()] = uCell
+    elseif  str == "v" 
+      vPos = Global.Model.vPos
+      vCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views Interpolate!(vCell,U[:,:,vPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["v", VTKCellData()] = vCell
+    elseif  str == "w" 
+      uPos = Global.Model.uPos
+      wPos = Global.Model.wPos
+      wCell = zeros(OrdPrint*OrdPrint*nz*NF)
+#     @views InterpolateW!(wCell,U[:,:,uPos:wPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @views Interpolate!(wCell,U[:,:,wPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["w", VTKCellData()] = wCell
+    elseif str == "Th"  
+      if Global.Model.Thermo == "Energy"
+      else
+        RhoPos = Global.Model.RhoPos
+        ThPos = Global.Model.ThPos
+        ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
+        @views Interpolate!(ThCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+        vtk["Th", VTKCellData()] = ThCell
+      end
+    elseif str == "Pres"   
+      pCell = zeros(OrdPrint*OrdPrint*nz*NF)
+#     @views InterpolatePressure!(pCell,U,vtkInter,OrdPrint,CG,Global)
+      Interpolate!(pCell,Global.Cache.PresG,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["p", VTKCellData()] = pCell
+    end   
+  end   
 
   outfiles=vtk_save(vtk);
   Global.Output.vtk = Global.Output.vtk + 1
   return outfiles::Vector{String}
 end
+
+
+function InterpolateW!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    for iz=2:nz
+      @. cc = 0.0
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          @views @. cc = cc + 0.5 * Inter[:,:,i,j]*(c[iz-1,Glob[i,j,iF],3] + c[iz-1,Glob[i,j,iF],3])
+        end
+      end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
+#     BoundaryWOutput!(view(cOut,1,:,i),U,CG,Global)
+#     @views cOut[1,:,i] .= 0.5 .* (U[1,:,Global.Model.wPos] .+ cOut[1,:,i])
+#     @views cOut[2:nz-1,:,i] .= 0.5 .* (U[1:nz-2,:,Global.Model.wPos] .+ U[2:nz-1,:,Global.Model.wPos]);
+#     if nz>1
+#       @views cOut[nz,:,i] .=  0.5 .* U[nz-1,:,Global.Model.wPos];
+#     end
 
 function Interpolate!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
   icCell  = 1
@@ -164,6 +217,64 @@ function Interpolate!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
       end
       @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
       icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
+function Interpolate!(cCell,c,Rho,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    for iz=1:nz
+      @. cc = 0.0
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          @views @. cc = cc + Inter[:,:,i,j]*c[iz,Glob[i,j,iF]] / Rho[iz,Glob[i,j,iF]]
+        end
+      end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
+function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Global)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  v1CG = Global.Cache.v1CG
+  v2CG = Global.Cache.v2CG
+  wCG = Global.Cache.wCG
+  wCCG = Global.Cache.wCCG
+  KE = Global.Cache.KE
+  OP = CG.OrdPoly + 1
+  nz = Global.Grid.nz
+  NF = Global.Grid.NumFaces
+  zP = Global.Metric.zP
+  if Global.Model.Thermo == "Energy"
+    for iF=1:NF
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          ind = CG.Glob[iP,jP,iF]
+          @inbounds for iz=1:nz
+            v1CG[iP,jP,iz] = U[iz,ind,1]
+            v2CG[iP,jP,iz] = U[iz,ind,2]
+            wCG[iP,jP,iz+1] = U[iz,ind,3]
+          end
+        end
+      end
+      KineticEnergy!(KE,v1CG,v2CG,wCG,CG,Global,iF)  
+      for iz=1:nz
+        @. cc = 0.0
+        for j=1:OP
+          for i=1:OP
+            ind = CG.Glob[i,j,iF]  
+            p = Pressure(U[iz,ind,:],KE[i,j,iz],zP[iz,ind],Global)  
+            @views @. cc = cc + Inter[:,:,i,j]*p
+          end
+        end
+        @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+        icCell = icCell + OrdPrint*OrdPrint
+      end
     end
   end
 end

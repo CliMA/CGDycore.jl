@@ -1,4 +1,4 @@
-function RungeKuttaExplicit!(time,V,dt,Fcn,CG,Global)
+function RungeKuttaExplicit!(time,V,dt,Fcn,CG,Global,Param)
   RK=Global.RK;
   f=Global.Cache.f
   Vn=Global.Cache.Vn
@@ -9,7 +9,7 @@ function RungeKuttaExplicit!(time,V,dt,Fcn,CG,Global)
     @inbounds for jStage=1:iStage-1
       @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
     end
-    Fcn(view(f,:,:,:,iStage),V,time + RK.cRKE[iStage] * dt,CG,Global);
+    Fcn(view(f,:,:,:,iStage),V,time + RK.cRKE[iStage] * dt,CG,Global,Param);
   end
   @. V = Vn;
   @inbounds for iStage=1:RK.nStage
@@ -17,7 +17,7 @@ function RungeKuttaExplicit!(time,V,dt,Fcn,CG,Global)
   end
 end
 
-function RungeKuttaExplicit!(V,dt,Fcn,CG,Global)
+function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param)
   RK=Global.RK;
   f=Global.Cache.f
   Vn=Global.Cache.Vn
@@ -28,8 +28,8 @@ function RungeKuttaExplicit!(V,dt,Fcn,CG,Global)
     @inbounds for jStage=1:iStage-1
       @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
     end
-#   Fcn(view(f,:,:,:,iStage),V,time + RK.cRKE[iStage] * dt,CG,Global);
-    @views Fcn(f[:,:,:,iStage],V,CG,Global);
+#   Fcn(view(f,:,:,:,iStage),V,time + RK.cRKE[iStage] * dt,CG,Global,Param);
+    @views Fcn(f[:,:,:,iStage],V,CG,Global,Param);
   end
   @. V = Vn;
   @inbounds for iStage=1:RK.nStage
@@ -37,7 +37,7 @@ function RungeKuttaExplicit!(V,dt,Fcn,CG,Global)
   end
 end
 
-function RungeKuttaExplicitLS!(time,V,dt,Fcn,CG,Global)
+function RungeKuttaExplicitLS!(time,V,dt,Fcn,CG,Global,Param)
   RK=Global.RK;
   @views f=Global.Cache.f[:,:,:,1]
   Vn=Global.Cache.Vn
@@ -45,7 +45,7 @@ function RungeKuttaExplicitLS!(time,V,dt,Fcn,CG,Global)
   @. Vn = V
   @inbounds for iStage=1:RK.nStage-1
     Global.Model.Param.time = time + RK.cRKE[iStage] * dt
-    @time Fcn(f,V,CG,Global);
+    @time Fcn(f,V,CG,Global,Param);
     @. V = Vn + dt * RK.ARKE[iStage+1,iStage] * f
   end
   Fcn(f,V,CG,Global);

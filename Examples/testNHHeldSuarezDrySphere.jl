@@ -123,8 +123,6 @@ end
 
 # Output
   Output.OrdPrint=CG.OrdPoly
-# vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
-
 
   U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global,Param)
@@ -150,10 +148,7 @@ end
     "T",
 ]
   Output.OrdPrint=CG.OrdPoly
-  @show "Compute vtkGrid"
-# vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
   Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
-# CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global, string("HeldSuarezDry","_"),1,Proc,ProcNumber)
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
@@ -215,7 +210,6 @@ end
 # Print initial conditions
   @show "Print initial conditions"
   CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global, string("HeldSuarezDry","_"),Proc,ProcNumber)
-# Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
 
   @show "Choose integration method"
   if IntMethod == "Rosenbrock"
@@ -225,7 +219,6 @@ end
           CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
-#           Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
             CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global, string("HeldSuarezDry","_"),Proc,ProcNumber)
           end
         end

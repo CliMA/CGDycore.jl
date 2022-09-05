@@ -190,7 +190,7 @@ function FcnNHCurlVec!(F,U,CG,Global,Param)
 #   Kinetic energy
     @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,Global)
+    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zP[:,:,:,iF],Global)
 #   Temperature
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
@@ -324,7 +324,7 @@ function FcnNHCurlVec!(F,U,CG,Global,Param)
 #   Kinetic energy
     @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,Global)
+    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zP[:,:,:,iF],Global)
 #   Temperature
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
@@ -456,6 +456,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
   JF = Global.Metric.JF
+  zP = Global.Metric.zP
   Temp1 = Global.Cache.Temp1
   @views Rot1 = Global.Cache.Temp1[:,:,1]
   @views Rot2 = Global.Cache.Temp1[:,:,2]
@@ -475,12 +476,15 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   v2CG = Global.Cache.v2CG
   wCG = Global.Cache.wCG
   wCCG = Global.Cache.wCCG
+  zPG = Global.Cache.zPG
   @views ThCG = Global.Cache.ThCG[:,:,:]
   @views TrCG = Global.Cache.TrCG[:,:,:,:]
   KE = Global.Cache.KE
   Pres = Global.Cache.Pres
+  PresG = Global.Cache.PresG
   Temp = Global.Cache.Temp
   uStar = Global.Cache.uStar
+  JC = Global.Metric.JC
   Rot1 .= 0.0
   Rot2 .= 0.0
   Grad1 .= 0.0
@@ -488,6 +492,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   Div .= 0.0
   DivTr .= 0.0
   F .= 0.0
+  PresG .= 0.0
   # Hyperdiffusion 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
@@ -614,6 +619,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
           Grad1CG[iP,jP,iz] = Grad1[iz,ind]
           Grad2CG[iP,jP,iz] = Grad2[iz,ind]
           DivCG[iP,jP,iz] = Div[iz,ind]
+          zPG[iP,jP,iz] = zP[iz,ind]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
           end  
@@ -635,7 +641,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
 #   Kinetic energy
     @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,Global)
+    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
 #   Temperature
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
@@ -678,7 +684,20 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
     @views FCurlNon3Vec!(FCG,v1CG,v2CG,wCG,wCCG,CG,Global,iF);
 
 #   Divergence of Thermodynamic Variable
-    if Global.Model.Thermo == "Energy"
+    if Global.Model.Thermo == "TotalEnergy"
+      @views @. ThCG = ThCG + Pres[:,:,:,iF]  
+      if Global.Model.Upwind
+        @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+      else
+        @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
+      end
+    elseif Global.Model.Thermo == "InternalEnergy" 
+      if Global.Model.Upwind
+        @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+      else
+        @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
+      end
+      SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
     else
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
@@ -718,6 +737,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * JC[iP,jP,iz,iF] / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos] / CG.M[iz,ind]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos] / CG.M[iz,ind]
@@ -750,6 +770,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
           Grad1CG[iP,jP,iz] = Grad1[iz,ind]
           Grad2CG[iP,jP,iz] = Grad2[iz,ind]
           DivCG[iP,jP,iz] = Div[iz,ind]
+          zPG[iP,jP,iz] = zP[iz,ind]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
           end  
@@ -771,7 +792,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
 #   Kinetic energy
     @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,Global)
+    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
 #   Temperature
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
@@ -814,7 +835,20 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
     @views FCurlNon3Vec!(FCG,v1CG,v2CG,wCG,wCCG,CG,Global,iF);
 
 #   Divergence of Thermodynamic Variable
-    if Global.Model.Thermo == "Energy"
+    if Global.Model.Thermo == "TotalEnergy"
+      @views @. ThCG = ThCG + Pres[:,:,:,iF]  
+      if Global.Model.Upwind
+        @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+      else
+        @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
+      end
+    elseif Global.Model.Thermo == "InternalEnergy" 
+      if Global.Model.Upwind
+        @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+      else
+        @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
+      end
+      SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
     else
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
@@ -854,6 +888,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * JC[iP,jP,iz,iF] / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos] / CG.M[iz,ind]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos] / CG.M[iz,ind]

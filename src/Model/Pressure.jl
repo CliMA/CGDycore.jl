@@ -1,4 +1,14 @@
-function Pressure!(p,RhoTh,Rho,Tr,Global)
+function Pressure(U,KE,zP,Global)
+  Rd = Global.Phys.Rd
+  Cvd = Global.Phys.Cvd
+  Grav = Global.Phys.Grav
+  if Global.Model.Equation == "Compressible"
+    p=(Rd/Cvd)*(U[5]-U[1]*(KE+Grav*zP))
+  elseif Global.Model.Equation == "CompressibleMoist"
+  end
+end 
+
+function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
   (; Rd,
      Cvd,
      Cpd,
@@ -7,19 +17,24 @@ function Pressure!(p,RhoTh,Rho,Tr,Global)
      Cpv,
      Cpl,
      p0,
+     Grav,
      kappa) = Global.Phys
 
   
   Equation = Global.Model.Equation
-  if Global.Model.Equation == "Compressible"
-     if Global.Model.Thermo == "Energy"
-       p=(Rd/Cvd)*(RhoTh-Rho.*(KE+Grav*repmat(Grid.zP,1,size(Rho,1))'));
+  if Equation == "Compressible"
+     if Global.Model.Thermo == "TotalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
+       end  
+     elseif Global.Model.Thermo == "InternalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * RhoTh[i] 
+       end  
      else
        @inbounds for i in eachindex(p)  
          p[i] = p0 * (Rd * RhoTh[i] / p0)^(1.0 / (1.0 - kappa));
        end  
-#      @. p = p0 * (Rd * RhoTh / p0)^(1.0 / (1.0 - kappa)) 
-#      @. p = (Rd * RhoTh / p0^kappa)^(1.0 / (1.0 - kappa))
     end
   elseif Equation == "CompressibleMoist"
     @views TrRhoV = Tr[size(p)...,Global.Model.RhoVPos]

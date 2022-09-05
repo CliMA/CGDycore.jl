@@ -88,7 +88,9 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   dXdxIC = Global.Metric.dXdxIC
   nS = Global.Metric.nS
   Global.Metric.dz = zeros(nz,CG.NumG)
+  Global.Metric.zP = zeros(nz,CG.NumG)
   dz = Global.Metric.dz
+  zP = Global.Metric.zP
   J = Global.Metric.J;
   JC = Global.Metric.JC;
   JF = Global.Metric.JF;
@@ -143,11 +145,20 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
         ind=CG.Glob[iP,jP,iF]
         latN[ind] = latN[ind] + lat[iP,jP,iF] * JC[iP,jP,1,iF] / CG.M[1,ind]
         @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF] / CG.M[:,ind]
+        @inbounds for iz=1:nz
+          if Global.Grid.Form == "Sphere"
+            r = norm(0.5 .* (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
+            zP[iz,ind] += max(r-Global.Grid.Rad, 0.0) * JC[iP,jP,iz,iF] / CG.M[iz,ind]
+          else
+            zP[iz,ind] += 0.5*(X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])* JC[iP,jP,iz,iF] / CG.M[iz,ind]
+          end
+        end
       end
     end
   end
   ExchangeData!(dz,Global.Exchange)
   ExchangeData!(latN,Global.Exchange)
+  ExchangeData!(zP,Global.Exchange)
 # Boundary nodes
   for iF = 1 : NF
     Side = 0
