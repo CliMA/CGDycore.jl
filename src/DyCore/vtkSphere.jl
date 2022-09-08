@@ -115,7 +115,6 @@ end
 
 function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
 
-  @show "unstructured_vtkSphere"
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
   NG = CG.NumG
@@ -158,7 +157,11 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       @views Interpolate!(wCell,U[:,:,wPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
-      if Global.Model.Thermo == "Energy"
+      if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+        RhoPos = Global.Model.RhoPos
+        ThCell = zeros(OrdPrint*OrdPrint*nz*NF)  
+        @views InterpolateTh!(ThCell,Global.Cache.PresG,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+        vtk["Th", VTKCellData()] = ThCell 
       else
         RhoPos = Global.Model.RhoPos
         ThPos = Global.Model.ThPos
@@ -168,9 +171,8 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       end
     elseif str == "Pres"   
       pCell = zeros(OrdPrint*OrdPrint*nz*NF)
-#     @views InterpolatePressure!(pCell,U,vtkInter,OrdPrint,CG,Global)
       Interpolate!(pCell,Global.Cache.PresG,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
-      vtk["p", VTKCellData()] = pCell
+      vtk["p", VTKCellData()] = pCell 
     end   
   end   
 
@@ -230,6 +232,25 @@ function Interpolate!(cCell,c,Rho,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
           @views @. cc = cc + Inter[:,:,i,j]*c[iz,Glob[i,j,iF]] / Rho[iz,Glob[i,j,iF]]
+        end
+      end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
+function InterpolateTh!(cCell,Pres,Rho,Inter,OrdPoly,OrdPrint,Glob,NF,nz,Phys)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    for iz=1:nz
+      @. cc = 0.0
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          cLoc = Pres[iz,Glob[i,j,iF]] / (Rho[iz,Glob[i,j,iF]] * Phys.Rd) * 
+            (Phys.p0 / Pres[iz,Glob[i,j,iF]])^Phys.kappa   
+          @views @. cc = cc + Inter[:,:,i,j]*cLoc
         end
       end
       @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)

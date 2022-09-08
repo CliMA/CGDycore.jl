@@ -547,7 +547,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
     end
   end
 
-  ExchangeData3DSend(Temp1,Global.Exchange)
+  ExchangeData3DSend(Temp1,PresG,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -602,7 +602,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
     end
   end
 
-  ExchangeData3DRecv!(Temp1,Global.Exchange)
+  ExchangeData3DRecv!(Temp1,PresG,Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
@@ -697,7 +697,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
       else
         @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
       end
-      SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
+      @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
     else
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
@@ -753,7 +753,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
     end
   end  
 
-  ExchangeData3DSend(F,Global.Exchange)
+  ExchangeData3DSend(F,PresG,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -848,7 +848,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
       else
         @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
       end
-      SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
+      @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
     else
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
@@ -903,7 +903,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
       end  
     end
   end  
-  ExchangeData3DRecv!(F,Global.Exchange)
+  ExchangeData3DRecv!(F,PresG,Global.Exchange)
 
   if Global.Model.Damping
     @inbounds for iG=1:CG.NumG

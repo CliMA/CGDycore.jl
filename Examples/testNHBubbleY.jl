@@ -10,7 +10,7 @@ Base.@kwdef struct ParamStruct
   DeltaTh=2.0
   uMax=0.0
   vMax=0.0
-  Stretch = true
+  Stretch = false
 end  
 
 MPI.Init()
@@ -40,9 +40,9 @@ Model = CGDycore.Model()
   Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="WarmBubble2Dx"
-  Model.ProfRho="WarmBubble2Dx"
-  Model.ProfTheta="WarmBubble2Dx"
+  Model.Problem="WarmBubble2Dy"
+  Model.ProfRho="WarmBubble2Dy"
+  Model.ProfTheta="WarmBubble2Dy"
   Model.ProfVel="Const"
   Model.RhoPos=1
   Model.uPos=2
@@ -51,6 +51,7 @@ Model = CGDycore.Model()
   Model.ThPos=5
   Model.HorLimit = false
   Model.Upwind = true
+  Model.Thermo = "" #"TotalEnergy"
 
 # Grid
 Lx=2000.0
@@ -68,9 +69,6 @@ Topography=(TopoS="",H=H)
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid)
 
-#P0Sph = [   0.0,-0.5*pi,Phys.RadEarth]
-#P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth]
-#CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -97,9 +95,9 @@ else
 end  
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=1.e4
-  Model.HyperDGrad=1.e4
-  Model.HyperDDiv=1.e4
+  Model.HyperDCurl=1.e6
+  Model.HyperDGrad=1.e6
+  Model.HyperDDiv=1.e6
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -115,20 +113,21 @@ end
   end   
 
 # Output
-  Output.vtkFileName=string("Bubble2Dx_")
+  Output.vtkFileName=string("Bubble2Dy_")
   Output.vtk=0
-  Output.Flat=true
+  Output.Flat=false
   Output.H=H
   Output.cNames = [
     "Rho",
     "u",
     "v",
     "w",
+    "Pres",
     "Th",
 ]
   Output.OrdPrint=CG.OrdPoly
   @show "Compute vtkGrid"
-  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
@@ -183,6 +182,12 @@ end
     Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
   end
 
+  if Global.Model.Thermo == "TotalEnergy"
+    E = zeros(Float64,nz,CG.NumG)
+    CGDycore.Energy!(E,U[:,:,Model.ThPos],U[:,:,Model.RhoPos],U[:,:,Model.NumV+1:Model.NumV+Model.NumTr],
+      U[:,:,Model.uPos:Model.wPos],CG,Global)
+    @views @. U[:,:,Model.ThPos] = E
+  end 
 
 # Print initial conditions
   @show "Print initial conditions"

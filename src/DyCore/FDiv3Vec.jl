@@ -94,14 +94,14 @@ vConV = TCacheC1[Threads.threadid()]
     v2CG[:,:,iz] * dXdxIC[:,:,iz,2,2]) 
   mul!(DvCon1,CG.DS,vCon1)
   mul!(DvCon2,vCon2,CG.DST)
-  @views @. F[:,:,iz]  = F[:,:,iz]  - (DvCon1 + DvCon2) * cCG[:,:,iz] 
+  @views @. F[:,:,iz]  = F[:,:,iz] - (DvCon1 + DvCon2) * cCG[:,:,iz] 
 end
 @inbounds for iz=1:nz-1
   @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
     (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
-  @views @. F[:,:,iz] -= 0.5*vConV * cCG[:,:,iz]
-  @views @. F[:,:,iz+1] += 0.5*vConV * cCG[:,:,iz+1]
+  @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV * cCG[:,:,iz]
+  @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV * cCG[:,:,iz+1]
 end
 end
 

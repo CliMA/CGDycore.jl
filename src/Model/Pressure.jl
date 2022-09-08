@@ -99,7 +99,11 @@ function dPresdTh!(dpdTh,RhoTh,Rho,Tr,Global)
 
   Equation = Global.Model.Equation
   if Equation == "Compressible"
-    @. dpdTh=Rd*(Rd*RhoTh/p0)^(kappa/(1.0-kappa));
+    if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+      @. dpdTh = Rd / Cvd  
+    else  
+      @. dpdTh=Rd*(Rd*RhoTh/p0)^(kappa/(1.0-kappa));
+    end  
   elseif Equation == "CompressibleMoist"
     @views @. dpdTh = dPressureMoistdTh(RhoTh,Rho,Tr[:,Global.Model.RhoVPos],
       Tr[:,Global.Model.RhoCPos],Rd,Cpd,Rv,Cpv,Cpl,p0)

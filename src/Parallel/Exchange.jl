@@ -321,7 +321,7 @@ function ExchangeData3D!(U,Exchange)
   end  
 end    
 
-function ExchangeData3DSend(U,Exchange)
+function ExchangeData3DSend(U,p,Exchange)
 
   if Exchange.Parallel
 
@@ -334,8 +334,8 @@ function ExchangeData3DSend(U,Exchange)
     nT = size(U,3)
     if Exchange.InitRecvBuffer
       for iP in NeiProc
-        Exchange.RecvBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
-        Exchange.SendBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
+        Exchange.RecvBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT + 1)
+        Exchange.SendBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT + 1)
       end  
       RecvBuffer3 = Exchange.RecvBuffer3
       SendBuffer3 = Exchange.SendBuffer3
@@ -356,7 +356,8 @@ function ExchangeData3DSend(U,Exchange)
       i = 0
       @inbounds for Ind in IndSendBuffer[iP]
         i += 1
-        @views @. SendBuffer3[iP][:,i,:] = U[:,Ind,:]
+        @views @. SendBuffer3[iP][:,i,1:nT] = U[:,Ind,:]
+        @views @. SendBuffer3[iP][:,i,nT + 1] = p[:,Ind,:]
       end
     end
 #   rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
@@ -376,10 +377,11 @@ function ExchangeData3DSend(U,Exchange)
   end
 end  
 
-function ExchangeData3DRecv!(U,Exchange)
+function ExchangeData3DRecv!(U,p,Exchange)
 
   if Exchange.Parallel
 
+    nT = size(U,3)
     IndRecvBuffer = Exchange.IndRecvBuffer
     NeiProc = Exchange.NeiProc
     RecvBuffer3 = Exchange.RecvBuffer3
@@ -394,7 +396,8 @@ function ExchangeData3DRecv!(U,Exchange)
       i = 0
       @inbounds for Ind in IndRecvBuffer[iP]
         i += 1
-        @views @. U[:,Ind,:] += RecvBuffer3[iP][:,i,:]
+        @views @. U[:,Ind,:] += RecvBuffer3[iP][:,i,1:nT]
+        @views @. p[:,Ind] += RecvBuffer3[iP][:,i,nT+1]
       end
     end
   end  

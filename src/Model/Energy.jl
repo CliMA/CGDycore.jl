@@ -27,6 +27,7 @@ function Energy!(E,RhoTh,Rho,Tr,V,CG,Global)
   NumTr = Global.Model.NumTr
   zP = Global.Metric.zP
   XP = zeros(3)
+  @show zP[:,1]
   if Global.Model.Equation == "Compressible"
     if Global.Model.Thermo == "TotalEnergy"  
       @inbounds for iF = 1 : NF
@@ -48,7 +49,6 @@ function Energy!(E,RhoTh,Rho,Tr,V,CG,Global)
 #       Diagnostic values
 #       Boundary value for vertical velocity and cell center
         BoundaryW!(view(wCG,:,:,1),v1CG,v2CG,CG,Global,iF)
-        @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #       Kinetic energy
         @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
 #       Pressure
@@ -84,8 +84,7 @@ function Energy!(E,RhoTh,Rho,Tr,V,CG,Global)
             ind = CG.Glob[iP,jP,iF]
             @inbounds for iz=1:nz
               EE = p0 * (Rd * RhoTh[iz,ind] / p0)^(1.0 / (1.0 - kappa))
-              EE = EE / (Rd *  RhoCG[iP,jP,iz])
-              E[iz,ind] += RhoCG[iP,jP,iz] * Cvd * EE  * JC[iP,jP,iz,iF] / CG.M[iz,ind] 
+              E[iz,ind] += Cvd / Rd * EE  * JC[iP,jP,iz,iF] / CG.M[iz,ind] 
             end
           end
         end

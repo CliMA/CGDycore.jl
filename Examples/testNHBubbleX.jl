@@ -10,7 +10,7 @@ Base.@kwdef struct ParamStruct
   DeltaTh=2.0
   uMax=0.0
   vMax=0.0
-  Stretch = true
+  Stretch = false
 end  
 
 MPI.Init()
@@ -51,13 +51,14 @@ Model = CGDycore.Model()
   Model.ThPos=5
   Model.HorLimit = false
   Model.Upwind = true
+  Model.Thermo = "" #"InternalEnergy"
 
 # Grid
 Lx=2*10000.0
 Ly=2000.0
 H=10000.0
-x0=0.0;
-y0=-10000.0
+x0=-10000.0
+y0=0.0;
 
 Boundary = CGDycore.Boundary()
 Boundary.WE="Period"
@@ -68,9 +69,6 @@ Topography=(TopoS="",H=H)
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid)
 
-#P0Sph = [   0.0,-0.5*pi,Phys.RadEarth]
-#P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth]
-#CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -97,9 +95,9 @@ else
 end  
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=1.e4
-  Model.HyperDGrad=1.e4
-  Model.HyperDDiv=1.e4
+  Model.HyperDCurl=1.e6
+  Model.HyperDGrad=1.e6
+  Model.HyperDDiv=1.e6
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -109,7 +107,11 @@ end
   U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global,Param)
   (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global,Param)
-  U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  if Global.Model.Thermo == "InternalEnergy"
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fIntEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  else   
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  end  
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end   
@@ -117,32 +119,34 @@ end
 # Output
   Output.vtkFileName=string("Bubble2Dx_")
   Output.vtk=0
-  Output.Flat=true
+  Output.Flat=false
   Output.H=H
   Output.cNames = [
     "Rho",
     "u",
     "v",
     "w",
+    "Pres",
     "Th",
 ]
   Output.OrdPrint=CG.OrdPoly
   @show "Compute vtkGrid"
-  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
   IntMethod="LinIMEX"
-  IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
+  IntMethod="RungeKutta"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
     dtau = 0.2
   else
-    dtau=3
+    dtau=0.3
   end
   Global.ROS=CGDycore.RosenbrockMethod("RODAS")
   Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
   Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
+  Global.ROS=CGDycore.RosenbrockMethod("ROSEul")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
   Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
   Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
@@ -182,7 +186,6 @@ end
   elseif IntMethod == "RungeKutta"
     Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
   end
-
 
 # Print initial conditions
   @show "Print initial conditions"
@@ -252,7 +255,7 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          CGDycore.unstructured_vtkSphere(U,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
+          CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVecI!,CG,Global,Param)
 
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt
