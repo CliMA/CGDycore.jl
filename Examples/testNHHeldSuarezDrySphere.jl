@@ -30,7 +30,8 @@ Base.@kwdef struct ParamStruct
   DeltaTS = 29.0
   TSMin = 271.0
   DeltaLat = 26.0 * pi / 180.0
-end  
+  Stretch = true
+end
 
 MPI.Init()
 comm = MPI.COMM_WORLD
@@ -39,11 +40,11 @@ ProcNumber = MPI.Comm_size(comm)
 print("$Proc: \n")
 print("$ProcNumber: \n")
 
-OrdPoly = 4
+OrdPoly = 3
 nz = 45
 
 OrdPolyZ=1
-nPanel = 12
+nPanel = 16
 NF = 6 * nPanel * nPanel
 NumV = 5
 NumTr = 0
@@ -79,6 +80,7 @@ Model = CGDycore.Model()
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
   Model.VerticalDiffusion = false
+  Model.Thermo = "" #"TotalEnergy"
 
 # Grid
 H = 30000.0
@@ -96,9 +98,13 @@ CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
-  sigma = 1.0
-  lambda = 3.16
-  CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+  if Param.Stretch
+    sigma = 1.0
+    lambda = 3.16
+    CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+  else
+    CGDycore.AddVerticalGrid!(SubGrid,nz,H)
+  end
   Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
@@ -127,13 +133,19 @@ end
   U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global,Param)
   (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global,Param)
-  U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  if Global.Model.Thermo == "InternalEnergy"
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fIntEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  elseif Global.Model.Thermo == "TotalEnergy"
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTotEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  else
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  end
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end   
 
 # Output
-  Output.vtkFileName=string("HeldSuarezDry",string(Proc),"_")
+  Output.vtkFileName=string("HeldSuarezDry_")
   Output.vtk=0
   Output.Flat=true
   Output.nPanel=nPanel
@@ -145,7 +157,7 @@ end
     "v",
     "w",
     "Th",
-    "T",
+    "Pres",
 ]
   Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
@@ -156,7 +168,7 @@ end
   IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 100
+    dtau = 200
   else
     dtau=3
   end
@@ -207,9 +219,11 @@ end
   if Model.SurfaceFlux
     Global.Cache.TSurf=CGDycore.ProjectSurf(CGDycore.fTSurf,0.0,CG,Global,Param)
   end
+
+
 # Print initial conditions
   @show "Print initial conditions"
-  CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global, string("HeldSuarezDry","_"),Proc,ProcNumber)
+  CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
 
   @show "Choose integration method"
   if IntMethod == "Rosenbrock"
@@ -219,7 +233,7 @@ end
           CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global, string("HeldSuarezDry","_"),Proc,ProcNumber)
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100

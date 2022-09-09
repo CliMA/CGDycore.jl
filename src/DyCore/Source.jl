@@ -1,5 +1,5 @@
 using NLsolve
-function Source!(F,U,CG,Global,Param,iG)
+function Source!(F,U,Pres,CG,Global,Param,iG)
   Model = Global.Model
   RhoPos = Model.RhoPos
   uPos = Model.uPos
@@ -15,14 +15,14 @@ function Source!(F,U,CG,Global,Param,iG)
   @views Tr = U[:,NumV+1:NumV+NumTr]
 # @time if Problem  == "HeldSuarezSphere" || Problem == "HeldSuarezMoistSphere"
 # if Problem  
-    @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,
+    @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,Pres,
       Param.sigma_b,Param.k_s,Param.k_a,Param.k_f,Param.T_min,Param.T_equator,
       Param.DeltaT_y,Param.DeltaTh_z,
       Global.latN[iG],Global)
 # end
 end
 
-function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,
+function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,Pres,
   sigma_b,k_s,k_a,k_f,T_min,T_equator,DeltaT_y,DeltaTh_z,latN,Global)
   Phys = Global.Phys
   @views Sigma = Global.Cache.Cache1[:,1]
@@ -30,7 +30,8 @@ function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,
   @views Teq = Global.Cache.Cache2[:,1]
   @views ΔρT = Global.Cache.Cache3[:,1]
   @views kT = Global.Cache.Cache3[:,1]
-  Pressure!(Sigma,Th,Rho,Tr,Global)
+# Pressure!(Sigma,Th,Rho,Tr,Global)
+  @. Sigma = Pres
   @. Sigma = Sigma / Phys.p0
   @. height_factor = max(0.0, (Sigma - sigma_b) / (1.0 - sigma_b))
   @. FV -= (k_f * height_factor) * V 
