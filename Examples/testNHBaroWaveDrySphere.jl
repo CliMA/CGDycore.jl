@@ -4,34 +4,37 @@ using Base
 
 Base.@kwdef struct ParamStruct
   T0E=310.0
-       T0P=240.0
-       B=2.0
-       K=3.0
-       LapseRate=0.005
-       U0=-0.5
-       PertR=1.0/6.0
-       Up=1.0
-       PertExpR=0.1
-       PertLon=pi/9.0
-       PertLat=2.0*pi/9.0
-       PertZ=15000.0
-       NBr=1.e-2
-       DeltaT=1
-       ExpDist=5
-       T0=300
-       T_init = 315
-       lapse_rate = -0.008
-       Deep=false
-       pert = 0.1
-       uMax = 1.0
-       vMax = 0.0
-       DeltaT_y=0
-       DeltaTh_z=-5
-       T_equator=315
-       T_min=200
-       sigma_b=7/10
-       z_D=20.0e3
-       Stretch = true
+  T0P=240.0
+  B=2.0
+  K=3.0
+  LapseRate=0.005
+  U0=-0.5
+  PertR=1.0/6.0
+  Up=1.0
+  PertExpR=0.1
+  PertLon=pi/9.0
+  PertLat=2.0*pi/9.0
+  PertZ=15000.0
+  NBr=1.e-2
+  DeltaT=1
+  ExpDist=5
+  T0=300
+  T_init = 315
+  lapse_rate = -0.008
+  Deep=false
+  pert = 0.1
+  uMax = 1.0
+  vMax = 0.0
+  DeltaT_y=0
+  DeltaTh_z=-5
+  T_equator=315
+  T_min=200
+  sigma_b=7/10
+  z_D=20.0e3
+  #      Moist
+  q_0 = 0.018                # Maximum specific humidity (default: 0.018)
+  q_t = 1.0e-12
+  Stretch = true
 end  
 
 MPI.Init()
@@ -81,7 +84,7 @@ Model = CGDycore.Model()
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
   Model.VerticalDiffusion = false
-  Model.Thermo = "TotalEnergy"
+  Model.Thermo = "" #"TotalEnergy"
 
 # Grid
 H = 30000.0
@@ -140,6 +143,9 @@ end
     U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTotEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   else
     U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+    @show sum(abs.(U[:,:,Model.RhoPos]))
+    @show sum(abs.(U[:,:,Model.ThPos]))
+    stop
   end
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
@@ -189,6 +195,9 @@ end
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
+
+  nIter = 100
+  PrintInt=1
 
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 

@@ -1,151 +1,151 @@
+#function testNHBaroWaveSphere
+
 using CGDycore
-using MPI
-using Base
 
-Base.@kwdef struct ParamStruct
-  day = 3600.0 * 24.0
-  k_a=1.0/(40.0 * day)
-  k_f=1.0/day
-  k_s=1.0/(4.0 * day)
-  DeltaT_y=60.0
-  DeltaTh_z=10.0
-  T_equator=315.0
-  T_min=200.0
-  sigma_b=7.0/10.0
-  CE = 0.0044
-  CH = 0.0044
-  CTr = 0.004
-  p_pbl = 85000.0
-  p_strato = 10000.0
-  T_virt_surf = 290.0
-  T_min_ref = 220.0
-  H_t = 8.e3
-  q_0 = 0.018                # Maximum specific humidity (default: 0.018)
-  q_t = 1e-12
-  T0E = 310.0
-  T0P = 240.0
-  B=2.0
-  K=3.0
-  LapseRate=0.005
-  DeltaTS = 29.0
-  TSMin = 271.0
-  DeltaLat = 26.0 * pi / 180.0
-  Stretch = true
-end
-
-MPI.Init()
-comm = MPI.COMM_WORLD
-Proc = MPI.Comm_rank(comm) + 1
-ProcNumber = MPI.Comm_size(comm)
-print("$Proc: \n")
-print("$ProcNumber: \n")
-
-OrdPoly = 3
-nz = 45
+OrdPoly = 4
+nz = 20
 
 OrdPolyZ=1
-nPanel = 16
+nPanel = 32
 NF = 6 * nPanel * nPanel
 NumV = 5
-NumTr = 0
-Parallel = true
+NumTr = 2
 
 
 # Physical parameters
 Phys=CGDycore.PhysParameters()
 
-
 #ModelParameters
-Param = ParamStruct()
-Model = CGDycore.Model()
-# Initial conditions
-  Model.Equation="Compressible"
+day=3600*24
+Param=(T0E=310.0,
+       T0P=240.0,
+       B=2.0,
+       K=3.0,
+       LapseRate=0.005,
+       U0=-0.5,
+       PertR=1.0/6.0,
+       Up=1.0,
+       PertExpR=0.1,
+       PertLon=pi/9.0,
+       PertLat=2.0*pi/9.0,
+       PertZ=15000.0,
+       NBr=1.e-2,
+       DeltaT=1,
+       ExpDist=5,
+       T0=300,
+       T_init = 315,
+       lapse_rate = -0.008,
+       Deep=false,
+       k_a=1/(40 * day),
+       k_f=1/day,
+       k_s=1/(4 * day),
+       pert = 0.1,
+       uMax = 1.0,
+       vMax = 0.0,
+       DeltaT_y=0,
+       DeltaTh_z=-5,
+       T_equator=315,
+       T_min=200,
+       sigma_b=7/10,
+       z_D=20.0e3,
+#      Boundary layer       
+       C_E = 0.0044,
+       p_pbl = 85000.0,
+       p_strato = 10000.0,
+#      Surface flux       
+       CTr = 0.004,
+#      Moist
+       q_0 = 0.018,                # Maximum specific humidity (default: 0.018)
+       q_t = 1e-12,
+       )
+
+Model = CGDycore.Model(Param)
+Model.Coriolis=true
+Model.CoriolisType="Sphere"
+
+# Flat grid for topography smoothing
+H = 1000.0
+TopographyF=(TopoS="",H=1000.0,Rad=Phys.RadEarth)
+GridF=CGDycore.Grid(1,TopographyF)
+CGDycore.AddVerticalGrid!(GridF,1,H)
+OutputF=CGDycore.Output(TopographyF)
+GridF=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,GridF)
+GlobalF = CGDycore.Global(GridF,Model,Phys,OutputF,OrdPoly+1,1,NumV,NumTr,())
+GlobalF.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,GridF.NumFaces,1)
+(CGF,GlobalF)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,GlobalF)
+zs = CGDycore.EarthTopography(OrdPoly,GridF)
+Fzs = similar(zs)
+@show maximum(zs)  
+@show minimum(zs)  
+for i = 1 : 100
+  CGDycore.TopographySmoothing!(Fzs,zs,CGF,GlobalF,1.e16)
+  @. zs = zs + Fzs
+end  
+@show maximum(zs)  
+@show minimum(zs)  
+
+# Grid
+H = 30000.0
+#H = 45000.0
+Topography=(TopoS="EarthOrography",H=H,Rad=Phys.RadEarth)
+Grid=CGDycore.Grid(nz,Topography)
+Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+Grid.colors = CGDycore.Coloring(Grid)
+
+CGDycore.AddVerticalGrid!(Grid,nz,H)
+
+Output=CGDycore.Output(Topography)
+
+Global = CGDycore.Global(Grid,Model,Phys,Output,OrdPoly+1,nz,NumV,NumTr,())
+#Global.ThreadCache=CGDycore.CreateCache(OrdPoly+1,nz,NumV)
+Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
+
+
+# Discretization
+  @show "Discretization"
+  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zs)
+  Model.HyperVisc=true
+  Model.HyperDCurl=2.e17/4/4/4/4 #1.e14*(dx/LRef)^3.2;
+  Model.HyperDGrad=2.e17/4/4/4/4
+  Model.HyperDDiv=2.e17/4/4/4/4 # Scalars
+
+
+
+# Initial conditions 
+  Model.Equation="CompressibleMoist"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="HeldSuarezDrySphere"
-  Model.ProfRho="DecayingTemperatureProfile"
-  Model.ProfTheta="DecayingTemperatureProfile"
-  Model.ProfVel="Const"
+  Model.Problem="BaroWaveMoistSphere"
+  Model.ProfRho="BaroWaveSphere"
+  Model.ProfTheta="BaroWaveMoistSphere"
+  Model.ProfVel="BaroWaveSphere"
   Model.RhoPos=1
   Model.uPos=2
   Model.vPos=3
   Model.wPos=4
   Model.ThPos=5
+  Model.RhoVPos = 1
+  Model.RhoCPos = 2
   Model.HorLimit = false
-  Model.Source = true
+  Model.Source = false
   Model.Upwind = true
+  Model.Microphysics = false
+  Model.RelCloud = 0.01
   Model.Damping = false
   Model.StrideDamp=20000.0
   Model.Relax = 1.0/100.0
-  Model.Coriolis=true
-  Model.CoriolisType="Sphere"
-  Model.VerticalDiffusion = false
-  Model.Thermo = "" #"TotalEnergy"
 
-# Grid
-H = 30000.0
-#H = 45000.0
-Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
-
-
-
-
-Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-P0Sph = [   0.0,-0.5*pi,Phys.RadEarth]
-P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth]
-CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
-if Parallel
-  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
-  SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
-  if Param.Stretch
-    sigma = 1.0
-    lambda = 3.16
-    CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
-  else
-    CGDycore.AddVerticalGrid!(SubGrid,nz,H)
-  end
-  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
-  Output=CGDycore.Output(Topography)
-  Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
-  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-else
-  CellToProc=zeros(0)
-  Proc = 0
-  ProcNumber = 0
-  sigma = 1.0
-  lambda = 3.16
-  CGDycore.AddStretchICONVerticalGrid!(Grid,nz,H,sigma,lambda)
-  Exchange = CGDycore.InitExchange(Grid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
-  Output=CGDycore.Output(Topography)
-  Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
-  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
-end  
-  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
-  Model.HyperVisc=true
-  Model.HyperDCurl=7.e15
-  Model.HyperDGrad=7.e15
-  Model.HyperDDiv=7.e15
-
-# Output
-  Output.OrdPrint=CG.OrdPoly
-
-  U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
-  U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global,Param)
-  (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global,Param)
-  if Global.Model.Thermo == "InternalEnergy"
-    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fIntEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  elseif Global.Model.Thermo == "TotalEnergy"
-    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTotEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  else
-    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  end
+  @show "Initial conditions"
+  U=zeros(nz,CG.NumG,Model.NumV+Model.NumTr)
+  U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global)
+  (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global)
+  U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global).*U[:,:,Model.RhoPos]
   if NumTr>0
-    U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  end   
+    U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global).*U[:,:,Model.RhoPos]
+  end  
 
 # Output
-  Output.vtkFileName=string("HeldSuarezDry_")
+  Output.vtkFileName="BaroWaveMoist"
   Output.vtk=0
   Output.Flat=true
   Output.nPanel=nPanel
@@ -158,19 +158,22 @@ end
     "w",
     "Th",
     "Pres",
+    "Tr1",
+    "Tr2",
 ]
   Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  @show "Compute vtkGrid"
+  vtkGrid=CGDycore.vtkCGGrid(CG,CGDycore.TransSphereX,CGDycore.Topo,Global)
+
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
   IntMethod="LinIMEX"
-  IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 200
+    dtau=50
   else
-    dtau=3
+    dtau=1
   end
   Global.ROS=CGDycore.RosenbrockMethod("RODAS")
   Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
@@ -182,12 +185,13 @@ end
 
 # Simulation period
   time=[0.0]
-  SimDays=1000
-  PrintDay=10
+  SimDays=10
+  PrintDay=.1
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
+  PrintInt = 20
 
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
@@ -215,25 +219,26 @@ end
     Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
   end
 
- # Boundary values
-  if Model.SurfaceFlux
-    Global.Cache.TSurf=CGDycore.ProjectSurf(CGDycore.fTSurf,0.0,CG,Global,Param)
-  end
-
+# Boundary values
+ if Model.NumTr > 0
+   @views @. Global.Cache.cTrS[:,:,:,1] = 0.0
+   @views @. Global.Cache.cTrS[:,:,1:20,2] = 0.0
+ end
 
 # Print initial conditions
   @show "Print initial conditions"
-  CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+  Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+
 
   @show "Choose integration method"
   if IntMethod == "Rosenbrock"
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
           end
         end
         percent = i/nIter*100

@@ -153,7 +153,6 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       uPos = Global.Model.uPos
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*nz*NF)
-#     @views InterpolateW!(wCell,U[:,:,uPos:wPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       @views Interpolate!(wCell,U[:,:,wPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
@@ -173,6 +172,18 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       pCell = zeros(OrdPrint*OrdPrint*nz*NF)
       Interpolate!(pCell,Global.Cache.PresG,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["p", VTKCellData()] = pCell 
+    elseif  str == "Tr1" 
+      Tr1Pos = Global.Model.NumV + 1
+      Tr1Cell = zeros(OrdPrint*OrdPrint*nz*NF)
+      RhoPos = Global.Model.RhoPos
+      @views Interpolate!(Tr1Cell,U[:,:,Tr1Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["Tr1", VTKCellData()] = Tr1Cell
+    elseif  str == "Tr2" 
+      Tr2Pos = Global.Model.NumV + 2
+      Tr2Cell = zeros(OrdPrint*OrdPrint*nz*NF)
+      RhoPos = Global.Model.RhoPos
+      @views Interpolate!(Tr2Cell,U[:,:,Tr2Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["Tr2", VTKCellData()] = Tr2Cell
     end   
   end   
 

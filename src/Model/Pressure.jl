@@ -38,7 +38,7 @@ function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
     end
   elseif Equation == "CompressibleMoist"
     @views TrRhoV = Tr[size(p)...,Global.Model.RhoVPos]
-    @views TrRhoC = Tr[size(p)...,Global.Model.RhoVPos]
+    @views TrRhoC = Tr[size(p)...,Global.Model.RhoCPos]
     @inbounds for i in eachindex(p)  
       RhoV = TrRhoV[i]
       RhoC = TrRhoC[i]
