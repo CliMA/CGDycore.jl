@@ -478,6 +478,7 @@ mutable struct ModelStruct
   HorLimit::Bool
   Microphysics::Bool
   RelCloud::Float64
+  Rain::Float64
   VerticalDiffusion::Bool
   SurfaceFlux::Bool
   Deep::Bool
@@ -517,6 +518,7 @@ function Model()
   HorLimit=false
   Microphysics=false
   RelCloud=0.0
+  Rain=1.0
   VerticalDiffusion=false
   SurfaceFlux=false
   Deep=false
@@ -555,6 +557,7 @@ function Model()
    HorLimit,
    Microphysics,
    RelCloud,
+   Rain,
    VerticalDiffusion,
    SurfaceFlux,
    Deep,

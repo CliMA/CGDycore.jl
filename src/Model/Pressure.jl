@@ -16,6 +16,7 @@ function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
      Cvv,
      Cpv,
      Cpl,
+     L00,
      p0,
      Grav,
      kappa) = Global.Phys
@@ -23,33 +24,44 @@ function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
   
   Equation = Global.Model.Equation
   if Equation == "Compressible"
-     if Global.Model.Thermo == "TotalEnergy"
-       @inbounds for i in eachindex(p)  
-         p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
-       end  
-     elseif Global.Model.Thermo == "InternalEnergy"
-       @inbounds for i in eachindex(p)  
-         p[i] = (Rd / Cvd) * RhoTh[i] 
-       end  
-     else
-       @inbounds for i in eachindex(p)  
-         p[i] = p0 * (Rd * RhoTh[i] / p0)^(1.0 / (1.0 - kappa));
-       end  
+    if Global.Model.Thermo == "TotalEnergy"
+      @inbounds for i in eachindex(p)  
+        p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
+      end  
+    elseif Global.Model.Thermo == "InternalEnergy"
+      @inbounds for i in eachindex(p)  
+        p[i] = (Rd / Cvd) * RhoTh[i] 
+      end  
+    else
+      @inbounds for i in eachindex(p)  
+        p[i] = p0 * (Rd * RhoTh[i] / p0)^(1.0 / (1.0 - kappa));
+      end  
     end
   elseif Equation == "CompressibleMoist"
     @views TrRhoV = Tr[size(p)...,Global.Model.RhoVPos]
     @views TrRhoC = Tr[size(p)...,Global.Model.RhoCPos]
-    @inbounds for i in eachindex(p)  
-      RhoV = TrRhoV[i]
-      RhoC = TrRhoC[i]
-      RhoD = Rho[i] - RhoV - RhoC
-      Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
-      Rm  = Rd * RhoD + Rv * RhoV
-      kappaM = Rm / Cpml
-      p[i] = (Rd * RhoTh[i] / p0^kappaM)^(1.0 / (1.0 - kappaM))
+    if Global.Model.Thermo == "TotalEnergy"
+    elseif Global.Model.Thermo == "InternalEnergy"
+      @inbounds for i in eachindex(p)  
+        RhoV = TrRhoV[i]
+        RhoC = TrRhoC[i]
+        RhoD = Rho[i] - RhoV - RhoC
+        p[i] = (Rd * RhoD + Rv * RhoV)/(Cvd * RhoD + Cvv * RhoV + Cpl * RhoC) *
+          (RhoV - L00 * RhoC)
+      end    
+    else
+      @inbounds for i in eachindex(p)  
+        RhoV = TrRhoV[i]
+        RhoC = TrRhoC[i]
+        RhoD = Rho[i] - RhoV - RhoC
+        Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
+        Rm  = Rd * RhoD + Rv * RhoV
+        kappaM = Rm / Cpml
+        p[i] = (Rd * RhoTh[i] / p0^kappaM)^(1.0 / (1.0 - kappaM))
+      end  
     end  
   elseif Equation == "Shallow"
-      p = 0.5 * Grav * RhoTh^2;
+    p = 0.5 * Grav * RhoTh^2;
   end
 end
 
@@ -105,8 +117,12 @@ function dPresdTh!(dpdTh,RhoTh,Rho,Tr,Global)
       @. dpdTh=Rd*(Rd*RhoTh/p0)^(kappa/(1.0-kappa));
     end  
   elseif Equation == "CompressibleMoist"
-    @views @. dpdTh = dPressureMoistdTh(RhoTh,Rho,Tr[:,Global.Model.RhoVPos],
-      Tr[:,Global.Model.RhoCPos],Rd,Cpd,Rv,Cpv,Cpl,p0)
+    if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+      @. dpdTh = Rd / Cvd  
+    else  
+      @views @. dpdTh = dPressureMoistdTh(RhoTh,Rho,Tr[:,Global.Model.RhoVPos],
+        Tr[:,Global.Model.RhoCPos],Rd,Cpd,Rv,Cpv,Cpl,p0)
+    end  
   end  
 end
 

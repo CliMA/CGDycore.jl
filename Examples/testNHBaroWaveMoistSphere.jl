@@ -86,9 +86,10 @@ Model = CGDycore.Model()
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
   Model.VerticalDiffusion = false
-  Model.Thermo = "" #"TotalEnergy"
+  Model.Thermo = "InternalEnergy" # "" #"TotalEnergy"
   Model.Microphysics = true
   Model.RelCloud = 0.01
+  Model.Rain = 0.0
 
 # Grid
 H = 30000.0

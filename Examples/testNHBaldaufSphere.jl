@@ -1,144 +1,287 @@
-function testNHBaldaufSphere()
-close all
-clear all
+using CGDycore
+using MPI
+using Base
 
-% Physical parameters
-Param=PhysParameters();
+Base.@kwdef struct ParamStruct
+  LRef=11*1.e5
+  Th0=300.0
+  uMax=10.0
+  vMax=0.0
+  NBr=1.e-2
+  DeltaT=1.0
+  T0=300.0
+  lat0=0.0
+  eta = 100.0
+  lon0=pi/2
+  H = 10.0e3
+  ScaleRad = 100.0
+  Stretch = false
+end  
 
-% Grid
-nz=10;
-Param.nPanel=8;
-Param.H=10000;
-Param.Grid=CubedGrid(Param.nPanel,OrientFaceSphere,Param);
+MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+print("$Proc: \n")
+print("$ProcNumber: \n")
 
+OrdPoly = 3
+nz = 45
 
-Param.Grid.nz=nz;
-Param.Grid.zP=zeros(nz,1);
-Param.Grid.z=zeros(nz+1,1);
-Param.Grid.dz=Param.H/nz;
-Param.Grid.zP(1)=Param.Grid.dz/2;
-for i=2:nz
-  Param.Grid.zP(i)=Param.Grid.zP(i-1)+Param.Grid.dz;
-end
-for i=2:nz+1
-  Param.Grid.z(i)=Param.Grid.z(i-1)+Param.Grid.dz;
-end
-
-
-% Model
-LRef=11*1.e5;
-Param.HyperD=0; %1.e14*(dx/LRef)^3.2;
-Param.StrideDamp=6000;
-Param.Relax=5.e-1;
-Param.Damping=true;
-Param.Coriolis=false;
-Param.CoriolisType='Sphere';
-Param.Buoyancy=true;
-Param.Th0=300;
-Param.uMax=10;
-Param.vMax=0;
-Param.NBr=1.e-2;
-Param.DeltaT=1;
-Param.ExpDist=5;
-Param.T0=300;
-Param.Equation='Compressible';
-Param.TopoS='';
-Param.lat0=0;
-Param.lon0=pi/2;
-Param.ProfVel='Baldauf';
-Param.ProfRho='Baldauf';
-Param.ProfTheta='Baldauf';
-Param.NumV=5;
-Param.RhoPos=1;
-Param.uPos=2;
-Param.vPos=3;
-Param.wPos=4;
-Param.ThPos=5;
-Param.Thermo='Energy';
+OrdPolyZ=1
+nPanel = 16
+NF = 6 * nPanel * nPanel
+NumV = 5
+NumTr = 0
+Parallel = true
 
 
-
-% Output
-Param.Flat=true;
-Param.level=1;
-Param.fig=1;
-Param.SliceXY.Type='XY';
-Param.SliceXY.iz=4;
+# Physical parameters
+Phys=CGDycore.PhysParameters()
 
 
-% Discretization
+#ModelParameters
+Param = ParamStruct()
+Model = CGDycore.Model()
+# Initial conditions
+  Model.Equation="Compressible"
+  Model.NumV=NumV
+  Model.NumTr=NumTr
+  Model.Problem="BaldaufSphere"
+  Model.ProfRho="BaldaufSphere"
+  Model.ProfTheta="BaldaufSphere"
+  Model.ProfVel="Baldauf"
+  Model.RhoPos=1
+  Model.uPos=2
+  Model.vPos=3
+  Model.wPos=4
+  Model.ThPos=5
+  Model.HorLimit = false
+  Model.Source = false
+  Model.Upwind = true
+  Model.Damping = false
+  Model.StrideDamp=20000.0
+  Model.Relax = 1.0/100.0
+  Model.Coriolis=true
+  Model.CoriolisType="Sphere"
+  Model.VerticalDiffusion = false
+  Model.Thermo = "" #"TotalEnergy"
 
-OrdPoly=4;
-[CG,Param]=Discretization(OrdPoly,@JacobiSphere3,Param);
-
-% Initial conditions
-
-U=zeros(CG.NumG,nz,Param.NumV);
-U(:,:,Param.RhoPos)=Project(@fRho,CG,Param);
-[U(:,:,Param.uPos),U(:,:,Param.vPos)]=ProjectVec(@fVel,CG,Param);
-U(:,:,Param.ThPos)=Project(@fTheta,CG,Param).*U(:,:,Param.RhoPos);
-ThB=Project(@fThetaBGrd,CG,Param);
-Param.fig=PlotCG(U(:,:,Param.ThPos)./U(:,:,Param.RhoPos)-ThB...
-  ,CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-if strcmp(Param.Thermo,'Energy')
-  U(:,:,Param.ThPos)=PotToEnergy(U,CG,Param);
-end
+# Grid
+H = 10000.0
+Topography=(TopoS="",H=H,Rad=Phys.RadEarth / Param.ScaleRad)
 
 
-% Integration
-CFL=0.125;
-dtau=240;
-time=0;
 
-IntMethod='Rosenbrock'; %'RungeKutta';
-%IntMethod='RungeKutta';
-nIter=20000;
-%v = VideoWriter ('Galewsky.avi');
-%open (v);
-Param.RK=RungeKuttaMethod('RK4');
-Param.ROS=RosenbrockMethod('ROSRK3');
-switch IntMethod
-  case 'Rosenbrock'
-    for i=1:nIter
-      U=Rosenbrock(U,dtau,@FcnNHCurlVec,@Jac,CG,Param);
-      time=time+dtau;
-      if mod(i,10)==0
-        if strcmp(Param.Thermo,'Energy')
-          Th=EnergyToPot(U,CG,Param);
-        else
-          Th=U(:,:,Param.ThPos);
+
+Grid=CGDycore.Grid(nz,Topography)
+Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth / Param.ScaleRad,Grid)
+P0Sph = [   0.0,-0.5*pi,Phys.RadEarth / Param.ScaleRad]
+P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth / Param.ScaleRad]
+CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
+if Parallel
+  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
+  if Param.Stretch
+    sigma = 1.0
+    lambda = 3.16
+    CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+  else
+    CGDycore.AddVerticalGrid!(SubGrid,nz,H)
+  end
+  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Output=CGDycore.Output(Topography)
+  Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
+else
+  CellToProc=zeros(0)
+  Proc = 0
+  ProcNumber = 0
+  sigma = 1.0
+  lambda = 3.16
+  CGDycore.AddStretchICONVerticalGrid!(Grid,nz,H,sigma,lambda)
+  Exchange = CGDycore.InitExchange(Grid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Output=CGDycore.Output(Topography)
+  Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
+end  
+  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  Model.HyperVisc=true
+  Model.HyperDCurl=7.e10
+  Model.HyperDGrad=7.e10
+  Model.HyperDDiv=7.e10
+
+# Output
+  Output.OrdPrint=CG.OrdPoly
+
+  U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
+  U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global,Param)
+  (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global,Param)
+  if Global.Model.Thermo == "InternalEnergy"
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fIntEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  elseif Global.Model.Thermo == "TotalEnergy"
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTotEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  else
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+    Global.ThetaBGrd = CGDycore.Project(CGDycore.fThetaBGrd,0.0,CG,Global,Param)
+  end
+  if NumTr>0
+    U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  end   
+
+# Output
+  Output.vtkFileName=string("BaldaufSphere_")
+  Output.vtk=0
+  Output.Flat = true
+  Output.nPanel=nPanel
+  Output.RadPrint=H
+  Output.H=H
+  Output.cNames = [
+    "Rho",
+    "u",
+    "v",
+    "w",
+    "ThDiff",
+    "Pres",
+]
+  Output.OrdPrint=CG.OrdPoly
+  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+
+  IntMethod="RungeKutta"
+  IntMethod="RosenbrockD"
+  IntMethod="LinIMEX"
+  IntMethod="RungeKutta"
+  IntMethod="Rosenbrock"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
+    dtau = 0.1
+  else
+    dtau=3
+  end
+  Global.ROS=CGDycore.RosenbrockMethod("RODAS")
+  Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
+  Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
+  Global.RK=CGDycore.RungeKuttaMethod("RK4")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
+
+# Simulation period
+  time=[0.0]
+  SimMins=75
+  PrintMin=5
+  PrintStartMin = 0
+  nIter=ceil(60*SimMins/dtau)
+  PrintInt=ceil(60*PrintMin/dtau)
+  PrintStartInt=ceil(60*PrintStartMin/dtau)
+
+  Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
+
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., Global.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+  elseif IntMethod == "RosenbrockSSP"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV])..., Global.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.VS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage+1);
+    Global.Cache.fS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage);
+    Global.Cache.fRhoS=zeros(size(U[:,:,1])..., Global.ROS.nStage);
+    Global.Cache.RhoS=zeros(size(U[:,:,1])..., Global.ROS.nStage+1);
+  elseif IntMethod == "LinIMEX"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.Ymyn=zeros(size(U[:,:,1:NumV+NumTr])..., Global.LinIMEX.nStage-1);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.f=zeros(size(U)..., Global.LinIMEX.nStage)
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+  elseif IntMethod == "RungeKutta"
+    Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
+  end
+
+ # Boundary values
+  if Model.SurfaceFlux
+    Global.Cache.TSurf=CGDycore.ProjectSurf(CGDycore.fTSurf,0.0,CG,Global,Param)
+  end
+
+
+# Print initial conditions
+  @show "Print initial conditions"
+  CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+
+  @show "Choose integration method"
+  if IntMethod == "Rosenbrock"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+          end
         end
-        Param.fig=PlotCG(Th./U(:,:,Param.RhoPos)-ThB...
-          ,CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-        Param.fig=PlotCG(U(:,:,Param.uPos),CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-        Param.fig=PlotCG(U(:,:,Param.vPos),CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-        W=zeros(size(U,1),nz+1);
-        W(:,2:nz+1)=U(:,:,Param.wPos);
-        Param.fig=PlotCG(0.5*(W(:,1:nz)+W(:,2:nz+1)),CG,@TransSphere...
-          ,@Topo,Param,Param.fig,Param.SliceXY);
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-  case 'RungeKutta'
-    for i=1:nIter
-      U=RungeKuttaExplicit(U,dtau,@FcnNHCurlVec,CG,Param);
-      
-      time=time+dtau;
-      if mod(i,1)==0
-        Param.fig=PlotCG(U(:,:,Param.ThPos)./U(:,:,Param.RhoPos)...
-          ,CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXY);
-        Param.fig=PlotCG(U(:,:,Param.uPos),CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXZ);
-        Param.fig=PlotCG(U(:,:,Param.vPos),CG,@TransSphere,@Topo,Param,Param.fig,Param.SliceXZ);
-        W=zeros(size(U,1),nz+1);
-        W(:,2:nz+1)=U(:,:,Param.wPos);
-        Param.fig=PlotCG(0.5*(W(:,1:nz)+W(:,2:nz+1)),CG,@TransSpheres...
-          ,@Topo,Param,Param.fig,Param.SliceXZ);
-        frame=getframe(gcf);
-        writeVideo (v, frame);
+  elseif IntMethod == "RosenbrockD"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.RosenbrockDSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end  
+  elseif IntMethod == "RosenbrockSSP"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.RosenbrockSchurSSP!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-end
-%fig=PlotCG(U(:,1),CG,@JacobiSphere2,Param,fig);
-%close(v)
-end
+  elseif IntMethod == "LinIMEX"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "RungeKutta"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          @time CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global)
 
-
+          time[1] += dtau
+          if mod(i,PrintInt)==0 && i >= PrintStartInt
+            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  else
+    error("Bad IntMethod")
+  end

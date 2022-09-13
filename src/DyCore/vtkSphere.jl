@@ -129,7 +129,7 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
 
   step = Global.Output.vtk
   stepS="$step"
-  vtk_filename_noext = pwd()*"/"*filename * stepS;
+  vtk_filename_noext = filename * stepS;
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
 
   for i=1:length(Global.Output.cNames)
@@ -167,6 +167,22 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
         @views Interpolate!(ThCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
         vtk["Th", VTKCellData()] = ThCell
+      end
+    elseif str == "ThDiff"  
+      if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+        RhoPos = Global.Model.RhoPos
+        ThCell = zeros(OrdPrint*OrdPrint*nz*NF)  
+        @views InterpolateTh!(ThCell,Global.Cache.PresG,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+        vtk["Th", VTKCellData()] = ThCell 
+      else
+        RhoPos = Global.Model.RhoPos
+        ThPos = Global.Model.ThPos
+        ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
+        ThCellBGrd = zeros(OrdPrint*OrdPrint*nz*NF)
+        @views Interpolate!(ThCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+        @views Interpolate!(ThCellBGrd,Global.ThetaBGrd,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+        @. ThCell -= ThCellBGrd
+        vtk["ThDiff", VTKCellData()] = ThCell
       end
     elseif str == "Pres"   
       pCell = zeros(OrdPrint*OrdPrint*nz*NF)

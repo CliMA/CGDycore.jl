@@ -36,13 +36,13 @@ function fThetaBGrd(x,time,Global,Param)
     Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
     Pressure=Param.p0*exp(-Param.Grav/Param.Rd      *(IntTau1-IntTau2*InteriorTerm));
     Th=Temperature*(Param.p0/Pressure)^(Param.Rd/Param.Cpd);
-  elseif str == "baldauf"
+  elseif str == "baldaufsphere"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-    r=r-Param.RadEarth;
-    p=Param.p0*exp(-Param.Grav*r/(Param.Rd*Param.T0));
-    Rho=p/(Param.Rd*Param.T0);
-    T=p/(Rho*Param.Rd);
-    Th=T*(Param.p0/p)^(Param.Rd/Param.Cpd);
+    r=r-Phys.RadEarth / Param.ScaleRad
+    p=Phys.p0*exp(-Phys.Grav*r/(Phys.Rd*Param.T0));
+    Rho=p/(Phys.Rd*Param.T0);
+    T=p/(Rho*Phys.Rd);
+    Th=T*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "warmbubble2d"
     Th0=Param.Th0;
     DeltaTh=Param.DeltaTh;

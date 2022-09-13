@@ -124,9 +124,8 @@ function fIntEn(x,time,Global,Param)
 
     RhoV=Rho * qv
     RhoD = Rho - RhoV 
-    Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
-    Rm  = Phys.Rd * RhoD + Phys.Rv * RhoV
-    Th=Temperature*(Phys.p0/Pressure)^(Rm/Cpml) * (RhoD + (Phys.Rv / Phys.Rd) *RhoV) / (RhoD + RhoV)
+    RhoC = 0.0
+    E = (Phys.Cvd * Rhod + Phys.Cvv * RhoV + Phys.Cpl * RhoC)*Temperature + Phys.L00 * RhoC
   elseif str == "baldaufsphere"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
     r=r-Phys.RadEarth;

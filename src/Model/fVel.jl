@@ -130,8 +130,8 @@ function fVel(x,time,Global,Param)
       end
       vS=0;
     elseif Model.ProfVel == "baldauf"
-      uS=0;
-      vS=0;
+      uS=Param.uMax
+      vS=0
     elseif Model.ProfVel == "barowavesphere"
   #     # parameters
 

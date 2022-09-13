@@ -98,7 +98,7 @@ function SourceMicroPhysicsv1(F,U,CG,Global,iG)
     RhoD = Rho[i] - RhoV[i] - RhoC[i]
   end   
 end   
-function SourceMicroPhysics(F,U,CG,Global,iG)
+function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
   (; Rd,
      Cpd,
      Rv,
@@ -123,7 +123,7 @@ function SourceMicroPhysics(F,U,CG,Global,iG)
      Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
      Rm = Rd * RhoD + Rv * RhoV
      kappaM = Rm / Cpml
-     p = (Rd * RhoTh / p0^kappaM)^(1 / (1 - kappaM))
+     p = Pres[i]
      T = p / Rm
      T_C = T - 273.15
      p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
@@ -131,13 +131,16 @@ function SourceMicroPhysics(F,U,CG,Global,iG)
      b = 0.0
      FRhoV = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
      L = L00 - (Cpl - Cpv) * T
-     FRhoTh = RhoTh*(-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) *(Rv / Rm  - Cpv / Cpml) + Rv / Rm)*FRhoV
+     if Global.Model.Thermo == "InternalEnergy"
+     else    
+       FRhoTh = RhoTh*(-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) *(Rv / Rm  - Cpv / Cpml) + Rv / Rm)*FRhoV
+       F[i,ThPos] += FRhoTh   
+     end  
      FRho = FRhoV
      FRhoC = 0.0
-     F[i,ThPos] += FRhoTh   
      F[i,RhoPos] += FRho
      F[i,RhoVPos+NumV] += FRhoV
-     F[i,RhoCPos+NumV] += FRhoC
+     F[i,RhoCPos+NumV] -= Global.Model.Rain * FRhoV
   end  
 end
 

@@ -128,12 +128,12 @@ function fTheta(x,time,Global,Param)
     Th=Temperature*(Phys.p0/Pressure)^(Rm/Cpml) * (RhoD + (Phys.Rv / Phys.Rd) *RhoV) / (RhoD + RhoV)
   elseif str == "baldaufsphere"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-    r=r-Phys.RadEarth;
+    r=r-Phys.RadEarth / Param.ScaleRad
     p=Phys.p0*exp(-Phys.Grav*r/(Phys.Rd*Param.T0));
     Rho=p/(Phys.Rd*Param.T0);
     T=p/(Rho*Phys.Rd);
-    d=acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0));
-    T=T+Param.DeltaT*exp(-Param.ExpDist*d)*sin(pi*r/Param.H);
+    ExpDist = Phys.Grav / (Phys.Rd * Param.T0)
+    T=T+Param.DeltaT*exp(-ExpDist*r)*exp(Param.eta * (sin(lat) -1.0))*sin(pi*r/Param.H);
     Th=T*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "baldaufcart"
     delta=Phys.Grav/(Phys.Rd*Param.T0);

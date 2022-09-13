@@ -917,7 +917,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   end
   if Global.Model.Microphysics
     @inbounds for iG=1:CG.NumG
-      @views SourceMicroPhysics(F[:,iG,:],U[:,iG,:],CG,Global,iG)
+      @views SourceMicroPhysics(F[:,iG,:],U[:,iG,:],PresG[:,iG],CG,Global,iG)
     end  
   end
 end
