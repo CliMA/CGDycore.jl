@@ -235,6 +235,10 @@ end
   @show "Print initial conditions"
   CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
 
+if haskey(ENV, "CI_PERF_SKIP_RUN") # for performance analysis
+    throw(:exit_profile)
+end
+
   @show "Choose integration method"
   if IntMethod == "Rosenbrock"
     @time begin
