@@ -49,7 +49,7 @@ end
 import ProfileCanvas
 include("profile_canvas_patch.jl")
 
-if true # interactive
+if false # interactive
     ProfileCanvas.view(Profile.fetch())
 else # non-interactive
     html_file(joinpath(@__DIR__, "flame.html"))

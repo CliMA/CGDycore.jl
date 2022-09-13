@@ -143,9 +143,6 @@ end
     U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTotEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   else
     U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-    @show sum(abs.(U[:,:,Model.RhoPos]))
-    @show sum(abs.(U[:,:,Model.ThPos]))
-    stop
   end
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
