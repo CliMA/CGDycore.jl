@@ -1,4 +1,4 @@
-# mpirun -n 1 julia --project=Examples Examples/flame.jl
+# mpirun -n 1 julia --project Examples/flame.jl
 import CGDycore
 
 ENV["CI_PERF_SKIP_RUN"] = true # we only need haskey(ENV, "CI_PERF_SKIP_RUN") == true
