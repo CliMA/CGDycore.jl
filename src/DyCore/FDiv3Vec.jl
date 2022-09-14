@@ -53,7 +53,7 @@ DvCon1 = TCacheC3[Threads.threadid()]
 DvCon2 = TCacheC4[Threads.threadid()]
 vConV = TCacheC1[Threads.threadid()]
 
-@inbounds for iz=1:nz
+@fastmath @inbounds for iz=1:nz
   @views @. vCon1 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
     v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]) * cCG[:,:,iz]
   @views @. vCon2 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,2,1] + 
@@ -62,13 +62,13 @@ vConV = TCacheC1[Threads.threadid()]
   mul!(DvCon2,vCon2,CG.DST)
   @views @. F[:,:,iz]  = F[:,:,iz]  - DvCon1 - DvCon2 
 end
-@inbounds for iz=1:nz-1
+@fastmath @inbounds for iz=1:nz-1
   @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
     (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
   @views @. vConV = 0.5*(cCG[:,:,iz] + cCG[:,:,iz+1]) * vConV
-  @views @. F[:,:,iz] -= 0.5*vConV
-  @views @. F[:,:,iz+1] += 0.5*vConV
+  @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
+  @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
 end
 end
 
@@ -87,7 +87,7 @@ DvCon1 = TCacheC3[Threads.threadid()]
 DvCon2 = TCacheC4[Threads.threadid()]
 vConV = TCacheC1[Threads.threadid()]
 
-@inbounds for iz=1:nz
+@fastmath @inbounds for iz=1:nz
   @views @. vCon1 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
     v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]) 
   @views @. vCon2 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,2,1] + 
@@ -96,7 +96,7 @@ vConV = TCacheC1[Threads.threadid()]
   mul!(DvCon2,vCon2,CG.DST)
   @views @. F[:,:,iz]  = F[:,:,iz] - (DvCon1 + DvCon2) * cCG[:,:,iz] 
 end
-@inbounds for iz=1:nz-1
+@fastmath @inbounds for iz=1:nz-1
   @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
     (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
@@ -122,7 +122,7 @@ cL = Global.Cache.CacheC1
 cR = Global.Cache.CacheC2
 qCG = Global.Cache.CacheC3
 
-@inbounds for iz=1:nz
+@fastmath @inbounds for iz=1:nz
   @views @. vCon1 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
     v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]) * cCG[:,:,iz]
   @views @. vCon2 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,2,1] + 
@@ -134,35 +134,35 @@ end
 
 @. qCG = cCG / RhoCG
 if nz>1
-  @inbounds for j=1:OP
-    @inbounds for i=1:OP  
+  @fastmath @inbounds for j=1:OP
+    @fastmath @inbounds for i=1:OP  
       qCG0 = ((3.0 * qCG[i,j,1] - 2.0 * qCG[i,j,2]) * JC[i,j,1] + qCG[i,j,1] * JC[i,j,2]) / (JC[i,j,1] + JC[i,j,2]) 
       (cL[i,j,1],cR[i,j,1]) = Rec3(qCG0,qCG[i,j,1],qCG[i,j,2],JC[i,j,1],JC[i,j,1],JC[i,j,2])  
     end
   end  
-  @inbounds for iz=2:nz-1
-    @inbounds for j=1:OP
-      @inbounds for i=1:OP  
+  @fastmath @inbounds for iz=2:nz-1
+    @fastmath @inbounds for j=1:OP
+      @fastmath @inbounds for i=1:OP  
         (cL[i,j,iz],cR[i,j,iz]) = Rec3(qCG[i,j,iz-1],qCG[i,j,iz],qCG[i,j,iz+1],JC[i,j,iz-1],JC[i,j,iz],JC[i,j,iz+1])  
       end
     end  
   end  
-  @inbounds for j=1:OP
-    @inbounds for i=1:OP  
+  @fastmath @inbounds for j=1:OP
+    @fastmath @inbounds for i=1:OP  
       qCG1 = ((3.0 * qCG[i,j,nz] - 2.0 * qCG[i,j,nz-1]) * JC[i,j,nz] + qCG[i,j,nz] * JC[i,j,nz-1]) / (JC[i,j,nz-1] + JC[i,j,nz]) 
       (cL[i,j,nz],cR[i,j,nz]) = Rec3(qCG[i,j,nz-1],qCG[i,j,nz],qCG1,JC[i,j,nz-1],JC[i,j,nz],JC[i,j,nz])  
     end
   end  
 end
-@inbounds for iz=1:nz-1
+@fastmath @inbounds for iz=1:nz-1
   @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
     (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
   @views @. vConV *= 0.5*(RhoCG[:,:,iz] + RhoCG[:,:,iz+1])
   @views @. vConV = 0.5*(abs(vConV) + vConV) * cR[:,:,iz] +
     0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1];
-  @views @. F[:,:,iz] -= 0.5*vConV
-  @views @. F[:,:,iz+1] += 0.5*vConV
+  @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
+  @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
 end
 end
 
@@ -183,7 +183,7 @@ cL = Global.Cache.CacheC1
 cR = Global.Cache.CacheC2
 qCG = Global.Cache.CacheC3
 
-@inbounds for iz=1:nz
+@fastmath @inbounds for iz=1:nz
   @views @. vCon = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
     v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]) * cCG[:,:,iz]
   mul!(DvC,CG.DS,vCon1)
@@ -204,25 +204,25 @@ end
 
 @. qCG = cCG / RhoCG
 if nz>1
-  @inbounds for j=1:OP
-    @inbounds for i=1:OP  
+  @fastmath @inbounds for j=1:OP
+    @fastmath @inbounds for i=1:OP  
       (cL[i,j,1],cR[i,j,1]) = Rec3(qCG[i,j,1],qCG[i,j,1],qCG[i,j,2],JC[i,j,1],JC[i,j,1],JC[i,j,2])  
     end
   end  
-  @inbounds for iz=2:nz-1
-    @inbounds for j=1:OP
-      @inbounds for i=1:OP  
+  @fastmath @inbounds for iz=2:nz-1
+    @fastmath @inbounds for j=1:OP
+      @fastmath @inbounds for i=1:OP  
         (cL[i,j,iz],cR[i,j,iz]) = Rec3(qCG[i,j,iz-1],qCG[i,j,iz],qCG[i,j,iz+1],JC[i,j,iz-1],JC[i,j,iz],JC[i,j,iz+1])  
       end
     end  
   end  
-  @inbounds for j=1:OP
-    @inbounds for i=1:OP  
+  @fastmath @inbounds for j=1:OP
+    @fastmath @inbounds for i=1:OP  
       (cL[i,j,nz],cR[i,j,nz]) = Rec3(qCG[i,j,nz-1],qCG[i,j,nz],qCG[i,j,nz],JC[i,j,nz-1],JC[i,j,nz],JC[i,j,nz])  
     end
   end  
 end
-@inbounds for iz=1:nz-1
+@fastmath @inbounds for iz=1:nz-1
   @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
     (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
@@ -234,6 +234,7 @@ end
 end
 end
 
+#function Rec3(cL,cC,cR,JL,JC,JR)
 function Rec3(cL,cC,cR,JL,JC,JR)
   kL=(JC/(JC+JL))*((JR+JC)/(JL+JC+JR))
   kR=-(JC/(JR+JC))*(JL/(JL+JC+JR))

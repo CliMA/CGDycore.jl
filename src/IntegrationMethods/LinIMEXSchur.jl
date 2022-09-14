@@ -1,4 +1,4 @@
-function LinIMEXSchur!(V,dt,Fcn,Jac,CG,Global)
+function LinIMEXSchur!(V,dt,Fcn,Jac,CG,Global,Param)
   LinIMEX=Global.LinIMEX;
   nV1=size(V,1);
   nV2=size(V,2);
@@ -13,10 +13,12 @@ function LinIMEXSchur!(V,dt,Fcn,Jac,CG,Global)
   NumTr=Global.Model.NumTr
 
   J = Global.J
-  Jac(J,V,CG,Global)
   Vn .= V
   @inbounds for iStage = 2 : nStage
-    @views Fcn(f[:,:,:,iStage-1],V,CG,Global);
+    @views Fcn(f[:,:,:,iStage-1],V,CG,Global,Param);
+    if iStage == 2
+      Jac(J,V,CG,Global,Param)
+    end  
     @views @. fV = LinIMEX.AHat[iStage,iStage-1] * f[:,:,:,iStage-1]
     @inbounds for jStage = 1 : iStage - 2
       if LinIMEX.AHat[iStage,jStage] != 0.0
@@ -33,7 +35,7 @@ function LinIMEXSchur!(V,dt,Fcn,Jac,CG,Global)
     @views @. V = Ymyn[:,:,:,iStage-1] + Vn
   end
   if LinIMEX.BHat[nStage] != 0.0
-    @views Fcn(f[:,:,:,nStage],V,CG,Global);
+    @views Fcn(f[:,:,:,nStage],V,CG,Global,Param);
     @views @. V = Vn + dt * LinIMEX.BHat[nStage] * f[:,:,:,nStage]
   else
     @. V = Vn  

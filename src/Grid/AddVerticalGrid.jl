@@ -1,6 +1,7 @@
 function AddVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64)
 Grid.zP=zeros(nz);
 Grid.z=zeros(nz+1);
+Grid.dzeta = zeros(nz)
 Grid.H = H
 @. Grid.dzeta = H/nz;
 Grid.H=H
@@ -16,6 +17,7 @@ end
 function AddStretchICONVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,sigma::Float64,lambda::Float64)
 Grid.zP=zeros(nz);
 Grid.z=zeros(nz+1);
+Grid.dzeta = zeros(nz)
 Grid.H = H
 for iz=1:nz
   i = nz + 1 - iz  
@@ -30,6 +32,7 @@ end
 function AddStretchDCMIPVerticalGrid!(Grid::GridStruct, nz::Int,H::Float64, mue::Float64)
 Grid.zP=zeros(nz);
 Grid.z=zeros(nz+1);
+Grid.dzeta = zeros(nz)
 Grid.H = H
 for iz=1:nz
   i = nz + 1 - iz  

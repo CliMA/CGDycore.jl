@@ -84,7 +84,7 @@ Model = CGDycore.Model()
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
   Model.VerticalDiffusion = false
-  Model.Thermo = "InternalEnergy" #"" #"TotalEnergy"
+  Model.Thermo = "" #"TotalEnergy"
 
 # Grid
 H = 30000.0
@@ -168,10 +168,10 @@ end
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
-  IntMethod="Rosenbrock"
   IntMethod="LinIMEX"
+  IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 500
+    dtau = 200
   else
     dtau=3
   end
@@ -227,6 +227,10 @@ end
 # Print initial conditions
   @show "Print initial conditions"
   CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+
+  if haskey(ENV, "CI_PERF_SKIP_RUN") # for performance analysis
+    throw(:exit_profile)
+  end
 
   @show "Choose integration method"
   if IntMethod == "Rosenbrock"

@@ -110,7 +110,10 @@ if Parallel
   if Param.Stretch
     sigma = 1.0
     lambda = 3.16
+    @show "SubGrid.dzeta" 
     CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+    @show SubGrid.dzeta 
+    stop
   else
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end
@@ -175,11 +178,10 @@ end
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
-  IntMethod="LinIMEX"
-  IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
+  IntMethod="LinIMEX"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 200
+    dtau = 500
   else
     dtau=3
   end
@@ -283,10 +285,10 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100

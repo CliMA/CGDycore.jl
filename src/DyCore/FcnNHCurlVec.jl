@@ -45,6 +45,7 @@ function FcnNHCurlVec!(F,U,CG,Global,Param)
   Div .= 0.0
   DivTr .= 0.0
   F .= 0.0
+  KV = Global.Cache.KV
   # Hyperdiffusion 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
@@ -199,7 +200,6 @@ function FcnNHCurlVec!(F,U,CG,Global,Param)
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        KV = Global.Cache.DivC
         eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
@@ -333,7 +333,6 @@ function FcnNHCurlVec!(F,U,CG,Global,Param)
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        KV = Global.Cache.DivC
         eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
@@ -485,6 +484,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   Temp = Global.Cache.Temp
   uStar = Global.Cache.uStar
   JC = Global.Metric.JC
+  KV = Global.Cache.KV
   Rot1 .= 0.0
   Rot2 .= 0.0
   Grad1 .= 0.0
@@ -650,7 +650,6 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        KV = Global.Cache.DivC
         eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
@@ -801,7 +800,6 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        KV = Global.Cache.DivC
         eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   

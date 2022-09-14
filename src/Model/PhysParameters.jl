@@ -48,6 +48,7 @@ Rot2C::Array{Float64, 3}
 Grad1C::Array{Float64, 3}
 Grad2C::Array{Float64, 3}
 DivC::Array{Float64, 3}
+KV::Array{Float64, 3}
 Temp1::Array{Float64, 3}
 k::Array{Float64, 4}
 Ymyn::Array{Float64, 4}
@@ -108,6 +109,7 @@ Rot2C=zeros(0,0,0)
 Grad1C=zeros(0,0,0)
 Grad2C=zeros(0,0,0)
 DivC=zeros(0,0,0)
+KV=zeros(0,0,0)
 Temp1=zeros(0,0,0)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
@@ -167,6 +169,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
+  KV,
   Temp1,
   k,
   Ymyn,
@@ -229,6 +232,7 @@ Rot2C=zeros(OP,OP,nz)
 Grad1C=zeros(OP,OP,nz)
 Grad2C=zeros(OP,OP,nz)
 DivC=zeros(OP,OP,nz)
+KV=zeros(OP,OP,nz)
 Temp1=zeros(nz,NumG,5+NumTr)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
@@ -288,6 +292,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
+  KV,
   Temp1,
   k,
   Ymyn,

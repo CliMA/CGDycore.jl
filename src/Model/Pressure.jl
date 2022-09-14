@@ -8,6 +8,10 @@ function Pressure(U,KE,zP,Global)
   end
 end 
 
+# we may be hitting a slow path:
+# https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
+fast_pow(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
+
 function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
   (; Rd,
      Cvd,
@@ -16,26 +20,26 @@ function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
      Cvv,
      Cpv,
      Cpl,
-     L00,
      p0,
      Grav,
+     L00,
      kappa) = Global.Phys
 
   
   Equation = Global.Model.Equation
   if Equation == "Compressible"
-    if Global.Model.Thermo == "TotalEnergy"
-      @inbounds for i in eachindex(p)  
-        p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
-      end  
-    elseif Global.Model.Thermo == "InternalEnergy"
-      @inbounds for i in eachindex(p)  
-        p[i] = (Rd / Cvd) * RhoTh[i] 
-      end  
-    else
-      @inbounds for i in eachindex(p)  
-        p[i] = p0 * (Rd * RhoTh[i] / p0)^(1.0 / (1.0 - kappa));
-      end  
+     if Global.Model.Thermo == "TotalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
+       end  
+     elseif Global.Model.Thermo == "InternalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * RhoTh[i] 
+       end  
+     else
+       @inbounds for i in eachindex(p)  
+         p[i] = p0 * fast_pow(Rd * RhoTh[i] / p0, 1.0 / (1.0 - kappa));
+       end  
     end
   elseif Equation == "CompressibleMoist"
     @views TrRhoV = Tr[size(p)...,Global.Model.RhoVPos]
@@ -122,7 +126,7 @@ function dPresdTh!(dpdTh,RhoTh,Rho,Tr,Global)
     else  
       @views @. dpdTh = dPressureMoistdTh(RhoTh,Rho,Tr[:,Global.Model.RhoVPos],
         Tr[:,Global.Model.RhoCPos],Rd,Cpd,Rv,Cpv,Cpl,p0)
-    end  
+    end    
   end  
 end
 
@@ -134,3 +138,5 @@ function dPressureMoistdTh(RhoTh,Rho,RhoV,RhoC,Rd,Cpd,Rv,Cpv,Cpl,p0)
   kappaM = Rm / Cpml
   dpdTh=Rd*(Rd*RhoTh/p0)^(kappaM/(1-kappaM));
 end
+
+
