@@ -32,6 +32,16 @@ str = Method
         0 (1-gamma)/2 gamma 0;
         0 b1 b2 gamma]
     b = [0 b1 b2 gamma]
+    @show a[2,2]  
+    @show a[3,2]  
+    @show a[3,3]  
+    @show a[4,2]  
+    @show a[4,3]  
+    @show a[4,4]  
+    @show b[1]  
+    @show b[2]  
+    @show b[3]  
+    @show b[4]  
 
     dA42 = 0.5529291480359398;
     dA43 = 0.5529291480359398;
@@ -50,6 +60,12 @@ str = Method
       gamma 0 0 0;
       dA31 dA32 0 0;
       dA41 dA42 dA43 0]
+    @show aHat[2,1]  
+    @show aHat[3,1]  
+    @show aHat[3,2]  
+    @show aHat[4,1]  
+    @show aHat[4,2]  
+    @show aHat[4,3]  
     bHat = [  0 b1 b2 gamma]
   elseif str == "AR2"
     nStage = 3

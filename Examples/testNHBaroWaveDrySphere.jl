@@ -180,8 +180,8 @@ end
   Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
   Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
   Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
 
 # Simulation period
   time=[0.0]
