@@ -52,6 +52,8 @@ KV::Array{Float64, 3}
 Temp1::Array{Float64, 3}
 k::Array{Float64, 4}
 Ymyn::Array{Float64, 4}
+Y::Array{Float64, 4}
+Z::Array{Float64, 4}
 fV::Array{Float64, 3}
 fS::Array{Float64, 4}
 fRhoS::Array{Float64, 3}
@@ -113,6 +115,8 @@ KV=zeros(0,0,0)
 Temp1=zeros(0,0,0)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
+Y=zeros(0,0,0,0)
+Z=zeros(0,0,0,0)
 fV=zeros(0,0,0)
 fS=zeros(0,0,0,0)
 fRhoS=zeros(0,0,0)
@@ -173,6 +177,8 @@ return CacheStruct(
   Temp1,
   k,
   Ymyn,
+  Y,
+  Z,
   fV,
   fS,
   fRhoS,
@@ -236,6 +242,8 @@ KV=zeros(OP,OP,nz)
 Temp1=zeros(nz,NumG,5+NumTr)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
+Y=zeros(0,0,0,0)
+Z=zeros(0,0,0,0)
 fV=zeros(0,0,0)
 fS=zeros(0,0,0,0)
 fRhoS=zeros(0,0,0)
@@ -296,6 +304,8 @@ return CacheStruct(
   Temp1,
   k,
   Ymyn,
+  Y,
+  Z,
   fV,
   fS,
   fRhoS,
@@ -580,6 +590,7 @@ mutable struct GlobalStruct{TCache}
   vtkCache::vtkStruct
   ROS::RosenbrockStruct
   LinIMEX::LinIMEXStruct
+  IMEX::IMEXStruct
   RK::RungeKuttaStruct
   SSP::SSPRungeKuttaStruct
   Cache::CacheStruct
@@ -598,6 +609,7 @@ function Global(Grid::GridStruct,
   Metric=MetricStruct()
   ROS=RosenbrockMethod()
   LinIMEX=LinIMEXMethod()
+  IMEX=IMEXMethod()
   RK=RungeKuttaMethod()
   SSP=SSPRungeKuttaMethod()
   Cache=CacheStruct()
@@ -617,6 +629,7 @@ function Global(Grid::GridStruct,
     vtkCache,
     ROS,
     LinIMEX,
+    IMEX,
     RK,
     SSP,
     Cache,

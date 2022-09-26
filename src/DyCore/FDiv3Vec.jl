@@ -72,6 +72,76 @@ end
 end
 end
 
+function FDiv3ExpVec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
+@unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
+OP=CG.OrdPoly+1;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+# Contravariant components
+
+vCon1 = TCacheC1[Threads.threadid()]
+vCon2 = TCacheC2[Threads.threadid()]
+DvCon1 = TCacheC3[Threads.threadid()]
+DvCon2 = TCacheC4[Threads.threadid()]
+vConV = TCacheC1[Threads.threadid()]
+
+@fastmath @inbounds for iz=1:nz
+  @views @. vCon1 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
+    v2CG[:,:,iz] * dXdxIC[:,:,iz,1,2]) * cCG[:,:,iz]
+  @views @. vCon2 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,2,1] + 
+    v2CG[:,:,iz] * dXdxIC[:,:,iz,2,2]) * cCG[:,:,iz]
+  mul!(DvCon1,CG.DS,vCon1)
+  mul!(DvCon2,vCon2,CG.DST)
+  @views @. F[:,:,iz]  = F[:,:,iz]  - DvCon1 - DvCon2 
+end
+@fastmath @inbounds for iz=1:nz-1
+  @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
+    (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) 
+#    v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
+  @views @. vConV = 0.5*(cCG[:,:,iz] + cCG[:,:,iz+1]) * vConV
+  @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
+  @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
+end
+end
+
+function FDiv3ImpVec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
+@unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
+OP=CG.OrdPoly+1;
+NF=Global.Grid.NumFaces;
+nz=Global.Grid.nz;
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+# Contravariant components
+
+vCon1 = TCacheC1[Threads.threadid()]
+vCon2 = TCacheC2[Threads.threadid()]
+DvCon1 = TCacheC3[Threads.threadid()]
+DvCon2 = TCacheC4[Threads.threadid()]
+vConV = TCacheC1[Threads.threadid()]
+
+@fastmath @inbounds for iz=1:nz-1
+  @views @. vConV = #0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
+#    (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
+     v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
+  @views @. vConV = 0.5*(cCG[:,:,iz] + cCG[:,:,iz+1]) * vConV
+  @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
+  @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
+end
+end
+
+function FDiv3ImpGlobalVec!(F,c,v3,Global,iG)
+  nz=Global.Grid.nz
+  @views dz = Global.Metric.dz[:,iG]
+
+  @fastmath @inbounds for iz=1:nz-1
+    vConV = 0.5*(c[iz] + c[iz+1]) * v3[iz]
+    F[iz] = F[iz] - vConV / dz[iz]
+    F[iz+1] = F[iz+1] + vConV / dz[iz+1]
+  end
+end
+
 function SourceIntEnergy!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
 @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
 OP=CG.OrdPoly+1;
@@ -164,6 +234,85 @@ end
   @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
   @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
 end
+end
+
+function FDiv3UpwindImpVec!(F,cCG,v1CG,v2CG,v3CG,RhoCG,CG,Global,iF)
+OP=CG.OrdPoly+1;
+nz=Global.Grid.nz;
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+@views JC = Global.Metric.JC[:,:,:,iF];
+# Contravariant components
+
+vCon1 = Global.Cache.CacheE1
+vCon2 = Global.Cache.CacheE2
+DvCon1 = Global.Cache.CacheE3
+DvCon2 = Global.Cache.CacheE4
+vConV = Global.Cache.CacheE1
+cL = Global.Cache.CacheC1
+cR = Global.Cache.CacheC2
+qCG = Global.Cache.CacheC3
+
+
+@. qCG = cCG / RhoCG
+if nz>1
+  @fastmath @inbounds for j=1:OP
+    @fastmath @inbounds for i=1:OP  
+      qCG0 = ((3.0 * qCG[i,j,1] - 2.0 * qCG[i,j,2]) * JC[i,j,1] + qCG[i,j,1] * JC[i,j,2]) / (JC[i,j,1] + JC[i,j,2]) 
+      (cL[i,j,1],cR[i,j,1]) = Rec3(qCG0,qCG[i,j,1],qCG[i,j,2],JC[i,j,1],JC[i,j,1],JC[i,j,2])  
+    end
+  end  
+  @fastmath @inbounds for iz=2:nz-1
+    @fastmath @inbounds for j=1:OP
+      @fastmath @inbounds for i=1:OP  
+        (cL[i,j,iz],cR[i,j,iz]) = Rec3(qCG[i,j,iz-1],qCG[i,j,iz],qCG[i,j,iz+1],JC[i,j,iz-1],JC[i,j,iz],JC[i,j,iz+1])  
+      end
+    end  
+  end  
+  @fastmath @inbounds for j=1:OP
+    @fastmath @inbounds for i=1:OP  
+      qCG1 = ((3.0 * qCG[i,j,nz] - 2.0 * qCG[i,j,nz-1]) * JC[i,j,nz] + qCG[i,j,nz] * JC[i,j,nz-1]) / (JC[i,j,nz-1] + JC[i,j,nz]) 
+      (cL[i,j,nz],cR[i,j,nz]) = Rec3(qCG[i,j,nz-1],qCG[i,j,nz],qCG1,JC[i,j,nz-1],JC[i,j,nz],JC[i,j,nz])  
+    end
+  end  
+end
+@fastmath @inbounds for iz=1:nz-1
+  @views @. vConV = #0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
+#    (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
+     v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
+  @views @. vConV *= 0.5*(RhoCG[:,:,iz] + RhoCG[:,:,iz+1])
+  @views @. vConV = 0.5*(abs(vConV) + vConV) * cR[:,:,iz] +
+    0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1];
+  @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
+  @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
+end
+end
+
+function FDiv3UpwindImpGlobalVec!(F,c,v3,Rho,Global,iG)
+  nz=Global.Grid.nz
+  @views dz = Global.Metric.dz[:,iG]
+  @views cL = Global.Cache.CacheC1[1,1,:]
+  @views cR = Global.Cache.CacheC2[1,1,:]
+  @views q = Global.Cache.CacheC3[1,1,:]
+
+
+  @. q = c / Rho
+  if nz>1
+    q0 = ((3.0 * q[1] - 2.0 * q[2]) * dz[1] + q[1] * dz[2]) / (dz[1] + dz[2]) 
+    (cL[1],cR[1]) = Rec3(q0,q[1],q[2],dz[1],dz[1],dz[2])  
+    @fastmath @inbounds for iz=2:nz-1
+      (cL[iz],cR[iz]) = Rec3(q[iz-1],q[iz],q[iz+1],dz[iz-1],dz[iz],dz[iz+1])  
+    end  
+    q1 = ((3.0 * q[nz] - 2.0 * q[nz-1]) * dz[nz] + q[nz] * dz[nz-1]) / (dz[nz-1] + dz[nz]) 
+    (cL[nz],cR[nz]) = Rec3(q[nz-1],q[nz],q1,dz[nz-1],dz[nz],dz[nz])  
+  end  
+  @fastmath @inbounds for iz=1:nz-1
+    vConV = 0.5*(Rho[iz] + Rho[iz+1]) * v3[iz]
+    vConV = 0.5*(abs(vConV) + vConV) * cR[iz] +
+    0.5*(-abs(vConV) + vConV) * cL[iz+1];
+    F[iz] = F[iz] - vConV / dz[iz]
+    F[iz+1] = F[iz+1] + vConV / dz[iz+1]
+  end
 end
 
 function FDiv3UpwindHorVec!(F,cCG,v1CG,v2CG,v3CG,RhoCG,CG,Global,iF)

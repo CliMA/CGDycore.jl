@@ -129,23 +129,26 @@ end
   @show "Compute vtkGrid"
   Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
 
-  IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
   IntMethod="LinIMEX"
-  IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
+  IntMethod="RungeKutta"
+  IntMethod="IMEX"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || 
+    IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 0.2
   else
-    dtau=3
+    dtau = 0.2
   end
   Global.ROS=CGDycore.RosenbrockMethod("RODAS")
   Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
   Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
+  Global.RK=CGDycore.RungeKuttaMethod("RK3")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
+  Global.IMEX=CGDycore.IMEXMethod("ARS343")
   Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
   Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
 
 # Simulation period
   time=[0.0]
@@ -179,7 +182,14 @@ end
     Global.Cache.fV=zeros(size(U))
     Global.Cache.Vn=zeros(size(U))
   elseif IntMethod == "RungeKutta"
-    Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
+    Global.Cache.f=zeros(size(U)..., Global.RK.nStage + 2)
+  elseif IntMethod == "IMEX"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Y=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
+    Global.Cache.Z=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage+2);
+    @show size(Global.Cache.Z)
+    Global.Cache.Vn=zeros(size(U))
   end
 
   if Global.Model.Thermo == "TotalEnergy"
@@ -243,7 +253,24 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
+          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "IMEX"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+#         CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DGlobalVecI!,CGDycore.JacSchur!,CG,Global,Param);
+#         CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.FcnNHCurlVecIZero!,CGDycore.JacSchur!,CG,Global,Param);
+#         CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecIZero!,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             CGDycore.unstructured_vtkSphere(U,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
@@ -257,7 +284,9 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          CGDycore.unstructured_vtkSphere(U,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
+          CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DVecI!,CG,Global,Param)
+#         CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlExp3DVecI!,CGDycore.FcnNHCurlImp3DVecI!,CG,Global,Param)
+#         CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVecI!,CG,Global,Param)
 
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt

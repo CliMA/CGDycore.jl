@@ -118,14 +118,16 @@ elseif str == "Kinnmark"
     bRKI=zeros(0)
     gRKI=zeros(0)
 elseif str == "RK3"
-    RK.nStage=3;
-    RK.ARKE=zeros(RK.nStage,RK.nStage);
-    RK.ARKE[2,1]=1/3;
-    RK.ARKE[3,2]=1/2;
-    RK.bRKE=zeros(1,RK.nStage);
-    RK.bRKE[1]=0;
-    RK.bRKE[2]=0;
-    RK.bRKE[3]=1;
+    nStage=3;
+    Type=""
+    ARKE=zeros(nStage,nStage);
+    ARKE[2,1]=1/3;
+    ARKE[3,2]=1/2;
+    bRKE = [0,0,1]
+    cRKE=[0,1/3,1/2];
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "DBM453"
     RK.nStage=5;
     RK.ARKE=zeros(RK.nStage,RK.nStage);

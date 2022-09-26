@@ -37,6 +37,27 @@ function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param)
   end
 end
 
+function RungeKuttaExplicit!(V,dt,FcnE,FcnI,CG,Global,Param)
+  RK=Global.RK;
+  f=Global.Cache.f
+  Vn=Global.Cache.Vn
+
+  @. Vn = V
+  @inbounds for iStage=1:RK.nStage
+    V .= Vn;
+    @inbounds for jStage=1:iStage-1
+      @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
+    end
+    @views FcnE(f[:,:,:,RK.nStage+1],V,CG,Global,Param);
+    @views FcnI(f[:,:,:,RK.nStage+2],V,CG,Global,Param);
+    @views @. f[:,:,:,iStage] = f[:,:,:,RK.nStage+1] + f[:,:,:,RK.nStage+2]
+  end
+  @. V = Vn;
+  @inbounds for iStage=1:RK.nStage
+    @views @. V = V + dt * RK.bRKE[iStage] * f[:,:,:,iStage]
+  end
+end
+
 function RungeKuttaExplicitLS!(time,V,dt,Fcn,CG,Global,Param)
   RK=Global.RK;
   @views f=Global.Cache.f[:,:,:,1]
