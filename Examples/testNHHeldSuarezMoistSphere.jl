@@ -175,7 +175,7 @@ end
   IntMethod="LinIMEX"
   IntMethod="IMEX"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 450
+    dtau = 400
   else
     dtau=3
   end
