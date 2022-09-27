@@ -55,6 +55,8 @@ Ymyn::Array{Float64, 4}
 Y::Array{Float64, 4}
 Z::Array{Float64, 4}
 fV::Array{Float64, 3}
+R::Array{Float64, 3}
+dZ::Array{Float64, 3}
 fS::Array{Float64, 4}
 fRhoS::Array{Float64, 3}
 VS::Array{Float64, 4}
@@ -118,6 +120,8 @@ Ymyn=zeros(0,0,0,0)
 Y=zeros(0,0,0,0)
 Z=zeros(0,0,0,0)
 fV=zeros(0,0,0)
+R=zeros(0,0,0)
+dZ=zeros(0,0,0)
 fS=zeros(0,0,0,0)
 fRhoS=zeros(0,0,0)
 VS=zeros(0,0,0,0)
@@ -180,6 +184,8 @@ return CacheStruct(
   Y,
   Z,
   fV,
+  R,
+  dZ,
   fS,
   fRhoS,
   VS,
@@ -245,6 +251,8 @@ Ymyn=zeros(0,0,0,0)
 Y=zeros(0,0,0,0)
 Z=zeros(0,0,0,0)
 fV=zeros(0,0,0)
+R=zeros(0,0,0)
+dZ=zeros(0,0,0)
 fS=zeros(0,0,0,0)
 fRhoS=zeros(0,0,0)
 VS=zeros(0,0,0,0)
@@ -307,6 +315,8 @@ return CacheStruct(
   Y,
   Z,
   fV,
+  R,
+  dZ,
   fS,
   fRhoS,
   VS,

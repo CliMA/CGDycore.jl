@@ -186,9 +186,10 @@ end
   elseif IntMethod == "IMEX"
     Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
     Global.Cache.fV=zeros(size(U))
+    Global.Cache.R=zeros(size(U))
+    Global.Cache.dZ=zeros(size(U))
     Global.Cache.Y=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
-    Global.Cache.Z=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage+2);
-    @show size(Global.Cache.Z)
+    Global.Cache.Z=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
     Global.Cache.Vn=zeros(size(U))
   end
 
@@ -267,10 +268,7 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-#         CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DVecI!,CGDycore.JacSchur!,CG,Global,Param);
           CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DGlobalVecI!,CGDycore.JacSchur!,CG,Global,Param);
-#         CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.FcnNHCurlVecIZero!,CGDycore.JacSchur!,CG,Global,Param);
-#         CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecIZero!,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             CGDycore.unstructured_vtkSphere(U,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)

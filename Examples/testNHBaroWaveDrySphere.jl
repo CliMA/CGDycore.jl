@@ -84,7 +84,7 @@ Model = CGDycore.Model()
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
   Model.VerticalDiffusion = false
-  Model.Thermo = "InternalEnergy" #"" #"TotalEnergy"
+  Model.Thermo = "" #"InternalEnergy" #"" #"TotalEnergy"
 
 # Grid
 H = 30000.0
@@ -170,8 +170,9 @@ end
   IntMethod="RosenbrockD"
   IntMethod="Rosenbrock"
   IntMethod="LinIMEX"
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
-    dtau = 500
+  IntMethod="IMEX"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
+    dtau = 400
   else
     dtau=3
   end
@@ -179,9 +180,10 @@ end
   Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
   Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
+  Global.IMEX=CGDycore.IMEXMethod("ARS343")
   Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
   Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
 
 # Simulation period
   time=[0.0]
@@ -216,6 +218,14 @@ end
     Global.Cache.Vn=zeros(size(U))
   elseif IntMethod == "RungeKutta"
     Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
+  elseif IntMethod == "IMEX"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.R=zeros(size(U))
+    Global.Cache.dZ=zeros(size(U))
+    Global.Cache.Y=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
+    Global.Cache.Z=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
+    Global.Cache.Vn=zeros(size(U))  
   end
 
  # Boundary values
@@ -285,6 +295,20 @@ end
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
+  elseif IntMethod == "IMEX"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DGlobalVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end  
   elseif IntMethod == "RungeKutta"
     @time begin
       for i=1:nIter

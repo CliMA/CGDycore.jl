@@ -95,17 +95,6 @@ str = Method
     e[2] = bI[2] / AI[2,2] - bI[3] * E[3,2] / AI[3,3]  - bI[4] * E[4,2] / AI[4,4]
     e[3] = bI[3] / AI[3,3]                            - bI[4] * E[4,3] / AI[4,4]
     e[4] = bI[4] / AI[4,4]
-
-    @show AE
-    @show bE
-    @show AI
-    @show bI
-    @show D[2,:]
-    @show D[3,:]
-    @show d
-    @show E[2,:]
-    @show E[3,:]
-    @show e
   elseif str == "AR2"
     nStage = 3
     s2 = sqrt(2)

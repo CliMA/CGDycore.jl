@@ -2310,7 +2310,6 @@ function FcnNHCurlImp1DGlobalVecI!(F,U,CG,Global,Param)
     end
   end  
 
-
 #   Divergence of Thermodynamic Variable
 #   if Global.Model.Thermo == "TotalEnergy"
 #     @views @. ThCG = ThCG + Pres[:,:,:,iF]  
