@@ -127,9 +127,9 @@ else
 end  
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=7.e15
-  Model.HyperDGrad=7.e15
-  Model.HyperDDiv=7.e15
+  Model.HyperDCurl=1.e14 #7.e15
+  Model.HyperDGrad=1.e14 #7.e15
+  Model.HyperDDiv=1.e14 #7.e15
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -171,8 +171,12 @@ end
   IntMethod="Rosenbrock"
   IntMethod="LinIMEX"
   IntMethod="IMEX"
+  IntMethod="MIS"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 400
+  elseif IntMethod == "MIS" 
+    dtau = 1200.0
+    dtauFast =  200.0   
   else
     dtau=3
   end
@@ -181,6 +185,8 @@ end
   Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
   Global.IMEX=CGDycore.IMEXMethod("ARS343")
+  Global.MIS=CGDycore.MISMethod("MISRK3")
+  Global.MIS=CGDycore.MISMethod("MISRKJeb")
   Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
   Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
   Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
@@ -193,7 +199,7 @@ end
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
-
+  
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
@@ -218,6 +224,15 @@ end
     Global.Cache.Vn=zeros(size(U))
   elseif IntMethod == "RungeKutta"
     Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
+  elseif IntMethod == "MIS"
+    Global.Cache.f=zeros(size(U)..., Global.MIS.nStage)
+    Global.Cache.VS=zeros(size(U)..., Global.MIS.nStage - 1)
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., Global.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+    Global.Cache.R=zeros(size(U))
+    Global.Cache.dZ=zeros(size(U))  
   elseif IntMethod == "IMEX"
     Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
     Global.Cache.fV=zeros(size(U))
@@ -309,6 +324,20 @@ end
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end  
+  elseif IntMethod == "MIS"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.MISSchur!(U,dtau,dtauFast,CGDycore.FcnNHCurlExp3DVecI!,CGDycore.FcnNHCurlImp3DVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end    
   elseif IntMethod == "RungeKutta"
     @time begin
       for i=1:nIter

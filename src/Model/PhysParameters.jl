@@ -601,6 +601,7 @@ mutable struct GlobalStruct{TCache}
   ROS::RosenbrockStruct
   LinIMEX::LinIMEXStruct
   IMEX::IMEXStruct
+  MIS::MISStruct
   RK::RungeKuttaStruct
   SSP::SSPRungeKuttaStruct
   Cache::CacheStruct
@@ -620,6 +621,7 @@ function Global(Grid::GridStruct,
   ROS=RosenbrockMethod()
   LinIMEX=LinIMEXMethod()
   IMEX=IMEXMethod()
+  MIS=MISMethod()
   RK=RungeKuttaMethod()
   SSP=SSPRungeKuttaMethod()
   Cache=CacheStruct()
@@ -640,6 +642,7 @@ function Global(Grid::GridStruct,
     ROS,
     LinIMEX,
     IMEX,
+    MIS,
     RK,
     SSP,
     Cache,

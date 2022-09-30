@@ -122,7 +122,6 @@ end
     "u",
     "v",
     "w",
-    "Pres",
     "Th",
 ]
   Output.OrdPrint=CG.OrdPoly
@@ -134,9 +133,13 @@ end
   IntMethod="Rosenbrock"
   IntMethod="RungeKutta"
   IntMethod="IMEX"
+  IntMethod="MIS"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || 
     IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 0.2
+  elseif IntMethod == "MIS"  
+    dtau = 2.0
+    dtauFast = 0.2
   else
     dtau = 0.2
   end
@@ -146,6 +149,8 @@ end
   Global.RK=CGDycore.RungeKuttaMethod("RK3")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
   Global.IMEX=CGDycore.IMEXMethod("ARS343")
+  Global.MIS=CGDycore.MISMethod("MISRK3")
+  Global.MIS=CGDycore.MISMethod("MISRKJeb")
   Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
   Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
   Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
@@ -182,7 +187,7 @@ end
     Global.Cache.fV=zeros(size(U))
     Global.Cache.Vn=zeros(size(U))
   elseif IntMethod == "RungeKutta"
-    Global.Cache.f=zeros(size(U)..., Global.RK.nStage + 2)
+    Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
   elseif IntMethod == "IMEX"
     Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
     Global.Cache.fV=zeros(size(U))
@@ -191,6 +196,15 @@ end
     Global.Cache.Y=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
     Global.Cache.Z=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
     Global.Cache.Vn=zeros(size(U))
+  elseif IntMethod == "MIS"
+    Global.Cache.f=zeros(size(U)..., Global.MIS.nStage)
+    Global.Cache.VS=zeros(size(U)..., Global.MIS.nStage - 1)
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., Global.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+    Global.Cache.R=zeros(size(U))
+    Global.Cache.dZ=zeros(size(U))
   end
 
   if Global.Model.Thermo == "TotalEnergy"
@@ -278,6 +292,20 @@ end
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
+  elseif IntMethod == "MIS"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.MISSchur!(U,dtau,dtauFast,CGDycore.FcnNHCurlExp3DVecI!,CGDycore.FcnNHCurlImp3DVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end  
   elseif IntMethod == "RungeKutta"
     @time begin
       for i=1:nIter
