@@ -127,9 +127,9 @@ else
 end  
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=1.e14 #7.e15
-  Model.HyperDGrad=1.e14 #7.e15
-  Model.HyperDDiv=1.e14 #7.e15
+  Model.HyperDCurl=3.e15 #7.e15
+  Model.HyperDGrad=3.e15 #7.e15
+  Model.HyperDDiv=3.e15 #7.e15
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -147,6 +147,13 @@ end
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end   
+
+# Output partition  
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCachePart = CGDycore.vtkInit(1,CGDycore.TransSphereX,CG,Global)
+  Global.Grid.nz = nzTemp
+  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
 # Output
   Output.vtkFileName=string("BaroWaveDry_")
@@ -175,7 +182,7 @@ end
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 400
   elseif IntMethod == "MIS" 
-    dtau = 1200.0
+    dtau = 1500.0
     dtauFast =  200.0   
   else
     dtau=3

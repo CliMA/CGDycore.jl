@@ -39,7 +39,7 @@ Model = CGDycore.Model()
   Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="SchaerCart"
+  Model.Problem="SchaerCartEn"
   Model.ProfRho="IsoThermal"
   Model.ProfTheta="IsoThermal"
   Model.ProfVel="Const"
@@ -50,7 +50,7 @@ Model = CGDycore.Model()
   Model.ThPos=5
   Model.HorLimit = false
   Model.Upwind = true
-  Model.Thermo = "" #"TotalEnergy"
+  Model.Thermo = "TotalEnergy"
   Model.Damping=true
   Model.StrideDamp=10000
   Model.Relax=1.0e-2
@@ -102,9 +102,9 @@ else
 end  
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=1.e6
-  Model.HyperDGrad=1.e6
-  Model.HyperDDiv=1.e6
+  Model.HyperDCurl=1.e7
+  Model.HyperDGrad=1.e7
+  Model.HyperDDiv=1.e7
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -114,13 +114,17 @@ end
   U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
   U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global,Param)
   (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global,Param)
-  U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  if Model.Thermo == "TotalEnergy"
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  else    
+    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+  end  
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end   
 
 # Output
-  Output.vtkFileName=string("SchaerCart_")
+  Output.vtkFileName=string("SchaerCartEn_")
   Output.vtk=0
   Output.Flat=false
   Output.H=H
@@ -137,10 +141,10 @@ end
 
   IntMethod="RosenbrockD"
   IntMethod="LinIMEX"
-  IntMethod="Rosenbrock"
   IntMethod="RungeKutta"
   IntMethod="IMEX"
   IntMethod="MIS"
+  IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || 
     IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 0.4

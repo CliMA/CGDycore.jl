@@ -151,7 +151,7 @@ function RosenbrockSchurSSP!(V,dt,Fcn,Jac,CG,Global)
     end
     if NumTr>0
       @views @. VS[:,:,:,iStage+1] = 0.0 
-      for jStage = 1:iStage
+      @inbounds for jStage = 1:iStage
         if SSP.beta[iStage,jStage] > 0
           if Global.Model.HorLimit  
             Fac = SSP.beta[iStage,jStage]/SSP.alpha[iStage,jStage];

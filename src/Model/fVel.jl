@@ -191,7 +191,7 @@ function fVel(x,time,Global,Param)
       u0=2*pi*Phys.RadEarth/(86400*12);
       uS=u0*(cos(alpha0)*cos(lat)+sin(alpha0)*cos(lon)*sin(lat));
       vS =-u0*sin(alpha0)*sin(lon);
-    elseif Model.ProfVel == "const"
+    elseif Model.ProfVel == "Const"
       uS=Param.uMax;
       vS=Param.vMax;
     elseif Model.ProfVel == "sin"

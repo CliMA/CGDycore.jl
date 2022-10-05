@@ -316,8 +316,10 @@ function fTotEn(x,time,Global,Param)
   elseif str == "bickley"
     Th=Param.RhoTheta;
   elseif str == "isothermal"
+    x3 = x[3]
     pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
     Th=Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)  
+    E = ThLoc*(pLoc/Phys.p0)^Phys.kappa*Phys.Cvd + Phys.Grav * x3 + 0.5 * Param.uMax * Param.uMax
   elseif str == "decayingtemperatureprofile"  
     H_sfc = Phys.Rd * Param.T_virt_surf / Phys.Grav
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);

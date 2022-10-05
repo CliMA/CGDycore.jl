@@ -327,3 +327,20 @@ function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Global)
   end
 end
 
+function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
+
+  nz = 1
+  OrdPrint = 1
+  vtkInter = vtkGrid.vtkInter
+  cells = vtkGrid.cells
+  pts = vtkGrid.pts
+  filename = "Partition"
+
+  vtk_filename_noext = filename
+  vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  PartitionCell = zeros(NF)
+  PartitionCell .= part
+  vtk["Part", VTKCellData()] = PartitionCell
+  outfiles=vtk_save(vtk);
+  return outfiles::Vector{String}
+end

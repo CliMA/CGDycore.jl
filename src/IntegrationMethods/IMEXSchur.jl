@@ -21,16 +21,16 @@ function IMEXSchur!(V,dt,FcnE,FcnI,Jac,CG,Global,Param)
   @views FcnE(fEY[:,:,:,1],V,CG,Global,Param)
   Jac(J,V,CG,Global,Param)
   @views @. Z[:,:,:,1] = 0.0
-  for iStage = 2 : nStage 
+  @inbounds for iStage = 2 : nStage 
     @. R = 0.0
-    for jStage = 1 : iStage - 1
+    @inbounds for jStage = 1 : iStage - 1
       @views @. R = R + IMEX.D[iStage,jStage] * dt * fEY[:,:,:,jStage] + 
         IMEX.E[iStage,jStage] * Z[:,:,:,jStage]
     end  
     @views @. Z[:,:,:,iStage] = Z[:,:,:,iStage-1]
     # Newton Iteration
     fac = IMEX.AI[iStage,iStage] * dt
-    for iTer = 1 : 2
+    @inbounds for iTer = 1 : 2
       FcnI(fV,V,CG,Global,Param)  
       @views @. fV = Z[:,:,:,iStage] - R - fac  * fV
       SchurSolve!(dZ,fV,J,fac,Global)
@@ -40,7 +40,7 @@ function IMEXSchur!(V,dt,FcnE,FcnI,Jac,CG,Global,Param)
     @views FcnE(fEY[:,:,:,iStage],V,CG,Global,Param)
   end  
   @. V = Vn
-  for jStage = 1 : nStage
+  @inbounds for jStage = 1 : nStage
      @views @. V = V + IMEX.d[jStage] * dt *  fEY[:,:,:,jStage] + 
       IMEX.e[jStage] * Z[:,:,:,jStage]  
   end

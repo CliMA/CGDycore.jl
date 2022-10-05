@@ -132,7 +132,7 @@ end
 # Output
   Output.vtkFileName=string("BaldaufSphere_")
   Output.vtk=0
-  Output.Flat = true
+  Output.Flat = false
   Output.nPanel=nPanel
   Output.RadPrint=H
   Output.H=H
@@ -149,20 +149,28 @@ end
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
-  IntMethod="LinIMEX"
-  IntMethod="RungeKutta"
   IntMethod="Rosenbrock"
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX"
+  IntMethod="LinIMEX"
+  IntMethod="IMEX"
+  IntMethod="MIS"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 0.1
+    dtau = 400
+  elseif IntMethod == "MIS"
+    dtau = 1.0
+    dtauFast =  0.1
   else
-    dtau=3
+    dtau=.01
   end
   Global.ROS=CGDycore.RosenbrockMethod("RODAS")
   Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
   Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
   Global.RK=CGDycore.RungeKuttaMethod("RK4")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
+  Global.IMEX=CGDycore.IMEXMethod("ARS343")
+  Global.MIS=CGDycore.MISMethod("MISRK3")
+  Global.MIS=CGDycore.MISMethod("MISRKJeb")
   Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
+  Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
   Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
 
 # Simulation period
@@ -196,6 +204,23 @@ end
     Global.Cache.f=zeros(size(U)..., Global.LinIMEX.nStage)
     Global.Cache.fV=zeros(size(U))
     Global.Cache.Vn=zeros(size(U))
+  elseif IntMethod == "MIS"
+    Global.Cache.f=zeros(size(U)..., Global.MIS.nStage)
+    Global.Cache.VS=zeros(size(U)..., Global.MIS.nStage - 1)
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., Global.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+    Global.Cache.R=zeros(size(U))
+    Global.Cache.dZ=zeros(size(U))
+  elseif IntMethod == "IMEX"
+    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.R=zeros(size(U))
+    Global.Cache.dZ=zeros(size(U))
+    Global.Cache.Y=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
+    Global.Cache.Z=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
+    Global.Cache.Vn=zeros(size(U))  
   elseif IntMethod == "RungeKutta"
     Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
   end
@@ -267,6 +292,35 @@ end
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
+  elseif IntMethod == "IMEX"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DGlobalVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "MIS"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          CGDycore.MISSchur!(U,dtau,dtauFast,CGDycore.FcnNHCurlExp3DVecI!,CGDycore.FcnNHCurlImp3DVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+
   elseif IntMethod == "RungeKutta"
     @time begin
       for i=1:nIter
