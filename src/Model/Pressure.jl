@@ -65,7 +65,9 @@ function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
       end  
     end  
   elseif Equation == "Shallow"
-    p = 0.5 * Grav * RhoTh^2;
+    @inbounds for i in eachindex(p)  
+      p[i] = 0.5 * Grav * RhoTh[i]^2;
+    end  
   end
 end
 

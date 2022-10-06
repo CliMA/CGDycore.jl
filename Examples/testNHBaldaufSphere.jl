@@ -26,7 +26,7 @@ print("$Proc: \n")
 print("$ProcNumber: \n")
 
 OrdPoly = 3
-nz = 45
+nz = 20
 
 OrdPolyZ=1
 nPanel = 16
@@ -107,9 +107,9 @@ else
 end  
   (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=7.e10
-  Model.HyperDGrad=7.e10
-  Model.HyperDDiv=7.e10
+  Model.HyperDCurl=7.e9
+  Model.HyperDGrad=7.e9
+  Model.HyperDDiv=7.e9
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -149,13 +149,12 @@ end
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
-  IntMethod="Rosenbrock"
   IntMethod="LinIMEX"
   IntMethod="IMEX"
+  IntMethod="Rosenbrock"
   IntMethod="MIS"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 0.1
-    dtau = 400
   elseif IntMethod == "MIS"
     dtau = 1.0
     dtauFast =  0.1
@@ -176,7 +175,7 @@ end
 # Simulation period
   time=[0.0]
   SimMins=75
-  PrintMin=5
+  PrintMin=1
   PrintStartMin = 0
   nIter=ceil(60*SimMins/dtau)
   PrintInt=ceil(60*PrintMin/dtau)

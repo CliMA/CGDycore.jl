@@ -141,7 +141,7 @@ function fVel(x,time,Global,Param)
     elseif Model.ProfVel == "sphericalharmonics"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
       (uS,vS)=harmonicVec(Param.lHar,Param.mHar,lat,lon,r);
-    elseif Model.ProfVel == "galewsky"
+    elseif Model.ProfVel == "Galewsky"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
       if (lat<=Param.lat0G) || (lat>=Param.lat1G)
         uS=0;

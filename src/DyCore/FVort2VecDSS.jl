@@ -30,11 +30,9 @@ v2CG = Global.Cache.v2CG
 VortCG = Global.Cache.DivCG
 Vort .= 0.0
 @inbounds for iF=1:NF
-  iG=0
   @inbounds for jP=1:OP
     @inbounds for iP=1:OP
-      iG=iG+1
-      ind=CG.Glob[iG,iF]
+      ind = CG.Glob[iP,jP,iF]
       @inbounds for iz=1:nz
         v1CG[iP,jP,iz] = U[iz,ind,uPos]
         v2CG[iP,jP,iz] = U[iz,ind,vPos]
@@ -43,11 +41,9 @@ Vort .= 0.0
   end
   FVort2VecDSS!(VortCG,v1CG,v2CG,CG,Global,iF)
 
-  iG=0
   @inbounds for jP=1:OP
     @inbounds for iP=1:OP
-      iG=iG+1
-      ind=CG.Glob[iG,iF]
+      ind = CG.Glob[iP,jP,iF]
       @inbounds for iz=1:nz
         Vort[iz,ind] += VortCG[iP,jP,iz]
       end
