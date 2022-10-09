@@ -35,7 +35,17 @@
       ref2num,
     )
   end  
-  function InitHilbert()
+  function InitHilbert2()
+    tab = map(UInt64(1):UInt64(4)) do i
+      hilbert_table()
+    end  
+    tab[ 1] = fill_hilbert_table( [ 2, 1,-2], [1,0,0,2], [0,2,3,1], [0,3,1,2] )
+    tab[ 2] = fill_hilbert_table( [ 1, 2,-1], [0,1,1,3], [0,1,3,2], [0,1,3,2] )
+    tab[ 3] = fill_hilbert_table( [-1,-2, 1], [3,2,2,0], [3,2,0,1], [2,3,1,0] )
+    tab[ 4] = fill_hilbert_table( [-2,-1, 2], [2,3,3,1], [3,1,0,2], [2,1,3,0] )
+    return tab
+  end  
+  function InitHilbert3()
     tab = map(UInt64(1):UInt64(24)) do i
       hilbert_table()
     end  
@@ -68,7 +78,13 @@
     
   
 
-function HilbertOrderXY(Point,P0,P1,lev::Int,tab)
+function HilbertOrder2XY(Point,P0,P1,lev::Int,tab)
+  dim=2^lev
+  p1 = ceil(Int,(Point[1] - P0[1]) / P1[1] * dim)
+  p2 = ceil(Int,(Point[2] - P0[2]) / P1[2] * dim)
+  idx = hilbert2d_c2i(lev, p1, p2, tab)
+end
+function HilbertOrder3XY(Point,P0,P1,lev::Int,tab)
 
   HilbertOrderXY = 1
   s = 0
@@ -84,7 +100,7 @@ function HilbertOrderXY(Point,P0,P1,lev::Int,tab)
     dim=dim/2
     len=len/8
     
-    # determine spatial octant and reduce spatial coordinates
+    # det3ermine spatial octant and reduce spatial coordinates
     # so that they are relative to refined octant
     # reference octant:
     # z=0 | z=1  
@@ -120,17 +136,223 @@ function HilbertOrderXY(Point,P0,P1,lev::Int,tab)
   return HilbertOrderXY
 end
 
+
+#!! Get index on curve at given 2D coordinate (coordinates-to-index).
+#!!
+#!! Has logarithmic complexity: number of loop iterations = $lev.
+#!! Due to performance reasons, no checking of arguments is performend!
+function hilbert2d_c2i(lev::Int, p1::Int, p2::Int, tab)
+
+#  lev     level of the hilbert curve (1=2x2, 2=4x4, 3=8x8, etc)
+#  p(2)    2D coordinates [1 ... 2^$lev]
+#  idx     index on the 2D hilbert curve [1 ... (2^$lev)^2]
+
+
+   cp1=p1-1
+   cp2=p2-1
+   idx=1
+   s=0
+   dim=2^lev
+#  ! length of curve in base quadrant
+   len=dim^2
+
+   for l=lev:-1:1
+
+#    ! dimension and length of refined quadrants
+     dim=dim/2
+     len=len/4
+
+#    det3ermine spatial quadrant and reduce spatial coordinates
+#    so that they are relative to refined quadrant
+#    reference quadrant:
+#    2 3
+#    0 1
+     rq = UInt64(0)
+     OneInt8 = UInt64(1)
+     TwoInt8 = UInt64(2)
+     if cp1>=dim 
+       rq = OneInt8 | rq
+       cp1=cp1-dim
+     end
+     if cp2>=dim
+       rq = TwoInt8 | rq
+       cp2=cp2-dim
+     end
+#
+#    get sequence number of quadrant q in the curve primitive
+     q=tab[s+1].ref2num[rq+1]
+#
+#    add offset to index
+     idx=Int(idx+q*len)
+#
+#    get next state
+     s=tab[s+1].next[q+1]
+#
+   end
+
+   return idx
+
+end 
+
+function det3(P0,P1,P2)
+  d = P1[1] * P2[2] * P0[3] +
+      P1[3] * P2[1] * P0[2] +
+      P1[2] * P2[3] * P0[1] -
+      P1[3] * P2[2] * P0[1] -
+      P1[1] * P2[3] * P0[2] -
+      P1[2] * P2[1] * P0[3]  
+end      
+
+
+function InsideQuad(P0,P1,P2,P3,P4)
+
+  d1 = det3(P0,P1,P2)
+  if d1 < 0
+    return false  
+  end  
+  d2 = det3(P0,P2,P3)
+  if d2 < 0
+    return false  
+  end  
+  d3 = det3(P0,P3,P4)
+  if d3 < 0
+    return false  
+  end  
+  d4 = det3(P0,P4,P1)
+  if d4 < 0
+    return false  
+  end  
+  return true
+end  
+
+function Intersection(P0,P,n)
+  t = dot(P0,n) / dot(P0,n)
+  return t*P0
+end
+function PanelNumber(P0,lev,tab)
+  one = 1.0 
+  P0 = sqrt(3.0) * P0
+  P111 = SVector{3}(-one,-one,-one)
+  P211 = SVector{3}( one,-one,-one)
+  P221 = SVector{3}( one, one,-one)
+  P121 = SVector{3}(-one, one,-one)
+  P112 = SVector{3}(-one,-one, one)
+  P212 = SVector{3}( one,-one, one)
+  P222 = SVector{3}( one, one, one)
+  P122 = SVector{3}(-one, one, one)
+  dim=2^lev
+
+  Inside = InsideQuad(P0,P111,P211,P212,P112)
+  if Inside
+#   @show "Inside1"  
+#   @show P0  
+    SVector{3}([0.0, -1.0, 0.0])
+    PInter = Intersection(P0,P111,SVector{3}([0.0, -1.0, 0.0]))
+#   left top down
+    p1 = round(Int,(PInter[1] - P112[1])  * dim / 2)
+    p2 = round(Int,(P112[3] - PInter[3])  * dim / 2)
+    idx = hilbert2d_c2i(lev, p1, p2, tab)
+#   @show P0
+#   @show PInter
+#   @show P112
+#   @show "Inside1" p1,p2,idx
+    if idx < 1 || idx >dim*dim
+      @show "Inside1",idx  
+    end  
+    return idx
+  end  
+  Inside = InsideQuad(P0,P211,P221,P222,P212)
+  if Inside
+#   @show "Inside2"  
+#   @show P0  
+    PInter = Intersection(P0,P211,SVector{3}([1.0, 0.0, 0.0]))
+    p1 = round(Int,(PInter[2] - P212[2])  * dim / 2)
+    p2 = round(Int,(P212[3] - PInter[3])  * dim / 2)
+    idx = hilbert2d_c2i(lev, p1, p2, tab)
+    if idx < 1 || idx >dim*dim
+      @show "Inside2",idx  
+    end  
+#   left top down
+    return idx  + 1*dim*dim
+  end  
+  Inside = InsideQuad(P0,P112,P212,P222,P122)
+# @show "Inside3 vor",Inside,P0  
+  if Inside
+#   @show "Inside3"  
+#   @show P0  
+    PInter = Intersection(P0,P112,SVector{3}([0.0, 0.0, 1.0]))
+    p1 = round(Int,(P222[1] - PInter[1])  * dim / 2)
+    p2 = round(Int,(P222[2] - PInter[2])  * dim / 2)
+    idx = hilbert2d_c2i(lev, p1, p2, tab)
+    if idx < 1 || idx >dim*dim
+      @show "Inside3",idx  
+    end  
+#   right top left
+    return idx  + 2*dim*dim
+  end  
+  Inside = InsideQuad(P0,P121,P111,P112,P122)
+  if Inside
+#   @show "Inside4"  
+#   @show P0  
+    PInter = Intersection(P0,P121,SVector{3}([-1.0, 0.0, 0.0]))
+    p1 = round(Int,(P122[3] - PInter[3])  * dim / 2)
+    p2 = round(Int,(P122[2] - PInter[2])  * dim / 2)
+    idx = hilbert2d_c2i(lev, p1, p2, tab)
+    if idx < 1 || idx >dim*dim
+      @show "Inside4",idx  
+    end  
+    return idx  + 3*dim*dim
+#   right top down
+  end  
+  Inside = InsideQuad(P0,P111,P121,P221,P211)
+  if Inside
+#   @show "Inside5"  
+#   @show P0  
+    PInter = Intersection(P0,P111,SVector{3}([0.0, 0.0, -1.0]))
+    p1 = round(Int,(PInter[1] - P111[1])  * dim / 2)
+    p2 = round(Int,(PInter[2] - P111[2])  * dim / 2)
+    idx = hilbert2d_c2i(lev, p1, p2, tab)
+    if idx < 1 || idx >dim*dim
+      @show "Inside5",idx  
+    end  
+    return idx  + 4*dim*dim
+#   left bottom up
+  end  
+  Inside = InsideQuad(P0,P221,P121,P122,P222)
+  if Inside
+#   @show "Inside6"  
+#   @show P0  
+    PInter = Intersection(P0,P221,SVector{3}([0.0, 1.0, 0.0]))
+#   @show (P221[1] - PInter[1])  * dim,(PInter[3] - P221[3])  * dim
+#   @show (P221[1] - PInter[1]),(PInter[3] - P221[3]) 
+    p1 = round(Int,(P221[1] - PInter[1])  * dim / 2)
+    p2 = round(Int,(PInter[3] - P221[3])  * dim / 2)
+    idx = hilbert2d_c2i(lev, p1, p2, tab)
+    if idx < 1 || idx >dim*dim
+      @show "Inside6",idx  
+    end  
+    return idx  + 5*dim*dim
+#   left bottom up
+  end  
+end
 function HilbertFaceSphere!(Grid,P0Sph,P1Sph)
-  hilbert_table = InitHilbert()
-  lev = 12
+# hilbert_table = InitHilbert3()
+  hilbert_table2 = InitHilbert2()
+  lev = 2
   FaceOrder = zeros(Int,Grid.NumFaces)
   PointSph = zeros(3)
   for iF = 1 : Grid.NumFaces
     Point = Grid.Faces[iF].Mid
-    (PointSph[1],PointSph[2],PointSph[3])=CGDycore.cart2sphere(Point.x,Point.y,Point.z)
-    FaceOrder[iF] = HilbertOrderXY(PointSph,P0Sph,P1Sph,lev,hilbert_table)
+    PointN = SVector{3}([Point.x, Point.y, Point.z] / norm([Point.x, Point.y, Point.z]))
+#   Panel = PanelNumber(PointN)
+    (PointSph[1],PointSph[2],PointSph[3])=cart2sphere(Point.x,Point.y,Point.z)
+#   FaceOrder[iF] = HilbertOrder3XY(PointSph,P0Sph,P1Sph,lev,hilbert_table)
+    FaceOrder[iF] = HilbertOrder2XY(PointSph,P0Sph,P1Sph,lev,hilbert_table2)
+    FaceOrder[iF] = PanelNumber(PointN,lev,hilbert_table2)
   end
+# @show FaceOrder[1:150],maximum(FaceOrder),minimum(FaceOrder) 
   p = sortperm(FaceOrder)
+# @show p[1:150],maximum(p),minimum(p)
   permute!(Grid.Faces,p)
   for iF = 1 : Grid.NumFaces
     FaceOrder[Grid.Faces[iF].F] = iF

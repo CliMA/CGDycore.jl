@@ -201,11 +201,10 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       @views Interpolate!(Tr2Cell,U[:,:,Tr2Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["Tr2", VTKCellData()] = Tr2Cell
     elseif str == "Vort"
-      RhoPos = Global.Model.RhoPos
-      TempCell = zeros(nz,NG)
+      uPos = Global.Model.uPos
+      vPos = Global.Model.vPos
       VortCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views FVort2Vec!(TempCell,U,CG,Global);
-      Interpolate!(VortCell,TempCell,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      InterpolateVort!(VortCell,U[:,:,uPos:vPos],vtkInter,OrdPrint,CG,Global)
       vtk["Vort", VTKCellData()] = VortCell
     end   
   end   
@@ -293,6 +292,40 @@ function InterpolateTh!(cCell,Pres,Rho,Inter,OrdPoly,OrdPrint,Glob,NF,nz,Phys)
   end
 end
 
+function InterpolateVort!(cCell,U,Inter,OrdPrint,CG,Global)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  v1CG = Global.Cache.v1CG
+  v2CG = Global.Cache.v2CG
+  VortCG = Global.Cache.KE
+  OP = CG.OrdPoly + 1
+  NF = Global.Grid.NumFaces
+  nz = Global.Grid.nz
+  @inbounds for iF=1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+          v1CG[iP,jP,iz] = U[iz,ind,1]
+            v2CG[iP,jP,iz] = U[iz,ind,2]
+        end
+      end
+    end
+    FVort2VecDSS!(VortCG,v1CG,v2CG,CG,Global,iF)
+    @inbounds for iz=1:nz
+      @. cc = 0.0
+      @inbounds for j=1:OP
+        @inbounds for i=1:OP
+          ind = CG.Glob[i,j,iF]  
+          @views @. cc = cc + Inter[:,:,i,j]*VortCG[i,j,iz]
+        end
+      end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
 function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Global)
   icCell  = 1
   cc=zeros(OrdPrint,OrdPrint)
@@ -306,7 +339,7 @@ function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Global)
   NF = Global.Grid.NumFaces
   zP = Global.Metric.zP
   if Global.Model.Thermo == "Energy"
-    for iF=1:NF
+    @inbounds for iF=1:NF
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
