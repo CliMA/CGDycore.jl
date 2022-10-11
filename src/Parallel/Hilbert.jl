@@ -206,20 +206,21 @@ end
 
 function InsideQuad(P0,P1,P2,P3,P4)
 
+  eps = -1.0e-12
   d1 = det3(P0,P1,P2)
-  if d1 < 0
+  if d1 < eps
     return false  
   end  
   d2 = det3(P0,P2,P3)
-  if d2 < 0
+  if d2 < eps
     return false  
   end  
   d3 = det3(P0,P3,P4)
-  if d3 < 0
+  if d3 < eps
     return false  
   end  
   d4 = det3(P0,P4,P1)
-  if d4 < 0
+  if d4 < eps
     return false  
   end  
   return true
@@ -244,115 +245,72 @@ function PanelNumber(P0,lev,tab)
 
   Inside = InsideQuad(P0,P111,P211,P212,P112)
   if Inside
-#   @show "Inside1"  
-#   @show P0  
     SVector{3}([0.0, -1.0, 0.0])
     PInter = Intersection(P0,P111,SVector{3}([0.0, -1.0, 0.0]))
 #   left top down
     p1 = round(Int,(PInter[1] - P112[1])  * dim / 2)
     p2 = round(Int,(P112[3] - PInter[3])  * dim / 2)
     idx = hilbert2d_c2i(lev, p1, p2, tab)
-#   @show P0
-#   @show PInter
-#   @show P112
-#   @show "Inside1" p1,p2,idx
-    if idx < 1 || idx >dim*dim
-      @show "Inside1",idx  
-    end  
     return idx
   end  
   Inside = InsideQuad(P0,P211,P221,P222,P212)
   if Inside
-#   @show "Inside2"  
-#   @show P0  
     PInter = Intersection(P0,P211,SVector{3}([1.0, 0.0, 0.0]))
     p1 = round(Int,(PInter[2] - P212[2])  * dim / 2)
     p2 = round(Int,(P212[3] - PInter[3])  * dim / 2)
     idx = hilbert2d_c2i(lev, p1, p2, tab)
-    if idx < 1 || idx >dim*dim
-      @show "Inside2",idx  
-    end  
 #   left top down
     return idx  + 1*dim*dim
   end  
   Inside = InsideQuad(P0,P112,P212,P222,P122)
-# @show "Inside3 vor",Inside,P0  
   if Inside
-#   @show "Inside3"  
-#   @show P0  
     PInter = Intersection(P0,P112,SVector{3}([0.0, 0.0, 1.0]))
     p1 = round(Int,(P222[1] - PInter[1])  * dim / 2)
     p2 = round(Int,(P222[2] - PInter[2])  * dim / 2)
     idx = hilbert2d_c2i(lev, p1, p2, tab)
-    if idx < 1 || idx >dim*dim
-      @show "Inside3",idx  
-    end  
 #   right top left
     return idx  + 2*dim*dim
   end  
   Inside = InsideQuad(P0,P121,P111,P112,P122)
   if Inside
-#   @show "Inside4"  
-#   @show P0  
     PInter = Intersection(P0,P121,SVector{3}([-1.0, 0.0, 0.0]))
     p1 = round(Int,(P122[3] - PInter[3])  * dim / 2)
     p2 = round(Int,(P122[2] - PInter[2])  * dim / 2)
     idx = hilbert2d_c2i(lev, p1, p2, tab)
-    if idx < 1 || idx >dim*dim
-      @show "Inside4",idx  
-    end  
     return idx  + 3*dim*dim
 #   right top down
   end  
   Inside = InsideQuad(P0,P111,P121,P221,P211)
   if Inside
-#   @show "Inside5"  
-#   @show P0  
     PInter = Intersection(P0,P111,SVector{3}([0.0, 0.0, -1.0]))
-    p1 = round(Int,(PInter[1] - P111[1])  * dim / 2)
-    p2 = round(Int,(PInter[2] - P111[2])  * dim / 2)
+    p1 = round(Int,(PInter[1] - P121[1])  * dim / 2)
+    p2 = round(Int,(P121[2] - PInter[2])  * dim / 2)
     idx = hilbert2d_c2i(lev, p1, p2, tab)
-    if idx < 1 || idx >dim*dim
-      @show "Inside5",idx  
-    end  
     return idx  + 4*dim*dim
 #   left bottom up
   end  
   Inside = InsideQuad(P0,P221,P121,P122,P222)
   if Inside
-#   @show "Inside6"  
-#   @show P0  
     PInter = Intersection(P0,P221,SVector{3}([0.0, 1.0, 0.0]))
-#   @show (P221[1] - PInter[1])  * dim,(PInter[3] - P221[3])  * dim
-#   @show (P221[1] - PInter[1]),(PInter[3] - P221[3]) 
     p1 = round(Int,(P221[1] - PInter[1])  * dim / 2)
     p2 = round(Int,(PInter[3] - P221[3])  * dim / 2)
     idx = hilbert2d_c2i(lev, p1, p2, tab)
-    if idx < 1 || idx >dim*dim
-      @show "Inside6",idx  
-    end  
     return idx  + 5*dim*dim
 #   left bottom up
   end  
 end
-function HilbertFaceSphere!(Grid,P0Sph,P1Sph)
-# hilbert_table = InitHilbert3()
+function HilbertFaceSphere!(Grid)
   hilbert_table2 = InitHilbert2()
-  lev = 2
+  lev = 12
   FaceOrder = zeros(Int,Grid.NumFaces)
   PointSph = zeros(3)
   for iF = 1 : Grid.NumFaces
     Point = Grid.Faces[iF].Mid
     PointN = SVector{3}([Point.x, Point.y, Point.z] / norm([Point.x, Point.y, Point.z]))
-#   Panel = PanelNumber(PointN)
     (PointSph[1],PointSph[2],PointSph[3])=cart2sphere(Point.x,Point.y,Point.z)
-#   FaceOrder[iF] = HilbertOrder3XY(PointSph,P0Sph,P1Sph,lev,hilbert_table)
-    FaceOrder[iF] = HilbertOrder2XY(PointSph,P0Sph,P1Sph,lev,hilbert_table2)
     FaceOrder[iF] = PanelNumber(PointN,lev,hilbert_table2)
   end
-# @show FaceOrder[1:150],maximum(FaceOrder),minimum(FaceOrder) 
   p = sortperm(FaceOrder)
-# @show p[1:150],maximum(p),minimum(p)
   permute!(Grid.Faces,p)
   for iF = 1 : Grid.NumFaces
     FaceOrder[Grid.Faces[iF].F] = iF

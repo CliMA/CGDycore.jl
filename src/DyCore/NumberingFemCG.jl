@@ -86,7 +86,7 @@ end
 
 NumG=NumGlobN+NumGlobE+NumGlobF;
 NumI=NumG;
-Stencil=zeros(Int,Grid.NumFaces,9);
+Stencil=zeros(Int,Grid.NumFaces,12);
 
 for iF=1:Grid.NumFaces
   Stencil[iF,:] .= iF;

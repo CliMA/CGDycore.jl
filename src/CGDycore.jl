@@ -9,6 +9,7 @@ using Dierckx
 using MPI
 using StaticArrays
 using WriteVTK
+using NetCDF
 
 include("Grid/Node.jl")
 include("Grid/Edge.jl")
@@ -34,6 +35,7 @@ include("Grid/vtkWriteHex.jl")
 include("Grid/Connectivity.jl")
 include("Grid/Geometry.jl")
 include("Grid/SubGrid.jl")
+include("Grid/InputGrid.jl")
 
 include("DG/DLagrange.jl")
 include("DG/DerivativeMatrixSingle.jl")

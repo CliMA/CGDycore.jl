@@ -31,7 +31,7 @@ nz = 1
 
 OrdPolyZ=1
 nPanel = 32
-nPanel = 4
+nPanel = 2
 NF = 6 * nPanel * nPanel
 NumV = 5
 NumTr = 0
@@ -68,17 +68,19 @@ Model = CGDycore.Model()
   Model.Thermo = "" #"InternalEnergy" #"" #"TotalEnergy"
 
 # Grid
-H = 2.0
+H = 1000.0
 Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 
 
 Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-P0Sph = [   0.0,-0.5*pi,Phys.RadEarth]
-P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth]
-CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
+Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+
+#Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+
+CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -138,7 +140,7 @@ end
 # Output
   Output.vtkFileName=string("Galewsky_")
   Output.vtk=0
-  Output.Flat=true
+  Output.Flat=false
   Output.nPanel=nPanel
   Output.RadPrint=H
   Output.H=H
