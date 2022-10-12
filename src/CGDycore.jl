@@ -91,6 +91,7 @@ include("IntegrationMethods/SSPRungeKutta.jl")
 
 include("Parallel/Exchange.jl")
 include("Parallel/Hilbert.jl")
+
 include("Model/PhysParameters.jl")
 include("Model/Pressure.jl")
 include("Model/fRho.jl")
@@ -110,12 +111,7 @@ include("Model/fpBGrd.jl")
 include("Model/Energy.jl")
 include("Model/KineticEnergy.jl")
 
-#include("Parallel/Label.jl")
-#include("Parallel/Section.jl")
-#include("Parallel/DM.jl")
-#include("Parallel/GridInternal.jl")
-
-#include("DyCoreStatic/ColumnElement.jl")
+include("Statistics/Averages.jl")
 
 OOP = 5
 
