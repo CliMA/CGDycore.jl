@@ -83,6 +83,7 @@ Model = CGDycore.Model()
   Model.Relax = 1.0/100.0
   Model.Microphysics = true
   Model.RelCloud = 0.001
+  Model.Rain = 0.0
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
   Model.VerticalDiffusion = true
@@ -192,7 +193,6 @@ end
 # Simulation period
   time=[0.0]
   SimDays=1000
-  SimDays=10
   PrintDay=10
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
