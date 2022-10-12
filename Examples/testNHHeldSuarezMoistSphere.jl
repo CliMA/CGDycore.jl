@@ -31,6 +31,8 @@ Base.@kwdef struct ParamStruct
   TSMin = 271.0
   DeltaLat = 26.0 * pi / 180.0
   Stretch = true
+  uMax = 0.0
+  vMax = 0.0
 end
 
 MPI.Init()
@@ -78,8 +80,9 @@ Model = CGDycore.Model()
   Model.Upwind = true
   Model.Damping = false
   Model.StrideDamp=20000.0
-  Model.Microphysics = true
   Model.Relax = 1.0/100.0
+  Model.Microphysics = true
+  Model.RelCloud = 0.001
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
   Model.VerticalDiffusion = true
@@ -96,9 +99,7 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-P0Sph = [   0.0,-0.5*pi,Phys.RadEarth]
-P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth]
-CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
+CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -175,7 +176,7 @@ end
   IntMethod="LinIMEX"
   IntMethod="IMEX"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 400
+    dtau = 300
   else
     dtau=3
   end
@@ -191,6 +192,7 @@ end
 # Simulation period
   time=[0.0]
   SimDays=1000
+  SimDays=10
   PrintDay=10
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
@@ -240,6 +242,9 @@ end
 # Print initial conditions
   @show "Print initial conditions"
   CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+# Statistics
+  UAver = similar(U)
+  @. UAver = 0.0
 
   @show "Choose integration method"
   if IntMethod == "Rosenbrock"
@@ -308,6 +313,7 @@ end
             CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
+        CGDycore.AverageInTime!(UAver,U,i)
         percent = i/nIter*100
         @info "Iteration: $i took $Δt, $percent% complete"
       end
@@ -330,3 +336,7 @@ end
   else
     error("Bad IntMethod")
   end
+  Output.vtkFileName=string("HeldSuarezMoistAver_")
+  Output.vtk=0
+  CGDycore.unstructured_vtkSphere(UAver,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
+

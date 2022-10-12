@@ -31,7 +31,6 @@ nz = 1
 
 OrdPolyZ=1
 nPanel = 32
-nPanel = 2
 NF = 6 * nPanel * nPanel
 NumV = 5
 NumTr = 0
@@ -75,10 +74,10 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
-  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+#Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+#  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
-#Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
 CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
@@ -133,8 +132,12 @@ end
 # Output partition  
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
+  Output.Flat = false
+  Output.RadPrint=H
+  Output.H=H
   vtkCachePart = CGDycore.vtkInit(1,CGDycore.TransSphereX,CG,Global)
   Global.Grid.nz = nzTemp
+  Output.Flat = false
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
 # Output
