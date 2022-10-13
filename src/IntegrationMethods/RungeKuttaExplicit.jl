@@ -66,7 +66,7 @@ function RungeKuttaExplicitLS!(time,V,dt,Fcn,CG,Global,Param)
   @. Vn = V
   @inbounds for iStage=1:RK.nStage-1
     Global.Model.Param.time = time + RK.cRKE[iStage] * dt
-    @time Fcn(f,V,CG,Global,Param);
+    Fcn(f,V,CG,Global,Param);
     @. V = Vn + dt * RK.ARKE[iStage+1,iStage] * f
   end
   Fcn(f,V,CG,Global);

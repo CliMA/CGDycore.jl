@@ -357,7 +357,7 @@ function ExchangeData3DSend(U,p,Exchange)
       @inbounds for Ind in IndSendBuffer[iP]
         i += 1
         @views @. SendBuffer3[iP][:,i,1:nT] = U[:,Ind,:]
-        @views @. SendBuffer3[iP][:,i,nT + 1] = p[:,Ind,:]
+        @views @. SendBuffer3[iP][:,i,nT + 1] = p[:,Ind]
       end
     end
 #   rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
