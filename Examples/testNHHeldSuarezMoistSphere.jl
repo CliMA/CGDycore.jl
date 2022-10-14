@@ -322,7 +322,7 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global)
+          CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global)
 
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt
