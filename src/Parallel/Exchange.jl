@@ -379,6 +379,10 @@ function ExchangeData3DSend(U,p,Exchange)
       tag = iP + ProcNumber*Proc
       i += 1
       sreq[i] = MPI.Isend(SendBuffer3[iP], iP - 1, tag, MPI.COMM_WORLD)
+#     count = length(SendBuffer3[iP][:,:,:])
+#     datatype = Float64
+#     dest = iP - 1
+#     @views API.MPI_Isend(SendBuffer3[iP][:,:,:], count, datatype, dest, tag, MPI.COMM_WORLD, sreq[i])
     end
   end
 end  

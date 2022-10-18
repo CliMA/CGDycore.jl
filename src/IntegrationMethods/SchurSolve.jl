@@ -56,57 +56,114 @@ function SchurSolve!(k,v,J,fac,Global)
   JThW=J.JThW
   JTrW=J.JTrW
   JWW=J.JWW
+  NumV = Global.Model.NumV
   if size(k,3) > Global.Model.NumV
     NumTr = Global.Model.NumTr
   else
     NumTr = 0
   end  
 
-  @inbounds for in2=1:n2
-    @views rRho=v[:,in2,1];
-    @views rTh=v[:,in2,5];
-    @views rw=v[:,in2,4];
-    @views sw=k[:,in2,4];
-    invfac=1/fac;
-    invfac2=invfac/fac;
-    if Global.Model.Damping
-      if J.CompTri
-        @views tri[1,:,in2] .= 0
-        @views tri[2,:,in2] .= invfac2  .- invfac .* JWW[1,:,in2]
-        @views tri[3,:,in2] .= 0
-        @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
-        @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
+  if Global.Model.Equation == "Compressible"
+    @inbounds for in2=1:n2
+      @views rRho=v[:,in2,1];
+      @views rTh=v[:,in2,5];
+      @views rw=v[:,in2,4];
+      @views sw=k[:,in2,4];
+      invfac=1/fac;
+      invfac2=invfac/fac;
+      if Global.Model.Damping
+        if J.CompTri
+          @views tri[1,:,in2] .= 0
+          @views tri[2,:,in2] .= invfac2  .- invfac .* JWW[1,:,in2]
+          @views tri[3,:,in2] .= 0
+          @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
+          @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
+        end
+        rw .= invfac .* rw
+        @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
+        @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
+        @views triSolve!(sw,tri[:,:,in2],rw)
+      else
+        if J.CompTri  
+          @views tri[1,:,in2] .= 0
+          @views tri[2,:,in2] .= invfac2   
+          @views tri[3,:,in2] .= 0
+          @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
+          @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
+        end
+        rw .= invfac .* rw
+        @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
+        @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
+        @views triSolve!(sw,tri[:,:,in2],rw)
       end
-      rw .= invfac .* rw
-      @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
-      @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
-      @views triSolve!(sw,tri[:,:,in2],rw)
-    else
-      if J.CompTri  
-        @views tri[1,:,in2] .= 0
-        @views tri[2,:,in2] .= invfac2   
-        @views tri[3,:,in2] .= 0
-        @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
-        @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
-      end
-      rw .= invfac .* rw
-      @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
-      @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
-      @views triSolve!(sw,tri[:,:,in2],rw)
-    end
-    @views mulbiLv!(rRho,JRhoW[:,:,in2],sw)
-    @views mulbiLv!(rTh,JThW[:,:,in2],sw)
+      @views mulbiLv!(rRho,JRhoW[:,:,in2],sw)
+      @views mulbiLv!(rTh,JThW[:,:,in2],sw)
 
-    @views k[:,in2,1] .= fac .* rRho
-    @views k[:,in2,2:3] .= fac .* v[:,in2,2:3];
-    @views k[:,in2,5] .= fac .* rTh
-    @inbounds for iT = 1 : NumTr
-      @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
-      @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
-    end  
-    if Global.Model.Damping
-      @views @. sw = sw / (1.0 - invfac * JWW[1,:,in2])   
-    end  
+      @views k[:,in2,1] .= fac .* rRho
+      @views k[:,in2,2:3] .= fac .* v[:,in2,2:3];
+      @views k[:,in2,5] .= fac .* rTh
+      @inbounds for iT = 1 : NumTr
+        @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
+        @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
+      end  
+      if Global.Model.Damping
+        @views @. sw = sw / (1.0 - invfac * JWW[1,:,in2])   
+      end  
+    end
+  elseif Global.Model.Equation == "CompressibleMoist"
+    RhoVPos = Global.Model.RhoVPos
+    JWRhoV=J.JWRhoV
+    @inbounds for in2=1:n2
+      @views rRho=v[:,in2,1];
+      @views rTh=v[:,in2,5];
+      @views rRhoV=v[:,in2,NumV + RhoVPos];
+      @views rw=v[:,in2,4];
+      @views sw=k[:,in2,4];
+      invfac=1/fac;
+      invfac2=invfac/fac;
+      if Global.Model.Damping
+        if J.CompTri
+          @views tri[1,:,in2] .= 0
+          @views tri[2,:,in2] .= invfac2  .- invfac .* JWW[1,:,in2]
+          @views tri[3,:,in2] .= 0
+          @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
+          @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
+          @views mulUL!(tri[:,:,in2],JWRhoV[:,:,in2],JTrW[:,:,in2,NumV + RhoVPos])
+        end
+        rw .= invfac .* rw
+        @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
+        @views mulbiUv!(rw,JWRhoV[:,:,in2],rRhoV)
+        @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
+        @views triSolve!(sw,tri[:,:,in2],rw)
+      else
+        if J.CompTri  
+          @views tri[1,:,in2] .= 0
+          @views tri[2,:,in2] .= invfac2   
+          @views tri[3,:,in2] .= 0
+          @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
+          @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
+          @views mulUL!(tri[:,:,in2],JWRhoV[:,:,in2],JTrW[:,:,in2,RhoVPos])
+        end
+        rw .= invfac .* rw
+        @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
+        @views mulbiUv!(rw,JWRhoV[:,:,in2],rRhoV)
+        @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
+        @views triSolve!(sw,tri[:,:,in2],rw)
+      end
+      @views mulbiLv!(rRho,JRhoW[:,:,in2],sw)
+      @views mulbiLv!(rTh,JThW[:,:,in2],sw)
+
+      @views k[:,in2,1] .= fac .* rRho
+      @views k[:,in2,2:3] .= fac .* v[:,in2,2:3];
+      @views k[:,in2,5] .= fac .* rTh
+      @inbounds for iT = 1 : NumTr
+        @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
+        @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
+      end  
+      if Global.Model.Damping
+        @views @. sw = sw / (1.0 - invfac * JWW[1,:,in2])   
+      end  
+    end
   end
   J.CompTri=false
 end

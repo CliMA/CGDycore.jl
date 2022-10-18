@@ -133,12 +133,46 @@ function dPresdTh!(dpdTh,RhoTh,Rho,Tr,Global)
 end
 
 
+function dPresdRhoV!(dpdRhoV,RhoTh,Rho,Tr,Pres,Global)
+  (; Rd,
+     Cvd,
+     Cpd,
+     Rv,
+     Cvv,
+     Cpv,
+     Cpl,
+     p0,
+     kappa) = Global.Phys
+
+  Equation = Global.Model.Equation
+  if Equation == "Compressible"
+    @. dpdRhoV = 0.0  
+  elseif Equation == "CompressibleMoist"
+    if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+      @. dpdRhoV = Rd / Cvd  
+    else  
+      @views @. dpdRhoV = dPressureMoistdRhoV(RhoTh,Rho,Tr[:,Global.Model.RhoVPos],
+        Tr[:,Global.Model.RhoCPos],Pres,Rd,Cpd,Rv,Cpv,Cpl,p0)
+    end    
+  end  
+end
+
 function dPressureMoistdTh(RhoTh,Rho,RhoV,RhoC,Rd,Cpd,Rv,Cpv,Cpl,p0)
   RhoD = Rho - RhoV - RhoC
   Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
   Rm  = Rd * RhoD + Rv * RhoV
   kappaM = Rm / Cpml
   dpdTh=Rd*(Rd*RhoTh/p0)^(kappaM/(1-kappaM));
+end
+
+function dPressureMoistdRhoV(RhoTh,Rho,RhoV,RhoC,Pres,Rd,Cpd,Rv,Cpv,Cpl,p0)
+  RhoD = Rho - RhoV - RhoC
+  Rm  = Rd * RhoD + Rv * RhoV
+  Cpml = RhoD * Cpd + RhoV * Cpv + RhoC * Cpl
+  kappaM = Rm / Cpml
+  dpdRhoV=Pres / (1.0 - kappaM)^2 * log(Rd * RhoTh / p0) *
+    ((Rv - Rd) - kappaM * (Cpv - Cpd)) / Cpml 
+
 end
 
 

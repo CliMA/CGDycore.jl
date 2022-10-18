@@ -2,6 +2,7 @@ mutable struct JStruct
     JRhoW::Array{Float64, 3}
     JWTh::Array{Float64, 3}
     JWRho::Array{Float64, 3}
+    JWRhoV::Array{Float64, 3}
     JThW::Array{Float64, 3}
     JTrW::Array{Float64, 4}
     JWW::Array{Float64, 3}
@@ -18,6 +19,7 @@ function JStruct()
   JRhoW=zeros(0,0,0)
   JWTh=zeros(0,0,0)
   JWRho=zeros(0,0,0)
+  JWRhoV=zeros(0,0,0)
   JThW=zeros(0,0,0)
   JTrW=zeros(0,0,0,0)
   JWW=zeros(0,0,0)
@@ -32,6 +34,7 @@ function JStruct()
     JRhoW,
     JWTh,
     JWRho,
+    JWRhoV,
     JThW,
     JTrW,
     JWW,
@@ -49,6 +52,7 @@ function JStruct(NumG,nz,NumTr)
   JRhoW=zeros(2,nz,NumG)
   JWTh=zeros(2,nz,NumG)
   JWRho=zeros(2,nz,NumG)
+  JWRhoV=zeros(2,nz,NumG)
   JThW=zeros(2,nz,NumG)
   JTrW=zeros(2,nz,NumG,NumTr)
   JWW=zeros(1,nz,NumG)
@@ -63,6 +67,7 @@ function JStruct(NumG,nz,NumTr)
     JRhoW,
     JWTh,
     JWRho,
+    JWRhoV,
     JThW,
     JTrW,
     JWW,
@@ -111,6 +116,12 @@ function JacSchur!(J,U,CG,Global,Param)
     @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
+
+    dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Global);
+    @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
+    @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
+    @views @. J.JWRhoV[1,2:nz,iC] = -Dp[1:nz-1]
+    @views @. J.JWRhoV[2,:,iC] = Dm
 
     @views @. D[1:nz-1] =  0.5 * Global.Phys.Grav
     @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] 
