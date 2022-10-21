@@ -102,7 +102,7 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF)
     @views p = Global.Cache.Pres[:,:,:,iF]
     @inbounds for iz = nz : -1 : 1
       @inbounds for jP = 1 : OP
-        @inbounds for iP = 1 : OP
+        @inbounds @fastmath for iP = 1 : OP
           if p[iP,jP,iz] > p_pbl
             K[iP,jP,iz] = K[iP,jP,1]
           else

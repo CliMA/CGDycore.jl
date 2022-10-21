@@ -71,17 +71,17 @@ vC1 = TCacheC3[Threads.threadid()]
 D1vC1 = TCacheC1[Threads.threadid()]
 D2vC1 = TCacheC2[Threads.threadid()]
 
-  @views @. vCon = v2CG * dXdxIC[:,:,1,1] - v1CG * dXdxIC[:,:,1,2]
+  @views @fastmath @. vCon = v2CG * dXdxIC[:,:,1,1] - v1CG * dXdxIC[:,:,1,2]
   @views mul!(vC1,CG.DS,vCon)
-  @views @. vCon = v2CG * dXdxIC[:,:,2,1] - v1CG * dXdxIC[:,:,2,2]
+  @views @fastmath @. vCon = v2CG * dXdxIC[:,:,2,1] - v1CG * dXdxIC[:,:,2,2]
   @views mul!(DvCon,vCon,CG.DST)
-  @views @. vC1 = vC1 + DvCon
+  @views @fastmath @. vC1 = vC1 + DvCon
 
   @views mul!(D1vC1,CG.DW,vC1)
   @views mul!(D2vC1,vC1,CG.DWT)
-  @views @. Rot2CG = (-dXdxIC[:,:,1,1] * D1vC1 -
+  @views @fastmath @. Rot2CG = (-dXdxIC[:,:,1,1] * D1vC1 -
     dXdxIC[:,:,2,1] * D2vC1) / JC
-  @views @. Rot1CG = (dXdxIC[:,:,1,2] * D1vC1 +
+  @views @fastmath @. Rot1CG = (dXdxIC[:,:,1,2] * D1vC1 +
     dXdxIC[:,:,2,2] * D2vC1) / JC
 
 end

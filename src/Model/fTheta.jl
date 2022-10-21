@@ -284,7 +284,8 @@ function fTheta(x,time,Global,Param)
     zprime = z / Param.H_t 
     tanh_zprime = tanh(zprime)
     Delta_Tv = Param.T_virt_surf - Param.T_min_ref
-    Tv = Param.T_virt_surf - Delta_Tv * tanh_zprime + rand() * 0.1 * (z < 5000)
+#   Tv = Param.T_virt_surf - Delta_Tv * tanh_zprime + rand() * 0.1 * (z < 5000)
+    Tv = Param.T_virt_surf - Delta_Tv * tanh_zprime
     Delta_Tvprime = Delta_Tv / Param.T_virt_surf
     p = -Param.H_t * (zprime + Delta_Tvprime * (log(1 - Delta_Tvprime * tanh_zprime) - log(1 + tanh_zprime) + zprime))
     p /= H_sfc * (1 - Delta_Tvprime^2)

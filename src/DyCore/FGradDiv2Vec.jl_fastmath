@@ -78,9 +78,9 @@ function FGradDiv2VecDSS!(grad1CG,grad2CG,v1CG,v2CG,dXdxIC,JC,CG,ThreadCache,::V
   mul!(D1vC1,CG.DW,vC1)
   mul!(D2vC1,vC1,CG.DWT)
 
-  @views @. grad1CG = (dXdxIC[:,:,1,1] * D1vC1 +
+  @views @. @fastmath grad1CG = (dXdxIC[:,:,1,1] * D1vC1 +
     dXdxIC[:,:,2,1] * D2vC1) / JC
-  @views @. grad2CG = (dXdxIC[:,:,1,2] * D1vC1 +
+  @views @. @fastmath grad2CG = (dXdxIC[:,:,1,2] * D1vC1 +
     dXdxIC[:,:,2,2] * D2vC1) / JC
 end
 

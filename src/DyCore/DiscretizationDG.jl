@@ -1,4 +1,4 @@
-mutable struct CGStruct
+mutable struct DGStruct
     OrdPoly::Int
     OrdPolyZ::Int
     Glob::Array{Int, 3}
@@ -18,7 +18,7 @@ mutable struct CGStruct
     Boundary::Array{Int, 1}
     MasterSlave::Array{Int, 1}
 end
-function CGStruct()
+function DGStruct()
  OrdPoly=0
 OrdPolyZ=0
 Glob=zeros(0,0,0)
@@ -37,7 +37,7 @@ MMass=zeros(0,0)
 MW=zeros(0,0)
 Boundary=zeros(0)
 MasterSlave = zeros(0)
- return CGStruct(
+ return DGStruct(
     OrdPoly,
     OrdPolyZ,
     Glob,
@@ -71,24 +71,24 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   nz=Grid.nz;
   NF=Grid.NumFaces
 
-  CG = CGStruct()
-  CG.OrdPoly=OrdPoly;
-  CG.OrdPolyZ=OrdPolyZ;
+  DG = DGStruct()
+  DG.OrdPoly=OrdPoly;
+  DG.OrdPolyZ=OrdPolyZ;
 
-  (CG.w,CG.xw)=GaussLobattoQuad(CG.OrdPoly);
-  (wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ);
-  (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
-  CG.DST=CG.DS'
-  CG.DWT=CG.DW'
-  (CG.Glob,CG.NumG,CG.NumI,CG.Stencil,CG.MasterSlave) =
-    NumberingFemCG(Grid,OrdPoly);
+  (DG.w,DG.xw)=GaussLobattoQuad(DG.OrdPoly);
+  (wZ,DG.xwZ)=GaussLobattoQuad(DG.OrdPolyZ);
+  (DG.DW,DG.DS)=DerivativeMatrixSingle(DG.OrdPoly);
+  DG.DST=DG.DS'
+  DG.DWT=DG.DW'
+  (DG.Glob,DG.NumG,DG.NumI,DG.Stencil,DG.MasterSlave) =
+    NumberingFemDG(Grid,OrdPoly);
 
 
   dXdxIF = Global.Metric.dXdxIF
   dXdxIC = Global.Metric.dXdxIC
   nS = Global.Metric.nS
-  Global.Metric.dz = zeros(nz,CG.NumG)
-  Global.Metric.zP = zeros(nz,CG.NumG)
+  Global.Metric.dz = zeros(nz,DG.NumG)
+  Global.Metric.zP = zeros(nz,DG.NumG)
   dz = Global.Metric.dz
   zP = Global.Metric.zP
   J = Global.Metric.J;
@@ -102,7 +102,7 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   for iF=1:Grid.NumFaces
     for iz=1:nz
       zI=[Grid.z[iz],Grid.z[iz+1]];
-      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
+      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(DG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
       X[:,:,:,:,iz,iF]=X_Fz;
       J[:,:,:,iz,iF]=J_Fz;
       dXdx[:,:,:,iz,:,:,iF]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
@@ -134,23 +134,23 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
     end
   end
 
-  (CG.M,CG.MW,CG.MMass)=MassCG(CG,Global);
-  Global.latN=zeros(CG.NumG);
+  (DG.M,DG.MW,DG.MMass)=MassDG(DG,Global);
+  Global.latN=zeros(DG.NumG);
   lat = Global.Metric.lat
   latN = Global.latN
-  OP=CG.OrdPoly+1;
+  OP=DG.OrdPoly+1;
   for iF=1:NF
     for jP=1:OP
       for iP=1:OP
-        ind=CG.Glob[iP,jP,iF]
-        latN[ind] = latN[ind] + lat[iP,jP,iF] * JC[iP,jP,1,iF] / CG.M[1,ind]
-        @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF] / CG.M[:,ind]
+        ind=DG.Glob[iP,jP,iF]
+        latN[ind] = latN[ind] + lat[iP,jP,iF] * JC[iP,jP,1,iF] / DG.M[1,ind]
+        @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF] / DG.M[:,ind]
         @inbounds for iz=1:nz
           if Global.Grid.Form == "Sphere"
             r = norm(0.5 .* (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
-            zP[iz,ind] += max(r-Global.Grid.Rad, 0.0) * JC[iP,jP,iz,iF] / CG.M[iz,ind]
+            zP[iz,ind] += max(r-Global.Grid.Rad, 0.0) * JC[iP,jP,iz,iF] / DG.M[iz,ind]
           else
-            zP[iz,ind] += 0.5*(X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])* JC[iP,jP,iz,iF] / CG.M[iz,ind]
+            zP[iz,ind] += 0.5*(X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])* JC[iP,jP,iz,iF] / DG.M[iz,ind]
           end
         end
       end
@@ -166,24 +166,24 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
        Side += 1 
        if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
          if Side == 1
-           for i in CG.Glob[1:OP-1,1,iF]   
-             push!(CG.Boundary,i)
+           for i in DG.Glob[1:OP-1,1,iF]   
+             push!(DG.Boundary,i)
            end
          elseif Side == 2  
-           for i in CG.Glob[OP,1:OP-1,iF]
-             push!(CG.Boundary,i)
+           for i in DG.Glob[OP,1:OP-1,iF]
+             push!(DG.Boundary,i)
            end
          elseif Side == 3  
-           for i in CG.Glob[2:OP,OP,iF]
-             push!(CG.Boundary,i)
+           for i in DG.Glob[2:OP,OP,iF]
+             push!(DG.Boundary,i)
            end
          elseif Side == 4  
-           for i in CG.Glob[1,2:OP,iF]
-             push!(CG.Boundary,i)
+           for i in DG.Glob[1,2:OP,iF]
+             push!(DG.Boundary,i)
            end
          end  
        end  
     end
   end  
-  return (CG,Global)
+  return (DG,Global)
 end

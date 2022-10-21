@@ -18,7 +18,7 @@ mutable struct ExchangeStruct
   rreq::MPI.RequestSet
 end
 
-function InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+function InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
 
   if Parallel
     NumInBoundEdges = 0
@@ -199,6 +199,141 @@ function InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   #sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)]
   rreq = MPI.RequestSet(MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)])
   sreq = MPI.RequestSet(MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)])
+
+  return ExchangeStruct(
+    SendBufferN,
+    RecvBufferN,
+    NeiProcN,
+    Proc,
+    ProcNumber,
+    Parallel,
+    InitSendBuffer,
+    SendBuffer,
+    SendBuffer3,
+    InitRecvBuffer,
+    RecvBuffer,
+    RecvBuffer3,
+    rreq,
+    sreq,
+   )   
+end
+
+function InitExchangeDG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+
+  if Parallel
+    NumInBoundEdges = 0
+    InBoundEdges = zeros(Int,NumInBoundEdges)
+    InBoundEdgesP = zeros(Int,NumInBoundEdges)
+    NumInBoundEdges = 0
+    @inbounds for i = 1:SubGrid.NumEdges
+      if CellToProc[SubGrid.Edges[i].FG[1]] == Proc  
+      else
+        NumInBoundEdges += 1
+        push!(InBoundEdges, i)
+        push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[1]])
+      end  
+      if CellToProc[SubGrid.Edges[i].FG[2]] == Proc  
+      else
+        NumInBoundEdges += 1
+        push!(InBoundEdges, i)
+        push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[1]])
+      end  
+    end
+
+    NeiProcE = unique(InBoundEdgesP)
+    NumNeiProcE = length(NeiProcE)
+    DictE=Dict()
+    @inbounds for iE = 1 : NumInBoundEdges
+      DictE[SubGrid.Edges[InBoundEdges[iE]].EG] = (SubGrid.Edges[InBoundEdges[iE]].E,
+        InBoundEdgesP[iE])
+    end  
+
+    GlobBuffer = Dict()
+    SendBufferE = Dict()
+    @inbounds for iP in eachindex(NeiProcE)
+      LocTemp=zeros(Int,0)  
+      GlobTemp=zeros(Int,0)  
+      @inbounds for iEB = 1 : NumInBoundEdges
+        if InBoundEdgesP[iEB] == NeiProcE[iP]
+          iE = InBoundEdges[iEB] 
+          push!(GlobTemp,SubGrid.Edges[iE].EG)
+          @inbounds for k = 1 : OrdPoly - 1
+            push!(LocTemp,k + SubGrid.NumNodes + (iE - 1)*(OrdPoly + 1))
+          end
+        end  
+      end
+      SendBufferE[NeiProcE[iP]] = LocTemp
+      GlobBuffer[NeiProcE[iP]] = GlobTemp
+    end  
+
+    GlobRecvBuffer = Dict()
+    rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcE .- 1)]
+    @inbounds for iP in eachindex(NeiProcE)
+      GlobRecvBuffer[NeiProcE[iP]] = similar(GlobBuffer[NeiProcE[iP]])
+      tag = Proc + ProcNumber*NeiProcE[iP]
+      rreq[iP] = MPI.Irecv!(GlobRecvBuffer[NeiProcE[iP]], NeiProcE[iP] - 1, tag, MPI.COMM_WORLD)
+    end  
+    sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcE .- 1)]
+    @inbounds for iP in eachindex(NeiProcE)
+      tag = NeiProcE[iP] + ProcNumber*Proc
+      sreq[iP] = MPI.Isend(GlobBuffer[NeiProcE[iP]], NeiProcE[iP] - 1, tag, MPI.COMM_WORLD)
+    end  
+
+    stats = MPI.Waitall!(rreq)
+    stats = MPI.Waitall!(sreq)
+
+    MPI.Barrier(MPI.COMM_WORLD)
+    RecvBufferE = Dict()
+    @inbounds for iP in eachindex(NeiProcE)
+      GlobInd = GlobRecvBuffer[NeiProcE[iP]]  
+      LocTemp=zeros(Int,0)
+      iEB1 = 0
+      @inbounds for iEB = 1 : NumInBoundEdges
+        if InBoundEdgesP[iEB] == NeiProcE[iP]
+          iEB1 += 1  
+          (iE,) = DictE[GlobInd[iEB1]]  
+          @inbounds for k = 1 : OrdPoly - 1
+            push!(LocTemp,k + SubGrid.NumNodes + (iE - 1)*(OrdPoly + 1))
+          end
+        end
+      end
+      RecvBufferE[NeiProcE[iP]] = LocTemp
+    end
+
+    RecvBufferN = Dict()
+    SendBufferN = Dict()
+    @inbounds for iP in eachindex(NeiProcE)
+      RecvBufferN[NeiProcE[iP]] = [RecvBufferE[NeiProcE[iP]]] 
+      SendBufferN[NeiProcE[iP]] = [SendBufferE[NeiProcE[iP]]] 
+    end  
+  else
+    SendBufferN=Dict()  
+    RecvBufferN=Dict()  
+#   NeiProcN=zeros(Int,0)
+  end  
+
+  @show NeiProcE
+  NeiProcN = deepcopy(NeiProcE)
+  InitSendBuffer = true
+  SendBuffer = Dict()
+  SendBuffer3 = Dict{Int,Array{Int,3}}()
+  @inbounds for iP in eachindex(NeiProcN)
+    SendBuffer[iP] = zeros(0)
+    SendBuffer3[iP] = zeros(0,0,0)
+  end
+  InitRecvBuffer = true
+  RecvBuffer = Dict()
+  RecvBuffer3 = Dict{Int,Array{Int,3}}()
+  @inbounds for iP in NeiProcN
+    RecvBuffer[iP] = zeros(0)
+    RecvBuffer3[iP] = zeros(0,0,0)
+  end
+  #rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)]
+  #sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)]
+  rreq = MPI.RequestSet(MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)])
+  sreq = MPI.RequestSet(MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)])
+  @show Proc
+  @show ProcNumber
 
   return ExchangeStruct(
     SendBufferN,

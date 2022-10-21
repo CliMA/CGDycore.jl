@@ -12,7 +12,8 @@ end
 # https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
 fast_pow(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
 
-function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
+function Pressure!(p::AbstractArray{Float64,3},RhoTh::AbstractArray{Float64,3},Rho::AbstractArray{Float64,3},
+  Tr::AbstractArray{Float64,4},KE::AbstractArray{Float64,3},zP::AbstractArray{Float64,3},Global)
   (; Rd,
      Cvd,
      Cpd,
@@ -27,6 +28,9 @@ function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
 
   
   Equation = Global.Model.Equation
+  iE1 = size(p,1)
+  iE2 = size(p,2)
+  iE3 = size(p,3)
   if Equation == "Compressible"
      if Global.Model.Thermo == "TotalEnergy"
        @inbounds for i in eachindex(p)  
@@ -42,26 +46,161 @@ function Pressure!(p,RhoTh,Rho,Tr,KE,zP,Global)
        end  
     end
   elseif Equation == "CompressibleMoist"
-    @views TrRhoV = Tr[size(p)...,Global.Model.RhoVPos]
-    @views TrRhoC = Tr[size(p)...,Global.Model.RhoCPos]
+    @views TrRhoV = Tr[:,:,:,Global.Model.RhoVPos]
+    @views TrRhoC = Tr[:,:,:,Global.Model.RhoCPos]
     if Global.Model.Thermo == "TotalEnergy"
     elseif Global.Model.Thermo == "InternalEnergy"
-      @inbounds for i in eachindex(p)  
-        RhoV = TrRhoV[i]
-        RhoC = TrRhoC[i]
-        RhoD = Rho[i] - RhoV - RhoC
-        p[i] = (Rd * RhoD + Rv * RhoV)/(Cvd * RhoD + Cvv * RhoV + Cpl * RhoC) *
+      @inbounds for i3 = 1 : iE3
+        @inbounds for i2 = 1 : iE2
+          @inbounds for i1 = 1 : iE1
+            RhoV = TrRhoV[i1,i2,i3]
+            RhoC = TrRhoC[i1,i2,i3]
+            RhoD = Rho[i] - RhoV - RhoC
+            p[i1,i2,i3] = (Rd * RhoD + Rv * RhoV)/(Cvd * RhoD + Cvv * RhoV + Cpl * RhoC) *
+              (RhoV - L00 * RhoC)
+          end    
+        end    
+      end    
+    else
+      @inbounds for i3 = 1 : iE3
+        @inbounds for i2 = 1 : iE2
+          @inbounds for i1 = 1 : iE1
+            RhoV = TrRhoV[i1,i2,i3]
+            RhoC = TrRhoC[i1,i2,i3]
+            RhoD = Rho[i1,i2,i3] - RhoV - RhoC
+            Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
+            Rm  = Rd * RhoD + Rv * RhoV
+            kappaM = Rm / Cpml
+            p[i1,i2,i3] = (Rd * RhoTh[i1,i2,i3] / p0^kappaM)^(1.0 / (1.0 - kappaM))
+          end  
+        end  
+      end  
+    end  
+  elseif Equation == "Shallow"
+    @inbounds for i in eachindex(p)  
+      p[i] = 0.5 * Grav * RhoTh[i]^2;
+    end  
+  end
+end
+
+function Pressure!(p::AbstractArray{Float64,2},RhoTh::AbstractArray{Float64,2},Rho::AbstractArray{Float64,2},
+  Tr::AbstractArray{Float64,3},KE::AbstractArray{Float64,2},zP::AbstractArray{Float64,2},Global)
+  (; Rd,
+     Cvd,
+     Cpd,
+     Rv,
+     Cvv,
+     Cpv,
+     Cpl,
+     p0,
+     Grav,
+     L00,
+     kappa) = Global.Phys
+
+  
+  Equation = Global.Model.Equation
+  iE1 = size(p,1)
+  iE2 = size(p,2)
+  if Equation == "Compressible"
+     if Global.Model.Thermo == "TotalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
+       end  
+     elseif Global.Model.Thermo == "InternalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * RhoTh[i] 
+       end  
+     else
+       @inbounds for i in eachindex(p)  
+         p[i] = p0 * fast_pow(Rd * RhoTh[i] / p0, 1.0 / (1.0 - kappa));
+       end  
+    end
+  elseif Equation == "CompressibleMoist"
+    @views TrRhoV = Tr[:,:,Global.Model.RhoVPos]
+    @views TrRhoC = Tr[:,:,Global.Model.RhoCPos]
+    if Global.Model.Thermo == "TotalEnergy"
+    elseif Global.Model.Thermo == "InternalEnergy"
+      @inbounds for i2 = 1 : iE2
+        @inbounds for i1 = 1 : iE1
+          RhoV = TrRhoV[i1,i2]
+          RhoC = TrRhoC[i1,i2]
+          RhoD = Rho[i] - RhoV - RhoC
+          p[i1,i2] = (Rd * RhoD + Rv * RhoV)/(Cvd * RhoD + Cvv * RhoV + Cpl * RhoC) *
+            (RhoV - L00 * RhoC)
+        end    
+      end    
+    else
+      @inbounds for i2 = 1 : iE2
+        @inbounds for i1 = 1 : iE1
+          RhoV = TrRhoV[i1,i2]
+          RhoC = TrRhoC[i1,i2]
+          RhoD = Rho[i1,i2] - RhoV - RhoC
+          Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
+          Rm  = Rd * RhoD + Rv * RhoV
+          kappaM = Rm / Cpml
+          p[i1,i2] = (Rd * RhoTh[i1,i2] / p0^kappaM)^(1.0 / (1.0 - kappaM))
+        end  
+      end  
+    end  
+  elseif Equation == "Shallow"
+    @inbounds for i in eachindex(p)  
+      p[i] = 0.5 * Grav * RhoTh[i]^2;
+    end  
+  end
+end
+
+function Pressure!(p::AbstractArray{Float64,1},RhoTh::AbstractArray{Float64,1},Rho::AbstractArray{Float64,1},
+  Tr::AbstractArray{Float64,2},KE::AbstractArray{Float64,1},zP::AbstractArray{Float64,1},Global)
+  (; Rd,
+     Cvd,
+     Cpd,
+     Rv,
+     Cvv,
+     Cpv,
+     Cpl,
+     p0,
+     Grav,
+     L00,
+     kappa) = Global.Phys
+
+  
+  Equation = Global.Model.Equation
+  iE1 = size(p,1)
+  if Equation == "Compressible"
+     if Global.Model.Thermo == "TotalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
+       end  
+     elseif Global.Model.Thermo == "InternalEnergy"
+       @inbounds for i in eachindex(p)  
+         p[i] = (Rd / Cvd) * RhoTh[i] 
+       end  
+     else
+       @inbounds for i in eachindex(p)  
+         p[i] = p0 * fast_pow(Rd * RhoTh[i] / p0, 1.0 / (1.0 - kappa));
+       end  
+    end
+  elseif Equation == "CompressibleMoist"
+    @views TrRhoV = Tr[:,Global.Model.RhoVPos]
+    @views TrRhoC = Tr[:,Global.Model.RhoCPos]
+    if Global.Model.Thermo == "TotalEnergy"
+    elseif Global.Model.Thermo == "InternalEnergy"
+      @inbounds for i1 = 1 : iE1
+        RhoV = TrRhoV[i1]
+        RhoC = TrRhoC[i1]
+        RhoD = Rho[i1] - RhoV - RhoC
+        p[i1,i2] = (Rd * RhoD + Rv * RhoV)/(Cvd * RhoD + Cvv * RhoV + Cpl * RhoC) *
           (RhoV - L00 * RhoC)
       end    
     else
-      @inbounds for i in eachindex(p)  
-        RhoV = TrRhoV[i]
-        RhoC = TrRhoC[i]
-        RhoD = Rho[i] - RhoV - RhoC
+      @inbounds for i1 = 1 : iE1
+        RhoV = TrRhoV[i1]
+        RhoC = TrRhoC[i1]
+        RhoD = Rho[i1] - RhoV - RhoC
         Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
         Rm  = Rd * RhoD + Rv * RhoV
         kappaM = Rm / Cpml
-        p[i] = (Rd * RhoTh[i] / p0^kappaM)^(1.0 / (1.0 - kappaM))
+        p[i1] = (Rd * RhoTh[i1] / p0^kappaM)^(1.0 / (1.0 - kappaM))
       end  
     end  
   elseif Equation == "Shallow"

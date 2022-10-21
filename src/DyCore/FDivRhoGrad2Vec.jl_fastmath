@@ -117,19 +117,19 @@ D2gradCG = TCacheC2[Threads.threadid()]
 vC1 = TCacheC3[Threads.threadid()]
 vC2 = TCacheC4[Threads.threadid()]
 
-  @. ccCG = cCG / RhoCG
+  @. @fastmath ccCG = cCG / RhoCG
   mul!(D1cCG,CG.DS,ccCG)
   mul!(D2cCG,ccCG,CG.DST)
 
-  @views @. grad1CG = dXdxIC[:,:,1,1] * D1cCG + dXdxIC[:,:,2,1] * D2cCG[:,:]
-  @views @. grad2CG = dXdxIC[:,:,1,2] * D1cCG + dXdxIC[:,:,2,2] * D2cCG[:,:]
+  @views @fastmath @. grad1CG = dXdxIC[:,:,1,1] * D1cCG + dXdxIC[:,:,2,1] * D2cCG[:,:]
+  @views @fastmath @. grad2CG = dXdxIC[:,:,1,2] * D1cCG + dXdxIC[:,:,2,2] * D2cCG[:,:]
 
-  @views @. D1gradCG = dXdxIC[:,:,1,1] * grad1CG + dXdxIC[:,:,1,2] * grad2CG[:,:]
-  @views @. D2gradCG = dXdxIC[:,:,2,1] * grad1CG + dXdxIC[:,:,2,2] * grad2CG[:,:]
+  @views @fastmath @. D1gradCG = dXdxIC[:,:,1,1] * grad1CG + dXdxIC[:,:,1,2] * grad2CG[:,:]
+  @views @fastmath @. D2gradCG = dXdxIC[:,:,2,1] * grad1CG + dXdxIC[:,:,2,2] * grad2CG[:,:]
 
   mul!(vC1,CG.DW,D1gradCG)
   mul!(vC2,D2gradCG,CG.DWT)
-  @. divCG = (vC1 + vC2) / JC
+  @fastmath @. divCG = (vC1 + vC2) / JC
 end
 
 

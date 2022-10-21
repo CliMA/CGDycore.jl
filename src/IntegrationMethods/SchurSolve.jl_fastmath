@@ -3,12 +3,12 @@ function triSolve!(x,tri,b)
 # b is destroyed after the elemination
   n = size(tri,2)
   x[1] = tri[2,1]
-  @inbounds for i=1:n-1
+  @inbounds @fastmath for i=1:n-1
     x[i+1] = tri[2,i+1]-tri[3,i]/x[i]*tri[1,i+1]  
     b[i+1] = b[i+1]-tri[3,i]/x[i]*b[i]  
   end
   x[n] = b[n]/x[n]
-  @inbounds for i=n-1:-1:1
+  @inbounds @fastmath for i=n-1:-1:1
     x[i]=(b[i] - tri[1,i+1]*x[i+1])/x[i]  
   end
 end
@@ -17,7 +17,7 @@ function mulUL!(tri,biU,biL)
   n = size(biL,2)
   tri[2,1] = tri[2,1] - biU[2,1]*biL[1,1] - biU[1,2]*biL[2,1]
   tri[3,1] = tri[3,1] - biU[2,2]*biL[2,1]
-  @inbounds for i=2:n-1
+  @inbounds @fastmath for i=2:n-1
     tri[1,i] = tri[1,i] - biU[1,i]*biL[1,i]
     tri[2,i] = tri[2,i] - biU[2,i]*biL[1,i] - biU[1,i+1]*biL[2,i]
     tri[3,i] = tri[3,i] - biU[2,i+1]*biL[2,i]
@@ -29,7 +29,7 @@ end
 
 function mulbiUv!(u,biU,v)
   n = size(biU,2)
-  @inbounds for i=1:n-1
+  @inbounds @fastmath for i=1:n-1
     u[i] = u[i] + biU[2,i]*v[i] + biU[1,i+1]*v[i+1]
   end
   u[n] = u[n] + biU[2,n]*v[n]
@@ -38,7 +38,7 @@ end
 function mulbiLv!(u,biL,v)
   n = size(biL,2)
   u[1] = u[1] + biL[1,1]*v[1]
-  @inbounds for i=2:n
+  @inbounds @fastmath for i=2:n
     u[i] = u[i] + biL[2,i-1]*v[i-1] + biL[1,i]*v[i]
   end
 end
