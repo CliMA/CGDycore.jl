@@ -332,8 +332,21 @@ function InitExchangeDG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   #sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)]
   rreq = MPI.RequestSet(MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)])
   sreq = MPI.RequestSet(MPI.Request[MPI.REQUEST_NULL for _ in (NeiProcN .- 1)])
-  @show Proc
-  @show ProcNumber
+
+    @show SendBufferN
+    @show RecvBufferN
+    @show NeiProcN
+    @show Proc
+    @show ProcNumber
+    @show Parallel
+    @show InitSendBuffer
+    @show SendBuffer
+    @show SendBuffer3
+    @show InitRecvBuffer
+    @show RecvBuffer
+    @show RecvBuffer3
+    println("rreq",rreq)
+    println("sreq",sreq)
 
   return ExchangeStruct(
     SendBufferN,

@@ -133,7 +133,7 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
      L = L00 - (Cpl - Cpv) * T
      if Global.Model.Thermo == "InternalEnergy"
      else    
-       FRhoTh = RhoTh*(-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) *(Rv / Rm  - Cpv / Cpml) + Rv / Rm)*FRhoV
+       FRhoTh = RhoTh*(Rv / Rm - L/(Cpml*T) - log(p / p0) * (Rv / Rm  + (Cpl- Cpv) / Cpml))*FRhoV
        F[i,ThPos] += FRhoTh   
      end  
      FRho = FRhoV

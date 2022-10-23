@@ -30,7 +30,7 @@ OrdPoly = 4
 nz = 1
 
 OrdPolyZ=1
-nPanel = 32
+nPanel = 4 #32
 NF = 6 * nPanel * nPanel
 NumV = 5
 NumTr = 0
