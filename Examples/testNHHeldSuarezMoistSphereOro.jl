@@ -93,7 +93,7 @@ Model = CGDycore.Model()
 # Grid
 H = 30000.0
 #H = 45000.0
-Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
+Topography=(TopoS="EarthOrography",H=H,Rad=Phys.RadEarth)
 
 
 
@@ -111,6 +111,7 @@ if Parallel
   else
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end
+  zS = CGDycore.EarthTopography(OrdPoly,SubGrid)
   Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
@@ -127,7 +128,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
   Model.HyperVisc=true
   Model.HyperDCurl=7.e15
   Model.HyperDGrad=7.e15
@@ -151,7 +152,7 @@ end
   end   
 
 # Output
-  Output.vtkFileName=string("HeldSuarezMoist_")
+  Output.vtkFileName=string("HeldSuarezMoistOro_")
   Output.vtk=0
   Output.Flat=true
   Output.nPanel=nPanel

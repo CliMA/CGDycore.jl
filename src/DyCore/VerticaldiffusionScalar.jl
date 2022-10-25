@@ -67,7 +67,7 @@ function BoundaryFluxHeldSuarez(Th,Rho,RhoV,TSurf,p,dXdxIF,CH,CE,uStar, Rd, Cpd,
   FRho = LatFlux
   FRhoV = LatFlux
   PrePi=(p / p0)^(Rm / Cpml)
-  FTh = Th / (SensFlux / T + ((Rv / Rm) - 1.0 / Rho - log(PrePi)*(Rv / Rm - Cpv / Cpml)) *  LatFlux)  
+  FTh = Th * (SensFlux / T + ((Rv / Rm) - 1.0 / Rho - log(PrePi)*(Rv / Rm - Cpv / Cpml)) *  LatFlux)  
   return (FTh,FRhoV,FRhoV)
 end
 
