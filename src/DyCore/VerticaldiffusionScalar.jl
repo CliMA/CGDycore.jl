@@ -1,5 +1,7 @@
 function VerticalDiffusionScalar!(Fc,c,Rho,K,CG,Global,iF)
 
+#
+
 nz = Global.Grid.nz
 gradqCG = Global.Cache.CacheC1
 @views dXdxIF33 = Global.Metric.dXdxIF[:,:,:,3,3,iF] 
