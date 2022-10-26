@@ -200,6 +200,10 @@ function Pressure!(p::AbstractArray{Float64,1},RhoTh::AbstractArray{Float64,1},R
         Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
         Rm  = Rd * RhoD + Rv * RhoV
         kappaM = Rm / Cpml
+        if RhoTh[i1] < 0.0
+          @show i1,RhoTh[i1]
+          @show zP
+        end  
         p[i1] = (Rd * RhoTh[i1] / p0^kappaM)^(1.0 / (1.0 - kappaM))
       end  
     end  

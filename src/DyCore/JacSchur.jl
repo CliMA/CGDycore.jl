@@ -117,11 +117,13 @@ function JacSchur!(J,U,CG,Global,Param)
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
 
-    dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Global);
-    @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
-    @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
-    @views @. J.JWRhoV[1,2:nz,iC] = -Dp[1:nz-1]
-    @views @. J.JWRhoV[2,:,iC] = Dm
+    if Global.Model.Equation == "CompressibleMoist"
+      dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Global);
+      @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
+      @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
+      @views @. J.JWRhoV[1,2:nz,iC] = -Dp[1:nz-1]
+      @views @. J.JWRhoV[2,:,iC] = Dm
+    end  
 
     @views @. D[1:nz-1] =  0.5 * Global.Phys.Grav
     @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] 
