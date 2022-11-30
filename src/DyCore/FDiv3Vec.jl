@@ -1,10 +1,10 @@
 function FDiv3LowOrderVec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
 @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
-OP=CG.OrdPoly+1;
-NF=Global.Grid.NumFaces;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+OP=CG.OrdPoly+1
+NF=Global.Grid.NumFaces
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 # Contravariant components
 
 vCon1 = TCacheC1[Threads.threadid()]
@@ -38,13 +38,56 @@ end
 end
 end
 
+function AdvecVertVec!(f,RhoCG,v1CG,v2CG,v3CG,Omega,CG,Global,iF)
+  nz=Global.Grid.nz
+  @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+  @views JC = Global.Metric.JC[:,:,:,iF]
+  @inbounds for iz=1:nz-1
+    @views @. Omega[:,:,iz+1] = (v1CG[:,:,iz]*dXdxIC[:,:,iz,3,1] + v1CG[:,:,iz+1]*dXdxIC[:,:,iz+1,3,1] +
+                               v2CG[:,:,iz]*dXdxIC[:,:,iz,3,2] + v2CG[:,:,iz+1]*dXdxIC[:,:,iz+1,3,2] +
+       v3CG[:,:,iz+1] ) /  (dXdxIC[:,:,iz,3,3] + dXdxIC[:,:,iz,3,3]) * 
+       (RhoCG[:,:,iz] * JC[:,:,iz] + RhoCG[:,:,iz+1] * JC[:,:,iz+1]) / (JC[:,:,iz] + JC[:,:,iz+1])
+  end   
+  @views @. dz = JC[:,:,:,iF] / dXdxIC[:,:,:,3,3,iF]
+  iz = 1
+  @views @. f[:,:,iz,1] += JC[:,:,iz]/RhoCG[:,:,iz] *
+    ((Omega[:,:,iz+1]*(v1CG[:,:,iz+1]+v1CG[:,:,iz]) -
+    Omega[:,:,iz]*(v1CG[:,:,iz]+v1CG[:,:,iz])) /(2.0*dz[:,:,iz]) -
+    v1CG[:,:,iz]*(Omega[:,:,iz+1]-Omega[:,:,iz]) / dz[:,:,iz]);
+  @views @. f[:,:,iz,2] += JC[:,:,iz]/RhoCG[:,:,iz] *
+    ((Omega[:,:,iz+1]*(v2CG[:,:,iz+1]+v2CG[:,:,iz]) -
+    Omega[:,:,iz]*(v2CG[:,:,iz]+v2CG[:,:,iz])) /(2.0*dz[:,:,iz]) -
+    v1CG[:,:,iz]*(Omega[:,:,iz+1]-Omega[:,:,iz]) / dz[:,:,iz]);
+  for iz = 2 : nz-1
+    @views @. f[:,:,iz,1] += JC[:,:,iz]/RhoCG[:,:,iz] *
+      ((Omega[:,:,iz+1]*(v1CG[:,:,iz+1]+v1CG[:,:,iz]) -
+      Omega[:,:,iz]*(v1CG[:,:,iz]+v1CG[:,:,iz-1])) /(2.0*dz[:,:,iz]) -
+      v1CG[:,:,iz]*(Omega[:,:,iz+1]-Omega[:,:,iz]) / dz[:,:,iz]);
+    @views @. f[:,:,iz,2] += JC[:,:,iz]/RhoCG[:,:,iz] *
+      ((Omega[:,:,iz+1]*(v2CG[:,:,iz+1]+v2CG[:,:,iz]) -
+      Omega[:,:,iz]*(v2CG[:,:,iz]+v2CG[:,:,iz-1])) /(2.0*dz[:,:,iz]) -
+      v2CG[:,:,iz]*(Omega[:,:,iz+1]-Omega[:,:,iz]) / dz[:,:,iz]);
+  end
+  iz = nz
+  @views @. f[:,:,iz,1] += JC[:,:,iz]/RhoCG[:,:,iz] *
+    ((Omega[:,:,iz+1]*(v1CG[:,:,iz]+v1CG[:,:,iz]) -
+    Omega[:,:,iz]*(v1CG[:,:,iz]+v1CG[:,:,iz-1])) /(2.0*dz[:,:,iz]) -
+    v1CG[:,:,iz]*(Omega[:,:,iz+1]-Omega[:,:,iz]) / dz[:,:,iz]);
+  @views @. f[:,:,iz,2] += JC[:,:,iz]/RhoCG[:,:,iz] *
+    ((Omega[:,:,iz+1]*(v2CG[:,:,iz]+v2CG[:,:,iz]) -
+    Omega[:,:,iz]*(v2CG[:,:,iz]+v2CG[:,:,iz-1])) /(2.0*dz[:,:,iz]) -
+    v2CG[:,:,iz]*(Omega[:,:,iz+1]-Omega[:,:,iz]) / dz[:,:,iz]);
+end  
+
+
 function FDiv3Vec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
 @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
-OP=CG.OrdPoly+1;
-NF=Global.Grid.NumFaces;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+OP=CG.OrdPoly+1
+NF=Global.Grid.NumFaces
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+@views JC = Global.Metric.JC[:,:,:,iF]
 # Contravariant components
 
 vCon1 = TCacheC1[Threads.threadid()]
@@ -66,7 +109,8 @@ end
   @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
     (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
-  @views @. vConV = 0.5*(cCG[:,:,iz] + cCG[:,:,iz+1]) * vConV
+# @views @. vConV = 0.5*(cCG[:,:,iz] + cCG[:,:,iz+1]) * vConV
+  @views @. vConV *= (cCG[:,:,iz] * JC[:,:,iz] + cCG[:,:,iz+1] * JC[:,:,iz+1]) / (JC[:,:,iz] + JC[:,:,iz+1]) 
   @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
   @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
 end
@@ -74,11 +118,11 @@ end
 
 function FDiv3ExpVec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
 @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
-OP=CG.OrdPoly+1;
-NF=Global.Grid.NumFaces;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+OP=CG.OrdPoly+1
+NF=Global.Grid.NumFaces
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 # Contravariant components
 
 vCon1 = TCacheC1[Threads.threadid()]
@@ -108,11 +152,11 @@ end
 
 function FDiv3ImpVec!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
 @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
-OP=CG.OrdPoly+1;
-NF=Global.Grid.NumFaces;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+OP=CG.OrdPoly+1
+NF=Global.Grid.NumFaces
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 # Contravariant components
 
 vCon1 = TCacheC1[Threads.threadid()]
@@ -144,11 +188,11 @@ end
 
 function SourceIntEnergy!(F,cCG,v1CG,v2CG,v3CG,CG,Global,iF)
 @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = Global.ThreadCache
-OP=CG.OrdPoly+1;
-NF=Global.Grid.NumFaces;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
+OP=CG.OrdPoly+1
+NF=Global.Grid.NumFaces
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
 # Contravariant components
 
 vCon1 = TCacheC1[Threads.threadid()]
@@ -176,11 +220,11 @@ end
 end
 
 function FDiv3UpwindVec!(F,cCG,v1CG,v2CG,v3CG,RhoCG,CG,Global,iF)
-OP=CG.OrdPoly+1;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
-@views JC = Global.Metric.JC[:,:,:,iF];
+OP=CG.OrdPoly+1
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+@views JC = Global.Metric.JC[:,:,:,iF]
 # Contravariant components
 
 vCon1 = Global.Cache.CacheE1
@@ -228,20 +272,21 @@ end
   @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
     (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
-  @views @. vConV *= 0.5*(RhoCG[:,:,iz] + RhoCG[:,:,iz+1])
+# @views @. vConV *= 0.5*(RhoCG[:,:,iz] + RhoCG[:,:,iz+1])
+  @views @. vConV *= (RhoCG[:,:,iz] * JC[:,:,iz] + RhoCG[:,:,iz+1] * JC[:,:,iz+1]) / (JC[:,:,iz] + JC[:,:,iz+1]) 
   @views @. vConV = 0.5*(abs(vConV) + vConV) * cR[:,:,iz] +
-    0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1];
+    0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1]
   @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
   @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
 end
 end
 
 function FDiv3UpwindImpVec!(F,cCG,v1CG,v2CG,v3CG,RhoCG,CG,Global,iF)
-OP=CG.OrdPoly+1;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
-@views JC = Global.Metric.JC[:,:,:,iF];
+OP=CG.OrdPoly+1
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+@views JC = Global.Metric.JC[:,:,:,iF]
 # Contravariant components
 
 vCon1 = Global.Cache.CacheE1
@@ -280,9 +325,10 @@ end
   @views @. vConV = #0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
 #    (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
-  @views @. vConV *= 0.5*(RhoCG[:,:,iz] + RhoCG[:,:,iz+1])
+# @views @. vConV *= 0.5*(RhoCG[:,:,iz] + RhoCG[:,:,iz+1])
+  @views @. vConV *= (RhoCG[:,:,iz] * JC[:,:,iz] + RhoCG[:,:,iz+1] * JC[:,:,iz+1]) / (JC[:,:,iz] + JC[:,:,iz+1]) 
   @views @. vConV = 0.5*(abs(vConV) + vConV) * cR[:,:,iz] +
-    0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1];
+    0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1]
   @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
   @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
 end
@@ -307,20 +353,20 @@ function FDiv3UpwindImpGlobalVec!(F,c,v3,Rho,Global,iG)
     (cL[nz],cR[nz]) = Rec3(q[nz-1],q[nz],q1,dz[nz-1],dz[nz],dz[nz])  
   end  
   @inbounds for iz=1:nz-1
-    vConV = 0.5*(Rho[iz] + Rho[iz+1]) * v3[iz]
+    vConV = (Rho[iz] * dz[iz] + Rho[iz+1] * dz[iz+1]) / (dz[iz] + dz[iz1]) * v3[iz]
     vConV = 0.5*(abs(vConV) + vConV) * cR[iz] +
-    0.5*(-abs(vConV) + vConV) * cL[iz+1];
+    0.5*(-abs(vConV) + vConV) * cL[iz+1]
     F[iz] = F[iz] - vConV / dz[iz]
     F[iz+1] = F[iz+1] + vConV / dz[iz+1]
   end
 end
 
 function FDiv3UpwindHorVec!(F,cCG,v1CG,v2CG,v3CG,RhoCG,CG,Global,iF)
-OP=CG.OrdPoly+1;
-nz=Global.Grid.nz;
-@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF];
-@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF];
-@views JC = Global.Metric.JC[:,:,:,iF];
+OP=CG.OrdPoly+1
+nz=Global.Grid.nz
+@views dXdxIF = Global.Metric.dXdxIF[:,:,:,:,:,iF]
+@views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+@views JC = Global.Metric.JC[:,:,:,iF]
 # Contravariant components
 
 vCon = Global.Cache.CacheE1
@@ -377,7 +423,7 @@ end
      v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
   @views @. vConV *= 0.5*(RhoCG[:,:,iz] + RhoCG[:,:,iz+1])
   @views @. vConV = 0.5*(abs(vConV) + vConV) * cR[:,:,iz] +
-    0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1];
+    0.5*(-abs(vConV) + vConV) * cL[:,:,iz+1]
   @views @. F[:,:,iz] -= 0.5*vConV
   @views @. F[:,:,iz+1] += 0.5*vConV
 end

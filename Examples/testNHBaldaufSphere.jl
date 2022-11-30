@@ -70,15 +70,14 @@ Model = CGDycore.Model()
 # Grid
 H = 10000.0
 Topography=(TopoS="",H=H,Rad=Phys.RadEarth / Param.ScaleRad)
+@show Phys.RadEarth / Param.ScaleRad
 
 
 
 
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth / Param.ScaleRad,Grid)
-P0Sph = [   0.0,-0.5*pi,Phys.RadEarth / Param.ScaleRad]
-P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth / Param.ScaleRad]
-CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
+CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -89,7 +88,7 @@ if Parallel
   else
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end
-  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
@@ -105,7 +104,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
   Model.HyperDCurl=7.e9
   Model.HyperDGrad=7.e9
@@ -134,7 +133,11 @@ end
   Output.vtk=0
   Output.Flat = false
   Output.nPanel=nPanel
-  Output.RadPrint=H
+  if Output.Flat
+    Output.RadPrint=H
+  else    
+    Output.RadPrint=Phys.RadEarth / Param.ScaleRad
+  end
   Output.H=H
   Output.cNames = [
     "Rho",
@@ -145,7 +148,7 @@ end
     "Pres",
 ]
   Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"

@@ -14,7 +14,7 @@ function vtkStruct()
   )
 end
 
-function vtkInit(OrdPrint::Int,Trans,CG,Global)
+function vtkInit3D(OrdPrint::Int,Trans,CG,Global)
   OrdPoly = CG.OrdPoly
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
@@ -85,6 +85,104 @@ function vtkInit(OrdPrint::Int,Trans,CG,Global)
 
   for k in 1 : NF * nz * OrdPrint * OrdPrint
     inds = Vector(1 : 8) .+ 8 * (k -1)
+    push!(cells, MeshCell(celltype, inds))
+  end
+
+  vtkInter = zeros(Float64,OrdPrint,OrdPrint,OrdPoly+1,OrdPoly+1)
+  dd=2/OrdPrint;
+  eta0=-1;
+  for jRef=1:OrdPrint
+    ksi0=-1;
+    eta1=eta0+dd;
+    for iRef=1:OrdPrint
+      ksi1=ksi0+dd;
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
+                Lagrange(0.5*(eta0+eta1),CG.xw,j)
+        end
+      end
+      ksi0 = ksi1
+    end
+    eta0 = eta1
+  end
+  return vtkStruct(
+    vtkInter,
+    cells,
+    pts,
+  )  
+end
+
+function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
+  OrdPoly = CG.OrdPoly
+  NF = Global.Grid.NumFaces
+  Npts = 4 * NF * OrdPrint * OrdPrint
+  pts = Array{Float64,2}(undef,3,Npts)
+  ipts = 1
+  X = zeros(4,3)
+  lam=zeros(4,1)
+  theta=zeros(4,1)
+  z=zeros(4,1)
+  if Global.Grid.Form == "Sphere" && Global.Output.Flat
+    dTol=2*pi/max(Global.Output.nPanel,1)/4
+  end
+
+  for iF = 1 : NF
+    dd = 2 / OrdPrint
+    eta0 = -1
+    for jRef = 1 : OrdPrint
+      ksi0 = -1
+      eta1 = eta0 + dd
+      for iRef = 1 : OrdPrint
+        ksi1 = ksi0 + dd
+        X[1,:] = Trans(ksi0,eta0, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
+        X[2,:] = Trans(ksi1,eta0, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
+        X[3,:] = Trans(ksi1,eta1, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
+        X[4,:] = Trans(ksi0,eta1, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
+        if Global.Grid.Form == "Sphere" && Global.Output.Flat
+          for i=1:4
+            (lam[i],theta[i],z[i]) = cart2sphere(X[i,1],X[i,2],X[i,3])
+          end 
+          lammin = minimum(lam)
+          lammax = maximum(lam)
+          if lammin < 0.0 || lammax > 2*pi
+            @show lammin,lammax  
+            stop
+          end  
+          if abs(lammin - lammax) > 2*pi-dTol
+            @show "vor",lam
+            for i = 1 : 4
+              if lam[i] < pi
+                lam[i] = lam[i] + 2*pi
+                if lam[i] > 3*pi
+                  lam[i] = lam[i]  - 2*pi
+                end
+              end
+            end
+            @show "nac",lam
+          end
+          for i = 1 : 4
+            pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Output.RadPrint,0.0)/Global.Output.H/5.0]
+            ipts = ipts + 1
+          end
+        else
+          for i=1:4
+            pts[:,ipts] = [X[i,1],X[i,2],X[i,3]]
+            ipts = ipts + 1
+          end
+        end
+        ksi0=ksi1
+      end
+      eta0=eta1
+    end
+  end
+  celltype = VTKCellTypes.VTK_QUAD 
+
+  ConnectivityList=reshape(1:1:4*NF*OrdPrint*OrdPrint,4,NF*OrdPrint*OrdPrint)
+  cells = MeshCell[]
+
+  for k in 1 : NF * OrdPrint * OrdPrint
+    inds = Vector(1 : 4) .+ 4 * (k -1)
     push!(cells, MeshCell(celltype, inds))
   end
 
@@ -384,3 +482,17 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   outfiles=vtk_save(vtk);
   return outfiles::Vector{String}
 end
+
+function unstructured_vtkOrography(vtkGrid, NF, part::Int, nparts::Int)
+  nz = 1
+  OrdPrint = 1
+  vtkInter = vtkGrid.vtkInter
+  cells = vtkGrid.cells
+  pts = vtkGrid.pts
+  filename = "Orography"
+
+  vtk_filename_noext = filename
+  vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  outfiles=vtk_save(vtk);
+  return outfiles::Vector{String}
+end  

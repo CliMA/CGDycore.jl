@@ -34,6 +34,7 @@ RhoCG::Array{Float64, 3}
 v1CG::Array{Float64, 3}
 v2CG::Array{Float64, 3}
 wCG::Array{Float64, 3}
+Omega::Array{Float64, 3}
 wCCG::Array{Float64, 3}
 ThCG::Array{Float64, 3}
 TrCG::Array{Float64, 4}
@@ -99,6 +100,7 @@ RhoCG=zeros(0,0,0)
 v1CG=zeros(0,0,0)
 v2CG=zeros(0,0,0)
 wCG=zeros(0,0,0)
+Omega=zeros(0,0,0)
 wCCG=zeros(0,0,0)
 ThCG=zeros(0,0,0)
 TrCG=zeros(0,0,0,0)
@@ -163,6 +165,7 @@ return CacheStruct(
   v1CG,
   v2CG,
   wCG,
+  Omega,
   wCCG,
   ThCG,
   TrCG,
@@ -230,6 +233,7 @@ RhoCG=zeros(OP,OP,nz)
 v1CG=zeros(OP,OP,nz)
 v2CG=zeros(OP,OP,nz)
 wCG=zeros(OP,OP,nz+1)
+Omega=zeros(OP,OP,nz+1)
 wCCG=zeros(OP,OP,nz)
 ThCG=zeros(OP,OP,nz)
 TrCG=zeros(OP,OP,nz,NumTr)
@@ -294,6 +298,7 @@ return CacheStruct(
   v1CG,
   v2CG,
   wCG,
+  Omega,
   wCCG,
   ThCG,
   TrCG,

@@ -89,7 +89,10 @@ Model = CGDycore.Model()
 # Grid
 H = 30000.0
 #H = 45000.0
-Topography=(TopoS="EarthOrography",H=H,Rad=Phys.RadEarth)
+Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
+
+
+
 
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
@@ -108,16 +111,6 @@ if Parallel
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  zS = CGDycore.EarthTopography(OrdPoly,SubGrid)
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
-  SmoothFac=1.e8
-# SmoothFac=1.e15
-  FzS = similar(zS)
-  for i=1:200
-    CGDycore.TopographySmoothing1!(FzS,zS,CG,Global,SmoothFac)
-    @. zS += FzS
-    @. zS = max(zS,0.0)
-  end
 else
   CellToProc=zeros(0)
   Proc = 0
@@ -130,7 +123,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
   Model.HyperDCurl=3.e15 #7.e15
   Model.HyperDGrad=3.e15 #7.e15
@@ -160,13 +153,8 @@ end
   Global.Grid.nz = nzTemp
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
-  Output.RadPrint = H
-  Output.Flat=true
-  vtkCacheOrography = CGDycore.vtkInit2D(CG.OrdPoly,CGDycore.TransSphereX,CG,Global)
-  CGDycore.unstructured_vtkOrography(vtkCacheOrography, Global.Grid.NumFaces, Proc, ProcNumber)
-
 # Output
-  Output.vtkFileName=string("BaroWaveDryOro_")
+  Output.vtkFileName=string("BaroWaveDry_")
   Output.vtk=0
   Output.Flat=true
   Output.nPanel=nPanel
@@ -185,16 +173,15 @@ end
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
-  IntMethod="IMEX"
-  IntMethod="MIS"
   IntMethod="Rosenbrock"
   IntMethod="IMEX"
+  IntMethod="MIS"
   IntMethod="LinIMEX"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 50
+    dtau = 400
   elseif IntMethod == "MIS" 
-    dtau = 800.0
-    dtauFast =  100.0   
+    dtau = 1500.0
+    dtauFast =  200.0   
   else
     dtau=3
   end
@@ -217,8 +204,6 @@ end
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
-
-  PrintInt=20
   
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
@@ -320,9 +305,7 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
-#         CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.FcnNHCurlExp1DVecI!,
-#           CGDycore.FcnNHCurlImp1DGlobalVecI!,CGDycore.JacSchur!,CG,Global,Param);
+          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurl2AdvVec!,CGDycore.JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
