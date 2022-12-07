@@ -74,10 +74,13 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 Grid=CGDycore.Grid(nz,Topography)
-#Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+#Grid=CGDycore.InputGridH("Grid/mesh_H12.nc",
 #  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
-Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+
+#Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
 CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
@@ -90,7 +93,7 @@ if Parallel
   else
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end
-  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
@@ -106,7 +109,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
   Model.HyperDCurl=1.e14 #7.e15
   Model.HyperDGrad=1.e14 #7.e15
@@ -135,7 +138,7 @@ end
   Output.Flat = false
   Output.RadPrint=H
   Output.H=H
-  vtkCachePart = CGDycore.vtkInit(1,CGDycore.TransSphereX,CG,Global)
+  vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransSphereX,CG,Global)
   Global.Grid.nz = nzTemp
   Output.Flat = false
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
@@ -155,7 +158,7 @@ end
     "Vort",
 ]
   Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
   IntMethod="RosenbrockD"
   IntMethod="Rosenbrock"
@@ -191,8 +194,6 @@ end
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
 
-  nIter = 4
-  
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
