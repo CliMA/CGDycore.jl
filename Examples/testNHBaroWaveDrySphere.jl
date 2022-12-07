@@ -34,7 +34,7 @@ Base.@kwdef struct ParamStruct
   #      Moist
   q_0 = 0.018                # Maximum specific humidity (default: 0.018)
   q_t = 1.0e-12
-  Stretch = true
+  Stretch = false
 end  
 
 MPI.Init()
@@ -95,10 +95,10 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-P0Sph = [   0.0,-0.5*pi,Phys.RadEarth]
-P1Sph = [2.0*pi, 0.5*pi,Phys.RadEarth]
-CGDycore.HilbertFaceSphere!(Grid,P0Sph,P1Sph)
+Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+#Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
   CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -109,7 +109,7 @@ if Parallel
   else
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end
-  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
@@ -125,11 +125,11 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=3.e15 #7.e15
-  Model.HyperDGrad=3.e15 #7.e15
-  Model.HyperDDiv=3.e15 #7.e15
+  Model.HyperDCurl=3.e14 #7.e15
+  Model.HyperDGrad=3.e14 #7.e15
+  Model.HyperDDiv=3.e14 #7.e15
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -151,7 +151,7 @@ end
 # Output partition  
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = CGDycore.vtkInit(1,CGDycore.TransSphereX,CG,Global)
+  vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransSphereX,CG,Global)
   Global.Grid.nz = nzTemp
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
@@ -171,7 +171,7 @@ end
     "Pres",
 ]
   Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkInit(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
   IntMethod="RungeKutta"
   IntMethod="RosenbrockD"
@@ -179,11 +179,12 @@ end
   IntMethod="LinIMEX"
   IntMethod="IMEX"
   IntMethod="MIS"
+  IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 400
+    dtau = 150
   elseif IntMethod == "MIS" 
-    dtau = 1500.0
-    dtauFast =  200.0   
+    dtau = 750.0
+    dtauFast =  100.0   
   else
     dtau=3
   end
@@ -201,11 +202,12 @@ end
 # Simulation period
   time=[0.0]
   SimDays=10
-  PrintDay=.5
+  PrintDay=1
   PrintStartDay = 0
   nIter=ceil(24*3600*SimDays/dtau)
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
+
   
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
