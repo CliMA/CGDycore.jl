@@ -43,7 +43,7 @@ PROGRAM ReadAsciiWriteNetCDF
 
   info=nf90_create(TRIM(InputFileName)//'.nc',NF90_CLOBBER, ncid) 
   info=nf90_def_dim(ncid, "dim", dim, dim_id) 
-  info=nf90_def_dim(ncid, "nv", ne, nv_id) 
+  info=nf90_def_dim(ncid, "nv", nv, nv_id) 
   info=nf90_def_dim(ncid, "ne", ne, ne_id) 
   info=nf90_def_dim(ncid, "NumVert", NumVert, NumVert_id) 
   info=nf90_def_dim(ncid, "NumEdges", NumEdges, NumEdges_id) 

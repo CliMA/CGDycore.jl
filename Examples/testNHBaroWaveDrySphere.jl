@@ -177,9 +177,9 @@ end
   IntMethod="RosenbrockD"
   IntMethod="Rosenbrock"
   IntMethod="LinIMEX"
-  IntMethod="IMEX"
   IntMethod="MIS"
   IntMethod="Rosenbrock"
+  IntMethod="IMEX"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
     dtau = 150
   elseif IntMethod == "MIS" 

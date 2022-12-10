@@ -122,7 +122,6 @@ function InputGrid(filename,OrientFace,Rad,Grid)
     end  
     FaceNumber += 1
     (Faces[FaceNumber],Grid)=Face([e1,e2,e3,e4],Grid,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
-
   end
   Grid.Faces = Faces
 
@@ -156,7 +155,6 @@ end
 function InputGridH(filename,OrientFace,Rad,Grid)
 
   Vertices = ncread(filename, "Vertices")
-  print("Vertices  ",size(Vertices))
   NumNodes = size(Vertices,2)
   ListEdges = ncread(filename, "Edges")
   NumEdges = size(ListEdges,2)
@@ -175,7 +173,7 @@ function InputGridH(filename,OrientFace,Rad,Grid)
   end
   NodeNumber = 1
   for i = 1 : NumNodes
-    N = sphereDeg2cart(Vertices[1,i],Vertices[1,i],Rad)
+    N = sphereDeg2cart(Vertices[1,i],Vertices[2,i],Rad)
     Nodes[NodeNumber] = Node(Point(N),NodeNumber)
     NodeNumber = NodeNumber+1
   end
@@ -190,107 +188,18 @@ function InputGridH(filename,OrientFace,Rad,Grid)
     EdgeNumber = EdgeNumber+1
   end
   Grid.Edges = Edges
-  stop
-
-  NumFaces = size(connect1,2)
-  EdgeNumber = 0
-  EdgeList = Dict()
-  for i = 1 : NumFaces
-    n1 = connect1[1,i]
-    n2 = connect1[2,i]
-    if n1 < n2 
-      EdgeNumber += 1
-      EdgeList[(n1,n2)] = EdgeNumber
-    end  
-    n1 = connect1[2,i]
-    n2 = connect1[3,i]
-    if n1 < n2 
-      EdgeNumber += 1
-      EdgeList[(n1,n2)] = EdgeNumber
-    end  
-    n1 = connect1[3,i]
-    n2 = connect1[4,i]
-    if n1 < n2 
-      EdgeNumber += 1
-      EdgeList[(n1,n2)] = EdgeNumber
-    end  
-    n1 = connect1[4,i]
-    n2 = connect1[1,i]
-    if n1 < n2 
-      EdgeNumber += 1
-      EdgeList[(n1,n2)] = EdgeNumber
-    end  
-  end
-  NumEdges = EdgeNumber
-  Edges = map(1:NumEdges) do i
-    Edge([1,2],Grid,0,0,"",0)
-  end
-
-  EdgeNumber = 0
-  for i = 1 : NumFaces
-    n1 = connect1[1,i]
-    n2 = connect1[2,i]
-    if n1 < n2
-      EdgeNumber += 1
-      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
-    end
-    n1 = connect1[2,i]
-    n2 = connect1[3,i]
-    if n1 < n2
-      EdgeNumber += 1
-      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
-    end
-    n1 = connect1[3,i]
-    n2 = connect1[4,i]
-    if n1 < n2
-      EdgeNumber += 1
-      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
-    end
-    n1 = connect1[4,i]
-    n2 = connect1[1,i]
-    if n1 < n2
-      EdgeNumber += 1
-      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
-    end
-  end  
-  Grid.Edges = Edges
 
   Faces = map(1:NumFaces) do i
     Face()
   end
   FaceNumber = 0
   for i = 1 : NumFaces
-    n1 = connect1[1,i]
-    n2 = connect1[2,i]
-    if n1 < n2
-      e1 = EdgeList[(n1,n2)]  
-    else
-      e1 = EdgeList[(n2,n1)]  
-    end  
-    n1 = connect1[2,i]
-    n2 = connect1[3,i]
-    if n1 < n2
-      e2 = EdgeList[(n1,n2)]  
-    else
-      e2 = EdgeList[(n2,n1)]  
-    end  
-    n1 = connect1[3,i]
-    n2 = connect1[4,i]
-    if n1 < n2
-      e3 = EdgeList[(n1,n2)]  
-    else
-      e3 = EdgeList[(n2,n1)]  
-    end  
-    n1 = connect1[4,i]
-    n2 = connect1[1,i]
-    if n1 < n2
-      e4 = EdgeList[(n1,n2)]  
-    else
-      e4 = EdgeList[(n2,n1)]  
-    end  
     FaceNumber += 1
+    e1=Int(ListFaces[1,i])
+    e2=Int(ListFaces[2,i])
+    e3=Int(ListFaces[3,i])
+    e4=Int(ListFaces[4,i])
     (Faces[FaceNumber],Grid)=Face([e1,e2,e3,e4],Grid,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
-
   end
   Grid.Faces = Faces
 

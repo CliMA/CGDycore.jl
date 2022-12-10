@@ -74,11 +74,11 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 Grid=CGDycore.Grid(nz,Topography)
-#Grid=CGDycore.InputGridH("Grid/mesh_H12.nc",
-#  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-
-Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+Grid=CGDycore.InputGridH("Grid/mesh_H24_no_pp.nc",
   CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+
+#Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+#  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
 #Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 

@@ -14,6 +14,7 @@ DvCon = Global.Cache.CacheC2
   @views @. vCon[:,:,iz] = v2CG[:,:,iz] * dXdxIC[:,:,iz,2,1] - v1CG[:,:,iz] * dXdxIC[:,:,iz,2,2]
   @views mul!(DvCon[:,:,iz],vCon[:,:,iz],CG.DST)
   @views @. VortCG[:,:,iz] += DvCon[:,:,iz]
+  @views @. VortCG[:,:,iz] /= JC[:,:,iz]
 end
 end
 

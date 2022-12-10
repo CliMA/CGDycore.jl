@@ -353,7 +353,7 @@ function FDiv3UpwindImpGlobalVec!(F,c,v3,Rho,Global,iG)
     (cL[nz],cR[nz]) = Rec3(q[nz-1],q[nz],q1,dz[nz-1],dz[nz],dz[nz])  
   end  
   @inbounds for iz=1:nz-1
-    vConV = (Rho[iz] * dz[iz] + Rho[iz+1] * dz[iz+1]) / (dz[iz] + dz[iz1]) * v3[iz]
+    vConV = (Rho[iz] * dz[iz] + Rho[iz+1] * dz[iz+1]) / (dz[iz] + dz[iz+1]) * v3[iz]
     vConV = 0.5*(abs(vConV) + vConV) * cR[iz] +
     0.5*(-abs(vConV) + vConV) * cL[iz+1]
     F[iz] = F[iz] - vConV / dz[iz]

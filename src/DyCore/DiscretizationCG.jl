@@ -82,6 +82,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   CG.DWT=CG.DW'
   (CG.Glob,CG.NumG,CG.NumI,CG.Stencil,CG.MasterSlave) =
     NumberingFemCG(Grid,OrdPoly);
+# return (CG,Global) 
 
 
   dXdxIF = Global.Metric.dXdxIF
