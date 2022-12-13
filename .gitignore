@@ -31,7 +31,6 @@ Manifest.toml
 src/Grid/FindGridCell.jl
 ETOPO1_Ice_g_gdal.grd
 list
-*.nc
 list
 :1
 src/DyCore/FcnNHCurlVec.jl_Old
@@ -39,3 +38,4 @@ src/DyCore/FcnNHCurlVec.jl_Old
 *.pvtu
 SchaerCart/SchaerTheta_w.png
 SchaerCartEn/SchaerEnergy.png
+ETOPO1_Ice_g_gdal.nc
