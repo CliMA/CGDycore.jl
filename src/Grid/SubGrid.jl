@@ -182,8 +182,7 @@ function DecomposeEqualArea(Grid,NumProc)
     region_n = 2
     NumNodeECol = NumNodeE   
     for collar_n = 1 : n_collars
-      NumNodeECol = NumNodeE   
-      NumNodeACol = NumNodeE + 1
+      NumNodeACol = NumNodeECol + 1
       region_nCol = region_n
       for region_ew = 1 : n_regions[collar_n + 1]
         NumNodeECol += LocalNumfaces[region_nCol]  
