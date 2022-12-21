@@ -34,7 +34,7 @@ Base.@kwdef struct ParamStruct
   #      Moist
   q_0 = 0.018                # Maximum specific humidity (default: 0.018)
   q_t = 1.0e-12
-  Stretch = false
+  Stretch = true
 end  
 
 MPI.Init()
@@ -95,14 +95,15 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
-  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+#Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
+#  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 #Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
 #  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-#Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-CGDycore.HilbertFaceSphere!(Grid)
+Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+#CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
-  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+# CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  CellToProc = CGDycore.DecomposeEqualArea(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
   if Param.Stretch
     sigma = 1.0
@@ -129,9 +130,9 @@ else
 end  
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   Model.HyperVisc=true
-  Model.HyperDCurl=3.e14 #7.e15
-  Model.HyperDGrad=3.e14 #7.e15
-  Model.HyperDDiv=3.e14 #7.e15
+  Model.HyperDCurl=7.e15
+  Model.HyperDGrad=7.e15
+  Model.HyperDDiv=7.e15
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -182,8 +183,9 @@ end
   IntMethod="MIS"
   IntMethod="Rosenbrock"
   IntMethod="IMEX"
+  IntMethod="MIS"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 150
+    dtau = 200
   elseif IntMethod == "MIS" 
     dtau = 750.0
     dtauFast =  100.0   
@@ -210,7 +212,6 @@ end
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
 
-  
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"

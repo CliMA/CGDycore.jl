@@ -21,7 +21,7 @@ for j=1:M
     ./(Rho(j,i,:).*JC(j,i,:));
   f(j,i,:) = uAver...
     .*dXdxIF(j,i,:,1,1).*reshape(DS*reshape(wF(j,i,:),OP,1),1,1,OP);
-  f(j,i,:) = 2.0*f(j,i,:)./(JC(j,i,:));
+  f(j,i,:) = f(j,i,:)./(JC(j,i,:));
 end
 end
 

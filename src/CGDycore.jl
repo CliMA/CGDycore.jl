@@ -10,6 +10,7 @@ using MPI
 using StaticArrays
 using WriteVTK
 using NetCDF
+using ArgParse
 
 include("Grid/Node.jl")
 include("Grid/Edge.jl")
@@ -75,6 +76,7 @@ include("DyCore/vtkOutput.jl")
 include("DyCore/vtkSphere.jl")
 include("DyCore/ThreadCache.jl")
 include("DyCore/TopographySmoothing.jl")
+include("DyCore/parse_commandline.jl")
 
 include("IntegrationMethods/JacStruc.jl")
 include("IntegrationMethods/LinIMEXMethod.jl")
@@ -92,6 +94,7 @@ include("IntegrationMethods/SSPRungeKutta.jl")
 
 include("Parallel/Exchange.jl")
 include("Parallel/Hilbert.jl")
+include("Parallel/EqualAreaPartitioner.jl")
 
 include("Model/PhysParameters.jl")
 include("Model/Pressure.jl")

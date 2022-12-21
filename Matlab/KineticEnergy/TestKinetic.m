@@ -98,8 +98,7 @@ u=DSS(u,JC);
 wF=2.0*rand(M,N+1,OrdPoly+1)-1.0;
 wF=DSSF(wF,JC);
 wF(:,1,:)=-dXdxIF(:,1,:,2,1).*u(:,1,:)./dXdxIF(:,1,:,2,2);
-%wF(:,1,:)=0; % OSSI
-wF(:,2:N+1,:)=0.0;
+wF(:,N+1,:)=0.0;
 wF=DSSF(wF,JC);
 
 Rho=rand(M,N,OrdPoly+1)+1.0;
@@ -115,7 +114,7 @@ end
 K=zeros(M,N,OrdPoly+1);
 for i=1:N
   K(:,i,:)=0.5*(u(:,i,:).*u(:,i,:)...
-    +0.5*(wF(:,i,:).*wF(:,i,:)+wF(:,i+1,:).*wF(:,i+1,:)));
+    +0.25*(wF(:,i,:).*wF(:,i,:)+wF(:,i+1,:).*wF(:,i+1,:)));
 end
 S=zeros(M,N+1,OrdPoly+1);
 
@@ -127,46 +126,39 @@ for i=1:N-1
 end
 
 %%%%%%%%%%%%%%%%%%
+% Part 1
 wDotH1 = udwdx(u,wF,Rho,Dx,dXdxIF,JC);
 uDotH1 = -wdwdx(wF,Dx,dXdxIF,JC);
-% wDotH1=DSSF(wDotH1,JC);
-% uDotH1=DSS(uDotH1,JC);
 uICH1=IntCell(uDotH1.*Rho.*u,JC,wX);
 wIFH1=IntFace(wDotH1.*RhoF.*wF,JC,wX);
 IH1=uICH1+wIFH1;
 
 %%%%%%%%%%%%%%%%%%
+% Part 2
 % \rho u \nabla_S K + K \nabla_S \rho u
 uDotH2 = dcdx(K,Dx,dXdxIC,JC);
 RhoDotH2 = divdx(Rho.*u,Dx,dXdxIC,JC);
-
-% uDotH2=DSS(uDotH2,JC);
-% RhoDotH2=DSS(RhoDotH2,JC);
 uICH2=IntCell(uDotH2.*Rho.*u,JC,wX);
 RhoIH2=IntCell(RhoDotH2.*K,JC,wX);
 IH2=uICH2+RhoIH2;
 
 %%%%%%%%%%%%%%%%%%%%
+% Part 3
 wDotV = Sdwdz(wF,RhoF,S,dXdxIF,JC);
 uDotV = Sdudz(u,Rho,S,dXdxIF,JC);
 RhoDotV = dRhoSdz(S,dXdxIF,JC);
-% wDotV=DSSF(wDotV,JC);
-% uDotV=DSS(uDotV,JC);
-% RhoDotV=DSS(RhoDotV,JC);
 uICV=IntCell(uDotV.*Rho.*u,JC,wX);
 wIFV=IntFace(wDotV.*RhoF.*wF,JC,wX);
 KICV=IntCell(RhoDotV.*K,JC,wX);
 IV=uICV+wIFV+KICV;
 
 %%%%%%%%%%%%%%%%%%%%
+% Part 1 + Part 2 + Part 3
 uDot=dcdx(K,Dx,dXdxIC,JC)-wdwdx(wF,Dx,dXdxIF,JC)+Sdudz(u,Rho,S,dXdxIF,JC);
 wDot=udwdx(u,wF,Rho,Dx,dXdxIF,JC)+Sdwdz(wF,RhoF,S,dXdxIF,JC);
+wDot(:,1,:)=0.0;
 RhoDot=divdx(Rho.*u,Dx,dXdxIC,JC)+dRhoSdz(S,dXdxIF,JC);
-
-% wDot=DSSF(wDot,JC);
-% uDot=DSS(uDot,JC);
-% RhoDot=DSS(RhoDot,JC);
-% wDot(:,1,:)=-dXdxIF(:,1,:,2,1).*uDot(:,1,:)./dXdxIF(:,1,:,2,2);
+%wDot(:,1,:)=dXdxIF(:,1,:,2,1).*uDot(:,1,:)./dXdxIF(:,1,:,2,2);
 uIC=IntCell(uDot.*Rho.*u,JC,wX);
 wIF=IntFace(wDot.*RhoF.*wF,JC,wX);
 KIC=IntCell(RhoDot.*K,JC,wX);

@@ -5,6 +5,10 @@ using Base
 # Physical parameters
 Phys=CGDycore.PhysParameters()
 
+parsed_args = CGDycore.parse_commandline()
+
+Decomp = parsed_args["Decomp"]
+
 Base.@kwdef struct ParamStruct
   alphaG=1.0/3.0
   betaG=1.0/15.0
@@ -82,9 +86,16 @@ Grid=CGDycore.InputGridH("Grid/mesh_H24_no_pp.nc",
 
 #Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
-CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
-  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  if Decomp == "Hilbert"  
+    CGDycore.HilbertFaceSphere!(Grid)
+    CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  elseif Decomp == "EqualArea"
+    CellToProc = CGDycore.DecomposeEqualArea(Grid,ProcNumber)
+  else
+    println(" False Decomp method ")  
+  end  
+
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
   if Param.Stretch
     sigma = 1.0
