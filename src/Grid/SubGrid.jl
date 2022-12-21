@@ -178,31 +178,33 @@ function DecomposeEqualArea(Grid,NumProc)
   iP = zeros(Int,NumNodeE-NumNodeA+1)
   @. iP = round(Int,p[NumNodeA:NumNodeE,3])
   CellToProc[iP] .= 1
-  region_n = 2
-  NumNodeECol = NumNodeE   
-  for collar_n = 1 : n_collars
+  if NumProc > 1
+    region_n = 2
     NumNodeECol = NumNodeE   
-    NumNodeACol = NumNodeE + 1
-    region_nCol = region_n
-    for region_ew = 1 : n_regions[collar_n + 1]
-      NumNodeECol += LocalNumfaces[region_nCol]  
-      region_nCol += 1
+    for collar_n = 1 : n_collars
+      NumNodeECol = NumNodeE   
+      NumNodeACol = NumNodeE + 1
+      region_nCol = region_n
+      for region_ew = 1 : n_regions[collar_n + 1]
+        NumNodeECol += LocalNumfaces[region_nCol]  
+        region_nCol += 1
+      end
+      pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=compare_WE_NS)
+      NumNodeE = 0
+      for region_ew = 1 : n_regions[collar_n + 1]
+        NumNodeA = NumNodeE + 1  
+        NumNodeE +=  LocalNumfaces[region_n] 
+        iP = zeros(Int,NumNodeE-NumNodeA+1)
+        @. iP = round(Int,pCol[NumNodeA:NumNodeE,3])
+        CellToProc[iP] .= region_n
+        region_n += 1
+      end
     end
-    pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=compare_WE_NS)
-    NumNodeE = 0
-    for region_ew = 1 : n_regions[collar_n + 1]
-      NumNodeA = NumNodeE + 1  
-      NumNodeE +=  LocalNumfaces[region_n] 
-      iP = zeros(Int,NumNodeE-NumNodeA+1)
-      @. iP = round(Int,pCol[NumNodeA:NumNodeE,3])
-      CellToProc[iP] .= region_n
-      region_n += 1
-    end
-  end
-  NumNodeA = NumNodeECol + 1
-  NumNodeE =  NumNodeECol + LocalNumfaces[end]
-  iP = zeros(Int,NumNodeE-NumNodeA+1)
-  @. iP = round(Int,p[NumNodeA:NumNodeE,3])
-  CellToProc[iP] .= NumProc
+    NumNodeA = NumNodeECol + 1
+    NumNodeE =  NumNodeECol + LocalNumfaces[end]
+    iP = zeros(Int,NumNodeE-NumNodeA+1)
+    @. iP = round(Int,p[NumNodeA:NumNodeE,3])
+    CellToProc[iP] .= NumProc
+  end   
   return CellToProc
 end
