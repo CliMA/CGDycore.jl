@@ -2,6 +2,7 @@ using CGDycore
 using MPI
 using Base
 
+
 # Physical parameters
 Phys=CGDycore.PhysParameters()
 
@@ -78,13 +79,12 @@ Topography=(TopoS="",H=H,Rad=Phys.RadEarth)
 
 
 Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.InputGridH("Grid/mesh_H24_no_pp.nc",
-  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-
+#Grid=CGDycore.InputGridH("Grid/mesh_H24_no_pp.nc",
+#  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 #Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
 #  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
-#Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 
 if Parallel
   if Decomp == "Hilbert"  
@@ -93,6 +93,7 @@ if Parallel
   elseif Decomp == "EqualArea"
     CellToProc = CGDycore.DecomposeEqualArea(Grid,ProcNumber)
   else
+    CellToProc = ones(Int,Grid.NumFaces)  
     println(" False Decomp method ")  
   end  
 
@@ -146,13 +147,13 @@ end
 # Output partition  
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  Output.Flat = false
   Output.RadPrint=H
   Output.H=H
   vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransSphereX,CG,Global)
   Global.Grid.nz = nzTemp
   Output.Flat = false
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
+  Output.Flat = true
 
 # Output
   Output.vtkFileName=string("Galewsky_")
@@ -344,7 +345,7 @@ end
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVecI!,CG,Global,Param)
+          CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVecI!,CG,Global,Param)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)

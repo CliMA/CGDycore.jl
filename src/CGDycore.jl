@@ -11,7 +11,9 @@ using StaticArrays
 using WriteVTK
 using NetCDF
 using ArgParse
+using StructArrays
 
+include("Grid/Geometry.jl")
 include("Grid/Node.jl")
 include("Grid/Edge.jl")
 include("Grid/Face.jl")
@@ -26,15 +28,17 @@ include("Grid/OrientFaceCart.jl")
 include("Grid/OrientFaceSphere.jl")
 include("Grid/Orientation.jl")
 include("Grid/Renumbering.jl")
+include("Grid/StencilFace.jl")
 include("Grid/Topo.jl")
+include("Grid/TopoNeu.jl")
 include("Grid/TransCart.jl")
 include("Grid/TransSphere.jl")
-include("Grid/cart2sphere.jl")
+include("Grid/NearestNeighbour.jl")
+#include("Grid/cart2sphere.jl")
 include("Grid/hS.jl")
-include("Grid/sphere2cart.jl")
+#include("Grid/sphere2cart.jl")
 include("Grid/vtkWriteHex.jl")
 include("Grid/Connectivity.jl")
-include("Grid/Geometry.jl")
 include("Grid/SubGrid.jl")
 include("Grid/InputGrid.jl")
 

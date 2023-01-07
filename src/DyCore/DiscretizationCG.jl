@@ -188,3 +188,4 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   end  
   return (CG,Global)
 end
+

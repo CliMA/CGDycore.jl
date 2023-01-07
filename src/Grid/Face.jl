@@ -9,6 +9,7 @@ mutable struct Face
   OrientE::Array{Int, 1}
   Type::String
   P::Array{Point, 1}
+  Stencil::Array{Int, 1}
 end
 
 function Face()
@@ -22,6 +23,7 @@ function Face()
   OrientE=zeros(Int,0)
   Type=""
   P=Array{Point}(undef, 0)
+  Stencil=zeros(Int,0)
   return Face(
     N,
     E,
@@ -33,6 +35,7 @@ function Face()
     OrientE,
     Type,
     P,
+    Stencil,
   )
 end  
 

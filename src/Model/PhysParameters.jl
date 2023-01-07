@@ -44,6 +44,8 @@ Grad1CG::Array{Float64, 3}
 Grad2CG::Array{Float64, 3}
 DivCG::Array{Float64, 3}
 zPG::Array{Float64, 3}
+pBGrdCG::Array{Float64, 3}
+RhoBGrdCG::Array{Float64, 3}
 Rot1C::Array{Float64, 3}
 Rot2C::Array{Float64, 3}
 Grad1C::Array{Float64, 3}
@@ -110,6 +112,8 @@ Grad1CG=zeros(0,0,0)
 Grad2CG=zeros(0,0,0)
 DivCG=zeros(0,0,0)
 zPG=zeros(0,0,0)
+pBGrdCG=zeros(0,0,0)
+RhoBGrdCG=zeros(0,0,0)
 Rot1C=zeros(0,0,0)
 Rot2C=zeros(0,0,0)
 Grad1C=zeros(0,0,0)
@@ -175,6 +179,8 @@ return CacheStruct(
   Grad2CG,
   DivCG,
   zPG,
+  pBGrdCG,
+  RhoBGrdCG,
   Rot1C,
   Rot2C,
   Grad1C,
@@ -243,6 +249,8 @@ Grad1CG=zeros(OP,OP,nz)
 Grad2CG=zeros(OP,OP,nz)
 DivCG=zeros(OP,OP,nz)
 zPG=zeros(OP,OP,nz)
+pBGrdCG=zeros(OP,OP,nz)
+RhoBGrdCG=zeros(OP,OP,nz)
 Rot1C=zeros(OP,OP,nz)
 Rot2C=zeros(OP,OP,nz)
 Grad1C=zeros(OP,OP,nz)
@@ -308,6 +316,8 @@ return CacheStruct(
   Grad2CG,
   DivCG,
   zPG,
+  pBGrdCG,
+  RhoBGrdCG,
   Rot1C,
   Rot2C,
   Grad1C,
@@ -480,6 +490,8 @@ mutable struct ModelStruct
   ProfTr::String
   ProfVel::String
   ProfVelW::String
+  ProfpBGrd::String
+  ProfRhoBGrd::String
   RhoPos::Int
   uPos::Int
   vPos::Int
@@ -520,6 +532,8 @@ function Model()
   ProfTr=""
   ProfVel=""
   ProfVelW=""
+  ProfpBGrd=""
+  ProfRhoBGrd=""
   RhoPos = 0
   uPos = 0
   vPos = 0
@@ -559,6 +573,8 @@ function Model()
    ProfTr,
    ProfVel,
    ProfVelW,
+   ProfpBGrd,
+   ProfRhoBGrd,
    RhoPos,
    uPos,
    vPos,
@@ -615,6 +631,8 @@ mutable struct GlobalStruct{TCache}
   ThreadCache::TCache
   ThetaBGrd::Array{Float64, 2}
   TBGrd::Array{Float64, 2}
+  pBGrd::Array{Float64, 2}
+  RhoBGrd::Array{Float64, 2}
 end
 function Global(Grid::GridStruct,
                 Model::ModelStruct,
@@ -636,6 +654,8 @@ function Global(Grid::GridStruct,
   tcache=(;CreateCache(OP,nz,NumV,NumTr)...,init_tcache)
   ThetaBGrd = zeros(0,0)
   TBGrd = zeros(0,0)
+  pBGrd = zeros(0,0)
+  RhoBGrd = zeros(0,0)
   return GlobalStruct{typeof(tcache)}(
     Metric,
     Grid,
@@ -656,5 +676,7 @@ function Global(Grid::GridStruct,
     tcache,
     ThetaBGrd,
     TBGrd,
+    pBGrd,
+    RhoBGrd,
     )
 end  

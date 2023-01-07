@@ -474,6 +474,8 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   wCG = Global.Cache.wCG
   wCCG = Global.Cache.wCCG
   zPG = Global.Cache.zPG
+  pBGrdCG = Global.Cache.pBGrdCG
+  RhoBGrdCG = Global.Cache.RhoBGrdCG
   @views ThCG = Global.Cache.ThCG[:,:,:]
   @views TrCG = Global.Cache.TrCG[:,:,:,:]
   KE = Global.Cache.KE
@@ -616,6 +618,8 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
           Grad2CG[iP,jP,iz] = Grad2[iz,ind]
           DivCG[iP,jP,iz] = Div[iz,ind]
           zPG[iP,jP,iz] = zP[iz,ind]
+          pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
+          RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
           end  
@@ -663,12 +667,16 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   #       Global.Grav*Global.JF[:,:,:,2:nz].*(RhoF-Global.RhoBGrdF)) ./ RhoF;
   #   end
     else
-      @views FGrad3RhoVec!(FCG,Pres[:,:,:,iF],RhoCG,CG,Global,iF)
+      @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
+      #@views FGrad3RhoVec!(FCG,Pres[:,:,:,iF],RhoCG,CG,Global,iF)
+      @views FGrad3RhoVec!(FCG,pBGrdCG,RhoCG,CG,Global,iF)
       if Global.Model.Buoyancy
         @inbounds for iz=1:nz-1  
           @inbounds for j=1:OP  
             @inbounds for i=1:OP  
-              FCG[i,j,iz,wPos] -= Grav*JF[i,j,iz+1,iF]
+              Buo = (RhoCG[i,j,iz] + RhoCG[i,j,iz+1] - RhoBGrdCG[i,j,iz] - RhoBGrdCG[i,j,iz+1]) /
+                (RhoCG[i,j,iz] + RhoCG[i,j,iz+1]) 
+              FCG[i,j,iz,wPos] -= Grav*JF[i,j,iz+1,iF] * Buo
             end
           end  
         end

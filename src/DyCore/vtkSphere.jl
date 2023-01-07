@@ -146,11 +146,11 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
           lammin = minimum(lam)
           lammax = maximum(lam)
           if lammin < 0.0 || lammax > 2*pi
-            @show lammin,lammax  
-            stop
+#           @show lammin,lammax  
+#           stop
           end  
           if abs(lammin - lammax) > 2*pi-dTol
-            @show "vor",lam
+#           @show "vor",lam
             for i = 1 : 4
               if lam[i] < pi
                 lam[i] = lam[i] + 2*pi
@@ -159,7 +159,7 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
                 end
               end
             end
-            @show "nac",lam
+#           @show "nac",lam
           end
           for i = 1 : 4
             pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Output.RadPrint,0.0)/Global.Output.H/5.0]
@@ -354,6 +354,22 @@ function Interpolate!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
   end
 end
 
+function InterpolateCG!(cCell,cCG,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    @. cc = 0.0
+    for j=1:OrdPoly+1
+      for i=1:OrdPoly+1
+        @views @. cc = cc + Inter[:,:,i,j]*cCG[i,j,iF]
+      end
+    end
+    @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+    icCell = icCell + OrdPrint*OrdPrint
+  end
+end
+
+
 function Interpolate!(cCell,c,Rho,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
   icCell  = 1
   cc=zeros(OrdPrint,OrdPrint)
@@ -483,9 +499,10 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   return outfiles::Vector{String}
 end
 
-function unstructured_vtkOrography(vtkGrid, NF, part::Int, nparts::Int)
+function unstructured_vtkOrography(Height,vtkGrid, NF, CG,  part::Int, nparts::Int)
   nz = 1
-  OrdPrint = 1
+  OrdPrint = CG.OrdPoly
+  OrdPoly = CG.OrdPoly
   vtkInter = vtkGrid.vtkInter
   cells = vtkGrid.cells
   pts = vtkGrid.pts
@@ -493,6 +510,9 @@ function unstructured_vtkOrography(vtkGrid, NF, part::Int, nparts::Int)
 
   vtk_filename_noext = filename
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  HeightCell = zeros(OrdPrint*OrdPrint*NF) 
+  @views InterpolateCG!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+  vtk["Height", VTKCellData()] = HeightCell
   outfiles=vtk_save(vtk);
   return outfiles::Vector{String}
 end  

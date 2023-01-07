@@ -19,6 +19,7 @@ Base.@kwdef struct ParamStruct
   DeltaT=1
   ExpDist=5
   T0=300
+  TEq=300
   T_init = 315
   lapse_rate = -0.008
   Deep=false
@@ -34,7 +35,7 @@ Base.@kwdef struct ParamStruct
   #      Moist
   q_0 = 0.018                # Maximum specific humidity (default: 0.018)
   q_t = 1.0e-12
-  Stretch = true
+  Stretch = false
 end  
 
 MPI.Init()
@@ -44,7 +45,7 @@ ProcNumber = MPI.Comm_size(comm)
 print("$Proc: \n")
 print("$ProcNumber: \n")
 
-OrdPoly = 3
+OrdPoly = 4
 nz = 45
 
 OrdPolyZ=1
@@ -70,6 +71,8 @@ Model = CGDycore.Model()
   Model.ProfRho="BaroWaveSphere"
   Model.ProfTheta="BaroWaveSphere"
   Model.ProfVel="BaroWaveSphere"
+  Model.ProfpBGrd="Isothermal"
+  Model.ProfRhoBGrd="Isothermal"
   Model.RhoPos=1
   Model.uPos=2
   Model.vPos=3
@@ -108,16 +111,19 @@ if Parallel
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  zS = CGDycore.EarthTopography(OrdPoly,SubGrid)
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
-  SmoothFac=1.e8
+  SubGrid = CGDycore.StencilFace(SubGrid)
+  zS = CGDycore.Orography(OrdPoly,SubGrid,Global)
+  SmoothFac=1.e9
 # SmoothFac=1.e15
   FzS = similar(zS)
-  for i=1:200
+  @show maximum(zS)
+  for i=1:15
     CGDycore.TopographySmoothing1!(FzS,zS,CG,Global,SmoothFac)
     @. zS += FzS
     @. zS = max(zS,0.0)
   end
+  @show maximum(zS)
 else
   CellToProc=zeros(0)
   Proc = 0
@@ -132,9 +138,9 @@ else
 end  
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
   Model.HyperVisc=true
-  Model.HyperDCurl=3.e15 #7.e15
-  Model.HyperDGrad=3.e15 #7.e15
-  Model.HyperDDiv=3.e15 #7.e15
+  Model.HyperDCurl=3.e15
+  Model.HyperDGrad=3.e15
+  Model.HyperDDiv=3.e15
 
 # Output
   Output.OrdPrint=CG.OrdPoly
@@ -149,6 +155,8 @@ end
   else
     U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end
+  Global.pBGrd = CGDycore.Project(CGDycore.fpBGrd,0.0,CG,Global,Param)
+  Global.RhoBGrd = CGDycore.Project(CGDycore.fRhoBGrd,0.0,CG,Global,Param)
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end   
@@ -157,13 +165,13 @@ end
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
   vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransSphereX,CG,Global)
-  Global.Grid.nz = nzTemp
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
   Output.RadPrint = H
-  Output.Flat=true
+  Output.Flat=false
   vtkCacheOrography = CGDycore.vtkInit2D(CG.OrdPoly,CGDycore.TransSphereX,CG,Global)
-  CGDycore.unstructured_vtkOrography(vtkCacheOrography, Global.Grid.NumFaces, Proc, ProcNumber)
+  CGDycore.unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
+  Global.Grid.nz = nzTemp
 
 # Output
   Output.vtkFileName=string("BaroWaveDryOro_")
@@ -187,11 +195,11 @@ end
   IntMethod="RosenbrockD"
   IntMethod="IMEX"
   IntMethod="MIS"
-  IntMethod="Rosenbrock"
   IntMethod="IMEX"
   IntMethod="LinIMEX"
+  IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 50
+    dtau = 100
   elseif IntMethod == "MIS" 
     dtau = 800.0
     dtauFast =  100.0   
@@ -218,8 +226,6 @@ end
   PrintInt=ceil(24*3600*PrintDay/dtau)
   PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
 
-  PrintInt=20
-  
   Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"

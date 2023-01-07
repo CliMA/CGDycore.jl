@@ -137,5 +137,3 @@ end
 return (Glob,NumG,NumI,Stencil,MasterSlave)
 end
 
-
-
