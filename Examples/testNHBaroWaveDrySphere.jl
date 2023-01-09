@@ -102,8 +102,8 @@ Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 #CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
-# CellToProc = CGDycore.Decompose(Grid,ProcNumber)
-  CellToProc = CGDycore.DecomposeEqualArea(Grid,ProcNumber)
+  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+# CellToProc = CGDycore.DecomposeEqualArea(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
   if Param.Stretch
     sigma = 1.0

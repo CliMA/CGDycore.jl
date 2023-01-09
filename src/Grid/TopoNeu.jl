@@ -208,7 +208,6 @@ function Orography(OrdPoly,Grid,Global)
   NumHeight = zeros(Float64,NumG)
   (w,xw) = GaussLobattoQuad(OrdPoly)
   for ilat = 1 : length(lat)
-    @show ilat
     for ilon = 1 : length(lon)
       P = Point(sphereDeg2cart(lon[ilon],-lat[ilat],RadEarth))
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xw,TransSphereS,RadEarth,Grid)
@@ -223,7 +222,7 @@ function Orography(OrdPoly,Grid,Global)
   end
   ExchangeData!(Height,Global.Exchange)
   ExchangeData!(NumHeight,Global.Exchange)
-  @. Height /= NumHeight
+  @. Height /= (NumHeight + 1.e-14)
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -233,4 +232,19 @@ function Orography(OrdPoly,Grid,Global)
     end
   end
   return HeightCG
+end
+
+function BoundingBox(Grid,)
+  MinLon = 1.e20 
+  MaxLon = -1.e20
+  MinLat = 1.e20
+  MaxLat = -1.e20
+  for i = Grid.NumNodes
+    P = Grid.Nodes(i).P
+    (lon, lat) = cart2sphereDeg(P.x,P.y,P.z)  
+    MinLon = min(MinLon, lon)
+    MaxLon = max(MaxLon, lon)
+    MinLat = min(MinLat, lat)
+    MaxLat = max(MaxLat, lat)
+  end
 end

@@ -74,6 +74,8 @@ function TopographySmoothing2!(hFCG,hCG,CG,Global,HyperDDiv)
       end
     end
   end  
+  ExchangeData!(hF,Global.Exchange)
+
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP

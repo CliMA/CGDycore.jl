@@ -8,7 +8,9 @@ function fRhoBGrd(x,time,Global,Param)
     TLoc=Param.T0;
     Rho=p/(Param.Rd*TLoc);
   elseif str == "isothermal"
-    pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
+    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+    Z=max(R-Phys.RadEarth,0);
+    pLoc = Phys.p0 * exp(-Phys.Grav * Z / (Phys.Rd * Param.TEq))
     Rho = pLoc / (Phys.Rd * Param.TEq)
   else
     Rho=0;

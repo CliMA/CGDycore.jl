@@ -81,8 +81,8 @@ Model = CGDycore.Model()
   Model.HorLimit = false
   Model.Source = false
   Model.Upwind = true
-  Model.Damping = false
-  Model.StrideDamp=20000.0
+  Model.Damping = true
+  Model.StrideDamp=10000.0
   Model.Relax = 1.0/100.0
   Model.Coriolis=true
   Model.CoriolisType="Sphere"
@@ -117,13 +117,11 @@ if Parallel
   SmoothFac=1.e9
 # SmoothFac=1.e15
   FzS = similar(zS)
-  @show maximum(zS)
-  for i=1:15
+  for i=1:20
     CGDycore.TopographySmoothing1!(FzS,zS,CG,Global,SmoothFac)
     @. zS += FzS
     @. zS = max(zS,0.0)
   end
-  @show maximum(zS)
 else
   CellToProc=zeros(0)
   Proc = 0
@@ -199,7 +197,7 @@ end
   IntMethod="LinIMEX"
   IntMethod="Rosenbrock"
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 100
+    dtau = 50
   elseif IntMethod == "MIS" 
     dtau = 800.0
     dtauFast =  100.0   
