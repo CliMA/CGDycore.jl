@@ -72,7 +72,7 @@ function TopoData()
   end  
   return (lon, lat, zlevels)
 end
-function TopoDataETOPO()
+function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   # Load ETOPO1 ice-sheet surface data
   # Ocean values are considered 0
   ds = NCDataset("/Users/knoth/Documents/GitHub/CliMA/CGDycore.jl/ETOPO1_Ice_g_gdal.grd")
@@ -87,8 +87,17 @@ function TopoDataETOPO()
   lat = collect(y_range[1]:spacing[2]:y_range[2])
   nlon = dimension[1]
   nlat = dimension[2]
+  dLon = 360.0 / nlon
+  dLat = 180.0 / nlat
+  ilonLS = max(floor(Int,(MinLonL+180.)/dLon),1)
+  ilonLE = min(ceil(Int,(MaxLonL+180.)/dLon),nlon)
+  ilonRS = max(floor(Int,(MinLonR+180.)/dLon),1)
+  ilonRE = min(ceil(Int,(MaxLonR+180.)/dLon),nlon)
+  ilatS = max(floor(Int,(MinLat+90.)/dLat),1)
+  ilatE = min(ceil(Int,(MaxLat+90.)/dLat),nlat)
   zlevels = max.(reshape(elevation, (nlon, nlat)), 0.0)
-  return (lon, lat, zlevels)
+  return (lon[ilonLS:ilonLE], lon[ilonRS:ilonRE], lat[ilatS:ilatE], 
+    zlevels[ilonLS:ilonLE,ilatS:ilatE], zlevels[ilonRS:ilonRE,ilatS:ilatE])
 end  
 
 function TopoDataGLOBE()
@@ -192,43 +201,43 @@ function Orography(OrdPoly,Grid,Global)
   NF = Grid.NumFaces
   OP = OrdPoly + 1
   HeightCG = zeros(Float64,OP,OP,NF)
-  (lon, lat, zLevel) = CGDycore.TopoDataETOPO()
+  (lonL, lonR, lat, zLevelL, zLevelR) = TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
 # (lon, lat, zLevel) = CGDycore.TopoData()
   start_Face = 1
   (Glob,NumG) = NumberingFemCG(Grid,OrdPoly);
   Height = zeros(Float64,NumG)
   NumHeight = zeros(Float64,NumG)
   (w,xw) = GaussLobattoQuad(OrdPoly)
-  LenLat = length(lat)
-  LenLon = length(lon)
-  dLon = 360.0 / LenLon
-  dLat = 180.0 / LenLat
-  ilonLS = max(floor(Int,(MinLonL+180.)/dLon),1)
-  ilonLE = min(ceil(Int,(MaxLonL+180.)/dLon),LenLon)
-  ilonRS = max(floor(Int,(MinLonR+180.)/dLon),1)
-  ilonRE = min(ceil(Int,(MaxLonR+180.)/dLon),LenLon)
-  ilatS = max(floor(Int,(MinLat+90.)/dLat),1)
-  ilatE = min(ceil(Int,(MaxLat+90.)/dLat),LenLat)
-  for ilat = ilatS : ilatE
-    for ilon = ilonLS : ilonLE
-      P = Point(sphereDeg2cart(lon[ilon],-lat[ilat],RadEarth))
+# LenLat = length(lat)
+# LenLon = length(lon)
+# dLon = 360.0 / LenLon
+# dLat = 180.0 / LenLat
+# ilonLS = max(floor(Int,(MinLonL+180.)/dLon),1)
+# ilonLE = min(ceil(Int,(MaxLonL+180.)/dLon),LenLon)
+# ilonRS = max(floor(Int,(MinLonR+180.)/dLon),1)
+# ilonRE = min(ceil(Int,(MaxLonR+180.)/dLon),LenLon)
+# ilatS = max(floor(Int,(MinLat+90.)/dLat),1)
+# ilatE = min(ceil(Int,(MaxLat+90.)/dLat),LenLat)
+  for ilat = 1 : length(lat)
+    for ilon = 1 : length(lonL)
+      P = Point(sphereDeg2cart(lonL[ilon],-lat[ilat],RadEarth))
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xw,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
       if Inside
         iG = Glob[iPosFace_id,jPosFace_id,Face_id]
-        Height[iG] += zLevel[ilon,ilat]
+        Height[iG] += zLevelL[ilon,ilat]
         NumHeight[iG] += 1
       end  
     end
-    for ilon = ilonRS : ilonRE
-      P = Point(sphereDeg2cart(lon[ilon],-lat[ilat],RadEarth))
+    for ilon = 1 : length(lonR)
+      P = Point(sphereDeg2cart(lonR[ilon],-lat[ilat],RadEarth))
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xw,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
       if Inside
         iG = Glob[iPosFace_id,jPosFace_id,Face_id]
-        Height[iG] += zLevel[ilon,ilat]
+        Height[iG] += zLevelR[ilon,ilat]
         NumHeight[iG] += 1
       end  
     end
