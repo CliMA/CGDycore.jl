@@ -2,6 +2,13 @@ using CGDycore
 using MPI
 using Base
 
+# Physical parameters
+Phys=CGDycore.PhysParameters()
+
+parsed_args = CGDycore.parse_commandline()
+
+Decomp = parsed_args["Decomp"]
+
 Base.@kwdef struct ParamStruct
   T0E=310.0
   T0P=240.0
@@ -56,9 +63,6 @@ NumTr = 0
 Parallel = true
 
 
-# Physical parameters
-Phys=CGDycore.PhysParameters()
-
 
 #ModelParameters
 Param = ParamStruct()
@@ -98,7 +102,15 @@ Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
 CGDycore.HilbertFaceSphere!(Grid)
 if Parallel
-  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  if Decomp == "Hilbert"
+    CGDycore.HilbertFaceSphere!(Grid)
+    CellToProc = CGDycore.Decompose(Grid,ProcNumber)
+  elseif Decomp == "EqualArea"
+    CellToProc = CGDycore.DecomposeEqualArea(Grid,ProcNumber)
+  else
+    CellToProc = ones(Int,Grid.NumFaces)
+    println(" False Decomp method ")
+  end  
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
   if Param.Stretch
     sigma = 1.0
@@ -113,6 +125,11 @@ if Parallel
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
   SubGrid = CGDycore.StencilFace(SubGrid)
+# Output partition  
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransSphereX,CG,Global)
+  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   zS = CGDycore.Orography(OrdPoly,SubGrid,Global)
   SmoothFac=1.e9
 # SmoothFac=1.e15
@@ -134,6 +151,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
+
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
   Model.HyperVisc=true
   Model.HyperDCurl=3.e15
@@ -158,12 +176,6 @@ end
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end   
-
-# Output partition  
-  nzTemp = Global.Grid.nz
-  Global.Grid.nz = 1
-  vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransSphereX,CG,Global)
-  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
   Output.RadPrint = H
   Output.Flat=false
