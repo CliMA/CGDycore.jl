@@ -75,7 +75,7 @@ end
 function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   # Load ETOPO1 ice-sheet surface data
   # Ocean values are considered 0
-  ds = NCDataset("/Users/knoth/Documents/GitHub/CliMA/CGDycore.jl/ETOPO1_Ice_g_gdal.grd")
+  ds = NCDataset("ETOPO1_Ice_g_gdal.grd")
   # Unpack information
   x_range = ds["x_range"][:]
   y_range = ds["y_range"][:]
@@ -130,7 +130,7 @@ function TopoDataGLOBE()
   nlon_tot = 0
   nlat_tot = 0
   for file in list
-    ds = NCDataset("/Users/knoth/Documents/GitHub/CliMA/CGDycore.jl/Topo/"*file)  
+    ds = NCDataset("Topo/"*file)  
     nlon = ds.dim["lon"]
     nlat = ds.dim["lat"]
     nlon_tot += nlon
@@ -170,7 +170,7 @@ function TopoDataGLOBE()
   @show nlon_tot
   @show nlat_tot
 # Altitude = zeros(Int32,nlon_tot,nlat_tot)
-    ds = NCDataset("/Users/knoth/Documents/GitHub/CliMA/CGDycore.jl/Topo/"*list[13])
+    ds = NCDataset("Topo/"*list[13])
     a = coalesce.(ds["altitude"],Int32(0))
     nlon = ds.dim["lon"]
     nlat = ds.dim["lat"]
