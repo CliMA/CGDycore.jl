@@ -130,6 +130,8 @@ if Parallel
   Global.Grid.nz = 1
   vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransSphereX,CG,Global)
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
+  Global.Grid.nz = nzTemp
+
   zS = CGDycore.Orography(OrdPoly,SubGrid,Global)
   SmoothFac=1.e9
 # SmoothFac=1.e15
