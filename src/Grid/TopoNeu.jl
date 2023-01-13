@@ -95,6 +95,11 @@ function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   ilonRE = min(ceil(Int,(MaxLonR+180.)/dLon),nlon)
   ilatS = max(floor(Int,(MinLat+90.)/dLat),1)
   ilatE = min(ceil(Int,(MaxLat+90.)/dLat),nlat)
+  @show MinLonL,MaxLonL
+  @show MinLonR,MaxLonR
+  @show ilonLS,ilonLE
+  @show ilonRS,ilonRE
+  @show ilatS,ilatE
   zlevels = max.(reshape(elevation, (nlon, nlat)), 0.0)
   return (lon[ilonLS:ilonLE], lon[ilonRS:ilonRE], lat[ilatS:ilatE], 
     zlevels[ilonLS:ilonLE,ilatS:ilatE], zlevels[ilonRS:ilonRE,ilatS:ilatE])
@@ -256,25 +261,52 @@ function Orography(OrdPoly,Grid,Global)
   return HeightCG
 end
 
+function BoundingBoxFace(Face,Grid)
+  MinLon = 180.0
+  MaxLon = -180.0
+  MinLat = 90.0
+  MaxLat = -90.0
+  for iN in Face.N
+    P = Grid.Nodes[iN].P
+    (lon, lat) = cart2sphereDeg(P.x,P.y,P.z)
+    MinLon = min(MinLon, lon)
+    MaxLon = max(MaxLon, lon)
+    MinLat = min(MinLat, lat)
+    MaxLat = max(MaxLat, lat)
+  end
+  return (MinLon,MaxLon,MinLat,MaxLat)
+end
+
 function BoundingBox(Grid)
   MinLonL = 0.0 
   MaxLonL = -180.0
   MinLonR = 180.0  
   MaxLonR = 0.0
-  MinLat = 1.e20
-  MaxLat = -1.e20
-  for i = 1 : Grid.NumNodes
-    P = Grid.Nodes[i].P
-    (lon, lat) = cart2sphereDeg(P.x,P.y,P.z)  
-    if lon >= 0.0
-      MinLonR = min(MinLonR, lon)
-      MaxLonR = max(MaxLonR, lon)
-    else  
-      MinLonL = min(MinLonL, lon)
-      MaxLonL = max(MaxLonL, lon)
-    end  
-    MinLat = min(MinLat, lat)
-    MaxLat = max(MaxLat, lat)
+  MinLat = 90.0
+  MaxLat = -90.0
+  for i = 1 : Grid.NumFaces
+    (MinLonF,MaxLonF,MinLatF,MaxLatF)= BoundingBoxFace(Grid.Faces[i],Grid) 
+    if MinLonF >= 0.0
+      MinLonR = min(MinLonR, MinLonF)
+      MaxLonR = max(MaxLonR, MaxLonF)
+    elseif MaxLonF  < 0.0
+      MinLonL = min(MinLonL, MinLonF)
+      MaxLonL = max(MaxLonL, MaxLonF)
+    else
+      if abs(MaxLonF-MinLonF)>90.0   
+        MinLonL = min(MinLonL, -180.0)
+        MaxLonL = max(MaxLonL, MinLonF)
+        MinLonR = min(MinLonR, MaxLonF)
+        MaxLonR = max(MaxLonR, 180.0)
+      else
+        MinLonL = min(MinLonL, MinLonF)
+        MaxLonL = max(MaxLonL, 0.0)
+        MinLonR = min(MinLonR, 0.0)
+        MaxLonR = max(MaxLonR, MaxLonF)
+      end
+    end
+    MinLat = min(MinLat, MinLatF)
+    MaxLat = max(MaxLat, MaxLatF)
   end
   return (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
 end
