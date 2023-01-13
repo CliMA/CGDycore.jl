@@ -100,7 +100,11 @@ function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   @show ilonLS,ilonLE
   @show ilonRS,ilonRE
   @show ilatS,ilatE
-  zlevels = max.(reshape(elevation, (nlon, nlat)), 0.0)
+  temp = max.(reshape(elevation, (nlon, nlat)), 0.0)
+  zlevels = zeros(Float64,nlon,nlat)
+  for i = 1 : nlat
+     @.  zlevels[:,i] = temp[:,nlat+1-i]
+  end   
   return (lon[ilonLS:ilonLE], lon[ilonRS:ilonRE], lat[ilatS:ilatE], 
     zlevels[ilonLS:ilonLE,ilatS:ilatE], zlevels[ilonRS:ilonRE,ilatS:ilatE])
 end  
@@ -200,7 +204,7 @@ function TopoDataGLOBE()
   end  
 end
 
-function Orography(OrdPoly,Grid,Global)
+function Orography(OrdPoly,Grid,Global,Proc)
   (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
   RadEarth = Grid.Rad
   NF = Grid.NumFaces
@@ -225,7 +229,7 @@ function Orography(OrdPoly,Grid,Global)
 # ilatE = min(ceil(Int,(MaxLat+90.)/dLat),LenLat)
   for ilat = 1 : length(lat)
     for ilon = 1 : length(lonL)
-      P = Point(sphereDeg2cart(lonL[ilon],-lat[ilat],RadEarth))
+      P = Point(sphereDeg2cart(lonL[ilon],lat[ilat],RadEarth))
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xw,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
@@ -236,7 +240,7 @@ function Orography(OrdPoly,Grid,Global)
       end  
     end
     for ilon = 1 : length(lonR)
-      P = Point(sphereDeg2cart(lonR[ilon],-lat[ilat],RadEarth))
+      P = Point(sphereDeg2cart(lonR[ilon],lat[ilat],RadEarth))
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xw,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)

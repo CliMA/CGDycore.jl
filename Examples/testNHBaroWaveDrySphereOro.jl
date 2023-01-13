@@ -132,7 +132,7 @@ if Parallel
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
-  zS = CGDycore.Orography(OrdPoly,SubGrid,Global)
+  zS = CGDycore.Orography(OrdPoly,SubGrid,Global,Proc)
   SmoothFac=1.e9
 # SmoothFac=1.e15
   FzS = similar(zS)
