@@ -2,53 +2,39 @@ using CGDycore
 using MPI
 using Base
 
+# Model
 parsed_args = CGDycore.parse_commandline()
 Problem = parsed_args["Problem"]
+ProfRho = parsed_args["ProfRho"]
+ProfTheta = parsed_args["ProfTheta"]
+ProfVel = parsed_args["ProfVel"]
+HorLimit = parsed_args["HorLimit"]
+Upwind = parsed_args["Upwind"]
+Damping = parsed_args["Damping"]
+Relax = parsed_args["Relax"]
+StrideDamp = parsed_args["StrideDamp"]
+# Parallel
 Decomp = parsed_args["Decomp"]
 SimDays = parsed_args["SimDays"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
 TopoS = parsed_args["TopoS"]
-stretch = parsed_args["stretch"]
 GridType = parsed_args["GridType"]
+Coriolis = parsed_args["Coriolis"]
+CoriolisType = parsed_args["CoriolisType"]
+Microphysics = parsed_args["Microphysics"]
+Source = parsed_args["Source"]
+VerticalDiffusion = parsed_args["VerticalDiffusion"]
+SurfaceFlux = parsed_args["SurfaceFlux"]
+# Grid
+nz = parsed_args["nz"]
+nPanel = parsed_args["nPanel"]
+H = parsed_args["H"]
+stretch = parsed_args["stretch"]
+OrdPoly = parsed_args["OrdPoly"]
 
 Param = CGDycore.Parameters(Problem)
-
-#Base.@kwdef struct ParamStruct
-#  T0E=310.0
-#  T0P=240.0
-#  B=2.0
-#  K=3.0
-#  LapseRate=0.005
-#  U0=-0.5
-#  PertR=1.0/6.0
-#  Up=1.0
-#  PertExpR=0.1
-#  PertLon=pi/9.0
-#  PertLat=2.0*pi/9.0
-#  PertZ=15000.0
-#  NBr=1.e-2
-#  DeltaT=1
-#  ExpDist=5
-#  T0=300
-#  TEq=300
-#  T_init = 315
-#  lapse_rate = -0.008
-#  Deep=false
-#  pert = 0.1
-#  uMax = 1.0
-#  vMax = 0.0
-#  DeltaT_y=0
-#  DeltaTh_z=-5
-#  T_equator=315
-#  T_min=200
-#  sigma_b=7/10
-#  z_D=20.0e3
-  #      Moist
-#  q_0 = 0.018                # Maximum specific humidity (default: 0.018)
-#  q_t = 1.0e-12
-#end  
 
 MPI.Init()
 comm = MPI.COMM_WORLD
@@ -60,10 +46,7 @@ ParallelCom.ProcNumber  = ProcNumber
 print("$Proc: \n")
 print("$ProcNumber: \n")
 
-OrdPoly = 4
-nz = 45
 OrdPolyZ=1
-nPanel = 16
 NF = 6 * nPanel * nPanel
 NumV = 5
 NumTr = 0
@@ -78,10 +61,22 @@ Model = CGDycore.Model()
   Model.Equation="Compressible"
   Model.NumV=NumV
   Model.NumTr=NumTr
-  Model.Problem="BaroWaveSphere"
-  Model.ProfRho="BaroWaveSphere"
-  Model.ProfTheta="BaroWaveSphere"
-  Model.ProfVel="BaroWaveSphere"
+  Model.Problem=Problem
+  if ProfRho == ""
+    Model.ProfRho = Problem
+  else
+    Model.ProfRho = ProfRho  
+  end  
+  if ProfTheta == ""
+    Model.ProfTheta = Problem
+  else
+    Model.ProfTheta = ProfTheta  
+  end  
+  if ProfVel == ""
+    Model.ProfVel = Problem
+  else
+    Model.ProfVel = ProfVel  
+  end  
   Model.ProfpBGrd="Isothermal"
   Model.ProfRhoBGrd="Isothermal"
   Model.RhoPos=1
@@ -89,16 +84,21 @@ Model = CGDycore.Model()
   Model.vPos=3
   Model.wPos=4
   Model.ThPos=5
-  Model.HorLimit = false
-  Model.Source = false
-  Model.Upwind = true
-  Model.Damping = true
-  Model.StrideDamp=10000.0
-  Model.Relax = 1.0/100.0
-  Model.Coriolis=true
-  Model.CoriolisType="Sphere"
-  Model.VerticalDiffusion = false
+  Model.HorLimit = HorLimit
+  Model.Upwind = Upwind
+  Model.Damping = Damping
+  Model.StrideDamp = StrideDamp
+  Model.Relax = Relax
+  Model.Coriolis = Coriolis
+  Model.CoriolisType = CoriolisType
+  Model.VerticalDiffusion = VerticalDiffusion
+  Model.Source = Source
+  Model.Microphysics = Microphysics
+  Model.Source = Source
+  Model.SurfaceFlux = SurfaceFlux
   Model.Thermo = "" #"InternalEnergy" #"" #"TotalEnergy"
+
+
 
 # Grid
 H = 30000.0

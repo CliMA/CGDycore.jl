@@ -57,7 +57,7 @@ function fVel(x,time,Global,Param)
         uS=0.0;
         vS=0.0;
       end
-    elseif Model.ProfVel == "BaroWaveSphere"
+    elseif Model.ProfVel == "BaroWaveDrySphere"
       (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
       Z=max(R-Phys.RadEarth,0);
       T0=0.5*(Param.T0E+Param.T0P);
@@ -132,7 +132,7 @@ function fVel(x,time,Global,Param)
     elseif Model.ProfVel == "baldauf"
       uS=Param.uMax
       vS=0
-    elseif Model.ProfVel == "barowavesphere"
+    elseif Model.ProfVel == "barowavedrysphere"
   #     # parameters
 
     elseif Model.ProfVel == "gravityhill"

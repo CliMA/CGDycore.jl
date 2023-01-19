@@ -1,5 +1,5 @@
 function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
-  ROS=Global.ROS;
+  ROS=Global.TimeStepper.ROS;
   nV1=size(V,1);
   nV2=size(V,2);
   nV3=size(V,3);
@@ -36,7 +36,7 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
 end
 
 function RosenbrockSchurMIS!(V,dt,Fcn,R,Jac,CG,Global,Param)
-  ROS=Global.ROS;
+  ROS=Global.TimeStepper.ROS;
   nV1=size(V,1);
   nV2=size(V,2);
   nV3=size(V,3);
@@ -74,7 +74,7 @@ function RosenbrockSchurMIS!(V,dt,Fcn,R,Jac,CG,Global,Param)
 end
 
 function RosenbrockDSchur!(V,dt,Fcn,Jac,CG,Global)
-  ROS=Global.ROS;
+  ROS=Global.TimeStepper.ROS;
   nV1=size(V,1);
   nV2=size(V,2);
   nV3=size(V,3);
@@ -109,8 +109,8 @@ end
 
 
 function RosenbrockSchurSSP!(V,dt,Fcn,Jac,CG,Global)
-  ROS=Global.ROS;
-  SSP=Global.ROS.SSP
+  ROS=Global.TimeStepper.ROS;
+  SSP=Global.TimeStepper.ROS.SSP
   nV1=size(V,1);
   nV2=size(V,2);
   nV3=size(V,3);

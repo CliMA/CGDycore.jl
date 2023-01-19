@@ -6,7 +6,7 @@ function fpBGrd(x,time,Global,Param)
     delta=Param.Grav/(Param.Rd*Param.T0);
 
     p=Param.p0*exp(-delta*x[3]);
-  elseif str == "barowavesphere"
+  elseif str == "barowavesdryphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
     Z=max(R-Phys.RadEarth,0);
     T0=0.5*(Param.T0E+Param.T0P);

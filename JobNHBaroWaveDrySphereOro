@@ -1,0 +1,8 @@
+mpirun -n 1 julia --project Examples/testNHBaroWaveDrySphereOro.jl \
+  --Problem="BaroWaveDrySphereOro" \
+  --Decomp="EqualArea" \
+  --SimDays=10 \
+  --dtau=50 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="EarthOrography"

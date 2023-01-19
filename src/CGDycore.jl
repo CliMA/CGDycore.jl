@@ -95,6 +95,7 @@ include("IntegrationMethods/RungeKuttaExplicit.jl")
 include("IntegrationMethods/RungeKuttaMethod.jl")
 include("IntegrationMethods/SchurSolve.jl")
 include("IntegrationMethods/SSPRungeKutta.jl")
+include("IntegrationMethods/TimeStepper.jl")
 
 include("Parallel/Exchange.jl")
 include("Parallel/Hilbert.jl")
@@ -118,6 +119,8 @@ include("Model/fVelW.jl")
 include("Model/fpBGrd.jl")
 include("Model/Energy.jl")
 include("Model/KineticEnergy.jl")
+include("Model/InitialConditions.jl")
+include("Model/Parameters.jl")
 
 include("Statistics/Averages.jl")
 

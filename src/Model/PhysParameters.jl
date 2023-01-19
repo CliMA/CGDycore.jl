@@ -339,6 +339,51 @@ return CacheStruct(
   f,
 )
 end
+mutable struct TimeStepperStruct
+  IntMethod::String
+  Table::String
+  dtau::Float64
+  SimDays::Float64
+  SimHours::Float64
+  SimMinutes::Float64
+  SimSeconds::Float64
+  ROS::RosenbrockStruct
+  LinIMEX::LinIMEXStruct
+  IMEX::IMEXStruct
+  MIS::MISStruct
+  RK::RungeKuttaStruct
+  SSP::SSPRungeKuttaStruct
+end
+function TimeStepper()
+  IntMethod = ""
+  Table = ""
+  dtau  = 0.0
+  SimDays = 0.0
+  SimHours = 0.0
+  SimMinutes = 0.0
+  SimSeconds = 0.0
+  ROS=RosenbrockMethod()
+  LinIMEX=LinIMEXMethod()
+  IMEX=IMEXMethod()
+  MIS=MISMethod()
+  RK=RungeKuttaMethod()
+  SSP=SSPRungeKuttaMethod()
+  return TimeStepperStruct(
+    IntMethod,
+    Table,
+    dtau,
+    SimDays,
+    SimHours,
+    SimMinutes,
+    SimSeconds,
+    ROS,
+    LinIMEX,
+    IMEX,
+    MIS,
+    RK,
+    SSP,
+  )  
+end
 
 mutable struct OutputStruct
   vtk::Int
@@ -346,6 +391,11 @@ mutable struct OutputStruct
   Flat::Bool
   cNames::Array{String, 1}
   nPanel::Int
+  nIter::Int
+  PrintDay::Float64
+  PrintStartDay::Float64
+  PrintInt::Int
+  PrintStartInt::Int
   RadPrint::Float64
   H::Float64
   OrdPrint::Int
@@ -357,6 +407,11 @@ function Output(Topography::NamedTuple)
   Flat=false
   cNames=[]
   nPanel=1
+  nIter = 0
+  PrintDay = 0.0
+  PrintStartDay = 0.0
+  PrintInt = 0
+  PrintStartInt = 0
   RadPrint=1000.0
   H=1000.0
   OrdPrint=1
@@ -366,6 +421,11 @@ function Output(Topography::NamedTuple)
   Flat,
   cNames,
   nPanel,
+  nIter,
+  PrintDay,
+  PrintStartDay,
+  PrintInt,
+  PrintStartInt,
   RadPrint,
   H,
   OrdPrint,
@@ -482,6 +542,10 @@ function PhysParameters()
   Omega,
   )
 end 
+mutable struct ParallelComStruct
+  Proc::Int
+  ProcNumber::Int
+end  
 
 mutable struct ModelStruct
   Problem::String
@@ -525,6 +589,15 @@ mutable struct ModelStruct
   SurfaceFlux::Bool
   Deep::Bool
 end
+function ParallelCom()
+  Proc = 1
+  ProcNumber = 1
+  return ParallelComStruct(
+    Proc,
+    ProcNumber,
+  )
+end  
+
 function Model()
   Problem=""
   ProfRho=""
@@ -615,16 +688,12 @@ mutable struct GlobalStruct{TCache}
   Metric::MetricStruct
   Grid::GridStruct
   Model::ModelStruct
+  ParallelCom::ParallelComStruct
+  TimeStepper::TimeStepperStruct
   Phys::PhysParameters
   Output::OutputStruct
   Exchange::ExchangeStruct
   vtkCache::vtkStruct
-  ROS::RosenbrockStruct
-  LinIMEX::LinIMEXStruct
-  IMEX::IMEXStruct
-  MIS::MISStruct
-  RK::RungeKuttaStruct
-  SSP::SSPRungeKuttaStruct
   Cache::CacheStruct
   J::JStruct
   latN::Array{Float64, 1}
@@ -636,17 +705,13 @@ mutable struct GlobalStruct{TCache}
 end
 function Global(Grid::GridStruct,
                 Model::ModelStruct,
+                TimeStepper::TimeStepperStruct,
+                ParallelCom::ParallelComStruct,
                 Phys::PhysParameters,
                 Output::OutputStruct,
                 Exchange::ExchangeStruct,
                 OP,nz,NumV,NumTr,init_tcache=NamedTuple())
   Metric=MetricStruct()
-  ROS=RosenbrockMethod()
-  LinIMEX=LinIMEXMethod()
-  IMEX=IMEXMethod()
-  MIS=MISMethod()
-  RK=RungeKuttaMethod()
-  SSP=SSPRungeKuttaMethod()
   Cache=CacheStruct()
   vtkCache = vtkStruct()
   J=JStruct()
@@ -660,16 +725,12 @@ function Global(Grid::GridStruct,
     Metric,
     Grid,
     Model,
+    ParallelCom,
+    TimeStepper,
     Phys,
     Output,
     Exchange,
     vtkCache,
-    ROS,
-    LinIMEX,
-    IMEX,
-    MIS,
-    RK,
-    SSP,
     Cache,
     J,
     latN,

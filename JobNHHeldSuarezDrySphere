@@ -1,0 +1,19 @@
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
+  --Problem="HeldSuarezDrySphere" \
+  --ProfRho="DecayingTemperatureProfile" \
+  --ProfTheta="DecayingTemperatureProfile" \
+  --ProfVel="Const" \
+  --Source=true \
+  --Coriolis=true \
+  --Decomp="EqualArea" \
+  --SimDays=10 \
+  --dtau=100 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="" \
+  --stretch=false \
+  --GridType="CubedSphere" \
+  --nz=45 \
+  --nPanel=16 \
+  --H=30000.0 \
+  --OrdPoly=4

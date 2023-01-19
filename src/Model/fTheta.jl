@@ -50,7 +50,7 @@ function fTheta(x,time,Global,Param)
     p=Phys.p0*eta;
     T=TBaroWave(x[1],x[2],eta,Param);
     Th=T*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
-  elseif str == "barowavesphere"
+  elseif str == "barowavedrysphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
     Z=max(R-Phys.RadEarth,0);
     T0=0.5*(Param.T0E+Param.T0P);

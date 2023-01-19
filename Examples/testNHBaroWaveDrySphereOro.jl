@@ -2,12 +2,16 @@ using CGDycore
 using MPI
 using Base
 
-# Physical parameters
-Phys=CGDycore.PhysParameters()
-
 parsed_args = CGDycore.parse_commandline()
-
+Problem = parsed_args["Problem"]
 Decomp = parsed_args["Decomp"]
+SimDays = parsed_args["SimDays"]
+dtau = parsed_args["dtau"]
+IntMethod = parsed_args["IntMethod"]
+Table = parsed_args["Table"]
+TopoS = parsed_args["TopoS"]
+stretch = parsed_args["stretch"]
+GridType = parsed_args["GridType"]
 
 Base.@kwdef struct ParamStruct
   T0E=310.0
@@ -42,19 +46,20 @@ Base.@kwdef struct ParamStruct
   #      Moist
   q_0 = 0.018                # Maximum specific humidity (default: 0.018)
   q_t = 1.0e-12
-  Stretch = false
 end  
 
 MPI.Init()
 comm = MPI.COMM_WORLD
 Proc = MPI.Comm_rank(comm) + 1
 ProcNumber = MPI.Comm_size(comm)
+ParallelCom = CGDycore.ParallelCom()
+ParallelCom.Proc = Proc
+ParallelCom.ProcNumber  = ProcNumber
 print("$Proc: \n")
 print("$ProcNumber: \n")
 
 OrdPoly = 4
 nz = 45
-
 OrdPolyZ=1
 nPanel = 16
 NF = 6 * nPanel * nPanel
@@ -62,7 +67,8 @@ NumV = 5
 NumTr = 0
 Parallel = true
 
-
+# Physical parameters
+Phys=CGDycore.PhysParameters()
 
 #ModelParameters
 Param = ParamStruct()
@@ -95,12 +101,19 @@ Model = CGDycore.Model()
 
 # Grid
 H = 30000.0
-#H = 45000.0
-Topography=(TopoS="EarthOrography",H=H,Rad=Phys.RadEarth)
+Topography=(TopoS=TopoS,H=H,Rad=Phys.RadEarth)
+TimeStepper=CGDycore.TimeStepper()
 
 Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-CGDycore.HilbertFaceSphere!(Grid)
+if GridType == "Helix"
+  Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
+  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+elseif GridType == "SQuadGen"
+  Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
+  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+elseif GridType == "CubedSphere"
+  Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+end
 if Parallel
   if Decomp == "Hilbert"
     CGDycore.HilbertFaceSphere!(Grid)
@@ -110,9 +123,10 @@ if Parallel
   else
     CellToProc = ones(Int,Grid.NumFaces)
     println(" False Decomp method ")
-  end  
+  end
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
-  if Param.Stretch
+
+  if stretch
     sigma = 1.0
     lambda = 3.16
     CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
@@ -121,25 +135,26 @@ if Parallel
   end
   Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
-  Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global = CGDycore.Global(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
-  SubGrid = CGDycore.StencilFace(SubGrid)
-# Output partition  
+  # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
   vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransSphereX,CG,Global)
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
-  zS = CGDycore.Orography(OrdPoly,SubGrid,Global,Proc)
-  SmoothFac=1.e9
-# SmoothFac=1.e15
-  FzS = similar(zS)
-  for i=1:20
-    CGDycore.TopographySmoothing1!(FzS,zS,CG,Global,SmoothFac)
-    @. zS += FzS
-    @. zS = max(zS,0.0)
+  if TopoS == "EarthOrography"
+    SubGrid = CGDycore.StencilFace(SubGrid)
+    zS = CGDycore.Orography(CG,Global)
+    Output.RadPrint = H
+    Output.Flat=false
+    nzTemp = Global.Grid.nz
+    Global.Grid.nz = 1
+    vtkCacheOrography = CGDycore.vtkInit2D(CG.OrdPoly,CGDycore.TransSphereX,CG,Global)
+    CGDycore.unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
+    Global.Grid.nz = nzTemp
   end
 else
   CellToProc=zeros(0)
@@ -153,40 +168,29 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-
+if TopoS == "EarthOrography"
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
-  Model.HyperVisc=true
-  Model.HyperDCurl=3.e15
-  Model.HyperDGrad=3.e15
-  Model.HyperDDiv=3.e15
+else
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+end
 
-# Output
-  Output.OrdPrint=CG.OrdPoly
+Model.HyperVisc=true
+Model.HyperDCurl=7.e15
+Model.HyperDGrad=7.e15
+Model.HyperDDiv=7.e15
 
-  U = zeros(Float64,nz,CG.NumG,Model.NumV+Model.NumTr)
-  U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global,Param)
-  (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global,Param)
-  if Global.Model.Thermo == "InternalEnergy"
-    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fIntEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  elseif Global.Model.Thermo == "TotalEnergy"
-    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTotEn,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  else
-    U[:,:,Model.ThPos]=CGDycore.Project(CGDycore.fTheta,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  end
-  Global.pBGrd = CGDycore.Project(CGDycore.fpBGrd,0.0,CG,Global,Param)
-  Global.RhoBGrd = CGDycore.Project(CGDycore.fRhoBGrd,0.0,CG,Global,Param)
-  if NumTr>0
-    U[:,:,Model.RhoVPos+Model.NumV]=CGDycore.Project(CGDycore.fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
-  end   
 
-  Output.RadPrint = H
-  Output.Flat=false
-  vtkCacheOrography = CGDycore.vtkInit2D(CG.OrdPoly,CGDycore.TransSphereX,CG,Global)
-  CGDycore.unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
+  U = CGDycore.InitialConditions(CG,Global,Param)
+
+# Output partition  
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransSphereX,CG,Global)
   Global.Grid.nz = nzTemp
+  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
 # Output
-  Output.vtkFileName=string("BaroWaveDryOro_")
+  Output.vtkFileName=string(Problem*"_")
   Output.vtk=0
   Output.Flat=true
   Output.nPanel=nPanel
@@ -200,199 +204,15 @@ end
     "Th",
     "Pres",
 ]
+  Output.PrintDay = 0.5
+  Output.PrintStartDay = 0
   Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
-  IntMethod="RungeKutta"
-  IntMethod="RosenbrockD"
-  IntMethod="IMEX"
-  IntMethod="MIS"
-  IntMethod="IMEX"
-  IntMethod="LinIMEX"
-  IntMethod="Rosenbrock"
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockSSP" || IntMethod == "LinIMEX" || IntMethod == "IMEX"
-    dtau = 50
-  elseif IntMethod == "MIS" 
-    dtau = 800.0
-    dtauFast =  100.0   
-  else
-    dtau=3
-  end
-  Global.ROS=CGDycore.RosenbrockMethod("RODAS")
-  Global.ROS=CGDycore.RosenbrockMethod("M1HOMME")
-  Global.ROS=CGDycore.RosenbrockMethod("SSP-Knoth")
-  Global.RK=CGDycore.RungeKuttaMethod("RK4")
-  Global.IMEX=CGDycore.IMEXMethod("ARS343")
-  Global.MIS=CGDycore.MISMethod("MISRK3")
-  Global.MIS=CGDycore.MISMethod("MISRKJeb")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("AR2")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("ARS343")
-  Global.LinIMEX=CGDycore.LinIMEXMethod("M1HOMME")
-
-# Simulation period
+  # TimeStepper
   time=[0.0]
-  SimDays=10
-  PrintDay=.5
-  PrintStartDay = 0
-  nIter=ceil(24*3600*SimDays/dtau)
-  PrintInt=ceil(24*3600*PrintDay/dtau)
-  PrintStartInt=ceil(24*3600*PrintStartDay/dtau)
-
-  Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,CG.NumG,Global.Grid.nz,Model.NumV,Model.NumTr)
-
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
-    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
-    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., Global.ROS.nStage);
-    Global.Cache.fV=zeros(size(U))
-    Global.Cache.Vn=zeros(size(U))
-  elseif IntMethod == "RosenbrockSSP"
-    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
-    Global.Cache.k=zeros(size(U[:,:,1:NumV])..., Global.ROS.nStage);
-    Global.Cache.fV=zeros(size(U))
-    Global.Cache.VS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage+1);
-    Global.Cache.fS=zeros(size(U[:,:,NumV+1:end])..., Global.ROS.nStage);
-    Global.Cache.fRhoS=zeros(size(U[:,:,1])..., Global.ROS.nStage);
-    Global.Cache.RhoS=zeros(size(U[:,:,1])..., Global.ROS.nStage+1);
-  elseif IntMethod == "LinIMEX"
-    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
-    Global.Cache.Ymyn=zeros(size(U[:,:,1:NumV+NumTr])..., Global.LinIMEX.nStage-1);
-    Global.Cache.fV=zeros(size(U))
-    Global.Cache.f=zeros(size(U)..., Global.LinIMEX.nStage)
-    Global.Cache.fV=zeros(size(U))
-    Global.Cache.Vn=zeros(size(U))
-  elseif IntMethod == "RungeKutta"
-    Global.Cache.f=zeros(size(U)..., Global.RK.nStage)
-  elseif IntMethod == "MIS"
-    Global.Cache.f=zeros(size(U)..., Global.MIS.nStage)
-    Global.Cache.VS=zeros(size(U)..., Global.MIS.nStage - 1)
-    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
-    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., Global.ROS.nStage);
-    Global.Cache.fV=zeros(size(U))
-    Global.Cache.Vn=zeros(size(U))
-    Global.Cache.R=zeros(size(U))
-    Global.Cache.dZ=zeros(size(U))  
-  elseif IntMethod == "IMEX"
-    Global.J = CGDycore.JStruct(CG.NumG,nz,Model.NumTr)
-    Global.Cache.fV=zeros(size(U))
-    Global.Cache.R=zeros(size(U))
-    Global.Cache.dZ=zeros(size(U))
-    Global.Cache.Y=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
-    Global.Cache.Z=zeros(size(U[:,:,1:NumV+NumTr])..., Global.IMEX.nStage);
-    Global.Cache.Vn=zeros(size(U))  
-  end
-
- # Boundary values
-  if Model.SurfaceFlux
-    Global.Cache.TSurf=CGDycore.ProjectSurf(CGDycore.fTSurf,0.0,CG,Global,Param)
-  end
-
-
-# Print initial conditions
-  @show "Print initial conditions"
-  CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
-
-  @show "Choose integration method"
-  if IntMethod == "Rosenbrock"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          CGDycore.RosenbrockSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
-          time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
-          end
-        end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end
-  elseif IntMethod == "RosenbrockD"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          CGDycore.RosenbrockDSchur!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
-          time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
-          end
-        end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end  
-  elseif IntMethod == "RosenbrockSSP"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          CGDycore.RosenbrockSchurSSP!(U,dtau,CGDycore.FcnNHCurlVec!,CGDycore.JacSchur!,CG,Global);
-          time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
-          end
-        end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end
-  elseif IntMethod == "LinIMEX"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.JacSchur!,CG,Global,Param);
-#         CGDycore.LinIMEXSchur!(U,dtau,CGDycore.FcnNHCurlVecI!,CGDycore.FcnNHCurlExp1DVecI!,
-#           CGDycore.FcnNHCurlImp1DGlobalVecI!,CGDycore.JacSchur!,CG,Global,Param);
-          time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
-          end
-        end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end
-  elseif IntMethod == "IMEX"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          CGDycore.IMEXSchur!(U,dtau,CGDycore.FcnNHCurlExp1DVecI!,CGDycore.FcnNHCurlImp1DGlobalVecI!,CGDycore.JacSchur!,CG,Global,Param);
-          time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
-          end
-        end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end  
-  elseif IntMethod == "MIS"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          CGDycore.MISSchur!(U,dtau,dtauFast,CGDycore.FcnNHCurlExp3DVecI!,CGDycore.FcnNHCurlImp3DVecI!,CGDycore.JacSchur!,CG,Global,Param);
-          time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
-            CGDycore.unstructured_vtkSphere(U,CGDycore.TransSphereX,CG,Global,Proc,ProcNumber)
-          end
-        end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end    
-  elseif IntMethod == "RungeKutta"
-    @time begin
-      for i=1:nIter
-        Δt = @elapsed begin
-          @time CGDycore.RungeKuttaExplicit!(U,dtau,CGDycore.FcnNHCurlVec!,CG,Global)
-
-          time[1] += dtau
-          if mod(i,PrintInt)==0 && i >= PrintStartInt
-            Global.Output.vtk=CGDycore.vtkOutput(U,vtkGrid,CG,Global)
-          end
-        end
-        percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end
-  else
-    error("Bad IntMethod")
-  end
+  TimeStepper.IntMethod = IntMethod
+  TimeStepper.Table = Table
+  TimeStepper.dtau = dtau
+  TimeStepper.SimDays = SimDays
+  CGDycore.TimeStepper!(U,CGDycore.TransSphereX,CG,Global,Param)

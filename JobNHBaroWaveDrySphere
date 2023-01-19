@@ -1,0 +1,10 @@
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
+  --Problem="BaroWaveDrySphere" \
+  --Decomp="EqualArea" \
+  --SimDays=10 \
+  --dtau=50 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="" \
+  --stretch=false \
+  --GridType="CubedSphere"

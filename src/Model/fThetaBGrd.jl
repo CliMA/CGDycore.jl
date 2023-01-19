@@ -14,7 +14,7 @@ function fThetaBGrd(x,time,Global,Param)
     p=Param.p0*eta;
     T=TBaroWave(x[1],x[2],eta,Param);
     Th=T*(Param.p0/p)^(Param.Rd/Param.Cpd);
-  elseif str == "barowavesphere"
+  elseif str == "barowavedrysphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
     Z=max(R-Param.RadEarth,0);
     T0=0.5*(Param.T0E+Param.T0P);

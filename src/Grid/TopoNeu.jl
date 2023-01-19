@@ -204,7 +204,10 @@ function TopoDataGLOBE()
   end  
 end
 
-function Orography(OrdPoly,Grid,Global,Proc)
+function Orography(CG,Global)
+  Grid = Global.Grid
+  Proc = Global.ParallelCom.Proc
+  OrdPoly = CG.OrdPoly
   (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
   RadEarth = Grid.Rad
   NF = Grid.NumFaces
@@ -261,6 +264,14 @@ function Orography(OrdPoly,Grid,Global,Proc)
         HeightCG[iP,jP,iF] = Height[ind]
       end
     end
+  end
+  SmoothFac=1.e9
+# SmoothFac=1.e15
+  FHeightCG = similar(HeightCG)
+  for i=1:20
+    TopographySmoothing1!(FHeightCG,HeightCG,CG,Global,SmoothFac)
+    @. HeightCG += FHeightCG
+    @. HeightCG = max(HeightCG,0.0)
   end
   return HeightCG
 end
