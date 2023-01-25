@@ -95,6 +95,7 @@ vCon2 = TCacheC2[Threads.threadid()]
 DvCon1 = TCacheC3[Threads.threadid()]
 DvCon2 = TCacheC4[Threads.threadid()]
 vConV = TCacheC1[Threads.threadid()]
+vCon3 = TCacheC2[Threads.threadid()]
 
 @inbounds for iz=1:nz
   @views @. vCon1 = (v1CG[:,:,iz] * dXdxIC[:,:,iz,1,1] + 
@@ -106,11 +107,10 @@ vConV = TCacheC1[Threads.threadid()]
   @views @. F[:,:,iz]  = F[:,:,iz]  - DvCon1 - DvCon2 
 end
 @inbounds for iz=1:nz-1
-  @views @. vConV = 0.5*((v1CG[:,:,iz] + v1CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,1] +
-    (v2CG[:,:,iz] + v2CG[:,:,iz+1]) * dXdxIF[:,:,iz+1,3,2]) +
-     v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
-# @views @. vConV = 0.5*(cCG[:,:,iz] + cCG[:,:,iz+1]) * vConV
-  @views @. vConV *= (cCG[:,:,iz] * JC[:,:,iz] + cCG[:,:,iz+1] * JC[:,:,iz+1]) / (JC[:,:,iz] + JC[:,:,iz+1]) 
+  @views @. vCon3 = v3CG[:,:,iz+1] * dXdxIF[:,:,iz+1,3,3]
+  @views @. vConV = ((v1CG[:,:,iz] * dXdxIC[:,:,iz,3,1] + v2CG[:,:,iz] * dXdxIC[:,:,iz,3,2] + vCon3)* cCG[:,:,iz] * JC[:,:,iz] + 
+    (v1CG[:,:,iz+1] * dXdxIC[:,:,iz+1,3,1] + v2CG[:,:,iz+1] * dXdxIC[:,:,iz+1,3,2] + vCon3)* cCG[:,:,iz+1] * JC[:,:,iz+1]) /
+    (JC[:,:,iz] + JC[:,:,iz+1])
   @views @. F[:,:,iz] = F[:,:,iz] - 0.5*vConV
   @views @. F[:,:,iz+1] = F[:,:,iz+1] + 0.5*vConV
 end

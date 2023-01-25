@@ -65,12 +65,38 @@ Base.@kwdef struct ParamHeldSuarezDrySphere
   vMax = 0.0
 end
 
+Base.@kwdef struct ParamHillSchaerCart
+  Deep=false
+  NBr=1.e-2
+  Th0=300.0
+  uMax=20
+  vMax=0
+  TEq=300.0
+  Stretch = false
+end
+
+Base.@kwdef struct ParamHillGaussCart
+  Deep=false
+  NBr=1.e-2
+  Th0=300.0
+  uMax=0
+  vMax=0
+  TEq=300.0
+  Stretch = false
+end
+
 function Parameters(Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro"
     Param = ParamBaroWaveDrySphere()
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
     @show Problem
     Param = ParamHeldSuarezDrySphere()
+  elseif Problem == "HillSchaerCart"
+    @show Problem
+    Param = ParamHillSchaerCart()
+  elseif Problem == "HillGaussCart"
+    @show Problem
+    Param = ParamHillGaussCart()
   end
 end
 

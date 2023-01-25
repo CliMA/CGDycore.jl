@@ -1,5 +1,7 @@
 mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezDrySphere" \
+  --NumV=5 \
+  --NumTr=0 \
   --ProfRho="DecayingTemperatureProfile" \
   --ProfTheta="DecayingTemperatureProfile" \
   --ProfVel="Const" \
@@ -16,4 +18,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --nz=45 \
   --nPanel=16 \
   --H=30000.0 \
-  --OrdPoly=4
+  --OrdPoly=4 \
+  --HyperVisc=true \
+  --HyperDCurl=7.e15 \
+  --HyperDGrad=7.e15 \
+  --HyperDDiv=7.e15

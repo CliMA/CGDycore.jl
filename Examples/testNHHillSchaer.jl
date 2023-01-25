@@ -68,10 +68,12 @@ Boundary.SN="Period"
 Boundary.BT=""
 Topography=(TopoS="SchaerCart",
             H=H,
-            d0=5000.0,
-            ksi0=4000.0,
-            h0=250.0,
+            P1=5000.0,
+            P2=4000.0,
+            P3=250.0,
             )
+
+TimeStepper=CGDycore.TimeStepper()
 
 Grid=CGDycore.Grid(nz,Topography)
 Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid)
@@ -86,9 +88,9 @@ if Parallel
   else  
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end  
-  Exchange = CGDycore.InitExchange(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
-  Global = CGDycore.Global(SubGrid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global = CGDycore.Global(SubGrid,Model,TimeStepper,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
 else
   CellToProc=zeros(0)
@@ -97,10 +99,10 @@ else
   CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   Exchange = CGDycore.InitExchange(Grid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
   Output=CGDycore.Output(Topography)
-  Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global = CGDycore.Global(Grid,Model,TimeStepper,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-  (CG,Global)=CGDycore.Discretization(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global)
   Model.HyperVisc=true
   Model.HyperDCurl=1.e6
   Model.HyperDGrad=1.e6

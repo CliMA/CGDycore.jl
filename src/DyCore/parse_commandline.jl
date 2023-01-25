@@ -6,6 +6,16 @@ function parse_commandline()
     arg_type = String
     default = "Problem"
 
+    "--NumV"
+    help = "Number of variables"
+    arg_type = Int
+    default = 5
+
+    "--NumTr"
+    help = "Number of tracer variables"
+    arg_type = Int
+    default = 0
+
     "--ProfRho"
     help = "Initial conditions for density"
     arg_type = String
@@ -76,6 +86,21 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--BoundaryWE"
+    help = "Boundary type in west east direction"
+    arg_type = String
+    default = ""
+
+    "--BoundarySN"
+    help = "Boundary type in south north direction"
+    arg_type = String
+    default = ""
+
+    "--BoundaryBT"
+    help = "Boundary type in vertical direction"
+    arg_type = String
+    default = ""
+
 #   Domain decomposition
     "--Decomp"
     help = "Domain decomposition method"
@@ -85,8 +110,23 @@ function parse_commandline()
 #   Time integration            
     "--SimDays"
      help = "Number of simulation days"
-     arg_type = Float64
-     default = 10.0
+     arg_type = Int
+     default = 0
+
+    "--SimHours"
+     help = "Number of simulation hours"
+     arg_type = Int
+     default = 0
+
+    "--SimMinutes"
+     help = "Number of simulation minutes"
+     arg_type = Int
+     default = 0
+
+    "--SimSeconds"
+     help = "Number of simulation seconds"
+     arg_type = Int
+     default = 0
 
     "--IntMethod"
     help = "Integration  method"
@@ -120,6 +160,16 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--nx"
+    help = "Number of horizontal grid cell in x-direction"
+    arg_type = Int
+    default = 1
+
+    "--ny"
+    help = "Number of horizontal grid cell in y-direction"
+    arg_type = Int
+    default = 1
+
     "--nz"
     help = "Number of vertical levels"
     arg_type = Int
@@ -135,10 +185,87 @@ function parse_commandline()
     arg_type = Int
     default = 4
 
+    "--Lx"
+    help = "Length in [m] in x-direction"
+    arg_type = Float64
+    default = 1000.0
+
+    "--Ly"
+    help = "Length in [m] in y-direction"
+    arg_type = Float64
+    default = 1000.0
+
+    "--x0"
+    help = "Initial point in [m] in x-direction"
+    arg_type = Float64
+    default = 1000.0
+
+    "--y0"
+    help = "Initial point in [m] in y-direction"
+    arg_type = Float64
+    default = 1000.0
+
     "--OrdPoly"
     help = "Order of the local polynoms"
     arg_type = Int
     default = 4
+
+    "--HyperVisc"
+    help = "HyperViscosity"
+    arg_type = Bool
+    default = false
+
+    "--HyperDCurl"
+    help = "HyperDCurl"
+    arg_type = Float64
+    default = 0.0
+
+    "--HyperDGrad"
+    help = "HyperDGrad"
+    arg_type = Float64
+    default = 0.0
+
+    "--HyperDDiv"
+    help = "HyperDDiv"
+    arg_type = Float64
+    default = 0.0
+
+    "--P1"
+    help = "P1"
+    arg_type = Float64
+    default = 0.0
+
+    "--P2"
+    help = "P2"
+    arg_type = Float64
+    default = 0.0
+
+    "--P3"
+    help = "P3"
+    arg_type = Float64
+    default = 0.0
+
+#   Output    
+
+    "--PrintDays"
+     help = "Number of print days"
+     arg_type = Int
+     default = 0
+
+    "--PrintHours"
+     help = "Number of print hours"
+     arg_type = Int
+     default = 0
+
+    "--PrintMinutes"
+     help = "Number of print minutes"
+     arg_type = Int
+     default = 0
+
+    "--PrintSeconds"
+     help = "Number of print seconds"
+     arg_type = Int
+     default = 0
 
   end
   return parse_args(s)

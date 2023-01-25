@@ -343,10 +343,10 @@ mutable struct TimeStepperStruct
   IntMethod::String
   Table::String
   dtau::Float64
-  SimDays::Float64
-  SimHours::Float64
-  SimMinutes::Float64
-  SimSeconds::Float64
+  SimDays::Int
+  SimHours::Int
+  SimMinutes::Int
+  SimSeconds::Int
   ROS::RosenbrockStruct
   LinIMEX::LinIMEXStruct
   IMEX::IMEXStruct
@@ -358,10 +358,10 @@ function TimeStepper()
   IntMethod = ""
   Table = ""
   dtau  = 0.0
-  SimDays = 0.0
-  SimHours = 0.0
-  SimMinutes = 0.0
-  SimSeconds = 0.0
+  SimDays = 0
+  SimHours = 0
+  SimMinutes = 0
+  SimSeconds = 0
   ROS=RosenbrockMethod()
   LinIMEX=LinIMEXMethod()
   IMEX=IMEXMethod()
@@ -392,8 +392,9 @@ mutable struct OutputStruct
   cNames::Array{String, 1}
   nPanel::Int
   nIter::Int
-  PrintDay::Float64
-  PrintStartDay::Float64
+  PrintDays::Int
+  PrintSeconds::Int
+  PrintStartDays::Int
   PrintInt::Int
   PrintStartInt::Int
   RadPrint::Float64
@@ -408,8 +409,9 @@ function Output(Topography::NamedTuple)
   cNames=[]
   nPanel=1
   nIter = 0
-  PrintDay = 0.0
-  PrintStartDay = 0.0
+  PrintDays = 0
+  PrintSeconds = 0
+  PrintStartDays = 0
   PrintInt = 0
   PrintStartInt = 0
   RadPrint=1000.0
@@ -422,8 +424,9 @@ function Output(Topography::NamedTuple)
   cNames,
   nPanel,
   nIter,
-  PrintDay,
-  PrintStartDay,
+  PrintDays,
+  PrintSeconds,
+  PrintStartDays,
   PrintInt,
   PrintStartInt,
   RadPrint,

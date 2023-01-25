@@ -1,8 +1,16 @@
 function Topo(x,y,z,zeta,Topography,zs)
-if Topography.TopoS == "AgnesiCartX"
-    h=Topography.hC/(((x-Topography.x0C)/Topography.aC)^2+1);
-elseif Topography.TopoS == "AgnesiCartY"
+  if Topography.TopoS == "AgnesiCartX"
+    x0C = Topography.P1
+    aC= Topography.P2
+    hC = Topography.P3
+    h=hC/(((x-x0C)/aC)^2+1);
+  elseif Topography.TopoS == "AgnesiCartY"
     h=Topography.hC/(((y-Topography.y0C)/Topography.aC)^2+1);
+  elseif Topography.TopoS == "GaussCartX"
+    x0C = Topography.P1
+    aC= Topography.P2
+    hC = Topography.P3
+    h=hC*exp(-((x-x0C)/aC)^2)
 elseif Topography.TopoS == "SchaerSphereCircle"
     (Lon,Lat,R)=cart2sphere(x,y,z);
     Z=max(R-Topography.RadEarth,0);
@@ -15,7 +23,10 @@ elseif Topography.TopoS == "SchaerSphereRidge"
     GreatCircleR = Topography.RadEarth * (Lon - Topography.PertLon) * cos(Lat)
     h = Topography.h0 * exp( -(GreatCircleR  / Topography.d0)^2) * cos(pi * GreatCircleR / Topography.ksi0)^2 * cos(Lat)
 elseif Topography.TopoS == "SchaerCart"
-   h = Topography.h0 * exp( -(x  / Topography.d0)^2) * cos(pi * x / Topography.ksi0)^2
+   d0 = Topography.P1
+   ksi0 = Topography.P2
+   h0 = Topography.P3
+   h = h0 * exp( -(x  / d0)^2) * cos(pi * x / ksi0)^2
 elseif Topography.TopoS == "AdvectionSchaer"
    h = Topography.h0 * cos(pi * x /Topography.lambda)^2 
    if abs(x) <= Topography.a

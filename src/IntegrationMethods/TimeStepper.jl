@@ -22,12 +22,17 @@ function TimeStepper!(U,Trans,CG,Global,Param)
   time=[0.0]
   dtau = TimeStepper.dtau
   SimDays = TimeStepper.SimDays
-  PrintDay = Output.PrintDay
-  PrintStartDay = Output.PrintStartDay
-  nIter=ceil(24*3600*TimeStepper.SimDays/dtau)
+  SimHours = TimeStepper.SimHours
+  SimMinutes = TimeStepper.SimMinutes
+  SimSeconds = TimeStepper.SimSeconds
+  PrintDays = Output.PrintDays
+  PrintSeconds = Output.PrintSeconds
+  PrintStartDays = Output.PrintStartDays
+  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
   @show nIter
-  PrintInt=ceil(24*3600*Output.PrintDay/dtau)
-  PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
+  PrintInt=ceil((24*3600*PrintDays+PrintSeconds)/dtau)
+# PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
+  PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
   NumV = Global.Model.NumV
