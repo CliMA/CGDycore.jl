@@ -197,3 +197,90 @@ function TimeStepper!(U,Trans,CG,Global,Param)
     error("Bad IntMethod")
   end
 end  
+
+function TimeStepperAdvection!(U,Trans,CG,Global,Param)  
+  TimeStepper = Global.TimeStepper
+  Output = Global.Output
+  Proc = Global.ParallelCom.Proc
+  ProcNumber = Global.ParallelCom.ProcNumber
+  IntMethod = TimeStepper.IntMethod
+  Table = TimeStepper.Table
+
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP"
+    TimeStepper.ROS=RosenbrockMethod(Table)  
+  elseif IntMethod == "RungeKutta"  
+    TimeStepper.RK=RungeKuttaMethod(Table)
+  end
+
+# Simulation period
+  time=[0.0]
+  dtau = TimeStepper.dtau
+  SimDays = TimeStepper.SimDays
+  SimHours = TimeStepper.SimHours
+  SimMinutes = TimeStepper.SimMinutes
+  SimSeconds = TimeStepper.SimSeconds
+  PrintDays = Output.PrintDays
+  PrintSeconds = Output.PrintSeconds
+  PrintStartDays = Output.PrintStartDays
+  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
+  @show nIter
+  PrintInt=ceil((24*3600*PrintDays+PrintSeconds)/dtau)
+# PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
+  PrintStartInt=0
+  Output.OrdPrint=CG.OrdPoly
+
+  NumV = Global.Model.NumV
+  NumTr = Global.Model.NumTr
+  nz = Global.Grid.nz
+  NumG = CG.NumG
+  Global.Cache=CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,NumG,nz,
+    NumV,NumTr)
+
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
+    Global.J = JStruct(NumG,nz,NumTr)
+    Global.Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.Vn=zeros(size(U))
+  elseif IntMethod == "RungeKutta"
+    Global.Cache.f=zeros(size(U)..., TimeStepper.RK.nStage)
+  end
+
+
+# Print initial conditions
+  @show "Print initial conditions"
+  unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+
+  @show "Choose integration method"
+  if IntMethod == "Rosenbrock"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "RungeKutta"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          @time RungeKuttaExplicit!(U,dtau,FcnTracer!,CG,Global)
+
+          time[1] += dtau
+          if mod(i,PrintInt)==0 && i >= PrintStartInt
+            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  else
+    error("Bad IntMethod")
+  end
+end  

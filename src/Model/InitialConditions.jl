@@ -18,3 +18,18 @@ function InitialConditions(CG,Global,Param)
   end
   return U
 end  
+
+function InitialConditionsAdvection(CG,Global,Param)
+  Model = Global.Model
+  nz = Global.Grid.nz
+  NumV = Model.NumV
+  NumTr = Model.NumTr
+  U[:,:,Model.RhoPos]=CGDycore.Project(CGDycore.fRho,0.0,CG,Global);
+  (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,0.0,CG,Global);
+  U[:,:,Model.wPos]=CGDycore.ProjectW(CGDycore.fVelW,0.0,CG,Global)
+  for i = 1 : NumTr
+    Model.ProfTr="AdvectionSphereDCMIPQ1"
+    U[:,:,Model.NumV+i]=CGDycore.Project(CGDycore.fTr,0.0,CG,Global).*U[:,:,Model.RhoPos];
+  end  
+  return U
+end  

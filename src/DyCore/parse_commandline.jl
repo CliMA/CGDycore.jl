@@ -31,6 +31,11 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--ProfVelW"
+    help = "Initial conditions for vertical velocity"
+    arg_type = String
+    default = ""
+
     "--HorLimit"
     help = "Horizontal limiter"
     arg_type = Bool

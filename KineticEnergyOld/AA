@@ -1,7 +1,5 @@
 using LinearAlgebra
 include("GaussLobattoQuad.jl")
-include("GaussLegendreQuad.jl")
-include("Lagrange.jl")
 include("DLagrange.jl")
 include("Oro.jl")
 include("JacobiDG2.jl")
@@ -18,8 +16,8 @@ include("Sdudz.jl")
 include("dRhoSdz.jl")
 
 function main()
-  Nz = 20
-  Nx = 10
+  N = 20
+  M = 10
   OrdPolyX=3
   H = 400
   hHill = 200
@@ -27,9 +25,6 @@ function main()
   if OrdPolyX>0
     #Horizontal Grid
     (wX,xw)=GaussLobattoQuad(OrdPolyX)
-    I12 = ones(2,1)
-    I21 = 0.5*ones(1,2)
-
 
     Dx=zeros(OrdPolyX+1,OrdPolyX+1)
     for i=1:OrdPolyX+1
@@ -40,20 +35,6 @@ function main()
     #  Vertical Grid
     OrdPolyZ=1
     (wZ,zw)=GaussLobattoQuad(OrdPolyZ)
-    (wZLG,zwLG)=GaussLegendreQuad(OrdPolyZ)
-
-    IntLG2LGL = zeros(Float64,OrdPolyZ+1,OrdPolyZ)
-    IntLGL2LG = zeros(Float64,OrdPolyZ,OrdPolyZ+1)
-    @show zw
-    @show zwLG
-    for j = 1 : OrdPolyZ+1
-      for i = 1 : OrdPolyZ
-        IntLGL2LG[i,j]=Lagrange(zwLG[i],zw,j)
-        IntLG2LGL[j,i]=Lagrange(zw[j],zwLG,i)
-      end
-    end
-    @show IntLG2LGL
-    @show IntLGL2LG
 
     Dz=zeros(OrdPolyZ+1,OrdPolyZ+1)
     for i=1:OrdPolyZ+1
@@ -62,54 +43,58 @@ function main()
       end
     end
   end
-  xP=zeros(Nx,OrdPolyX+1)
+  xP=zeros(M,OrdPolyX+1)
   xP[1,1]=0
-  dx=L/Nx
-  for i=1:Nx
-    for j=1:OrdPolyX+1
+  dx=L/M
+  for i=1:M
+    for j=1:OrdPoly+1
       xP[i,j]=xP[i,1]+(1+xw[j])/2*dx
     end
-    if i<Nx
-      xP[i+1,1]=xP[i,OrdPolyX+1]
+    if i<M
+      xP[i+1,1]=xP[i,OrdPoly+1]
     end
   end  
 
-  xP[Nx,OrdPolyX+1]=L
+  xP[M,OrdPolyX+1]=L
 
-  zP=zeros(Nx,Nz+1,OrdPolyX+1)
-  for j=1:Nx
+  zP=zeros(M,N+1,OrdPolyX+1)
+  for j=1:M
     for k=1:OrdPolyX+1
       zP[j,1,k]=Oro(xP[j,k],L,hHill)
-      zP[j,Nz+1,k]=H
-      dzLoc=(zP[j,Nz+1,k]-zP[j,1,k])/Nz
-      for i=2:Nz
+      zP[j,N+1,k]=H
+      dzLoc=(zP[j,N+1,k]-zP[j,1,k])/N
+      for i=2:N
         zP[j,i,k]=zP[j,i-1,k]+dzLoc
       end
     end
   end
-  zM=zeros(Nx,Nz,OrdPolyX+1)
-  for i=1:Nz
+  zM=zeros(M,N,OrdPoly+1)
+  for i=1:N
     zM[:,i,:]=0.5*(zP[:,i,:]+zP[:,i+1,:])
   end
-  dz=zeros(Nx,Nz,OrdPolyX+1)
-  for i=1:Nz
+  dz=zeros(M,N,OrdPoly+1)
+  for i=1:N
     dz[:,i,:]=zP[:,i+1,:]-zP[:,i,:]
   end
-  dzF=zeros(Nx,Nz+1,OrdPolyX+1)
+  dzF=zeros(M,N+1,OrdPoly+1)
   dzF[:,1,:]=dz[:,1,:]
-  dzF[:,Nz+1,:]=dz[:,Nz,:]
-  for i=2:Nz
+  dzF[:,N+1,:]=dz[:,N,:]
+  for i=2:N
     dzF[:,i,:]=0.5*(dz[:,i-1,:]+dz[:,i,:])
   end
 # Metric
   ZZ=zeros(OrdPolyX+1,OrdPolyZ+1)
-  X=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1,2)
-  J=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
-  dXdx=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1,2,2)
-  dXdxI=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1,2,2)
+  X=zeros(M,N,OrdPolyX+1,OrdPolyZ+1,2)
+  J=zeros(M,N,OrdPolyX+1,OrdPolyZ+1)
+  dXdx=zeros(M,N,OrdPolyX+1,OrdPolyZ+1,2,2)
+  dXdxI=zeros(M,N,OrdPoly+1,OrdPolyZ+1,2,2)
+# dXdxIF=zeros(M,N+1,OrdPoly+1,2,2)
+# dXdxIC=zeros(M,N,OrdPoly+1,2,2)
+# JF=zeros(M,N+1,OrdPoly+1)
+# JC=zeros(M,N,OrdPoly+1)
 
-  for i=1:Nz
-    for j=1:Nx
+  for i=1:N
+    for j=1:M
       @views @. ZZ[:,1]=zP[j,i,:]
       @views @. ZZ[:,2]=zP[j,i+1,:]
       @views (XLoc,JLoc,dXdxLoc,dXdxILoc)=JacobiDG2(xP[j,:],ZZ,Dx,xw,Dz,zw)
@@ -120,24 +105,50 @@ function main()
     end
   end
 
-  u=rand(Nx,Nz,OrdPolyX+1,OrdPolyZ)
-  @views @. u[:,2:Nz,:]=0.0
+# for i=1:N
+#   @views @. JC[:,i,:]=0.5*(J[:,i,:,1]+J[:,i,:,2])
+#   @views @. JF[:,i,:]=J[:,i,:,1]
+#   @views @. dXdxIC[:,i,:,:,:]=0.5*(dXdxI[:,i,:,1,:,:]+dXdxI[:,i,:,2,:,:])
+#   @views @. dXdxIF[:,i,:,:,:]=dXdxI[:,i,:,1,:,:]
+# end
+  @views @. JF[:,N+1,:]=J[:,N,:,2]
+  @views @. dXdxIF[:,N+1,:,:,:]=dXdxI[:,N,:,2,:,:]
+  u=rand(M,N,OrdPoly+1)
+  @views @. u[:,2:N,:]=0.0
   #@views @. u[:,1,:]=0.0
   #@. u = 0.0
-  Average!(u)
-  wF=2.0*rand(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
-  Average!(wF)
-  DSSF!(wF,J)
+  u=DSS(u,JC)
+  wF=2.0*rand(M,N+1,OrdPoly+1)
+  @. wF -= 1.0
+  @. wF = 0.0
+  wF=DSSF(wF,JC)
+  @views @. wF[:,1,:]=-dXdxIF[:,1,:,2,1]*u[:,1,:]/dXdxIF[:,1,:,2,2]
+  @views @. wF[:,N+1,:]=0.0
+  wF=DSSF(wF,JC)
 
-  Rho=rand(Nx,Nz,OrdPolyX+1,OrdPolyZ)
-  Rho .= 1.0
-  Average!(Rho)
-  K=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ)
-# with Interpolation for higher order
-  @views @. K[:,:,:,:] = 0.5 * (u[:,:,:,:]*u[:,:,:] +
-    0.5 * (wF[:,:,:,1] * wF[:,:,:,1] + wF[:,:,:,2] * wF[:,:,:,2]))
-  S=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
-  stop
+  Rho=rand(M,N,OrdPoly+1)
+  @. Rho += 1.0
+  Rho=DSS(Rho,JC)
+  RhoF=zeros(M,N+1,OrdPoly+1)
+  @views @. RhoF[:,1,:] = Rho[:,1,:]
+  @views @. RhoF[:,N+1,:] = Rho[:,N,:]
+  for i=2:N
+    @views @. RhoF[:,i,:]=(Rho[:,i-1,:]*JC[:,i-1,:]+Rho[:,i,:]*JC[:,i,:]) /
+      (JC[:,i-1,:]+JC[:,i,:])
+  end
+  K=zeros(M,N,OrdPoly+1)
+  for i=1:N
+    @views @. K[:,i,:] = 0.5 * (u[:,i,:]*u[:,i,:] +
+      0.5 * (wF[:,i,:] * wF[:,i,:] + wF[:,i+1,:] * wF[:,i+1,:]))
+  end
+  S=zeros(M,N+1,OrdPoly+1)
+  uF = zeros(M,OrdPoly+1)
+  for i=1:N-1
+    @views @. uF=(dXdxIC[:,i,:,2,1] * u[:,i,:] * Rho[:,i,:] +
+      dXdxIC[:,i+1,:,2,1] * u[:,i+1,:] * Rho[:,i+1,:]) /
+      (Rho[:,i,:] * dXdxIC[:,i,:,2,2] + Rho[:,i+1,:] * dXdxIC[:,i+1,:,2,2])
+    @views @. S[:,i+1,:] = RhoF[:,i+1,:] * (wF[:,i+1,:]+uF)
+  end
 
 #%%%%%%%%%%%%%%%%%
 # Part 1
