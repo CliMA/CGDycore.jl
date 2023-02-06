@@ -1,4 +1,4 @@
-function FcnTracer!(F,U,time,CG,Global)
+function FcnTracer!(F,U,time,CG,Global,Param)
   @unpack TRhoCG, Tv1CG, Tv2CG, TwCG, TwCCG, TThCG, TFCG,
   TCacheCC1, TCacheCC2, TCacheCC3, TCacheCC4, TCacheCC5 = Global.ThreadCache
 
@@ -14,7 +14,8 @@ function FcnTracer!(F,U,time,CG,Global)
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
   JF = Global.Metric.JF
-  DivTr = Global.Cache.DivTr
+  Temp1 = Global.Cache.Temp1
+  @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
   DivCG=Global.Cache.DivC
   FCG=Global.Cache.FCC
   DivTrCG=Global.Cache.DivC
@@ -27,14 +28,13 @@ function FcnTracer!(F,U,time,CG,Global)
   TrCG = Global.Cache.TrCG
   DivTr .= 0.0
   F .= 0.0
-  if Global.Model.Param.TimeDependent
-    @views ProjectVec!(U[:,:,uPos],U[:,:,vPos],fVel,time,CG,Global)
-    @views ProjectW!(U[:,:,wPos],fVelW,time,CG,Global)
-    @views @. U[:,CG.Boundary,NumV+1:end] = 0.0
-    @views @. U[:,CG.Boundary,RhoPos] = 1.0
+  if Param.TimeDependent
+    @views ProjectVec!(U[:,:,uPos],U[:,:,vPos],fVel,time,CG,Global,Param)
+    @views ProjectW!(U[:,:,wPos],fVelW,time,CG,Global,Param)
   end
+
   # Hyperdiffusion 
-  @inbounds for iF = 1:NF
+  @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -64,7 +64,41 @@ function FcnTracer!(F,U,time,CG,Global)
     end
   end
 
-  @inbounds for iF = 1:NF
+  ExchangeData3DSend(Temp1,Global.Exchange)
+
+  @inbounds for iF in Global.Grid.InteriorFaces
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+          RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
+        end
+      end
+    end
+    @inbounds for iT=1:NumTr
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          ind = CG.Glob[iP,jP,iF]
+          @inbounds for iz=1:nz
+            ThCG[iP,jP,iz] = U[iz,ind,iT+NumV]
+          end
+        end
+      end
+      @views FDivGrad2VecDSS!(DivTrCG,ThCG,RhoCG,CG,Global,iF)
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          ind = CG.Glob[iP,jP,iF]
+          @inbounds for iz=1:nz
+            DivTr[iz,ind,iT] += DivCG[iP,jP,iz] / CG.M[iz,ind]
+          end
+        end
+      end
+    end
+  end
+
+  ExchangeData3DRecv!(Temp1,Global.Exchange)
+
+  @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -81,6 +115,7 @@ function FcnTracer!(F,U,time,CG,Global)
     end
     @. FCG = 0.0
 
+    BoundaryW!(view(wCG,:,:,1),v1CG,v2CG,CG,Global,iF)
     @views FDiv3Vec!(FCG[:,:,:,RhoPos],RhoCG,v1CG,v2CG,wCG,CG,Global,iF)
 
 #   Tracer transport
@@ -98,7 +133,7 @@ function FcnTracer!(F,U,time,CG,Global)
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
       else
-        @views FDiv3Vec!(FCG[:,:,:,iT],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
+        @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
       end
     end
 
@@ -114,6 +149,63 @@ function FcnTracer!(F,U,time,CG,Global)
       end  
     end
   end  
+  
+  ExchangeData3DSend(F,Global.Exchange)
+
+  @inbounds for iF in Global.Grid.InteriorFaces
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+          RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
+          v1CG[iP,jP,iz] = U[iz,ind,uPos]
+          v2CG[iP,jP,iz] = U[iz,ind,vPos]
+          wCG[iP,jP,iz+1] = U[iz,ind,wPos]
+          @inbounds for iT = 1:NumTr
+            TrCG[iP,jP,iz,iT] = U[iz,ind,iT+NumV]
+          end  
+        end
+      end
+    end
+    @. FCG = 0.0
+
+    BoundaryW!(view(wCG,:,:,1),v1CG,v2CG,CG,Global,iF)
+    @views FDiv3Vec!(FCG[:,:,:,RhoPos],RhoCG,v1CG,v2CG,wCG,CG,Global,iF)
+
+#   Tracer transport
+    @inbounds for iT = 1:NumTr
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          ind = CG.Glob[iP,jP,iF]
+          @inbounds for iz=1:nz
+            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT]
+          end
+        end
+      end
+#     Hyperdiffusion, second Laplacian
+      @views FDivRhoGrad2Vec!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,Global,iF)
+      if Global.Model.Upwind
+        @views FDiv3UpwindVec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+      else
+        @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
+      end
+    end
+
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
+          @inbounds for iT = 1:NumTr
+            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.M[iz,ind]
+          end
+        end
+      end  
+    end
+  end  
+
+  ExchangeData3DRecv!(F,Global.Exchange)
+
 end
 
 function ComputeVelocity!(U,CG,Global,time)

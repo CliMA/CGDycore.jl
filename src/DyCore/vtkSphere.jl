@@ -236,7 +236,7 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       RhoPos = Global.Model.RhoPos
       RhoCell = zeros(OrdPrint*OrdPrint*nz*NF) 
       @views Interpolate!(RhoCell,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
-      vtk["Rho", VTKCellData()] = RhoCell
+      vtk["rho", VTKCellData()] = RhoCell
     elseif  str == "u" 
       uPos = Global.Model.uPos
       uCell = zeros(OrdPrint*OrdPrint*nz*NF)
@@ -306,7 +306,6 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       vtk["Vort", VTKCellData()] = VortCell
     end   
   end   
-
   outfiles=vtk_save(vtk);
   Global.Output.vtk = Global.Output.vtk + 1
   return outfiles::Vector{String}

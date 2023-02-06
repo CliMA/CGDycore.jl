@@ -85,6 +85,36 @@ Base.@kwdef struct ParamHillGaussCart
   Stretch = false
 end
 
+H = 1.2e4
+Cpd=1004.0e0
+Cvd=717.0e0
+Rd=Cpd-Cvd
+T_0 = 300.0
+Grav = 9.81e0
+ScaleHeight = Float64(Rd * T_0 / Grav)
+tau = 1036800.0
+omega_0 = 23000 * pi / tau
+RadEarth = 6.37122e+6
+p0 = 1.e5
+p_top = p0 * exp(-H / ScaleHeight)
+Base.@kwdef struct ParamAdvectionSphereDCMIP
+  xC = 0.0
+  H = H
+  R_t = RadEarth / 2.0
+  Z_t = 1000.0
+  z_c = 5.0e3
+  p_top = p_top
+  T_0 = T_0
+  ScaleHeight = ScaleHeight
+  b = 0.2
+  Lon_c1 = 150.0/360.0 * 2 * pi
+  Lon_c2 = 210.0/360.0 * 2 * pi
+  Lat_c = 0.0
+  tau = tau
+  omega_0 = omega_0
+  TimeDependent = true
+end
+
 function Parameters(Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro"
     Param = ParamBaroWaveDrySphere()
@@ -97,6 +127,9 @@ function Parameters(Problem::String)
   elseif Problem == "HillGaussCart"
     @show Problem
     Param = ParamHillGaussCart()
+  elseif Problem == "AdvectionSphereDCMIP"
+    @show Problem
+    Param = ParamAdvectionSphereDCMIP()
   end
 end
 

@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
+mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
   --Problem="AdvectionSphereDCMIP" \
   --NumV=4 \
   --NumTr=1 \
@@ -7,15 +7,15 @@ mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
   --ProfVel="AdvectionSphereDCMIP" \
   --ProfVelW="AdvectionSphereDCMIP" \
   --Decomp="EqualArea" \
-  --SimDays=10 \
-  --PrintHours=12 \
-  --dtau=600 \
+  --SimDays=1 \
+  --PrintSeconds=3600 \
+  --dtau=300 \
   --IntMethod="RungeKutta" \
   --Table="SSP3" \
   --TopoS="" \
   --stretch=false \
   --GridType="CubedSphere" \
-  --nz=12 \
+  --nz=24 \
   --nPanel=8 \
   --H=1.2e4 \
   --OrdPoly=4 \

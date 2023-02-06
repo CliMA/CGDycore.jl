@@ -1,6 +1,5 @@
-function fTr(x,time,Global)
+function fTr(x,time,Global,Param)
   Model=Global.Model
-  Param=Global.Model.Param
   Phys=Global.Phys
   str = lowercase(Model.ProfTr)
   if str == "cylinder"

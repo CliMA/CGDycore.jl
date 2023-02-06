@@ -42,7 +42,7 @@ function parse_commandline()
     default = false
 
     "--Upwind"
-    help = "Vertical diiferencing"
+    help = "Vertical differencing"
     arg_type = Bool
     default = true
 

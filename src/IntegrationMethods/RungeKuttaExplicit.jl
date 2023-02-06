@@ -1,5 +1,5 @@
 function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param)
-  RK=Global.RK;
+  RK=Global.TimeStepper.RK
   f=Global.Cache.f
   Vn=Global.Cache.Vn
 
@@ -11,6 +11,25 @@ function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param)
     end
 #   Fcn(view(f,:,:,:,iStage),V,time + RK.cRKE[iStage] * dt,CG,Global,Param);
     @views Fcn(f[:,:,:,iStage],V,CG,Global,Param);
+  end
+  @. V = Vn;
+  @inbounds for iStage=1:RK.nStage
+    @views @. V = V + dt * RK.bRKE[iStage] * f[:,:,:,iStage]
+  end
+end
+
+function RungeKuttaExplicit!(time,V,dt,Fcn,CG,Global,Param)
+  RK=Global.TimeStepper.RK
+  f=Global.Cache.f
+  Vn=Global.Cache.Vn
+
+  @. Vn = V
+  @inbounds for iStage=1:RK.nStage
+    V .= Vn;
+    @inbounds for jStage=1:iStage-1
+      @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
+    end
+    @views Fcn(f[:,:,:,iStage],V,time + RK.cRKE[iStage] * dt,CG,Global,Param);
   end
   @. V = Vn;
   @inbounds for iStage=1:RK.nStage

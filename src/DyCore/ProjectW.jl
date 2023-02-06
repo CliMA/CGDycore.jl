@@ -1,7 +1,7 @@
-function ProjectW(Fun,time,CG,Global)
+function ProjectW(Fun,time,CG,Global,Param)
 OrdPoly=CG.OrdPoly;
 nz=Global.Grid.nz;
-p=zeros(nz,CG.NumG);
+w=zeros(nz,CG.NumG);
 fLoc=zeros(OrdPoly+1,OrdPoly+1);
 X = Global.Metric.X
 JF = Global.Metric.JF
@@ -10,16 +10,15 @@ for iz=1:nz-1
     for j=1:OrdPoly+1
       for i=1:OrdPoly+1
         x=0.5*(X[i,j,2,:,iz,iF]+X[i,j,1,:,iz+1,iF]);
-        p[iz,CG.Glob[i,j,iF]]+=Fun(x,time,Global)*JF[i,j,iz+1,iF]
+        w[iz,CG.Glob[i,j,iF]]=Fun(x,time,Global,Param)
       end
     end
   end
 end
-@views p[1:nz-1,:] .= p[1:nz-1,:]./CG.MW;
-return p
+return w
 end
 
-function ProjectW!(w,Fun,time,CG,Global)
+function ProjectW!(w,Fun,time,CG,Global,Param)
   OrdPoly=CG.OrdPoly;
   nz=Global.Grid.nz;
   X = Global.Metric.X
@@ -31,7 +30,7 @@ function ProjectW!(w,Fun,time,CG,Global)
         @inbounds for i=1:OrdPoly+1
           x=0.5*(X[i,j,2,:,iz,iF]+X[i,j,1,:,iz+1,iF])
           ind = CG.Glob[i,j,iF]
-          w[iz,ind]+=Fun(x,time,Global)*JF[i,j,iz+1,iF]/CG.MW[iz,ind]
+          w[iz,ind]=Fun(x,time,Global,Param)
         end
       end
     end

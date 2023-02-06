@@ -1,6 +1,5 @@
-function fVelW(x,time,Global)
+function fVelW(x,time,Global,Param)
   Model=Global.Model
-  Param=Global.Model.Param
   Phys=Global.Phys
   str = lowercase(Model.ProfVelW)
   if str == "linear"

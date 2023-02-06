@@ -96,13 +96,11 @@ Model = CGDycore.Model()
   Model.uPos=2
   Model.vPos=3
   Model.wPos=4
-  Model.ThPos=5
   Model.HorLimit = HorLimit
   Model.Upwind = Upwind
 
 
 # Grid
-H = 30000.0
 Topography=(TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 TimeStepper=CGDycore.TimeStepper()
 
@@ -182,7 +180,7 @@ Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
 
-  U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
+U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
 
 # Output partition  
   nzTemp = Global.Grid.nz
@@ -203,9 +201,10 @@ Model.HyperDDiv = HyperDDiv # =7.e15
     "u",
     "v",
     "w",
-    "Tr",
+    "Tr1",
 ]
   Output.PrintDays = PrintDays
+  Output.PrintHours = PrintHours
   Output.PrintSeconds = PrintSeconds
   Output.PrintStartDays = 0
   Output.OrdPrint=CG.OrdPoly

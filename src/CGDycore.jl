@@ -4,14 +4,14 @@ using LinearAlgebra
 using SparseArrays
 using UnPack
 using NCDatasets
-using DelimitedFiles
 using Dierckx
-using MPI
-using StaticArrays
-using WriteVTK
-using NetCDF
-using ArgParse
 using StructArrays
+using MPI
+using WriteVTK
+using ArgParse
+using Metal
+#using StaticArrays
+#using NetCDF
 
 include("Grid/Geometry.jl")
 include("Grid/Node.jl")
@@ -123,6 +123,8 @@ include("Model/InitialConditions.jl")
 include("Model/Parameters.jl")
 
 include("Statistics/Averages.jl")
+
+include("GPU/AddVec.jl")
 
 OOP = 5
 

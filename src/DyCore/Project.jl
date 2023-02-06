@@ -10,12 +10,11 @@ for iF=1:Global.Grid.NumFaces
       ind = CG.Glob[i,j,iF]
       for iz=1:nz
         x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
-        p[iz,ind] += Fun(x,time,Global,Param) * JC[i,j,iz,iF] / CG.M[iz,ind]
+        p[iz,ind] = Fun(x,time,Global,Param) 
       end
     end
   end
 end
-ExchangeData!(p,Global.Exchange)
 return p
 end
 

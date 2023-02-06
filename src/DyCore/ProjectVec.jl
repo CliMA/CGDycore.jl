@@ -15,14 +15,12 @@ function ProjectVec(Fun,time,CG,Global,Param)
         for iz=1:nz
           x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
           (uLoc,vLoc)=Fun(x,time,Global,Param);
-          uS[iz,ind]+=uLoc*JC[i,j,iz,iF] / CG.M[iz,ind]
-          vS[iz,ind]+=vLoc*JC[i,j,iz,iF] / CG.M[iz,ind]
+          uS[iz,ind]=uLoc
+          vS[iz,ind]=vLoc
         end
       end
     end
   end
-  ExchangeData!(uS,Global.Exchange)
-  ExchangeData!(vS,Global.Exchange)
   return (uS,vS)
 end
 
@@ -44,13 +42,11 @@ function ProjectVec!(uS,vS,Fun,time,CG,Global,Param)
         @inbounds for iz=1:nz
           @views @. x = 0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
           (uLoc,vLoc)=Fun(x,time,Global,Param);
-          uS[iz,ind] += uLoc*JC[i,j,iz,iF] / CG.M[iz,ind]
-          vS[iz,ind] += vLoc*JC[i,j,iz,iF] / CG.M[iz,ind]
+          uS[iz,ind] = uLoc
+          vS[iz,ind] = vLoc
         end
       end
     end
   end
-  ExchangeData!(uS,Global.Exchange)
-  ExchangeData!(vS,Global.Exchange)
 end
 

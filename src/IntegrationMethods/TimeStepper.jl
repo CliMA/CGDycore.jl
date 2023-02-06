@@ -26,11 +26,12 @@ function TimeStepper!(U,Trans,CG,Global,Param)
   SimMinutes = TimeStepper.SimMinutes
   SimSeconds = TimeStepper.SimSeconds
   PrintDays = Output.PrintDays
+  PrintHours = Output.PrintHours
   PrintSeconds = Output.PrintSeconds
   PrintStartDays = Output.PrintStartDays
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
   @show nIter
-  PrintInt=ceil((24*3600*PrintDays+PrintSeconds)/dtau)
+  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
 # PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
@@ -220,11 +221,11 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
   SimMinutes = TimeStepper.SimMinutes
   SimSeconds = TimeStepper.SimSeconds
   PrintDays = Output.PrintDays
+  PrintHours = Output.PrintHours
   PrintSeconds = Output.PrintSeconds
   PrintStartDays = Output.PrintStartDays
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
-  @show nIter
-  PrintInt=ceil((24*3600*PrintDays+PrintSeconds)/dtau)
+  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
 # PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
@@ -248,6 +249,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
 
 # Print initial conditions
   @show "Print initial conditions"
+  @show sum(abs.(U[:,:,Global.Model.RhoPos]))
   unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
 
   @show "Choose integration method"
@@ -269,7 +271,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RungeKuttaExplicit!(U,dtau,FcnTracer!,CG,Global)
+          @time RungeKuttaExplicit!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
 
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt

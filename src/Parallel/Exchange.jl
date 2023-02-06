@@ -532,6 +532,59 @@ function ExchangeData3DSend(U,p,Exchange)
   end
 end  
 
+function ExchangeData3DSend(U,Exchange)
+
+  if Exchange.Parallel
+
+    IndSendBuffer = Exchange.IndSendBuffer
+    IndRecvBuffer = Exchange.IndRecvBuffer
+    NeiProc = Exchange.NeiProc
+    Proc = Exchange.Proc
+    ProcNumber = Exchange.ProcNumber
+    nz = size(U,1)
+    nT = size(U,3)
+    if Exchange.InitRecvBuffer
+      @inbounds for iP in NeiProc
+        Exchange.RecvBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
+        Exchange.SendBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
+      end  
+      RecvBuffer3 = Exchange.RecvBuffer3
+      SendBuffer3 = Exchange.SendBuffer3
+      Exchange.InitRecvBuffer = false
+      Exchange.InitSendBuffer = false
+      Exchange.sreq = MPI.UnsafeMultiRequest(length(NeiProc))
+      Exchange.rreq = MPI.UnsafeMultiRequest(length(NeiProc))
+      rreq = Exchange.rreq
+      sreq = Exchange.sreq
+    else
+      RecvBuffer3 = Exchange.RecvBuffer3
+      SendBuffer3 = Exchange.SendBuffer3
+      rreq = Exchange.rreq
+      sreq = Exchange.sreq
+    end    
+
+    @inbounds for iP in NeiProc
+      i = 0
+      @views @inbounds for Ind in IndSendBuffer[iP]
+        i += 1
+        @views @. SendBuffer3[iP][:,i,1:nT] = U[:,Ind,:]
+      end
+    end
+    i = 0
+    @inbounds for iP in NeiProc
+      tag = Proc + ProcNumber*iP
+      i += 1
+      @views MPI.Irecv!(RecvBuffer3[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
+    end  
+    i = 0
+    @inbounds for iP in NeiProc
+      tag = iP + ProcNumber*Proc
+      i += 1
+      @views MPI.Isend(SendBuffer3[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
+    end
+  end
+end  
+
 function ExchangeData3DRecv!(U,p,Exchange)
 
   if Exchange.Parallel
@@ -560,7 +613,34 @@ function ExchangeData3DRecv!(U,p,Exchange)
   end  
 end    
 
-function ExchangeData!(U::Array{Float64,2},Exchange)
+function ExchangeData3DRecv!(U,Exchange)
+
+  if Exchange.Parallel
+
+    nT = size(U,3)
+    IndRecvBuffer = Exchange.IndRecvBuffer
+    NeiProc = Exchange.NeiProc
+    RecvBuffer3 = Exchange.RecvBuffer3
+    rreq = Exchange.rreq
+    sreq = Exchange.sreq
+
+#   stats = MPI.Waitall!(rreq)
+#   stats = MPI.Waitall!(sreq)
+    stats = MPI.Waitall(rreq)
+    stats = MPI.Waitall(sreq)
+    MPI.Barrier(MPI.COMM_WORLD)
+    #Receive
+    @inbounds for iP in NeiProc
+      i = 0
+      @inbounds for Ind in IndRecvBuffer[iP]
+        i += 1
+        @views @. U[:,Ind,:] += RecvBuffer3[iP][:,i,1:nT]
+      end
+    end
+  end  
+end    
+
+function ExchangeData!(U::AbstractArray{Float64,2},Exchange)
 
   if Exchange.Parallel
     nz = size(U,1)

@@ -393,6 +393,7 @@ mutable struct OutputStruct
   nPanel::Int
   nIter::Int
   PrintDays::Int
+  PrintHours::Int
   PrintSeconds::Int
   PrintStartDays::Int
   PrintInt::Int
@@ -410,6 +411,7 @@ function Output(Topography::NamedTuple)
   nPanel=1
   nIter = 0
   PrintDays = 0
+  PrintHours = 0
   PrintSeconds = 0
   PrintStartDays = 0
   PrintInt = 0
@@ -425,6 +427,7 @@ function Output(Topography::NamedTuple)
   nPanel,
   nIter,
   PrintDays,
+  PrintHours,
   PrintSeconds,
   PrintStartDays,
   PrintInt,

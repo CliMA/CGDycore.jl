@@ -5,6 +5,6 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --dtau=50 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  --TopoS="" \
+  --TopoS="EarthOrography" \
   --stretch=false \
   --GridType="CubedSphere"
