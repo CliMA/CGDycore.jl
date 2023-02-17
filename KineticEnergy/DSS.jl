@@ -1,28 +1,50 @@
-function DSS!(c,J,I12,I21)
+function DSS!(c,Rho,JC)
   Nz=size(c,2)
   Nx=size(c,1)
   OPx=size(c,3)
   OPz=size(c,4)
-  cIL=zeros(OPz+1)
-  cIR=zeros(OPz+1)
-  cI=zeros(OPz+1)
-  for i=2:Nx
-    for j = 1 : Nz  
-      @views cIL = I12 * c[i-1,j,OPx,:]  
-      @views cIR =I12 * c[i,j,1,:]  
-      @views @. cI = (cIL + cIR ) / (J[i-1,j,OPx,:] + J[i,j,1,:])
-      ccI = I21 * cI  
-      @views @. c[i-1,j,OPx,:] = ccI
-      @views @. c[i,j,1,:] = ccI
+  cI=zeros(OPz)
+  if OPx > 2
+    @views @. c[:,:,2:OPx-1,:] /= (JC[:,:,2:OPx-1,:] * Rho[:,:,2:OPx-1,:]) 
+  end
+  for ix = 2 : Nx
+    for iz = 1 : Nz  
+      @views @. cI = (c[ix-1,iz,OPx,:] + c[ix,iz,1,:] ) / 
+        (JC[ix-1,iz,OPx,:] * Rho[ix-1,iz,OPx,:] + JC[ix,iz,1,:] * Rho[ix,iz,1,:])
+      @views @. c[ix-1,iz,OPx,:] = cI
+      @views @. c[ix,iz,1,:] = cI
     end  
   end
-  for j = 1 : Nz  
-    @views cIL = I12 * c[Nx,j,OPx,:]  
-    @views cIR =I12 * c[1,j,1,:]  
-    @views @. cI = (cIL  + cIR) / (J[Nx,j,OPx,:] + J[1,j,1,:])
-    ccI = I21 * cI  
-    @views @. c[Nx,j,OPx,:] = ccI
-    @views @. c[1,j,1,:] = ccI
+  for iz = 1 : Nz  
+    @views @. cI = (c[1,iz,1,:] + c[Nx,iz,OPx,:] ) / 
+      (JC[1,iz,1,:] * Rho[1,iz,1,:] + JC[Nx,iz,OPx,:] * Rho[Nx,iz,OPx,:])
+    @views @. c[1,iz,1,:] = cI
+    @views @. c[Nx,iz,OPx,:] = cI
+  end  
+end
+
+function DSS!(c,JC)
+  Nz=size(c,2)
+  Nx=size(c,1)
+  OPx=size(c,3)
+  OPz=size(c,4)
+  cI=zeros(OPz)
+  if OPx > 2
+    @views @. c[:,:,2:OPx-1,:] /= JC[:,:,2:OPx-1,:] 
+  end
+  for ix = 2 : Nx
+    for iz = 1 : Nz  
+      @views @. cI = (c[ix-1,iz,OPx,:] + c[ix,iz,1,:] ) / 
+        (JC[ix-1,iz,OPx,:] + JC[ix,iz,1,:])
+      @views @. c[ix-1,iz,OPx,:] = cI
+      @views @. c[ix,iz,1,:] = cI
+    end  
+  end
+  for iz = 1 : Nz  
+    @views @. cI = (c[1,iz,1,:] + c[Nx,iz,OPx,:] ) / 
+      (JC[1,iz,1,:] + JC[Nx,iz,OPx,:])
+    @views @. c[Nx,iz,OPx,:] = cI
+    @views @. c[1,iz,1,:] = cI
   end  
 end
 

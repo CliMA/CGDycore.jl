@@ -1,18 +1,40 @@
-function Div(Rhou,S,DS,dXdxIF,dXdxIC,JC)
+function Div!(FRhoLGL,uLGL,w,RhoLGL,Fe,Metric)
+  Nx = size(w,1)
+  Nz = size(w,2)
+  OrdPolyX = Fe.OrdPolyX
+  OrdPolyZ = Fe.OrdPolyZ
+  dXdxI = Metric.dXdxI
+  VolSurfB = Metric.VolSurfB
+  VolSurfT = Metric.VolSurfT
 
-  M=size(Rhou,1)
-  N=size(Rhou,2)
-  OP=size(Rhou,3)
-  f=zeros(size(Rhou))
-
-  for i=1:N
-    for j=1:M
-      @views f[j,i,:] = reshape(DS*reshape(dXdxIC[j,i,:,1,1].*Rhou[j,i,:],...
-        OP,1),1,1,OP)+...
-        (dXdxIF[j,i+1,:,2,2].*S[j,i+1,:]-dXdxIF[j,i,:,2,2].*S[j,i,:])
-      @views f[j,i,:]=f[j,i,:]./JC[j,i,:]
-    end
-  end
-  return f
+  tempX = zeros(OrdPolyX+1,OrdPolyZ+1)
+  DtempX = zeros(OrdPolyX+1,OrdPolyZ+1)
+  tempZ = zeros(Nz,OrdPolyX+1,OrdPolyZ+1)
+  DtempZ = zeros(OrdPolyX+1,OrdPolyZ+1)
+  temp = zeros(OrdPolyX+1,OrdPolyZ+1)
+  FluxZ = zeros(OrdPolyX+1)
+  OPz = OrdPolyZ + 1
+  for ix = 1 : Nx 
+    for iz = 1 :Nz  
+      @views @. tempZ[iz,:,:] = RhoLGL[ix,iz,:,:] * (dXdxI[ix,iz,:,:,2,1] * uLGL[ix,iz,:,:] +
+        dXdxI[ix,iz,:,:,2,2] * w[ix,iz,:,:])
+    end    
+    for iz = 1 :Nz  
+      @views @. tempX = RhoLGL[ix,iz,:,:] .* (dXdxI[ix,iz,:,:,1,1] .* uLGL[ix,iz,:,:] +
+        dXdxI[ix,iz,:,:,1,2] .* w[ix,iz,:,:])
+      mul!(DtempX,Fe.DX,tempX)
+      @views mul!(DtempZ,tempZ[iz,:,:],Fe.DZT)
+      @views @. FRhoLGL[ix,iz,:,:] -= (DtempX + DtempZ) 
+      # Density
+      if iz > 1
+        @views @. FluxZ = 0.5 * (tempZ[iz,:,1] -tempZ[iz-1,:,OPz]) 
+        @views @. FRhoLGL[ix,iz,:,1] -= FluxZ
+      end  
+      if iz < Nz
+        @views @. FluxZ = 0.5 * (tempZ[iz+1,:,1] -tempZ[iz,:,OPz]) 
+        @views @. FRhoLGL[ix,iz,:,OPz] -= FluxZ
+      end  
+    end 
+  end 
 end
 

@@ -66,12 +66,40 @@ Base.@kwdef struct ParamHeldSuarezDrySphere
 end
 
 Base.@kwdef struct ParamHillSchaerCart
+  Example = "HillSchaerCart"
   Deep=false
   NBr=1.e-2
   Th0=300.0
   uMax=20
   vMax=0
   TEq=300.0
+  Stretch = false
+end
+
+Base.@kwdef struct ParamHillAgnesiCart
+  Example = "HillAgnesiCart"
+  Deep=false
+  NBr=1.e-2
+  Th0=300.0
+  uMax=10
+  vMax=0
+  wMax=0
+  TEq=300.0
+  a = 1000.0
+  h = 1000.0
+  xc = 0.0
+  Stretch = false
+end
+
+Base.@kwdef struct ParamWarmBubble2DXCart
+  Example = "WarmBubble2DXCart"
+  Th0=300.0
+  uMax=0
+  wMax=0
+  DeltaTh = 0.0
+  xC0 = 10000.0
+  zC0 = 2000.0
+  rC0 = 2000.0
   Stretch = false
 end
 
@@ -115,6 +143,8 @@ Base.@kwdef struct ParamAdvectionSphereDCMIP
   TimeDependent = true
 end
 
+
+
 function Parameters(Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro"
     Param = ParamBaroWaveDrySphere()
@@ -124,12 +154,18 @@ function Parameters(Problem::String)
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()
+  elseif Problem == "HillAgnesiCart"
+    @show Problem
+    Param = ParamHillAgnesiCart()
   elseif Problem == "HillGaussCart"
     @show Problem
     Param = ParamHillGaussCart()
   elseif Problem == "AdvectionSphereDCMIP"
     @show Problem
     Param = ParamAdvectionSphereDCMIP()
+  elseif Problem == "WarmBubble2DXCart"
+    @show Problem
+    Param = ParamWarmBubble2DXCart()
   end
 end
 

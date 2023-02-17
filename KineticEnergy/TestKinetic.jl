@@ -1,186 +1,180 @@
 using LinearAlgebra
+using CairoMakie
+using GeometryBasics
+using GLMakie
 include("GaussLobattoQuad.jl")
 include("GaussLegendreQuad.jl")
 include("Lagrange.jl")
-include("DLagrange.jl")
 include("Oro.jl")
 include("JacobiDG2.jl")
 include("DSS.jl")
 include("DSSF.jl")
-include("udwdx.jl")
-include("wdwdx.jl")
-include("IntCell.jl")
-include("IntFace.jl")
-include("dcdx.jl")
-include("divdx.jl")
-include("Sdwdz.jl")
-include("Sdudz.jl")
-include("dRhoSdz.jl")
+include("Curl.jl")
+include("Div.jl")
+include("Grad.jl")
+include("FeElem.jl")
+include("Int.jl")
+include("Metric.jl")
+include("ModelFun.jl")
+include("Pressure.jl")
+include("Buoyancy.jl")
+include("Fcn.jl")
+include("PhysParameters.jl")
+include("Visualization.jl")
+include("../src/Model/Parameters.jl")
 
-function main()
-  Nz = 20
-  Nx = 10
-  OrdPolyX=3
-  H = 400
-  hHill = 200
-  L=1000
-  if OrdPolyX>0
-    #Horizontal Grid
-    (wX,xw)=GaussLobattoQuad(OrdPolyX)
-    I12 = ones(2,1)
-    I21 = 0.5*ones(1,2)
+mutable struct Cache
+  pC::Array{Float64, 4}
+  pF::Array{Float64, 4}
+  uF::Array{Float64, 4}
+  RhoF::Array{Float64, 4}
+  RhoThetaF::Array{Float64, 4}
+  FuF::Array{Float64, 4}
+  FRhoF::Array{Float64, 4}
+  FRhoThetaF::Array{Float64, 4}
+  KinF::Array{Float64, 4}
+  KinC::Array{Float64, 4}
+  Column::Array{Float64, 3}
+  Block::Array{Float64, 3}
+end
 
+function Cache(Nx,Nz,OrdPolyX,OrdPolyZ)
+  pC = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ)
+  pF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  uF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  RhoF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  RhoThetaF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  FuF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  FRhoF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  FRhoThetaF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  KinF = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
+  KinC = zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ)
+  Column = zeros(OrdPolyX+1,OrdPolyZ+1,Nz)
+  Block = zeros(OrdPolyX+1,OrdPolyZ+1,6)
 
-    Dx=zeros(OrdPolyX+1,OrdPolyX+1)
-    for i=1:OrdPolyX+1
-      for j=1:OrdPolyX+1
-        Dx[i,j]=DLagrange(xw[i],xw,j)
-      end
-    end
-    #  Vertical Grid
-    OrdPolyZ=1
-    (wZ,zw)=GaussLobattoQuad(OrdPolyZ)
-    (wZLG,zwLG)=GaussLegendreQuad(OrdPolyZ)
+  return Cache(
+    pC,
+    pF,
+    uF,
+    RhoF,
+    RhoThetaF,
+    FuF,
+    FRhoF,
+    FRhoThetaF,
+    KinF,
+    KinC,
+    Column,
+    Block,
+  )
+end  
 
-    IntLG2LGL = zeros(Float64,OrdPolyZ+1,OrdPolyZ)
-    IntLGL2LG = zeros(Float64,OrdPolyZ,OrdPolyZ+1)
-    @show zw
-    @show zwLG
-    for j = 1 : OrdPolyZ+1
-      for i = 1 : OrdPolyZ
-        IntLGL2LG[i,j]=Lagrange(zwLG[i],zw,j)
-        IntLG2LGL[j,i]=Lagrange(zw[j],zwLG,i)
-      end
-    end
-    @show IntLG2LGL
-    @show IntLGL2LG
+function TestKinetic()
 
-    Dz=zeros(OrdPolyZ+1,OrdPolyZ+1)
-    for i=1:OrdPolyZ+1
-      for j=1:OrdPolyZ+1
-        Dz[i,j]=DLagrange(zw[i],zw,j)
-      end
-    end
-  end
-  xP=zeros(Nx,OrdPolyX+1)
-  xP[1,1]=0
-  dx=L/Nx
-  for i=1:Nx
-    for j=1:OrdPolyX+1
-      xP[i,j]=xP[i,1]+(1+xw[j])/2*dx
-    end
-    if i<Nx
-      xP[i+1,1]=xP[i,OrdPolyX+1]
-    end
-  end  
+PhysParam = PhysParameters()
+  Param = Parameters("HillAgnesiCart")
+  Nz = 40
+  Nx = 100
+  OrdPolyX=4
+  OrdPolyZ=1
+  H = 15600.0
+  Lx= 60000.0
+  x0 = -Lx/2.0
 
-  xP[Nx,OrdPolyX+1]=L
+  CacheFcn = Cache(Nx,Nz,OrdPolyX,OrdPolyZ)
 
-  zP=zeros(Nx,Nz+1,OrdPolyX+1)
-  for j=1:Nx
-    for k=1:OrdPolyX+1
-      zP[j,1,k]=Oro(xP[j,k],L,hHill)
-      zP[j,Nz+1,k]=H
-      dzLoc=(zP[j,Nz+1,k]-zP[j,1,k])/Nz
-      for i=2:Nz
-        zP[j,i,k]=zP[j,i-1,k]+dzLoc
-      end
-    end
-  end
-  zM=zeros(Nx,Nz,OrdPolyX+1)
-  for i=1:Nz
-    zM[:,i,:]=0.5*(zP[:,i,:]+zP[:,i+1,:])
-  end
-  dz=zeros(Nx,Nz,OrdPolyX+1)
-  for i=1:Nz
-    dz[:,i,:]=zP[:,i+1,:]-zP[:,i,:]
-  end
-  dzF=zeros(Nx,Nz+1,OrdPolyX+1)
-  dzF[:,1,:]=dz[:,1,:]
-  dzF[:,Nz+1,:]=dz[:,Nz,:]
-  for i=2:Nz
-    dzF[:,i,:]=0.5*(dz[:,i-1,:]+dz[:,i,:])
-  end
-# Metric
-  ZZ=zeros(OrdPolyX+1,OrdPolyZ+1)
-  X=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1,2)
-  J=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
-  dXdx=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1,2,2)
-  dXdxI=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1,2,2)
+  Fe = FeElem(OrdPolyX,OrdPolyZ)
 
-  for i=1:Nz
-    for j=1:Nx
-      @views @. ZZ[:,1]=zP[j,i,:]
-      @views @. ZZ[:,2]=zP[j,i+1,:]
-      @views (XLoc,JLoc,dXdxLoc,dXdxILoc)=JacobiDG2(xP[j,:],ZZ,Dx,xw,Dz,zw)
-      @views @. X[j,i,:,:,:] = XLoc
-      @views @. J[j,i,:,:] = JLoc
-      @views @. dXdx[j,i,:,:,:,:] = dXdxLoc
-      @views @. dXdxI[j,i,:,:,:,:] = dXdxILoc
-    end
-  end
+  Grid2D = Grid(Nx,Nz,x0,Lx,H,Oro,Fe,Param)
+
+  Metric2D = Metric(Nx,Nz,Grid2D.xP,Grid2D.zP,Fe)
+
+  RhoPos = 1 
+  uPos = 2 
+  ThPos = 3 
+  wPos = 1 
 
   u=rand(Nx,Nz,OrdPolyX+1,OrdPolyZ)
-  @views @. u[:,2:Nz,:]=0.0
-  #@views @. u[:,1,:]=0.0
-  #@. u = 0.0
-  Average!(u)
   wF=2.0*rand(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
-  Average!(wF)
-  DSSF!(wF,J)
-
   Rho=rand(Nx,Nz,OrdPolyX+1,OrdPolyZ)
-  Rho .= 1.0
+  @. Rho = Rho + 1.0
+  Average!(u)
   Average!(Rho)
-  K=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ)
+  @views @. wF[:,Nz,:,OrdPolyZ+1] = 0.0
+  AverageF!(wF)
+
 # with Interpolation for higher order
-  @views @. K[:,:,:,:] = 0.5 * (u[:,:,:,:]*u[:,:,:] +
-    0.5 * (wF[:,:,:,1] * wF[:,:,:,1] + wF[:,:,:,2] * wF[:,:,:,2]))
-  S=zeros(Nx,Nz,OrdPolyX+1,OrdPolyZ+1)
-  stop
+  Fu = similar(u)
+  FRho = similar(u)
+  FwF = similar(wF)
+  FuF = similar(wF)
+  FRhoF = similar(wF)
+  uF = similar(wF)
+  RhoF = similar(wF)
+  KinF = similar(wF)
+  Kin = similar(u)
+  for ix = 1 : Nx
+    for iz = 1 : Nz
+      for i = 1 : OrdPolyX +1
+        @views uF[ix,iz,i,:] = Fe.IntZC2F * u[ix,iz,i,:]
+        @views RhoF[ix,iz,i,:] = Fe.IntZC2F * Rho[ix,iz,i,:]
+      end
+    end
+  end
+  for ix = 1 : Nx
+    @views @. wF[ix,1,:,1] = -Metric2D.dXdxI[ix,1,:,1,2,1]*uF[ix,1,:,1] /
+      Metric2D.dXdxI[ix,1,:,1,2,2]
+  end    
+  #Average wF
+  for ix = 2 : Nx
+    ww = 0.5 * ( wF[ix-1,1,OrdPolyX+1,1] + wF[ix,1,1,1]) 
+    wF[ix-1,1,OrdPolyX+1,1] = ww
+    wF[ix,1,1,1] = ww
+  end
+  ww = 0.5 * ( wF[Nx,1,OrdPolyX+1,1] + wF[1,1,1,1])
+  wF[Nx,1,OrdPolyX+1,1] = ww
+  wF[1,1,1,1] = ww
+  @. KinF = 0.5 * (wF * wF + uF * uF)
+  for ix = 1 : Nx
+    for iz = 1 : Nz
+      for i = 1 : OrdPolyX +1
+        @views Kin[ix,iz,i,:] = Fe.IntZF2C * KinF[ix,iz,i,:]
+        @views KinF[ix,iz,i,:] = Fe.IntZC2F * Kin[ix,iz,i,:]
+      end
+    end
+  end
 
-#%%%%%%%%%%%%%%%%%
-# Part 1
-wDotH1 = udwdx(u,wF,Rho,Dx,dXdxIF,JC)
-uDotH1 = -wdwdx(wF,Dx,dXdxIF,JC)
-uICH1=IntCell(uDotH1.*Rho.*u,JC,wX)
-wIFH1=IntFace(wDotH1.*RhoF.*wF,JC,wX)
-IH1=uICH1+wIFH1
-@show uICH1,wIFH1,IH1
+  @. FuF = 0.0
+  @. FwF = 0.0
+  @. FRhoF = 0.0
+  Curl!(FuF,FwF,uF,wF,RhoF,Fe,Metric2D,CacheFcn)
+  Div!(FRhoF,uF,wF,RhoF,Fe,Metric2D)
+  RhoGrad!(FuF,FwF,KinF,RhoF,Fe,Metric2D)
+  su = IntF(FuF.*uF,Fe)
+  sw = IntF(FwF.*wF,Fe)
+  @show su
+  @show sw
+  sRho = IntF(FRhoF.*KinF,Fe)
+  @show sRho
 
-#%%%%%%%%%%%%%%%%%
-# Part 2
-# \rho u \nabla_S K + K \nabla_S \rho u
-uDotH2 = dcdx(K,Dx,dXdxIC,JC)
-RhoDotH2 = divdx(Rho.*u,Dx,dXdxIC,JC)
-uICH2=IntCell(uDotH2.*Rho.*u,JC,wX)
-RhoIH2=IntCell(RhoDotH2.*K,JC,wX)
-IH2=uICH2+RhoIH2
-@show uICH2,RhoIH2,IH2
 
-#%%%%%%%%%%%%%%%%%%%
-# Part 3
-wDotV = Sdwdz(wF,RhoF,S,dXdxIF,JC)
-uDotV = Sdudz(u,Rho,S,dXdxIF,JC)
-RhoDotV = dRhoSdz(S,dXdxIF,JC)
-uICV=IntCell(uDotV.*Rho.*u,JC,wX)
-wIFV=IntFace(wDotV.*RhoF.*wF,JC,wX)
-KICV=IntCell(RhoDotV.*K,JC,wX)
-IV=uICV+wIFV+KICV
-@show uICV,wIFV,KICV,IV
+  DSSF!(FwF,RhoF,Metric2D.J)
+  DSS!(FuF,RhoF,Metric2D.J)
+  DSS!(FRhoF,Metric2D.J)
+  for ix = 1 : Nx
+    for iz = 1 : Nz
+      for i = 1 : OrdPolyX +1
+        @views Fu[ix,iz,i,:] =  Fe.P * FuF[ix,iz,i,:]
+        @views FRho[ix,iz,i,:] = Fe.P * FRhoF[ix,iz,i,:]
+      end
+    end
+  end
+  @. FwF = wF * FwF
+  IFwF = IntF(FwF,RhoF,Metric2D.J,Fe)
+  @. Fu = u * Fu
+  IFu = IntC(Fu,Rho,Metric2D.JC,Fe)
+  @. FRho = FRho * Kin
+  IFRho = IntC(FRho,Metric2D.JC,Fe)
+  @show IFu , IFwF , IFRho
+  @show IFu + IFwF + IFRho
 
-#%%%%%%%%%%%%%%%%%%%
-# Part 1 + Part 2 + Part 3
-uDot=dcdx(K,Dx,dXdxIC,JC)-wdwdx(wF,Dx,dXdxIF,JC)+Sdudz(u,Rho,S,dXdxIF,JC)
-wDot=udwdx(u,wF,Rho,Dx,dXdxIF,JC)+Sdwdz(wF,RhoF,S,dXdxIF,JC)
-@show wDotV[1:5,1,1]
-@show size(wDotV)
-RhoDot=divdx(Rho.*u,Dx,dXdxIC,JC)+dRhoSdz(S,dXdxIF,JC)
-# @views @. wDot[:,1,:] = dXdxIF[:,1,:,2,1] * uDot[:,1,:] / dXdxIF[:,1,:,2,2]
-# @views @. wDot[:,1,:] = 0.0
-uIC=IntCell(uDot.*Rho.*u,JC,wX)
-wIF=IntFace(wDot.*RhoF.*wF,JC,wX)
-KIC=IntCell(RhoDot.*K,JC,wX)
-I=uIC+wIF+KIC
-@show uIC,wIF,KIC,I
 end

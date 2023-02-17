@@ -1,8 +1,9 @@
 using CGDycore
 using Metal
+using LinearAlgebra
 
-a = ones(Float32,100)
-b = ones(Float32,100)
+a = ones(Float32,30,30)
+b = ones(Float32,30,30)
 
 ad = MtlArray(a)
 bd = MtlArray(b)
@@ -24,4 +25,11 @@ crr_cpu = unsafe_wrap(Array{Float32}, crr_mtl, dims)
 brr_cpu[4,4] = 8
 @metal threads=length(crr_mtl) CGDycore.vmult(arr_mtl, brr_mtl, crr_mtl)
 @show crr_cpu[4,4]
-
+@time mul!(cd,ad,bd)
+@time mul!(cd,ad,bd)
+@time mul!(cd,ad,bd)
+c=Array(cd)
+@time mul!(c,a,b)
+@time mul!(c,a,b)
+@time mul!(c,a,b)
+@show c[1,1]
