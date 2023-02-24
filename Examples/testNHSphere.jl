@@ -13,33 +13,40 @@ Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
 Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
-NumV = parsed_args["NumV"]
-NumTr = parsed_args["NumTr"]
-# Parallel
-Decomp = parsed_args["Decomp"]
-SimDays = parsed_args["SimDays"]
-dtau = parsed_args["dtau"]
-IntMethod = parsed_args["IntMethod"]
-Table = parsed_args["Table"]
-TopoS = parsed_args["TopoS"]
-GridType = parsed_args["GridType"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Microphysics = parsed_args["Microphysics"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
+NumV = parsed_args["NumV"]
+NumTr = parsed_args["NumTr"]
+# Parallel
+Decomp = parsed_args["Decomp"]
+# Time integration
+SimDays = parsed_args["SimDays"]
+dtau = parsed_args["dtau"]
+IntMethod = parsed_args["IntMethod"]
+Table = parsed_args["Table"]
 # Grid
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
 H = parsed_args["H"]
 stretch = parsed_args["stretch"]
+TopoS = parsed_args["TopoS"]
+GridType = parsed_args["GridType"]
+# CG Element
 OrdPoly = parsed_args["OrdPoly"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
 HyperDGrad = parsed_args["HyperDGrad"]
 HyperDDiv = parsed_args["HyperDDiv"]
+# Output
+PrintDays = parsed_args["PrintDays"]
+PrintHours = parsed_args["PrintHours"]
+PrintMinutes = parsed_args["PrintMinutes"]
+PrintSeconds = parsed_args["PrintSeconds"]
 
 Param = CGDycore.Parameters(Problem)
 
@@ -185,6 +192,7 @@ Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
 
+  @show Param.T0E
   U = CGDycore.InitialConditions(CG,Global,Param)
 
 # Output partition  
@@ -209,9 +217,12 @@ Model.HyperDDiv = HyperDDiv # =7.e15
     "Th",
     "Pres",
 ]
-  Output.PrintDay = 0.5
-  Output.PrintStartDay = 0
+
+  Output.PrintDays = PrintDays
+  Output.PrintSeconds = PrintSeconds
+  Output.PrintStartDays = 0
   Output.OrdPrint=CG.OrdPoly
+
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
   # TimeStepper

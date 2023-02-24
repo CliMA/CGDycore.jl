@@ -86,7 +86,7 @@ Base.@kwdef struct ParamHillAgnesiCart
   wMax=0
   TEq=300.0
   a = 1000.0
-  h = 1000.0
+  h = 400.0
   xc = 0.0
   Stretch = false
 end
@@ -147,6 +147,7 @@ end
 
 function Parameters(Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro"
+    @show Problem
     Param = ParamBaroWaveDrySphere()
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
     @show Problem
@@ -166,6 +167,8 @@ function Parameters(Problem::String)
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()
+  else
+    @show "False Problem",Problem  
   end
 end
 
