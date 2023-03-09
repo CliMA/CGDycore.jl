@@ -68,7 +68,7 @@ function Grid(Nx,Ny,Nz,x0,y0,Lx,Ly,Lz,Oro,Fe,Param)
           dzLoc=(Lz - zP[ix,iy,1,i,j,1]) / Nz
           for iz = 1 : Nz
             for k = 1 : OrdPolyZ + 1  
-              zP[ix,iy,iz,i,j,k]=zP[ix,iy,iz,i,j,1]+(1+Fe.ze[k])/2*dzLoc   
+              zP[ix,iy,iz,i,j,k]=zP[ix,iy,iz,i,j,1]+(1+Fe.ze[k])/2*dzLoc 
             end  
             if iz < Nz
               zP[ix,iy,iz+1,i,j,1] = zP[ix,iy,iz,i,j,OrdPolyZ+1]  

@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphere" \
   --NumV=5 \
   --NumTr=0 \
@@ -8,7 +8,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Source=false \
   --Coriolis=true \
   --Decomp="EqualArea" \
-  --SimDays=1 \
+  --SimDays=10 \
+  --PrintSeconds=36000 \
   --dtau=300 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

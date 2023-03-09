@@ -5,7 +5,7 @@ function fProjectC!(c,f,X,Fe,Phys,Param)
   for i = 1 : OPx
     for j = 1 :OPz
       @views z = sum(Fe.IntZF2C[j,:] .* X[i,:,2])
-      c[i,j] = f(X[i,j,:],Phys,Param)
+      c[i,j] = f(X[i,j,1],z,Phys,Param)
     end
   end
 end
@@ -16,12 +16,12 @@ function fProjectF!(c,f,X,Phys,Param)
   z = 0.0
   for i = 1 : OPx
     for j = 1 :OPz
-      c[i,j] = f(X[i,j,:],Phys,Param)
+      c[i,j] = f(X[i,j,1],X[i,j,2],Phys,Param)
     end
   end
 end
 
-function fRho(x,Phys,Param)
+function fRho(x,z,Phys,Param)
   Example = Param.Example
   if Example == "WarmBubble2DXCart"
     Grav =Phys.Grav
@@ -33,8 +33,6 @@ function fRho(x,Phys,Param)
     xC0 = Param.xC0
     zC0 = Param.zC0
     rC0 = Param.rC0
-    z = x[2]
-    x = x[1]
     pLoc =p0*(1-Grav*z*kappa/(Rd*Th0))^(1/kappa)
     rr = sqrt((x-xC0)^2+(z-zC0)^2)
     ThLoc = Th0
@@ -43,7 +41,6 @@ function fRho(x,Phys,Param)
     end
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * ThLoc)
   elseif Example == "HillAgnesiCart"  
-    z = x[2]
     NBr = Param.NBr
     Grav = Phys.Grav
     p0 = Phys.p0
@@ -59,7 +56,7 @@ function fRho(x,Phys,Param)
   return Rho
 end
 
-function fTheta(x,Phys,Param)
+function fTheta(x,z,Phys,Param)
   Example = Param.Example
   if Example == "WarmBubble2DXCart"
     Grav =Phys.Grav
@@ -71,8 +68,6 @@ function fTheta(x,Phys,Param)
     xC0 = Param.xC0
     zC0 = Param.zC0
     rC0 = Param.rC0
-    z = x[2]
-    x = x[1]
     pLoc =p0*(1-Grav*z*kappa/(Rd*Th0))^(1/kappa)
     rr = sqrt((x-xC0)^2+(z-zC0)^2)
     ThLoc = Th0
@@ -81,7 +76,6 @@ function fTheta(x,Phys,Param)
     end
     Theta = ThLoc
   elseif Example == "HillAgnesiCart"  
-    z = x[2]
     NBr = Param.NBr
     Grav = Phys.Grav
     p0 = Phys.p0
@@ -96,7 +90,7 @@ function fTheta(x,Phys,Param)
   return Theta
 end
 
-function fuVel(x,Phys,Param)
+function fuVel(x,z,Phys,Param)
   Example = Param.Example
   if Example == "WarmBubble2DXCart"
     u = Param.uMax  
@@ -106,7 +100,7 @@ function fuVel(x,Phys,Param)
   return u
 end
 
-function fwVel(x,Phys,Param)
+function fwVel(x,z,Phys,Param)
   Example = Param.Example
   if Example == "WarmBubble2DXCart"
     w = Param.wMax  

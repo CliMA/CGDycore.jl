@@ -1,28 +1,12 @@
 function fProjectC!(c,f,X,Fe,Phys,Param)
   OPx = size(c,1)
   OPy = size(c,2)
-  OPz = size(c,3)
-  z = zeros(OPz)
   for i = 1 : OPx
     for j = 1 : OPy
-      for k = 1 :OPz
-        @views z = sum(Fe.IntZF2C[k,:] .* X[i,j,:,3])
-        c[i,j,k] = f(X[i,j,k,1],X[i,j,k,2],z,Phys,Param)
-      end
-    end
-  end
-end
-
-function fProjectF!(c,f,X,Phys,Param)
-  OPx = size(c,1)
-  OPy = size(c,2)
-  OPz = size(c,3)
-  z = 0.0
-  for i = 1 : OPx
-    for j = 1 :OPy
-      for k = 1 :OPz
-        c[i,j,k] = f(X[i,j,k,1],X[i,j,k,2],X[i,j,k,3],Phys,Param)
-      end
+      x  = 0.5 * (X[i,j,1,1] + X[i,j,2,1])
+      y  = 0.5 * (X[i,j,1,2] + X[i,j,2,2])
+      z  = 0.5 * (X[i,j,1,3] + X[i,j,2,3])
+      c[i,j] = f(x,y,z,Phys,Param)
     end
   end
 end
@@ -46,7 +30,9 @@ function fRho(x,y,z,Phys,Param)
       ThLoc =ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2
     end
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * ThLoc)
-  elseif Example == "HillAgnesiCart"  
+  elseif Example == "AdvectionCart"
+    Rho = 1.0
+  elseif Example == "HillAgnesiXCart" || Example == "HillAgnesiYCart" 
     NBr = Param.NBr
     Grav = Phys.Grav
     p0 = Phys.p0
@@ -81,7 +67,7 @@ function fTheta(x,y,z,Phys,Param)
       ThLoc =ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2
     end
     Theta = ThLoc
-  elseif Example == "HillAgnesiCart"  
+  elseif Example == "HillAgnesiXCart" || Example == "HillAgnesiYCart" 
     NBr = Param.NBr
     Grav = Phys.Grav
     p0 = Phys.p0
@@ -92,6 +78,13 @@ function fTheta(x,y,z,Phys,Param)
     S = NBr * NBr / Grav
     ThLoc = Th0 * exp(z * S)
     Theta = ThLoc
+  elseif Example == "AdvectionCart"
+    r = sqrt((x - 0.25)^2 + (y - 0.25)^2)
+    if r <= 0.1 
+      Theta = 1.0
+    else
+      Theta = 0.0
+    end  
   end    
   return Theta
 end
@@ -100,8 +93,10 @@ function fuVel(x,y,z,Phys,Param)
   Example = Param.Example
   if Example == "WarmBubble2DXCart"
     u = Param.uMax  
-  elseif Example == "HillAgnesiCart"  
+  elseif Example == "HillAgnesiXCart" || Example == "HillAgnesiYCart" 
     u = Param.uMax  
+  elseif Example == "AdvectionCart"
+    u = -y 
   end
   return u
 end
@@ -110,8 +105,10 @@ function fvVel(x,y,z,Phys,Param)
   Example = Param.Example
   if Example == "WarmBubble2DXCart"
     v = Param.vMax  
-  elseif Example == "HillAgnesiCart"  
+  elseif Example == "HillAgnesiXCart" || Example == "HillAgnesiYCart" 
     v = Param.vMax  
+  elseif Example == "AdvectionCart"
+    v = x
   end
   return v
 end
@@ -120,7 +117,7 @@ function fwVel(x,y,z,Phys,Param)
   Example = Param.Example
   if Example == "WarmBubble2DXCart"
     w = Param.wMax  
-  elseif Example == "HillAgnesiCart"  
+  elseif Example == "HillAgnesiXCart" || Example == "HillAgnesiYCart" 
     w = Param.wMax  
   end
   return w

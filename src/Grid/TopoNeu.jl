@@ -219,7 +219,14 @@ function Orography(CG,Global)
   (Glob,NumG) = NumberingFemCG(Grid,OrdPoly);
   Height = zeros(Float64,NumG)
   NumHeight = zeros(Float64,NumG)
-  (w,xw) = GaussLobattoQuad(OrdPoly)
+# (w,xw) = GaussLobattoQuad(OrdPoly)
+  xe = zeros(OrdPoly+1)
+  xe[1] = -1.0
+  for i = 2 : OrdPoly
+    xe[i] = CG.xe[i-1] + 2.0/OrdPoly
+  end
+  xe[OrdPoly+1] = 1.0
+
 # LenLat = length(lat)
 # LenLon = length(lon)
 # dLon = 360.0 / LenLon
@@ -233,7 +240,7 @@ function Orography(CG,Global)
   for ilat = 1 : length(lat)
     for ilon = 1 : length(lonL)
       P = Point(sphereDeg2cart(lonL[ilon],lat[ilat],RadEarth))
-      (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xw,TransSphereS,RadEarth,Grid)
+      (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xe,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
       if Inside
@@ -244,7 +251,7 @@ function Orography(CG,Global)
     end
     for ilon = 1 : length(lonR)
       P = Point(sphereDeg2cart(lonR[ilon],lat[ilat],RadEarth))
-      (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xw,TransSphereS,RadEarth,Grid)
+      (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xe,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
       if Inside
@@ -265,10 +272,13 @@ function Orography(CG,Global)
       end
     end
   end
+  @inbounds for iF = 1:NF
+    @views ChangeBasisHeight!(HeightCG[:,:,iF],HeightCG[:,:,iF],CG)
+  end
   SmoothFac=1.e9
 # SmoothFac=1.e15
   FHeightCG = similar(HeightCG)
-  for i=1:20
+  for i=1:30
     TopographySmoothing1!(FHeightCG,HeightCG,CG,Global,SmoothFac)
     @. HeightCG += FHeightCG
     @. HeightCG = max(HeightCG,0.0)
@@ -324,4 +334,54 @@ function BoundingBox(Grid)
     MaxLat = max(MaxLat, MaxLatF)
   end
   return (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
+end
+
+function SphereGrid(Height,Grid,xE)
+  NumFaces = Grid.NumFaces
+  nZ = Grid.nZ
+  ne = size(xE,1)
+  XE = zeros(NumFaces,nZ+1,nx,nx,3)
+  for iF = 1 : NumFaces
+    Faces = Grid.Faces(iF)  
+    for i = 1 : ne
+      ksi = xe(i)  
+      for j = 1 : ne
+        eta = xe(j)  
+        XE[iF,1,i,j,:] = (1.0 - ksi) * (1.0 - eta) * F.P[1] +
+                         (1.0 + ksi) * (1.0 - eta) * F.P[2] +
+                         (1.0 + ksi) * (1.0 + eta) * F.P[3] +
+                         (1.0 - ksi) * (1.0 + eta) * F.P[4]
+        XE[iF,1,i,j,:] = RadEarth * XE[iF,1,i,j,:] / norm(XE[iF,1,i,j,:])                  
+        XE[iF,1,i,j,3] = XE[iF,1,i,j,3] + Height[i,j,iF]
+      end
+    end
+  end
+end  
+
+function ChangeBasisHeight!(XOut,XIn,CG)
+
+  nxOut = size(XOut,1)
+  nyOut = size(XOut,2)
+  nxIn = size(XIn,1)
+  nyIn = size(XIn,2)
+
+  Buf1 = zeros(nxOut,nyIn)
+
+  for jIn = 1 : nyIn
+    for iIn = 1 : nxIn
+      for iOut = 1 : nxOut
+        Buf1[iOut,jIn] = Buf1[iOut,jIn] +
+          CG.IntXE2F[iOut,iIn] * XIn[iIn,jIn]
+      end
+    end
+  end
+  @. XOut = 0.0
+  for jIn = 1 : nyIn
+    for jOut = 1 : nyOut
+      for iOut = 1 : nxOut
+        XOut[iOut,jOut] = XOut[iOut,jOut] +
+          CG.IntXE2F[jOut,jIn] * Buf1[iOut,jIn]
+      end
+    end
+  end
 end

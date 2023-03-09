@@ -67,9 +67,14 @@ function parse_commandline()
     default = false
 
     "--CoriolisType"
-    help = "Coriolis parameeterization"
+    help = "Coriolis parameterization"
     arg_type = String
     default = "Sphere"
+
+    "--Equation"
+    help = "Equation Type, Shallow, Compressible, CompressibleMoist"
+    arg_type = String
+    default = "Compressible"
 
     "--Microphysics"
     help = "Microphysics"
@@ -271,6 +276,11 @@ function parse_commandline()
      help = "Number of print seconds"
      arg_type = Int
      default = 0
+
+    "--Flat"
+     help = "Output as sphere or cube"
+     arg_type = Bool
+     default = true
 
   end
   return parse_args(s)

@@ -71,7 +71,7 @@ function fThetaBGrd(x,time,Global,Param)
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);
-  elseif str == "galewsky"
+  elseif str == "galewski"
     Th=1;
   elseif str == "rossbyhaurwitz"
     Grav=Param.Grav;

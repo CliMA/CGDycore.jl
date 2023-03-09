@@ -185,7 +185,7 @@ elseif str == "barowavedrysphere"
         ThLoc=ThLoc+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Phys.p0)^(-Phys.kappa);
       end
       Rho=pLoc/((pLoc/Phys.p0)^Phys.kappa*Phys.Rd*ThLoc);
-  elseif str == "gravityhill" || str == "schaercart"
+  elseif str == "gravityhill" || str == "schaercart" || str == "agnesicart"
       z=x[3];
       NBr=Param.NBr;
       Grav=Phys.Grav;
@@ -208,7 +208,7 @@ elseif str == "barowavedrysphere"
       pLoc=Phys.p0*(1-Phys.Grav/(Phys.Cpd*Th0*S)*(1-exp(-S*z))).^(Phys.Cpd/Phys.Rd);
       ThLoc=ThB+Param.DeltaTh*sin(pi*x[3]/Param.H)./(1+(x[2]-Param.yC).^2/Param.a^2);
       Rho=pLoc./((pLoc/Phys.p0).^Phys.kappa*Phys.Rd.*ThLoc);
-  elseif str == "galewsky"
+  elseif str == "galewski"
       Grav=Phys.Grav;
       Omega=Phys.Omega;
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);

@@ -7,11 +7,15 @@ mutable struct CGStruct
     NumI::Int
     w::Array{Float64, 1}
     xw::Array{Float64, 1}
+    xe::Array{Float64, 1}
+    IntXE2F::Array{Float64, 2}
     xwZ::Array{Float64, 1}
+    IntZE2F::Array{Float64, 2}
     DW::Array{Float64, 2}
     DWT::Array{Float64, 2}
     DS::Array{Float64, 2}
     DST::Array{Float64, 2}
+    DSZ::Array{Float64, 2}
     M::Array{Float64, 2}
     MMass::Array{Float64, 2}
     MW::Array{Float64, 2}
@@ -27,11 +31,15 @@ NumG=0
 NumI=0
 w=zeros(0)
 xw=zeros(0)
+xe=zeros(0)
+IntXE2F=zeros(0,0)
 xwZ=zeros(0)
+IntZE2F=zeros(0,0)
 DW=zeros(0,0)
 DWT=zeros(0,0)
 DS=zeros(0,0)
 DST=zeros(0,0)
+DSZ=zeros(0,0)
 M=zeros(0,0)
 MMass=zeros(0,0)
 MW=zeros(0,0)
@@ -46,11 +54,15 @@ MasterSlave = zeros(0)
     NumI,
     w,
     xw,
+    xe,
+    IntXE2F,
     xwZ,
+    IntZE2F,
     DW,
     DWT,
     DS,
     DST,
+    DSZ,
     M,
     MMass,
     MW,
@@ -77,9 +89,31 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
 
   (CG.w,CG.xw)=GaussLobattoQuad(CG.OrdPoly);
   (wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ);
+  CG.xe = zeros(OrdPoly+1)
+  CG.xe[1] = -1.0
+  for i = 2 : OrdPoly
+    CG.xe[i] = CG.xe[i-1] + 2.0/OrdPoly
+  end
+  CG.xe[OrdPoly+1] = 1.0
+
+  CG.IntXE2F = zeros(OrdPoly+1,OrdPoly+1)
+  for j = 1 : OrdPoly + 1
+    for i = 1 : OrdPoly +1
+      CG.IntXE2F[i,j] = Lagrange(CG.xw[i],CG.xe,j)
+    end
+  end
+
+  CG.IntZE2F = zeros(OrdPolyZ+1,OrdPolyZ+1)
+  for j = 1 : OrdPolyZ + 1
+    for i = 1 : OrdPolyZ +1
+      CG.IntZE2F[i,j] = Lagrange(CG.xwZ[i],CG.xwZ,j)
+    end
+  end
+
   (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
   CG.DST=CG.DS'
   CG.DWT=CG.DW'
+  (DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ);
   (CG.Glob,CG.NumG,CG.NumI,CG.Stencil,CG.MasterSlave) =
     NumberingFemCG(Grid,OrdPoly);
 # return (CG,Global) 
@@ -104,6 +138,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
     for iz=1:nz
       zI=[Grid.z[iz],Grid.z[iz+1]];
       (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
+      #(X_Fz1,J_Fz1,dXdx_F1,dXdxI_Fz1,lat_Fz1)=JacobiDG3Neu(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
       X[:,:,:,:,iz,iF]=X_Fz;
       J[:,:,:,iz,iF]=J_Fz;
       dXdx[:,:,:,iz,:,:,iF]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);

@@ -1,5 +1,7 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezDrySphereOro" \
+  --NumV=5 \
+  --NumTr=0 \
   --ProfRho="DecayingTemperatureProfile" \
   --ProfTheta="DecayingTemperatureProfile" \
   --ProfVel="Const" \
@@ -7,6 +9,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Coriolis=true \
   --Decomp="EqualArea" \
   --SimDays=10 \
+  --PrintSeconds=100 \
   --dtau=100 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
@@ -16,5 +19,9 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --nz=45 \
   --nPanel=16 \
   --H=30000.0 \
-  --OrdPoly=4 
+  --OrdPoly=3 \
+  --HyperVisc=true \
+  --HyperDCurl=1.e16 \
+  --HyperDGrad=1.e16 \
+  --HyperDDiv=1.e16
 

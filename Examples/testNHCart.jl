@@ -158,7 +158,7 @@ if Parallel
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
@@ -190,9 +190,9 @@ else
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
 if TopoS == "EarthOrography"
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global,zS)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global,zS)
 else
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
 end
 
 Model.HyperVisc = HyperVisc
@@ -228,6 +228,11 @@ Model.HyperDDiv = HyperDDiv # =7.e15
   Output.PrintStartDays = 0
   Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
+
+  Global.ThetaBGrd = zeros(nz,CG.NumG)
+  Global.TBGrd = zeros(nz,CG.NumG)
+  Global.pBGrd = zeros(nz,CG.NumG)
+  Global.RhoBGrd = zeros(nz,CG.NumG)
 
   # TimeStepper
   time=[0.0]

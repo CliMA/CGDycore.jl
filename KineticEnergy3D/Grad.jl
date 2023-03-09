@@ -1,5 +1,5 @@
-function RhoGradColumn!(FuF,FvF,Fw,pF,RhoF,Fe,dXdxI,Cache)
-  Nz = size(pF,1)
+function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,Cache)
+  Nz = size(pC,1)
   OrdPolyX = Fe.OrdPolyX
   OrdPolyY = Fe.OrdPolyY
   OrdPolyZ = Fe.OrdPolyZ
@@ -8,49 +8,52 @@ function RhoGradColumn!(FuF,FvF,Fw,pF,RhoF,Fe,dXdxI,Cache)
   DY = Fe.DY
   DZ = Fe.DZ
 
-  @views DXpF = Cache.Block[:,:,:,1]
-  @views DYpF = Cache.Block[:,:,:,2]
-  @views DZpF = Cache.Block[:,:,:,3]
+  @views DXpC = Cache.Block[:,:,1,1]
+  @views DYpC = Cache.Block[:,:,1,2]
+  @views DZpC = Cache.Block[:,:,1,3]
   @views GradZ = Cache.BlockXY[:,:,1]
   @views FluxZ = Cache.BlockXY[:,:,2]
 
   OPz = OrdPolyZ + 1
 
   @inbounds for iz = 1 : Nz 
-    @. DXpF = 0.0
-    @views DerivativeX!(DXpF,pF[iz,:,:,:],DX)
-    @. DYpF = 0.0
-    @views DerivativeY!(DYpF,pF[iz,:,:,:],DY)
-    @. DZpF = 0.0
-    @views DerivativeZ!(DZpF,pF[iz,:,:,:],DZ)
-    @views @. FuF[iz,:,:,:] -= RhoF[iz,:,:,:] * 
-      (dXdxI[iz,:,:,:,1,1] * DXpF + dXdxI[iz,:,:,:,2,1] * DYpF + dXdxI[iz,:,:,:,3,1] * DZpF[:,:,:])
-    @views @. FvF[iz,:,:,:] -= RhoF[iz,:,:,:] * 
-      (dXdxI[iz,:,:,:,1,2] * DXpF + dXdxI[iz,:,:,:,2,2] * DYpF + dXdxI[iz,:,:,:,3,2] * DZpF[:,:,:])
-    @views @. Fw[iz,:,:,:] -= RhoF[iz,:,:,:] * 
-      (dXdxI[iz,:,:,:,1,3] * DXpF + dXdxI[iz,:,:,:,2,3] * DYpF + dXdxI[iz,:,:,:,3,3] * DZpF[:,:,:])
+    @. DXpC = 0.0
+    @views DerivativeX!(DXpC,pC[iz,:,:],DX)
+    @. DYpC = 0.0
+    @views DerivativeY!(DYpC,pC[iz,:,:],DY)
+#   @. DZpC = 0.0
+#   @views DerivativeZ!(DZpC,pC[iz,:,:],DZ)
+    @views @. FuC[iz,:,:] -= 0.5 * RhoC[iz,:,:] * 
+      ((dXdxI[iz,:,:,1,1,1] + dXdxI[iz,:,:,2,1,1]) * DXpC + 
+      (dXdxI[iz,:,:,1,1,2] + dXdxI[iz,:,:,2,2,1]) * DYpC)
+    @views @. FvC[iz,:,:] -=  0.5 * RhoC[iz,:,:] *
+      ((dXdxI[iz,:,:,1,2,1] + dXdxI[iz,:,:,2,2,1]) * DXpC + 
+      (dXdxI[iz,:,:,1,2,2] + dXdxI[iz,:,:,2,2,2]) * DYpC)
+    @views @. Fw[iz,:,:] -= RhoC[iz,:,:] * (dXdxI[iz,:,:,1,1,3] * DXpC + dXdxI[iz,:,:,1,2,3] * DYpC)
+    @views @. Fw[iz+1,:,:] -= RhoC[iz,:,:] * (dXdxI[iz,:,:,2,1,3] * DXpC + dXdxI[iz,:,:,2,2,3] * DYpC)
     if iz > 1
-      @views @. GradZ = 0.5 * (pF[iz,:,:,1] - pF[iz-1,:,:,OPz]) * RhoF[iz,:,:,1]  
+      @views @. GradZ = 0.5 * (pC[iz,:,:] - pC[iz-1,:,:]) * RhoC[iz,:,:] 
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,1]
-      @views @. FuF[iz,:,:,1] -= FluxZ 
+      @views @. FuC[iz,:,:] -= FluxZ 
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,2]
-      @views @. FvF[iz,:,:,1] -= FluxZ 
+      @views @. FvC[iz,:,:] -= FluxZ 
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,3]
-      @views @. Fw[iz,:,:,1] -= FluxZ 
+      @views @. Fw[iz,:,:] -= 0.5 * FluxZ 
     end    
     if iz < Nz 
-      @views @. GradZ = 0.5 * (pF[iz+1,:,:,1] - pF[iz,:,:,OPz]) * RhoF[iz,:,:,OPz] 
-      @views @. FluxZ = GradZ * dXdxI[iz,:,:,OPz,3,1] 
-      @views @. FuF[iz,:,:,OPz] -= FluxZ 
-      @views @. FluxZ = GradZ * dXdxI[iz,:,:,OPz,3,2]
-      @views @. FvF[iz,:,:,OPz] -= FluxZ 
-      @views @. FluxZ =  GradZ * dXdxI[iz,:,:,OPz,3,3]
-      @views @. Fw[iz,:,:,OPz] -= FluxZ 
+      @views @. GradZ = 0.5 * (pC[iz+1,:,:] - pC[iz,:,:]) * RhoC[iz,:,:]  
+      @views @. FluxZ = GradZ * dXdxI[iz,:,:,2,3,1]
+      @views @. FuC[iz,:,:] -= FluxZ 
+      @views @. FluxZ = GradZ * dXdxI[iz,:,:,2,3,2]
+      @views @. FvC[iz,:,:] -= FluxZ 
+      @views @. FluxZ =  GradZ * dXdxI[iz,:,:,2,3,3]
+      @views @. Fw[iz+1,:,:] -= 0.5 * FluxZ 
     end    
   end 
 end 
-function GradColumn!(FuF,FvF,Fw,pF,Fe,dXdxI,Cache)
-  Nz = size(pF,1)
+
+function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,Cache)
+  Nz = size(pC,1)
   OrdPolyX = Fe.OrdPolyX
   OrdPolyY = Fe.OrdPolyY
   OrdPolyZ = Fe.OrdPolyZ
@@ -59,44 +62,44 @@ function GradColumn!(FuF,FvF,Fw,pF,Fe,dXdxI,Cache)
   DY = Fe.DY
   DZ = Fe.DZ
 
-  @views DXpF = Cache.Block[:,:,:,1]
-  @views DYpF = Cache.Block[:,:,:,2]
-  @views DZpF = Cache.Block[:,:,:,3]
+  @views DXpC = Cache.Block[:,:,1,1]
+  @views DYpC = Cache.Block[:,:,1,2]
+  @views DZpC = Cache.Block[:,:,1,3]
   @views GradZ = Cache.BlockXY[:,:,1]
   @views FluxZ = Cache.BlockXY[:,:,2]
 
   OPz = OrdPolyZ + 1
 
   @inbounds for iz = 1 : Nz 
-    @. DXpF = 0.0
-    @views DerivativeX!(DXpF,pF[iz,:,:,:],DX)
-    @. DYpF = 0.0
-    @views DerivativeY!(DYpF,pF[iz,:,:,:],DY)
-    @. DZpF = 0.0
-    @views DerivativeZ!(DZpF,pF[iz,:,:,:],DZ)
-    @views @. FuF[iz,:,:,:] -= 
-      (dXdxI[iz,:,:,:,1,1] * DXpF + dXdxI[iz,:,:,:,2,1] * DYpF + dXdxI[iz,:,:,:,3,1] * DZpF[:,:,:])
-    @views @. FvF[iz,:,:,:] -= 
-      (dXdxI[iz,:,:,:,1,2] * DXpF + dXdxI[iz,:,:,:,2,2] * DYpF + dXdxI[iz,:,:,:,3,2] * DZpF[:,:,:])
-    @views @. Fw[iz,:,:,:] -= 
-      (dXdxI[iz,:,:,:,1,3] * DXpF + dXdxI[iz,:,:,:,2,3] * DYpF + dXdxI[iz,:,:,:,3,3] * DZpF[:,:,:])
+    @. DXpC = 0.0
+    @views DerivativeX!(DXpC,pC[iz,:,:],DX)
+    @. DYpC = 0.0
+    @views DerivativeY!(DYpC,pC[iz,:,:],DY)
+    @views @. FuC[iz,:,:] -= 0.5 * 
+      ((dXdxI[iz,:,:,1,1,1] + dXdxI[iz,:,:,2,1,1]) * DXpC + 
+      (dXdxI[iz,:,:,1,1,2] + dXdxI[iz,:,:,2,2,1]) * DYpC)
+    @views @. FvC[iz,:,:] -=  0.5 * 
+      ((dXdxI[iz,:,:,1,2,1] + dXdxI[iz,:,:,2,2,1]) * DXpC + 
+      (dXdxI[iz,:,:,1,2,2] + dXdxI[iz,:,:,2,2,2]) * DYpC)
+    @views @. Fw[iz,:,:] -= (dXdxI[iz,:,:,1,1,3] * DXpC + dXdxI[iz,:,:,1,2,3] * DYpC)
+    @views @. Fw[iz+1,:,:] -= (dXdxI[iz,:,:,2,1,3] * DXpC + dXdxI[iz,:,:,2,2,3] * DYpC)
     if iz > 1
-      @views @. GradZ = 0.5 * (pF[iz,:,:,1] - pF[iz-1,:,:,OPz])  
+      @views @. GradZ = 0.5 * (pC[iz,:,:] - pC[iz-1,:,:])
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,1]
-      @views @. FuF[iz,:,:,1] -= FluxZ 
+      @views @. FuC[iz,:,:] -= FluxZ 
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,2]
-      @views @. FvF[iz,:,:,1] -= FluxZ 
+      @views @. FvC[iz,:,:] -= FluxZ 
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,3]
-      @views @. Fw[iz,:,:,1] -= FluxZ 
+      @views @. Fw[iz,:,:] -= 0.5 * FluxZ 
     end    
     if iz < Nz 
-      @views @. GradZ = 0.5 * (pF[iz+1,:,:,1] - pF[iz,:,:,OPz])  
-      @views @. FluxZ = GradZ * dXdxI[iz,:,:,OPz,3,1]
-      @views @. FuF[iz,:,:,OPz] -= FluxZ 
-      @views @. FluxZ = GradZ * dXdxI[iz,:,:,OPz,3,2]
-      @views @. FvF[iz,:,:,OPz] -= FluxZ 
-      @views @. FluxZ =  GradZ * dXdxI[iz,:,:,OPz,3,3]
-      @views @. Fw[iz,:,:,OPz] -= FluxZ 
+      @views @. GradZ = 0.5 * (pC[iz+1,:,:] - pC[iz,:,:])
+      @views @. FluxZ = GradZ * dXdxI[iz,:,:,2,3,1]
+      @views @. FuC[iz,:,:] -= FluxZ 
+      @views @. FluxZ = GradZ * dXdxI[iz,:,:,2,3,2]
+      @views @. FvC[iz,:,:] -= FluxZ 
+      @views @. FluxZ =  GradZ * dXdxI[iz,:,:,2,3,3]
+      @views @. Fw[iz+1,:,:] -= 0.5 * FluxZ 
     end    
   end 
 end 

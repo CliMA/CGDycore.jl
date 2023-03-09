@@ -50,8 +50,8 @@ function Fcn!(FC,FF,UC,UF,Metric,Fe,PhysParam,Cache)
   @. FRhoF = 0.0
   @. FRhoThetaF = 0.0
   Curl!(FuF,FwF,uF,wF,RhoF,Fe,Metric,Cache)
-  Div!(FRhoF,uF,wF,RhoF,Fe,Metric)
-  Div!(FRhoThetaF,uF,wF,RhoThetaF,Fe,Metric)
+  DivRho!(FRhoF,uF,wF,RhoF,Fe,Metric)
+  DivRhoTheta!(FRhoThetaF,uF,wF,RhoThetaF,Fe,Metric)
   RhoGrad!(FuF,FwF,KinF,RhoF,Fe,Metric)
   Grad!(FuF,FwF,pF,Fe,Metric)
 

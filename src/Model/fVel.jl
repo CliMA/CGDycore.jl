@@ -142,7 +142,7 @@ function fVel(x,time,Global,Param)
     elseif ProfVel == "sphericalharmonics"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3])
       (uS,vS)=harmonicVec(Param.lHar,Param.mHar,lat,lon,r)
-    elseif ProfVel == "Galewsky"
+    elseif ProfVel == "Galewski"
       (lon,lat,r)=cart2sphere(x[1],x[2],x[3])
       if (lat<=Param.lat0G) || (lat>=Param.lat1G)
         uS=0

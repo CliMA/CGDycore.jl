@@ -1,14 +1,12 @@
 function FunProjectC!(c,f,X,Fe)
   OPx = size(c,1)
   OPy = size(c,2)
-  OPz = size(c,3)
-  z = 0.0
   for i = 1 : OPx
     for j = 1 : OPy
-      for k = 1 :OPz
-        @views z = sum(Fe.IntZF2C[k,:] .* X[i,j,:,3])  
-        c[i,j,k] = f(X[i,j,k,1],X[i,j,k,2],z)  
-      end
+      x = 0.5 * (X[i,j,1,1] + X[i,j,2,1])
+      y = 0.5 * (X[i,j,1,2] + X[i,j,2,2])
+      z = 0.5 * (X[i,j,1,3] + X[i,j,2,3])
+      c[i,j] = f(x,y,z)  
     end
   end
 end
@@ -16,13 +14,9 @@ end
 function FunProjectF!(c,f,X)
   OPx = size(c,1)
   OPy = size(c,2)
-  OPz = size(c,3)
-  z = 0.0
   for i = 1 : OPx
     for j = 1 : OPy
-      for k = 1 : OPz
-        c[i,j,k] = f(X[i,j,k,1],X[i,j,k,2],X[i,j,k,3])
-      end
+      c[i,j] = f(X[i,j,1],X[i,j,2],X[i,j,3])
     end
   end
 end

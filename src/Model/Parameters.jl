@@ -1,3 +1,15 @@
+Base.@kwdef struct ParamGalewskiSphere
+  H0G = 10000.0
+  hH = 120.0
+  alphaG = 1.0/3.0
+  betaG = 1.0/15.0
+  lat0G = pi/7.0
+  lat1G = pi/2.0-lat0G
+  eN = exp(-4.0/(lat1G-lat0G)^2.0)
+  uM = 80.0
+  Omega = 2*pi/24.0/3600.0 
+end
+
 Base.@kwdef struct ParamBaroWaveDrySphere
   T0E=310.0
   T0P=240.0
@@ -76,8 +88,8 @@ Base.@kwdef struct ParamHillSchaerCart
   Stretch = false
 end
 
-Base.@kwdef struct ParamHillAgnesiCart
-  Example = "HillAgnesiCart"
+Base.@kwdef struct ParamHillAgnesiXCart
+  Example = "HillAgnesiXCart"
   Deep=false
   NBr=1.e-2
   Th0=300.0
@@ -91,14 +103,30 @@ Base.@kwdef struct ParamHillAgnesiCart
   Stretch = false
 end
 
+Base.@kwdef struct ParamHillAgnesiYCart
+  Example = "HillAgnesiYCart"
+  Deep=false
+  NBr=1.e-2
+  Th0=300.0
+  uMax=0
+  vMax=10
+  wMax=0
+  TEq=300.0
+  a = 1000.0
+  h = 400.0
+  yc = 0.0
+  Stretch = false
+end
+
 Base.@kwdef struct ParamWarmBubble2DXCart
   Example = "WarmBubble2DXCart"
   Th0=300.0
-  uMax=0
+  uMax=0.0
+  vMax=0
   wMax=0
   DeltaTh = 0.0
   xC0 = 10000.0
-  zC0 = 2000.0
+  zC0 = 4000.0 #2000.0
   rC0 = 2000.0
   Stretch = false
 end
@@ -143,27 +171,42 @@ Base.@kwdef struct ParamAdvectionSphereDCMIP
   TimeDependent = true
 end
 
+Base.@kwdef struct ParamAdvectionCart
+  Example = "AdvectionCart"
+  xC = 0.0
+  H = H
+end  
+
 
 
 function Parameters(Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro"
     @show Problem
     Param = ParamBaroWaveDrySphere()
+  elseif Problem == "GalewskiSphere"
+    @show Problem
+    Param = ParamGalewskiSphere()
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
     @show Problem
     Param = ParamHeldSuarezDrySphere()
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()
-  elseif Problem == "HillAgnesiCart"
+  elseif Problem == "HillAgnesiXCart"
     @show Problem
-    Param = ParamHillAgnesiCart()
+    Param = ParamHillAgnesiXCart()
+  elseif Problem == "HillAgnesiYCart"
+    @show Problem
+    Param = ParamHillAgnesiYCart()
   elseif Problem == "HillGaussCart"
     @show Problem
     Param = ParamHillGaussCart()
   elseif Problem == "AdvectionSphereDCMIP"
     @show Problem
     Param = ParamAdvectionSphereDCMIP()
+  elseif Problem == "AdvectionCart"
+    @show Problem
+    Param = ParamAdvectionCart()
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()

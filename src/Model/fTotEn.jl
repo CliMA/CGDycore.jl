@@ -243,7 +243,7 @@ function fTotEn(x,time,Global,Param)
     S=NBr*NBr/Grav;
     ThB=Th0*exp(z*S);
     Th=ThB+Param.DeltaTh*sin(pi*x[3]/Param.H)/(1+(x[2]-Param.yC)^2/Param.a^2);
-  elseif str == "galewsky"
+  elseif str == "galewski"
     Th=1;
   elseif str == "rossbyhaurwitz"
     Grav=Phys.Grav;

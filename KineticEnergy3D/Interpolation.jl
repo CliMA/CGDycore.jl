@@ -49,85 +49,25 @@ function ComputeOutputC!(cOut,cIn,Fe)
   nzOut = size(cOut,3)
   nxIn = size(cIn,1)
   nyIn = size(cIn,2)
-  nzIn = size(cIn,3)
 
-  Buf1 = zeros(nxOut,nyIn,nzIn)
-  Buf2 = zeros(nxOut,nyOut,nzIn)
+  Buf1 = zeros(nxOut,nyIn)
 
-  for kIn = 1 : nzIn
-    for jIn = 1 : nyIn
-      for iIn = 1 : nxIn
-        for iOut = 1 : nxOut
-           Buf1[iOut,jIn,kIn] = Buf1[iOut,jIn,kIn] + 
-            Fe.IntXF2cE[iOut,iIn] * cIn[iIn,jIn,kIn]
-        end
+  for jIn = 1 : nyIn
+    for iIn = 1 : nxIn
+      for iOut = 1 : nxOut
+         Buf1[iOut,jIn] = Buf1[iOut,jIn] + 
+          Fe.IntXF2cE[iOut,iIn] * cIn[iIn,jIn]
       end
     end
-  end  
-  for kIn = 1 : nzIn
-    for jIn = 1 : nyIn
-      for jOut = 1 : nyOut
-        for iOut = 1 : nxOut
-          Buf2[iOut,jOut,kIn] = Buf2[iOut,jOut,kIn] + 
-            Fe.IntYF2cE[jOut,jIn] * Buf1[iOut,jIn,kIn]
-        end
-      end
-    end
-  end  
+  end
   @. cOut = 0.0 
-  for kIn = 1 : nzIn
-    for kOut = 1 : nzOut
-      for jOut = 1 : nyOut
-        for iOut = 1 : nxOut
-          cOut[iOut,jOut,kOut] = cOut[iOut,jOut,kOut] + 
-            Fe.IntZC2cE[kOut,kIn] * Buf2[iOut,jOut,kIn]
-        end
+  for jIn = 1 : nyIn
+    for jOut = 1 : nyOut
+      for iOut = 1 : nxOut
+        cOut[iOut,jOut] = cOut[iOut,jOut] + 
+          Fe.IntYF2cE[jOut,jIn] * Buf1[iOut,jIn]
       end
     end
-  end  
+  end
 end
 
-function ComputeOutputF!(cOut,cIn,Fe)
-
-  nxOut = size(cOut,1)
-  nyOut = size(cOut,2)
-  nzOut = size(cOut,3)
-  nxIn = size(cIn,1)
-  nyIn = size(cIn,2)
-  nzIn = size(cIn,3)
-
-  Buf1 = zeros(nxOut,nyIn,nzIn)
-  Buf2 = zeros(nxOut,nyOut,nzIn)
-
-  for kIn = 1 : nzIn
-    for jIn = 1 : nyIn
-      for iIn = 1 : nxIn
-        for iOut = 1 : nxOut
-           Buf1[iOut,jIn,kIn] = Buf1[iOut,jIn,kIn] + 
-            Fe.IntXF2cE[iOut,iIn] * cIn[iIn,jIn,kIn]
-        end
-      end
-    end
-  end  
-  for kIn = 1 : nzIn
-    for jIn = 1 : nyIn
-      for jOut = 1 : nyOut
-        for iOut = 1 : nxOut
-          Buf2[iOut,jOut,kIn] = Buf2[iOut,jOut,kIn] + 
-            Fe.IntYF2cE[jOut,jIn] * Buf1[iOut,jIn,kIn]
-        end
-      end
-    end
-  end  
-  @. cOut = 0.0
-  for kIn = 1 : nzIn
-    for kOut = 1 : nzOut
-      for jOut = 1 : nyOut
-        for iOut = 1 : nxOut
-          cOut[iOut,jOut,kOut] = cOut[iOut,jOut,kOut] + 
-            Fe.IntZF2cE[kOut,kIn] * Buf2[iOut,jOut,kIn]
-        end
-      end
-    end
-  end  
-end

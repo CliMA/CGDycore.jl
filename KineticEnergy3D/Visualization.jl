@@ -63,16 +63,20 @@ function vtkPlot3DC(cC,Fe,vtkS,Name)
   stepS="$Step"
   vtk_filename_noext = Name *stepS
   vtk = pvtk_grid(vtk_filename_noext, vtkS.pts, vtkS.cells; compress=3, part = 1, nparts = 1)
-  cPlot = zeros(OrdPolyX,OrdPolyY,OrdPolyZ)
-  pCell = zeros(Nx*Ny*Nz*OrdPolyX*OrdPolyY*OrdPolyZ)
+  cPlot = zeros(OrdPolyX,OrdPolyY)
+  pCell = zeros(Nx*Ny*Nz*OrdPolyX*OrdPolyY)
   iCell = 1
-  iCellIncr = OrdPolyX * OrdPolyY * OrdPolyZ
+  iCellIncr = OrdPolyX * OrdPolyY
   for ix = 1 : Nx
     for iy = 1 : Ny
       for iz = 1 : Nz
-        @views ComputeOutputC!(cPlot,cC[ix,iy,iz,:,:,:],Fe)  
-        @views pCell[iCell:iCell+iCellIncr-1] = reshape(cPlot,iCellIncr)
-        iCell = iCell + iCellIncr
+        @views ComputeOutputC!(cPlot,cC[ix,iy,iz,:,:],Fe)  
+        for i = 1 : OrdPolyX   
+          for j = 1 : OrdPolyY   
+            pCell[iCell]= cPlot[i,j]
+            iCell += 1
+          end  
+        end  
       end
     end
   end  
@@ -85,25 +89,28 @@ end
 function vtkPlot3DF(cF,Fe,vtkS,Name)
   Nx = size(cF,1)
   Ny = size(cF,2)
-  Nz = size(cF,3)
+  Nz = size(cF,3) - 1
   OrdPolyX = Fe.OrdPolyX
   OrdPolyY = Fe.OrdPolyY
-  OrdPolyZ = Fe.OrdPolyZ
 
   Step = vtkS.Step
   stepS="$Step"
   vtk_filename_noext = Name *stepS
   vtk = pvtk_grid(vtk_filename_noext, vtkS.pts, vtkS.cells; compress=3, part = 1, nparts = 1)
-  cPlot = zeros(OrdPolyX,OrdPolyY,OrdPolyZ)
-  pCell = zeros(Nx*Ny*Nz*OrdPolyX*OrdPolyY*OrdPolyZ)
+  cPlot = zeros(OrdPolyX,OrdPolyY)
+  pCell = zeros(Nx*Ny*Nz*OrdPolyX*OrdPolyY)
   iCell = 1
-  iCellIncr = OrdPolyX * OrdPolyY * OrdPolyZ
+  iCellIncr = OrdPolyX * OrdPolyY
   for ix = 1 : Nx
     for iy = 1 : Ny
       for iz = 1 : Nz
-        @views ComputeOutputF!(cPlot,cF[ix,iy,iz,:,:,:],Fe)  
-        @views pCell[iCell:iCell+iCellIncr-1] = reshape(cPlot,iCellIncr)
-        iCell = iCell + iCellIncr
+        @views ComputeOutputC!(cPlot,0.5*(cF[ix,iy,iz,:,:]+cF[ix,iy,iz+1,:,:]),Fe)  
+        for i = 1 : OrdPolyX   
+          for j = 1 : OrdPolyY   
+            pCell[iCell]= cPlot[i,j]
+            iCell += 1
+          end  
+        end  
       end
     end
   end  
@@ -135,7 +142,7 @@ function vtkStruct(Fe,xP,yP,zP)
               ipts = ipts + 1
               pts[:,ipts] = [xP[ix,iy,iz,i+1,j,k],yP[ix,iy,iz,i+1,j,k],zP[ix,iy,iz,i+1,j,k]]
               ipts = ipts + 1
-              pts[:,ipts] = [xP[ix,iy,iz,i+1,j+1,k],yP[ix,iy,iz,i+1,j+1,k],zP[ix,iy,iz,i,j+1,k]]
+              pts[:,ipts] = [xP[ix,iy,iz,i+1,j+1,k],yP[ix,iy,iz,i+1,j+1,k],zP[ix,iy,iz,i+1,j+1,k]]
               ipts = ipts + 1
               pts[:,ipts] = [xP[ix,iy,iz,i,j+1,k],yP[ix,iy,iz,i,j+1,k],zP[ix,iy,iz,i,j+1,k]]
               ipts = ipts + 1
@@ -143,7 +150,7 @@ function vtkStruct(Fe,xP,yP,zP)
               ipts = ipts + 1
               pts[:,ipts] = [xP[ix,iy,iz,i+1,j,k],yP[ix,iy,iz,i+1,j,k],zP[ix,iy,iz,i+1,j,k+1]]
               ipts = ipts + 1
-              pts[:,ipts] = [xP[ix,iy,iz,i+1,j+1,k],yP[ix,iy,iz,i+1,j+1,k],zP[ix,iy,iz,i,j+1,k+1]]
+              pts[:,ipts] = [xP[ix,iy,iz,i+1,j+1,k],yP[ix,iy,iz,i+1,j+1,k],zP[ix,iy,iz,i+1,j+1,k+1]]
               ipts = ipts + 1
               pts[:,ipts] = [xP[ix,iy,iz,i,j+1,k],yP[ix,iy,iz,i,j+1,k],zP[ix,iy,iz,i,j+1,k+1]]
               ipts = ipts + 1

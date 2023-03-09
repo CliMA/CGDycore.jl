@@ -3,7 +3,13 @@ mutable struct FeElem
   OrdPolyY::Int
   OrdPolyZ::Int
   DX::Array{Float64, 2}
+  DXW::Array{Float64, 2}
+  QXW::Array{Float64, 2}
+  SX::Array{Float64, 2}
   DY::Array{Float64, 2}
+  DYW::Array{Float64, 2}
+  QYW::Array{Float64, 2}
+  SY::Array{Float64, 2}
   DZ::Array{Float64, 2}
   DZT::Array{Float64, 2}
   IntZF2C::Array{Float64, 2}
@@ -33,25 +39,47 @@ end
 function FeElem(OrdPolyX,OrdPolyY,OrdPolyZ)
   #Horizontal grid
   (wX,xw)=GaussLobattoQuad(OrdPolyX)
-  xe = -1.0 : 2.0/OrdPolyX : 1.0
+  xe = zeros(OrdPolyX+1)
+  xe[1] = -1.0
+  for i = 2 : OrdPolyX
+    xe[i] = xe[i-1] + 2.0/OrdPolyX
+  end  
+  xe[OrdPolyX+1] = 1.0
   DX=zeros(OrdPolyX+1,OrdPolyX+1)
   for i=1:OrdPolyX+1
     for j=1:OrdPolyX+1
       DX[i,j]=DLagrange(xw[i],xw,j)
     end 
   end 
+  DXW = -inv(diagm(wX))*DX'*diagm(wX)
+  QXW = diagm(wX) * DX
+  SX = QXW - QXW'
+
   (wY,yw)=GaussLobattoQuad(OrdPolyY)
-  ye = -1.0 : 2.0/OrdPolyY : 1.0
+  ye = zeros(OrdPolyY+1)
+  ye[1] = -1.0
+  for i = 2 : OrdPolyY
+    ye[i] = ye[i-1] + 2.0/OrdPolyY
+  end  
+  ye[OrdPolyY+1] = 1.0
   DY=zeros(OrdPolyY+1,OrdPolyY+1)
   for i=1:OrdPolyY+1
     for j=1:OrdPolyY+1
       DY[i,j]=DLagrange(yw[i],yw,j)
     end 
   end 
+  DYW = -inv(diagm(wY))*DY'*diagm(wY)
+  QYW = diagm(wY) * DY
+  SY = QYW - QYW'
   #  Vertical Grid
   (wZ,zw)=GaussLobattoQuad(OrdPolyZ)
   (wZC,zwC)=GaussLegendreQuad(OrdPolyZ)
-  ze = -1.0 : 2.0/OrdPolyZ : 1.0
+  ze = zeros(OrdPolyZ+1)
+  ze[1] = -1.0
+  for i = 2 : OrdPolyZ
+    ze[i] = ze[i-1] + 2.0/OrdPolyZ
+  end  
+  ze[OrdPolyZ+1] = 1.0
 
   IntZC2F = zeros(Float64,OrdPolyZ+1,OrdPolyZ)
   IntZF2C = zeros(Float64,OrdPolyZ,OrdPolyZ+1)
@@ -87,7 +115,7 @@ function FeElem(OrdPolyX,OrdPolyY,OrdPolyZ)
   IntXF2cE = zeros(OrdPolyX,OrdPolyX+1)
   dx = 2.0 / OrdPolyX
   for j = 1 : OrdPolyX + 1
-    xE = 0.5 * dx  
+    xE = -1.0 + 0.5 * dx  
     for i = 1 : OrdPolyX
       IntXF2cE[i,j] = Lagrange(xE,xw,j) 
       xE = xE + dx
@@ -96,7 +124,7 @@ function FeElem(OrdPolyX,OrdPolyY,OrdPolyZ)
   IntYF2cE = zeros(OrdPolyY,OrdPolyY+1)
   dy = 2.0 / OrdPolyY
   for j = 1 : OrdPolyY + 1
-    yE = 0.5 * dy  
+    yE = -1.0 + 0.5 * dy  
     for i = 1 : OrdPolyY
       IntYF2cE[i,j] = Lagrange(yE,yw,j) 
     yE = yE + dy
@@ -105,7 +133,7 @@ function FeElem(OrdPolyX,OrdPolyY,OrdPolyZ)
   IntZC2cE = zeros(OrdPolyZ,OrdPolyZ)
   dz = 2.0 / OrdPolyZ
   for j = 1 : OrdPolyZ
-    zE = 0.5 * dz  
+    zE = -1.0 + 0.5 * dz  
     for i = 1 : OrdPolyZ 
       IntZC2cE[i,j] = Lagrange(zE,zwC,j) 
       zE = zE + dz
@@ -114,7 +142,7 @@ function FeElem(OrdPolyX,OrdPolyY,OrdPolyZ)
   IntZF2cE = zeros(OrdPolyZ,OrdPolyZ+1)
   dz = 2.0 / OrdPolyZ
   for j = 1 : OrdPolyZ + 1
-    zE = 0.5 * dz  
+    zE = -1.0 + 0.5 * dz  
     for i = 1 : OrdPolyZ 
       IntZF2cE[i,j] = Lagrange(zE,zw,j) 
       zE = zE + dz
@@ -136,7 +164,13 @@ function FeElem(OrdPolyX,OrdPolyY,OrdPolyZ)
     OrdPolyY,
     OrdPolyZ,
     DX,
+    DXW,
+    QXW,
+    SX,
     DY,
+    DYW,
+    QYW,
+    SY,
     DZ,
     DZT,
     IntZF2C,

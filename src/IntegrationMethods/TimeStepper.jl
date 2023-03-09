@@ -32,6 +32,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
   @show nIter
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
+  @show PrintInt
 # PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
@@ -106,6 +107,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
           end
         end
         percent = i/nIter*100
+        @show sum(abs.(U))
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
@@ -183,7 +185,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RungeKuttaExplicit!(U,dtau,FcnNHCurlVec!,CG,Global)
+          @time RungeKuttaExplicit!(U,dtau,FcnNHCurlVecI!,CG,Global,Param)
 
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt

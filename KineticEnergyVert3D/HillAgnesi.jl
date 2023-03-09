@@ -11,36 +11,38 @@ include("Oro.jl")
 include("Interpolation.jl")
 include("Jacobi.jl")
 include("DSS.jl")
-include("DSSF.jl")
 include("Curl.jl")
 include("Div.jl")
 include("Grad.jl")
+include("RotCurl.jl")
 include("FeElem.jl")
 include("Int.jl")
 include("Metric.jl")
 include("ModelFun.jl")
 include("Pressure.jl")
-include("Buoyancy.jl")
 include("Fcn.jl")
+include("BoundaryW.jl")
 include("PhysParameters.jl")
 include("Visualization.jl")
 include("Cache.jl")
+include("Source.jl")
 include("../src/Model/Parameters.jl")
 
 function HillAgnesi()
   PhysParam = PhysParameters()
   Param = Parameters("HillAgnesiCart")
   Nz = 80
-  Nx = 100
-  Ny = 2
-  OrdPolyX=2
-  OrdPolyY=2
+  Nx = 40
+  Ny = 1
+  OrdPolyX=4
+  OrdPolyY=1
   OrdPolyZ=1
-  H = 15600.0
+  H = 19600.0
   Lx= 40000.0
   Ly= 800.0
   x0 = -Lx/2.0
   y0 = -Ly/2.0
+  Koeff = 1.e7
 
   CacheFcn = Cache(Nx,Ny,Nz,OrdPolyX,OrdPolyY,OrdPolyZ)
 
@@ -79,28 +81,8 @@ function HillAgnesi()
   end
   @views @. UC[:,:,:,:,:,:,ThPos] = UC[:,:,:,:,:,:,RhoPos] * UC[:,:,:,:,:,:,ThPos]
 
-# with Interpolation for higher order
-  @views wF = UF[:,:,:,:,:,:,wPos]
-# Lower boundary condition
-  uF = zeros(OrdPolyX+1,OrdPolyY+1,OrdPolyZ+1)
-  vF = zeros(OrdPolyX+1,OrdPolyY+1,OrdPolyZ+1)
-  for ix = 1 : Nx
-    for iy = 1 : Ny
-      for i = 1 : OrdPolyX + 1  
-        for j = 1 : OrdPolyY + 1  
-          @views uF[i,j,:] = Fe.IntZC2F * UC[ix,iy,1,i,j,:,uPos]
-          @views vF[i,j,:] = Fe.IntZC2F * UC[ix,iy,1,i,j,:,vPos]
-        end
-      end  
-      @views @. wF[ix,iy,1,:,:,1] = -(Metric3D.dXdxI[ix,iy,1,:,:,1,3,1]*uF[:,:,1] +
-        Metric3D.dXdxI[ix,iy,1,:,:,1,3,2]*vF[:,:,1]) /
-        Metric3D.dXdxI[ix,iy,1,:,:,1,3,3]  
-    end    
-  end    
-  #Average wF
-  JXY = zeros(Nx,Ny,OrdPolyX+1,OrdPolyY+1)
-  @. JXY = Metric3D.J[:,:,1,:,:,1]
-  @views AverageFXY!(wF[:,:,1,:,:,1],JXY)
+  @views BoundaryW!(UF[:,:,:,:,:,:,wPos],UC,Metric3D.dXdxI,Fe,CacheFcn)
+  @. UF[:,:,Nz,:,:,OrdPolyZ+1,wPos] = 0.0
 
   @views vtkPlot3DC(UC[:,:,:,:,:,:,RhoPos],Fe,vtkGrid3D,"Rho")
   @views vtkPlot3DC(UC[:,:,:,:,:,:,uPos],Fe,vtkGrid3D,"uVel")
@@ -109,23 +91,26 @@ function HillAgnesi()
   vtkGrid3D.Step +=1
 
   dtau = 0.1
-  IterEnd = 4000 #10000
+  IterEnd = 2000
   UC_n = similar(UC)
   UF_n = similar(UF)
+  @show sum(abs.(UC))/2.0
   for Iter = 1 : IterEnd
     @show Iter  
     @. UC_n = UC
     @. UF_n = UF
-    Fcn!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn)
+    Fcn!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn,Koeff)
     @. UC = UC_n + 1.0/3.0 * dtau *FC
     @. UF = UF_n + 1.0/3.0 * dtau *FF
-    Fcn!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn)
+    Fcn!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn,Koeff)
     @. UC = UC_n + 1.0/2.0 * dtau *FC
     @. UF = UF_n + 1.0/2.0 * dtau *FF
-    Fcn!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn)
+    Fcn!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn,Koeff)
     @. UC = UC_n + dtau *FC
     @. UF = UF_n + dtau * FF
-    if mod(Iter,400) == 0
+    @views BoundaryW!(UF[:,:,:,:,:,:,wPos],UC,Metric3D.dXdxI,Fe,CacheFcn)
+    @. UF[:,:,Nz,:,:,OrdPolyZ+1,wPos] = 0.0
+    if mod(Iter,50) == 0
       @views vtkPlot3DC(UC[:,:,:,:,:,:,RhoPos],Fe,vtkGrid3D,"Rho")
       @views vtkPlot3DC(UC[:,:,:,:,:,:,uPos],Fe,vtkGrid3D,"uVel")
       @views vtkPlot3DF(UF[:,:,:,:,:,:,wPos],Fe,vtkGrid3D,"wVel")

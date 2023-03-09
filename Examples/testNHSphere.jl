@@ -15,6 +15,7 @@ Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
+Equation = parsed_args["Equation"]
 Microphysics = parsed_args["Microphysics"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
@@ -47,6 +48,7 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
+Flat = parsed_args["Flat"]
 
 Param = CGDycore.Parameters(Problem)
 
@@ -69,7 +71,7 @@ Phys=CGDycore.PhysParameters()
 #ModelParameters
 Model = CGDycore.Model()
 # Initial conditions
-  Model.Equation="Compressible"
+  Model.Equation=Equation
   Model.NumV=NumV
   Model.NumTr=NumTr
   Model.Problem=Problem
@@ -192,7 +194,6 @@ Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
 
-  @show Param.T0E
   U = CGDycore.InitialConditions(CG,Global,Param)
 
 # Output partition  
@@ -205,7 +206,7 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 # Output
   Output.vtkFileName=string(Problem*"_")
   Output.vtk=0
-  Output.Flat=true
+  Output.Flat=Flat
   Output.nPanel=nPanel
   Output.RadPrint=H
   Output.H=H
@@ -215,7 +216,7 @@ Model.HyperDDiv = HyperDDiv # =7.e15
     "v",
     "w",
     "Th",
-    "Pres",
+    "Vort",
 ]
 
   Output.PrintDays = PrintDays

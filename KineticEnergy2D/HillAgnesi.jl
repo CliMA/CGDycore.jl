@@ -109,16 +109,16 @@ function HillAgnesi()
     end  
   end
   @views @. UC[:,:,:,:,ThPos] = UC[:,:,:,:,RhoPos] * UC[:,:,:,:,ThPos]
-  @views Plot2DC(UC[:,:,:,:,ThPos]./UC[:,:,:,:,RhoPos],Fe,Grid2D.xP,Grid2D.zP,"Theta")
-  @views Plot2DC(UC[:,:,:,:,RhoPos],Fe,Grid2D.xP,Grid2D.zP,"Rho")
-  @views Plot2DF(UF[:,:,:,:,wPos],Fe,Grid2D.xP,Grid2D.zP,"wEnd")
+# @views Plot2DC(UC[:,:,:,:,ThPos]./UC[:,:,:,:,RhoPos],Fe,Grid2D.xP,Grid2D.zP,"Theta")
+# @views Plot2DC(UC[:,:,:,:,RhoPos],Fe,Grid2D.xP,Grid2D.zP,"Rho")
+# @views Plot2DF(UF[:,:,:,:,wPos],Fe,Grid2D.xP,Grid2D.zP,"wEnd")
 
 # with Interpolation for higher order
-  @views wF = FF[:,:,:,:,wPos]
+  @views wF = UF[:,:,:,:,wPos]
 # Lower boubdary condition
   uF = zeros(OrdPolyX+1,OrdPolyZ+1)
   for ix = 1 : Nx
-    for i = OrdPolyX + 1  
+    for i = 1: OrdPolyX + 1  
       @views uF[i,:] = Fe.IntZC2F * UC[ix,1,i,:,uPos]
     end  
     @views @. wF[ix,1,:,1] = -Metric2D.dXdxI[ix,1,:,1,2,1]*uF[:,1] /
@@ -133,16 +133,21 @@ function HillAgnesi()
   ww = 0.5 * ( wF[Nx,1,OrdPolyX+1,1] + wF[1,1,1,1])
   wF[Nx,1,OrdPolyX+1,1] = ww
   wF[1,1,1,1] = ww
+  @show sum(abs.(wF[:,1,:,1]))
+  @show wF[1,1,:,1]
 
   dtau = 0.1
-  IterEnd = 4000 #10000
+  IterEnd = 2 #10000
   UC_n = similar(UC)
   UF_n = similar(UF)
+  @show sum(abs.(UC))
   for Iter = 1 : IterEnd
     @show Iter  
     @. UC_n = UC
     @. UF_n = UF
     Fcn!(FC,FF,UC,UF,Metric2D,Fe,PhysParam,CacheFcn)
+    @show Iter,sum(abs.(FC))
+    @show sum(abs.(FF))
     @. UC = UC_n + 1.0/3.0 * dtau *FC
     @. UF = UF_n + 1.0/3.0 * dtau *FF
     Fcn!(FC,FF,UC,UF,Metric2D,Fe,PhysParam,CacheFcn)
