@@ -19,6 +19,6 @@ function BoundaryW!(wF,UC,dXdxI,Fe,Cache)
     end    
   end    
   #Average wF
-  @. JXY = 1.0
-  @views AverageFXY!(wF[:,:,1,:,:],JXY)
+  #@. JXY = 1.0
+  #@views AverageFXY!(wF[:,:,1,:,:],JXY)
 end

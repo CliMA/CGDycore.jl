@@ -1,4 +1,4 @@
-mpirun -n 4 julia --project Examples/testNHCart.jl \
+mpirun -n 2 julia --project  Examples/testNHCart.jl \
   --Problem="HillAgnesiXCart" \
   --NumV=5 \
   --NumTr=0 \
@@ -6,16 +6,17 @@ mpirun -n 4 julia --project Examples/testNHCart.jl \
   --ProfTheta="AgnesiCart" \
   --ProfVel="Const" \
   --Damping=true \
+  --Upwind=false \
   --StrideDamp=10000 \
   --Relax=1.0e-2 \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimMinutes=30 \
-  --PrintSeconds=60 \
-  --dtau=.2 \
-  --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --PrintSeconds=30 \
+  --dtau=0.30 \
+  --IntMethod="RungeKutta" \
+  --Table="RK3" \
   --TopoS="AgnesiCartX" \
   `#Topography `        \
   --P1=0.0\

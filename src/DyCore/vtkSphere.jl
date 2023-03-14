@@ -421,11 +421,14 @@ function InterpolateVort!(cCell,U,Inter,OrdPrint,CG,Global)
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
           v1CG[iP,jP,iz] = U[iz,ind,1]
-            v2CG[iP,jP,iz] = U[iz,ind,2]
+          v2CG[iP,jP,iz] = U[iz,ind,2]
         end
       end
     end
-    FVort2VecDSS!(VortCG,v1CG,v2CG,CG,Global,iF)
+#   FVort2VecDSS!(VortCG,v1CG,v2CG,CG,Global,iF)
+    @views Rot!(VortCG,v1CG,v2CG,CG,Global.Metric.dXdxI[:,:,:,:,:,:,iF],
+      Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+
     @inbounds for iz=1:nz
       @. cc = 0.0
       @inbounds for j=1:OP

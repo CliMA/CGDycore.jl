@@ -9,7 +9,6 @@ function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param)
     @inbounds for jStage=1:iStage-1
       @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
     end
-#   Fcn(view(f,:,:,:,iStage),V,time + RK.cRKE[iStage] * dt,CG,Global,Param);
     @views Fcn(f[:,:,:,iStage],V,CG,Global,Param);
   end
   @. V = Vn;

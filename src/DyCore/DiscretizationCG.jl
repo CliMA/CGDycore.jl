@@ -120,6 +120,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
 
 
   dXdxIF = Global.Metric.dXdxIF
+  dXdxI = Global.Metric.dXdxI
   dXdxIC = Global.Metric.dXdxIC
   nS = Global.Metric.nS
   Global.Metric.dz = zeros(nz,CG.NumG)
@@ -132,7 +133,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   lat = Global.Metric.lat;
   X = Global.Metric.X;
   dXdx   = zeros(OP,OP,OPZ,nz,3,3,NF)
-  dXdxI  = zeros(OP,OP,OPZ,nz,3,3,NF)
+  dXdxILoc  = zeros(OP,OP,OPZ,nz,3,3,NF)
 
   for iF=1:Grid.NumFaces
     for iz=1:nz

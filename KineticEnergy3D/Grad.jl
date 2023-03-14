@@ -23,10 +23,10 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,Cache)
     @views DerivativeY!(DYpC,pC[iz,:,:],DY)
 #   @. DZpC = 0.0
 #   @views DerivativeZ!(DZpC,pC[iz,:,:],DZ)
-    @views @. FuC[iz,:,:] -= 0.5 * RhoC[iz,:,:] * 
+    @views @. FuC[iz,:,:] -= RhoC[iz,:,:] * 
       ((dXdxI[iz,:,:,1,1,1] + dXdxI[iz,:,:,2,1,1]) * DXpC + 
       (dXdxI[iz,:,:,1,1,2] + dXdxI[iz,:,:,2,2,1]) * DYpC)
-    @views @. FvC[iz,:,:] -=  0.5 * RhoC[iz,:,:] *
+    @views @. FvC[iz,:,:] -=  RhoC[iz,:,:] *
       ((dXdxI[iz,:,:,1,2,1] + dXdxI[iz,:,:,2,2,1]) * DXpC + 
       (dXdxI[iz,:,:,1,2,2] + dXdxI[iz,:,:,2,2,2]) * DYpC)
     @views @. Fw[iz,:,:] -= RhoC[iz,:,:] * (dXdxI[iz,:,:,1,1,3] * DXpC + dXdxI[iz,:,:,1,2,3] * DYpC)
@@ -38,7 +38,7 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,Cache)
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,2]
       @views @. FvC[iz,:,:] -= FluxZ 
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,3]
-      @views @. Fw[iz,:,:] -= 0.5 * FluxZ 
+      @views @. Fw[iz,:,:] -= FluxZ 
     end    
     if iz < Nz 
       @views @. GradZ = 0.5 * (pC[iz+1,:,:] - pC[iz,:,:]) * RhoC[iz,:,:]  
@@ -47,9 +47,16 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,Cache)
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,2,3,2]
       @views @. FvC[iz,:,:] -= FluxZ 
       @views @. FluxZ =  GradZ * dXdxI[iz,:,:,2,3,3]
-      @views @. Fw[iz+1,:,:] -= 0.5 * FluxZ 
+      @views @. Fw[iz+1,:,:] -= FluxZ 
     end    
   end 
+  @views @. GradZ = 0.5 * (pC[1+1,:,:] - pC[1,:,:]) * RhoC[1,:,:]  
+  @views @. FluxZ = GradZ * dXdxI[1,:,:,1,3,1]
+  @views @. FuC[1,:,:] -= FluxZ 
+  @views @. FluxZ = GradZ * dXdxI[1,:,:,1,3,2]
+  @views @. FvC[1,:,:] -= FluxZ 
+  @views @. FluxZ =  GradZ * dXdxI[1,:,:,1,3,3]
+  @views @. Fw[1,:,:] -= FluxZ 
 end 
 
 function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,Cache)
@@ -75,10 +82,10 @@ function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,Cache)
     @views DerivativeX!(DXpC,pC[iz,:,:],DX)
     @. DYpC = 0.0
     @views DerivativeY!(DYpC,pC[iz,:,:],DY)
-    @views @. FuC[iz,:,:] -= 0.5 * 
+    @views @. FuC[iz,:,:] -=  
       ((dXdxI[iz,:,:,1,1,1] + dXdxI[iz,:,:,2,1,1]) * DXpC + 
       (dXdxI[iz,:,:,1,1,2] + dXdxI[iz,:,:,2,2,1]) * DYpC)
-    @views @. FvC[iz,:,:] -=  0.5 * 
+    @views @. FvC[iz,:,:] -=   
       ((dXdxI[iz,:,:,1,2,1] + dXdxI[iz,:,:,2,2,1]) * DXpC + 
       (dXdxI[iz,:,:,1,2,2] + dXdxI[iz,:,:,2,2,2]) * DYpC)
     @views @. Fw[iz,:,:] -= (dXdxI[iz,:,:,1,1,3] * DXpC + dXdxI[iz,:,:,1,2,3] * DYpC)
@@ -90,7 +97,7 @@ function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,Cache)
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,2]
       @views @. FvC[iz,:,:] -= FluxZ 
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,1,3,3]
-      @views @. Fw[iz,:,:] -= 0.5 * FluxZ 
+      @views @. Fw[iz,:,:] -= FluxZ 
     end    
     if iz < Nz 
       @views @. GradZ = 0.5 * (pC[iz+1,:,:] - pC[iz,:,:])
@@ -99,8 +106,15 @@ function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,Cache)
       @views @. FluxZ = GradZ * dXdxI[iz,:,:,2,3,2]
       @views @. FvC[iz,:,:] -= FluxZ 
       @views @. FluxZ =  GradZ * dXdxI[iz,:,:,2,3,3]
-      @views @. Fw[iz+1,:,:] -= 0.5 * FluxZ 
+      @views @. Fw[iz+1,:,:] -= FluxZ 
     end    
   end 
+  @views @. GradZ = 0.5 * (pC[1+1,:,:] - pC[1,:,:])
+  @views @. FluxZ = GradZ * dXdxI[1,:,:,1,3,1]
+  @views @. FuC[1,:,:] -= FluxZ
+  @views @. FluxZ = GradZ * dXdxI[1,:,:,1,3,2]
+  @views @. FvC[1,:,:] -= FluxZ 
+  @views @. FluxZ =  GradZ * dXdxI[1,:,:,1,3,3]
+  @views @. Fw[1,:,:] -= FluxZ 
 end 
 

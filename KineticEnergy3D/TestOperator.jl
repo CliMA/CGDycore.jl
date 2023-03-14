@@ -28,8 +28,8 @@ include("../src/Model/Parameters.jl")
 function TestOperator()
   PhysParam = PhysParameters()
   Param = Parameters("WarmBubble2DXCart")
-  Nz = 80
-  Nx = 80
+  Nz = 320
+  Nx = 160
   Ny = 2
   OrdPolyX=4
   OrdPolyY=1
@@ -74,10 +74,10 @@ function TestOperator()
         @views FunProjectC!(UC[ix,iy,iz,:,:,RhoPos],RhoFun,Metric3D.X[ix,iy,iz,:,:,:,:],Fe)
         @views FunProjectC!(UC[ix,iy,iz,:,:,uPos],uFun,Metric3D.X[ix,iy,iz,:,:,:,:],Fe)
         @views FunProjectC!(Div[ix,iy,iz,:,:],DivFun,Metric3D.X[ix,iy,iz,:,:,:,:],Fe)
-        @views FunProjectC!(GradX[ix,iy,iz,:,:],GradXKin,Metric3D.X[ix,iy,iz,:,:,:,:],Fe)
+        @views FunProjectC!(GradX[ix,iy,iz,:,:],DxRhoFun,Metric3D.X[ix,iy,iz,:,:,:,:],Fe)
         @views FunProjectC!(uAdv[ix,iy,iz,:,:],AdvuMom,Metric3D.X[ix,iy,iz,:,:,:,:],Fe)
         @views FunProjectF!(UF[ix,iy,iz,:,:,wPos],wFun,Metric3D.X[ix,iy,iz,:,:,1,:])
-        @views FunProjectF!(GradZ[ix,iy,iz,:,:],GradZKin,Metric3D.X[ix,iy,iz,:,:,1,:])
+        @views FunProjectF!(GradZ[ix,iy,iz,:,:],DzRhoFun,Metric3D.X[ix,iy,iz,:,:,1,:])
         @views FunProjectF!(wAdv[ix,iy,iz,:,:],AdvwMom,Metric3D.X[ix,iy,iz,:,:,1,:])
       end  
     end  
@@ -92,23 +92,23 @@ function TestOperator()
 
   Curl!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn)
   for i = 1 : OrdPolyX + 1
-    @show i,FC[20,1,20,i,1,uPos],uAdv[20,1,20,i,1]
+    @show i,FC[40,1,100,i,1,uPos],uAdv[40,1,100,i,1]
   end
   for i = 1 : OrdPolyX + 1
-    @show i,FF[20,1,20,i,1,wPos],wAdv[20,1,20,i,1]
+    @show i,FF[40,1,160,i,1,wPos],wAdv[40,1,160,i,1]
   end
 
   Div!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn)
   for i = 1 : OrdPolyX + 1
-    @show i,FC[20,1,20,i,1,RhoPos],Div[20,1,20,i,1]
+    @show i,FC[40,1,80,i,1,RhoPos],Div[40,1,80,i,1]
   end
 
   Grad!(FC,FF,UC,UF,Metric3D,Fe,PhysParam,CacheFcn)
   for i = 1 : OrdPolyX + 1
-    @show i,FC[20,1,20,i,1,uPos],GradX[20,1,20,i,1]
+    @show i,FC[80,1,80,i,1,uPos],GradX[80,1,80,i,1]
   end
   for i = 1 : OrdPolyX + 1
-    @show i,FF[20,1,20,i,1,wPos],GradZ[20,1,20,i,1]
+    @show i,FF[40,1,80,i,1,wPos],GradZ[40,1,80,i,1]
   end
   stop
 end

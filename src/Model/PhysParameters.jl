@@ -29,6 +29,7 @@ cTrS::Array{Float64, 4}
 TSurf::Array{Float64, 3}
 FCG::Array{Float64, 5}
 FCC::Array{Float64, 4}
+FwCC::Array{Float64, 3}
 Vn::Array{Float64, 3}
 RhoCG::Array{Float64, 3}
 v1CG::Array{Float64, 3}
@@ -97,6 +98,7 @@ cTrS=zeros(0,0,0,0)
 TSurf=zeros(0,0,0)
 FCG=zeros(0,0,0,0,0)
 FCC=zeros(0,0,0,0)
+FwCC=zeros(0,0,0)
 Vn=zeros(0,0,0)
 RhoCG=zeros(0,0,0)
 v1CG=zeros(0,0,0)
@@ -164,6 +166,7 @@ return CacheStruct(
   TSurf,
   FCG,
   FCC,
+  FwCC,
   Vn,
   RhoCG,
   v1CG,
@@ -234,6 +237,7 @@ cTrS=zeros(OP,OP,NF,NumTr)
 TSurf=zeros(0,0,0)
 FCG=zeros(OP,OP,nz,NF,NumV+NumTr)
 FCC=zeros(OP,OP,nz,NumV+NumTr)
+FwCC=zeros(OP,OP,nz+1)
 Vn=zeros(nz,NumG,NumV+NumTr)
 RhoCG=zeros(OP,OP,nz)
 v1CG=zeros(OP,OP,nz)
@@ -257,7 +261,7 @@ Grad1C=zeros(OP,OP,nz)
 Grad2C=zeros(OP,OP,nz)
 DivC=zeros(OP,OP,nz)
 KV=zeros(OP,OP,nz)
-Temp1=zeros(nz,NumG,5+NumTr)
+Temp1=zeros(nz,NumG,5+NumTr+3)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
 Y=zeros(0,0,0,0)
@@ -301,6 +305,7 @@ return CacheStruct(
   TSurf,
   FCG,
   FCC,
+  FwCC,
   Vn,
   RhoCG,
   v1CG,
@@ -446,6 +451,7 @@ mutable struct MetricStruct
   J::Array{Float64, 5}
   X::Array{Float64, 6}
   dXdxIF::Array{Float64, 6}
+  dXdxI::Array{Float64, 7}
   dXdxIC::Array{Float64, 6}
   nS::Array{Float64, 4}
   dz::Array{Float64, 2}
@@ -458,6 +464,7 @@ function MetricStruct()
     J      = zeros(0,0,0,0,0)
     X      = zeros(0,0,0,0,0,0)
     dXdxIF = zeros(0,0,0,0,0,0)
+    dXdxI  = zeros(0,0,0,0,0,0,0)
     dXdxIC = zeros(0,0,0,0,0,0)
     nS = zeros(0,0,0,0)
     dz = zeros(0,0)
@@ -469,6 +476,7 @@ function MetricStruct()
         J,
         X,
         dXdxIF,
+        dXdxI,
         dXdxIC,
         nS,
         dz,
@@ -482,6 +490,7 @@ function Metric(OP,OPZ,NF,nz)
     J      = zeros(OP,OP,OPZ,nz,NF)
     X      = zeros(OP,OP,OPZ,3,nz,NF)
     dXdxIF = zeros(OP,OP,nz+1,3,3,NF)
+    dXdxI  = zeros(OP,OP,OPZ,nz,3,3,NF)
     dXdxIC = zeros(OP,OP,nz,3,3,NF)
     nS = zeros(OP,OP,3,NF)
     dz = zeros(0,0)
@@ -493,6 +502,7 @@ function Metric(OP,OPZ,NF,nz)
         J,
         X,
         dXdxIF,
+        dXdxI,
         dXdxIC,
         nS, 
         dz,

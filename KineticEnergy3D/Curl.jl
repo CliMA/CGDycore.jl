@@ -69,10 +69,10 @@ function CurlColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,Fe,dXdxI,Cache)
     @views DerivativeZ!(U,tempuZ[:,:,:,iz],DZ)
     @views DerivativeZ!(V,tempvZ[:,:,:,iz],DZ)
     @views DerivativeZ!(W,tempwZ[:,:,:,iz],DZ)
-    @views @. FuC[iz,:,:] += RhoC[iz,:,:] * (vC[iz,:,:] * W[:,:,1] - w[iz,:,:] * V[:,:,1]) +
-      RhoC[iz,:,:] * (vC[iz,:,:] * W[:,:,2] - w[iz+1,:,:] * V[:,:,2]) 
-    @views @. FvC[iz,:,:] += RhoC[iz,:,:] * (uC[iz,:,:] * W[:,:,1] - w[iz,:,:,:] * U[:,:,1]) +
-      RhoC[iz,:,:] * (uC[iz,:,:] * W[:,:,2] - w[iz+1,:,:,:] * U[:,:,2]) +
+    @views @. FuC[iz,:,:] += RhoC[iz,:,:] * (vC[iz,:,:] * W[:,:,1] - w[iz,:,:] * V[:,:,1] +
+      vC[iz,:,:] * W[:,:,2] - w[iz+1,:,:] * V[:,:,2]) 
+    @views @. FvC[iz,:,:] += RhoC[iz,:,:] * (uC[iz,:,:] * W[:,:,1] - w[iz,:,:,:] * U[:,:,1] +
+      uC[iz,:,:] * W[:,:,2] - w[iz+1,:,:,:] * U[:,:,2]) 
     @views @. Fw[iz,:,:] += RhoC[iz,:,:] * (uC[iz,:,:] * V[:,:,1] - vC[iz,:,:] * U[:,:,1])
     @views @. Fw[iz+1,:,:] += RhoC[iz,:,:] * (uC[iz,:,:] * V[:,:,2] - vC[iz,:,:] * U[:,:,2])
       

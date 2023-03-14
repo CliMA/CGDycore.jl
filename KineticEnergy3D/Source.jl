@@ -1,7 +1,7 @@
 function Damping!(FwF,wF,X,Fe)
   H = 15600.0
   StrideDamp = 10000.0
-  Relax = 0.0 # 0.1
+  Relax = 0.1
   Nz = size(FwF,1)
   OrdPolyX = Fe.OrdPolyX
   OrdPolyY = Fe.OrdPolyY
@@ -25,7 +25,7 @@ end
 
 function Buoyancy!(FwF,RhoC,J,Phys)
 
-  @views @. FwF[2:end-1,:,:] -= 0.5 * Phys.Grav * 
+  @views @. FwF[2:end-1,:,:] -= Phys.Grav * 
     (RhoC[1:end-1,:,:] * J[1:end-1,:,:,2] +
     RhoC[2:end,:,:] * J[2:end,:,:,1])
 

@@ -185,7 +185,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RungeKuttaExplicit!(U,dtau,FcnNHCurlVecI!,CG,Global,Param)
+          RungeKuttaExplicit!(U,dtau,FcnNHCurlVecINeu!,CG,Global,Param)
 
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt
@@ -193,6 +193,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
           end
         end
         percent = i/nIter*100
+        @show sum(abs.(U))
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
@@ -273,7 +274,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RungeKuttaExplicit!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
+          RungeKuttaExplicit!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
 
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt

@@ -11,9 +11,7 @@ include("Oro.jl")
 include("Interpolation.jl")
 include("Jacobi.jl")
 include("DSS.jl")
-include("Curl.jl")
-include("Div.jl")
-include("Grad.jl")
+include("Operator.jl")
 include("RotCurl.jl")
 include("FeElem.jl")
 include("Int.jl")
@@ -31,7 +29,7 @@ include("../src/Model/Parameters.jl")
 function HillAgnesiX()
   PhysParam = PhysParameters()
   Param = Parameters("HillAgnesiXCart")
-  Nz = 40
+  Nz = 80
   Nx = 40
   Ny = 1
   OrdPolyX=4
@@ -42,7 +40,7 @@ function HillAgnesiX()
   Ly= 800.0
   x0 = -Lx/2.0
   y0 = -Ly/2.0
-  Koeff = 0.e7
+  Koeff = 1.e6
 
   CacheFcn = Cache(Nx,Ny,Nz,OrdPolyX,OrdPolyY,OrdPolyZ)
 
@@ -89,7 +87,7 @@ function HillAgnesiX()
   vtkGrid3D.Step +=1
 
   dtau = 0.1
-  IterEnd = 100
+  IterEnd = 10000
   UC_n = similar(UC)
   UF_n = similar(UF)
   for Iter = 1 : IterEnd
@@ -109,7 +107,7 @@ function HillAgnesiX()
     @. UF = UF_n + dtau * FF
     @views BoundaryW!(UF[:,:,:,:,:,wPos],UC,Metric3D.dXdxI,Fe,CacheFcn)
     @. UF[:,:,Nz+1,:,:,wPos] = 0.0
-    if mod(Iter,10) == 0
+    if mod(Iter,500) == 0
       @views vtkPlot3DC(UC[:,:,:,:,:,RhoPos],Fe,vtkGrid3D,"Rho")
       @views vtkPlot3DC(UC[:,:,:,:,:,uPos],Fe,vtkGrid3D,"uVel")
       @views vtkPlot3DF(UF[:,:,:,:,:,wPos],Fe,vtkGrid3D,"wXVel")

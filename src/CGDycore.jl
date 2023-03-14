@@ -11,7 +11,8 @@ using WriteVTK
 using ArgParse
 using Metal
 #using StaticArrays
-#using NetCDF
+using NetCDF
+using MuladdMacro
 
 include("Grid/Geometry.jl")
 include("Grid/Node.jl")
@@ -46,6 +47,7 @@ include("DG/DLagrange.jl")
 include("DG/DerivativeMatrixSingle.jl")
 include("DG/GaussLobattoQuad.jl")
 include("DG/Lagrange.jl")
+include("DG/Tools.jl")
 
 include("DyCore/Average.jl")
 include("DyCore/AverageFB.jl")
@@ -62,6 +64,8 @@ include("DyCore/FGradDiv2Vec.jl")
 include("DyCore/FRotCurl2Vec.jl")
 include("DyCore/FVort2VecDSS.jl")
 include("DyCore/FcnNHCurlVec.jl")
+include("DyCore/OperatorRev.jl")
+include("DyCore/FcnNHCurlVecNeu.jl")
 include("DyCore/FcnNHCurl2AdvVec.jl")
 include("DyCore/FcnTracer.jl")
 include("DyCore/HorLimiter.jl")

@@ -2,6 +2,7 @@ function CreateCache(OP,nz,NumV,NumTr)
   D2 = Array{Float64, 2}
   D3 = Array{Float64, 3}
   D4 = Array{Float64, 4}
+  D5 = Array{Float64, 5}
   TCacheC1 = D2[D2(undef, OP, OP)
     for _ in 1:Threads.nthreads()]
   TCacheC2 = D2[D2(undef, OP, OP)
@@ -50,9 +51,24 @@ function CreateCache(OP,nz,NumV,NumTr)
     for _ in 1:Threads.nthreads()]
   TCacheCF4 = D3[D3(undef, OP, OP, nz+1)
     for _ in 1:Threads.nthreads()]
+  TCacheCol1 = D4[D4(undef, OP, OP, 2, nz)
+    for _ in 1:Threads.nthreads()]
+  TCacheCol2 = D4[D4(undef, OP, OP, 2, nz)
+    for _ in 1:Threads.nthreads()]
+  TCacheCol3 = D4[D4(undef, OP, OP, 2, nz)
+    for _ in 1:Threads.nthreads()]
+  TCacheCCC1 = D3[D3(undef, OP, OP, 2)
+    for _ in 1:Threads.nthreads()]
+  TCacheCCC2 = D3[D3(undef, OP, OP, 2)
+    for _ in 1:Threads.nthreads()]
+  TCacheCCC3 = D3[D3(undef, OP, OP, 2)
+    for _ in 1:Threads.nthreads()]
+  TCacheCCC4 = D3[D3(undef, OP, OP, 2)
+    for _ in 1:Threads.nthreads()]
   return(; TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheC5,
            TRhoCG, Tv1CG, Tv2CG, TwCG, TwCCG, TThCG, TFCG,
            TCacheCC1, TCacheCC2, TCacheCC3, TCacheCC4, TCacheCC5, 
-           TCacheCF1, TCacheCF2, TCacheCF3, TCacheCF4)
+           TCacheCF1, TCacheCF2, TCacheCF3, TCacheCF4, TCacheCol1,
+           TCacheCol2, TCacheCol3, TCacheCCC1, TCacheCCC2, TCacheCCC3, TCacheCCC4)
 end  
         

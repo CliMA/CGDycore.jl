@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="GalewskiSphere" \
   --NumV=5 \
   --NumTr=0 \
@@ -7,6 +7,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfVel="Galewski" \
   --Source=false \
   --Coriolis=true \
+  --Upwind=false \
   --Equation=Shallow \
   --Decomp="EqualArea" \
   --SimDays=6 \

@@ -3,6 +3,7 @@ function Oro(x,y,Param)
   if Example == "WarmBubble2DXCart"
     h = 0.0  
     h = 4000 / (1.0 + ((x - 10000.0)/2000.0)^2)  
+    h = 0.7 * sin(pi *x)
   elseif Example == "HillAgnesiXCart" 
     h = Param.h / (1.0 + ((x - Param.xc)/Param.a)^2)  
   elseif Example == "HillAgnesiYCart"
