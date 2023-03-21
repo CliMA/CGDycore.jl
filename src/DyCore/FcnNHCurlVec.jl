@@ -454,7 +454,7 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   nz=Global.Grid.nz;
   JF = Global.Metric.JF
   zP = Global.Metric.zP
-  Temp1 = Global.Cache.Temp1
+  @views Temp1 = Global.Cache.Temp1[:,:,1:NumV+NumTr]
   @views Rot1 = Global.Cache.Temp1[:,:,1]
   @views Rot2 = Global.Cache.Temp1[:,:,2]
   @views Grad1 = Global.Cache.Temp1[:,:,3]
@@ -774,6 +774,8 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
           Grad2CG[iP,jP,iz] = Grad2[iz,ind]
           DivCG[iP,jP,iz] = Div[iz,ind]
           zPG[iP,jP,iz] = zP[iz,ind]
+          pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
+          RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
           end  
@@ -821,16 +823,20 @@ function FcnNHCurlVecI!(F,U,CG,Global,Param)
   #       Global.Grav*Global.JF[:,:,:,2:nz].*(RhoF-Global.RhoBGrdF)) ./ RhoF;
   #   end
     else
-      @views FGrad3RhoVec!(FCG,Pres[:,:,:,iF],RhoCG,CG,Global,iF)
+      @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
+      #@views FGrad3RhoVec!(FCG,Pres[:,:,:,iF],RhoCG,CG,Global,iF)
+      @views FGrad3RhoVec!(FCG,pBGrdCG,RhoCG,CG,Global,iF)
       if Global.Model.Buoyancy
         @inbounds for iz=1:nz-1  
           @inbounds for j=1:OP  
             @inbounds for i=1:OP  
-              FCG[i,j,iz,wPos] -= Grav*JF[i,j,iz+1,iF]
-            end
+              Buo = (RhoCG[i,j,iz] + RhoCG[i,j,iz+1] - RhoBGrdCG[i,j,iz] - RhoBGrdCG[i,j,iz+1]) /
+                (RhoCG[i,j,iz] + RhoCG[i,j,iz+1]) 
+              FCG[i,j,iz,wPos] -= Grav*JF[i,j,iz+1,iF] * Buo
+            end  
           end  
-        end
-      end
+        end  
+      end   
     end
 #   3-dim Curl and Grad of kinetic Energy
     @views FGrad3Vec!(FCG,KE,CG,Global,iF)

@@ -4,6 +4,7 @@ TCacheCF1, TCacheCF2, TCacheCF3, TCacheCF4 = Global.ThreadCache
 OP=CG.OrdPoly+1
 nz=Global.Grid.nz
 
+
 uPos=Global.Model.uPos
 vPos=Global.Model.vPos
 wPos = Global.Model.wPos
@@ -306,10 +307,5 @@ end
     (-DXwHat12[:,:,2:nz] - DYwHat22[:,:,2:nz] + DZuuHat32[:,:,2:nz]) *
     (0.5*(v2CG[:,:,1:nz-1] + v2CG[:,:,2:nz])) -
     0.5*(DZwwHat32[:,:,1:nz-1] + DZwwHat32[:,:,2:nz])
-  s=sum(v1CG .* FuHat[:,:,:,uPos] .+ v2CG .* FuHat[:,:,:,vPos]) +sum( wCG[:,:,2:nz] .* FuHat[:,:,1:nz-1,wPos])   
-  @show s
-  s1=sum(abs.(v1CG .* FuHat[:,:,:,uPos]) .+ abs.(v2CG .* FuHat[:,:,:,vPos])) +
-     sum( abs.(wCG[:,:,2:nz] .* FuHat[:,:,1:nz-1,wPos]))   
-  @show s1
 end
 

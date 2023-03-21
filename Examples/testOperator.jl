@@ -200,9 +200,25 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
+  U = zeros(Float64,nz,CG.NumG,NumV+NumTr)
+  RhoPos = 1
+  uPos = 2
 
 # U = CGDycore.InitialConditions(CG,Global,Param)
-  @views FunProjectC!(U[:,:,RhoPos],RhoFun,Global.Metric.X,CG)
+  @views CGDycore.FunProjectC!(U[:,:,RhoPos],CGDycore.RhoFun,Global.Metric.X,CG)
+  @views CGDycore.FunProjectC!(U[:,:,uPos],CGDycore.uFun,Global.Metric.X,CG)
+  Div = zeros(Float64,nz,CG.NumG)
+  @views CGDycore.FunProjectC!(Div,CGDycore.DivFun,Global.Metric.X,CG)
+  GradX = zeros(Float64,nz,CG.NumG)
+  @views CGDycore.FunProjectC!(GradX,CGDycore.DxRhoFun,Global.Metric.X,CG)
+  uAdv = zeros(Float64,nz,CG.NumG)
+  @views CGDycore.FunProjectC!(uAdv,CGDycore.AdvuMom,Global.Metric.X,CG)
+  wF = zeros(Float64,nz+1,CG.NumG)
+  @views CGDycore.FunProjectF!(wF,CGDycore.wFun,Global.Metric.X,CG)
+  GradZ = zeros(Float64,nz+1,CG.NumG)
+  @views CGDycore.FunProjectF!(GradZ,CGDycore.DzRhoFun,Global.Metric.X,CG)
+  wAdv = zeros(Float64,nz+1,CG.NumG)
+  @views CGDycore.FunProjectF!(wAdv,CGDycore.AdvwMom,Global.Metric.X,CG)
   stop
 
 # Output partition  

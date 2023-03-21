@@ -303,7 +303,6 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       vPos = Global.Model.vPos
       VortCell = zeros(OrdPrint*OrdPrint*nz*NF)
       InterpolateVort!(VortCell,U[:,:,uPos:vPos],vtkInter,OrdPrint,CG,Global)
-      @show sum(abs.(VortCell))
       vtk["Vort", VTKCellData()] = VortCell
     end   
   end   
@@ -425,7 +424,6 @@ function InterpolateVort!(cCell,U,Inter,OrdPrint,CG,Global)
         end
       end
     end
-#   FVort2VecDSS!(VortCG,v1CG,v2CG,CG,Global,iF)
     @views Rot!(VortCG,v1CG,v2CG,CG,Global.Metric.dXdxI[:,:,:,:,:,:,iF],
       Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
 

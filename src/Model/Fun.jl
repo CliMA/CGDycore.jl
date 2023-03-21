@@ -1,27 +1,55 @@
 function FunProjectC!(c,f,X,CG)
   OrdPoly = CG.OrdPoly
-  Nz = size(c,1)
-  NF = size(c,2)
-  for iF 1 : NF
-    for iz = 1 : nz  
-      for i = 1 : OrdPoly  
-        for j = 1 : OrdPoly  
+  Nz = size(X,5)
+  NF = size(X,6)
+  for iF = 1 : NF
+    for iz = 1 : Nz  
+      for i = 1 : OrdPoly + 1  
+        for j = 1 : OrdPoly + 1  
+          ind = CG.Glob[i,j,iF]  
           x=0.5*(X[i,j,1,1,iz,iF]+X[i,j,2,1,iz,iF])  
           y=0.5*(X[i,j,1,2,iz,iF]+X[i,j,2,2,iz,iF])  
           z=0.5*(X[i,j,1,3,iz,iF]+X[i,j,2,3,iz,iF])  
-          c[iz,iF] = f(x,y,z)
+          c[iz,ind] = f(x,y,z)
         end
       end
     end
   end
 end
 
-function FunProjectF!(c,f,X)
-  OPx = size(c,1)
-  OPy = size(c,2)
-  for i = 1 : OPx
-    for j = 1 : OPy
-      c[i,j] = f(X[i,j,1],X[i,j,2],X[i,j,3])
+function FunProjectF!(c,f,X,CG)
+  OrdPoly = CG.OrdPoly
+  Nz = size(X,5)
+  NF = size(X,6)
+  for iF = 1 : NF
+    for iz = 1 : Nz - 1   
+      for i = 1 : OrdPoly + 1  
+        for j = 1 : OrdPoly + 1  
+          ind = CG.Glob[i,j,iF]  
+          x=0.5*(X[i,j,2,1,iz,iF]+X[i,j,1,1,iz+1,iF])  
+          y=0.5*(X[i,j,2,2,iz,iF]+X[i,j,1,2,iz+1,iF])  
+          z=0.5*(X[i,j,2,3,iz,iF]+X[i,j,1,3,iz+1,iF])  
+          c[iz+1,ind] = f(x,y,z)
+        end
+      end
+      for i = 1 : OrdPoly + 1  
+        for j = 1 : OrdPoly + 1  
+          ind = CG.Glob[i,j,iF]  
+          x=X[i,j,1,1,1,iF]
+          y=X[i,j,1,2,1,iF]
+          z=X[i,j,1,3,1,iF]
+          c[1,ind] = f(x,y,z)
+        end
+      end
+      for i = 1 : OrdPoly + 1  
+        for j = 1 : OrdPoly + 1  
+          ind = CG.Glob[i,j,iF]  
+          x=X[i,j,2,1,Nz,iF]
+          y=X[i,j,2,2,Nz,iF]
+          z=X[i,j,2,3,Nz,iF]
+          c[Nz+1,ind] = f(x,y,z)
+        end
+      end
     end
   end
 end

@@ -35,8 +35,8 @@ function fpBGrd(x,time,Global,Param)
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
     Z=max(R-Phys.RadEarth,0);
     p = Phys.p0 * exp(-Phys.Grav * Z / (Phys.Rd * Param.TEq))
-else
+  else
     p=0;
-end
+  end
 return p
 end

@@ -100,6 +100,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
+#         RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param);
           RosenbrockSchur!(U,dtau,FcnNHCurlVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
@@ -185,8 +186,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RungeKuttaExplicit!(U,dtau,FcnNHCurlVecINeu!,CG,Global,Param)
-
+          RungeKuttaExplicit!(U,dtau,Fcn!,CG,Global,Param)
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)

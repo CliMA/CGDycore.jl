@@ -339,9 +339,7 @@ function FcnNHCurl2AdvVec!(F,U,CG,Global,Param)
     end
     @. FCG = 0.0
 #   Test     
-    @show size(wCG)
     AdvecVertVec!(FCG[:,:,:,uPos:vPos],RhoCG,v1CG,v2CG,wCG,Omega,CG,Global,iF)
-    stop
 
 
 #   Hyperdiffusion Part 2    

@@ -36,6 +36,16 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--ProfpBGrd"
+    help = "Initial conditions for background pressure"
+    arg_type = String
+    default = ""
+
+    "--ProfRhoBGrd"
+    help = "Initial conditions for background density"
+    arg_type = String
+    default = ""
+
     "--HorLimit"
     help = "Horizontal limiter"
     arg_type = Bool
@@ -70,6 +80,16 @@ function parse_commandline()
     help = "Coriolis parameterization"
     arg_type = String
     default = "Sphere"
+
+    "--Buoyancy"
+    help = "Buoyancy "
+    arg_type = Bool
+    default = true
+
+    "--RefProfile"
+    help = "RefProfile"
+    arg_type = Bool
+    default = false
 
     "--Equation"
     help = "Equation Type, Shallow, Compressible, CompressibleMoist"

@@ -16,6 +16,8 @@ function InitialConditions(CG,Global,Param)
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=Project(fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end
+  Global.pBGrd = Project(fpBGrd,0.0,CG,Global,Param)
+  Global.RhoBGrd = Project(fRhoBGrd,0.0,CG,Global,Param)
   return U
 end  
 

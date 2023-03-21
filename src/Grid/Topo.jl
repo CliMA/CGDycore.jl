@@ -5,7 +5,10 @@ function Topo(x,y,z,zeta,Topography,zs)
     hC = Topography.P3
     h=hC/(((x-x0C)/aC)^2+1);
   elseif Topography.TopoS == "AgnesiCartY"
-    h=Topography.hC/(((y-Topography.y0C)/Topography.aC)^2+1);
+    y0C = Topography.P1
+    aC= Topography.P2
+    hC = Topography.P3
+    h=hC/(((y-y0C)/aC)^2+1);
   elseif Topography.TopoS == "GaussCartX"
     x0C = Topography.P1
     aC= Topography.P2
