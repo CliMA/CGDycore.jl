@@ -286,9 +286,14 @@ elseif str == "barowavedrysphere"
       Rho=x[1]+1;
   elseif str == "bickley"
       Rho=Param.RhoTheta;
-  elseif str == "isothermal"
+  elseif str == "isothermalcart"
     pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
     Rho = pLoc / (Phys.Rd * Param.TEq)
+  elseif str == "isothermalsphere"
+    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+    Z=max(R-Phys.RadEarth,0);
+    pLoc = Phys.p0 * exp(-Phys.Grav * Z / (Phys.Rd * Param.TEq))
+    Rho = pLoc / (Phys.Rd * Param.TEq)  
   elseif str == "decayingtemperatureprofile"
     H_sfc = Phys.Rd * Param.T_virt_surf / Phys.Grav
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);

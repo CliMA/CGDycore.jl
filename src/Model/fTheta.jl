@@ -274,8 +274,13 @@ function fTheta(x,time,Global,Param)
     Th=x[1]+1;
   elseif str == "bickley"
     Th=Param.RhoTheta;
-  elseif str == "isothermal"
+  elseif str == "isothermalcart"
     pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
+    Th=Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)  
+  elseif str == "isothermalsphere"
+    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+    Z=max(R-Phys.RadEarth,0);
+    pLoc = Phys.p0 * exp(-Phys.Grav * Z / (Phys.Rd * Param.TEq))
     Th=Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)  
   elseif str == "decayingtemperatureprofile"  
     H_sfc = Phys.Rd * Param.T_virt_surf / Phys.Grav

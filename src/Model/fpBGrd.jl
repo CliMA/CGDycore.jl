@@ -31,7 +31,9 @@ function fpBGrd(x,time,Global,Param)
     Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
     p=Phys.p0*exp(-Phys.Grav/Phys.Rd *
         (IntTau1-IntTau2*InteriorTerm));    
-  elseif str == "isothermal"
+  elseif str == "isothermalcart"
+    p = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
+  elseif str == "isothermalsphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
     Z=max(R-Phys.RadEarth,0);
     p = Phys.p0 * exp(-Phys.Grav * Z / (Phys.Rd * Param.TEq))
