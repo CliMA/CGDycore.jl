@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 8 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphereOro" \
   --NumV=5 \
   --NumTr=0 \
@@ -6,7 +6,13 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfTheta="BaroWaveDrySphere" \
   --ProfVel="BaroWaveDrySphere" \
   --Source=false \
+  --ProfpBGrd="IsoThermal" \
+  --ProfRhoBGrd="IsoThermal" \
+  --RefProfile=true \
   --Coriolis=true \
+  --StrideDamp=15000 \
+  --Relax=1.0e-2 \
+  --Upwind=false \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --PrintSeconds=3600 \
@@ -18,7 +24,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --GridType="CubedSphere" \
   --nz=45 \
   --nPanel=16 \
-  --H=30000.0 \
+  --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=1.e16 \

@@ -6,9 +6,9 @@ mpirun -n 6 julia --project  Examples/testNHCart.jl \
   --ProfTheta="AgnesiCart" \
   --ProfVel="Const" \
   --Damping=true \
-  --Upwind=false \
   --StrideDamp=10000 \
   --Relax=1.0e-2 \
+  --Upwind=false \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
