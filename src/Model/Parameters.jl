@@ -82,7 +82,7 @@ Base.@kwdef struct ParamHillSchaerCart
   Deep=false
   NBr=1.e-2
   Th0=300.0
-  uMax=20
+  uMax=10
   vMax=0
   TEq=300.0
   Stretch = false
