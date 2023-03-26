@@ -2,5 +2,5 @@
 _format = "1.0"
 abi = "OpenMPI"
 binary = "system"
-libmpi = "/opt/homebrew/lib/libmpi"
+libmpi = "libmpi"
 mpiexec = "mpiexec"

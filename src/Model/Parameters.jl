@@ -124,9 +124,9 @@ Base.@kwdef struct ParamWarmBubble2DXCart
   uMax=0.0
   vMax=0
   wMax=0
-  DeltaTh = 0.0
+  DeltaTh = 2.0
   xC0 = 10000.0
-  zC0 = 4000.0 #2000.0
+  zC0 = 2000.0
   rC0 = 2000.0
   Stretch = false
 end

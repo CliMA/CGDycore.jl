@@ -305,9 +305,10 @@ function Fcn!(F,U,CG,Global,Param)
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
     else
       if Global.Model.Upwind
-        @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+        @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       else
-#       @views FDiv3Vec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,CG,Global,iF);
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
@@ -328,9 +329,10 @@ function Fcn!(F,U,CG,Global,Param)
 #     Hyperdiffusion, second Laplacian
       @views FDivRhoGrad2Vec!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,Global,iF)
       if Global.Model.Upwind
-        @views FDiv3UpwindVec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+        @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       else
-#       @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
@@ -482,7 +484,9 @@ function Fcn!(F,U,CG,Global,Param)
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
     else
       if Global.Model.Upwind
-        @views FDiv3UpwindVec!(FCG[:,:,:,ThPos],ThCG,v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+        @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
@@ -505,9 +509,10 @@ function Fcn!(F,U,CG,Global,Param)
 #     Hyperdiffusion, second Laplacian
       @views FDivRhoGrad2Vec!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,Global,iF)
       if Global.Model.Upwind
-        @views FDiv3UpwindVec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
+        @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       else
-#       @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end

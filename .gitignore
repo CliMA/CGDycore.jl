@@ -45,3 +45,5 @@ hostfile
 *.pdf
 *.py
 list2
+LocalPreferences.toml
+LocalPreferences.toml
