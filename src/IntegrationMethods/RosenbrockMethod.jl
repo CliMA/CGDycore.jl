@@ -1,54 +1,3 @@
-mutable struct SSPRungeKuttaStruct
-  nStage::Int
-  alpha::Array{Float64, 2}
-  beta::Array{Float64, 2}
-  c::Array{Float64, 1}
-end  
-function SSPRungeKuttaMethod()
- nStage=0
- alpha=zeros(0,0)
- beta=zeros(0,0)
- c=zeros(0)
- return SSPRungeKuttaStruct(
-   nStage,
-   alpha,
-   beta,
-   c,
-   )
-end
-function SSPRungeKuttaMethod(alpha::Array{Float64, 2},beta::Array{Float64, 2})
- c=zeros(size(alpha,1)) 
- for i = 2:size(alpha,1)
-   c[i] = sum(beta[i-1,:])  
- end  
- return SSPRungeKuttaStruct(
-   size(alpha,1),
-   alpha,
-   beta,
-   c,
-   )
-end 
-
-function SSPRungeKuttaMethod(Method)
-  if Method == "SSP-Knoth"
-    nStage = 3  
-    alpha = [1 0 0
-             3/4 1/4 0
-             1/3 0 2/3]
-    beta = [1 0 0
-            0 1/4 0
-            0 0 2/3]
-  end          
-  c = [0,1,1/2]
- return SSPRungeKuttaStruct(
-   nStage,
-   alpha,
-   beta,
-   c,
-   )
-end 
-  
-
 mutable struct RosenbrockStruct
   transformed::Bool
   nStage::Int
@@ -129,7 +78,9 @@ elseif str == "RK3_H"
     b=[0,0,1];
     a=alpha/Gamma;
     c=-inv(Gamma);
-    m=ROS.b/Gamma;
+    m=Gamma'\b;
+    a=[a
+       m']
     d=Gamma[1,1];
 elseif str == "RODAS_N"
     ROS.transformed=false;

@@ -1,6 +1,7 @@
 function parse_commandline()
   s = ArgParseSettings()
   @add_arg_table s begin
+
     "--Problem"
     help = "Problem name"
     arg_type = String
@@ -33,6 +34,11 @@ function parse_commandline()
 
     "--ProfVelW"
     help = "Initial conditions for vertical velocity"
+    arg_type = String
+    default = ""
+
+    "--ProfTr"
+    help = "Initial conditions for tracer"
     arg_type = String
     default = ""
 
@@ -130,6 +136,12 @@ function parse_commandline()
     help = "Boundary type in vertical direction"
     arg_type = String
     default = ""
+
+    "--Thermo"
+    help = "Type of thermodynmic variable, total energy, internal energy, potential temperature"
+    arg_type = String
+    default = ""
+
 
 #   Domain decomposition
     "--Decomp"

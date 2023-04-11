@@ -107,7 +107,8 @@ function JacSchur!(J,U,CG,Global,Param)
     @views Tr = U[:,iC,NumV+1:end]
     @views dz = Global.Metric.dz[:,iC]
 
-    @views @. D[1:nz-1] = -0.5 * (Rho[1:nz-1] + Rho[2:nz]) 
+    @views @. D[1:nz-1] = -(Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz]) /
+      (dz[1:nz-1] + dz[2:nz])
     @views @. J.JRhoW[1,:,iC] = D / dz
     @views @. J.JRhoW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
 
@@ -125,11 +126,12 @@ function JacSchur!(J,U,CG,Global,Param)
       @views @. J.JWRhoV[2,:,iC] = Dm
     end  
 
-    @views @. D[1:nz-1] =  0.5 * Global.Phys.Grav
+    @views @. D[1:nz-1] = Global.Phys.Grav / (Rho[1:nz-1] + Rho[2:nz])
     @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] 
     @views @. J.JWRho[2,1:nz,iC] = -D 
 
-    @views @. D[1:nz-1] = -0.5*(Th[1:nz-1] + Th[2:nz]) 
+    @views @. D[1:nz-1] = -(Th[1:nz-1] * dz[1:nz-1] + Th[2:nz] * dz[2:nz]) /
+      (dz[1:nz-1] + dz[2:nz])
     @views @. J.JThW[1,:,iC] = D / dz
     @views @. J.JThW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
     if Global.Model.Thermo == "TotalEnergy" 
@@ -141,7 +143,8 @@ function JacSchur!(J,U,CG,Global,Param)
     end  
 
     @inbounds for iT = 1 : NumTr
-      @views @. D[1:nz-1] = -0.5*(Tr[1:nz-1,iT] + Tr[2:nz,iT]) 
+      @views @. D[1:nz-1] = -(Tr[1:nz-1,iT] * dz[1:nz-1] + Tr[2:nz,iT] * dz[2:nz]) /
+        (dz[1:nz-1] + dz[2:nz])
       @views @. J.JTrW[1,:,iC,iT] = D / dz
       @views @. J.JTrW[2,1:nz-1,iC,iT] = -D[1:nz-1] / dz[2:nz]
     end    

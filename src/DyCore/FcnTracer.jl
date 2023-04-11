@@ -3,17 +3,16 @@ function FcnTracer!(F,U,time,CG,Global,Param)
   TCacheCC1, TCacheCC2, TCacheCC3, TCacheCC4, TCacheCC5 = Global.ThreadCache
 
 (;  RhoPos,
-    uPos,
-    vPos,
-    wPos,
     NumV,
     NumTr) = Global.Model
 
+  dtau = Global.TimeStepper.dtauStage
   Grav=Global.Phys.Grav    
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
   JF = Global.Metric.JF
+  X = Global.Metric.X
   Temp1 = Global.Cache.Temp1
   @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
   DivCG=Global.Cache.DivC
@@ -24,14 +23,14 @@ function FcnTracer!(F,U,time,CG,Global,Param)
   v1CG = Global.Cache.v1CG
   v2CG = Global.Cache.v2CG
   wCG = Global.Cache.wCG
-  wCCG = Global.Cache.wCCG
+  PsiCG = Global.Cache.wCCG
   TrCG = Global.Cache.TrCG
   DivTr .= 0.0
   F .= 0.0
-  if Param.TimeDependent
-    @views ProjectVec!(U[:,:,uPos],U[:,:,vPos],fVel,time,CG,Global,Param)
-    @views ProjectW!(U[:,:,wPos],fVelW,time,CG,Global,Param)
-  end
+  qMin = Global.Cache.qMin
+  qMax = Global.Cache.qMax
+
+  @views Limit!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],U[:,:,RhoPos],CG,Global)
 
   # Hyperdiffusion 
   @inbounds for iF in Global.Grid.BoundaryFaces
@@ -64,7 +63,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     end
   end
 
-  ExchangeData3DSend(Temp1,Global.Exchange)
+  @views ExchangeData3DSend(Temp1[:,:,1:NumV+NumTr],Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -96,17 +95,38 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     end
   end
 
-  ExchangeData3DRecv!(Temp1,Global.Exchange)
+  ExchangeData3DRecv!(Temp1[:,:,1:NumV+NumTr],Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
+    if Param.StreamFun
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          @inbounds for iz=1:nz
+            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
+            @views PsiCG[iP,jP,iz] = fPsi(x,time,Global,Param)
+          end
+        end  
+      end  
+      @views Curl!(v1CG,v2CG,PsiCG,CG,Global.Metric.dXdxI[:,:,:,:,:,:,iF],
+        Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+    else
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          @inbounds for iz=1:nz
+            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
+            @views (uu,vv) = fVel(x,time,Global,Param)
+            v1CG[iP,jP,iz] = uu
+            v2CG[iP,jP,iz] = vv
+            wCG[iP,jP,iz+1] = 0.0
+          end
+        end  
+      end  
+    end
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
-          v1CG[iP,jP,iz] = U[iz,ind,uPos]
-          v2CG[iP,jP,iz] = U[iz,ind,vPos]
-          wCG[iP,jP,iz+1] = U[iz,ind,wPos]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,iT+NumV]
           end  
@@ -115,7 +135,8 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     end
     @. FCG = 0.0
 
-    BoundaryW!(view(wCG,:,:,1),v1CG,v2CG,CG,Global,iF)
+    @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
+       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views FDiv3Vec!(FCG[:,:,:,RhoPos],RhoCG,v1CG,v2CG,wCG,CG,Global,iF)
 
 #   Tracer transport
@@ -133,9 +154,19 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
       else
-        @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
+        @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+              Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)  
       end
     end
+
+    @inbounds for iz=1:nz
+      @inbounds for iT = 1:NumTr
+        @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
+        @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
+        @views SecantQ!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
+          Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+      end
+    end  
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -153,14 +184,35 @@ function FcnTracer!(F,U,time,CG,Global,Param)
   ExchangeData3DSend(F,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
+    if Param.StreamFun
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          @inbounds for iz=1:nz
+            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
+            @views PsiCG[iP,jP,iz] = fPsi(x,time,Global,Param)
+          end 
+        end  
+      end  
+      @views Curl!(v1CG,v2CG,PsiCG,CG,Global.Metric.dXdxI[:,:,:,:,:,:,iF],
+        Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+    else
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          @inbounds for iz=1:nz
+            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
+            @views (uu,vv) = fVel(x,time,Global,Param)
+            v1CG[iP,jP,iz] = uu
+            v2CG[iP,jP,iz] = vv
+            wCG[iP,jP,iz+1] = 0.0 
+          end 
+        end  
+      end  
+    end 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
-          v1CG[iP,jP,iz] = U[iz,ind,uPos]
-          v2CG[iP,jP,iz] = U[iz,ind,vPos]
-          wCG[iP,jP,iz+1] = U[iz,ind,wPos]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,iT+NumV]
           end  
@@ -169,7 +221,9 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     end
     @. FCG = 0.0
 
-    BoundaryW!(view(wCG,:,:,1),v1CG,v2CG,CG,Global,iF)
+#   BoundaryW!(view(wCG,:,:,1),v1CG,v2CG,CG,Global,iF)
+    @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
+       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views FDiv3Vec!(FCG[:,:,:,RhoPos],RhoCG,v1CG,v2CG,wCG,CG,Global,iF)
 
 #   Tracer transport
@@ -187,10 +241,20 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       if Global.Model.Upwind
         @views FDiv3UpwindVec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,RhoCG,CG,Global,iF);
       else
-        @views FDiv3Vec!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],v1CG,v2CG,wCG,CG,Global,iF);
+        @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+              Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)  
       end
     end
 
+    @inbounds for iz=1:nz
+      @inbounds for iT = 1:NumTr
+        @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
+        @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
+        @views SecantQ!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
+          Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+      end
+    end  
+      
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -208,7 +272,3 @@ function FcnTracer!(F,U,time,CG,Global,Param)
 
 end
 
-function ComputeVelocity!(U,CG,Global,time)
-  Model=Global.Model
-  (U[:,:,Model.uPos],U[:,:,Model.vPos])=CGDycore.ProjectVec(CGDycore.fVel,CG,Global)
-end

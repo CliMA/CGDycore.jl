@@ -2,13 +2,16 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   SubGrid = Grid(GlobalGrid.nz,GlobalGrid.Topography)
 
 # Number of faces
+  DictF = Dict()
   NumFaces = 0
   FaceNumbers = zeros(Int,0)
+  GhostFaceNumbers = zeros(Int,0)
   EdgeNumbers = zeros(Int,0)
   NodeNumbers = zeros(Int,0)
   for iF = 1 : GlobalGrid.NumFaces
     if Proc[iF] == ProcNumber
       NumFaces += 1
+      DictF[iF] = NumFaces 
       push!(FaceNumbers,iF)
       for i = 1 : 4
         push!(EdgeNumbers,GlobalGrid.Faces[iF].E[i])
@@ -39,7 +42,22 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
         exit
       end
     end  
+    for j in eachindex(Nodes[i].FP)
+      if ProcNumber != Nodes[i].FP[j]
+        push!(GhostFaceNumbers,Nodes[i].FG[j])
+      end  
+    end  
   end  
+
+  GhostFaceNumbers = unique(GhostFaceNumbers)
+  i = 1
+  NumGhostFaces = 0
+  for iGF in eachindex(GhostFaceNumbers)
+    DictF[GhostFaceNumbers[iGF]] = i + NumFaces
+    i += 1
+    NumGhostFaces += 1
+  end  
+
   NumEdges = size(EdgeNumbers,1)
   Edges = map(1:NumEdges) do i
     Edge()
@@ -106,6 +124,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   end
 
   SubGrid.NumFaces = NumFaces
+  SubGrid.NumGhostFaces = NumGhostFaces
   SubGrid.Faces = Faces
   SubGrid.NumEdges = NumEdges
   SubGrid.Edges = Edges
@@ -133,6 +152,14 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   SubGrid.InteriorFaces = setdiff(collect(UnitRange(1,SubGrid.NumFaces)),SubGrid.BoundaryFaces)
 
   SubGrid.Rad = GlobalGrid.Rad
+# Add Ghost Faces
+  for i = 1:NumNodes
+    Nodes[i].F = zeros(Int,0)
+    for j in eachindex(Nodes[i].FG)
+      push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  
+    end  
+  end  
+
 
   return SubGrid
 end

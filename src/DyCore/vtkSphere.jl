@@ -249,9 +249,12 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       vtk["v", VTKCellData()] = vCell
     elseif  str == "w" 
       uPos = Global.Model.uPos
+      vPos = Global.Model.uPos
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views Interpolate!(wCell,U[:,:,wPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @show size(U)
+      @views InterpolateW!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
+        vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Metric.dXdxI)
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
@@ -312,17 +315,27 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
 end
 
 
-function InterpolateW!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
+function InterpolateW!(cCell,w,u,v,Inter,OrdPoly,OrdPrint,Glob,NF,nz,dXdxI)
   icCell  = 1
   cc=zeros(OrdPrint,OrdPrint)
   for iF=1:NF
-    for iz=2:nz
+    for iz=1:nz
       @. cc = 0.0
-      for j=1:OrdPoly+1
-        for i=1:OrdPoly+1
-          @views @. cc = cc + 0.5 * Inter[:,:,i,j]*(c[iz-1,Glob[i,j,iF],3] + c[iz-1,Glob[i,j,iF],3])
+      if iz == 1
+        for j=1:OrdPoly+1
+          for i=1:OrdPoly+1
+            w0 = -(u[iz,Glob[i,j,iF]] * dXdxI[i,j,1,1,3,1,iF] +
+              v[iz,Glob[i,j,iF]] * dXdxI[i,j,1,1,3,2,iF]) / dXdxI[i,j,1,1,3,3,iF]   
+            @views @. cc = cc + 0.5 * Inter[:,:,i,j]*(w0 + w[2,Glob[i,j,iF]])
+          end
+        end  
+      else    
+        for j=1:OrdPoly+1
+          for i=1:OrdPoly+1
+            @views @. cc = cc + 0.5 * Inter[:,:,i,j]*(w[iz-1,Glob[i,j,iF]] + w[iz,Glob[i,j,iF]])
+          end
         end
-      end
+      end  
       @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
       icCell = icCell + OrdPrint*OrdPrint
     end

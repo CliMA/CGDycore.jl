@@ -153,6 +153,30 @@ omega_0 = 23000 * pi / tau
 RadEarth = 6.37122e+6
 p0 = 1.e5
 p_top = p0 * exp(-H / ScaleHeight)
+Base.@kwdef struct ParamAdvectionSphereGaussian
+  TimeDependent = true
+  hMax = 0.95
+  b = 5.0
+  lon1 = 5.0e0 / 6.0e0 * pi
+  lat1 = 0.0e0
+  lon2 = 7.0e0 / 6.0e0 * pi
+  lat2 = 0.0e0
+  EndTime = 12.0 * 24.0 * 3600.0
+  FacVel = 10.0
+  StreamFun = true
+end  
+Base.@kwdef struct ParamAdvectionSphereSlottedCylinder
+  TimeDependent = true
+  hMax = 0.95
+  b = 5.0
+  lon1 = 5.0e0 / 6.0e0 * pi
+  lat1 = 0.0e0
+  lon2 = 7.0e0 / 6.0e0 * pi
+  lat2 = 0.0e0
+  EndTime = 12.0 * 24.0 * 3600.0
+  FacVel = 10.0
+  StreamFun = true
+end  
 Base.@kwdef struct ParamAdvectionSphereDCMIP
   xC = 0.0
   H = H
@@ -170,6 +194,17 @@ Base.@kwdef struct ParamAdvectionSphereDCMIP
   omega_0 = omega_0
   TimeDependent = true
 end
+
+Base.@kwdef struct ParamAdvectionCubeCart
+  Example = "AdvectionCubeCart"
+  StreamFun = false
+  uMax = 0.25
+  vMax = 0.25
+  x1 = 400.0
+  x2 = 600.0
+  y1 = 400.0
+  y2 = 600.0
+end  
 
 Base.@kwdef struct ParamAdvectionCart
   Example = "AdvectionCart"
@@ -204,9 +239,18 @@ function Parameters(Problem::String)
   elseif Problem == "AdvectionSphereDCMIP"
     @show Problem
     Param = ParamAdvectionSphereDCMIP()
+  elseif Problem == "AdvectionSphereGaussian"
+    @show Problem
+    Param = ParamAdvectionSphereGaussian()
+  elseif Problem == "AdvectionSphereSlottedCylinder"
+    @show Problem
+    Param = ParamAdvectionSphereSlottedCylinder()
   elseif Problem == "AdvectionCart"
     @show Problem
     Param = ParamAdvectionCart()
+  elseif Problem == "AdvectionCubeCart"
+    @show Problem
+    Param = ParamAdvectionCubeCart()
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()

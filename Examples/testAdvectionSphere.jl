@@ -9,6 +9,7 @@ ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 ProfVel = parsed_args["ProfVel"]
 ProfVelW = parsed_args["ProfVelW"]
+ProfTr = parsed_args["ProfTr"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -19,6 +20,9 @@ NumTr = parsed_args["NumTr"]
 # Parallel
 Decomp = parsed_args["Decomp"]
 SimDays = parsed_args["SimDays"]
+SimHours = parsed_args["SimHours"]
+SimMinutes = parsed_args["SimMinutes"]
+SimSeconds = parsed_args["SimSeconds"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
@@ -46,6 +50,7 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
+Flat = parsed_args["Flat"]
 
 Param = CGDycore.Parameters(Problem)
 
@@ -92,10 +97,15 @@ Model = CGDycore.Model()
   else
     Model.ProfVelW = ProfVelW  
   end  
+  if ProfTr == ""
+    Model.ProfTr = Problem
+  else
+    Model.ProfTr = ProfTr  
+  end  
   Model.RhoPos=1
-  Model.uPos=2
-  Model.vPos=3
-  Model.wPos=4
+  Model.uPos=0
+  Model.vPos=0
+  Model.wPos=0
   Model.HorLimit = HorLimit
   Model.Upwind = Upwind
 
@@ -192,15 +202,12 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
 # Output
   Output.vtkFileName=string(Problem*"_")
   Output.vtk=0
-  Output.Flat=true
+  Output.Flat=Flat
   Output.nPanel=nPanel
   Output.RadPrint=H
   Output.H=H
   Output.cNames = [
     "Rho",
-    "u",
-    "v",
-    "w",
     "Tr1",
 ]
   Output.PrintDays = PrintDays
@@ -216,4 +223,7 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   TimeStepper.Table = Table
   TimeStepper.dtau = dtau
   TimeStepper.SimDays = SimDays
+  TimeStepper.SimHours = SimHours
+  TimeStepper.SimMinutes = SimMinutes
+  TimeStepper.SimSeconds = SimSeconds
   CGDycore.TimeStepperAdvection!(U,CGDycore.TransSphereX,CG,Global,Param)

@@ -66,6 +66,8 @@ fRhoS::Array{Float64, 3}
 VS::Array{Float64, 4}
 RhoS::Array{Float64, 3}
 f::Array{Float64, 4}
+qMin::Array{Float64, 3}
+qMax::Array{Float64, 3}
 end
 function CacheStruct()
 CacheE1=zeros(0,0);
@@ -135,6 +137,8 @@ fRhoS=zeros(0,0,0)
 VS=zeros(0,0,0,0)
 RhoS=zeros(0,0,0)
 f=zeros(0,0,0,0)
+qMin=zeros(0,0,0)
+qMax=zeros(0,0,0)
 return CacheStruct(
   CacheE1,
   CacheE2,
@@ -203,10 +207,12 @@ return CacheStruct(
   VS,
   RhoS,
   f,
+  qMin,
+  qMax
 )
 end
 
-function CacheCreate(OP,NF,NumG,nz,NumV,NumTr)
+function CacheCreate(OP,NF,NGF,NumG,nz,NumV,NumTr)
 CacheE1=zeros(OP,OP);
 CacheE2=zeros(OP,OP);
 CacheE3=zeros(OP,OP);
@@ -274,6 +280,8 @@ fRhoS=zeros(0,0,0)
 VS=zeros(0,0,0,0)
 RhoS=zeros(0,0,0)
 f=zeros(0,0,0,0)
+qMin=zeros(nz,NF+NGF,NumTr)
+qMax=zeros(nz,NF+NGF,NumTr)
 return CacheStruct(
   CacheE1,
   CacheE2,
@@ -342,12 +350,15 @@ return CacheStruct(
   VS,
   RhoS,
   f,
+  qMin,
+  qMax,
 )
 end
 mutable struct TimeStepperStruct
   IntMethod::String
   Table::String
   dtau::Float64
+  dtauStage::Float64
   SimDays::Int
   SimHours::Int
   SimMinutes::Int
@@ -363,6 +374,7 @@ function TimeStepper()
   IntMethod = ""
   Table = ""
   dtau  = 0.0
+  dtauStage  = 0.0
   SimDays = 0
   SimHours = 0
   SimMinutes = 0
@@ -377,6 +389,7 @@ function TimeStepper()
     IntMethod,
     Table,
     dtau,
+    dtauStage,
     SimDays,
     SimHours,
     SimMinutes,

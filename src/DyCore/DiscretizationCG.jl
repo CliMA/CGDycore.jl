@@ -115,7 +115,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   CG.DWT=CG.DW'
   (DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ);
   (CG.Glob,CG.NumG,CG.NumI,CG.Stencil,CG.MasterSlave) =
-    NumberingFemCG(Grid,OrdPoly);
+    NumberingFemCG(Grid,OrdPoly);  
 # return (CG,Global) 
 
 

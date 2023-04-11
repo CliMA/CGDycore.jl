@@ -9,13 +9,13 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Coriolis=true \
   --Decomp="EqualArea" \
   --SimDays=10 \
-  --PrintSeconds=100 \
+  --PrintSeconds=7200 \
   --dtau=100 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \
   --stretch=false \
-  --GridType="CubedSphere"
+  --GridType="CubedSphere" \
   --nz=45 \
   --nPanel=16 \
   --H=30000.0 \

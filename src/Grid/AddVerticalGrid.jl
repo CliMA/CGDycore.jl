@@ -15,18 +15,25 @@ end
 end
 
 function AddStretchICONVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,sigma::Float64,lambda::Float64)
-Grid.zP=zeros(nz);
-Grid.z=zeros(nz+1);
-Grid.dzeta = zeros(nz)
-Grid.H = H
-for iz=1:nz
-  i = nz + 1 - iz  
-  Grid.z[iz+1] = H*(2.0/pi*acos(((i - 1) / nz)^sigma))^lambda
-end
-for i=1:nz
-  Grid.dzeta[i] = Grid.z[i+1] -Grid.z[i]
-  Grid.zP[i] = 0.5 * (Grid.z[i] + Grid.z[i+1])
-end
+  Grid.zP=zeros(nz);
+  Grid.z=zeros(nz+1);
+  Grid.dzeta = zeros(nz)
+  Grid.H = H
+  for iz=1:nz
+    i = nz + 1 - iz  
+    Grid.z[iz+1] = H*(2.0/pi*acos(((i - 1) / nz)^sigma))^lambda
+  end
+# Grid.z[1] = 0.0
+# Grid.z[2] = 20.0
+# dz = (H-Grid.z[2]) / (nz - 1)
+# for i = 2 : nz -1 
+#   Grid.z[i+1] = Grid.z[i] + dz  
+# end
+  Grid.z[nz+1] = H
+  for i=1:nz
+    Grid.dzeta[i] = Grid.z[i+1] -Grid.z[i]
+    Grid.zP[i] = 0.5 * (Grid.z[i] + Grid.z[i+1])
+  end
 end
 
 function AddStretchDCMIPVerticalGrid!(Grid::GridStruct, nz::Int,H::Float64, mue::Float64)

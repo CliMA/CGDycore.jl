@@ -6,6 +6,7 @@ using UnPack
 using NCDatasets
 using Dierckx
 using StructArrays
+using StaticArrays
 using MPI
 using WriteVTK
 using ArgParse
@@ -13,6 +14,7 @@ using Metal
 #using StaticArrays
 using NetCDF
 using MuladdMacro
+using Statistics
 
 include("Grid/Geometry.jl")
 include("Grid/Node.jl")
@@ -51,7 +53,7 @@ include("DG/Tools.jl")
 
 include("DyCore/Average.jl")
 include("DyCore/AverageFB.jl")
-include("DyCore/BoundaryW.jl")
+# include("DyCore/BoundaryW.jl")
 include("DyCore/BoundaryWOutput.jl")
 include("DyCore/Damping.jl")
 include("DyCore/DiscretizationCG.jl")
@@ -93,10 +95,11 @@ include("IntegrationMethods/IMEXMethod.jl")
 include("IntegrationMethods/IMEXSchur.jl")
 include("IntegrationMethods/MISMethod.jl")
 include("IntegrationMethods/MISSchur.jl")
+include("IntegrationMethods/SSPRungeKuttaMethod.jl")
 include("IntegrationMethods/RosenbrockMethod.jl")
+include("IntegrationMethods/RungeKuttaMethod.jl")
 include("IntegrationMethods/RosenbrockSchur.jl")
 include("IntegrationMethods/RungeKuttaExplicit.jl")
-include("IntegrationMethods/RungeKuttaMethod.jl")
 include("IntegrationMethods/SchurSolve.jl")
 include("IntegrationMethods/SSPRungeKutta.jl")
 include("IntegrationMethods/TimeStepper.jl")
@@ -119,6 +122,7 @@ include("Model/fTotEn.jl")
 include("Model/fThetaBGrd.jl")
 include("Model/fTr.jl")
 include("Model/fVel.jl")
+include("Model/fPsi.jl")
 include("Model/fVelW.jl")
 include("Model/fpBGrd.jl")
 include("Model/Energy.jl")

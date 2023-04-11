@@ -140,6 +140,7 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
     @views @. Fw[:,:,iz+1] -= RhoC[:,:,iz] * (dXdxI[:,:,2,iz,1,3] * DXpC + dXdxI[:,:,2,iz,2,3] * DYpC)
   end  
   @inbounds for iz = 2 : Nz 
+#   @views @. GradZ = 0.5 * (pC[:,:,iz] * RhoC[:,:,iz] - pC[:,:,iz-1] * RhoC[:,:,iz-1]) 
     @views @. GradZ = 0.5 * (pC[:,:,iz] - pC[:,:,iz-1]) * RhoC[:,:,iz] 
     @views @. FluxZ = GradZ * dXdxI[:,:,1,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
@@ -149,12 +150,13 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
     @views @. Fw[:,:,iz] -= FluxZ 
   end    
   @inbounds for iz = 1 : Nz - 1 
-    @views @. GradZ = 0.5 * (pC[:,:,iz+1] - pC[:,:,iz]) * RhoC[:,:,iz]  
+#   @views @. GradZ = 0.5 * (pC[:,:,iz+1] * RhoC[:,:,iz+1] - pC[:,:,iz] * RhoC[:,:,iz]) 
+    @views @. GradZ = 0.5 * (pC[:,:,iz+1] - pC[:,:,iz]) * RhoC[:,:,iz] 
     @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
     @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,2]
     @views @. FvC[:,:,iz] -= FluxZ 
-    @views @. FluxZ =  GradZ * dXdxI[:,:,2,iz,3,3]
+    @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,3]
     @views @. Fw[:,:,iz+1] -= FluxZ 
   end    
   if Nz  == 2
@@ -168,10 +170,15 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
   elseif Nz > 2
     for i = 1 : OrdPoly + 1
       for j = 1 : OrdPoly + 1
-        @views GradZ[i,j] = (BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
-         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])) * RhoC[i,j,1]
+#       @views GradZ[i,j] = (BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
+#        J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])) * RhoC[i,j,1]
+#       p0 = BoundaryP(pC[i,j,1]*RhoC[i,j,1],pC[i,j,2]*RhoC[i,j,2],pC[i,j,3]*RhoC[i,j,3],
+        p0 = BoundaryP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
+         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3])
+        GradZ[i,j] = 0.5 * (pC[i,j,1] - p0) * RhoC[i,j,1]
       end
     end
+#   @views @. GradZ = ((pC[:,:,2] - pC[:,:,1]) - 0.5 * (pC[:,:,3] - pC[:,:,2])) * RhoC[:,:,1] 
     @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,1]
     @views @. FuC[:,:,1] -= FluxZ
     @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,2]
@@ -181,7 +188,7 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
   end
 end 
 
-function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,J,ThreadCache)
+function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
   @unpack TCacheC1, TCacheC2 = ThreadCache
   Nz = size(FuC,3)
   OrdPoly = Fe.OrdPoly
@@ -207,22 +214,27 @@ function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,J,ThreadCache)
     @views @. Fw[:,:,iz+1] -= (dXdxI[:,:,2,iz,1,3] * DXpC + dXdxI[:,:,2,iz,2,3] * DYpC)
   end  
   @inbounds for iz = 2 : Nz 
-    @views @. GradZ = 0.5 * (pC[:,:,iz] - pC[:,:,iz-1])
+# @views @. FwF[:,:,iz] -= Phys.Grav *
+#   (RhoC[:,:,iz-1] * J[:,:,2,iz-1] +
+#   RhoC[:,:,iz] * J[:,:,iz])
+    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,1,iz] / dXdxI[:,:,1,iz,3,3]
     @views @. FluxZ = GradZ * dXdxI[:,:,1,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
     @views @. FluxZ = GradZ * dXdxI[:,:,1,iz,3,2]
     @views @. FvC[:,:,iz] -= FluxZ 
+    @views @. GradZ = 0.5 * (pC[:,:,iz] - pC[:,:,iz-1])
     @views @. FluxZ = GradZ * dXdxI[:,:,1,iz,3,3]
-    @views @. Fw[:,:,iz] -= FluxZ 
+    @views @. Fw[:,:,iz] -= FluxZ # -Phys.Grav*RhoC[:,:,iz]*J[:,:,1,iz] 
   end    
   @inbounds for iz = 1 : Nz - 1 
-    @views @. GradZ = 0.5 * (pC[:,:,iz+1] - pC[:,:,iz])
+    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,2,iz] / dXdxI[:,:,2,iz,3,3]
     @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
     @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,2]
     @views @. FvC[:,:,iz] -= FluxZ 
+    @views @. GradZ = 0.5 * (pC[:,:,iz+1] - pC[:,:,iz])
     @views @. FluxZ =  GradZ * dXdxI[:,:,2,iz,3,3]
-    @views @. Fw[:,:,iz+1] -= FluxZ 
+    @views @. Fw[:,:,iz+1] -= FluxZ # -Phys.Grav*RhoC[:,:,iz] * J[:,:,2,iz]
   end    
   if Nz  == 2
     @views @. GradZ = 0.5 * (pC[:,:,1+1] - pC[:,:,1])
@@ -233,17 +245,21 @@ function GradColumn!(FuC,FvC,Fw,pC,Fe,dXdxI,J,ThreadCache)
     @views @. FluxZ =  GradZ * dXdxI[:,:,1,1,3,3]
     @views @. Fw[:,:,1] -= FluxZ 
   elseif Nz > 2
-    for i = 1 : OrdPoly + 1 
-      for j = 1 : OrdPoly + 1 
-        @views GradZ[i,j] = BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
-          J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])  
-      end
-    end  
-#   @views @. GradZ = (pC[:,:,2] - pC[:,:,1]) - 0.5 * (pC[:,:,3] - pC[:,:,2])  
+    @views @. GradZ = -Phys.Grav * RhoC[:,:,1] * J[:,:,1,1] / dXdxI[:,:,1,1,3,3]
     @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,1]
     @views @. FuC[:,:,1] -= FluxZ
     @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,2]
     @views @. FvC[:,:,1] -= FluxZ 
+    for i = 1 : OrdPoly + 1 
+      for j = 1 : OrdPoly + 1 
+#       @views GradZ[i,j] = BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
+#         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])  
+        p0 = BoundaryP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
+         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3])
+        GradZ[i,j] = 0.5 * (pC[i,j,1] - p0) 
+      end
+    end  
+#   @views @. GradZ = (pC[:,:,2] - pC[:,:,1]) - 0.5 * (pC[:,:,3] - pC[:,:,2])  
     @views @. FluxZ =  GradZ * dXdxI[:,:,1,1,3,3]
     @views @. Fw[:,:,1] -= FluxZ 
   end 
@@ -647,20 +663,58 @@ function Rot!(Rot,uC,vC,Fe,dXdxI,J,ThreadCache)
 
   @inbounds for iz = 1 : Nz
     @. W = 0.0
-    @views @. temp = 0.5 * ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * vC[:,:,iz] - 
+    @views @. temp = ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * vC[:,:,iz] - 
       (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * uC[:,:,iz])
     DerivativeX!(W,temp,D)
-    @views @. temp = 0.5 * ((dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * vC[:,:,iz] - 
+    @views @. temp = ((dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * vC[:,:,iz] - 
       (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * uC[:,:,iz])
     DerivativeY!(W,temp,D)
-    @views @. Rot[:,:,iz] = 2.0 * W / (J[:,:,1,iz] + J[:,:,2,iz])
+    @views @. Rot[:,:,iz] = W / (J[:,:,1,iz] + J[:,:,2,iz])
   end  
 end
 
-function BoundaryW!(wCG,v1CG,v2CG,CG,dXdxI)
-  @views @. wCG = -(dXdxI[:,:,3,1] * v1CG +
-    dXdxI[:,:,3,2] * v2CG)/
-    dXdxI[:,:,3,3]
+function Curl!(uC,vC,Psi,Fe,dXdxI,J,ThreadCache)
+  @unpack TCacheC1, TCacheC2 = ThreadCache
+
+  Nz = size(Psi,3)
+  D = Fe.DS
+
+  DxPsi = TCacheC1[Threads.threadid()]
+  DyPsi = TCacheC2[Threads.threadid()]
+
+
+  @inbounds for iz = 1 : Nz
+    @. DxPsi = 0.0
+    @views DerivativeX!(DxPsi,Psi[:,:,iz],D)
+    @. DyPsi = 0.0
+    @views DerivativeY!(DyPsi,Psi[:,:,iz],D)
+    @views @. vC[:,:,iz] = ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * DxPsi +
+      (dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * DyPsi) / 
+      (J[:,:,1,iz] + J[:,:,2,iz])
+    @views @. uC[:,:,iz] = (-(dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * DxPsi -
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * DyPsi) / 
+      (J[:,:,1,iz] + J[:,:,2,iz])
+  end  
+end
+
+function BoundaryW!(wCG,v1CG,v2CG,Fe,J,dXdxI)
+  OrdPoly = Fe.OrdPoly
+  #1.5*D3cCG[:,:,1] - 0.5*D3cCG[:,:,2]
+  for i = 1 : OrdPoly +1
+    for j = 1 : OrdPoly +1
+#     v1 = 1.5 * v1CG[i,j,1] - 0.5 * v1CG[i,j,2]  
+#     v2 = 1.5 * v2CG[i,j,1] - 0.5 * v2CG[i,j,2]  
+      v1 = v1CG[i,j,1] 
+      v2 = v2CG[i,j,1] 
+#     wCG[i,j,1] = -((dXdxI[i,j,1,3,1] + dXdxI[i,j,2,3,1])* v1 +
+#       (dXdxI[i,j,1,3,2] + dXdxI[i,j,2,3,2])* v2) / 
+#       (dXdxI[i,j,1,3,3] + dXdxI[i,j,2,3,3])
+#     wCG[i,j,1] = 2.0 * wCG[i,j,1] - wCG[i,j,2]  
+      wCG[i,j,1] = -(dXdxI[i,j,1,3,1]* v1 +
+        dXdxI[i,j,1,3,2] * v2) / 
+        dXdxI[i,j,1,3,3]
+    end
+  end
 end
 
 function BoundaryDP(p1,p2,p3,J1,J2,J3)
@@ -674,6 +728,18 @@ function BoundaryDP(p1,p2,p3,J1,J2,J3)
   f3 = -h1 * (h1 + 2*h2)/((h2 + h3)*(h1 + h2 + h3)) 
   DpB = (f1 * p1 + f2 * p2 + f3 * p3);
 
+end  
+
+
+function BoundaryP(p1,p2,p3,J1,J2,J3)
+
+  h1 = 0.5 * (J1[1] + J1[2])
+  h2 = 0.5 * (J2[1] + J2[2])
+  h3 = 0.5 * (J3[1] + J3[2])
+  f1 = (27*h1^2 + 24*h1*h2 + 12*h3*h1 + 4*h2^2 + 4*h3*h2)/(4*(h1 + h2)*(h1 + h2 + h3))
+  f2 = -(h1*(15*h1^2 + 46*h1*h2 + 23*h1*h3 + 24*h2^2 + 24*h2*h3 + 8*h3^2))/(4*(h1 + h2)*(h2 + h3)*(h1 + h2 + h3))
+  f3 = (h1*(15*h1 + 8*h2))/(4*(h2 + h3)*(h1 + h2 + h3))
+  p0 = f1 * p1 + f2 * p2 + f3 * p3
 end  
 
 function RecU3(cL,cC,cR,JL,JC,JR)

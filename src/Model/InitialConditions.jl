@@ -28,10 +28,7 @@ function InitialConditionsAdvection(CG,Global,Param)
   NumTr = Model.NumTr
   U = zeros(Float64,nz,CG.NumG,NumV+NumTr)
   U[:,:,Model.RhoPos]=Project(fRho,0.0,CG,Global,Param)
-  (U[:,:,Model.uPos],U[:,:,Model.vPos])=ProjectVec(fVel,0.0,CG,Global,Param)
-  U[:,:,Model.wPos]=ProjectW(fVelW,0.0,CG,Global,Param)
   for i = 1 : NumTr
-    Model.ProfTr="AdvectionSphereDCMIPQ1"
     @views U[:,:,Model.NumV+i]=Project(fTr,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end  
   return U

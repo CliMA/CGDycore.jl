@@ -1,0 +1,33 @@
+mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
+  --Problem="AdvectionSphereSlottedCylinder" \
+  --NumV=1 \
+  --NumTr=1 \
+  --ProfRho="" \
+  --ProfTheta="" \
+  --ProfVel="Divergent" \
+  --ProfVelW="" \
+  --ProfTr="AdvectionSphereSlottedCylinder" \
+  --Upwind=false \
+  --HorLimit=true \
+  --Decomp="EqualArea" \
+  --SimDays=0 \
+  --SimSeconds=36000 \
+  --PrintDays=0 \
+  --PrintSeconds=1000 \
+  --Flat=false \
+  --dtau=100 \
+  --IntMethod="SSPRungeKutta" \
+  --Table="SSP32" \
+  --TopoS="" \
+  --stretch=false \
+  --GridType="CubedSphere" \
+  --nz=1 \
+  --nPanel=32 \
+  --H=1000.0 \
+  --OrdPoly=4 \
+  --HyperVisc=true \
+  --HyperDCurl=1.e13 \
+  --HyperDGrad=1.e13 \
+  --HyperDDiv=1.e13
+
+

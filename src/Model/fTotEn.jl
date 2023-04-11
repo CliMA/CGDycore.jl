@@ -228,13 +228,20 @@ function fTotEn(x,time,Global,Param)
     if Rad<1.0e0
       Th=Th+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Phys.p0)^(-Phys.kappa);
     end
-  elseif str == "gravityhill" || str == "schaercart"
+  elseif str == "gravityhill" || str == "schaercart" || str == "agnesicart"
     z=x[3];
     NBr=Param.NBr;
     Grav=Phys.Grav;
     Th0=Param.Th0;
+    p0 = Phys.p0
+    Cpd = Phys.Cpd
+    Cvd = Phys.Cvd
+    kappa = Phys.kappa
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);
+    pLoc=p0*(1-Grav/(Cpd*Th0*S)*(1-exp(-S*z))).^(Cpd/Rd);
+    uS = Param.uMax
+    E = Th*(pLoc/p0)^kappa*Cvd + Grav * z + 0.5 * uS * uS
   elseif str == "inertiagravitywave"
     z=x[3];
     NBr=Param.NBr;

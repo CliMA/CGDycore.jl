@@ -47,8 +47,53 @@ function fTr(x,time,Global,Param)
       Tr = 0.0
     end
 #   Tr = 0.95 * (exp(-5.0 * (r1 / Param.r0)^2) + exp(-5.0 * (r2 / Param.r0)^2))
+  elseif str == "advectionspheregaussian"
+    lon1 = Param.lon1
+    lat1 = Param.lat1
+    lon2 = Param.lon2
+    lat2 = Param.lat2
+    hMax = Param.hMax
+    b = Param.b
+    (Lon,Lat,R)  =  cart2sphere(x[1],x[2],x[3])
+    xLoc = x[1]/R
+    yLoc = x[2]/R
+    zLoc = x[3]/R
+    x1 = cos(lat1)*cos(lon1)
+    y1 = cos(lat1)*sin(lon1)
+    z1 = sin(lat1)
+    x2 = cos(lat2)*cos(lon2)
+    y2 = cos(lat2)*sin(lon2)
+    z2 = sin(lat2)
+    Tr = hMax*exp(-b*((xLoc-x1)^2+(yLoc-y1)^2+(zLoc-z1)^2)) +
+        hMax*exp(-b*((xLoc-x2)^2+(yLoc-y2)^2+(zLoc-z2)^2))
+  elseif str == "advectionsphereslottedcylinder"
+    (lon,lat,R)  =  cart2sphere(x[1],x[2],x[3])
+    lon1 = Param.lon1
+    lat1 = Param.lat1
+    lon2 = Param.lon2
+    lat2 = Param.lat2
+    r = 0.5 * R
+    r1 = R * GreatCircle(lon,lat,lon1,lat1)
+    r2 = R * GreatCircle(lon,lat,lon2,lat2)
+    if r1 <= r && abs(lon - lon1) >= r / (6.0 * R) 
+      Tr = 1.0
+    elseif r2 <= r && abs(lon - lon2) >= r / (6.0 * R)
+      Tr = 1.0
+    elseif r1 <= r && abs(lon - lon1) < r / (6.0 * R) && lat - lat1 < -5.0 / 12.0 * r / R
+      Tr = 1.0
+    elseif r2 <= r && abs(lon - lon2) < r / (6.0 * R) && lat - lat2 > 5.0 / 12.0 * r / R
+      Tr = 1.0
+    else
+      Tr = 0.1
+    end
+  elseif str == "advectioncubecart"
+    if x[1] >= Param.x1 && x[1] <= Param.x2 && x[2] >= Param.y1 && x[2] <= Param.y2
+      Tr = 1
+    else
+      Tr = 0
+    end
   else
-    Tr = 0.0  
+    Tr  =  0.0  
   end
   return Tr
 end

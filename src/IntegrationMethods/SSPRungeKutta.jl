@@ -1,12 +1,11 @@
-function SSPRungeKutta!(time,V,dt,Fcn,CG,Global)
-  SSP=Global.SSP
+function SSPRungeKutta!(time,V,dt,Fcn,CG,Global,Param)
+  SSP=Global.TimeStepper.SSP
   nStage=SSP.nStage
   fV=Global.Cache.fV
   fS=Global.Cache.fS
   fRhoS=Global.Cache.fRhoS
   VS=Global.Cache.VS
   RhoS=Global.Cache.RhoS
-  Vn=Global.Cache.Vn
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
   RhoPos=Global.Model.RhoPos
@@ -17,7 +16,8 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Global)
     @views @. VS[:,:,:,1] = V[:,:,NumV+1:end]
   end  
   @inbounds for iStage = 1:nStage
-    Fcn(fV,V,time + SSP.c[iStage] * dt,CG,Global)
+    Global.TimeStepper.dtauStage = dt * SSP.ms[iStage]
+    Fcn(fV,V,time + SSP.c[iStage] * dt,CG,Global,Param)
     @views @. fRhoS[:,:,iStage] = fV[:,:,RhoPos]
     if NumTr > 0
       @views @. fS[:,:,:,iStage] = fV[:,:,NumV+1:end]
@@ -33,15 +33,8 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Global)
       end    
       if NumTr>0
         if SSP.beta[iStage,jStage] > 0
-          if Global.Model.HorLimit  
-            Fac = SSP.beta[iStage,jStage]/SSP.alpha[iStage,jStage]
-            @. RhoTemp = RhoS[:,:,jStage] + Fac*dt * fRhoS[:,:,jStage]
-            @views HorLimiter!(VS[:,:,:,iStage+1],SSP.alpha[iStage,jStage],VS[:,:,:,jStage],Fac*dt,
-              fS[:,:,:,jStage],RhoTemp,CG,Global)            
-          else 
-            @views @. VS[:,:,:,iStage+1] += (SSP.alpha[iStage,jStage] * VS[:,:,:,jStage] +
-              dt * SSP.beta[iStage,jStage] * fS[:,:,:,jStage])
-          end  
+          @views @. VS[:,:,:,iStage+1] += (SSP.alpha[iStage,jStage] * VS[:,:,:,jStage] +
+            dt * SSP.beta[iStage,jStage] * fS[:,:,:,jStage])
         else
           @views @. VS[:,:,:,iStage+1] += SSP.alpha[iStage,jStage] * VS[:,:,:,jStage]
         end    

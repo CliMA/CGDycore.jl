@@ -7,11 +7,13 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --ProfVel="Const" \
   --Damping=true \
   --Upwind=false \
+  --HorLimit=false \
   --StrideDamp=10500 \
   --Relax=1.0e-2 \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
+  --Thermo="" \
   --SimMinutes=300 \
   --PrintSeconds=300 \
   --dtau=.4 \

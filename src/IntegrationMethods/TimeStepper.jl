@@ -30,10 +30,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
   PrintSeconds = Output.PrintSeconds
   PrintStartDays = Output.PrintStartDays
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
-  @show nIter
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
-  @show PrintInt
-# PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
@@ -41,7 +38,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
   NumTr = Global.Model.NumTr
   nz = Global.Grid.nz
   NumG = CG.NumG
-  Global.Cache=CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,NumG,nz,
+  Global.Cache=CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
     NumV,NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
@@ -101,6 +98,7 @@ function TimeStepper!(U,Trans,CG,Global,Param)
       for i=1:nIter
         Δt = @elapsed begin
           RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param);
+#         RosenbrockSchur!(U,dtau,FcnNHCurlVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
@@ -213,6 +211,8 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
     TimeStepper.ROS=RosenbrockMethod(Table)  
   elseif IntMethod == "RungeKutta"  
     TimeStepper.RK=RungeKuttaMethod(Table)
+  elseif IntMethod == "SSPRungeKutta"  
+    TimeStepper.SSP=SSPRungeKuttaMethod(Table)
   end
 
 # Simulation period
@@ -228,7 +228,6 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
   PrintStartDays = Output.PrintStartDays
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
-# PrintStartInt=ceil(24*3600*Output.PrintStartDay/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
@@ -236,7 +235,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
   NumTr = Global.Model.NumTr
   nz = Global.Grid.nz
   NumG = CG.NumG
-  Global.Cache=CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,NumG,nz,
+  Global.Cache=CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
     NumV,NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
@@ -246,12 +245,17 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
     Global.Cache.Vn=zeros(size(U))
   elseif IntMethod == "RungeKutta"
     Global.Cache.f=zeros(size(U)..., TimeStepper.RK.nStage)
+  elseif IntMethod == "SSPRungeKutta"
+    Global.Cache.fS=zeros(nz,NumG,NumTr,TimeStepper.SSP.nStage)
+    Global.Cache.VS=zeros(nz,NumG,NumTr,TimeStepper.SSP.nStage+1)
+    Global.Cache.fV=zeros(size(U))
+    Global.Cache.RhoS=zeros(size(U[:,:,1])..., TimeStepper.SSP.nStage+1)
+    Global.Cache.fRhoS=zeros(size(U[:,:,1])..., TimeStepper.SSP.nStage)
   end
 
 
 # Print initial conditions
   @show "Print initial conditions"
-  @show sum(abs.(U[:,:,Global.Model.RhoPos]))
   unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
 
   @show "Choose integration method"
@@ -274,7 +278,22 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
       for i=1:nIter
         Δt = @elapsed begin
           RungeKuttaExplicit!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
-
+          time[1] += dtau
+          if mod(i,PrintInt)==0 && i >= PrintStartInt
+            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+          end
+        end
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
+    end
+  elseif IntMethod == "SSPRungeKutta"
+    @show nIter,"Start"
+    @time begin
+      for i=1:nIter
+        Δt = @elapsed begin
+          SSPRungeKutta!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
+          @show sum(abs.(U))
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
