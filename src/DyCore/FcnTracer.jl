@@ -436,6 +436,4 @@ function FcnTracerConv!(F,U,time,CG,Global,Param)
   end
 
   ExchangeData3DRecv!(F,Global.Exchange)
-# @show sum(abs.(F[:,:,1]))
-# @show sum(abs.(F[:,:,2])),sum(F[:,:,2])
 end

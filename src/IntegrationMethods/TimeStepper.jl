@@ -402,10 +402,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @show "B",sum(abs.(U))
           SSPRungeKutta!(time[1],U,dtau,FcnTracerConv!,CG,Global,Param)
-          @show sum(abs.(U[:,:,1]))
-          @show sum(abs.(U[:,:,2]))
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
