@@ -342,13 +342,6 @@ function InterpolateW!(cCell,w,u,v,Inter,OrdPoly,OrdPrint,Glob,NF,nz,dXdxI)
   end
 end
 
-#     BoundaryWOutput!(view(cOut,1,:,i),U,CG,Global)
-#     @views cOut[1,:,i] .= 0.5 .* (U[1,:,Global.Model.wPos] .+ cOut[1,:,i])
-#     @views cOut[2:nz-1,:,i] .= 0.5 .* (U[1:nz-2,:,Global.Model.wPos] .+ U[2:nz-1,:,Global.Model.wPos]);
-#     if nz>1
-#       @views cOut[nz,:,i] .=  0.5 .* U[nz-1,:,Global.Model.wPos];
-#     end
-
 function Interpolate!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
   icCell  = 1
   cc=zeros(OrdPrint,OrdPrint)

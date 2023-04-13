@@ -55,6 +55,7 @@ HyperDCurl = parsed_args["HyperDCurl"]
 HyperDGrad = parsed_args["HyperDGrad"]
 HyperDDiv = parsed_args["HyperDDiv"]
 # Output
+vtkFileName = parsed_args["vtkFileName"]
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
@@ -192,7 +193,7 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
 # Output
-  Output.vtkFileName=string(Problem*"_")
+  Output.vtkFileName=string(vtkFileName*"_")
   Output.vtk=0
   Output.Flat=Flat
   Output.nPanel=nPanel

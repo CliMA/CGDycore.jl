@@ -652,6 +652,93 @@ function Buoyancy!(FwF,RhoC,J,Phys)
 
 end
 
+function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
+  @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheC5,  TCacheCol1 = ThreadCache
+  Nz = size(uC,3)
+  OrdPoly = Fe.OrdPoly
+  D = Fe.DS
+  S = Fe.S
+  w = Fe.w
+  uCLoc = TCacheC1[Threads.threadid()]
+  @views FluxLowX = TCacheC1[Threads.threadid()][1:end-1,:]
+  TempH = TCacheC2[Threads.threadid()]
+  @views dxF = TCacheC2[Threads.threadid()][:,1]
+  @views e = TCacheC2[Threads.threadid()][1:end-2,1]
+  @views FluxX = TCacheC2[Threads.threadid()][1:end-1,:]
+  @views FluxHighX = TCacheC3[Threads.threadid()][1:end-1,:]
+  @views uCL = TCacheC4[Threads.threadid()][1:end-1,:]
+  @views dxC = TCacheC4[Threads.threadid()][1:end-1,1]
+  @views alphaX = TCacheC4[Threads.threadid()][1:end-1,:]
+
+  vCLoc = TCacheC1[Threads.threadid()]
+  @views FluxLowY = TCacheC1[Threads.threadid()][:,1:end-1]
+  @views dyF = TCacheC2[Threads.threadid()][:,1]
+  @views FluxY = TCacheC2[Threads.threadid()][:,1:end-1]
+  @views FluxHighY = TCacheC3[Threads.threadid()][:,1:end-1]
+  @views vCL = TCacheC4[Threads.threadid()][:,1:end-1]
+  @views dyC = TCacheC4[Threads.threadid()][1:end-1,1]
+  @views alphaY = TCacheC4[Threads.threadid()][:,1:end-1]
+
+  @inbounds for iz = 1 : Nz  
+    @views @. uCLoc =  ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * uC[:,:,iz] +
+      (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * vC[:,:,iz] + 
+      dXdxI[:,:,1,iz,1,3] * wF[:,:,iz] + dXdxI[:,:,2,iz,1,3] * wF[:,:,iz+1])
+    @views @. TempH = uCLoc * RhoTrC[:,:,iz]   
+    FluxX!(FluxHighX,TempH,S)
+    FluxHighX = FluxHighX * diagm(w)
+
+    @views @. uCL = 0.5 * (uCLoc[1:end-1,:] + uCLoc[2:end,:])
+    @views @. FluxLowX = -0.5 *  ((abs(uCL) + uCL) * RhoTrC[1:end-1,:,iz] +
+            (uCL - abs(uCL)) * RhoTrC[2:end,:,iz])
+    FluxLowX = FluxLowX * diagm(w)
+    @inbounds for j = 1 : OrdPoly + 1
+      @views @. dxF = 0.5 * w * (J[:,j,1,iz] + J[:,j,2,iz])
+      dxF[1] = 2.0 * dxF[1]
+      dxF[end] = 2.0 * dxF[end]
+      @views @.  dxC = 0.5*(dxF[1:end-1] + dxF[2:end])
+      @views Error!(e,RhoTrC[:,j,iz],dxC)
+      @. e = min(e,1.0)
+      alphaX[1,j] = e[1]
+      @views @. alphaX[2:end-1,j] = max(e[1:end-1],e[2:end])
+      alphaX[end,j] = e[end]
+    end
+    @. alphaX = 1.0
+    @. FluxX = alphaX * FluxLowX + (1.0 - alphaX) * FluxHighX
+    @views @. FRhoTrC[1,:,iz] += FluxX[1,:] 
+    @views @. FRhoTrC[2:end-1,:,iz] += FluxX[2:end,:] - FluxX[1:end-1,:] 
+    @views @. FRhoTrC[end,:,iz] += -FluxX[end,:]
+
+    @views @. vCLoc =  ((dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * uC[:,:,iz] +
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * vC[:,:,iz] + 
+      dXdxI[:,:,1,iz,2,3] * wF[:,:,iz] + dXdxI[:,:,2,iz,2,3] * wF[:,:,iz+1])
+    @views @. TempH = vCLoc * RhoTrC[:,:,iz]
+    FluxY!(FluxHighY,TempH,S)
+    FluxHighY = diagm(w) * FluxHighY
+
+    @views @. vCL = 0.5 * (vCLoc[:,1:end-1] + vCLoc[:,2:end])
+    @views @. FluxLowY = -0.5 *  ((abs(vCL) + vCL) * RhoTrC[:,1:end-1,iz] +
+      (vCL - abs(vCL)) * RhoTrC[:,2:end,iz])
+    FluxLowY = diagm(w) * FluxLowY
+    @inbounds for i = 1 : OrdPoly + 1
+      @views @. dyF = 0.5 * w * (J[i,:,1,iz] + J[i,:,2,iz])
+      dyF[1] = 2.0 * dyF[1]
+      dyF[end] = 2.0 * dyF[end]
+      @views @. dyC = 0.5 * (dyF[1:end-1] + dyF[2:end])
+      @views Error!(e,RhoTrC[i,:,iz],dyC)
+      @. e = min(e,1.0)
+      alphaY[i,1] = e[1]
+      @views @. alphaY[i,2:end-1] = max(e[1:end-1],e[2:end])
+      alphaY[i,end] = e[end]
+    end
+
+    @. alphaY = 1.0
+    @. FluxY = alphaY * FluxLowY + (1.0 - alphaY) * FluxHighY
+    @views @. FRhoTrC[:,1,iz] += FluxY[:,1]
+    @views @. FRhoTrC[:,2:end-1,iz] += FluxY[:,2:end] - FluxY[:,1:end-1] 
+    @views @. FRhoTrC[:,end,iz] += -FluxY[:,end]
+  end    
+end
+
 function Rot!(Rot,uC,vC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
 
@@ -750,4 +837,44 @@ function RecU3(cL,cC,cR,JL,JC,JR)
   kL=-(JC/(JL+JC))*(JR/(JL+JC+JR))
   cCR=kL*cL+(1.0-kL-kR)*cC+kR*cR
   return (cCL,cCR)
+end
+
+@inline function FluxX!(fc,c,S)
+  n = size(c,1)
+  @inbounds for i = 1 : n -1
+    @views @. fc[i,:] = 0.0
+    @inbounds for l = 1 : i
+      @inbounds for k = 1 : n
+        @views @. fc[i,:] = fc[i,:] - 0.5 * S[l,k] * (c[l,:] + c[k,:])
+      end
+    end
+  end
+end
+
+@inline function FluxY!(fc,c,S)
+  n = size(c,1)
+  @inbounds for i = 1 : n -1
+    @views @. fc[:,i] = 0.0
+    @inbounds for l = 1 : i
+      @inbounds for k = 1 : n
+        @views @. fc[:,i] = fc[:,i] - 0.5 * S[l,k] * (c[:,l] + c[:,k])
+      end
+    end
+  end
+end
+
+@inline function Error!(e,c,dx)
+#  c_0     c_1     c_2      c_n
+#      dx_1    dx_2     dx_n
+
+n = size(c,1)
+@inbounds for i = 2 : n - 1
+  e[i-1] = ErrorLoc(c[i-1],c[i],c[i+1],dx[i-1],dx[i],.2)
+end
+end
+
+@inline function ErrorLoc(cm,c,cp,dxm,dxp,d)
+  eLoc = abs(dxm*cp-(dxm+dxp)*c+dxp*cm) /
+    (dxm*abs(cp-cm) + dxp*abs(c-cm) +
+    d*(dxm*abs(cp)+(dxm+dxp)*abs(c)+dxp*abs(cm))+1.e-14);
 end

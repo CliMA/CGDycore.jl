@@ -16,6 +16,7 @@ mutable struct CGStruct
     DS::Array{Float64, 2}
     DST::Array{Float64, 2}
     DSZ::Array{Float64, 2}
+    S::Array{Float64, 2}
     M::Array{Float64, 2}
     MMass::Array{Float64, 2}
     MW::Array{Float64, 2}
@@ -40,6 +41,7 @@ DWT=zeros(0,0)
 DS=zeros(0,0)
 DST=zeros(0,0)
 DSZ=zeros(0,0)
+S=zeros(0,0)
 M=zeros(0,0)
 MMass=zeros(0,0)
 MW=zeros(0,0)
@@ -63,6 +65,7 @@ MasterSlave = zeros(0)
     DS,
     DST,
     DSZ,
+    S,
     M,
     MMass,
     MW,
@@ -113,10 +116,12 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
   CG.DST=CG.DS'
   CG.DWT=CG.DW'
+
+  Q = diagm(CG.w) * CG.DS
+  CG.S = Q - Q'
   (DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ);
   (CG.Glob,CG.NumG,CG.NumI,CG.Stencil,CG.MasterSlave) =
     NumberingFemCG(Grid,OrdPoly);  
-# return (CG,Global) 
 
 
   dXdxIF = Global.Metric.dXdxIF

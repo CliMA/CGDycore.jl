@@ -324,8 +324,9 @@ function Fcn!(F,U,CG,Global,Param)
         end
       end
 #     Hyperdiffusion, second Laplacian
-      @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
+        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+        Global.Model.HyperDDiv)
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],

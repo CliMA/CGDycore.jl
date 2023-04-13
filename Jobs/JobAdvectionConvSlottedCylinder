@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
+mpirun -n 6 julia --project Examples/testAdvectionConvSphere.jl \
   --Problem="AdvectionSphereSlottedCylinder" \
   --NumV=1 \
   --NumTr=1 \
@@ -10,12 +10,12 @@ mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
   --Upwind=false \
   --HorLimit=true \
   --Decomp="EqualArea" \
-  --vtkFileName="SlottedCylinder" \
+  --vtkFileName="SlottedCylinderConv" \
   --SimDays=12 \
   --SimSeconds=0 \
   --PrintDays=0 \
   --PrintHours=12 \
-  --PrintSeconds=1000 \
+  --PrintSeconds=0 \
   --Flat=false \
   --dtau=100 \
   --IntMethod="SSPRungeKutta" \

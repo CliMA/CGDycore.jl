@@ -192,8 +192,6 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 
 
 U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
-@show size(U)
-@show sum(abs.(U))
 
 # Output partition  
   nzTemp = Global.Grid.nz
@@ -229,4 +227,4 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   TimeStepper.SimHours = SimHours
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
-  CGDycore.TimeStepperAdvection!(U,CGDycore.TransSphereX,CG,Global,Param)
+  CGDycore.TimeStepperAdvectionConv!(U,CGDycore.TransSphereX,CG,Global,Param)

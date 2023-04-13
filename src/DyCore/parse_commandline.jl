@@ -289,6 +289,11 @@ function parse_commandline()
 
 #   Output    
 
+    "--vtkFileName"
+     help = "File mame of vtk output"
+     arg_type = String
+     default = "Output"
+
     "--PrintDays"
      help = "Number of print days"
      arg_type = Int

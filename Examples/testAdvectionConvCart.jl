@@ -35,11 +35,20 @@ Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 # Grid
+nx = parsed_args["nx"]
+ny = parsed_args["ny"]
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
 H = parsed_args["H"]
 stretch = parsed_args["stretch"]
 OrdPoly = parsed_args["OrdPoly"]
+Lx = parsed_args["Lx"]
+Ly = parsed_args["Ly"]
+x0 = parsed_args["x0"]
+y0 = parsed_args["y0"]
+BoundaryWE = parsed_args["BoundaryWE"]
+BoundarySN = parsed_args["BoundarySN"]
+BoundaryBT = parsed_args["BoundaryBT"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -52,6 +61,9 @@ PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 Flat = parsed_args["Flat"]
+#Orography
+TopoS = parsed_args["TopoS"]
+
 
 Param = CGDycore.Parameters(Problem)
 
@@ -112,29 +124,23 @@ Model = CGDycore.Model()
 
 
 # Grid
-Topography=(TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 TimeStepper=CGDycore.TimeStepper()
 
+
+Boundary = CGDycore.Boundary()
+Boundary.WE = BoundaryWE
+Boundary.SN = BoundarySN
+Boundary.BT = BoundaryBT
+
+Topography=(TopoS=TopoS,
+            H=H,
+            )
+
 Grid=CGDycore.Grid(nz,Topography)
-if GridType == "Helix"
-  Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
-  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-elseif GridType == "SQuadGen"
-  Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
-  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-elseif GridType == "CubedSphere"
-  Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-end
+Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid)
+
 if Parallel
-  if Decomp == "Hilbert"
-    CGDycore.HilbertFaceSphere!(Grid)
-    CellToProc = CGDycore.Decompose(Grid,ProcNumber)
-  elseif Decomp == "EqualArea"
-    CellToProc = CGDycore.DecomposeEqualArea(Grid,ProcNumber)
-  else
-    CellToProc = ones(Int,Grid.NumFaces)
-    println(" False Decomp method ")
-  end
+  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
 
   if stretch
@@ -148,25 +154,13 @@ if Parallel
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransSphereX,CG,Global)
+  vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransCartX,CG,Global)
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
-
-  if TopoS == "EarthOrography"
-    SubGrid = CGDycore.StencilFace(SubGrid)
-    zS = CGDycore.Orography(CG,Global)
-    Output.RadPrint = H
-    Output.Flat=false
-    nzTemp = Global.Grid.nz
-    Global.Grid.nz = 1
-    vtkCacheOrography = CGDycore.vtkInit2D(CG.OrdPoly,CGDycore.TransSphereX,CG,Global)
-    CGDycore.unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
-    Global.Grid.nz = nzTemp
-  end
 else
   CellToProc=zeros(0)
   Proc = 0
@@ -179,11 +173,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
-if TopoS == "EarthOrography"
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
-else
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
-end
+  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
 
 Model.HyperVisc = HyperVisc
 Model.HyperDCurl = HyperDCurl # =7.e15
@@ -192,13 +182,11 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 
 
 U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
-@show size(U)
-@show sum(abs.(U))
 
 # Output partition  
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransSphereX,CG,Global)
+  vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransCartX,CG,Global)
   Global.Grid.nz = nzTemp
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
 
@@ -218,7 +206,7 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   Output.PrintSeconds = PrintSeconds
   Output.PrintStartDays = 0
   Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
 
   # TimeStepper
   time=[0.0]
@@ -229,4 +217,4 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   TimeStepper.SimHours = SimHours
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
-  CGDycore.TimeStepperAdvection!(U,CGDycore.TransSphereX,CG,Global,Param)
+  CGDycore.TimeStepperAdvectionConv!(U,CGDycore.TransCartX,CG,Global,Param)
