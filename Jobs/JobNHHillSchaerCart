@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHCart.jl \
+mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Problem="HillSchaerCart" \
   --NumV=5 \
   --NumTr=0 \
@@ -6,8 +6,7 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --ProfTheta="SchaerCart" \
   --ProfVel="Const" \
   --Damping=true \
-  --Upwind=true \
-  --HorLimit=false \
+  --Upwind=false \
   --StrideDamp=10500 \
   --Relax=1.0e-2 \
   --BoundaryWE="Period" \
@@ -16,7 +15,7 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Thermo="TotalEnergy" \
   --SimMinutes=300 \
   --PrintSeconds=300 \
-  --dtau=.4 \
+  --dtau=.3 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="SchaerCart" \
@@ -35,6 +34,6 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --ny=2 \
   --OrdPoly=4 \
   --HyperVisc=true \
-  --HyperDCurl=1.e7 \
-  --HyperDGrad=1.e7 \
-  --HyperDDiv=1.e7
+  --HyperDCurl=5.e7 \
+  --HyperDGrad=5.e7 \
+  --HyperDDiv=5.e7

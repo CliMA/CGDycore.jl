@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project  --check-bounds=yes Examples/testNHCart.jl \
+mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Problem="HillAgnesiXCart" \
   --NumV=5 \
   --NumTr=0 \
@@ -15,7 +15,7 @@ mpirun -n 6 julia --project  --check-bounds=yes Examples/testNHCart.jl \
   --Thermo="TotalEnergy" \
   --SimMinutes=30 \
   --PrintSeconds=30 \
-  --dtau=.4 \
+  --dtau=.3 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="AgnesiCartX" \

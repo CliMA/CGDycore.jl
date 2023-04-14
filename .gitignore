@@ -47,3 +47,4 @@ hostfile
 list2
 LocalPreferences.toml
 LocalPreferences.toml
+*.list

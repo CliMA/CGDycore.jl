@@ -363,9 +363,9 @@ function FcnTracerConv!(F,U,time,CG,Global,Param)
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
+          F[iz,ind,RhoPos] += 0.5 * FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
           @inbounds for iT = 1:NumTr
-            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.MMass[iz,ind]
+            F[iz,ind,iT+NumV] += 0.5 * FCG[iP,jP,iz,iT+NumV] / CG.MMass[iz,ind]
           end
         end
       end
@@ -426,9 +426,9 @@ function FcnTracerConv!(F,U,time,CG,Global,Param)
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
+          F[iz,ind,RhoPos] += 0.5 * FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
           @inbounds for iT = 1:NumTr
-            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.MMass[iz,ind]
+            F[iz,ind,iT+NumV] += 0.5 * FCG[iP,jP,iz,iT+NumV] / CG.MMass[iz,ind]
           end
         end
       end

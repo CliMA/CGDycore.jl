@@ -105,7 +105,6 @@ function TimeStepper!(U,Trans,CG,Global,Param)
           end
         end
         percent = i/nIter*100
-        @show sum(abs.(U))
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
@@ -190,7 +189,6 @@ function TimeStepper!(U,Trans,CG,Global,Param)
           end
         end
         percent = i/nIter*100
-        @show sum(abs.(U))
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
@@ -288,13 +286,10 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
       end
     end
   elseif IntMethod == "SSPRungeKutta"
-    @show "Hallo Oswald"
-    @show nIter,"Start"
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
           SSPRungeKutta!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
-          @show sum(abs.(U))
           time[1] += dtau
           if mod(i,PrintInt)==0 && i >= PrintStartInt
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
@@ -397,8 +392,6 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
       end
     end
   elseif IntMethod == "SSPRungeKutta"
-    @show "Hallo Oswald"
-    @show nIter,"Start"
     @time begin
       for i=1:nIter
         Δt = @elapsed begin

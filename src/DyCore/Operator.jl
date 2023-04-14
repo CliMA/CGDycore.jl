@@ -140,7 +140,6 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
     @views @. Fw[:,:,iz+1] -= RhoC[:,:,iz] * (dXdxI[:,:,2,iz,1,3] * DXpC + dXdxI[:,:,2,iz,2,3] * DYpC)
   end  
   @inbounds for iz = 2 : Nz 
-#   @views @. GradZ = 0.5 * (pC[:,:,iz] * RhoC[:,:,iz] - pC[:,:,iz-1] * RhoC[:,:,iz-1]) 
     @views @. GradZ = 0.5 * (pC[:,:,iz] - pC[:,:,iz-1]) * RhoC[:,:,iz] 
     @views @. FluxZ = GradZ * dXdxI[:,:,1,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
@@ -150,7 +149,6 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
     @views @. Fw[:,:,iz] -= FluxZ 
   end    
   @inbounds for iz = 1 : Nz - 1 
-#   @views @. GradZ = 0.5 * (pC[:,:,iz+1] * RhoC[:,:,iz+1] - pC[:,:,iz] * RhoC[:,:,iz]) 
     @views @. GradZ = 0.5 * (pC[:,:,iz+1] - pC[:,:,iz]) * RhoC[:,:,iz] 
     @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
@@ -217,7 +215,7 @@ function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
 # @views @. FwF[:,:,iz] -= Phys.Grav *
 #   (RhoC[:,:,iz-1] * J[:,:,2,iz-1] +
 #   RhoC[:,:,iz] * J[:,:,iz])
-    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,1,iz] / dXdxI[:,:,1,iz,3,3]
+    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,1,iz] / dXdxI[:,:,1,iz,3,3] 
     @views @. FluxZ = GradZ * dXdxI[:,:,1,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
     @views @. FluxZ = GradZ * dXdxI[:,:,1,iz,3,2]
@@ -227,7 +225,7 @@ function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
     @views @. Fw[:,:,iz] -= FluxZ # -Phys.Grav*RhoC[:,:,iz]*J[:,:,1,iz] 
   end    
   @inbounds for iz = 1 : Nz - 1 
-    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,2,iz] / dXdxI[:,:,2,iz,3,3]
+    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,2,iz] / dXdxI[:,:,2,iz,3,3] 
     @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,1]
     @views @. FuC[:,:,iz] -= FluxZ 
     @views @. FluxZ = GradZ * dXdxI[:,:,2,iz,3,2]
@@ -249,14 +247,14 @@ function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
     @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,1]
     @views @. FuC[:,:,1] -= FluxZ
     @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,2]
-    @views @. FvC[:,:,1] -= FluxZ 
+    @views @. FvC[:,:,1] -= FluxZ
     for i = 1 : OrdPoly + 1 
       for j = 1 : OrdPoly + 1 
-#       @views GradZ[i,j] = BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
-#         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])  
-        p0 = BoundaryP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
-         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3])
-        GradZ[i,j] = 0.5 * (pC[i,j,1] - p0) 
+#       @views GradZ[i,j] = BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],  
+#         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])  d  
+        p0 = BoundaryP(pC[i,j,1],pC[i,j,2],pC[i,j,3],  
+         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) 
+        GradZ[i,j] = 0.5 * (pC[i,j,1] - p0)
       end
     end  
 #   @views @. GradZ = (pC[:,:,2] - pC[:,:,1]) - 0.5 * (pC[:,:,3] - pC[:,:,2])  
