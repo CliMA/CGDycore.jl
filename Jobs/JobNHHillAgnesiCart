@@ -12,7 +12,7 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
-  --Thermo="TotalEnergy" \
+  --Thermo="InternalEnergy" \
   --SimMinutes=30 \
   --PrintSeconds=30 \
   --dtau=.3 \

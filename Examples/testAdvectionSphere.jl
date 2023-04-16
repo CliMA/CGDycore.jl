@@ -17,12 +17,14 @@ Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
 NumV = parsed_args["NumV"]
 NumTr = parsed_args["NumTr"]
+RadEarth = parsed_args["RadEarth"]
 # Parallel
 Decomp = parsed_args["Decomp"]
 SimDays = parsed_args["SimDays"]
 SimHours = parsed_args["SimHours"]
 SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
+SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
@@ -51,6 +53,7 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
+PrintTime = parsed_args["PrintTime"]
 Flat = parsed_args["Flat"]
 
 Param = CGDycore.Parameters(Problem)
@@ -110,20 +113,24 @@ Model = CGDycore.Model()
   Model.HorLimit = HorLimit
   Model.Upwind = Upwind
 
+  if RadEarth == 0.0
+    RadEarth = Phys.RadEarth
+  end  
+
 
 # Grid
-Topography=(TopoS=TopoS,H=H,Rad=Phys.RadEarth)
+Topography=(TopoS=TopoS,H=H,Rad=RadEarth)
 TimeStepper=CGDycore.TimeStepper()
 
 Grid=CGDycore.Grid(nz,Topography)
 if GridType == "Helix"
   Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
-  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+  CGDycore.OrientFaceSphere,RadEarth,Grid)
 elseif GridType == "SQuadGen"
   Grid=CGDycore.InputGrid("Grid/baroclinic_wave_2deg_x4.g",
-  CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+  CGDycore.OrientFaceSphere,RadEarth,Grid)
 elseif GridType == "CubedSphere"
-  Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
+  Grid=CGDycore.CubedGrid(nPanel,CGDycore.OrientFaceSphere,RadEarth,Grid)
 end
 if Parallel
   if Decomp == "Hilbert"
@@ -192,8 +199,6 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 
 
 U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
-@show size(U)
-@show sum(abs.(U))
 
 # Output partition  
   nzTemp = Global.Grid.nz
@@ -216,6 +221,7 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   Output.PrintDays = PrintDays
   Output.PrintHours = PrintHours
   Output.PrintSeconds = PrintSeconds
+  Output.PrintTime = PrintTime
   Output.PrintStartDays = 0
   Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
@@ -229,4 +235,5 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   TimeStepper.SimHours = SimHours
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
+  TimeStepper.SimTime = SimTime
   CGDycore.TimeStepperAdvection!(U,CGDycore.TransSphereX,CG,Global,Param)

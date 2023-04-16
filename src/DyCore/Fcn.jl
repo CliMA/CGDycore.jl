@@ -21,11 +21,11 @@ function Fcn!(F,U,CG,Global,Param)
   @views Rot2 = Global.Cache.Temp1[:,:,2]
   @views Grad1 = Global.Cache.Temp1[:,:,3]
   @views Grad2 = Global.Cache.Temp1[:,:,4]
-  @views Div = Global.Cache.Temp1[:,:,5]
-  @views DivTr = Global.Cache.Temp1[:,:,5+1:5+NumTr]
-  @views JJ = Global.Cache.Temp1[:,:,5+NumTr+1]
-  @views JRho = Global.Cache.Temp1[:,:,5+NumTr+2]
-  @views JRhoF = Global.Cache.Temp1[:,:,5+NumTr+3]
+  @views Div = Global.Cache.Temp1[:,:,NumV]
+  @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
+  @views JJ = Global.Cache.Temp1[:,:,NumV+NumTr+1]
+  @views JRho = Global.Cache.Temp1[:,:,NumV+NumTr+2]
+  @views JRhoF = Global.Cache.Temp1[:,:,NumV+NumTr+3]
   FCG=Global.Cache.FCC
   FwCG=Global.Cache.FwCC
   Rot1CG=Global.Cache.Rot1C
@@ -206,7 +206,7 @@ function Fcn!(F,U,CG,Global,Param)
           pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
           RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
           @inbounds for iT = 1:NumTr
-            TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT] / JJ[iz,ind]
+            TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT] 
           end  
         end
       end
@@ -299,7 +299,8 @@ function Fcn!(F,U,CG,Global,Param)
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
-      @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
+      @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
+       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
@@ -477,7 +478,8 @@ function Fcn!(F,U,CG,Global,Param)
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
-      @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,Global,iF)
+      @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
+       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,

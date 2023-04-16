@@ -6,15 +6,18 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     NumV,
     NumTr) = Global.Model
 
-  dtau = Global.TimeStepper.dtauStage
+  dtau = 0.5 * Global.TimeStepper.dtauStage
+  HorLimit = Global.Model.HorLimit
   Grav=Global.Phys.Grav    
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
   JF = Global.Metric.JF
+  J = Global.Metric.J
   X = Global.Metric.X
   Temp1 = Global.Cache.Temp1
   @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
+  @views JJ = Global.Cache.Temp1[:,:,NumV+NumTr+1]
   DivCG=Global.Cache.DivC
   FCG=Global.Cache.FCC
   DivTrCG=Global.Cache.DivC
@@ -29,8 +32,11 @@ function FcnTracer!(F,U,time,CG,Global,Param)
   F .= 0.0
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
+  JJ .= 0.0
 
-  @views Limit!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],U[:,:,RhoPos],CG,Global)
+  if HorLimit
+    @views Limit!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],U[:,:,RhoPos],CG,Global)
+  end  
 
   # Hyperdiffusion 
   @inbounds for iF in Global.Grid.BoundaryFaces
@@ -39,6 +45,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
+          JJ[iz,ind] += J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]
         end
       end
     end
@@ -57,14 +64,14 @@ function FcnTracer!(F,U,time,CG,Global,Param)
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTr[iz,ind,iT] += DivCG[iP,jP,iz] / CG.M[iz,ind]
+            DivTr[iz,ind,iT] += 0.5 * DivCG[iP,jP,iz] / CG.M[iz,ind]
           end
         end
       end
     end
   end
 
-  @views ExchangeData3DSend(Temp1[:,:,1:NumV+NumTr],Global.Exchange)
+  @views ExchangeData3DSend(Temp1[:,:,1:NumV+NumTr+1],Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -72,6 +79,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
+          JJ[iz,ind] += J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]
         end
       end
     end
@@ -90,22 +98,25 @@ function FcnTracer!(F,U,time,CG,Global,Param)
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTr[iz,ind,iT] += DivCG[iP,jP,iz] / CG.M[iz,ind]
+            DivTr[iz,ind,iT] += 0.5 * DivCG[iP,jP,iz] / CG.M[iz,ind]
           end
         end
       end
     end
   end
 
-  ExchangeData3DRecv!(Temp1[:,:,1:NumV+NumTr],Global.Exchange)
+  @views ExchangeData3DRecv!(Temp1[:,:,1:NumV+NumTr+1],Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     if Param.StreamFun
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
-            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
-            @views PsiCG[iP,jP,iz] = fPsi(x,time,Global,Param)
+            x1 = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
+            x2 = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
+            x3 = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
+            PsiLoc = fPsi(x1,x2,x3,time,Global,Param)
+            PsiCG[iP,jP,iz] = PsiLoc
           end
         end  
       end  
@@ -146,7 +157,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT]
+            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / JJ[iz,ind]
           end
         end
       end
@@ -164,22 +175,28 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       end
     end
 
-    @inbounds for iz=1:nz
-      @inbounds for iT = 1:NumTr
-        @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
-        @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
-        @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
-          Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
-      end
+
+    
+    if HorLimit
+      @inbounds for iz=1:nz
+        @inbounds for iT = 1:NumTr
+          @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
+          @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
+          @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
+            Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+#         @views QP!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
+#           Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+        end
+      end  
     end  
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
+          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / JJ[iz,ind]
           @inbounds for iT = 1:NumTr
-            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.M[iz,ind]
+            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / JJ[iz,ind]
           end
         end
       end  
@@ -193,8 +210,11 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
-            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
-            @views PsiCG[iP,jP,iz] = fPsi(x,time,Global,Param)
+            x1 = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
+            x2 = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
+            x3 = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
+            PsiLoc = fPsi(x1,x2,x3,time,Global,Param)
+            PsiCG[iP,jP,iz] = PsiLoc
           end 
         end  
       end  
@@ -235,7 +255,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT]
+            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / JJ[iz,ind]
           end
         end
       end
@@ -253,12 +273,16 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       end
     end
 
-    @inbounds for iz=1:nz
-      @inbounds for iT = 1:NumTr
-        @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
-        @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
-        @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
-          Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+    if HorLimit
+      @inbounds for iz=1:nz
+        @inbounds for iT = 1:NumTr
+          @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
+          @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
+          @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
+            Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+#         @views QP!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
+#           Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+        end
       end
     end  
       
@@ -266,9 +290,9 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
+          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / JJ[iz,ind]
           @inbounds for iT = 1:NumTr
-            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.M[iz,ind]
+            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / JJ[iz,ind]
           end
         end
       end  

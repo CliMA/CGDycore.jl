@@ -72,6 +72,7 @@ function fTr(x,time,Global,Param)
     lat1 = Param.lat1
     lon2 = Param.lon2
     lat2 = Param.lat2
+    R = 1.0
     r = 0.5 * R
     r1 = R * GreatCircle(lon,lat,lon1,lat1)
     r2 = R * GreatCircle(lon,lat,lon2,lat2)
@@ -84,7 +85,7 @@ function fTr(x,time,Global,Param)
     elseif r2 <= r && abs(lon - lon2) < r / (6.0 * R) && lat - lat2 > 5.0 / 12.0 * r / R
       Tr = 1.0
     else
-      Tr = 0.1
+      Tr = .1
     end
   elseif str == "advectioncubecart"
     if x[1] >= Param.x1 && x[1] <= Param.x2 && x[2] >= Param.y1 && x[2] <= Param.y2

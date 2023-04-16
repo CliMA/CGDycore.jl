@@ -747,13 +747,13 @@ function ExchangeData3DSend(U,Exchange)
     @inbounds for iP in NeiProc
       tag = Proc + ProcNumber*iP
       i += 1
-      @views MPI.Irecv!(RecvBuffer3[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
+      @views MPI.Irecv!(RecvBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
     end  
     i = 0
     @inbounds for iP in NeiProc
       tag = iP + ProcNumber*Proc
       i += 1
-      @views MPI.Isend(SendBuffer3[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
+      @views MPI.Isend(SendBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
     end
   end
 end  

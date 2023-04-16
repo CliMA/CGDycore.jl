@@ -170,6 +170,11 @@ function parse_commandline()
      arg_type = Int
      default = 0
 
+    "--SimTime"
+     help = "Simulation time"
+     arg_type = Float64
+     default = 0.0
+
     "--IntMethod"
     help = "Integration  method"
     arg_type = String
@@ -192,6 +197,11 @@ function parse_commandline()
     default = ""
 
 #   Grid
+    "--RadEarth"
+    help = "Radius of sphere"
+    arg_type = Float64
+    default = 0.0 
+
     "--GridType"
     help = "Grid"
     arg_type = String
@@ -313,6 +323,11 @@ function parse_commandline()
      help = "Number of print seconds"
      arg_type = Int
      default = 0
+
+    "--PrintTime"
+     help = "Print interval"
+     arg_type = Float64
+     default = 0.0
 
     "--Flat"
      help = "Output as sphere or cube"

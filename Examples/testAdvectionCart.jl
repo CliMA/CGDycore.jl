@@ -23,6 +23,7 @@ SimDays = parsed_args["SimDays"]
 SimHours = parsed_args["SimHours"]
 SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
+SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
@@ -60,6 +61,7 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
+PrintTime = parsed_args["PrintTime"]
 Flat = parsed_args["Flat"]
 #Orography
 TopoS = parsed_args["TopoS"]
@@ -161,7 +163,6 @@ if Parallel
   vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransCartX,CG,Global)
   CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
-  AA = CGDycore.HorLimiter(SubGrid)
 
 else
   CellToProc=zeros(0)
@@ -206,6 +207,7 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   Output.PrintDays = PrintDays
   Output.PrintHours = PrintHours
   Output.PrintSeconds = PrintSeconds
+  Output.PrintTime = PrintTime
   Output.PrintStartDays = 0
   Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
@@ -219,4 +221,5 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   TimeStepper.SimHours = SimHours
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
+  TimeStepper.SimTime = SimTime
   CGDycore.TimeStepperAdvection!(U,CGDycore.TransCartX,CG,Global,Param)

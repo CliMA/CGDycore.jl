@@ -25,12 +25,14 @@ function TimeStepper!(U,Trans,CG,Global,Param)
   SimHours = TimeStepper.SimHours
   SimMinutes = TimeStepper.SimMinutes
   SimSeconds = TimeStepper.SimSeconds
+  SimTime = TimeStepper.SimTime
   PrintDays = Output.PrintDays
   PrintHours = Output.PrintHours
   PrintSeconds = Output.PrintSeconds
+  PrintTime = Output.PrintTime
   PrintStartDays = Output.PrintStartDays
-  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
-  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
+  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
+  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
@@ -220,12 +222,14 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
   SimHours = TimeStepper.SimHours
   SimMinutes = TimeStepper.SimMinutes
   SimSeconds = TimeStepper.SimSeconds
+  SimTime = TimeStepper.SimTime
   PrintDays = Output.PrintDays
   PrintHours = Output.PrintHours
   PrintSeconds = Output.PrintSeconds
+  PrintTime = Output.PrintTime
   PrintStartDays = Output.PrintStartDays
-  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
-  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
+  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
+  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
@@ -287,11 +291,11 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
     end
   elseif IntMethod == "SSPRungeKutta"
     @time begin
-      for i=1:nIter
+      for i = 1 : nIter
         Δt = @elapsed begin
           SSPRungeKutta!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
           time[1] += dtau
-          if mod(i,PrintInt)==0 && i >= PrintStartInt
+          if (mod(i,PrintInt) == 0 && i >= PrintStartInt) || i == nIter 
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -326,12 +330,14 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
   SimHours = TimeStepper.SimHours
   SimMinutes = TimeStepper.SimMinutes
   SimSeconds = TimeStepper.SimSeconds
+  SimTime = TimeStepper.SimTime
   PrintDays = Output.PrintDays
   PrintHours = Output.PrintHours
   PrintSeconds = Output.PrintSeconds
+  PrintTime = Output.PrintTime
   PrintStartDays = Output.PrintStartDays
-  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds)/dtau)
-  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds)/dtau)
+  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
+  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
@@ -397,7 +403,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
         Δt = @elapsed begin
           SSPRungeKutta!(time[1],U,dtau,FcnTracerConv!,CG,Global,Param)
           time[1] += dtau
-          if mod(i,PrintInt)==0 && i >= PrintStartInt
+          if (mod(i,PrintInt) == 0 && i >= PrintStartInt) || i == nIter 
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end

@@ -188,13 +188,19 @@ function fIntEn(x,time,Global,Param)
     if Rad<1.0e0
       Th=Th+DeltaT*(cos(pi*Rad)+1.0)/2.0*(pLoc/Phys.p0)^(-Phys.kappa);
     end
-  elseif str == "gravityhill" || str == "schaercart"
+  elseif str == "gravityhill" || str == "schaercart" || str == "agnesicart"
     z=x[3];
     NBr=Param.NBr;
+    p0 = Phys.p0
+    Cpd = Phys.Cpd
+    Cvd = Phys.Cvd
+    kappa = Phys.kappa
     Grav=Phys.Grav;
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);
+    pLoc=p0*(1-Grav/(Cpd*Th0*S)*(1-exp(-S*z))).^(Cpd/Rd);
+    E = Th*(pLoc/p0)^kappa*Cvd
   elseif str == "inertiagravitywave"
     z=x[3];
     NBr=Param.NBr;

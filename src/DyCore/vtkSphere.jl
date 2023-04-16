@@ -252,7 +252,6 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       vPos = Global.Model.uPos
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @show size(U)
       @views InterpolateW!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
         vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Metric.dXdxI)
       vtk["w", VTKCellData()] = wCell

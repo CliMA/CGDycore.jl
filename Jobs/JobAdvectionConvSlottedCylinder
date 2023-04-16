@@ -11,13 +11,10 @@ mpirun -n 6 julia --project Examples/testAdvectionConvSphere.jl \
   --HorLimit=true \
   --Decomp="EqualArea" \
   --vtkFileName="SlottedCylinderConv" \
-  --SimDays=12 \
-  --SimSeconds=0 \
-  --PrintDays=0 \
-  --PrintHours=12 \
-  --PrintSeconds=0 \
-  --Flat=false \
-  --dtau=100 \
+  --SimTime=5.0 \
+  --PrintTime=0.25 \
+  --Flat=true \
+  --dtau=0.00048 \
   --IntMethod="SSPRungeKutta" \
   --Table="SSP32" \
   --TopoS="" \
@@ -25,7 +22,8 @@ mpirun -n 6 julia --project Examples/testAdvectionConvSphere.jl \
   --GridType="CubedSphere" \
   --nz=1 \
   --nPanel=32 \
-  --H=1000.0 \
+  --RadEarth=1.0 \
+  --H=1.0 \
   --OrdPoly=4 \
   --HyperVisc=true \
   --HyperDCurl=0.e13 \

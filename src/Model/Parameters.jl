@@ -173,9 +173,9 @@ Base.@kwdef struct ParamAdvectionSphereSlottedCylinder
   lat1 = 0.0e0
   lon2 = 7.0e0 / 6.0e0 * pi
   lat2 = 0.0e0
-  EndTime = 1.0368e6 
+  EndTime = 5
   FacVel = 10.0
-  StreamFun = true
+  StreamFun = false
 end  
 Base.@kwdef struct ParamAdvectionSphereDCMIP
   xC = 0.0
@@ -198,8 +198,8 @@ end
 Base.@kwdef struct ParamAdvectionCubeCart
   Example = "AdvectionCubeCart"
   StreamFun = false
-  uMax = 0.25
-  vMax = 0.25
+  uMax = 1.0
+  vMax = 0.0
   x1 = 400.0
   x2 = 600.0
   y1 = 400.0

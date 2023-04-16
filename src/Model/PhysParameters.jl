@@ -267,7 +267,7 @@ Grad1C=zeros(OP,OP,nz)
 Grad2C=zeros(OP,OP,nz)
 DivC=zeros(OP,OP,nz)
 KV=zeros(OP,OP,nz)
-Temp1=zeros(nz,NumG,5+NumTr+3)
+Temp1=zeros(nz,NumG,NumV+NumTr+3)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
 Y=zeros(0,0,0,0)
@@ -363,6 +363,7 @@ mutable struct TimeStepperStruct
   SimHours::Int
   SimMinutes::Int
   SimSeconds::Int
+  SimTime::Float64
   ROS::RosenbrockStruct
   LinIMEX::LinIMEXStruct
   IMEX::IMEXStruct
@@ -379,6 +380,7 @@ function TimeStepper()
   SimHours = 0
   SimMinutes = 0
   SimSeconds = 0
+  SimTime = 0.0
   ROS=RosenbrockMethod()
   LinIMEX=LinIMEXMethod()
   IMEX=IMEXMethod()
@@ -394,6 +396,7 @@ function TimeStepper()
     SimHours,
     SimMinutes,
     SimSeconds,
+    SimTime,
     ROS,
     LinIMEX,
     IMEX,
@@ -413,6 +416,7 @@ mutable struct OutputStruct
   PrintDays::Int
   PrintHours::Int
   PrintSeconds::Int
+  PrintTime::Float64
   PrintStartDays::Int
   PrintInt::Int
   PrintStartInt::Int
@@ -431,6 +435,7 @@ function Output(Topography::NamedTuple)
   PrintDays = 0
   PrintHours = 0
   PrintSeconds = 0
+  PrintTime = 0
   PrintStartDays = 0
   PrintInt = 0
   PrintStartInt = 0
@@ -447,6 +452,7 @@ function Output(Topography::NamedTuple)
   PrintDays,
   PrintHours,
   PrintSeconds,
+  PrintTime,
   PrintStartDays,
   PrintInt,
   PrintStartInt,

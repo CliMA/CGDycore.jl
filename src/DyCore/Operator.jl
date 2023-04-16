@@ -704,6 +704,7 @@ function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
       @views @. alphaX[2:end-1,j] = max(e[1:end-1],e[2:end])
       alphaX[end,j] = e[end]
     end
+    @. alphaX = alphaX * .4
     @. FluxX = alphaX * FluxLowX + (1.0 - alphaX) * FluxHighX
     @views @. FRhoTrC[1,:,iz] += FluxX[1,:] 
     @views @. FRhoTrC[2:end-1,:,iz] += FluxX[2:end,:] - FluxX[1:end-1,:] 
@@ -735,12 +736,44 @@ function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
       @views @. alphaY[i,2:end-1] = max(e[1:end-1],e[2:end])
       alphaY[i,end] = e[end]
     end
+    @. alphaY = alphaY * .4
 
     @. FluxY = alphaY * FluxLowY + (1.0 - alphaY) * FluxHighY
     @views @. FRhoTrC[:,1,iz] += FluxY[:,1]
     @views @. FRhoTrC[:,2:end-1,iz] += FluxY[:,2:end] - FluxY[:,1:end-1] 
     @views @. FRhoTrC[:,end,iz] += -FluxY[:,end]
   end    
+end
+
+function SourceIntEnergy!(F,cCG,uC,vC,wF,Fe,dXdxI,ThreadCache)
+  @unpack TCacheC1, TCacheC2 = ThreadCache
+  Nz = size(uC,3)
+  OrdPoly = Fe.OrdPoly
+  D = Fe.DS
+
+  vCon = TCacheC1[Threads.threadid()]
+  DvCon = TCacheC2[Threads.threadid()]
+  vConV = TCacheC1[Threads.threadid()]
+
+  @inbounds for iz = 1 : Nz
+    @. DvCon = 0.0 
+    @views @. vCon = uC[:,:,iz] * (dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) +
+      vC[:,:,iz] * (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) +
+      dXdxI[:,:,1,iz,1,3] * wF[:,:,iz] + dXdxI[:,:,2,iz,1,3] * wF[:,:,iz+1]
+    DerivativeX!(DvCon,vCon,D)  
+    @views @. vCon = uC[:,:,iz] * (dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) + 
+      vC[:,:,iz] * (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) +
+      dXdxI[:,:,1,iz,2,3] * wF[:,:,iz] + dXdxI[:,:,2,iz,2,3] * wF[:,:,iz+1]
+    DerivativeY!(DvCon,vCon,D)  
+    @views @. F[:,:,iz]  -= DvCon * cCG[:,:,iz]
+  end
+  @inbounds for iz = 1 : Nz - 1
+    @views @. vConV = uC[:,:,iz] * dXdxI[:,:,2,iz,3,1] + uC[:,:,iz+1] * dXdxI[:,:,1,iz+1,3,1] +
+      vC[:,:,iz] * dXdxI[:,:,2,iz,3,2] + vC[:,:,iz+1] * dXdxI[:,:,1,iz+1,3,2] +
+      wF[:,:,iz+1] * (dXdxI[:,:,2,iz,3,3] + dXdxI[:,:,1,iz+1,3,1])
+    @views @. F[:,:,iz] -= 0.5 * vConV * cCG[:,:,iz]
+    @views @. F[:,:,iz+1] += 0.5 * vConV * cCG[:,:,iz+1]
+  end
 end
 
 function Rot!(Rot,uC,vC,Fe,dXdxI,J,ThreadCache)
@@ -788,15 +821,15 @@ function Curl!(uC,vC,Psi,Fe,dXdxI,J,ThreadCache)
   end  
 end
 
-function BoundaryW!(wCG,v1CG,v2CG,Fe,J,dXdxI)
+function BoundaryW!(wCG,uC,vC,Fe,J,dXdxI)
   OrdPoly = Fe.OrdPoly
   #1.5*D3cCG[:,:,1] - 0.5*D3cCG[:,:,2]
   for i = 1 : OrdPoly +1
     for j = 1 : OrdPoly +1
-#     v1 = 1.5 * v1CG[i,j,1] - 0.5 * v1CG[i,j,2]  
-#     v2 = 1.5 * v2CG[i,j,1] - 0.5 * v2CG[i,j,2]  
-      v1 = v1CG[i,j,1] 
-      v2 = v2CG[i,j,1] 
+#     v1 = 1.5 * uC[i,j,1] - 0.5 * uC[i,j,2]  
+#     v2 = 1.5 * vC[i,j,1] - 0.5 * vC[i,j,2]  
+      v1 = uC[i,j,1] 
+      v2 = vC[i,j,1] 
 #     wCG[i,j,1] = -((dXdxI[i,j,1,3,1] + dXdxI[i,j,2,3,1])* v1 +
 #       (dXdxI[i,j,1,3,2] + dXdxI[i,j,2,3,2])* v2) / 
 #       (dXdxI[i,j,1,3,3] + dXdxI[i,j,2,3,3])
