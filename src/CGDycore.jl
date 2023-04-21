@@ -15,6 +15,7 @@ using Metal
 using NetCDF
 using MuladdMacro
 using Statistics
+using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 
 include("Grid/Geometry.jl")
 include("Grid/Node.jl")

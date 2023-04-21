@@ -33,6 +33,8 @@ function FcnTracer!(F,U,time,CG,Global,Param)
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
   JJ .= 0.0
+  x = StrideArray{Float64}(undef, 3)
+  @show size(x)
 
   if HorLimit
     @views Limit!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],U[:,:,RhoPos],CG,Global)
@@ -303,7 +305,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
 
 end
 
-function FcnTracerConv!(F,U,time,CG,Global,Param)
+function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
   @unpack TRhoCG, Tv1CG, Tv2CG, TwCG, TwCCG, TThCG, TFCG,
   TCacheCC1, TCacheCC2, TCacheCC3, TCacheCC4, TCacheCC5 = Global.ThreadCache
 
@@ -332,17 +334,18 @@ function FcnTracerConv!(F,U,time,CG,Global,Param)
   TrCG = Global.Cache.TrCG
   DivTr .= 0.0
   F .= 0.0
-
+  x = StrideArray{Float64}(undef, StaticInt(3))
+  x[1] = 1.0
   
   @inbounds for iF in Global.Grid.BoundaryFaces
     if Param.StreamFun
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
-            x1 = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
-            x2 = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
-            x3 = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
-            PsiLoc = fPsi(x1,x2,x3,time,Global,Param)
+            x[1] = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
+            x[2] = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
+            x[3] = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
+            PsiLoc = @gc_preserve fPsi(x,time,Global,Param)
             PsiCG[iP,jP,iz] = PsiLoc
           end
         end
@@ -354,8 +357,10 @@ function FcnTracerConv!(F,U,time,CG,Global,Param)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
-            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
-            (uu,vv) = fVel(x,time,Global,Param)
+            x[1] = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
+            x[2] = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
+            x[3] = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
+            uu,vv = @gc_preserve fVel(x,time,Global,Param)
             v1CG[iP,jP,iz] = uu
             v2CG[iP,jP,iz] = vv
           end
@@ -397,16 +402,15 @@ function FcnTracerConv!(F,U,time,CG,Global,Param)
   end
 
   ExchangeData3DSend(F,Global.Exchange)
-
   @inbounds for iF in Global.Grid.InteriorFaces
     if Param.StreamFun
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
-            x1 = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
-            x2 = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
-            x3 = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
-            PsiLoc = fPsi(x1,x2,x3,time,Global,Param)
+            x[1] = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
+            x[2] = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
+            x[3] = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
+            PsiLoc = @gc_preserve fPsi(x,time,Global,Param)
             PsiCG[iP,jP,iz] = PsiLoc
           end
         end
@@ -417,8 +421,12 @@ function FcnTracerConv!(F,U,time,CG,Global,Param)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
-            x = SVector{3}(0.5 * (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
-            (uu,vv) = fVel(x,time,Global,Param)
+            x[1] = 0.5 * (X[iP,jP,1,1,iz,iF] + X[iP,jP,2,1,iz,iF])
+            x[2] = 0.5 * (X[iP,jP,1,2,iz,iF] + X[iP,jP,2,2,iz,iF])
+            x[3] = 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])
+            uu,vv = @gc_preserve fVel(x,time,Global,Param)
+            uu = 1.0
+            vv = 1.0
             v1CG[iP,jP,iz] = uu
             v2CG[iP,jP,iz] = vv
           end

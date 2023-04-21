@@ -770,10 +770,11 @@ function SourceIntEnergy!(F,cCG,uC,vC,wF,Fe,dXdxI,ThreadCache)
   @inbounds for iz = 1 : Nz - 1
     @views @. vConV = uC[:,:,iz] * dXdxI[:,:,2,iz,3,1] + uC[:,:,iz+1] * dXdxI[:,:,1,iz+1,3,1] +
       vC[:,:,iz] * dXdxI[:,:,2,iz,3,2] + vC[:,:,iz+1] * dXdxI[:,:,1,iz+1,3,2] +
-      wF[:,:,iz+1] * (dXdxI[:,:,2,iz,3,3] + dXdxI[:,:,1,iz+1,3,1])
+      wF[:,:,iz+1] * (dXdxI[:,:,2,iz,3,3] + dXdxI[:,:,1,iz+1,3,3])
     @views @. F[:,:,iz] -= 0.5 * vConV * cCG[:,:,iz]
     @views @. F[:,:,iz+1] += 0.5 * vConV * cCG[:,:,iz+1]
   end
+#Note improve lower boundary condition, pressure extrapolation, but contravriant velocity is zero at the lower boundary 
 end
 
 function Rot!(Rot,uC,vC,Fe,dXdxI,J,ThreadCache)
@@ -823,17 +824,10 @@ end
 
 function BoundaryW!(wCG,uC,vC,Fe,J,dXdxI)
   OrdPoly = Fe.OrdPoly
-  #1.5*D3cCG[:,:,1] - 0.5*D3cCG[:,:,2]
   for i = 1 : OrdPoly +1
     for j = 1 : OrdPoly +1
-#     v1 = 1.5 * uC[i,j,1] - 0.5 * uC[i,j,2]  
-#     v2 = 1.5 * vC[i,j,1] - 0.5 * vC[i,j,2]  
       v1 = uC[i,j,1] 
       v2 = vC[i,j,1] 
-#     wCG[i,j,1] = -((dXdxI[i,j,1,3,1] + dXdxI[i,j,2,3,1])* v1 +
-#       (dXdxI[i,j,1,3,2] + dXdxI[i,j,2,3,2])* v2) / 
-#       (dXdxI[i,j,1,3,3] + dXdxI[i,j,2,3,3])
-#     wCG[i,j,1] = 2.0 * wCG[i,j,1] - wCG[i,j,2]  
       wCG[i,j,1] = -(dXdxI[i,j,1,3,1]* v1 +
         dXdxI[i,j,1,3,2] * v2) / 
         dXdxI[i,j,1,3,3]
@@ -841,7 +835,7 @@ function BoundaryW!(wCG,uC,vC,Fe,J,dXdxI)
   end
 end
 
-function BoundaryDP(p1,p2,p3,J1,J2,J3)
+@inline function BoundaryDP(p1,p2,p3,J1,J2,J3)
 
   h1 = 0.5 * (J1[1] + J1[2]);
   h2 = 0.5 * (J2[1] + J2[2]);
@@ -855,7 +849,7 @@ function BoundaryDP(p1,p2,p3,J1,J2,J3)
 end  
 
 
-function BoundaryP(p1,p2,p3,J1,J2,J3)
+@inline function BoundaryP(p1,p2,p3,J1,J2,J3)
 
   h1 = 0.5 * (J1[1] + J1[2])
   h2 = 0.5 * (J2[1] + J2[2])
@@ -866,7 +860,7 @@ function BoundaryP(p1,p2,p3,J1,J2,J3)
   p0 = f1 * p1 + f2 * p2 + f3 * p3
 end  
 
-function RecU3(cL,cC,cR,JL,JC,JR)
+@inline function RecU3(cL,cC,cR,JL,JC,JR)
   kL=(JC/(JC+JL))*((JR+JC)/(JL+JC+JR))
   kR=-(JC/(JR+JC))*(JL/(JL+JC+JR))
   cCL=kL*cL+(1.0-kL-kR)*cC+kR*cR

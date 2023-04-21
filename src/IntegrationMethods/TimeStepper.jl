@@ -91,10 +91,8 @@ function TimeStepper!(U,Trans,CG,Global,Param)
 
 
 # Print initial conditions
-  @show "Print initial conditions"
   unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
 
-  @show "Choose integration method"
   if IntMethod == "Rosenbrock"
     @time begin
       for i=1:nIter
@@ -257,10 +255,8 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
 
 
 # Print initial conditions
-  @show "Print initial conditions"
   unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
 
-  @show "Choose integration method"
   if IntMethod == "Rosenbrock"
     @time begin
       for i=1:nIter
@@ -365,10 +361,8 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
 
 
 # Print initial conditions
-  @show "Print initial conditions"
   unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
 
-  @show "Choose integration method"
   if IntMethod == "Rosenbrock"
     @time begin
       for i=1:nIter
@@ -401,7 +395,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          SSPRungeKutta!(time[1],U,dtau,FcnTracerConv!,CG,Global,Param)
+          @time SSPRungeKutta!(time[1],U,dtau,FcnTracerConv!,CG,Global,Param)
           time[1] += dtau
           if (mod(i,PrintInt) == 0 && i >= PrintStartInt) || i == nIter 
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)

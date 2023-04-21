@@ -71,7 +71,8 @@ if abs(abs(phi)-pi/2)>1.e-14
     lam=lam+2*pi;
   end
 end
-return (float(lam),float(phi),r)
+#return (float(lam),float(phi),r)
+return lam,phi,r
 end
 
 function cart2sphereDeg(x,y,z)

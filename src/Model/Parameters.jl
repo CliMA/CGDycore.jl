@@ -89,18 +89,18 @@ Base.@kwdef struct ParamHillSchaerCart
 end
 
 Base.@kwdef struct ParamHillAgnesiXCart
-  Example = "HillAgnesiXCart"
-  Deep=false
-  NBr=1.e-2
-  Th0=300.0
-  uMax=10
-  vMax=0
-  wMax=0
-  TEq=300.0
-  a = 1000.0
-  h = 400.0
-  xc = 0.0
-  Stretch = false
+  Example::String = "HillAgnesiXCart"
+  Deep::Bool = false
+  NBr::Float64 = 1.e-2
+  Th0::Float64 =300.0
+  uMax::Float64 =10
+  vMax::Float64 =0
+  wMax::Float64 =0
+  TEq::Float64 =300.0
+  a::Float64  = 1000.0
+  h::Float64  = 400.0
+  xc::Float64  = 0.0
+  Stretch::Bool = false
 end
 
 Base.@kwdef struct ParamHillAgnesiYCart
@@ -166,16 +166,16 @@ Base.@kwdef struct ParamAdvectionSphereGaussian
   StreamFun = true
 end  
 Base.@kwdef struct ParamAdvectionSphereSlottedCylinder
-  TimeDependent = true
-  hMax = 0.95
-  b = 5.0
-  lon1 = 5.0e0 / 6.0e0 * pi
-  lat1 = 0.0e0
-  lon2 = 7.0e0 / 6.0e0 * pi
-  lat2 = 0.0e0
-  EndTime = 5
-  FacVel = 10.0
-  StreamFun = false
+  TimeDependent::Bool = true
+  hMax::Float64 = 0.95
+  b::Float64 = 5.0
+  lon1::Float64 = 5.0e0 / 6.0e0 * pi
+  lat1::Float64 = 0.0e0
+  lon2::Float64 = 7.0e0 / 6.0e0 * pi
+  lat2::Float64 = 0.0e0
+  EndTime::Float64 = 5.0
+  FacVel::Float64 = 10.0
+  StreamFun::Bool = false
 end  
 Base.@kwdef struct ParamAdvectionSphereDCMIP
   xC = 0.0

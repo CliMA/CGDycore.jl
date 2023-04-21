@@ -236,4 +236,5 @@ U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
   TimeStepper.SimTime = SimTime
+   
   CGDycore.TimeStepperAdvection!(U,CGDycore.TransSphereX,CG,Global,Param)
