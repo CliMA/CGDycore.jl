@@ -1,8 +1,6 @@
 function StencilFace(Grid)
-  Stencil=zeros(Int,Grid.NumFaces,12);
 
   for iF=1:Grid.NumFaces
-    Stencil[iF,:] .= iF;
     StencilLoc=zeros(Int, 16,1);
     StencilLoc[:] .= iF;
     iS=0;
@@ -25,6 +23,7 @@ function StencilFace(Grid)
     end
     Grid.Faces[iF].Stencil = zeros(Int,iS)
     Grid.Faces[iF].Stencil .= StencilLoc[1:iS]
+    @show Grid.NumFaces,Grid.Faces[iF].Stencil
   end
   return Grid
 end

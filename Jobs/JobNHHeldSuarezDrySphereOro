@@ -7,6 +7,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfVel="Const" \
   --Source=true \
   --Coriolis=true \
+  --HorLimit=false \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --PrintSeconds=7200 \

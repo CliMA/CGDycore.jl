@@ -152,6 +152,32 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   SubGrid.InteriorFaces = setdiff(collect(UnitRange(1,SubGrid.NumFaces)),SubGrid.BoundaryFaces)
 
   SubGrid.Rad = GlobalGrid.Rad
+# Stencil  
+  for iF=1:SubGrid.NumFaces
+    StencilLoc=zeros(Int, 16,1);
+    StencilLoc[:] .= iF;
+    iS=0;
+    for i=1:4
+      iN=SubGrid.Faces[iF].N[i];
+      for j=1:size(SubGrid.Nodes[iN].F,1)
+        jF=SubGrid.Nodes[iN].F[j];
+        inside=false;
+        for jS=1:iS
+          if StencilLoc[jS]==jF
+            inside=true;
+            break
+          end
+        end
+        if !inside
+          iS=iS+1;
+          StencilLoc[iS]=jF;
+        end
+      end
+    end
+    SubGrid.Faces[iF].Stencil = zeros(Int,iS)
+    SubGrid.Faces[iF].Stencil .= StencilLoc[1:iS]
+  end
+
 # Add Ghost Faces
   for i = 1:NumNodes
     Nodes[i].F = zeros(Int,0)

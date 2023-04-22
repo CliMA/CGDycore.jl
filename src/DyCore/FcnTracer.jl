@@ -34,7 +34,6 @@ function FcnTracer!(F,U,time,CG,Global,Param)
   qMax = Global.Cache.qMax
   JJ .= 0.0
   x = StrideArray{Float64}(undef, 3)
-  @show size(x)
 
   if HorLimit
     @views Limit!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],U[:,:,RhoPos],CG,Global)

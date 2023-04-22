@@ -11,6 +11,9 @@ function fVel(x,time::Float64,Global,Param)
     uS = 10.0 / Param.EndTime * sin(lonP)^2 *
       sin(2.0 *Lat) * cos(pi * time / Param.EndTime) + 2.0e0 * pi / Param.EndTime * cos(Lat)
     vS = 10.0 / Param.EndTime * sin(2.0 * lonP) * cos(Lat) * cos(pi * time / Param.EndTime)
+  elseif ProfVel == "Const"
+    uS=Param.uMax
+    vS=Param.vMax
   end   
   return uS,vS
 end    

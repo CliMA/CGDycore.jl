@@ -157,7 +157,8 @@ if Parallel
   else
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end
-  Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+
+  Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel,HorLimit)
   Output=CGDycore.Output(Topography)
   Global = CGDycore.Global(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
@@ -170,7 +171,6 @@ if Parallel
   Global.Grid.nz = nzTemp
 
   if TopoS == "EarthOrography"
-    SubGrid = CGDycore.StencilFace(SubGrid)
     zS = CGDycore.Orography(CG,Global)
     Output.RadPrint = H
     Output.Flat=false

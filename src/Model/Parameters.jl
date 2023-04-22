@@ -46,35 +46,35 @@ Base.@kwdef struct ParamBaroWaveDrySphere
 end
 
 Base.@kwdef struct ParamHeldSuarezDrySphere
-  day = 3600.0 * 24.0
-  k_a=1.0/(40.0 * day)
-  k_f=1.0/day
-  k_s=1.0/(4.0 * day)
-  DeltaT_y=60.0
-  DeltaTh_z=10.0
-  T_equator=315.0
-  T_min=200.0
-  sigma_b=7.0/10.0
-  CE = 0.0044
-  CH = 0.0044
-  CTr = 0.004
-  p_pbl = 85000.0
-  p_strato = 10000.0
-  T_virt_surf = 290.0
-  T_min_ref = 220.0
-  H_t = 8.e3
-  q_0 = 0.018                # Maximum specific humidity (default: 0.018)
-  q_t = 1e-12
-  T0E = 310.0
-  T0P = 240.0
-  B=2.0
-  K=3.0
-  LapseRate=0.005
-  DeltaTS = 29.0
-  TSMin = 271.0
-  DeltaLat = 26.0 * pi / 180.0
-  uMax = 0.0
-  vMax = 0.0
+  day::Float64 = 3600.0 * 24.0
+  k_a::Float64= 1.0 / (40.0 * day)
+  k_f::Float64 = 1.0 / day
+  k_s::Float64 = 1.0 / (4.0 * day)
+  DeltaT_y::Float64 = 60.0
+  DeltaTh_z::Float64 = 10.0
+  T_equator::Float64 = 315.0
+  T_min::Float64 = 200.0
+  sigma_b::Float64 = 7.0/10.0
+  CE::Float64  = 0.0044
+  CH::Float64 = 0.0044
+  CTr::Float64 = 0.004
+  p_pbl::Float64 = 85000.0
+  p_strato::Float64 = 10000.0
+  T_virt_surf::Float64 = 290.0
+  T_min_ref::Float64 = 220.0
+  H_t::Float64 = 8.e3
+  q_0::Float64 = 0.018                # Maximum specific humidity (default: 0.018)
+  q_t::Float64 = 1e-12
+  T0E::Float64 = 310.0
+  T0P::Float64 = 240.0
+  B::Float64 = 2.0
+  K::Float64 = 3.0
+  LapseRate::Float64 = 0.005
+  DeltaTS::Float64 = 29.0
+  TSMin::Float64 = 271.0
+  DeltaLat::Float64 = 26.0 * pi / 180.0
+  uMax::Float64 = 0.0
+  vMax::Float64 = 0.0
 end
 
 Base.@kwdef struct ParamHillSchaerCart
