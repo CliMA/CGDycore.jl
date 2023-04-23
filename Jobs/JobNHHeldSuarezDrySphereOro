@@ -12,11 +12,11 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --PrintSeconds=7200 \
-  --dtau=100 \
+  --dtau=50 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \
-  --stretch=false \
+  --stretch=true \
   --GridType="CubedSphere" \
   --nz=45 \
   --nPanel=16 \

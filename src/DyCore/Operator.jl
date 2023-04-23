@@ -166,8 +166,8 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
     @views @. FluxZ =  GradZ * dXdxI[:,:,1,1,3,3]
     @views @. Fw[:,:,1] -= FluxZ
   elseif Nz > 2
-    for i = 1 : OrdPoly + 1
-      for j = 1 : OrdPoly + 1
+    @inbounds for i = 1 : OrdPoly + 1
+      @inbounds for j = 1 : OrdPoly + 1
 #       @views GradZ[i,j] = (BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],
 #        J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])) * RhoC[i,j,1]
 #       p0 = BoundaryP(pC[i,j,1]*RhoC[i,j,1],pC[i,j,2]*RhoC[i,j,2],pC[i,j,3]*RhoC[i,j,3],
@@ -248,8 +248,8 @@ function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
     @views @. FuC[:,:,1] -= FluxZ
     @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,2]
     @views @. FvC[:,:,1] -= FluxZ
-    for i = 1 : OrdPoly + 1 
-      for j = 1 : OrdPoly + 1 
+    @inbounds for i = 1 : OrdPoly + 1 
+      @inbounds for j = 1 : OrdPoly + 1 
 #       @views GradZ[i,j] = BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],  
 #         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 0.5 * (pC[i,j,1+1] - pC[i,j,1])  d  
         p0 = BoundaryP(pC[i,j,1],pC[i,j,2],pC[i,j,3],  
@@ -393,7 +393,7 @@ function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCach
           + (wC - abs(wC)) * TrRe[i,j,1,1+1])
       end
     end  
-    for iz = 2 : Nz - 1
+    @inbounds for iz = 2 : Nz - 1
       @inbounds for i = 1 : OrdPoly + 1
         @inbounds for j = 1 : OrdPoly + 1
           wC = (dXdxI[i,j,1,iz,3,1] * uC[i,j,iz] +
@@ -822,10 +822,23 @@ function Curl!(uC,vC,Psi,Fe,dXdxI,J,ThreadCache)
   end  
 end
 
+function KineticEnergy!(KE,uC,vC,wF,J)
+  Nz = size(uC,3)
+  
+  @views KE[:,:,1] = wF[:,:,1] * wF[:,:,1] *  J[:,:,1,1] 
+  @inbounds for iz = 2 : Nz 
+    KE[:,:,iz] = 0.5 * wF[:,:,iz] * wF[:,:,iz] *  (J[:,:,2,iz-1] + J[:,:,1,iz])
+    KE[:,:,iz-1] += KE[:,:,iz]
+  end  
+  @views KE[:,:,Nz] += wF[:,:,Nz+1] * wF[:,:,Nz+1] *  J[:,:,2,Nz] 
+  @views @. KE = 0.5 * (KE / (J[:,:,1,:] + J[:,:,2,:]) + uC * uC + vC * vC)
+       
+end
+
 function BoundaryW!(wCG,uC,vC,Fe,J,dXdxI)
   OrdPoly = Fe.OrdPoly
-  for i = 1 : OrdPoly +1
-    for j = 1 : OrdPoly +1
+  @inbounds for i = 1 : OrdPoly +1
+    @inbounds for j = 1 : OrdPoly +1
       v1 = uC[i,j,1] 
       v2 = vC[i,j,1] 
       wCG[i,j,1] = -(dXdxI[i,j,1,3,1]* v1 +

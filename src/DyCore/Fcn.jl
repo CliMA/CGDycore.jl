@@ -231,7 +231,7 @@ function Fcn!(F,U,CG,Global,Param)
       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Kinetic energy
-    @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
+    KineticEnergy!(KE,v1CG,v2CG,wCG,Global.Metric.J[:,:,:,:,iF])
 #   Pressure
     @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
 #   Temperature
@@ -410,7 +410,7 @@ function Fcn!(F,U,CG,Global,Param)
       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Kinetic energy
-    @views @. KE = 0.5*(v1CG*v1CG + v2CG*v2CG + 0.5 * (wCG[:,:,1:nz]*wCG[:,:,1:nz] + wCG[:,:,2:nz+1]*wCG[:,:,2:nz+1]))
+    KineticEnergy!(KE,v1CG,v2CG,wCG,Global.Metric.J[:,:,:,:,iF])
 #   Pressure
     @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
 #   Temperature
