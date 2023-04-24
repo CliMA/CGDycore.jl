@@ -272,9 +272,24 @@ function Fcn!(F,U,CG,Global,Param)
         v1CG,v2CG,wCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
+      for i = 1 : 2
+        for j = 1 :2
+            for k = 1 : 10
+              v1CG[i,j,k] = i + k
+              v2CG[i,j,k] = 0
+              RhoCG[i,j,k] = 1
+            end
+            for k = 1 : 11
+              wCG[i,j,k] = i + k
+            end
+        end
+        end
+      @. FCG = 0.0  
+      @. FwCG = 0.0  
       @views AdvectionMomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      stop
     end    
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
@@ -447,6 +462,23 @@ function Fcn!(F,U,CG,Global,Param)
         @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
       end
     end
+      for i = 1 : 2
+        for j = 1 :2
+            for k = 1 : 10
+              v1CG[i,j,k] = i + k
+              v1CG[i,j,k] = 0
+              v2CG[i,j,k] = 0
+              RhoCG[i,j,k] = 1
+            end
+            for k = 1 : 11
+              wCG[i,j,k] = i + k
+            end
+            wCG[i,j,1] = 0
+            wCG[i,j,11] = 0
+        end
+        end
+      @. FCG = 0.0  
+      @. FwCG = 0.0  
     if Global.Model.Curl
 #     3-dim Curl and Grad of kinetic Energy
 #     Kinetic energy
@@ -461,6 +493,17 @@ function Fcn!(F,U,CG,Global,Param)
         v1CG,v2CG,wCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     end
+    for i = 1 : 2
+      for k = 1 :10
+        @show FCG[i,1,k,uPos],Global.Metric.J[i,1,k,1,iF]  
+      end
+    end  
+    for i = 1 : 2
+      for k = 1 :11
+        @show FwCG[i,1,k],wCG[i,1,k]  
+      end
+    end  
+    stop
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
       if str == "Sphere"

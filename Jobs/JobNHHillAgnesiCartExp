@@ -8,7 +8,6 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --ProfpBGrd="AgnesiCart" \
   --ProfRhoBGrd="AgnesiCart" \
   --RefProfile=false \
-  --Curl=false \
   --Damping=true \
   --StrideDamp=10000 \
   --Relax=1.0e-2 \
@@ -17,11 +16,11 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --Thermo="" \
-  --SimMinutes=30 \
-  --PrintSeconds=30 \
-  --dtau=.3 \
-  --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --SimMinutes=3 \
+  --PrintSeconds=3 \
+  --dtau=.02 \
+  --IntMethod="RungeKutta" \
+  --Table="RK3" \
   --TopoS="AgnesiCartX" \
   `#Topography `        \
   --P1=0.0\

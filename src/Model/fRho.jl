@@ -196,8 +196,8 @@ elseif str == "barowavedrysphere"
       Th0=Param.Th0;
       S=NBr*NBr/Grav;
       ThLoc=Th0*exp(z*S);
-      pLoc=p0*(1-Grav/(Cpd*Th0*S)*(1-exp(-S*z))).^(Cpd/Rd);
-      Rho=pLoc./((pLoc/p0).^kappa*Rd.*ThLoc);
+      pLoc=p0*(1.0-Grav/(Cpd*Th0*S)*(1.0-exp(-S*z))).^(Cpd/Rd);
+      Rho=pLoc/((pLoc/p0)^kappa*Rd*ThLoc);
   elseif str == "inertiagravitywave"
       z=x[3];
       NBr=Param.NBr;

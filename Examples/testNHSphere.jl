@@ -7,8 +7,6 @@ parsed_args = CGDycore.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
-ProfpBGrd = parsed_args["ProfpBGrd"]
-ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
 ProfVel = parsed_args["ProfVel"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
@@ -20,12 +18,16 @@ CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
 Equation = parsed_args["Equation"]
 RefProfile = parsed_args["RefProfile"]
+ProfpBGrd = parsed_args["ProfpBGrd"]
+ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
 Microphysics = parsed_args["Microphysics"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 NumV = parsed_args["NumV"]
 NumTr = parsed_args["NumTr"]
+Curl = parsed_args["Curl"]
+Thermo = parsed_args["Thermo"]
 # Parallel
 Decomp = parsed_args["Decomp"]
 # Time integration
@@ -96,6 +98,7 @@ Model = CGDycore.Model()
   else
     Model.ProfVel = ProfVel  
   end  
+  Model.RefProfile = RefProfile
   Model.ProfpBGrd = ProfpBGrd
   Model.ProfRhoBGrd = ProfRhoBGrd
   Model.RhoPos = 1
@@ -111,13 +114,13 @@ Model = CGDycore.Model()
   Model.Coriolis = Coriolis
   Model.CoriolisType = CoriolisType
   Model.Buoyancy = Buoyancy
-  Model.RefProfile = RefProfile
   Model.VerticalDiffusion = VerticalDiffusion
   Model.Source = Source
   Model.Microphysics = Microphysics
   Model.Source = Source
   Model.SurfaceFlux = SurfaceFlux
-  Model.Thermo = "" #"InternalEnergy" #"" #"TotalEnergy"
+  Model.Thermo = Thermo
+  Model.Curl = Curl
 
 
 

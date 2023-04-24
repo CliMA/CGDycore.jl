@@ -37,6 +37,18 @@ function fpBGrd(x,time,Global,Param)
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
     Z=max(R-Phys.RadEarth,0);
     p = Phys.p0 * exp(-Phys.Grav * Z / (Phys.Rd * Param.TEq))
+  elseif str == "gravityhill" || str == "schaercart" || str == "agnesicart"
+    z=x[3];
+    NBr=Param.NBr;
+    Grav=Phys.Grav;
+    p0=Phys.p0;
+    Cpd=Phys.Cpd;
+    Rd=Phys.Rd;
+    kappa=Phys.kappa;
+    Th0=Param.Th0;
+    S=NBr*NBr/Grav;
+    ThLoc=Th0*exp(z*S);
+    p =p0*(1.0-Grav/(Cpd*Th0*S)*(1.0-exp(-S*z)))^(Cpd/Rd);
   else
     p=0;
   end

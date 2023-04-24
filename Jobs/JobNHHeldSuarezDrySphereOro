@@ -8,11 +8,12 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Source=true \
   --Coriolis=true \
   --Upwind=true \
+  --Curl=false \
   --HorLimit=false \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --PrintSeconds=7200 \
-  --dtau=50 \
+  --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \

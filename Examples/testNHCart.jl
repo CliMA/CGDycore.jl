@@ -8,6 +8,8 @@ Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 ProfVel = parsed_args["ProfVel"]
+ProfpBGrd = parsed_args["ProfpBGrd"]
+ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -19,6 +21,8 @@ BoundaryWE = parsed_args["BoundaryWE"]
 BoundarySN = parsed_args["BoundarySN"]
 BoundaryBT = parsed_args["BoundaryBT"]
 Thermo = parsed_args["Thermo"]
+RefProfile = parsed_args["RefProfile"]
+Curl = parsed_args["Curl"]
 #Orography
 TopoS = parsed_args["TopoS"]
 P1 = parsed_args["P1"]
@@ -31,6 +35,7 @@ SimDays = parsed_args["SimDays"]
 SimHours = parsed_args["SimHours"]
 SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
+SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
@@ -62,6 +67,7 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
+PrintTime = parsed_args["PrintTime"]
 
 Param = CGDycore.Parameters(Problem)
 
@@ -103,8 +109,9 @@ Model = CGDycore.Model()
   else
     Model.ProfVel = ProfVel  
   end  
-  Model.ProfpBGrd="Isothermal"
-  Model.ProfRhoBGrd="Isothermal"
+  Model.ProfpBGrd = ProfpBGrd
+  Model.ProfRhoBGrd = ProfRhoBGrd
+  Model.RefProfile = RefProfile
   Model.RhoPos=1
   Model.uPos=2
   Model.vPos=3
@@ -123,6 +130,7 @@ Model = CGDycore.Model()
   Model.Source = Source
   Model.SurfaceFlux = SurfaceFlux
   Model.Thermo = Thermo
+  Model.Curl = Curl
 
 
 
@@ -226,14 +234,11 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 ]
   Output.PrintDays = PrintDays
   Output.PrintSeconds = PrintSeconds
+  Output.PrintTime = PrintTime
   Output.PrintStartDays = 0
   Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
 
-  Global.ThetaBGrd = zeros(nz,CG.NumG)
-  Global.TBGrd = zeros(nz,CG.NumG)
-  Global.pBGrd = zeros(nz,CG.NumG)
-  Global.RhoBGrd = zeros(nz,CG.NumG)
 
   # TimeStepper
   time=[0.0]
@@ -244,4 +249,5 @@ Model.HyperDDiv = HyperDDiv # =7.e15
   TimeStepper.SimHours = SimHours
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
+  TimeStepper.SimTime = SimTime
   CGDycore.TimeStepper!(U,CGDycore.TransCartX,CG,Global,Param)

@@ -65,7 +65,7 @@ function fThetaBGrd(x,time,Global,Param)
       ThLoc=ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2;
     end
     Th=ThLoc;
-  elseif str == "gravityhill"
+  elseif str == "gravityhill" || str == "schaercart" || str == "agnesicart"
     z=x[3];
     NBr=Param.NBr;
     Grav=Param.Grav;

@@ -18,6 +18,8 @@ function InitialConditions(CG,Global,Param)
   end
   Global.pBGrd = Project(fpBGrd,0.0,CG,Global,Param)
   Global.RhoBGrd = Project(fRhoBGrd,0.0,CG,Global,Param)
+  Global.ThetaBGrd = zeros(nz,CG.NumG)
+  Global.TBGrd = zeros(nz,CG.NumG)
   return U
 end  
 

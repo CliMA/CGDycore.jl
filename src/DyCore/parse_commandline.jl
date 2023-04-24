@@ -142,6 +142,11 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--Curl"
+    help = "Form of momentum transport, vector invariant or advective"
+    arg_type = Bool
+    default = true
+
 
 #   Domain decomposition
     "--Decomp"

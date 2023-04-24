@@ -623,6 +623,7 @@ mutable struct ModelStruct
   VerticalDiffusion::Bool
   SurfaceFlux::Bool
   Deep::Bool
+  Curl::Bool
 end
 function ParallelCom()
   Proc = 1
@@ -674,6 +675,7 @@ function Model()
   VerticalDiffusion=false
   SurfaceFlux=false
   Deep=false
+  Curl=true
   return ModelStruct(
    Problem,
    ProfRho,
@@ -715,7 +717,7 @@ function Model()
    VerticalDiffusion,
    SurfaceFlux,
    Deep,
-
+   Curl,
    )
 end  
 
