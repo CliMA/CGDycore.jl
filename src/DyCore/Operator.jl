@@ -489,8 +489,8 @@ function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCach
     @inbounds for i = 1 : OrdPoly + 1
       @inbounds for j = 1 : OrdPoly + 1
         wC = (dXdxI[i,j,1,Nz,3,1] * uC[i,j,Nz] +
-          dXdxI[i,j,1,Nz,3,2] * vC[i,j,Nz] + dXdxI[i,j,1,Nz,3,3] * w[i,j,Nz]) +
-        tempZ[i,j,1,Nz] = -0.5 * RhoC[i,j,Nz] * ((wC + abs(wC)) * TrRe[i,j,2,Nz-1] 
+          dXdxI[i,j,1,Nz,3,2] * vC[i,j,Nz] + dXdxI[i,j,1,Nz,3,3] * w[i,j,Nz]) 
+        tempZ[i,j,1,Nz] = -0.5 * RhoC[i,j,Nz] * ((wC + abs(wC)) * TrRe[i,j,2,Nz-1] +
           (wC - abs(wC)) * TrRe[i,j,1,Nz])
         tempZ[i,j,2,Nz] = 0.0
       end

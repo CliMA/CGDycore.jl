@@ -134,7 +134,6 @@ function Fcn!(F,U,CG,Global,Param)
           v1CG[iP,jP,iz] = U[iz,ind,uPos]
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
-          end  
         end
       end
     end

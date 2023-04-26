@@ -156,9 +156,20 @@ if Parallel
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
 
   if stretch
-    sigma = 1.0
-    lambda = 3.16
+#   sigma = 1.0
+#   lambda = 3.16
+#   CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+#   for i in eachindex(SubGrid.dzeta)
+#     @show i,SubGrid.dzeta[i]  
+#   end  
+    sigma = 1.2
+    lambda = 2.96
     CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+    if Proc == 1
+      for i in eachindex(SubGrid.dzeta)
+        @show i,SubGrid.dzeta[i]  
+      end  
+    end  
   else
     CGDycore.AddVerticalGrid!(SubGrid,nz,H)
   end

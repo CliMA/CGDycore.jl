@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphereOro" \
   --NumV=5 \
   --NumTr=0 \
@@ -19,7 +19,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --PrintSeconds=14400 \
-  --dtau=100.0 \
+  --dtau=300.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \
