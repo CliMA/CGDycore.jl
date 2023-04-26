@@ -77,6 +77,7 @@ Base.@kwdef struct ParamHeldSuarezDrySphere
   DeltaLat::Float64 = 26.0 * pi / 180.0
   uMax::Float64 = 0.0
   vMax::Float64 = 0.0
+  CMom::Float64 = 1.e-3
 end
 
 Base.@kwdef struct ParamHillSchaerCart
