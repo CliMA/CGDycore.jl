@@ -72,6 +72,15 @@ function Fcn!(F,U,CG,Global,Param)
           v1CG[iP,jP,iz] = U[iz,ind,uPos]
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
+          if abs(v2CG[iP,jP,iz]) > 50.0
+            x1 = Global.Grid.Faces[iF].Mid.x  
+            x2 = Global.Grid.Faces[iF].Mid.y  
+            x3 = Global.Grid.Faces[iF].Mid.z  
+            Lon,Lat,R = cart2sphere(x1,x2,x3)  
+            @show "B",iF,iP,jP,iz
+            @show Lon,Lat
+            stop
+          end  
         end
       end
     end
@@ -134,6 +143,14 @@ function Fcn!(F,U,CG,Global,Param)
           v1CG[iP,jP,iz] = U[iz,ind,uPos]
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
+          if abs(v2CG[iP,jP,iz]) > 50.0
+            x1 = Global.Grid.Faces[iF].Mid.x
+            x2 = Global.Grid.Faces[iF].Mid.y
+            x3 = Global.Grid.Faces[iF].Mid.z
+            Lon,Lat,R = cart2sphere(x1,x2,x3)
+            @show "B",iF,iP,jP,iz
+            @show Lon,Lat
+            stop
           end  
         end
       end

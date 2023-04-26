@@ -24,6 +24,7 @@ Microphysics = parsed_args["Microphysics"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
+SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 NumV = parsed_args["NumV"]
 NumTr = parsed_args["NumTr"]
 Curl = parsed_args["Curl"]
@@ -119,6 +120,7 @@ Model = CGDycore.Model()
   Model.Microphysics = Microphysics
   Model.Source = Source
   Model.SurfaceFlux = SurfaceFlux
+  Model.SurfaceFluxMom = SurfaceFluxMom
   Model.Thermo = Thermo
   Model.Curl = Curl
 

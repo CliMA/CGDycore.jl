@@ -9,6 +9,8 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --ProfRhoBGrd="AgnesiCart" \
   --RefProfile=false \
   --Curl=false \
+  --SurfaceFluxMom=true \
+  --VerticalDiffusionMom=true \
   --Damping=true \
   --StrideDamp=10000 \
   --Relax=1.0e-2 \

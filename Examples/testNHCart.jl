@@ -45,7 +45,9 @@ CoriolisType = parsed_args["CoriolisType"]
 Microphysics = parsed_args["Microphysics"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
+VerticalDiffusionMom = parsed_args["VerticalDiffusionMom"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
+SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 # Grid
 nx = parsed_args["nx"]
 ny = parsed_args["ny"]
@@ -125,10 +127,12 @@ Model = CGDycore.Model()
   Model.Coriolis = Coriolis
   Model.CoriolisType = CoriolisType
   Model.VerticalDiffusion = VerticalDiffusion
+  Model.VerticalDiffusionMom = VerticalDiffusionMom
   Model.Source = Source
   Model.Microphysics = Microphysics
   Model.Source = Source
   Model.SurfaceFlux = SurfaceFlux
+  Model.SurfaceFluxMom = SurfaceFluxMom
   Model.Thermo = Thermo
   Model.Curl = Curl
 

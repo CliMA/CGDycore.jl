@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphereOro" \
   --NumV=5 \
   --NumTr=0 \
@@ -10,21 +10,24 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfRhoBGrd="IsoThermal" \
   --RefProfile=false \
   --Coriolis=true \
+  --SurfaceFluxMom=false \
+  --VerticalDiffusionMom=false \
+  --Curl=false\
   --StrideDamp=15000 \
   --Relax=1.0e-2 \
-  --Upwind=false \
+  --Upwind=true \
   --Decomp="EqualArea" \
   --SimDays=10 \
-  --PrintSeconds=36000 \
-  --dtau=100 \
+  --PrintSeconds=14400 \
+  --dtau=100.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \
-  --stretch=false \
+  --stretch=true \
   --GridType="CubedSphere" \
   --nz=45 \
   --nPanel=16 \
-  --H=45000.0 \
+  --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=1.e16 \

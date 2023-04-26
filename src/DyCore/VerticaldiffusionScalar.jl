@@ -20,9 +20,48 @@ qCG = Global.Cache.CacheC3
   @views @. Fc[:,:,nz] -= 0.5 * gradqCG[:,:,nz] * dXdxIF33[:,:,nz]
 end
 
+function VerticalDiffusionMomentum!(FuC,FvC,uC,vC,Rho,K,dXdxI33,J,Cache)
+
+  nz = size(uC,3)
+  graduC = Cache.CacheC1
+  gradvC = Cache.CacheC2
+  @. K = 200.0  # noch zu berechnen
+# Gradient computation
+  @inbounds for iz = 1:nz-1
+    @views @. graduC[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (uC[:,:,iz+1] - uC[:,:,iz]) * 
+      (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / (J[:,:,2,iz] + J[:,:,1,iz+1])
+    @views @. gradvC[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (vC[:,:,iz+1] - vC[:,:,iz]) * 
+      (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / (J[:,:,2,iz] + J[:,:,1,iz+1])
+  end
+# Divergence
+  @views @. FuC[:,:,1] += Rho[:,:,1] * graduC[:,:,2] * dXdxI33[:,:,2,1]
+  @views @. FvC[:,:,1] += Rho[:,:,1] * gradvC[:,:,2] * dXdxI33[:,:,2,1]
+  @inbounds for iz = 2:nz-1
+    @views @. FuC[:,:,iz] += Rho[:,:,iz] * (graduC[:,:,iz+1] * dXdxI33[:,:,2,iz]  - graduC[:,:,iz] * dXdxI33[:,:,1,iz])
+    @views @. FvC[:,:,iz] += Rho[:,:,iz] * (gradvC[:,:,iz+1] * dXdxI33[:,:,2,iz]  - gradvC[:,:,iz] * dXdxI33[:,:,1,iz])
+  end
+  @views @. FuC[:,:,nz] -= Rho[:,:,nz] * graduC[:,:,nz] * dXdxI33[:,:,1,nz]
+  @views @. FvC[:,:,nz] -= Rho[:,:,nz] * gradvC[:,:,nz] * dXdxI33[:,:,1,nz]
+end
+
 function BoundaryFluxScalar!(Fc,c,cS,CG,Global,Param,iF)
   @views @. Fc -= Param.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
     Global.Metric.dXdxIF[:,:,1,3,3,iF]
+end
+
+function BoundaryFluxMomentum!(FuC,FvC,uC,vC,w,Global,Param,iF)
+ 
+  @views nS = Global.Metric.nS[:,:,:,iF]
+  @views FS = Global.Metric.FS[:,:,iF]
+  OP = size(uC,1)
+  @inbounds for j = 1 : OP
+    @inbounds for i = 1 : OP
+      nSTV = uC[i,j] * nS[i,j,1] + vC[i,j] * nS[i,j,2] + w[i,j] * nS[i,j,3]
+      uStar = sqrt(uC[i,j] * uC[i,j] + vC[i,j] * vC[i,j] + w[i,j] * w[i,j] - nSTV * nSTV) 
+      FuC[i,j] -= Param.CMom * uStar * FS[i,j] * (uC[i,j] - nSTV * nS[i,j,1])
+      FvC[i,j] -= Param.CMom * uStar * FS[i,j] * (vC[i,j] - nSTV * nS[i,j,2])
+    end  
+  end
 end
 
 function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)

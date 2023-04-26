@@ -117,8 +117,18 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--VerticalDiffusionMom"
+    help = "Vertical diffusion for momentum"
+    arg_type = Bool
+    default = false
+
     "--SurfaceFlux"
-    help = "Surface flux"
+    help = "Surface flux for scalars"
+    arg_type = Bool
+    default = false
+
+    "--SurfaceFluxMom"
+    help = "Surface flux for momentum"
     arg_type = Bool
     default = false
 

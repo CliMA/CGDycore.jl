@@ -473,6 +473,7 @@ mutable struct MetricStruct
   dXdxI::Array{Float64, 7}
   dXdxIC::Array{Float64, 6}
   nS::Array{Float64, 4}
+  FS::Array{Float64, 3}
   dz::Array{Float64, 2}
   zP::Array{Float64, 2}
 end
@@ -486,6 +487,7 @@ function MetricStruct()
     dXdxI  = zeros(0,0,0,0,0,0,0)
     dXdxIC = zeros(0,0,0,0,0,0)
     nS = zeros(0,0,0,0)
+    FS = zeros(0,0,0)
     dz = zeros(0,0)
     zP = zeros(0,0)
     return MetricStruct(
@@ -498,6 +500,7 @@ function MetricStruct()
         dXdxI,
         dXdxIC,
         nS,
+        FS,
         dz,
         zP,
     )
@@ -512,6 +515,7 @@ function Metric(OP,OPZ,NF,nz)
     dXdxI  = zeros(OP,OP,OPZ,nz,3,3,NF)
     dXdxIC = zeros(OP,OP,nz,3,3,NF)
     nS = zeros(OP,OP,3,NF)
+    FS = zeros(OP,OP,NF)
     dz = zeros(0,0)
     zP = zeros(0,0)
     return MetricStruct(
@@ -524,6 +528,7 @@ function Metric(OP,OPZ,NF,nz)
         dXdxI,
         dXdxIC,
         nS, 
+        FS, 
         dz,
         zP,
     )
@@ -621,7 +626,9 @@ mutable struct ModelStruct
   RelCloud::Float64
   Rain::Float64
   VerticalDiffusion::Bool
+  VerticalDiffusionMom::Bool
   SurfaceFlux::Bool
+  SurfaceFluxMom::Bool
   Deep::Bool
   Curl::Bool
 end
@@ -673,7 +680,9 @@ function Model()
   RelCloud=0.0
   Rain=1.0
   VerticalDiffusion=false
+  VerticalDiffusionMom=false
   SurfaceFlux=false
+  SurfaceFluxMom=false
   Deep=false
   Curl=true
   return ModelStruct(
@@ -715,7 +724,9 @@ function Model()
    RelCloud,
    Rain,
    VerticalDiffusion,
+   VerticalDiffusionMom,
    SurfaceFlux,
+   SurfaceFluxMom,
    Deep,
    Curl,
    )

@@ -128,6 +128,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   dXdxI = Global.Metric.dXdxI
   dXdxIC = Global.Metric.dXdxIC
   nS = Global.Metric.nS
+  FS = Global.Metric.FS
   Global.Metric.dz = zeros(nz,CG.NumG)
   Global.Metric.zP = zeros(nz,CG.NumG)
   dz = Global.Metric.dz
@@ -152,12 +153,11 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
       lat[:,:,iF]=lat_Fz;
     end
 #   Surface normal
-    @views @. nS[:,:,1,iF] = dXdxI[:,:,1,1,3,1,iF] / sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
+    @views @. FS[:,:,iF] = sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
       dXdxI[:,:,1,1,3,2,iF] * dXdxI[:,:,1,1,3,2,iF] + dXdxI[:,:,1,1,3,3,iF] * dXdxI[:,:,1,1,3,3,iF])
-    @views @. nS[:,:,2,iF] = dXdxI[:,:,1,1,3,2,iF] / sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
-      dXdxI[:,:,1,1,3,2,iF] * dXdxI[:,:,1,1,3,2,iF] + dXdxI[:,:,1,1,3,3,iF] * dXdxI[:,:,1,1,3,3,iF])
-    @views @. nS[:,:,3,iF] = dXdxI[:,:,1,1,3,3,iF] / sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
-      dXdxI[:,:,1,1,3,2,iF] * dXdxI[:,:,1,1,3,2,iF] + dXdxI[:,:,1,1,3,3,iF] * dXdxI[:,:,1,1,3,3,iF])
+    @views @. nS[:,:,1,iF] = dXdxI[:,:,1,1,3,1,iF] / FS[:,:,iF]
+    @views @. nS[:,:,2,iF] = dXdxI[:,:,1,1,3,2,iF] / FS[:,:,iF]
+    @views @. nS[:,:,3,iF] = dXdxI[:,:,1,1,3,3,iF] / FS[:,:,iF]
   end
   @views @. JC=0.5*(J[:,:,2,:,:] + J[:,:,1,:,:])
   @views @. JF[:,:,1,:] = J[:,:,1,1,:]
