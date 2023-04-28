@@ -23,11 +23,13 @@ BoundaryBT = parsed_args["BoundaryBT"]
 Thermo = parsed_args["Thermo"]
 RefProfile = parsed_args["RefProfile"]
 Curl = parsed_args["Curl"]
+ModelType = parsed_args["ModelType"]
 #Orography
 TopoS = parsed_args["TopoS"]
 P1 = parsed_args["P1"]
 P2 = parsed_args["P2"]
 P3 = parsed_args["P3"]
+P4 = parsed_args["P4"]
 
 # Parallel
 Decomp = parsed_args["Decomp"]
@@ -135,6 +137,7 @@ Model = CGDycore.Model()
   Model.SurfaceFluxMom = SurfaceFluxMom
   Model.Thermo = Thermo
   Model.Curl = Curl
+  Model.ModelType = ModelType
 
 
 
@@ -151,6 +154,7 @@ Topography=(TopoS=TopoS,
             P1=P1,
             P2=P2,
             P3=P3,
+            P4=P4,
             )
 
 Grid=CGDycore.Grid(nz,Topography)
@@ -254,4 +258,8 @@ Model.HyperDDiv = HyperDDiv # =7.e15
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
   TimeStepper.SimTime = SimTime
-  CGDycore.TimeStepper!(U,CGDycore.TransCartX,CG,Global,Param)
+  if ModelType == "VectorInvariant" || ModelType == "Advective"
+    CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransCartX,CG,Global,Param)
+  elseif ModelType == "Conservative"  
+    CGDycore.TimeStepper!(U,CGDycore.FcnCons!,CGDycore.TransCartX,CG,Global,Param)
+  end  

@@ -17,8 +17,8 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=-1.0;
   y=0.0;
   z=0.0;
-  for k=1:n-1
-    for j=1:n-1
+  @inbounds for k=1:n-1
+    @inbounds for j=1:n-1
       Nodes[NodeNumber]=Node(CubePoint(-1,j,k,n,x,y,z,Grid.Rad),NodeNumber);
       NodeNumber=NodeNumber+1;
     end
@@ -28,8 +28,8 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=1.0;
   y=0.0;
   z=0.0;
-  for k=1:n-1
-    for j=1:n-1
+  @inbounds for k=1:n-1
+    @inbounds for j=1:n-1
       Nodes[NodeNumber]=Node(CubePoint(-1,j,k,n,x,y,z,Grid.Rad),NodeNumber);
       NodeNumber=NodeNumber+1;
     end
@@ -39,8 +39,8 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=-1.0;
   z=0.0;
-  for k=1:n-1
-    for i=1:n-1
+  @inbounds for k=1:n-1
+    @inbounds for i=1:n-1
       Nodes[NodeNumber]=Node(CubePoint(i,-1,k,n,x,y,z,Grid.Rad),NodeNumber);
       NodeNumber=NodeNumber+1;
     end
@@ -50,8 +50,8 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=1.0;
   z=0.0;
-  for k=1:n-1
-    for i=1:n-1
+  @inbounds for k=1:n-1
+    @inbounds for i=1:n-1
       Nodes[NodeNumber]=Node(CubePoint(i,-1,k,n,x,y,z,Grid.Rad),NodeNumber);
       NodeNumber=NodeNumber+1;
     end
@@ -61,8 +61,8 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=0.0;
   z=-1.0;
-  for j=1:n-1
-    for i=1:n-1
+  @inbounds for j=1:n-1
+    @inbounds for i=1:n-1
       Nodes[NodeNumber]=Node(CubePoint(i,j,-1,n,x,y,z,Grid.Rad),NodeNumber);
       NodeNumber=NodeNumber+1;
     end
@@ -72,8 +72,8 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=0.0;
   z=1.0;
-  for j=1:n-1
-    for i=1:n-1
+  @inbounds for j=1:n-1
+    @inbounds for i=1:n-1
       Nodes[NodeNumber]=Node(CubePoint(i,j,-1,n,x,y,z,Grid.Rad),NodeNumber);
       NodeNumber=NodeNumber+1;
     end
@@ -84,7 +84,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=-1.0;
   z=-1.0;
-  for i=1:n-1
+  @inbounds for i=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -92,7 +92,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=1.0;
   z=-1.0;
-  for i=1:n-1
+  @inbounds for i=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -100,7 +100,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=-1.0;
   z=1.0;
-  for i=1:n-1
+  @inbounds for i=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -108,7 +108,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=0.0;
   y=1.0;
   z=1.0;
-  for i=1:n-1
+  @inbounds for i=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -117,7 +117,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=-1.0;
   y=0.0;
   z=-1.0;
-  for j=1:n-1
+  @inbounds for j=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -125,7 +125,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=1.0;
   y=0.0;
   z=-1.0;
-  for j=1:n-1
+  @inbounds for j=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -133,7 +133,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=-1.0;
   y=0.0;
   z=1.0;
-  for j=1:n-1
+  @inbounds for j=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -141,7 +141,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
   x=1.0;
   y=0.0;
   z=1.0;
-  for j=1:n-1
+  @inbounds for j=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -150,7 +150,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
    x=-1.0;
   y=-1.0;
   z=0.0;
-  for k=1:n-1
+  @inbounds for k=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -159,7 +159,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
     x=1.0;
   y=-1.0;
   z=0.0;
-  for k=1:n-1
+  @inbounds for k=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -168,7 +168,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
     x=-1.0;
   y=1.0;
   z=0.0;
-  for k=1:n-1
+  @inbounds for k=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -177,7 +177,7 @@ function CubedGrid(n,OrientFace,Rad,Grid)
    x=1.0;
   y=1.0;
   z=0.0;
-  for k=1:n-1
+  @inbounds for k=1:n-1
     Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Grid.Rad),NodeNumber);
     NodeNumber=NodeNumber+1;
   end
@@ -337,10 +337,10 @@ function CubedGrid(n,OrientFace,Rad,Grid)
 
   #Boundary/Interior faces
   BoundaryFaces = zeros(Int,0)
-  for iE = 1 : Grid.NumEdges
+  @inbounds for iE = 1 : Grid.NumEdges
     if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-      for iN in Grid.Edges[iE].N
-        for iF in Grid.Nodes[iN].F
+      @inbounds for iN in Grid.Edges[iE].N
+        @inbounds for iF in Grid.Nodes[iN].F
           push!(BoundaryFaces,iF)
         end
       end
@@ -376,8 +376,8 @@ function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
   NodeNumberE1=NodeNumberE1Start1;
   NodeNumberE2=NodeNumberE2Start1;
   EdgeNumberStart1=EdgeNumber;
-  for j=1:n-1
-    for i=1:n
+  @inbounds for j=1:n-1
+    @inbounds for i=1:n
       N1=NodeNumber-1;
       N2=NodeNumber;
       if i==1
@@ -398,8 +398,8 @@ function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
   NodeNumberE1=NodeNumberE1Start2;
   NodeNumberE2=NodeNumberE2Start2;
   EdgeNumberStart2=EdgeNumber;
-  for j=1:n
-    for i=1:n-1
+  @inbounds for j=1:n
+    @inbounds for i=1:n-1
       N1=NodeNumber-(n-1);
       N2=NodeNumber;
       if j==1
@@ -423,7 +423,7 @@ function InsertEdgeEdge(n,EdgeNumber,
      Edges,Grid)
   NodeNumber=NodeNumberStart;
   EdgeNumberStart=EdgeNumber;
-  for i=1:n
+  @inbounds for i=1:n
     N1=NodeNumber-1;
     N2=NodeNumber;
     if i==1
@@ -451,8 +451,8 @@ function InsertFaceFace(n,FaceNumber,Type,EdgeNumberStart1,EdgeNumberStart2,
   EdgeNumberEW2=EdgeNumberStartEW2;
   EdgeNumberSN1=EdgeNumberStartSN1;
   EdgeNumberSN2=EdgeNumberStartSN2;
-  for j=1:n
-    for i=1:n
+  @inbounds for j=1:n
+    @inbounds for i=1:n
       if (i==1 && j==1) || (i==1 && j==n)||
           (i==n && j==1) || (i==n && j==n)
 

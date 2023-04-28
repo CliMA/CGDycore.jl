@@ -10,21 +10,21 @@ dXdxI=zeros(n,n,n3,3,3);
 J=zeros(n,n,n3);
 hR=zeros(n,n,n3);
 theta=zeros(n,n);
-for j=1:n
-  for i=1:n
-    for k=1:n3
+@inbounds for j=1:n
+  @inbounds for i=1:n
+    @inbounds for k=1:n3
       (X[i,j,k,:],dXdx[i,j,k,:,:],theta[i,j],hR[i,j,k]) =
         JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Topography.Rad,Topography,zs[i,j]);
     end
   end
 end
-for k=1:n3
+@inbounds for k=1:n3
   dXdx[:,:,k,3,1]=DG.DS*hR[:,:,k];
   dXdx[:,:,k,3,2]=reshape(hR[:,:,k],n,n)*DG.DST;
 end
-for j=1:n
-  for i=1:n
-    for k=1:n3
+@inbounds for j=1:n
+  @inbounds for i=1:n
+    @inbounds for k=1:n3
       J[i,j,k]=det(reshape(dXdx[i,j,k,:,:],3,3));
       dXdxI[i,j,k,:,:]=inv(reshape(dXdx[i,j,k,:,:],3,3))*J[i,j,k];
     end

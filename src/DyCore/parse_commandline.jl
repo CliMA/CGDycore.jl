@@ -157,6 +157,11 @@ function parse_commandline()
     arg_type = Bool
     default = true
 
+    "--ModelType"
+    help = "Form of momentum transport, vector invariant or advective or conservative"
+    arg_type = String
+    default = "VectorInvariant"
+
 
 #   Domain decomposition
     "--Decomp"
@@ -309,6 +314,11 @@ function parse_commandline()
 
     "--P3"
     help = "P3"
+    arg_type = Float64
+    default = 0.0
+
+    "--P4"
+    help = "P4"
     arg_type = Float64
     default = 0.0
 

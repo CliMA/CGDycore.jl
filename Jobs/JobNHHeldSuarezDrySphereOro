@@ -9,8 +9,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Coriolis=true \
   --Upwind=true \
   --Curl=false \
-  --SurfaceFluxMom=false \
-  --VerticalDiffusionMom=false \
+  --SurfaceFluxMom=true \
+  --VerticalDiffusionMom=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
   --SimDays=10 \

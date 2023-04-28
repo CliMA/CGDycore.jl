@@ -16,6 +16,10 @@ function InitialConditions(CG,Global,Param)
   if NumTr>0
     U[:,:,Model.RhoVPos+Model.NumV]=Project(fQv,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
   end
+  if Global.Model.ModelType == "Conservative"
+    @views @. U[:,:,Model.uPos] *= U[:,:,Model.RhoPos]  
+    @views @. U[:,:,Model.vPos] *= U[:,:,Model.RhoPos]  
+  end  
   Global.pBGrd = Project(fpBGrd,0.0,CG,Global,Param)
   Global.RhoBGrd = Project(fRhoBGrd,0.0,CG,Global,Param)
   Global.ThetaBGrd = zeros(nz,CG.NumG)

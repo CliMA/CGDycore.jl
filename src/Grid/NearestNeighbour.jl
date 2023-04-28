@@ -27,7 +27,7 @@ function walk_to_nc(target_cc,start_Face,xw,Trans,Rad,Grid)
 
   Face_cc =  Grid.Faces[start_Face].Mid
   searching = true
-  # calculate a measure for the distance to target point
+  # calculate a measure @inbounds for the distance to target point
   sp = dot(target_cc, Face_cc)
   sp_max = sp
   next_Face_id = start_Face
@@ -35,11 +35,11 @@ function walk_to_nc(target_cc,start_Face,xw,Trans,Rad,Grid)
   while searching
     searching = false # abort condition
     Face = Grid.Faces[start_Face]
-    for i = 1 : length(Face.Stencil)
+    @inbounds for i = 1 : length(Face.Stencil)
       Face_id = Face.Stencil[i]  
-      if Face_id != start_Face                                   # 0 is the "undefined" value for the face id
+      if Face_id != start_Face                                   # 0 is the "undefined" value @inbounds for the face id
         neighbour_cc = Grid.Faces[Face_id].Mid       # get cartesian coordinates of neighbour face
-        sp = dot(target_cc, neighbour_cc)         # calculate measure for distance to target point
+        sp = dot(target_cc, neighbour_cc)         # calculate measure @inbounds for distance to target point
         if sp > sp_max
           sp_max = sp                                # save new distance measure
           next_Face_id = Face_id                     # save face id
@@ -51,7 +51,7 @@ function walk_to_nc(target_cc,start_Face,xw,Trans,Rad,Grid)
   end
   Inside = InsideFace(target_cc,Grid.Faces[start_Face],Grid)
   if Inside == false
-    for i = 1 : length(Grid.Faces[start_Face].Stencil)
+    @inbounds for i = 1 : length(Grid.Faces[start_Face].Stencil)
       iF = Grid.Faces[start_Face].Stencil[i]  
       Inside = InsideFace(target_cc,Grid.Faces[iF],Grid)
       if Inside == true
@@ -70,8 +70,8 @@ function walk_to_face(target_cc,Face,Trans,xw,Rad)
   jPos = 1
   P = Point(Trans(xw[1],xw[1],Face,Rad))
   sp_max = dot(target_cc, P)
-  for j = 1 : length(xw)
-    for i = 1 : length(xw)
+  @inbounds for j = 1 : length(xw)
+    @inbounds for i = 1 : length(xw)
       P = Point(Trans(xw[i],xw[j],Face,Rad))
       sp = dot(target_cc, P)
       if sp > sp_max

@@ -28,6 +28,7 @@ SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 NumV = parsed_args["NumV"]
 NumTr = parsed_args["NumTr"]
 Curl = parsed_args["Curl"]
+ModelType = parsed_args["ModelType"]
 Thermo = parsed_args["Thermo"]
 # Parallel
 Decomp = parsed_args["Decomp"]
@@ -123,6 +124,7 @@ Model = CGDycore.Model()
   Model.SurfaceFluxMom = SurfaceFluxMom
   Model.Thermo = Thermo
   Model.Curl = Curl
+  Model.ModelType = ModelType
 
 
 
@@ -156,14 +158,8 @@ if Parallel
   SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
 
   if stretch
-#   sigma = 1.0
-#   lambda = 3.16
-#   CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
-#   for i in eachindex(SubGrid.dzeta)
-#     @show i,SubGrid.dzeta[i]  
-#   end  
-    sigma = 1.2
-    lambda = 2.96
+    sigma = 1.0
+    lambda = 3.16
     CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
     if Proc == 1
       for i in eachindex(SubGrid.dzeta)
@@ -208,6 +204,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
+
 if TopoS == "EarthOrography"
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
 else
@@ -215,9 +212,9 @@ else
 end
 
 Model.HyperVisc = HyperVisc
-Model.HyperDCurl = HyperDCurl # =7.e15
-Model.HyperDGrad = HyperDGrad # =7.e15
-Model.HyperDDiv = HyperDDiv # =7.e15
+Model.HyperDCurl = HyperDCurl
+Model.HyperDGrad = HyperDGrad
+Model.HyperDDiv = HyperDDiv
 
 
   U = CGDycore.InitialConditions(CG,Global,Param)
@@ -248,7 +245,7 @@ Model.HyperDDiv = HyperDDiv # =7.e15
   Output.PrintDays = PrintDays
   Output.PrintSeconds = PrintSeconds
   Output.PrintStartDays = 0
-  Output.OrdPrint=CG.OrdPoly
+  Output.OrdPrint = CG.OrdPoly
 
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
@@ -260,4 +257,8 @@ Model.HyperDDiv = HyperDDiv # =7.e15
   TimeStepper.SimDays = SimDays
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
-  CGDycore.TimeStepper!(U,CGDycore.TransSphereX,CG,Global,Param)
+  if ModelType == "VectorInvariant" || ModelType == "Advection"
+    CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Global,Param)
+  elseif ModelType == "Conservative"
+    CGDycore.TimeStepper!(U,CGDycore.FcnCons!,CGDycore.TransSphereX,CG,Global,Param)
+  end  

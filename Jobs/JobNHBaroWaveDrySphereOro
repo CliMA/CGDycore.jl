@@ -16,6 +16,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --StrideDamp=15000 \
   --Relax=1.0e-2 \
   --Upwind=true \
+  --HorLimit=false \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --PrintSeconds=14400 \

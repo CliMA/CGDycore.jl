@@ -67,7 +67,7 @@ function TopoData()
   nlat1 = 51-0
   nlat2 = 51+0
   zlevels = zeros(Float64,nlon,nlat)
-  for ilat = nlat1 : nlat2
+  @inbounds for ilat = nlat1 : nlat2
     zlevels[nlon1:nlon2,ilat] .= 200.0 
   end  
   return (lon, lat, zlevels)
@@ -102,7 +102,7 @@ function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   @show ilatS,ilatE
   temp = max.(reshape(elevation, (nlon, nlat)), 0.0)
   zlevels = zeros(Float64,nlon,nlat)
-  for i = 1 : nlat
+  @inbounds for i = 1 : nlat
      @.  zlevels[:,i] = temp[:,nlat+1-i]
   end   
   return (lon[ilonLS:ilonLE], lon[ilonRS:ilonRE], lat[ilatS:ilatE], 
@@ -138,7 +138,7 @@ function TopoDataGLOBE()
   i = 1
   nlon_tot = 0
   nlat_tot = 0
-  for file in list
+  @inbounds for file in list
     ds = NCDataset("Topo/"*file)  
     nlon = ds.dim["lon"]
     nlat = ds.dim["lat"]
@@ -194,9 +194,9 @@ function TopoDataGLOBE()
   nlon = TilesRawGrid[13].nlon
   nlatA = 0 
   nlat = TilesRawGrid[13].nlat
-  for i = 1 : nlon
+  @inbounds for i = 1 : nlon
     ilon = i + nlonA  
-    for j = 1 : nlat  
+    @inbounds for j = 1 : nlat  
       jlat = j + nlatA  
       @show i,j,TilesRawGrid[13].altitude[i,j]
       Altitude[ilon,jlat] = Int(TilesRawGrid[13].altitude[i,j])
@@ -222,7 +222,7 @@ function Orography(CG,Global)
 # (w,xw) = GaussLobattoQuad(OrdPoly)
   xe = zeros(OrdPoly+1)
   xe[1] = -1.0
-  for i = 2 : OrdPoly
+  @inbounds for i = 2 : OrdPoly
     xe[i] = CG.xe[i-1] + 2.0/OrdPoly
   end
   xe[OrdPoly+1] = 1.0
@@ -237,8 +237,8 @@ function Orography(CG,Global)
 # ilonRE = min(ceil(Int,(MaxLonR+180.)/dLon),LenLon)
 # ilatS = max(floor(Int,(MinLat+90.)/dLat),1)
 # ilatE = min(ceil(Int,(MaxLat+90.)/dLat),LenLat)
-  for ilat = 1 : length(lat)
-    for ilon = 1 : length(lonL)
+  @inbounds for ilat = 1 : length(lat)
+    @inbounds for ilon = 1 : length(lonL)
       P = Point(sphereDeg2cart(lonL[ilon],lat[ilat],RadEarth))
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xe,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
@@ -249,7 +249,7 @@ function Orography(CG,Global)
         NumHeight[iG] += 1
       end  
     end
-    for ilon = 1 : length(lonR)
+    @inbounds for ilon = 1 : length(lonR)
       P = Point(sphereDeg2cart(lonR[ilon],lat[ilat],RadEarth))
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xe,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
@@ -278,7 +278,7 @@ function Orography(CG,Global)
   SmoothFac=1.e9
 # SmoothFac=1.e15
   FHeightCG = similar(HeightCG)
-  for i=1:30
+  @inbounds for i=1:30
     TopographySmoothing1!(FHeightCG,HeightCG,CG,Global,SmoothFac)
     @. HeightCG += FHeightCG
     @. HeightCG = max(HeightCG,0.0)
@@ -291,7 +291,7 @@ function BoundingBoxFace(Face,Grid)
   MaxLon = -180.0
   MinLat = 90.0
   MaxLat = -90.0
-  for iN in Face.N
+  @inbounds for iN in Face.N
     P = Grid.Nodes[iN].P
     (lon, lat) = cart2sphereDeg(P.x,P.y,P.z)
     MinLon = min(MinLon, lon)
@@ -309,7 +309,7 @@ function BoundingBox(Grid)
   MaxLonR = 0.0
   MinLat = 90.0
   MaxLat = -90.0
-  for i = 1 : Grid.NumFaces
+  @inbounds for i = 1 : Grid.NumFaces
     (MinLonF,MaxLonF,MinLatF,MaxLatF)= BoundingBoxFace(Grid.Faces[i],Grid) 
     if MinLonF >= 0.0
       MinLonR = min(MinLonR, MinLonF)
@@ -341,9 +341,9 @@ function SphereGrid(Height,Grid,xE)
   nZ = Grid.nZ
   ne = size(xE,1)
   XE = zeros(NumFaces,nZ+1,nx,nx,3)
-  for iF = 1 : NumFaces
+  @inbounds for iF = 1 : NumFaces
     Faces = Grid.Faces(iF)  
-    for i = 1 : ne
+    @inbounds for i = 1 : ne
       ksi = xe(i)  
       for j = 1 : ne
         eta = xe(j)  
@@ -367,18 +367,18 @@ function ChangeBasisHeight!(XOut,XIn,CG)
 
   Buf1 = zeros(nxOut,nyIn)
 
-  for jIn = 1 : nyIn
-    for iIn = 1 : nxIn
-      for iOut = 1 : nxOut
+  @inbounds for jIn = 1 : nyIn
+    @inbounds for iIn = 1 : nxIn
+      @inbounds for iOut = 1 : nxOut
         Buf1[iOut,jIn] = Buf1[iOut,jIn] +
           CG.IntXE2F[iOut,iIn] * XIn[iIn,jIn]
       end
     end
   end
   @. XOut = 0.0
-  for jIn = 1 : nyIn
-    for jOut = 1 : nyOut
-      for iOut = 1 : nxOut
+  @inbounds for jIn = 1 : nyIn
+    @inbounds for jOut = 1 : nyOut
+      @inbounds for iOut = 1 : nxOut
         XOut[iOut,jOut] = XOut[iOut,jOut] +
           CG.IntXE2F[jOut,jIn] * Buf1[iOut,jIn]
       end

@@ -12,7 +12,7 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --BoundaryBT="" \
   --SimSeconds=1000 \
   --PrintSeconds=100 \
-  --Curl=false \
+  --Curl=true \
   --dtau=.2 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
@@ -27,7 +27,7 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --nz=10 \
   --nx=20 \
   --ny=2 \
-  --OrdPoly=1 \
+  --OrdPoly=2 \
   --HyperVisc=true \
   --HyperDCurl=1.e7 \
   --HyperDGrad=1.e7 \

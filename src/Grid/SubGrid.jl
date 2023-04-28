@@ -8,12 +8,12 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   GhostFaceNumbers = zeros(Int,0)
   EdgeNumbers = zeros(Int,0)
   NodeNumbers = zeros(Int,0)
-  for iF = 1 : GlobalGrid.NumFaces
+  @inbounds for iF = 1 : GlobalGrid.NumFaces
     if Proc[iF] == ProcNumber
       NumFaces += 1
       DictF[iF] = NumFaces 
       push!(FaceNumbers,iF)
-      for i = 1 : 4
+      @inbounds for i = 1 : 4
         push!(EdgeNumbers,GlobalGrid.Faces[iF].E[i])
         push!(NodeNumbers,GlobalGrid.Faces[iF].N[i])
       end
@@ -26,7 +26,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   Nodes = map(1:NumNodes) do i
     Node()
   end
-  for i = 1:NumNodes
+  @inbounds for i = 1:NumNodes
     Nodes[i] = deepcopy(GlobalGrid.Nodes[NodeNumbers[i]])  
     GlobalGrid.Nodes[NodeNumbers[i]].N = i
     Nodes[i].NG = Nodes[i].N
@@ -36,13 +36,13 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Nodes[i].FP .= Proc[Nodes[i].F]
     Nodes[i].N = i
     Nodes[i].MasterSlave = 1
-    for j in eachindex(Nodes[i].FP)
+    @inbounds for j in eachindex(Nodes[i].FP)
       if ProcNumber > Nodes[i].FP[j]
         Nodes[i].MasterSlave = 0
         exit
       end
     end  
-    for j in eachindex(Nodes[i].FP)
+    @inbounds for j in eachindex(Nodes[i].FP)
       if ProcNumber != Nodes[i].FP[j]
         push!(GhostFaceNumbers,Nodes[i].FG[j])
       end  
@@ -52,7 +52,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   GhostFaceNumbers = unique(GhostFaceNumbers)
   i = 1
   NumGhostFaces = 0
-  for iGF in eachindex(GhostFaceNumbers)
+  @inbounds for iGF in eachindex(GhostFaceNumbers)
     DictF[GhostFaceNumbers[iGF]] = i + NumFaces
     i += 1
     NumGhostFaces += 1
@@ -62,7 +62,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   Edges = map(1:NumEdges) do i
     Edge()
   end
-  for i = 1:NumEdges
+  @inbounds for i = 1:NumEdges
     Edges[i] = deepcopy(GlobalGrid.Edges[EdgeNumbers[i]])  
     GlobalGrid.Edges[EdgeNumbers[i]].E = i
     Edges[i].EG = Edges[i].E
@@ -71,14 +71,14 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Edges[i].N[2] = GlobalGrid.Nodes[Edges[i].N[2]].N
     Edges[i].FG .= Edges[i].F
     Edges[i].FP .= 0
-    for j = 1:2
+    @inbounds for j = 1:2
       iF = Edges[i].F[j]
       if iF > 0
         Edges[i].FP[j] = Proc[iF]
       end
     end  
     Edges[i].MasterSlave = 1
-    for j in eachindex(Edges[i].FP)
+    @inbounds for j in eachindex(Edges[i].FP)
       if Edges[i].FP[j] >0  
         if ProcNumber > Edges[i].FP[j] 
           Edges[i].MasterSlave = 0
@@ -91,7 +91,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   Faces = map(1:NumFaces) do i
     Face()
   end
-  for i = 1:NumFaces
+  @inbounds for i = 1:NumFaces
     Faces[i] = deepcopy(GlobalGrid.Faces[FaceNumbers[i]])
     GlobalGrid.Faces[FaceNumbers[i]].F = i
     Faces[i].FG = Faces[i].F
@@ -106,7 +106,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Faces[i].N[4] = GlobalGrid.Nodes[Faces[i].N[4]].N
   end
   # Physischer Rand und Prozessor Rand 
-  for i = 1:NumEdges
+  @inbounds for i = 1:NumEdges
     if Edges[i].F[1] > 0  
       if Proc[Edges[i].F[1]] == ProcNumber  
         Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
@@ -138,10 +138,10 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
 
   #Boundary/Interior faces
   BoundaryFaces = zeros(Int,0)
-  for iE = 1 : SubGrid.NumEdges
+  @inbounds for iE = 1 : SubGrid.NumEdges
     if SubGrid.Edges[iE].F[1] == 0 || SubGrid.Edges[iE].F[2] == 0
-      for iN in SubGrid.Edges[iE].N
-        for iF in SubGrid.Nodes[iN].F  
+      @inbounds for iN in SubGrid.Edges[iE].N
+        @inbounds for iF in SubGrid.Nodes[iN].F  
           push!(BoundaryFaces,iF)
         end
       end
@@ -153,16 +153,16 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
 
   SubGrid.Rad = GlobalGrid.Rad
 # Stencil  
-  for iF=1:SubGrid.NumFaces
+  @inbounds for iF=1:SubGrid.NumFaces
     StencilLoc=zeros(Int, 16,1);
     StencilLoc[:] .= iF;
     iS=0;
-    for i=1:4
+    @inbounds for i=1:4
       iN=SubGrid.Faces[iF].N[i];
-      for j=1:size(SubGrid.Nodes[iN].F,1)
+      @inbounds for j=1:size(SubGrid.Nodes[iN].F,1)
         jF=SubGrid.Nodes[iN].F[j];
         inside=false;
-        for jS=1:iS
+        @inbounds for jS=1:iS
           if StencilLoc[jS]==jF
             inside=true;
             break
@@ -179,9 +179,9 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   end
 
 # Add Ghost Faces
-  for i = 1:NumNodes
+  @inbounds for i = 1:NumNodes
     Nodes[i].F = zeros(Int,0)
-    for j in eachindex(Nodes[i].FG)
+    @inbounds for j in eachindex(Nodes[i].FG)
       push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  
     end  
   end  
@@ -196,11 +196,11 @@ function Decompose(Grid,NumProc)
   LocalNumfaces=zeros(Int,NumProc)
   LocalNumfaces.= floor(NumFaces / NumProc)
   Rest = mod(NumFaces, NumProc)
-  for iP=1:Rest
+  @inbounds for iP=1:Rest
     LocalNumfaces[iP]+=1
   end
   CellToProc = zeros(Int,NumFaces)
-  for ic = 1 : NumProc
+  @inbounds for ic = 1 : NumProc
     CellToProc[sum(LocalNumfaces[1:ic-1])+1:sum(LocalNumfaces[1:ic])] .= ic
   end  
   return CellToProc
@@ -212,7 +212,7 @@ function DecomposeEqualArea(Grid,NumProc)
   LocalNumfaces=zeros(Int,NumProc)
   LocalNumfaces.= floor(NumFaces / NumProc)
   Rest = mod(NumFaces, NumProc)
-  for iP=1:Rest
+  @inbounds for iP=1:Rest
     LocalNumfaces[iP]+=1
   end
   (n_regions,s_cap) = eq_caps(NumProc)
@@ -220,7 +220,7 @@ function DecomposeEqualArea(Grid,NumProc)
   CellToProc = zeros(Int,NumFaces)
   Faces=Grid.Faces
   coord=zeros(Float64,NumFaces,3)
-  for iF=1:NumFaces
+  @inbounds for iF=1:NumFaces
     P = Faces[iF].Mid  
     coord[iF,3]=iF
     (coord[iF,1],coord[iF,2],r) = cart2sphere(P.x,P.y,P.z)  
@@ -234,16 +234,16 @@ function DecomposeEqualArea(Grid,NumProc)
   if NumProc > 1
     region_n = 2
     NumNodeECol = NumNodeE   
-    for collar_n = 1 : n_collars
+    @inbounds for collar_n = 1 : n_collars
       NumNodeACol = NumNodeECol + 1
       region_nCol = region_n
-      for region_ew = 1 : n_regions[collar_n + 1]
+      @inbounds for region_ew = 1 : n_regions[collar_n + 1]
         NumNodeECol += LocalNumfaces[region_nCol]  
         region_nCol += 1
       end
       pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=compare_WE_NS)
       NumNodeE = 0
-      for region_ew = 1 : n_regions[collar_n + 1]
+      @inbounds for region_ew = 1 : n_regions[collar_n + 1]
         NumNodeA = NumNodeE + 1  
         NumNodeE +=  LocalNumfaces[region_n] 
         iP = zeros(Int,NumNodeE-NumNodeA+1)

@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project  Examples/testNHCart.jl \
+mpirun -n 1 julia --project  Examples/testNHCart.jl \
   --Problem="HillAgnesiYCart" \
   --NumV=5 \
   --NumTr=0 \
@@ -6,8 +6,11 @@ mpirun -n 6 julia --project  Examples/testNHCart.jl \
   --ProfTheta="AgnesiCart" \
   --ProfVel="Const" \
   --Damping=true \
-  --Upwind=false \
+  --Upwind=true \
+  --HorLimit=false \
   --StrideDamp=10000 \
+  --Curl=false \
+  --ModelType="Conservative" \
   --Relax=1.0e-2 \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
@@ -22,7 +25,7 @@ mpirun -n 6 julia --project  Examples/testNHCart.jl \
   --P1=0.0\
   --P2=1000.0\
   --P3=400.0\
-  --stretch=false \
+  --stretch=true \
   --H=19600.0 \
   --Lx=4000.0 \
   --Ly=40000.0 \

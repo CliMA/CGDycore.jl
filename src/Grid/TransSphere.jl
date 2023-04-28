@@ -41,9 +41,9 @@ function TransSphereX(ksi,eta,zeta,X,CG,Global)
   OrdPoly=CG.OrdPoly
   OrdPolyZ=CG.OrdPolyZ
   XP=zeros(3)
-  for j=1:OrdPoly+1
-    for i=1:OrdPoly+1
-      for k=1:OrdPolyZ+1
+  @inbounds for j=1:OrdPoly+1
+    @inbounds for i=1:OrdPoly+1
+      @inbounds for k=1:OrdPolyZ+1
         XP[:]=XP[:]+Lagrange(ksi,CG.xw,i)*
           Lagrange(eta,CG.xw,j)*Lagrange(zeta,CG.xwZ,k)*X[i,j,k,:]
       end

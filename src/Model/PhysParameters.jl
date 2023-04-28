@@ -280,8 +280,8 @@ fRhoS=zeros(0,0,0)
 VS=zeros(0,0,0,0)
 RhoS=zeros(0,0,0)
 f=zeros(0,0,0,0)
-qMin=zeros(nz,NF+NGF,NumTr)
-qMax=zeros(nz,NF+NGF,NumTr)
+qMin=zeros(nz,NF+NGF,NumTr+1)
+qMax=zeros(nz,NF+NGF,NumTr+1)
 return CacheStruct(
   CacheE1,
   CacheE2,

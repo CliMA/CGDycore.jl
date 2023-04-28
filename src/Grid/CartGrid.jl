@@ -29,10 +29,10 @@ dx=lx/nx
 dy=ly/ny
 y=y0
 P=zeros(Float64,3,nx+1,ny+1)
-for iy=1:ny+1
+@inbounds for iy=1:ny+1
   eta=(iy-1)/ny
   x=x0
-  for ix=1:nx+1
+  @inbounds for ix=1:nx+1
     P[1,ix,iy]=x
     P[2,ix,iy]=y
     P[3,ix,iy]=0
@@ -42,11 +42,11 @@ for iy=1:ny+1
 end
 
 y=y0
-for iy=1:ny+1
+@inbounds for iy=1:ny+1
   x=x0
   if iy==ny+1 && Boundary.SN == "Period"
   else
-    for ix=1:nx+1
+    @inbounds for ix=1:nx+1
       if ix==nx+1 && Boundary.WE == "Period"
       else
         Nodes[NodeNumber]=Node(Point([x,y,0.0]),NodeNumber)
@@ -97,8 +97,8 @@ else
   N1=1
   N2=nx+2
 end
-for iy=1:ny
-  for ix=1:nx+1
+@inbounds for iy=1:ny
+  @inbounds for ix=1:nx+1
     if ix==nx+1 && Boundary.WE == "Period"
     else
       if iy==ny && Boundary.SN == "Period"
@@ -120,10 +120,10 @@ end
 N1=1
 N2=2
 TypeE = "X"
-for iy=1:ny+1
+@inbounds for iy=1:ny+1
   if iy==ny+1 && Boundary.SN == "Period"
   else
-    for ix=1:nx
+    @inbounds for ix=1:nx
       if ix==nx && Boundary.WE == "Period"
         Edges[EdgeNumber]=Edge([N1,1+(iy-1)*nx],Grid,EdgeNumber,EdgeNumber,TypeE,EdgeNumberX)
         EdgeNumber=EdgeNumber+1
@@ -167,9 +167,9 @@ E2=2
 E4=1
 FaceNumber=1
 Type="o"
-for iy=1:ny
+@inbounds for iy=1:ny
   if iy==ny && Boundary.SN == "Period"
-    for ix=1:nx
+    @inbounds for ix=1:nx
       if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,NumEdgesX+1+(ix-1),E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
@@ -186,7 +186,7 @@ for iy=1:ny
       end
     end
   else
-    for ix=1:nx
+    @inbounds for ix=1:nx
       if ix==nx && Boundary.WE == "Period"
         (Faces[FaceNumber],Grid)=Face([E1,1+(iy-1)*nx,E3,E4],Grid,FaceNumber,Type,OrientFace,
           P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
