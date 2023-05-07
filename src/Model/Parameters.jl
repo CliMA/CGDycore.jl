@@ -132,7 +132,10 @@ Base.@kwdef struct ParamWarmBubble2DXCart
   xC0 = 10000.0
   zC0 = 2000.0
   rC0 = 2000.0
-  Stretch = false
+end
+
+Base.@kwdef struct ParamTestGradient
+  Example = "TestGradient"
 end
 
 Base.@kwdef struct ParamHillGaussCart
@@ -258,6 +261,9 @@ function Parameters(Problem::String)
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()
+  elseif Problem == "TestGradient"
+    @show Problem
+    Param = ParamTestGradient()
   else
     @show "False Problem",Problem  
   end

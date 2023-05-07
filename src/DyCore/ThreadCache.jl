@@ -57,6 +57,8 @@ function CreateCache(OP,nz,NumV,NumTr)
     for _ in 1:Threads.nthreads()]
   TCacheCol3 = D4[D4(undef, OP, OP, 2, nz)
     for _ in 1:Threads.nthreads()]
+  TCacheCol4 = D4[D4(undef, OP, OP, 2, nz)
+    for _ in 1:Threads.nthreads()]
   TCacheCCC1 = D3[D3(undef, OP, OP, 2)
     for _ in 1:Threads.nthreads()]
   TCacheCCC2 = D3[D3(undef, OP, OP, 2)
@@ -69,6 +71,6 @@ function CreateCache(OP,nz,NumV,NumTr)
            TRhoCG, Tv1CG, Tv2CG, TwCG, TwCCG, TThCG, TFCG,
            TCacheCC1, TCacheCC2, TCacheCC3, TCacheCC4, TCacheCC5, 
            TCacheCF1, TCacheCF2, TCacheCF3, TCacheCF4, TCacheCol1,
-           TCacheCol2, TCacheCol3, TCacheCCC1, TCacheCCC2, TCacheCCC3, TCacheCCC4)
+           TCacheCol2, TCacheCol3, TCacheCol4, TCacheCCC1, TCacheCCC2, TCacheCCC3, TCacheCCC4)
 end  
         

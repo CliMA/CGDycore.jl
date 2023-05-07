@@ -12,14 +12,15 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Coriolis=true \
   --SurfaceFluxMom=false \
   --VerticalDiffusionMom=false \
-  --Curl=false\
+  --Curl=true\
+  --ModelType="VectorInvariant" \
   --StrideDamp=15000 \
   --Relax=1.0e-2 \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
   --SimDays=10 \
-  --PrintSeconds=14400 \
+  --PrintHours=12 \
   --dtau=300.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

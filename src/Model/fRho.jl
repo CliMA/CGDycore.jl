@@ -13,6 +13,8 @@ function fRho(x,time,Global,Param)
     pLoc=Phys.p0*(1-Phys.Grav/(Phys.Cpd*Param.Th0*S)*
         (1-exp(-S*z))).^(Phys.Cpd/Phys.Rd);
     Rho=pLoc./((pLoc/Phys.p0).^Phys.kappa*Phys.Rd.*ThLoc);
+  elseif str == "testgrad"  
+    Rho = x[1]^3+x[3]^3
   elseif str == "advectionspheredcmip"
     (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
     Z=max(R-Phys.RadEarth,0);    

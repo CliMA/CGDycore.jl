@@ -242,10 +242,22 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       uCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views Interpolate!(uCell,U[:,:,uPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["u", VTKCellData()] = uCell
+    elseif  str == "Rhou" 
+      uPos = Global.Model.uPos
+      RhoPos = Global.Model.RhoPos
+      uCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views Interpolate!(uCell,U[:,:,uPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["u", VTKCellData()] = uCell
     elseif  str == "v" 
       vPos = Global.Model.vPos
       vCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views Interpolate!(vCell,U[:,:,vPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      vtk["v", VTKCellData()] = vCell
+    elseif  str == "Rhov" 
+      vPos = Global.Model.vPos
+      RhoPos = Global.Model.RhoPos
+      vCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views Interpolate!(vCell,U[:,:,vPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["v", VTKCellData()] = vCell
     elseif  str == "w" 
       uPos = Global.Model.uPos
@@ -253,6 +265,14 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views InterpolateW!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
+        vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Metric.dXdxI)
+      vtk["w", VTKCellData()] = wCell
+    elseif  str == "wB" 
+      uPos = Global.Model.uPos
+      vPos = Global.Model.uPos
+      wPos = Global.Model.wPos
+      wCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views InterpolateWB!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
         vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Metric.dXdxI)
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
@@ -313,6 +333,34 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
   return outfiles::Vector{String}
 end
 
+function InterpolateWB!(cCell,w,u,v,Inter,OrdPoly,OrdPrint,Glob,NF,nz,dXdxI)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    for iz=1:nz
+      @. cc = 0.0
+      if iz == 1
+        for j=1:OrdPoly+1
+          for i=1:OrdPoly+1
+            w0 = -(u[iz,Glob[i,j,iF]] * dXdxI[i,j,1,1,3,1,iF] +
+              v[iz,Glob[i,j,iF]] * dXdxI[i,j,1,1,3,2,iF]) / dXdxI[i,j,1,1,3,3,iF]
+            @views @. cc = cc + 0.5 * Inter[:,:,i,j]*(w0 + w[2,Glob[i,j,iF]])
+          end
+        end
+      else
+        for j=1:OrdPoly+1
+          for i=1:OrdPoly+1
+            @views @. cc = cc + 0.5 * Inter[:,:,i,j]*(w[iz-1,Glob[i,j,iF]] + w[iz,Glob[i,j,iF]])
+          end
+        end
+      end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
+
 
 function InterpolateW!(cCell,w,u,v,Inter,OrdPoly,OrdPrint,Glob,NF,nz,dXdxI)
   icCell  = 1
@@ -323,8 +371,7 @@ function InterpolateW!(cCell,w,u,v,Inter,OrdPoly,OrdPrint,Glob,NF,nz,dXdxI)
       if iz == 1
         for j=1:OrdPoly+1
           for i=1:OrdPoly+1
-            w0 = -(u[iz,Glob[i,j,iF]] * dXdxI[i,j,1,1,3,1,iF] +
-              v[iz,Glob[i,j,iF]] * dXdxI[i,j,1,1,3,2,iF]) / dXdxI[i,j,1,1,3,3,iF]   
+            w0 = 0.0  
             @views @. cc = cc + 0.5 * Inter[:,:,i,j]*(w0 + w[2,Glob[i,j,iF]])
           end
         end  

@@ -233,16 +233,31 @@ Model.HyperDDiv = HyperDDiv
   Output.nPanel=nPanel
   Output.RadPrint=H
   Output.H=H
-  Output.cNames = [
-    "Rho",
-    "u",
-    "v",
-    "w",
-    "Th",
-    "Vort",
-]
+  if ModelType == "VectorInvariant" || ModelType == "Advection"
+    Output.cNames = [
+      "Rho",
+      "u",
+      "v",
+      "w",
+      "Th",
+      "Vort",
+      "Pres",
+      ]
+  elseif ModelType == "Conservative"
+    Output.cNames = [
+      "Rho",
+      "Rhou",
+      "Rhov",
+      "w",
+      "Th",
+      "Vort",
+      "Pres",
+      ]
+  end
 
   Output.PrintDays = PrintDays
+  Output.PrintHours = PrintHours
+  Output.PrintMinutes = PrintMinutes
   Output.PrintSeconds = PrintSeconds
   Output.PrintStartDays = 0
   Output.OrdPrint = CG.OrdPoly
@@ -258,7 +273,8 @@ Model.HyperDDiv = HyperDDiv
   TimeStepper.SimMinutes = SimMinutes
   TimeStepper.SimSeconds = SimSeconds
   if ModelType == "VectorInvariant" || ModelType == "Advection"
-    CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Global,Param)
+    DiscType = Val(:VectorInvariant)  
   elseif ModelType == "Conservative"
-    CGDycore.TimeStepper!(U,CGDycore.FcnCons!,CGDycore.TransSphereX,CG,Global,Param)
+    DiscType = Val(:Conservative)  
   end  
+  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Global,Param,DiscType)

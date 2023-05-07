@@ -1,4 +1,4 @@
-function TimeStepper!(U,Fcn!,Trans,CG,Global,Param)  
+function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)  
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -28,11 +28,12 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param)
   SimTime = TimeStepper.SimTime
   PrintDays = Output.PrintDays
   PrintHours = Output.PrintHours
+  PrintMinutes = Output.PrintMinutes
   PrintSeconds = Output.PrintSeconds
   PrintTime = Output.PrintTime
   PrintStartDays = Output.PrintStartDays
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
-  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
+  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+60*PrintMinutes+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
@@ -91,13 +92,13 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param)
 
 
 # Print initial conditions
-  unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+  unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
 
   if IntMethod == "Rosenbrock"
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param);
+          RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param,DiscType);
 #         RosenbrockSchur!(U,dtau,FcnNHCurlVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt

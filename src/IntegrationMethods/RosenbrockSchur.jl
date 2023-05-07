@@ -1,4 +1,4 @@
-function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
+function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param,DiscType)
   ROS=Global.TimeStepper.ROS;
   nV1=size(V,1);
   nV2=size(V,2);
@@ -10,6 +10,7 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
   Vn=Global.Cache.Vn
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
+  ModelType = Global.Model.ModelType
 
   J = Global.J
   J.CompTri=true
@@ -19,9 +20,9 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param)
     @inbounds for jStage=1:iStage-1
       @views @. V = V + ROS.a[iStage,jStage]*k[:,:,:,jStage];
     end
-    Fcn(fV,V,CG,Global,Param);
+    Fcn(fV,V,CG,Global,Param,DiscType);
     if iStage == 1
-      Jac(J,V,CG,Global,Param)
+      Jac(J,V,CG,Global,Param,DiscType)
     end  
     @inbounds for jStage=1:iStage-1
         @views @. fV = fV + (ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage];

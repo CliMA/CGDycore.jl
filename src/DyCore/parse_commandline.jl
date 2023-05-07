@@ -52,6 +52,11 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--ProfTest"
+    help = "Initial conditions for test operators"
+    arg_type = String
+    default = ""
+
     "--HorLimit"
     help = "Horizontal limiter"
     arg_type = Bool

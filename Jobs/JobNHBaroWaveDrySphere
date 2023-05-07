@@ -16,7 +16,8 @@ mpirun -n 8 julia --project Examples/testNHSphere.jl \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --SimSeconds=0 \
-  --PrintHours=12 \
+  --PrintMinutes=0 \
+  --PrintDays=1 \
   --dtau=300 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

@@ -12,7 +12,8 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --BoundaryBT="" \
   --SimTime=1000 \
   --PrintTime=100 \
-  --Curl=false \
+  --Curl=true \
+  --ModelType="VectorInvariant" \
   --dtau=.2 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
@@ -24,8 +25,8 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=50 \
-  --nx=25 \
+  --nz=80 \
+  --nx=40 \
   --ny=2 \
   --OrdPoly=4 \
   --HyperVisc=true \

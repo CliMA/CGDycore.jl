@@ -21,6 +21,52 @@ mutable struct ExchangeStruct
   rreq::MPI.UnsafeMultiRequest
 end
 
+function InitExchangeCG()
+  IndSendBuffer = Dict()
+  IndSendBufferF = Dict()
+  IndRecvBuffer = Dict()
+  IndRecvBufferF = Dict()
+  NeiProcN = zeros(Int,0)
+  Proc = 0
+  ProcNumber = 0
+  Parallel = false
+  InitSendBuffer = false
+  InitSendBufferF = false
+  SendBuffer = Dict()
+  SendBuffer3 = Dict()
+  SendBufferF = Dict()
+  InitRecvBuffer = false
+  InitRecvBufferF = false
+  RecvBuffer = Dict()
+  RecvBuffer3 = Dict()
+  RecvBufferF = Dict()
+  sreq = MPI.UnsafeMultiRequest(0)
+  rreq = MPI.UnsafeMultiRequest(0)
+  return ExchangeStruct(
+    IndSendBuffer,
+    IndSendBufferF,
+    IndRecvBuffer,
+    IndRecvBufferF,
+    NeiProcN,
+    Proc,
+    ProcNumber,
+    Parallel,
+    InitSendBuffer,
+    InitSendBufferF,
+    SendBuffer,
+    SendBuffer3,
+    SendBufferF,
+    InitRecvBuffer,
+    InitRecvBufferF,
+    RecvBuffer,
+    RecvBuffer3,
+    RecvBufferF,
+    rreq,
+    sreq,
+   )
+end  
+
+
 function InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel,HorLimit)
 
   if Parallel

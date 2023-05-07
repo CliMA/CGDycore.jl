@@ -415,6 +415,7 @@ mutable struct OutputStruct
   nIter::Int
   PrintDays::Int
   PrintHours::Int
+  PrintMinutes::Int
   PrintSeconds::Int
   PrintTime::Float64
   PrintStartDays::Int
@@ -434,6 +435,7 @@ function Output(Topography::NamedTuple)
   nIter = 0
   PrintDays = 0
   PrintHours = 0
+  PrintMinutes = 0
   PrintSeconds = 0
   PrintTime = 0
   PrintStartDays = 0
@@ -451,6 +453,7 @@ function Output(Topography::NamedTuple)
   nIter,
   PrintDays,
   PrintHours,
+  PrintMinutes,
   PrintSeconds,
   PrintTime,
   PrintStartDays,
@@ -596,6 +599,7 @@ mutable struct ModelStruct
   ProfVelW::String
   ProfpBGrd::String
   ProfRhoBGrd::String
+  ProfTest::String
   RhoPos::Int
   uPos::Int
   vPos::Int
@@ -650,6 +654,7 @@ function Model()
   ProfVelW=""
   ProfpBGrd=""
   ProfRhoBGrd=""
+  ProfTest=""
   RhoPos = 0
   uPos = 0
   vPos = 0
@@ -694,6 +699,7 @@ function Model()
    ProfVelW,
    ProfpBGrd,
    ProfRhoBGrd,
+   ProfTest,
    RhoPos,
    uPos,
    vPos,

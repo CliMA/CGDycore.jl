@@ -30,6 +30,7 @@ function ProjectW!(w,Fun,time,CG,Global,Param)
         @inbounds for i=1:OrdPoly+1
           x=0.5*(X[i,j,2,:,iz,iF]+X[i,j,1,:,iz+1,iF])
           ind = CG.Glob[i,j,iF]
+          @show x
           w[iz,ind]=Fun(x,time,Global,Param)
         end
       end

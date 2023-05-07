@@ -10,6 +10,7 @@ ProfTheta = parsed_args["ProfTheta"]
 ProfVel = parsed_args["ProfVel"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
+ProfTest = parsed_args["ProfTest"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -116,6 +117,7 @@ Model = CGDycore.Model()
   Model.ProfpBGrd = ProfpBGrd
   Model.ProfRhoBGrd = ProfRhoBGrd
   Model.RefProfile = RefProfile
+  Model.ProfTest = ProfTest
   Model.RhoPos=1
   Model.uPos=2
   Model.vPos=3
@@ -157,122 +159,99 @@ Topography=(TopoS=TopoS,
             P4=P4,
             )
 
-Grid=CGDycore.Grid(nz,Topography)
-Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid)
+  Grid=CGDycore.Grid(nz,Topography)
+  Grid=CGDycore.CartGrid(nx,ny,Lx,Ly,x0,y0,CGDycore.OrientFaceCart,Boundary,Grid)
 
-if Parallel
-  CellToProc = CGDycore.Decompose(Grid,ProcNumber)
-  SubGrid = CGDycore.ConstructSubGrid(Grid,CellToProc,Proc)
-
-  if stretch
-    sigma = 1.0
-    lambda = 3.16
-    CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
-  else
-    CGDycore.AddVerticalGrid!(SubGrid,nz,H)
-  end
-  Exchange = CGDycore.InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel,HorLimit)
-  Output=CGDycore.Output(Topography)
-  Global = CGDycore.Global(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
-  Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
-  # Output partition
-  nzTemp = Global.Grid.nz
-  Global.Grid.nz = 1
-  vtkCachePart = CGDycore.vtkInit3D(1,CGDycore.TransCartX,CG,Global)
-  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
-  Global.Grid.nz = nzTemp
-
-  if TopoS == "EarthOrography"
-    SubGrid = CGDycore.StencilFace(SubGrid)
-    zS = CGDycore.Orography(CG,Global)
-    Output.RadPrint = H
-    Output.Flat=false
-    nzTemp = Global.Grid.nz
-    Global.Grid.nz = 1
-    vtkCacheOrography = CGDycore.vtkInit2D(CG.OrdPoly,CGDycore.TransCartX,CG,Global)
-    CGDycore.unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
-    Global.Grid.nz = nzTemp
-  end
-else
   CellToProc=zeros(0)
   Proc = 0
   ProcNumber = 0
-  sigma = 1.0
-  lambda = 3.16
-  CGDycore.AddStretchICONVerticalGrid!(Grid,nz,H,sigma,lambda)
-  Exchange = CGDycore.InitExchange(Grid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel)
+  if stretch
+    sigma = 1.0
+    lambda = 3.16
+    CGDycore.AddStretchICONVerticalGrid!(Grid,nz,H,sigma,lambda)
+  else
+    CGDycore.AddVerticalGrid!(Grid,nz,H)
+  end
+  Exchange = CGDycore.InitExchangeCG()
   Output=CGDycore.Output(Topography)
-  Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
+  Global = CGDycore.Global(Grid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
-end  
-if TopoS == "EarthOrography"
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global,zS)
-else
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
-end
+  if TopoS == "EarthOrography"
+    (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global,zS)
+  else
+   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
+  end
 
-Model.HyperVisc = HyperVisc
-Model.HyperDCurl = HyperDCurl # =7.e15
-Model.HyperDGrad = HyperDGrad # =7.e15
-Model.HyperDDiv = HyperDDiv # =7.e15
+  Model.HyperVisc = HyperVisc
+  Model.HyperDCurl = HyperDCurl # =7.e15
+  Model.HyperDGrad = HyperDGrad # =7.e15
+  Model.HyperDDiv = HyperDDiv # =7.e15
 
 
-  U = CGDycore.InitialConditions(CG,Global,Param)
+  RhoPos = Model.RhoPos
+  uPos = Model.uPos
+  vPos = Model.vPos
+  wPos = Model.wPos
+  ThPos = Model.ThPos
+  cC = zeros(Float64,nz,CG.NumG,2)
+  Grad = zeros(Float64,nz,CG.NumG,NumV)
+  GradEx = zeros(Float64,nz,CG.NumG,NumV)
+  cC[:,:,1] = CGDycore.Project(CGDycore.fScalar,0.0,CG,Global,Param)
+  GradEx[:,:,uPos],GradEx[:,:,vPos] = CGDycore.ProjectVec(CGDycore.fGrad12,0.0,CG,Global,Param)
+  GradEx[:,:,wPos] = CGDycore.ProjectW(CGDycore.fGrad3,0.0,CG,Global,Param)
+  @views @. GradEx[:,:,RhoPos] = 1.0
+  @views @. GradEx[:,:,ThPos] = cC[:,:,1]
 
-# Output partition  
-  nzTemp = Global.Grid.nz
-  Global.Grid.nz = 1
-  vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransCartX,CG,Global)
-  Global.Grid.nz = nzTemp
-  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
+
+
+  Global.Cache=CGDycore.CacheCreate(CG.OrdPoly+1,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,CG.NumG,nz,
+    NumV,NumTr)
+
+  @views CGDycore.Fcn!(Grad,cC[:,:,1],CG,Global,Param,Val(:TestGrad))
+# for iG = 1 : CG.NumG
+#   @show GradEx[1:4,iG,uPos]
+#   @show Grad[1:4,iG,uPos]
+#   @show GradEx[1:4,iG,wPos]
+#   @show Grad[1:4,iG,wPos]
+# end
+  @show sum(abs.(GradEx[:,:,uPos:wPos]))
+  @show sum(abs.(GradEx[:,:,uPos:wPos]-Grad[:,:,uPos:wPos]))
+
+
 
 # Output
   Output.vtkFileName=string(Problem*"_")
   Output.vtk=0
   Output.Flat=true
   Output.H=H
-    if ModelType == "VectorInvariant" || ModelType == "Advection"
-    Output.cNames = [
-      "Rho",
-      "u",
-      "v",
-      "w",
-      "Th",
-      "Vort",
-      ]
-  elseif ModelType == "Conservative"
-    Output.cNames = [
-      "Rho",
-      "Rhou",
-      "Rhov",
-      "w",
-      "Th",
-      "Vort",
-      ]
-  end
-
-  Output.PrintDays = PrintDays
-  Output.PrintSeconds = PrintSeconds
-  Output.PrintTime = PrintTime
-  Output.PrintStartDays = 0
+  Output.cNames = [
+    "Rho",
+    "u",
+    "v",
+    "w",
+    "Th",
+  ]
   Output.OrdPrint=CG.OrdPoly
+
+  @views @. Grad[:,:,RhoPos] = 1.0
+  @views @. Grad[:,:,ThPos] = cC[:,:,1]
   Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransCartX,CG,Global)
+  CGDycore.unstructured_vtkSphere(Grad,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
+  CGDycore.unstructured_vtkSphere(GradEx,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
 
 
-  # TimeStepper
-  time=[0.0]
-  TimeStepper.IntMethod = IntMethod
-  TimeStepper.Table = Table
-  TimeStepper.dtau = dtau
-  TimeStepper.SimDays = SimDays
-  TimeStepper.SimHours = SimHours
-  TimeStepper.SimMinutes = SimMinutes
-  TimeStepper.SimSeconds = SimSeconds
-  TimeStepper.SimTime = SimTime
-  if ModelType == "VectorInvariant" || ModelType == "Advection"
-    DiscType = Val(:VectorInvariant)
-  elseif ModelType == "Conservative"
-    DiscType = Val(:Conservative)
-  end
-  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Global,Param,DiscType)
+  cC[:,:,2] = CGDycore.Project(CGDycore.fScalar,0.0,CG,Global,Param)
+  Global.Model.ProfTest = "TestGrad2"
+  GradEx[:,:,uPos],GradEx[:,:,vPos] = CGDycore.ProjectVec(CGDycore.fGrad12,0.0,CG,Global,Param)
+  GradEx[:,:,wPos] = CGDycore.ProjectW(CGDycore.fGrad3,0.0,CG,Global,Param)
+  CGDycore.Fcn!(Grad,cC,CG,Global,Param,Val(:TestFunCGrad))
+# for iG = 1 : CG.NumG
+#   @show GradEx[1:4,iG,uPos]
+#   @show Grad[1:4,iG,uPos]
+#   @show GradEx[1:4,iG,wPos]
+#   @show Grad[1:4,iG,wPos]
+# end
+  @show sum(abs.(GradEx[:,:,uPos:wPos]))
+  @show sum(abs.(GradEx[:,:,uPos:wPos]-Grad[:,:,uPos:wPos]))
+  CGDycore.unstructured_vtkSphere(Grad,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
+  CGDycore.unstructured_vtkSphere(GradEx,CGDycore.TransCartX,CG,Global,Proc,ProcNumber)
