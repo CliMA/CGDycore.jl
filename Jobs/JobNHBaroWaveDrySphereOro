@@ -19,7 +19,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
+  --SimDays=20 \
   --PrintHours=12 \
   --dtau=300.0 \
   --IntMethod="Rosenbrock" \

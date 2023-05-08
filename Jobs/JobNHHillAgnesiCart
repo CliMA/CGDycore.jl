@@ -8,8 +8,8 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --ProfpBGrd="AgnesiCart" \
   --ProfRhoBGrd="AgnesiCart" \
   --RefProfile=false \
-  --Curl=false \
-  --ModelType="Conservative" \
+  --Curl=true \
+  --ModelType="VectorInvariant" \
   --SurfaceFluxMom=false \
   --VerticalDiffusionMom=false \
   --Damping=true \

@@ -395,7 +395,7 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
 #  end
 end 
 
-function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
+function GradColumn1!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
   @unpack TCacheC1, TCacheC2 = ThreadCache
   Nz = size(FuC,3)
   OrdPoly = Fe.OrdPoly
@@ -1436,9 +1436,46 @@ function Gradient!(Gradu,Gradv,Gradw,cC,
   @. GraduF = 0.0
   @. GradvF = 0.0
   @. GradwF = 0.0
-  @inbounds for iz = 1 : Nz
+  if Nz > 1 
+    @inbounds for i = 1 : OrdPoly + 1
+      @inbounds for j = 1 : OrdPoly + 1
+        JC = (J[i,j,1,1] + J[i,j,2,1])
+        JCp1 = (J[i,j,1,2] + J[i,j,2,2])
+        c = cC[i,j,1]
+        cp1 = cC[i,j,2]
+        c0 = ((3.0 * c - 2.0 * cp1) * JC + c * JCp1) / (JC + JCp1)
+        cF[i,j,1,1],cF[i,j,2,1] = RecU3(c0,c,cp1,JC,JC,JCp1)
+      end
+    end
+    @inbounds for iz = 2 : Nz - 1
+      @inbounds for i = 1 : OrdPoly + 1
+        @inbounds for j = 1 : OrdPoly + 1
+          JCm1 = (J[i,j,1,iz-1] + J[i,j,2,iz-1])
+          JC = (J[i,j,1,iz] + J[i,j,2,iz])
+          JCp1 = (J[i,j,1,iz+1] + J[i,j,2,iz+1])
+          cm1 = cC[i,j,iz-1]
+          c = cC[i,j,iz]
+          cp1 = cC[i,j,iz+1]
+          cF[i,j,1,iz],cF[i,j,2,iz] = RecU3(cm1,c,cp1,JCm1,JC,JCp1)
+        end
+      end
+    end
+    @inbounds for i = 1 : OrdPoly + 1
+      @inbounds for j = 1 : OrdPoly + 1
+        JCm1 = (J[i,j,1,Nz-1] + J[i,j,2,Nz-1])
+        JC = (J[i,j,1,Nz] + J[i,j,2,Nz])
+        cm1 = cC[i,j,Nz-1]
+        c = cC[i,j,Nz]
+        cp1 = ((3.0 * c - 2.0 * cm1) * JC + c * JCm1) / (JCm1 + JC)
+        cF[i,j,1,Nz],cF[i,j,2,Nz] = RecU3(cm1,c,cp1,JCm1,JC,JC)
+      end
+    end
+  else
     @views @. cF[:,:,1,iz] = cC[:,:,iz]
     @views @. cF[:,:,2,iz] = cC[:,:,iz]
+  end  
+
+  @inbounds for iz = 1 : Nz
     @. DXcF = 0.0
     @views DerivativeX!(DXcF,cF[:,:,1,iz],D)
     @. DYcF = 0.0
@@ -1482,6 +1519,113 @@ function Gradient!(Gradu,Gradv,Gradw,cC,
   end  
   @inbounds for iz = 2 : Nz
     @views @. Gradw[:,:,iz] = GradwF[:,:,2,iz-1] + GradwF[:,:,1,iz]
+  end  
+end
+
+function GradColumn!(Gradu,Gradv,Gradw,cC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
+
+  @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2, TCacheCol3, TCacheCol4 = ThreadCache
+  Nz = size(cC,3)
+  OrdPoly = Fe.OrdPoly
+  D = Fe.DS
+
+  GraduF = TCacheCol1[Threads.threadid()]
+  GradvF = TCacheCol2[Threads.threadid()]
+  GradwF = TCacheCol3[Threads.threadid()]
+  cF = TCacheCol4[Threads.threadid()]
+  GradZ = TCacheC1[Threads.threadid()]
+  DXcF = TCacheC1[Threads.threadid()]
+  DYcF = TCacheC2[Threads.threadid()]
+ 
+  @. GraduF = 0.0
+  @. GradvF = 0.0
+  @. GradwF = 0.0
+  if Nz > 1 
+    @inbounds for i = 1 : OrdPoly + 1
+      @inbounds for j = 1 : OrdPoly + 1
+        JC = (J[i,j,1,1] + J[i,j,2,1])
+        JCp1 = (J[i,j,1,2] + J[i,j,2,2])
+        c = cC[i,j,1]
+        cp1 = cC[i,j,2]
+        c0 = ((3.0 * c - 2.0 * cp1) * JC + c * JCp1) / (JC + JCp1)
+        cF[i,j,1,1],cF[i,j,2,1] = RecU3(c0,c,cp1,JC,JC,JCp1)
+      end
+    end
+    @inbounds for iz = 2 : Nz - 1
+      @inbounds for i = 1 : OrdPoly + 1
+        @inbounds for j = 1 : OrdPoly + 1
+          JCm1 = (J[i,j,1,iz-1] + J[i,j,2,iz-1])
+          JC = (J[i,j,1,iz] + J[i,j,2,iz])
+          JCp1 = (J[i,j,1,iz+1] + J[i,j,2,iz+1])
+          cm1 = cC[i,j,iz-1]
+          c = cC[i,j,iz]
+          cp1 = cC[i,j,iz+1]
+          cF[i,j,1,iz],cF[i,j,2,iz] = RecU3(cm1,c,cp1,JCm1,JC,JCp1)
+        end
+      end
+    end
+    @inbounds for i = 1 : OrdPoly + 1
+      @inbounds for j = 1 : OrdPoly + 1
+        JCm1 = (J[i,j,1,Nz-1] + J[i,j,2,Nz-1])
+        JC = (J[i,j,1,Nz] + J[i,j,2,Nz])
+        cm1 = cC[i,j,Nz-1]
+        c = cC[i,j,Nz]
+        cp1 = ((3.0 * c - 2.0 * cm1) * JC + c * JCm1) / (JCm1 + JC)
+        cF[i,j,1,Nz],cF[i,j,2,Nz] = RecU3(cm1,c,cp1,JCm1,JC,JC)
+      end
+    end
+  else
+    @views @. cF[:,:,1,iz] = cC[:,:,iz]
+    @views @. cF[:,:,2,iz] = cC[:,:,iz]
+  end  
+
+  @inbounds for iz = 1 : Nz
+    @. DXcF = 0.0
+    @views DerivativeX!(DXcF,cF[:,:,1,iz],D)
+    @. DYcF = 0.0
+    @views DerivativeY!(DYcF,cF[:,:,1,iz],D)
+    @views @. GraduF[:,:,1,iz] -=
+      dXdxI[:,:,1,iz,1,1]  * DXcF + dXdxI[:,:,1,iz,2,1]  * DYcF
+    @views @. GradvF[:,:,1,iz] -=
+      dXdxI[:,:,1,iz,1,2]  * DXcF + dXdxI[:,:,1,iz,2,2]  * DYcF
+    @views @. GradwF[:,:,1,iz] -=
+      dXdxI[:,:,1,iz,1,3]  * DXcF + dXdxI[:,:,1,iz,2,3]  * DYcF
+    @. DXcF = 0.0
+    @views DerivativeX!(DXcF,cF[:,:,2,iz],D)
+    @. DYcF = 0.0
+    @views DerivativeY!(DYcF,cF[:,:,2,iz],D)
+    @views @. GraduF[:,:,2,iz] -=
+      dXdxI[:,:,2,iz,1,1]  * DXcF + dXdxI[:,:,2,iz,2,1]  * DYcF
+    @views @. GradvF[:,:,2,iz] -=
+      dXdxI[:,:,2,iz,1,2]  * DXcF + dXdxI[:,:,2,iz,2,2]  * DYcF
+    @views @. GradwF[:,:,2,iz] -=
+      dXdxI[:,:,2,iz,1,3]  * DXcF + dXdxI[:,:,2,iz,2,3]  * DYcF
+  end
+  @inbounds for iz = 2 : Nz
+    @views @. GradZ = 0.5 * (cF[:,:,1,iz] - cF[:,:,2,iz-1])
+#   @views @. GraduF[:,:,2,iz-1] -= GradZ * dXdxI[:,:,2,iz-1,3,1]
+#   @views @. GraduF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,1]
+#   @views @. GradvF[:,:,2,iz-1] -= GradZ * dXdxI[:,:,2,iz-1,3,2]
+#   @views @. GradvF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,2]
+    @views @. GradwF[:,:,2,iz-1] -= GradZ * dXdxI[:,:,2,iz-1,3,3]
+    @views @. GradwF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,3]
+  end
+  @inbounds for iz = 1 : Nz
+#   @views @. GradZ = 0.5 * (cF[:,:,2,iz] - cF[:,:,1,iz])
+    @views @. GradZ = -Phys.Grav * RhoC[:,:,iz] * 
+      (J[:,:,1,iz] + J[:,:,2,iz]) / (dXdxI[:,:,1,iz,3,3] + dXdxI[:,:,2,iz,3,3]) 
+    @views @. GraduF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,1]
+    @views @. GraduF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,1]
+    @views @. GradvF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,2]
+    @views @. GradvF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,2]
+    @views @. GradZ = 0.5 * (cF[:,:,2,iz] - cF[:,:,1,iz])
+    @views @. GradwF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,3]
+    @views @. GradwF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,3]
+    @views @. Gradu[:,:,iz] += GraduF[:,:,1,iz] + GraduF[:,:,2,iz]
+    @views @. Gradv[:,:,iz] += GradvF[:,:,1,iz] + GradvF[:,:,2,iz]
+  end  
+  @inbounds for iz = 2 : Nz
+    @views @. Gradw[:,:,iz] += GradwF[:,:,2,iz-1] + GradwF[:,:,1,iz]
   end  
 end
 
