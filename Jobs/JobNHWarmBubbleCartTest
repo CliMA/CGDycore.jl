@@ -1,0 +1,34 @@
+mpirun -n 1 julia --project Examples/testNHCart.jl \
+  --Problem="WarmBubble2DXCart" \
+  --NumV=5 \
+  --NumTr=0 \
+  --ProfRho="WarmBubble2DX" \
+  --ProfTheta="WarmBubble2DX" \
+  --ProfVel="Const" \
+  --Damping=false \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --SimSeconds=1000 \
+  --PrintSeconds=100 \
+  --Curl=true \
+  --dtau=.2 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="" \
+  `#Topography `        \
+  --stretch=false \
+  --H=10.0 \
+  --Lx=20.0 \
+  --Ly=2.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nz=10 \
+  --nx=20 \
+  --ny=2 \
+  --OrdPoly=2 \
+  --HyperVisc=true \
+  --HyperDCurl=1.e7 \
+  --HyperDGrad=1.e7 \
+  --HyperDDiv=1.e7

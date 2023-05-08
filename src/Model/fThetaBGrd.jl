@@ -1,10 +1,12 @@
-function fThetaBGrd(x,Param)
-  str = lower(Param.ProfTheta)
+function fThetaBGrd(x,time,Global,Param)
+  Model=Global.Model
+  Phys=Global.Phys
+  str = lowercase(Model.ProfTheta)
   if str == "baldaufcart"
-    delta=Param.Grav/(Param.Rd*Param.T0);
-    p=Param.p0*exp(-delta*x[3]);
+    delta=Phys.Grav/(Phys.Rd*Param.T0);
+    p=Phys.p0*exp(-delta*x[3]);
     TLoc=Param.T0;
-    Th=TLoc*(Param.p0/p)^(Param.Rd/Param.Cpd);
+    Th=TLoc*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "hyperdiff"
     Th=1;
   elseif str == "barowavecart"
@@ -12,7 +14,15 @@ function fThetaBGrd(x,Param)
     p=Param.p0*eta;
     T=TBaroWave(x[1],x[2],eta,Param);
     Th=T*(Param.p0/p)^(Param.Rd/Param.Cpd);
-  elseif str == "barowavesphere"
+  elseif str == "isothermalcart"
+    pLoc = Phys.p0 * exp(-Phys.Grav * x[3] / (Phys.Rd * Param.TEq))
+    Th=Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
+  elseif str == "isothermalsphere"
+    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
+    Z=max(R-Phys.RadEarth,0);
+    pLoc = Phys.p0 * exp(-Phys.Grav * Z / (Phys.Rd * Param.TEq))
+    Th=Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)  
+  elseif str == "barowavedrysphere"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);
     Z=max(R-Param.RadEarth,0);
     T0=0.5*(Param.T0E+Param.T0P);
@@ -34,13 +44,13 @@ function fThetaBGrd(x,Param)
     Temperature=1.0/(RRatio*RRatio)/(Tau1-Tau2*InteriorTerm);
     Pressure=Param.p0*exp(-Param.Grav/Param.Rd      *(IntTau1-IntTau2*InteriorTerm));
     Th=Temperature*(Param.p0/Pressure)^(Param.Rd/Param.Cpd);
-  elseif str == "baldauf"
+  elseif str == "baldaufsphere"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
-    r=r-Param.RadEarth;
-    p=Param.p0*exp(-Param.Grav*r/(Param.Rd*Param.T0));
-    Rho=p/(Param.Rd*Param.T0);
-    T=p/(Rho*Param.Rd);
-    Th=T*(Param.p0/p)^(Param.Rd/Param.Cpd);
+    r=r-Phys.RadEarth / Param.ScaleRad
+    p=Phys.p0*exp(-Phys.Grav*r/(Phys.Rd*Param.T0));
+    Rho=p/(Phys.Rd*Param.T0);
+    T=p/(Rho*Phys.Rd);
+    Th=T*(Phys.p0/p)^(Phys.Rd/Phys.Cpd);
   elseif str == "warmbubble2d"
     Th0=Param.Th0;
     DeltaTh=Param.DeltaTh;
@@ -55,7 +65,7 @@ function fThetaBGrd(x,Param)
       ThLoc=ThLoc+DeltaTh*cos(0.5*pi*rr/rC0)^2;
     end
     Th=ThLoc;
-  elseif str == "gravityhill"
+  elseif str == "gravityhill" || str == "schaercart" || str == "agnesicart"
     z=x[3];
     NBr=Param.NBr;
     Grav=Param.Grav;
@@ -65,11 +75,11 @@ function fThetaBGrd(x,Param)
   elseif str == "inertiagravitywave"
     z=x[3];
     NBr=Param.NBr;
-    Grav=Param.Grav;
+    Grav=Phys.Grav;
     Th0=Param.Th0;
     S=NBr*NBr/Grav;
     Th=Th0*exp(z*S);
-  elseif str == "galewsky"
+  elseif str == "galewski"
     Th=1;
   elseif str == "rossbyhaurwitz"
     Grav=Param.Grav;

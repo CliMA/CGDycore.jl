@@ -2,7 +2,7 @@ function FacesInNodes(Grid)
 NumFacesPerNode=zeros(Int,Grid.NumNodes,1);
 for iF=1:Grid.NumFaces
   Face=Grid.Faces[iF];
-  for iN=1:size(Face.N,2)
+  for iN=1:size(Face.N,1)
     NumFacesPerNode[Face.N[iN]]=NumFacesPerNode[Face.N[iN]]+1;
   end
 end
@@ -10,7 +10,7 @@ FacesPerNode=zeros(Int,Grid.NumNodes,maximum(NumFacesPerNode));
 NumFacesPerNode=zeros(Int,Grid.NumNodes,1);
 for iF=1:Grid.NumFaces
   Face=Grid.Faces[iF];
-  for iN=1:size(Face.N,2)
+  for iN=1:size(Face.N,1)
     NumFacesPerNode[Face.N[iN]]=NumFacesPerNode[Face.N[iN]]+1;
     FacesPerNode[Face.N[iN],NumFacesPerNode[Face.N[iN]]]=iF;
   end

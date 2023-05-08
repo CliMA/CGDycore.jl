@@ -1,0 +1,27 @@
+mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
+  --Problem="AdvectionSphereDCMIP" \
+  --NumV=4 \
+  --NumTr=1 \
+  --ProfRho="AdvectionSphereDCMIP" \
+  --ProfTheta="AdvectionSphereDCMIP" \
+  --ProfVel="AdvectionSphereDCMIP" \
+  --ProfVelW="AdvectionSphereDCMIP" \
+  --Decomp="EqualArea" \
+  --SimDays=1 \
+  --PrintSeconds=3600 \
+  --dtau=300 \
+  --IntMethod="RungeKutta" \
+  --Table="SSP3" \
+  --TopoS="" \
+  --stretch=false \
+  --GridType="CubedSphere" \
+  --nz=24 \
+  --nPanel=8 \
+  --H=1.2e4 \
+  --OrdPoly=4 \
+  --HyperVisc=true \
+  --HyperDCurl=7.e15 \
+  --HyperDGrad=7.e15 \
+  --HyperDDiv=7.e15
+
+

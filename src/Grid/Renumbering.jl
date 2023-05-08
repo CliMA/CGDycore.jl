@@ -1,3 +1,11 @@
+function Reordering!(Grid)
+#  Order faces with HilbertOrdering
+#  Old ordering is lexicographic per panel
+#
+  FaceOrderNew=zeros(Int,Grid.NumFaces)
+  NodeOrderNew=zeros(Int,Grid.NumNodes)
+
+end
 function Renumbering(Grid)
 for iF=1:Grid.NumFaces
   Grid.Faces[iF]=RenumberingFace4(Grid.Faces[iF],Grid);
@@ -9,17 +17,19 @@ return Grid
 end
 
 function PosEdgeInFace(Edge,Grid)
-Edge.FE=zeros(1,2);
-for iF=1:size(Edge.F,2)
-  F=Edge.F[iF];
-  for iE=1:4
-    if Edge.EI==Grid.Edges[Grid.Faces[F].E[iE]].EI
-      Edge.FE[iF]=iE;
-      break
+Edge.FE=zeros(2)
+for i=1:size(Edge.F,1)
+  iF=Edge.F[i];
+  if iF > 0
+    for iE=1:4
+      if Edge.EI==Grid.Edges[Grid.Faces[iF].E[iE]].EI
+        Edge.FE[i]=iE;
+        break
+      end
     end
   end
 end
-if size(Edge.F,2)>1
+if size(Edge.F,1)>1
   if Edge.FE[1] > Edge.FE[2]
     iTemp=Edge.FE[1];
     Edge.FE[1]=Edge.FE[2];
@@ -27,6 +37,9 @@ if size(Edge.F,2)>1
     iTemp=Edge.F[1];
     Edge.F[1]=Edge.F[2];
     Edge.F[2]=iTemp;
+    iTemp=Edge.FG[1];
+    Edge.FG[1]=Edge.FG[2];
+    Edge.FG[2]=iTemp;
   end
 end
 return Edge
@@ -56,7 +69,7 @@ if iN>1
   for i=1:4
     Face.N[i]=NTemp[i+iN-1];
     Face.E[i]=ETemp[i+iN-1];
-    Face.P[:,i]=PTemp[:,i+iN-1];
+    Face.P[i]=PTemp[i+iN-1];
   end
 end
 OrientL=zeros(4,1);

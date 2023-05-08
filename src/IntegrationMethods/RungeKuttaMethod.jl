@@ -1,14 +1,35 @@
-Base.@kwdef mutable struct RKstruct
-  nStage = nothing
-  ARKE = nothing
-  bRKE = nothing
-  ARKI = nothing
-  bRKI = nothing
-  gRKI = nothing
+mutable struct RungeKuttaStruct
+  nStage::Int
+  Type::String
+  ARKE::Array{Float64, 2}
+  bRKE::Array{Float64, 1}
+  cRKE::Array{Float64, 1}
+  ARKI::Array{Float64, 2}
+  bRKI::Array{Float64, 1}
+  gRKI::Array{Float64, 1}
 end
+function RungeKuttaMethod()
+  nStage=0
+  Type=""
+  ARKE=zeros(0,0)
+  bRKE=zeros(0)
+  cRKE=zeros(0)
+  ARKI=zeros(0,0)
+  bRKI=zeros(0)
+  gRKI=zeros(0)
+  return RungeKuttaStruct(
+  nStage,
+  Type,
+  ARKE,
+  bRKE,
+  cRKE,
+  ARKI,
+  bRKI,
+  gRKI,
+  )
+end  
 function RungeKuttaMethod(Method)
   str = Method
-  RK = RKstruct(;)
 if str == "ARK32"
     RK.nStage=3;
     RK.ARKE=zeros(RK.nStage,RK.nStage);
@@ -46,10 +67,14 @@ elseif str == "Trap2(2,3,2)"
     RK.bRKE[3]=1/2;
     RK.bRKE[4]=0;
 elseif str == "RK1"
-    RK.nStage=1;
-    RK.ARKE=zeros(RK.nStage,RK.nStage);
-    RK.bRKE=zeros(1,RK.nStage);
-    RK.bRKE[1]=1;
+    nStage=1
+    Type=""
+    ARKE=zeros(nStage,nStage);
+    bRKE=[1];
+    cRKE=[0];
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "RK1I"
     RK.nStage=1;
     RK.ARKE=zeros(RK.nStage,RK.nStage);
@@ -57,25 +82,52 @@ elseif str == "RK1I"
     RK.bRKE=zeros(1,RK.nStage);
     RK.bRKE[1]=1;
 elseif str == "RK4"
-    RK.nStage=4;
-    RK.ARKE=zeros(RK.nStage,RK.nStage);
-    RK.ARKE[2,1]=1/2;
-    RK.ARKE[3,2]=1/2;
-    RK.ARKE[4,3]=1;
-    RK.bRKE=zeros(1,RK.nStage);
-    RK.bRKE[1]=1/6;
-    RK.bRKE[2]=1/3;
-    RK.bRKE[3]=1/3;
-    RK.bRKE[4]=1/6;
+    nStage=4;
+    Type=""
+    ARKE=zeros(nStage,nStage);
+    ARKE[2,1]=1/2;
+    ARKE[3,2]=1/2;
+    ARKE[4,3]=1;
+    bRKE=[1/6,1/3,1/3,1/6];
+    cRKE=[0,1/2,1/2,1];
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
+elseif str == "SSP3"
+    nStage=3;
+    Type=""
+    ARKE=zeros(nStage,nStage);
+    ARKE[2,1] = 1.0
+    ARKE[3,1] = 0.25
+    ARKE[3,2] = 0.25
+    bRKE = [1/6,1/6,1/3]
+    cRKE = [0,1,1/2]
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
+elseif str == "Kinnmark"
+    nStage=5;
+    Type="LowStorage"
+    ARKE=zeros(nStage,nStage);
+    ARKE[2,1]=1/5;
+    ARKE[3,2]=1/5;
+    ARKE[4,3]=1/3;
+    ARKE[5,4]=1/2;
+    bRKE=[0,0,0,0,1];
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "RK3"
-    RK.nStage=3;
-    RK.ARKE=zeros(RK.nStage,RK.nStage);
-    RK.ARKE[2,1]=1/3;
-    RK.ARKE[3,2]=1/2;
-    RK.bRKE=zeros(1,RK.nStage);
-    RK.bRKE[1]=0;
-    RK.bRKE[2]=0;
-    RK.bRKE[3]=1;
+    nStage=3;
+    Type=""
+    ARKE=zeros(nStage,nStage);
+    ARKE[2,1]=1/3;
+    ARKE[3,2]=1/2;
+    bRKE = [0,0,1]
+    cRKE=[0,1/3,1/2];
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "DBM453"
     RK.nStage=5;
     RK.ARKE=zeros(RK.nStage,RK.nStage);
@@ -116,5 +168,14 @@ elseif str == "DBM453"
     RK.ARKI[5,5]=RK.gRKI;
     RK.bRKI=RK.bRKE;
 end
-return RK
+  return RungeKuttaStruct(
+  nStage,
+  Type,
+  ARKE,
+  bRKE,
+  cRKE,
+  ARKI,
+  bRKI,
+  gRKI,
+  )
 end

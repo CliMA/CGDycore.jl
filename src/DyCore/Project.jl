@@ -1,22 +1,35 @@
-function Project(Fun,CG,Param)
+function Project(Fun,time,CG,Global,Param)
 OrdPoly=CG.OrdPoly;
-nz=Param.Grid.nz;
-p=zeros(CG.NumG,nz,1);
-fLoc=zeros(OrdPoly+1,OrdPoly+1);
-X = Param.cache.X
-JC = Param.cache.JC
-for iz=1:nz
-  for iF=1:Param.Grid.NumFaces
-    for j=1:OrdPoly+1
-      for i=1:OrdPoly+1
-        x=0.5*(X[i,j,1,:,iF,iz]+X[i,j,2,:,iF,iz]);
-        det=JC[i,j,iF,iz];
-        fLoc[i,j]=Fun(x,Param)*det;
+nz=Global.Grid.nz;
+p=zeros(nz,CG.NumG);
+X = Global.Metric.X
+JC = Global.Metric.JC
+for iF=1:Global.Grid.NumFaces
+  for j=1:OrdPoly+1
+    for i=1:OrdPoly+1
+      ind = CG.Glob[i,j,iF]
+      for iz=1:nz
+        x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
+        p[iz,ind] = Fun(x,time,Global,Param) 
       end
     end
-    p[CG.Faces[iF].Glob,iz]=p[CG.Faces[iF].Glob,iz]+reshape(fLoc,(OrdPoly+1)*(OrdPoly+1),1);
   end
 end
-p=p./CG.M;
+return p
+end
+
+function ProjectSurf(Fun,time,CG,Global,Param)
+OrdPoly=CG.OrdPoly;
+NF = Global.Grid.NumFaces
+p=zeros(OrdPoly+1,OrdPoly+1,NF);
+X = Global.Metric.X
+for iF=1:Global.Grid.NumFaces
+  for j=1:OrdPoly+1
+    for i=1:OrdPoly+1
+      x=X[i,j,1,:,1,iF]
+      p[i,j,iF] = Fun(x,time,Global,Param)
+    end
+  end
+end
 return p
 end

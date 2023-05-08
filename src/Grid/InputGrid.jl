@@ -1,72 +1,231 @@
-function [Grid] = InputGrid(filename,OrientFace)
-Grid.nBar=[ 0  1   0    1  
-           -1  0  -1    0];
-Grid.Dim=3;
-Grid.Type='Quad';
-fileID=fopen(filename);
-tline=fgetl(fileID);
-tline=fgetl(fileID);
-NumNodes=str2num(tline);
-Grid.NumNodes=NumNodes;
-Nodes(1:NumNodes)=Node([0 0 0],0);
-for i=1:NumNodes
-  tline = fgetl(fileID);
-  tt=str2num(tline);
-  NodeNumber=tt(1);
-  x=tt(2);
-  y=tt(3);
-  Nodes(NodeNumber)=Node([x;y;0],NodeNumber);
-end
-Grid.Nodes=Nodes;
-tline=fgetl(fileID);
-tline=fgetl(fileID);
-NumEdges=str2num(tline);
-Grid.NumEdges=NumEdges;
-Edges(1:NumEdges)=Edge([1 2],Grid,0,0);
-EdgeNumberB=1;
-EdgeNumberI=1;
-EdgeType=zeros(NumEdges,1);
-for i=1:NumEdges
-  tline=fgetl(fileID);
-  tt=str2num(tline);
-  EdgeNumber=tt(1);
-  N1=tt(2);
-  N2=tt(3);
-  EdgeType(i)=tt(4);
-  if EdgeType(i)==1
-    Edges(EdgeNumber)=Edge([N1 N2],Grid,EdgeNumber,EdgeNumberB);
-    EdgeNumberB=EdgeNumberB+1;
-  else
-    Edges(EdgeNumber)=Edge([N1 N2],Grid,EdgeNumber,EdgeNumberI);
-    EdgeNumberI=EdgeNumberI+1;
+function InputGrid(filename,OrientFace,Rad,Grid)
+
+  coord = ncread(filename, "coord")
+  connect1 = ncread(filename, "connect1")
+
+  Grid.nBar=[ 0  1   0   1
+             -1  0  -1   0]
+  Grid.Dim = 3
+  Grid.Type = "Quad"
+  Grid.Rad = Rad
+  Grid.Form = "Sphere"
+  NumNodes=size(coord,1)
+  Nodes = map(1:NumNodes) do i
+    Node()
   end
-end
-for i=1:NumEdges
-  if EdgeType(i)==1
-    Edges(i).EI=Edges(i).EI+EdgeNumberI-1;
+  NodeNumber = 1
+
+  for i = 1 : NumNodes
+    N = coord[i,:]
+    N = N / norm(N) * Rad
+    Nodes[NodeNumber] = Node(Point(N),NodeNumber)
+    NodeNumber = NodeNumber+1
   end
-end
-Grid.Edges=Edges;
-Grid.NumEdgesI=EdgeNumberI-1;
-Grid.NumEdgesB=EdgeNumberB-1;
-tline=fgetl(fileID);
-tline=fgetl(fileID);
-NumFaces=str2num(tline);
-Grid.NumFaces=NumFaces;
-Faces(1:NumFaces)=Face([0 0 0 0],Grid,0,'x');
-Type='o';
-c=zeros(NumFaces,1);
-for i=1:NumFaces
-  c(i)=i;
-  tline=fgetl(fileID);
-  tt=str2num(tline);
-  FaceNumber=tt(1);
-  [Faces(FaceNumber),Grid]=Face(tt(2:end),Grid,FaceNumber,Type,OrientFace);
-end
-Grid.Faces=Faces;
-%PlotFaceGrid(c,Grid,1)
-fclose(fileID);
-Grid=Orientation(Grid);
-Grid=Renumbering(Grid);
+
+  Grid.Nodes = Nodes
+
+  NumFaces = size(connect1,2)
+  EdgeNumber = 0
+  EdgeList = Dict()
+  for i = 1 : NumFaces
+    n1 = connect1[1,i]
+    n2 = connect1[2,i]
+    if n1 < n2 
+      EdgeNumber += 1
+      EdgeList[(n1,n2)] = EdgeNumber
+    end  
+    n1 = connect1[2,i]
+    n2 = connect1[3,i]
+    if n1 < n2 
+      EdgeNumber += 1
+      EdgeList[(n1,n2)] = EdgeNumber
+    end  
+    n1 = connect1[3,i]
+    n2 = connect1[4,i]
+    if n1 < n2 
+      EdgeNumber += 1
+      EdgeList[(n1,n2)] = EdgeNumber
+    end  
+    n1 = connect1[4,i]
+    n2 = connect1[1,i]
+    if n1 < n2 
+      EdgeNumber += 1
+      EdgeList[(n1,n2)] = EdgeNumber
+    end  
+  end
+  NumEdges = EdgeNumber
+  Edges = map(1:NumEdges) do i
+    Edge([1,2],Grid,0,0,"",0)
+  end
+
+  EdgeNumber = 0
+  for i = 1 : NumFaces
+    n1 = connect1[1,i]
+    n2 = connect1[2,i]
+    if n1 < n2
+      EdgeNumber += 1
+      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
+    end
+    n1 = connect1[2,i]
+    n2 = connect1[3,i]
+    if n1 < n2
+      EdgeNumber += 1
+      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
+    end
+    n1 = connect1[3,i]
+    n2 = connect1[4,i]
+    if n1 < n2
+      EdgeNumber += 1
+      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
+    end
+    n1 = connect1[4,i]
+    n2 = connect1[1,i]
+    if n1 < n2
+      EdgeNumber += 1
+      Edges[EdgeNumber]=Edge([n1,n2],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber);
+    end
+  end  
+  Grid.Edges = Edges
+
+  Faces = map(1:NumFaces) do i
+    Face()
+  end
+  FaceNumber = 0
+  for i = 1 : NumFaces
+    n1 = connect1[1,i]
+    n2 = connect1[2,i]
+    if n1 < n2
+      e1 = EdgeList[(n1,n2)]  
+    else
+      e1 = EdgeList[(n2,n1)]  
+    end  
+    n1 = connect1[2,i]
+    n2 = connect1[3,i]
+    if n1 < n2
+      e2 = EdgeList[(n1,n2)]  
+    else
+      e2 = EdgeList[(n2,n1)]  
+    end  
+    n1 = connect1[3,i]
+    n2 = connect1[4,i]
+    if n1 < n2
+      e3 = EdgeList[(n1,n2)]  
+    else
+      e3 = EdgeList[(n2,n1)]  
+    end  
+    n1 = connect1[4,i]
+    n2 = connect1[1,i]
+    if n1 < n2
+      e4 = EdgeList[(n1,n2)]  
+    else
+      e4 = EdgeList[(n2,n1)]  
+    end  
+    FaceNumber += 1
+    (Faces[FaceNumber],Grid)=Face([e1,e2,e3,e4],Grid,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
+  end
+  Grid.Faces = Faces
+
+  Grid.NumNodes=size(Grid.Nodes,1);
+  Grid.NumEdges=size(Grid.Edges,1);
+  Grid.NumEdgesI=size(Grid.Edges,1);
+  Grid.NumEdgesB=0;
+  Grid.NumFaces=size(Grid.Faces,1);
+  Grid.Dim=3;
+  Grid=Orientation(Grid);
+  Grid=Renumbering(Grid);
+  Grid=FacesInNodes(Grid);
+
+  #Boundary/Interior faces
+  BoundaryFaces = zeros(Int,0)
+  for iE = 1 : Grid.NumEdges
+    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+      for iN in Grid.Edges[iE].N
+        for iF in Grid.Nodes[iN].F
+          push!(BoundaryFaces,iF)
+        end
+      end
+    end
+  end
+  BoundaryFaces = unique(BoundaryFaces)
+  Grid.BoundaryFaces = BoundaryFaces
+  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
+  return Grid
 end
 
+function InputGridH(filename,OrientFace,Rad,Grid)
+
+  Vertices = ncread(filename, "Vertices")
+  NumNodes = size(Vertices,2)
+  ListEdges = ncread(filename, "Edges")
+  NumEdges = size(ListEdges,2)
+  ListFaces = ncread(filename, "Cells")
+  NumFaces = size(ListFaces,2)
+
+  Grid.nBar=[ 0  1   0   1
+             -1  0  -1   0]
+  Grid.Dim = 3
+  Grid.Type = "Quad"
+  Grid.Rad = Rad
+  Grid.Form = "Sphere"
+
+  Nodes = map(1:NumNodes) do i
+    Node()
+  end
+  NodeNumber = 1
+  for i = 1 : NumNodes
+    N = sphereDeg2cart(Vertices[1,i],Vertices[2,i],Rad)
+    Nodes[NodeNumber] = Node(Point(N),NodeNumber)
+    NodeNumber = NodeNumber+1
+  end
+  Grid.Nodes = Nodes
+
+  Edges = map(1:NumEdges) do i
+    Edge()
+  end
+  EdgeNumber = 1
+  for i = 1 : NumEdges
+    Edges[EdgeNumber] = Edge(ListEdges[:,i],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber)  
+    EdgeNumber = EdgeNumber+1
+  end
+  Grid.Edges = Edges
+
+  Faces = map(1:NumFaces) do i
+    Face()
+  end
+  FaceNumber = 0
+  for i = 1 : NumFaces
+    FaceNumber += 1
+    e1=Int(ListFaces[1,i])
+    e2=Int(ListFaces[2,i])
+    e3=Int(ListFaces[3,i])
+    e4=Int(ListFaces[4,i])
+    (Faces[FaceNumber],Grid)=Face([e1,e2,e3,e4],Grid,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
+  end
+  Grid.Faces = Faces
+
+  Grid.NumNodes=size(Grid.Nodes,1);
+  Grid.NumEdges=size(Grid.Edges,1);
+  Grid.NumEdgesI=size(Grid.Edges,1);
+  Grid.NumEdgesB=0;
+  Grid.NumFaces=size(Grid.Faces,1);
+  Grid.Dim=3;
+  Grid=Orientation(Grid);
+  Grid=Renumbering(Grid);
+  Grid=FacesInNodes(Grid);
+
+  #Boundary/Interior faces
+  BoundaryFaces = zeros(Int,0)
+  for iE = 1 : Grid.NumEdges
+    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+      for iN in Grid.Edges[iE].N
+        for iF in Grid.Nodes[iN].F
+          push!(BoundaryFaces,iF)
+        end
+      end
+    end
+  end
+  BoundaryFaces = unique(BoundaryFaces)
+  Grid.BoundaryFaces = BoundaryFaces
+  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
+  return Grid
+end

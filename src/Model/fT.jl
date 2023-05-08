@@ -1,5 +1,5 @@
 function fT(x,Param)
-str = lower(Param.ProfTheta)
+str = lowercase(Param.ProfTheta)
 if str == "baldaufsphere"
     (lon,lat,r)=cart2sphere(x[1],x[2],x[3]);
     r=r-Param.RadEarth;
