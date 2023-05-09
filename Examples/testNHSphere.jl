@@ -63,17 +63,14 @@ Flat = parsed_args["Flat"]
 Param = CGDycore.Parameters(Problem)
 
 MPI.Init()
-comm = MPI.COMM_WORLD
-Proc = MPI.Comm_rank(comm) + 1
-ProcNumber = MPI.Comm_size(comm)
-ParallelCom = CGDycore.ParallelCom()
-ParallelCom.Proc = Proc
-ParallelCom.ProcNumber  = ProcNumber
-print("$Proc: \n")
-print("$ProcNumber: \n")
+#comm = MPI.COMM_WORLD
+#Proc = MPI.Comm_rank(comm) + 1
+#ProcNumber = MPI.Comm_size(comm)
+#ParallelCom = CGDycore.ParallelCom()
+#ParallelCom.Proc = Proc
+#ParallelCom.ProcNumber  = ProcNumber
 
 OrdPolyZ=1
-Parallel = true
 
 # Physical parameters
 Phys=CGDycore.PhysParameters()
@@ -129,7 +126,8 @@ Model = CGDycore.Model()
 
 
 # Grid
-H = 30000.0
+Global = CGDycore.InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,TopoS,Decomp,stretch,Model,Phys)
+#=
 Topography=(TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 TimeStepper=CGDycore.TimeStepper()
 
@@ -160,7 +158,8 @@ if Parallel
   if stretch
     sigma = 1.0
     lambda = 3.16
-    CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+#   CGDycore.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+    CGDycore.AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
     if Proc == 1
       for i in eachindex(SubGrid.dzeta)
         @show i,SubGrid.dzeta[i]  
@@ -204,6 +203,7 @@ else
   Global = CGDycore.Global(Grid,Model,Phys,Output,Exchange,OrdPoly+1,nz,NumV,NumTr,())
   Global.Metric=CGDycore.Metric(OrdPoly+1,OrdPolyZ+1,Grid.NumFaces,nz)
 end  
+=#
 
 if TopoS == "EarthOrography"
   (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
@@ -224,17 +224,18 @@ Model.HyperDDiv = HyperDDiv
   Global.Grid.nz = 1
   vtkCachePart = CGDycore.vtkInit2D(1,CGDycore.TransSphereX,CG,Global)
   Global.Grid.nz = nzTemp
-  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
+  CGDycore.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, 
+    Global.ParallelCom.Proc, Global.ParallelCom.ProcNumber)
 
 # Output
-  Output.vtkFileName=string(Problem*"_")
-  Output.vtk=0
-  Output.Flat=Flat
-  Output.nPanel=nPanel
-  Output.RadPrint=H
-  Output.H=H
+  Global.Output.vtkFileName=string(Problem*"_")
+  Global.Output.vtk=0
+  Global.Output.Flat=Flat
+  Global.Output.nPanel=nPanel
+  Global.Output.RadPrint=H
+  Global.Output.H=H
   if ModelType == "VectorInvariant" || ModelType == "Advection"
-    Output.cNames = [
+    Global.Output.cNames = [
       "Rho",
       "u",
       "v",
@@ -244,7 +245,7 @@ Model.HyperDDiv = HyperDDiv
       "Pres",
       ]
   elseif ModelType == "Conservative"
-    Output.cNames = [
+    Global.Output.cNames = [
       "Rho",
       "Rhou",
       "Rhov",
@@ -255,23 +256,23 @@ Model.HyperDDiv = HyperDDiv
       ]
   end
 
-  Output.PrintDays = PrintDays
-  Output.PrintHours = PrintHours
-  Output.PrintMinutes = PrintMinutes
-  Output.PrintSeconds = PrintSeconds
-  Output.PrintStartDays = 0
-  Output.OrdPrint = CG.OrdPoly
+  Global.Output.PrintDays = PrintDays
+  Global.Output.PrintHours = PrintHours
+  Global.Output.PrintMinutes = PrintMinutes
+  Global.Output.PrintSeconds = PrintSeconds
+  Global.Output.PrintStartDays = 0
+  Global.Output.OrdPrint = CG.OrdPoly
 
-  Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.vtkCache = CGDycore.vtkInit3D(Global.Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
   # TimeStepper
   time=[0.0]
-  TimeStepper.IntMethod = IntMethod
-  TimeStepper.Table = Table
-  TimeStepper.dtau = dtau
-  TimeStepper.SimDays = SimDays
-  TimeStepper.SimMinutes = SimMinutes
-  TimeStepper.SimSeconds = SimSeconds
+  Global.TimeStepper.IntMethod = IntMethod
+  Global.TimeStepper.Table = Table
+  Global.TimeStepper.dtau = dtau
+  Global.TimeStepper.SimDays = SimDays
+  Global.TimeStepper.SimMinutes = SimMinutes
+  Global.TimeStepper.SimSeconds = SimSeconds
   if ModelType == "VectorInvariant" || ModelType == "Advection"
     DiscType = Val(:VectorInvariant)  
   elseif ModelType == "Conservative"

@@ -16,6 +16,7 @@ using NetCDF
 using MuladdMacro
 using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
+using RootSolvers
 
 include("Grid/Geometry.jl")
 include("Grid/Node.jl")
@@ -120,6 +121,8 @@ include("Model/Fun.jl")
 include("Statistics/Averages.jl")
 
 include("GPU/AddVec.jl")
+
+include("DyCore/InitDriver.jl")
 
 OOP = 5
 

@@ -99,7 +99,6 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
       for i=1:nIter
         Δt = @elapsed begin
           RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param,DiscType);
-#         RosenbrockSchur!(U,dtau,FcnNHCurlVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)

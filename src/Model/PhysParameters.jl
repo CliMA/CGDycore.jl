@@ -1,144 +1,144 @@
-mutable struct CacheStruct
-CacheE1::Array{Float64, 2}
-CacheE2::Array{Float64, 2}
-CacheE3::Array{Float64, 2}
-CacheE4::Array{Float64, 2}
-CacheE5::Array{Float64, 2}
-CacheF1::Array{Float64, 3}
-CacheF2::Array{Float64, 3}
-CacheF3::Array{Float64, 3}
-CacheF4::Array{Float64, 3}
-CacheF5::Array{Float64, 3}
-CacheF6::Array{Float64, 3}
-CacheC1::Array{Float64, 3}
-CacheC2::Array{Float64, 3}
-CacheC3::Array{Float64, 3}
-CacheC4::Array{Float64, 3}
-CacheC5::Array{Float64, 3}
-CacheC6::Array{Float64, 3}
-Cache1::Array{Float64, 2}
-Cache2::Array{Float64, 2}
-Cache3::Array{Float64, 2}
-Cache4::Array{Float64, 2}
-Pres::Array{Float64, 4}
-PresG::Array{Float64, 2}
-Temp::Array{Float64, 4}
-KE::Array{Float64, 3}
-uStar::Array{Float64, 3}
-cTrS::Array{Float64, 4}
-TSurf::Array{Float64, 3}
-FCG::Array{Float64, 5}
-FCC::Array{Float64, 4}
-FwCC::Array{Float64, 3}
-Vn::Array{Float64, 3}
-RhoCG::Array{Float64, 3}
-v1CG::Array{Float64, 3}
-v2CG::Array{Float64, 3}
-wCG::Array{Float64, 3}
-Omega::Array{Float64, 3}
-wCCG::Array{Float64, 3}
-ThCG::Array{Float64, 3}
-TrCG::Array{Float64, 4}
-Rot1CG::Array{Float64, 3}
-Rot2CG::Array{Float64, 3}
-Grad1CG::Array{Float64, 3}
-Grad2CG::Array{Float64, 3}
-DivCG::Array{Float64, 3}
-zPG::Array{Float64, 3}
-pBGrdCG::Array{Float64, 3}
-RhoBGrdCG::Array{Float64, 3}
-Rot1C::Array{Float64, 3}
-Rot2C::Array{Float64, 3}
-Grad1C::Array{Float64, 3}
-Grad2C::Array{Float64, 3}
-DivC::Array{Float64, 3}
-KV::Array{Float64, 3}
-Temp1::Array{Float64, 3}
-k::Array{Float64, 4}
-Ymyn::Array{Float64, 4}
-Y::Array{Float64, 4}
-Z::Array{Float64, 4}
-fV::Array{Float64, 3}
-R::Array{Float64, 3}
-dZ::Array{Float64, 3}
-fS::Array{Float64, 4}
-fRhoS::Array{Float64, 3}
-VS::Array{Float64, 4}
-RhoS::Array{Float64, 3}
-f::Array{Float64, 4}
-qMin::Array{Float64, 3}
-qMax::Array{Float64, 3}
+mutable struct CacheStruct{FT<:Real}
+CacheE1::Array{FT, 2}
+CacheE2::Array{FT, 2}
+CacheE3::Array{FT, 2}
+CacheE4::Array{FT, 2}
+CacheE5::Array{FT, 2}
+CacheF1::Array{FT, 3}
+CacheF2::Array{FT, 3}
+CacheF3::Array{FT, 3}
+CacheF4::Array{FT, 3}
+CacheF5::Array{FT, 3}
+CacheF6::Array{FT, 3}
+CacheC1::SubArray{FT, 3}
+CacheC2::SubArray{FT, 3}
+CacheC3::SubArray{FT, 3}
+CacheC4::SubArray{FT, 3}
+CacheC5::SubArray{FT, 3}
+CacheC6::SubArray{FT, 3}
+Cache1::Array{FT, 2}
+Cache2::Array{FT, 2}
+Cache3::Array{FT, 2}
+Cache4::Array{FT, 2}
+Pres::Array{FT, 4}
+PresG::Array{FT, 2}
+Temp::Array{FT, 4}
+KE::Array{FT, 3}
+uStar::Array{FT, 3}
+cTrS::Array{FT, 4}
+TSurf::Array{FT, 3}
+FCG::Array{FT, 5}
+FCC::Array{FT, 4}
+FwCC::Array{FT, 3}
+Vn::Array{FT, 3}
+RhoCG::Array{FT, 3}
+v1CG::Array{FT, 3}
+v2CG::Array{FT, 3}
+wCG::Array{FT, 3}
+Omega::Array{FT, 3}
+wCCG::Array{FT, 3}
+ThCG::Array{FT, 3}
+TrCG::Array{FT, 4}
+Rot1CG::Array{FT, 3}
+Rot2CG::Array{FT, 3}
+Grad1CG::Array{FT, 3}
+Grad2CG::Array{FT, 3}
+DivCG::Array{FT, 3}
+zPG::Array{FT, 3}
+pBGrdCG::Array{FT, 3}
+RhoBGrdCG::Array{FT, 3}
+Rot1C::Array{FT, 3}
+Rot2C::Array{FT, 3}
+Grad1C::Array{FT, 3}
+Grad2C::Array{FT, 3}
+DivC::Array{FT, 3}
+KV::Array{FT, 3}
+Temp1::Array{FT, 3}
+k::Array{FT, 4}
+Ymyn::Array{FT, 4}
+Y::Array{FT, 4}
+Z::Array{FT, 4}
+fV::Array{FT, 3}
+R::Array{FT, 3}
+dZ::Array{FT, 3}
+fS::Array{FT, 4}
+fRhoS::Array{FT, 3}
+VS::Array{FT, 4}
+RhoS::Array{FT, 3}
+f::Array{FT, 4}
+qMin::Array{FT, 3}
+qMax::Array{FT, 3}
 end
-function CacheStruct()
-CacheE1=zeros(0,0);
-CacheE2=zeros(0,0);
-CacheE3=zeros(0,0);
-CacheE4=zeros(0,0);
-CacheE5=zeros(0,0);
-CacheF1=zeros(0,0,0);
-CacheF2=zeros(0,0,0);
-CacheF3=zeros(0,0,0);
-CacheF4=zeros(0,0,0);
-CacheF5=zeros(0,0,0);
-CacheF6=zeros(0,0,0);
+function CacheStruct{FT}() where FT<:Real
+CacheE1=zeros(FT,0,0);
+CacheE2=zeros(FT,0,0);
+CacheE3=zeros(FT,0,0);
+CacheE4=zeros(FT,0,0);
+CacheE5=zeros(FT,0,0);
+CacheF1=zeros(FT,0,0,0);
+CacheF2=zeros(FT,0,0,0);
+CacheF3=zeros(FT,0,0,0);
+CacheF4=zeros(FT,0,0,0);
+CacheF5=zeros(FT,0,0,0);
+CacheF6=zeros(FT,0,0,0);
 CacheC1 = view(CacheF1,:,:,:)
 CacheC2 = view(CacheF2,:,:,:)
 CacheC3 = view(CacheF3,:,:,:)
 CacheC4 = view(CacheF4,:,:,:)
 CacheC5 = view(CacheF5,:,:,:)
 CacheC6 = view(CacheF6,:,:,:)
-Cache1=zeros(0,0)
-Cache2=zeros(0,0)
-Cache3=zeros(0,0)
-Cache4=zeros(0,0)
-Pres=zeros(0,0,0,0)
-PresG=zeros(0,0)
-Temp=zeros(0,0,0,0)
-KE=zeros(0,0,0)
-uStar=zeros(0,0,0)
-cTrS=zeros(0,0,0,0)
-TSurf=zeros(0,0,0)
-FCG=zeros(0,0,0,0,0)
-FCC=zeros(0,0,0,0)
-FwCC=zeros(0,0,0)
-Vn=zeros(0,0,0)
-RhoCG=zeros(0,0,0)
-v1CG=zeros(0,0,0)
-v2CG=zeros(0,0,0)
-wCG=zeros(0,0,0)
-Omega=zeros(0,0,0)
-wCCG=zeros(0,0,0)
-ThCG=zeros(0,0,0)
-TrCG=zeros(0,0,0,0)
-Rot1CG=zeros(0,0,0)
-Rot2CG=zeros(0,0,0)
-Grad1CG=zeros(0,0,0)
-Grad2CG=zeros(0,0,0)
-DivCG=zeros(0,0,0)
-zPG=zeros(0,0,0)
-pBGrdCG=zeros(0,0,0)
-RhoBGrdCG=zeros(0,0,0)
-Rot1C=zeros(0,0,0)
-Rot2C=zeros(0,0,0)
-Grad1C=zeros(0,0,0)
-Grad2C=zeros(0,0,0)
-DivC=zeros(0,0,0)
-KV=zeros(0,0,0)
-Temp1=zeros(0,0,0)
-k=zeros(0,0,0,0)
-Ymyn=zeros(0,0,0,0)
-Y=zeros(0,0,0,0)
-Z=zeros(0,0,0,0)
-fV=zeros(0,0,0)
-R=zeros(0,0,0)
-dZ=zeros(0,0,0)
-fS=zeros(0,0,0,0)
-fRhoS=zeros(0,0,0)
-VS=zeros(0,0,0,0)
-RhoS=zeros(0,0,0)
-f=zeros(0,0,0,0)
-qMin=zeros(0,0,0)
-qMax=zeros(0,0,0)
+Cache1=zeros(FT,0,0)
+Cache2=zeros(FT,0,0)
+Cache3=zeros(FT,0,0)
+Cache4=zeros(FT,0,0)
+Pres=zeros(FT,0,0,0,0)
+PresG=zeros(FT,0,0)
+Temp=zeros(FT,0,0,0,0)
+KE=zeros(FT,0,0,0)
+uStar=zeros(FT,0,0,0)
+cTrS=zeros(FT,0,0,0,0)
+TSurf=zeros(FT,0,0,0)
+FCG=zeros(FT,0,0,0,0,0)
+FCC=zeros(FT,0,0,0,0)
+FwCC=zeros(FT,0,0,0)
+Vn=zeros(FT,0,0,0)
+RhoCG=zeros(FT,0,0,0)
+v1CG=zeros(FT,0,0,0)
+v2CG=zeros(FT,0,0,0)
+wCG=zeros(FT,0,0,0)
+Omega=zeros(FT,0,0,0)
+wCCG=zeros(FT,0,0,0)
+ThCG=zeros(FT,0,0,0)
+TrCG=zeros(FT,0,0,0,0)
+Rot1CG=zeros(FT,0,0,0)
+Rot2CG=zeros(FT,0,0,0)
+Grad1CG=zeros(FT,0,0,0)
+Grad2CG=zeros(FT,0,0,0)
+DivCG=zeros(FT,0,0,0)
+zPG=zeros(FT,0,0,0)
+pBGrdCG=zeros(FT,0,0,0)
+RhoBGrdCG=zeros(FT,0,0,0)
+Rot1C=zeros(FT,0,0,0)
+Rot2C=zeros(FT,0,0,0)
+Grad1C=zeros(FT,0,0,0)
+Grad2C=zeros(FT,0,0,0)
+DivC=zeros(FT,0,0,0)
+KV=zeros(FT,0,0,0)
+Temp1=zeros(FT,0,0,0)
+k=zeros(FT,0,0,0,0)
+Ymyn=zeros(FT,0,0,0,0)
+Y=zeros(FT,0,0,0,0)
+Z=zeros(FT,0,0,0,0)
+fV=zeros(FT,0,0,0)
+R=zeros(FT,0,0,0)
+dZ=zeros(FT,0,0,0)
+fS=zeros(FT,0,0,0,0)
+fRhoS=zeros(FT,0,0,0)
+VS=zeros(FT,0,0,0,0)
+RhoS=zeros(FT,0,0,0)
+f=zeros(FT,0,0,0,0)
+qMin=zeros(FT,0,0,0)
+qMax=zeros(FT,0,0,0)
 return CacheStruct(
   CacheE1,
   CacheE2,
@@ -371,7 +371,7 @@ mutable struct TimeStepperStruct
   RK::RungeKuttaStruct
   SSP::SSPRungeKuttaStruct
 end
-function TimeStepper()
+function InitTimeStepper()
   IntMethod = ""
   Table = ""
   dtau  = 0.0
@@ -426,7 +426,7 @@ mutable struct OutputStruct
   OrdPrint::Int
   Topography::NamedTuple
 end
-function Output(Topography::NamedTuple)
+function OutputStruct(Topography::NamedTuple)
   vtk=0
   vtkFileName=""
   Flat=false
@@ -585,9 +585,18 @@ function PhysParameters()
   Omega,
   )
 end 
+
 mutable struct ParallelComStruct
   Proc::Int
   ProcNumber::Int
+end  
+function InitParallelCom()
+  Proc = 1
+  ProcNumber = 1
+  return ParallelComStruct(
+    Proc,
+    ProcNumber,
+  )
 end  
 
 mutable struct ModelStruct
@@ -636,14 +645,6 @@ mutable struct ModelStruct
   Deep::Bool
   Curl::Bool
 end
-function ParallelCom()
-  Proc = 1
-  ProcNumber = 1
-  return ParallelComStruct(
-    Proc,
-    ProcNumber,
-  )
-end  
 
 function Model()
   Problem=""
@@ -738,7 +739,7 @@ function Model()
    )
 end  
 
-mutable struct GlobalStruct{TCache}
+mutable struct GlobalStruct{FT<:Real,TCache}
   Metric::MetricStruct
   Grid::GridStruct
   Model::ModelStruct
@@ -748,7 +749,7 @@ mutable struct GlobalStruct{TCache}
   Output::OutputStruct
   Exchange::ExchangeStruct
   vtkCache::vtkStruct
-  Cache::CacheStruct
+  Cache::CacheStruct{FT}
   J::JStruct
   latN::Array{Float64, 1}
   ThreadCache::TCache
@@ -757,16 +758,16 @@ mutable struct GlobalStruct{TCache}
   pBGrd::Array{Float64, 2}
   RhoBGrd::Array{Float64, 2}
 end
-function Global(Grid::GridStruct,
+function GlobalStruct{FT}(Grid::GridStruct,
                 Model::ModelStruct,
                 TimeStepper::TimeStepperStruct,
                 ParallelCom::ParallelComStruct,
                 Phys::PhysParameters,
                 Output::OutputStruct,
                 Exchange::ExchangeStruct,
-                OP,nz,NumV,NumTr,init_tcache=NamedTuple())
+                OP,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:Real
   Metric=MetricStruct()
-  Cache=CacheStruct()
+  Cache=CacheStruct{FT}()
   vtkCache = vtkStruct()
   J=JStruct()
   latN=zeros(0)
@@ -775,7 +776,7 @@ function Global(Grid::GridStruct,
   TBGrd = zeros(0,0)
   pBGrd = zeros(0,0)
   RhoBGrd = zeros(0,0)
-  return GlobalStruct{typeof(tcache)}(
+  return GlobalStruct{FT,typeof(tcache)}(
     Metric,
     Grid,
     Model,

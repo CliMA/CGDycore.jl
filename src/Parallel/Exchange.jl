@@ -6,7 +6,7 @@ mutable struct ExchangeStruct
   NeiProc::Array{Int, 1}
   Proc::Int
   ProcNumber::Int
-  Parallel::Bool
+# Parallel::Bool
   InitSendBuffer::Bool
   InitSendBufferF::Bool
   SendBuffer::Dict
@@ -29,7 +29,7 @@ function InitExchangeCG()
   NeiProcN = zeros(Int,0)
   Proc = 0
   ProcNumber = 0
-  Parallel = false
+# Parallel = false
   InitSendBuffer = false
   InitSendBufferF = false
   SendBuffer = Dict()
@@ -50,7 +50,7 @@ function InitExchangeCG()
     NeiProcN,
     Proc,
     ProcNumber,
-    Parallel,
+#   Parallel,
     InitSendBuffer,
     InitSendBufferF,
     SendBuffer,
@@ -67,9 +67,9 @@ function InitExchangeCG()
 end  
 
 
-function InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel,HorLimit)
+function InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit)
 
-  if Parallel
+# if Parallel
     # Inner Nodes on Edges  
     NumInBoundEdges = 0
     InBoundEdges = zeros(Int,NumInBoundEdges)
@@ -323,13 +323,13 @@ function InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel,HorL
       IndSendBufferF = Dict()
       IndRecvBufferF=Dict()  
     end  
-  else
-    SendBufferN=Dict()  
-    RecvBufferN=Dict()  
-    IndSendBufferF = Dict()
-    IndRecvBufferF=Dict()  
-    NeiProcN=zeros(Int,0)
-  end  
+# else
+#   SendBufferN=Dict()  
+#   RecvBufferN=Dict()  
+#   IndSendBufferF = Dict()
+#   IndRecvBufferF=Dict()  
+#   NeiProcN=zeros(Int,0)
+# end  
 
   InitSendBuffer = true
   InitSendBufferF = true
@@ -363,7 +363,7 @@ function InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Parallel,HorL
     NeiProcN,
     Proc,
     ProcNumber,
-    Parallel,
+#   Parallel,
     InitSendBuffer,
     InitSendBufferF,
     SendBuffer,
@@ -521,7 +521,7 @@ end
 
 function ExchangeData!(U::Array{Float64,3},Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     IndSendBuffer = Exchange.IndSendBuffer
     IndRecvBuffer = Exchange.IndRecvBuffer
@@ -556,12 +556,12 @@ function ExchangeData!(U::Array{Float64,3},Exchange)
     for iP in eachindex(NeiProc)
       @views @. U[:,IndRecvBuffer[NeiProc[iP]],:] += RecvBuffer[NeiProc[iP]]
     end
-  end  
+# end  
 end    
 
 function ExchangeData3D!(U,Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     IndSendBuffer = Exchange.IndSendBuffer
     IndRecvBuffer = Exchange.IndRecvBuffer
@@ -621,11 +621,11 @@ function ExchangeData3D!(U,Exchange)
         @views @. U[:,Ind,:] += RecvBuffer[iP][:,i,:]
       end
     end
-  end  
+# end  
 end    
 
 function ExchangeDataFSend(cFMin,cFMax,Exchange)
-  if Exchange.Parallel
+# if Exchange.Parallel
     IndSendBufferF = Exchange.IndSendBufferF
     IndRecvBufferF = Exchange.IndRecvBufferF
     NeiProc = Exchange.NeiProc
@@ -671,12 +671,12 @@ function ExchangeDataFSend(cFMin,cFMax,Exchange)
       i += 1
       @views MPI.Isend(SendBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
     end
-  end
+# end
 end
 
 function ExchangeDataFRecv!(cFMin,cFMax,Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     IndRecvBufferF = Exchange.IndRecvBufferF
     NeiProc = Exchange.NeiProc
@@ -696,12 +696,12 @@ function ExchangeDataFRecv!(cFMin,cFMax,Exchange)
         @views @. cFMax[:,Ind,:] = RecvBufferF[iP][:,i,:,2]
       end
     end
-  end
+# end
 end
 
 function ExchangeData3DSend(U,p,Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     IndSendBuffer = Exchange.IndSendBuffer
     IndRecvBuffer = Exchange.IndRecvBuffer
@@ -750,12 +750,12 @@ function ExchangeData3DSend(U,p,Exchange)
       i += 1
       @views MPI.Isend(SendBuffer3[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
     end
-  end
+# end
 end  
 
 function ExchangeData3DSend(U,Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     IndSendBuffer = Exchange.IndSendBuffer
     IndRecvBuffer = Exchange.IndRecvBuffer
@@ -801,12 +801,12 @@ function ExchangeData3DSend(U,Exchange)
       i += 1
       @views MPI.Isend(SendBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
     end
-  end
+# end
 end  
 
 function ExchangeData3DRecv!(U,p,Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     nT = size(U,3)
     IndRecvBuffer = Exchange.IndRecvBuffer
@@ -829,12 +829,12 @@ function ExchangeData3DRecv!(U,p,Exchange)
         @views @. p[:,Ind] += RecvBuffer3[iP][:,i,nT+1]
       end
     end
-  end  
+# end  
 end    
 
 function ExchangeData3DRecv!(U,Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     nT = size(U,3)
     IndRecvBuffer = Exchange.IndRecvBuffer
@@ -854,12 +854,12 @@ function ExchangeData3DRecv!(U,Exchange)
         @views @. U[:,Ind,:] += RecvBuffer3[iP][:,i,1:nT]
       end
     end
-  end  
+# end  
 end    
 
 function ExchangeData!(U::AbstractArray{Float64,2},Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
     nz = size(U,1)
 
     IndSendBuffer = Exchange.IndSendBuffer
@@ -893,11 +893,11 @@ function ExchangeData!(U::AbstractArray{Float64,2},Exchange)
     @inbounds for iP in eachindex(NeiProc)
       U[:,IndRecvBuffer[NeiProc[iP]]] .+= RecvBuffer[NeiProc[iP]]
     end
-  end  
+# end  
 end  
 function ExchangeData!(U::Array{Float64,1},Exchange)
 
-  if Exchange.Parallel
+# if Exchange.Parallel
 
     IndSendBuffer = Exchange.IndSendBuffer
     IndRecvBuffer = Exchange.IndRecvBuffer
@@ -930,7 +930,7 @@ function ExchangeData!(U::Array{Float64,1},Exchange)
     @inbounds for iP in eachindex(NeiProc)
       U[IndRecvBuffer[NeiProc[iP]]] .+= RecvBuffer[NeiProc[iP]]
     end
-  end  
+# end  
 end  
 
 function GlobalSum2D(U,CG)
