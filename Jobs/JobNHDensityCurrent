@@ -19,14 +19,13 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Table="SSP-Knoth" \
   --TopoS="" \
   `#Topography `        \
-  --stretch=false \
   --H=6400.0 \
   --Lx=51200.0 \
   --Ly=2000.0 \
-  --x0=-256000.0 \
+  --x0=-25600.0 \
   --y0=0.0 \
-  --nz=40 \
-  --nx=20 \
+  --nz=64 \
+  --nx=64 \
   --ny=2 \
   --OrdPoly=4 \
   --HyperVisc=true \

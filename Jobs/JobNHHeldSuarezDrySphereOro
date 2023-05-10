@@ -19,7 +19,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \
-  --stretch=true \
+  --Stretch=true \
+  --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=45 \
   --nPanel=16 \

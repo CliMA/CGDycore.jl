@@ -93,7 +93,7 @@ include("Parallel/Exchange.jl")
 include("Parallel/Hilbert.jl")
 include("Parallel/EqualAreaPartitioner.jl")
 
-include("Model/PhysParameters.jl")
+include("Model/GlobalVariables.jl")
 include("Model/Pressure.jl")
 include("Model/fRho.jl")
 include("Model/fQv.jl")
