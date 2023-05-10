@@ -134,6 +134,19 @@ Base.@kwdef struct ParamWarmBubble2DXCart
   rC0 = 2000.0
 end
 
+Base.@kwdef struct ParamDensityCurrent2DXCart
+  Example = "DensityCurrent2DXCart"
+  T0::Float64 = 300.0
+  uMax::Float64 = 0.0
+  vMax::Float64 = 0.0
+  wMax::Float64 = 0.0
+  DeltaT::Float64  = -15.0
+  xC0::Float64  = 0.0
+  zC0::Float64  = 2000.0
+  xrC0::Float64  = 4000.0
+  zrC0::Float64  = 2000.0
+end  
+
 Base.@kwdef struct ParamTestGradient
   Example = "TestGradient"
 end
@@ -261,6 +274,9 @@ function Parameters(Problem::String)
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()
+  elseif Problem == "DensityCurrent2DXCart"
+    @show Problem
+    Param = ParamDensityCurrent2DXCart()
   elseif Problem == "TestGradient"
     @show Problem
     Param = ParamTestGradient()

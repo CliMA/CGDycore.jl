@@ -1,15 +1,14 @@
-function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,TopoS,Decomp,stretch,Model,Phys)    
+function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)    
 
   comm = MPI.COMM_WORLD
   Proc = MPI.Comm_rank(comm) + 1 
   ProcNumber = MPI.Comm_size(comm)
-  ParallelCom = InitParallelCom()
+  ParallelCom = ParallelComStruct()
   ParallelCom.Proc = Proc
   ParallelCom.ProcNumber  = ProcNumber
 
-  Topography=(TopoS=TopoS,H=H,Rad=Phys.RadEarth)
-  TimeStepper = InitTimeStepper()
-  Grid = InitGrid(nz,Topography)
+  TimeStepper = TimeStepperStruct()
+  Grid = GridStruct(nz,Topography)
 
   if GridType == "HealPix"
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
@@ -33,37 +32,106 @@ function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,TopoS,Decomp,stretch,M
 
   SubGrid = ConstructSubGrid(Grid,CellToProc,Proc)
 
-  if stretch
-    sigma = 1.0
-    lambda = 3.16
-#   AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
-    AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
-  else
+  if Model.Stretch
+    if Model.StretchType == "ICON"  
+      sigma = 1.0
+      lambda = 3.16
+      AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+    elseif Model.StretchType == "Exp"  
+      AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
+    else
+      AddVerticalGrid!(SubGrid,nz,H)
+    end
+  else  
     AddVerticalGrid!(SubGrid,nz,H)
   end
 
-  Exchange = InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
+  Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
   Global = GlobalStruct{Float64}(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
     Model.NumV,Model.NumTr,())
   Global.Metric = Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  (CG,Global) = DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  (CG,Global) = DiscretizationCG(OrdPoly,OrdPolyZ,JacobiSphere3,Global)
+
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = vtkInit3D(1,CGDycore.TransSphereX,CG,Global)
+  vtkCachePart = vtkStruct(1,TransSphereX,CG,Global)
   unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
-  if TopoS == "EarthOrography"
-    zS = CGDycore.Orography(CG,Global)
+  if Topography.TopoS == "EarthOrography"
+    zS = Orography(CG,Global)
     Output.RadPrint = H
     Output.Flat=false
     nzTemp = Global.Grid.nz
     Global.Grid.nz = 1
-    vtkCacheOrography = vtkInit2D(CG.OrdPoly,TransSphereX,CG,Global)
+    vtkCacheOrography = vtkStruct(OrdPoly,TransSphereX,CG,Global)
     unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
     Global.Grid.nz = nzTemp
   end
+
   return Global
 end  
+
+
+function InitCart(OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,GridType,Topography,Decomp,Model,Phys)    
+
+  comm = MPI.COMM_WORLD
+  Proc = MPI.Comm_rank(comm) + 1 
+  ProcNumber = MPI.Comm_size(comm)
+  ParallelCom = ParallelComStruct()
+  ParallelCom.Proc = Proc
+  ParallelCom.ProcNumber  = ProcNumber
+
+  TimeStepper = TimeStepperStruct()
+  Grid = GridStruct(nz,Topography)
+
+  Grid = CartGrid(nx,ny,Lx,Ly,x0,y0,OrientFaceCart,Boundary,Grid)
+
+  CellToProc = Decompose(Grid,ProcNumber)
+  SubGrid = ConstructSubGrid(Grid,CellToProc,Proc)
+
+  if Model.Stretch
+    if Model.StretchType == "ICON"  
+      sigma = 1.0
+      lambda = 3.16
+      AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+    elseif Model.StretchType == "Exp"  
+      AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
+    else
+      AddVerticalGrid!(SubGrid,nz,H)
+    end
+  else  
+    AddVerticalGrid!(SubGrid,nz,H)
+  end
+
+  Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
+  Output = OutputStruct(Topography)
+  Global = GlobalStruct{Float64}(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
+    Model.NumV,Model.NumTr,())
+  Global.Metric = Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
+  (CG,Global) = DiscretizationCG(OrdPoly,OrdPolyZ,JacobiDG3Neu,Global)
+
+  # Output partition
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCachePart = vtkStruct(1,TransCartX,CG,Global)
+  unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
+  Global.Grid.nz = nzTemp
+
+  if Topography.TopoS == "EarthOrography"
+    zS = Orography(CG,Global)
+    Output.RadPrint = H
+    Output.Flat=false
+    nzTemp = Global.Grid.nz
+    Global.Grid.nz = 1
+    vtkCacheOrography = vtkStruct(OrdPoly,TransCartX,CG,Global)
+    unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
+    Global.Grid.nz = nzTemp
+  end
+
+  return Global
+end  
+
+

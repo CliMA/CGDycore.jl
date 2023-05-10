@@ -232,10 +232,15 @@ function parse_commandline()
     arg_type = String
     default = "CubedSphere"
 
-    "--stretch"
+    "--Stretch"
     help = "Grid stretching"
     arg_type = Bool
     default = false
+
+    "--StretchType"
+    help = "Type of grid stretching, ICON, Exp "
+    arg_type = String
+    default = ""
 
     "--nx"
     help = "Number of horizontal grid cell in x-direction"

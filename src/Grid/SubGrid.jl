@@ -1,5 +1,5 @@
 function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
-  SubGrid = InitGrid(GlobalGrid.nz,GlobalGrid.Topography)
+  SubGrid = GridStruct(GlobalGrid.nz,GlobalGrid.Topography)
 
 # Number of faces
   DictF = Dict()

@@ -21,7 +21,7 @@ mutable struct ExchangeStruct
   rreq::MPI.UnsafeMultiRequest
 end
 
-function InitExchangeCG()
+function ExchangeStruct()
   IndSendBuffer = Dict()
   IndSendBufferF = Dict()
   IndRecvBuffer = Dict()
@@ -67,7 +67,7 @@ function InitExchangeCG()
 end  
 
 
-function InitExchangeCG(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit)
+function ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit)
 
 # if Parallel
     # Inner Nodes on Edges  

@@ -14,7 +14,7 @@ function vtkStruct()
   )
 end
 
-function vtkInit3D(OrdPrint::Int,Trans,CG,Global)
+function vtkStruct(OrdPrint::Int,Trans,CG,Global)
   OrdPoly = CG.OrdPoly
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz

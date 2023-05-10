@@ -371,7 +371,7 @@ mutable struct TimeStepperStruct
   RK::RungeKuttaStruct
   SSP::SSPRungeKuttaStruct
 end
-function InitTimeStepper()
+function TimeStepperStruct()
   IntMethod = ""
   Table = ""
   dtau  = 0.0
@@ -590,7 +590,7 @@ mutable struct ParallelComStruct
   Proc::Int
   ProcNumber::Int
 end  
-function InitParallelCom()
+function ParallelComStruct()
   Proc = 1
   ProcNumber = 1
   return ParallelComStruct(
@@ -644,18 +644,20 @@ mutable struct ModelStruct
   SurfaceFluxMom::Bool
   Deep::Bool
   Curl::Bool
+  Stretch::Bool
+  StretchType::String
 end
 
 function Model()
-  Problem=""
-  ProfRho=""
-  ProfTheta=""
-  ProfTr=""
-  ProfVel=""
-  ProfVelW=""
-  ProfpBGrd=""
-  ProfRhoBGrd=""
-  ProfTest=""
+  Problem = ""
+  ProfRho = ""
+  ProfTheta = ""
+  ProfTr = ""
+  ProfVel = ""
+  ProfVelW = ""
+  ProfpBGrd = ""
+  ProfRhoBGrd = ""
+  ProfTest = ""
   RhoPos = 0
   uPos = 0
   vPos = 0
@@ -665,32 +667,34 @@ function Model()
   RhoCPos = 0
   NumV = 0
   NumTr = 0
-  Equation="Compressible"
-  Thermo=""
-  ModelType="Curl"
-  Source=false
-  Damping=false
-  Relax=0.0
-  StrideDamp=0.0
-  Coriolis=false
-  CoriolisType=""
-  Buoyancy=true
-  RefProfile=false
-  HyperVisc=false
-  HyperDCurl=0.0
-  HyperDGrad=0.0
-  HyperDDiv=0.0
-  Upwind=false
-  HorLimit=false
-  Microphysics=false
-  RelCloud=0.0
-  Rain=1.0
-  VerticalDiffusion=false
-  VerticalDiffusionMom=false
-  SurfaceFlux=false
-  SurfaceFluxMom=false
-  Deep=false
-  Curl=true
+  Equation = "Compressible"
+  Thermo = ""
+  ModelType = "VectorInvariant"
+  Source = false
+  Damping = false
+  Relax = 0.0
+  StrideDamp = 0.0
+  Coriolis = false
+  CoriolisType = ""
+  Buoyancy = true
+  RefProfile = false
+  HyperVisc = false
+  HyperDCurl = 0.0
+  HyperDGrad = 0.0
+  HyperDDiv = 0.0
+  Upwind = false
+  HorLimit = false
+  Microphysics = false
+  RelCloud = 0.0
+  Rain = 1.0
+  VerticalDiffusion = false
+  VerticalDiffusionMom = false
+  SurfaceFlux = false
+  SurfaceFluxMom = false
+  Deep = false
+  Curl = true
+  Stretch = false
+  StretchType = ""
   return ModelStruct(
    Problem,
    ProfRho,
@@ -736,6 +740,8 @@ function Model()
    SurfaceFluxMom,
    Deep,
    Curl,
+   Stretch,
+   StretchType,
    )
 end  
 

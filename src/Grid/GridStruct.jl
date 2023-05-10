@@ -41,7 +41,7 @@ mutable struct GridStruct
     BoundaryFaces::Array{Int,1}
     InteriorFaces::Array{Int,1}
 end
-function InitGrid(nz,Topography)
+function GridStruct(nz,Topography)
   zP=zeros(nz)
   z=zeros(nz+1)
   dzeta=zeros(nz)
