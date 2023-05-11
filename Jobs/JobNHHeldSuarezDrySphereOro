@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 32 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezDrySphereOro" \
   --NumV=5 \
   --NumTr=0 \
@@ -8,13 +8,15 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Source=true \
   --Coriolis=true \
   --Upwind=true \
-  --Curl=false \
+  --ModelType="VectorInvariant" \
+  --Curl=true \
   --SurfaceFluxMom=false \
   --VerticalDiffusionMom=false \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
-  --PrintHours=12 \
+  --SimDays=400 \
+  --PrintDays=20 \
+  --StartAverageDays=200 \
   --dtau=200 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
