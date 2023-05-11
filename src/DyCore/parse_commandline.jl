@@ -369,6 +369,11 @@ function parse_commandline()
      arg_type = Float64
      default = 0.0
 
+    "--StartAverageDays"
+     help = "Start statistics"
+     arg_type = Int
+     default = -1
+
     "--Flat"
      help = "Output as sphere or cube"
      arg_type = Bool

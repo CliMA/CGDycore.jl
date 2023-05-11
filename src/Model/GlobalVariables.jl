@@ -419,6 +419,7 @@ mutable struct OutputStruct
   PrintSeconds::Int
   PrintTime::Float64
   PrintStartDays::Int
+  StartAverageDays::Int
   PrintInt::Int
   PrintStartInt::Int
   RadPrint::Float64
@@ -439,6 +440,7 @@ function OutputStruct(Topography::NamedTuple)
   PrintSeconds = 0
   PrintTime = 0
   PrintStartDays = 0
+  StartAverageDays = -1
   PrintInt = 0
   PrintStartInt = 0
   RadPrint=1000.0
@@ -457,6 +459,7 @@ function OutputStruct(Topography::NamedTuple)
   PrintSeconds,
   PrintTime,
   PrintStartDays,
+  StartAverageDays,
   PrintInt,
   PrintStartInt,
   RadPrint,

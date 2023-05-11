@@ -32,8 +32,16 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
   PrintSeconds = Output.PrintSeconds
   PrintTime = Output.PrintTime
   PrintStartDays = Output.PrintStartDays
-  nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
+  StartAverageDays = Output.StartAverageDays
+  SimTime = 24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime
+  nIter=ceil(SimTime/dtau)
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+60*PrintMinutes+PrintSeconds+PrintTime)/dtau)
+  StartAverageTime = StartAverageDays * 3600 * 24
+  if StartAverageTime >= 0 && StartAverageTime < SimTime
+    UAver = similar(U)
+    UAver .= 0.0
+    iAv = 1
+  end  
   PrintStartInt=0
   Output.OrdPrint=CG.OrdPoly
 
@@ -104,6 +112,9 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
+        if time[1] >= StartAverageTime
+          AverageInTime!(UAver,U,iAv)
+        end  
         percent = i/nIter*100
         @info "Iteration: $i took $Δt, $percent% complete"
       end
@@ -195,6 +206,9 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
   else
     error("Bad IntMethod")
   end
+  if StartAverageTime >= 0 && StartAverageTime < SimTime
+    unstructured_vtkSphere(UAver,TransSphereX,CG,Global,Proc,ProcNumber)  
+  end  
 end  
 
 function TimeStepperAdvection!(U,Trans,CG,Global,Param)  

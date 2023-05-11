@@ -34,8 +34,10 @@ Thermo = parsed_args["Thermo"]
 Decomp = parsed_args["Decomp"]
 # Time integration
 SimDays = parsed_args["SimDays"]
+SimHours = parsed_args["SimHours"]
 SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
+StartAverageDays = parsed_args["StartAverageDays"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
@@ -166,6 +168,7 @@ Global.Output.PrintDays = PrintDays
 Global.Output.PrintHours = PrintHours
 Global.Output.PrintMinutes = PrintMinutes
 Global.Output.PrintSeconds = PrintSeconds
+Global.Output.StartAverageDays = StartAverageDays
 Global.Output.PrintStartDays = 0
 Global.Output.OrdPrint = CG.OrdPoly
 
