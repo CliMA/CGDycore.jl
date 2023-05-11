@@ -7,6 +7,11 @@ function parse_commandline()
     arg_type = String
     default = "Problem"
 
+    "--Profile"
+    help = "Profile for initial onditions"
+    arg_type = Bool
+    default = false
+
     "--NumV"
     help = "Number of variables"
     arg_type = Int

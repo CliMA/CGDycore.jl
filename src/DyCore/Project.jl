@@ -1,4 +1,4 @@
-function Project(Fun,time,CG,Global,Param)
+function Project(Fun,time,CG,Global,Param,Profile)
 OrdPoly=CG.OrdPoly;
 nz=Global.Grid.nz;
 p=zeros(nz,CG.NumG);
@@ -10,7 +10,7 @@ for iF=1:Global.Grid.NumFaces
       ind = CG.Glob[i,j,iF]
       for iz=1:nz
         x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
-        p[iz,ind] = Fun(x,time,Global,Param) 
+        p[iz,ind] = Fun(x,time,Global,Param,Profile) 
       end
     end
   end

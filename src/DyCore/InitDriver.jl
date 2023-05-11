@@ -71,7 +71,13 @@ function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Mode
     Global.Grid.nz = nzTemp
   end
 
-  return Global
+  if Topography.TopoS == "EarthOrography"
+    (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
+  else
+    (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+  end
+
+  return CG,Global
 end  
 
 

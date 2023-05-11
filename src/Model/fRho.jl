@@ -1,4 +1,4 @@
-function fRho(x,time,Global,Param)
+function fRho(x,time,Global,Param,Profile)
   Model=Global.Model
   Phys=Global.Phys
   # global Omega uM lat0G lat1G eN
@@ -132,6 +132,9 @@ elseif str == "barowavedrysphere"
 
       TLoc=Param.T0+exp(delta/2*x[3])*dT;
       Rho=p/(Phys.Rd*TLoc);
+  elseif str == "bryanfritsch"
+    @show Profile[5,:]
+    stop
   elseif str == "warmbubble2dx"
       Grav=Phys.Grav;
       p0=Phys.p0;

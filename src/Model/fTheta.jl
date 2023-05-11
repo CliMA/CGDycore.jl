@@ -1,4 +1,4 @@
-function fTheta(x,time,Global,Param)
+function fTheta(x,time,Global,Param,Profile)
   Model=Global.Model
   Phys=Global.Phys
   str = lowercase(Model.ProfTheta)

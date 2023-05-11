@@ -124,14 +124,26 @@ end
 
 Base.@kwdef struct ParamWarmBubble2DXCart
   Example = "WarmBubble2DXCart"
-  Th0=300.0
-  uMax=0.0
-  vMax=0
-  wMax=0
-  DeltaTh = 2.0
-  xC0 = 10000.0
-  zC0 = 2000.0
-  rC0 = 2000.0
+  Th0::Float64 = 300.0
+  uMax::Float64 = 0.0
+  vMax::Float64 = 0
+  wMax::Float64 = 0
+  DeltaTh::Float64 = 2.0
+  xC0::Float64 = 10000.0
+  zC0::Float64 = 2000.0
+  rC0::Float64 = 2000.0
+end
+
+Base.@kwdef struct ParamBryanFritschCart
+  Example = "BryanFritschCart"
+  Th0::Float64 = 300.0
+  uMax::Float64 = 0.0
+  vMax::Float64 = 0
+  wMax::Float64 = 0
+  DeltaTh::Float64 = 2.0
+  xC0::Float64 = 10000.0
+  zC0::Float64 = 2000.0
+  rC0::Float64 = 2000.0
 end
 
 Base.@kwdef struct ParamDensityCurrent2DXCart
@@ -274,6 +286,9 @@ function Parameters(Problem::String)
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()
+  elseif Problem == "BryanFritschCart"
+    @show Problem
+    Param = ParamBryanFritschCart()
   elseif Problem == "DensityCurrent2DXCart"
     @show Problem
     Param = ParamDensityCurrent2DXCart()

@@ -552,6 +552,7 @@ mutable struct PhysParameters
   Gamma::Float64
   kappa::Float64
   Omega::Float64
+  T0::Float64
 end
 function PhysParameters()
   RadEarth = 6.37122e+6
@@ -568,6 +569,7 @@ function PhysParameters()
   Gamma=Cpd/Cvd
   kappa=Rd/Cpd
   Omega=2*pi/24.0/3600.0
+  T0 = 273.15
  return PhysParameters(
   RadEarth,
   Grav,
@@ -583,6 +585,7 @@ function PhysParameters()
   Gamma,
   kappa,
   Omega,
+  T0,
   )
 end 
 
@@ -601,6 +604,7 @@ end
 
 mutable struct ModelStruct
   Problem::String
+  Profile::Bool
   ProfRho::String
   ProfTheta::String
   ProfTr::String
@@ -650,6 +654,7 @@ end
 
 function Model()
   Problem = ""
+  Profile = false
   ProfRho = ""
   ProfTheta = ""
   ProfTr = ""
@@ -697,6 +702,7 @@ function Model()
   StretchType = ""
   return ModelStruct(
    Problem,
+   Profile,
    ProfRho,
    ProfTheta,
    ProfTr,

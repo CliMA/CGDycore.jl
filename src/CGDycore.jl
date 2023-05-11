@@ -116,6 +116,7 @@ include("Model/KineticEnergy.jl")
 include("Model/InitialConditions.jl")
 include("Model/Parameters.jl")
 include("Model/Fun.jl")
+include("Model/InitProfileBryanFritsch.jl")
 
 include("Statistics/Averages.jl")
 

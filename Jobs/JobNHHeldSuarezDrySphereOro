@@ -9,13 +9,13 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Coriolis=true \
   --Upwind=true \
   --Curl=false \
-  --SurfaceFluxMom=true \
-  --VerticalDiffusionMom=true \
+  --SurfaceFluxMom=false \
+  --VerticalDiffusionMom=false \
   --HorLimit=false \
   --Decomp="EqualArea" \
   --SimDays=10 \
-  --PrintSeconds=7200 \
-  --dtau=150 \
+  --PrintHours=12 \
+  --dtau=200 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \
