@@ -19,21 +19,24 @@ function Limit!(qMin,qMax,Rhoq,Rho,CG,Global)
   end
 end
 
-function HorLimiter!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax)
+function HorLimiter!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax,ThreadCache)
+  @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
   l0 = 0
   eta = 1.e-12
   dlFD = 1.e-8
   n = size(w,1)
-  WM = zeros(n,n)
-  q = zeros(n,n)
+  WM = TCacheC1[Threads.threadid()]
+  q = TCacheC2[Threads.threadid()]
+  JC = TCacheC2[Threads.threadid()]
   SumJ = sum(J)
   for i = 1 : n
     for j = 1 : n
-      WM[i,j] = J[i,j] * w[i] * w[j] / SumJ
+      JC[i,j] = 0.5 * (J[i,j,1] + J[i,j,2])  
+      WM[i,j] = JC[i,j] * w[i] * w[j] / SumJ
     end
   end
   cRhoS = zeros(n,n)
-  @. cRhoS = cRho + dt * dcRho / J
+  @. cRhoS = cRho + dt * dcRho / JC
 # Finite difference step
   resp = 0
   @inbounds for i in eachindex(q)
@@ -41,7 +44,7 @@ function HorLimiter!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax)
     resp = resp + WM[i]*(q[i]*RhoSS[i]-cRhoS[i])
   end
   if abs(resp) <= eta
-    @. dcRho = (q * RhoSS - cRho) * J / dt
+    @. dcRho = (q * RhoSS - cRho) * JC / dt
     return
   end
   resc = 0
@@ -50,7 +53,7 @@ function HorLimiter!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax)
     resc = resc + WM[i] * (qLoc * RhoSS[i] - cRhoS[i])
   end
   if abs(resc-resp) <= 1.e-13
-    @. dcRho = (q * RhoSS - cRho) * J / dt
+    @. dcRho = (q * RhoSS - cRho) * JC / dt
     return
   end  
   alpha = dlFD / (resc - resp)
@@ -64,7 +67,7 @@ function HorLimiter!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax)
       resc = resc + WM[i]*(q[i]*RhoSS[i]-cRhoS[i])
     end
     if abs(resc-resp) <= 1.e-13
-      @. dcRho = (q * RhoSS - cRho) * J / dt
+      @. dcRho = (q * RhoSS - cRho) * JC / dt
       return
     end  
     alpha = (lp - lc) / (resp - resc)
@@ -73,92 +76,6 @@ function HorLimiter!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax)
     lc = lc - alpha * resc
     iter = iter + 1
   end
-  @. dcRho = (q * RhoSS - cRho) * J / dt
+  @. dcRho = (q * RhoSS - cRho) * JC / dt
 end 
-
-function QP!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax)
-# QStar (m^3/kg)
-# Rho  (m^3/kg) 
-  n = size(w,1)
-  WM = zeros(n,n)
-  cRhoS = zeros(n,n)
-  q = zeros(n,n)
-  JRho = zeros(n,n)
-
-  for i = 1 : n
-    for j = 1 : n
-      WM[i,j] = J[i,j] * w[i] * w[j] 
-    end
-  end
-  @. cRhoS = cRho + dt * dcRho / J
-
-  tol_limiter=5e-14
-  MassRho=0.0
-  Massq=0.0
-  for i in eachindex(cRhoS) 
-    JRho[i] = J[i] * RhoS[i]
-    q[i] = cRhoS[i] / RhoS[i]
-    MassRho = MassRho + JRho[i] 
-    Massq = Massq + JRho[i] * q[i] 
-  end
-
-  if MassRho <= 0
-    @show "MassRho <= 0"  
-    return
-  end
-  qMinOld = qMin
-  qMaxOld = qMax
-
-# relax constraints to ensure limiter has a solution:
-# This is only needed if running with the SSP CFL>1 or
-# due to roundoff errors
-  if Massq < qMin*MassRho
-    qMin=Massq/MassRho
-  end
-  if Massq > qMax*MassRho
-    qMax=Massq/MassRho
-  end
-  for iter=1:10
-    addMassq=0.0
-#   Computation of the error tolerance 
-#   and projecting x into the upper and
-#   lower bounds
-    for i in eachindex(cRhoS)
-      if q[i]>qMax
-        addMassq=addMassq+(q[i]-qMax)*JRho[i]
-        q[i]=qMax
-      elseif q[i]<qMin
-        addMassq=addMassq-(qMin-q[i])*JRho[i]
-        q[i]=qMin
-      end
-    end
-  
-    weightssum=0.0
-    if addMassq>0
-      for i in eachindex(cRhoS)
-        if q[i]<qMax
-          weightssum=weightssum+JRho[i]
-        end
-      end
-      for i in eachindex(cRhoS)
-        if q[i]<qMax
-          q[i]=q[i]+addMassq/weightssum
-        end
-      end
-    else
-      for i in eachindex(cRhoS)
-        if q[i]>qMin
-          weightssum=weightssum+JRho[i]
-        end
-      end
-      for i in eachindex(cRhoS)
-        if q[i]>qMin
-          q[i]=q[i]+addMassq/weightssum
-        end
-      end
-    end
-  end
-# @. cRhoS = cRho + dt * dcRho / J
-  @. dcRho = (q*RhoS - cRho) * J / dt
-end   
 

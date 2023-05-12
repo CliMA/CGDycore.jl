@@ -2,7 +2,6 @@ function TopographySmoothing2!(hFCG,hCG,CG,Global,HyperDDiv)
 
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
-  JF = Global.Metric.JF
   Div = zeros(CG.NumG)
   hF = zeros(CG.NumG)
   DivCG= zeros(OP,OP)
@@ -21,21 +20,25 @@ function TopographySmoothing2!(hFCG,hCG,CG,Global,HyperDDiv)
 
   # Hyperdiffusion 
   @inbounds for iF = 1:NF
-    @views JC = Global.Metric.JC[:,:,1,iF];
-    @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+    @views J = Global.Metric.J[:,:,:,1,iF];
+    @views dXdxI = Global.Metric.dXdxI[:,:,:,:,:,iF]
 
     @views mul!(D1cCG[:,:],CG.DS,hCG[:,:,iF])
     @views mul!(D2cCG[:,:],hCG[:,:,iF],CG.DST)
 
-    @views @. grad1CG[:,:] = dXdxIC[:,:,1,1,1] * D1cCG[:,:] + dXdxIC[:,:,1,2,1] * D2cCG[:,:]
-    @views @. grad2CG[:,:] = dXdxIC[:,:,1,1,2] * D1cCG[:,:] + dXdxIC[:,:,1,2,2] * D2cCG[:,:]
+    @views @. grad1CG[:,:] = (dXdxI[:,:,1,1,1,1] + dXdxI[:,:,2,1,1,1]) * D1cCG[:,:] + 
+      (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * D2cCG[:,:]
+    @views @. grad2CG[:,:] = (dXdxI[:,:,1,1,1,2] + dXdxI[:,:,2,1,1,2]) * D1cCG[:,:] + 
+      (dXdxI[:,:,1,1,2,2] + dXdxI[:,:,2,1,2,2]) * D2cCG[:,:]
 
-    @views @. D1gradCG[:,:] = dXdxIC[:,:,1,1,1] * grad1CG[:,:] + dXdxIC[:,:,1,1,2] * grad2CG[:,:]
-    @views @. D2gradCG[:,:] = dXdxIC[:,:,1,2,1] * grad1CG[:,:] + dXdxIC[:,:,1,2,2] * grad2CG[:,:]
+    @views @. D1gradCG[:,:] = (dXdxI[:,:,1,1,1,1] + dXdxI[:,:,2,1,1,1]) * grad1CG[:,:] + 
+      (dXdxI[:,:,1,1,1,2] + dXdxI[:,:,2,1,1,2]) * grad2CG[:,:]
+    @views @. D2gradCG[:,:] = (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * grad1CG[:,:] + 
+      (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * grad2CG[:,:]
 
     @views mul!(vC1[:,:],CG.DW,D1gradCG[:,:])
     @views mul!(vC2[:,:],D2gradCG[:,:],CG.DWT)
-    @views @. DivCG[:,:] = (vC1[:,:] + vC2[:,:]) / JC[:,:]
+    @views @. DivCG[:,:] = (vC1[:,:] + vC2[:,:]) / (J[:,:,1] + J[:,:,2])
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -46,8 +49,8 @@ function TopographySmoothing2!(hFCG,hCG,CG,Global,HyperDDiv)
 
   # Hyperdiffusion 
   @inbounds for iF = 1:NF
-    @views JC = Global.Metric.JC[:,:,1,iF];
-    @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+    @views J = Global.Metric.J[:,:,:,1,iF];
+    @views dXdxI = Global.Metric.dXdxI[:,:,:,:,:,:,iF]
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -57,15 +60,19 @@ function TopographySmoothing2!(hFCG,hCG,CG,Global,HyperDDiv)
     @views mul!(D1cCG[:,:],CG.DS,DivCG[:,:])
     @views mul!(D2cCG[:,:],DivCG[:,:],CG.DST)
   
-    @views @. grad1CG[:,:] = (dXdxIC[:,:,1,1,1] * D1cCG[:,:] + dXdxIC[:,:,1,2,1] * D2cCG[:,:])
-    @views @. grad2CG[:,:] = (dXdxIC[:,:,1,1,2] * D1cCG[:,:] + dXdxIC[:,:,1,2,2] * D2cCG[:,:])
+    @views @. grad1CG[:,:] = (dXdxI[:,:,1,1,1,1] + dXdxI[:,:,2,1,1,1]) * D1cCG[:,:] + 
+      (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * D2cCG[:,:]
+    @views @. grad2CG[:,:] = (dXdxI[:,:,1,1,1,2] + dXdxI[:,:,2,1,1,2]) * D1cCG[:,:] + 
+      (dXdxI[:,:,1,1,2,2] + dXdxI[:,:,2,1,2,2]) * D2cCG[:,:]
 
-    @views @. D1gradCG[:,:] = dXdxIC[:,:,1,1,1] * grad1CG[:,:] + dXdxIC[:,:,1,1,2] * grad2CG[:,:]
-    @views @. D2gradCG[:,:] = dXdxIC[:,:,1,2,1] * grad1CG[:,:] + dXdxIC[:,:,1,2,2] * grad2CG[:,:]
+    @views @. D1gradCG[:,:] = (dXdxI[:,:,1,1,1,1] + dXdxI[:,:,2,1,1,1]) * grad1CG[:,:] + 
+      (dXdxI[:,:,1,1,1,2] + dXdxI[:,:,2,1,1,2]) * grad2CG[:,:]
+    @views @. D2gradCG[:,:] = (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * grad1CG[:,:] + 
+      (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * grad2CG[:,:]
 
     @views mul!(vC1[:,:],CG.DW,D1gradCG[:,:])
     @views mul!(vC2[:,:],D2gradCG[:,:],CG.DWT)
-    @views @. DivCG[:,:] -= HyperDDiv*(vC1[:,:] + vC2[:,:]) / JC[:,:]
+    @views @. DivCG[:,:] -= HyperDDiv*(vC1[:,:] + vC2[:,:]) / (J[:,:,1] + J[:,:,2])
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -90,7 +97,7 @@ function TopographySmoothing1!(hFCG,hCG,CG,Global,HyperDDiv)
 
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
-  JF = Global.Metric.JF
+  J = Global.Metric.J
   Div = zeros(CG.NumG)
   hF = zeros(CG.NumG)
   DivCG= zeros(OP,OP)
@@ -107,23 +114,28 @@ function TopographySmoothing1!(hFCG,hCG,CG,Global,HyperDDiv)
   vC1 = grad1CG
   vC2 = grad2CG
 
-  # Hyperdiffusion 
+  # Diffusion 
   @inbounds for iF = 1:NF
-    @views JC = Global.Metric.JC[:,:,1,iF];
-    @views dXdxIC = Global.Metric.dXdxIC[:,:,:,:,:,iF]
+    @views J = Global.Metric.J[:,:,:,1,iF];
+    @views dXdxI = Global.Metric.dXdxI[:,:,:,:,:,:,iF]
 
     @views mul!(D1cCG[:,:],CG.DS,hCG[:,:,iF])
     @views mul!(D2cCG[:,:],hCG[:,:,iF],CG.DST)
 
-    @views @. grad1CG[:,:] = dXdxIC[:,:,1,1,1] * D1cCG[:,:] + dXdxIC[:,:,1,2,1] * D2cCG[:,:]
-    @views @. grad2CG[:,:] = dXdxIC[:,:,1,1,2] * D1cCG[:,:] + dXdxIC[:,:,1,2,2] * D2cCG[:,:]
+  
+    @views @. grad1CG[:,:] = (dXdxI[:,:,1,1,1,1] + dXdxI[:,:,2,1,1,1]) * D1cCG[:,:] + 
+      (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * D2cCG[:,:]
+    @views @. grad2CG[:,:] = (dXdxI[:,:,1,1,1,2] + dXdxI[:,:,2,1,1,2]) * D1cCG[:,:] + 
+      (dXdxI[:,:,1,1,2,2] + dXdxI[:,:,2,1,2,2]) * D2cCG[:,:]
 
-    @views @. D1gradCG[:,:] = dXdxIC[:,:,1,1,1] * grad1CG[:,:] + dXdxIC[:,:,1,1,2] * grad2CG[:,:]
-    @views @. D2gradCG[:,:] = dXdxIC[:,:,1,2,1] * grad1CG[:,:] + dXdxIC[:,:,1,2,2] * grad2CG[:,:]
+    @views @. D1gradCG[:,:] = (dXdxI[:,:,1,1,1,1] + dXdxI[:,:,2,1,1,1]) * grad1CG[:,:] + 
+      (dXdxI[:,:,1,1,1,2] + dXdxI[:,:,2,1,1,2]) * grad2CG[:,:]
+    @views @. D2gradCG[:,:] = (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * grad1CG[:,:] + 
+      (dXdxI[:,:,1,1,2,1] + dXdxI[:,:,2,1,2,1]) * grad2CG[:,:]
 
     @views mul!(vC1[:,:],CG.DW,D1gradCG[:,:])
     @views mul!(vC2[:,:],D2gradCG[:,:],CG.DWT)
-    @views @. DivCG[:,:] = HyperDDiv*(vC1[:,:] + vC2[:,:]) / JC[:,:]
+    @views @. DivCG[:,:] = HyperDDiv*(vC1[:,:] + vC2[:,:]) / (J[:,:,1] + J[:,:,2])
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]

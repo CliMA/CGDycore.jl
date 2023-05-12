@@ -10,7 +10,7 @@ using StaticArrays
 using MPI
 using WriteVTK
 using ArgParse
-using Metal
+#using Metal
 #using StaticArrays
 using NetCDF
 using MuladdMacro
@@ -111,7 +111,6 @@ include("Model/fPsi.jl")
 include("Model/fVelW.jl")
 include("Model/fpBGrd.jl")
 include("Model/fTest.jl")
-include("Model/Energy.jl")
 include("Model/KineticEnergy.jl")
 include("Model/InitialConditions.jl")
 include("Model/Parameters.jl")

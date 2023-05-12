@@ -184,9 +184,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
           @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
           @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
           @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
-            Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
-#         @views QP!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
-#           Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+            Global.Metric.J[:,:,:,iz,iF],CG.w,qMinS,qMaxS,Global.ThreadCache)
         end
       end  
     end  
@@ -280,9 +278,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
           @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
           @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
           @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
-            Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
-#         @views QP!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
-#           Global.Metric.JC[:,:,iz,iF],CG.w,qMinS,qMaxS)
+            Global.Metric.J[:,:,:,iz,iF],CG.w,qMinS,qMaxS,Global.ThreadCache)
         end
       end
     end  

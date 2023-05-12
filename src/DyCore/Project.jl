@@ -3,7 +3,6 @@ OrdPoly=CG.OrdPoly;
 nz=Global.Grid.nz;
 p=zeros(nz,CG.NumG);
 X = Global.Metric.X
-JC = Global.Metric.JC
 for iF=1:Global.Grid.NumFaces
   for j=1:OrdPoly+1
     for i=1:OrdPoly+1

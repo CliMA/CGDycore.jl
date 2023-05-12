@@ -13,7 +13,6 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  JF = Global.Metric.JF
   J = Global.Metric.J
   zP = Global.Metric.zP
   Temp1 = Global.Cache.Temp1
@@ -49,7 +48,6 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
   PresG = Global.Cache.PresG
   Temp = Global.Cache.Temp
   uStar = Global.Cache.uStar
-  JC = Global.Metric.JC
   KV = Global.Cache.KV
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
@@ -372,7 +370,8 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * JC[iP,jP,iz,iF] / CG.M[iz,ind]
+          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+            (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] 
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -569,7 +568,8 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * JC[iP,jP,iz,iF] / CG.M[iz,ind]
+          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+            (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -626,7 +626,6 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  JF = Global.Metric.JF
   J = Global.Metric.J
   zP = Global.Metric.zP
   Temp1 = Global.Cache.Temp1
@@ -660,7 +659,6 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
   PresG = Global.Cache.PresG
   Temp = Global.Cache.Temp
   uStar = Global.Cache.uStar
-  JC = Global.Metric.JC
   KV = Global.Cache.KV
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
@@ -960,7 +958,8 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * JC[iP,jP,iz,iF] / CG.M[iz,ind]
+          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+            (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] 
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -1145,7 +1144,8 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * JC[iP,jP,iz,iF] / CG.M[iz,ind]
+          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+            (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]

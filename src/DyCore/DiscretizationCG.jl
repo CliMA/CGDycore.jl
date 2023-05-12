@@ -124,9 +124,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
     NumberingFemCG(Grid,OrdPoly);  
 
 
-  dXdxIF = Global.Metric.dXdxIF
   dXdxI = Global.Metric.dXdxI
-  dXdxIC = Global.Metric.dXdxIC
   nS = Global.Metric.nS
   FS = Global.Metric.FS
   Global.Metric.dz = zeros(nz,CG.NumG)
@@ -134,8 +132,6 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   dz = Global.Metric.dz
   zP = Global.Metric.zP
   J = Global.Metric.J;
-  JC = Global.Metric.JC;
-  JF = Global.Metric.JF;
   lat = Global.Metric.lat;
   X = Global.Metric.X;
   dXdx   = zeros(OP,OP,OPZ,nz,3,3,NF)
@@ -159,22 +155,6 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
     @views @. nS[:,:,2,iF] = dXdxI[:,:,1,1,3,2,iF] / FS[:,:,iF]
     @views @. nS[:,:,3,iF] = dXdxI[:,:,1,1,3,3,iF] / FS[:,:,iF]
   end
-  @views @. JC=0.5*(J[:,:,2,:,:] + J[:,:,1,:,:])
-  @views @. JF[:,:,1,:] = J[:,:,1,1,:]
-  @views @. JF[:,:,2:nz,:] = 0.5*(J[:,:,2,1:nz-1,:] + J[:,:,1,2:nz,:])
-  @views @. JF[:,:,nz+1,:] = J[:,:,2,nz,:]
-
-  AverageFB!(JF,J);
-  dXdxIC .= 0;
-  dXdxIF .= 0;
-  for i=1:3
-    for j=1:3
-      @views @. dXdxIC[:,:,:,i,j,:] = 0.5*(dXdxI[:,:,1,:,i,j,:] + dXdxI[:,:,2,:,i,j,:])
-      @views @. dXdxIF[:,:,1,i,j,:] = dXdxI[:,:,1,1,i,j,:]
-      @views @. dXdxIF[:,:,2:nz,i,j,:] = 0.5*(dXdxI[:,:,2,1:nz-1,i,j,:] + dXdxI[:,:,1,2:nz,i,j,:])
-      @views @. dXdxIF[:,:,nz+1,i,j,:] = dXdxI[:,:,2,nz,i,j,:]
-    end
-  end
 
   (CG.M,CG.MW,CG.MMass)=MassCG(CG,Global);
   Global.latN=zeros(CG.NumG);
@@ -185,14 +165,17 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
     for jP=1:OP
       for iP=1:OP
         ind=CG.Glob[iP,jP,iF]
-        latN[ind] = latN[ind] + lat[iP,jP,iF] * JC[iP,jP,1,iF] / CG.M[1,ind]
-        @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF] / CG.M[:,ind]
+        latN[ind] = latN[ind] + 0.5 * lat[iP,jP,iF] * (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / CG.M[1,ind]
+        @views @. dz[:,ind] +=  (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])^2 / 
+          (dXdxI[iP,jP,1,:,3,3,iF] + dXdxI[iP,jP,2,:,3,3,iF])  / CG.M[:,ind]
         @inbounds for iz=1:nz
           if Global.Grid.Form == "Sphere"
             r = norm(0.5 .* (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
-            zP[iz,ind] += max(r-Global.Grid.Rad, 0.0) * JC[iP,jP,iz,iF] / CG.M[iz,ind]
+            zP[iz,ind] += 0.5 * max(r-Global.Grid.Rad, 0.0) * 
+              (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / CG.M[iz,ind]
           else
-            zP[iz,ind] += 0.5*(X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])* JC[iP,jP,iz,iF] / CG.M[iz,ind]
+            zP[iz,ind] += 0.5*(X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF]) * 
+              (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / CG.M[iz,ind]
           end
         end
       end
