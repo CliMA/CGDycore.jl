@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
+mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
   --Problem="AdvectionSphereSlottedCylinder" \
   --NumV=1 \
   --NumTr=1 \
@@ -18,9 +18,7 @@ mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
   --IntMethod="SSPRungeKutta" \
   --Table="SSP32" \
   --TopoS="" \
-  --stretch=false \
   --GridType="SQuadGen" \
-  --RadEarth=0.5 \
   --nz=1 \
   --nPanel=32 \
   --RadEarth=1 \

@@ -1,5 +1,5 @@
 mpirun -n 6 julia --project Examples/testNHSphere.jl \
-  --Problem="HeldSuarezDrySphere" \
+  --Problem="HeldSuarezDrySphereOro" \
   --NumV=5 \
   --NumTr=0 \
   --ProfRho="DecayingTemperatureProfile" \
@@ -7,19 +7,29 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfVel="Const" \
   --Source=true \
   --Coriolis=true \
+  --Upwind=true \
+  --ModelType="VectorInvariant" \
+  --Curl=true \
+  --SurfaceFluxMom=false \
+  --VerticalDiffusionMom=false \
+  --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
-  --dtau=100 \
+  --SimDays=4 \
+  --PrintDays=1 \
+  --StartAverageDays=1 \
+  --dtau=200 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
-  --stretch=false \
+  --Stretch=true \
+  --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=45 \
   --nPanel=16 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=7.e16 \
-  --HyperDGrad=7.e16 \
-  --HyperDDiv=7.e16
+  --HyperDCurl=1.e16 \
+  --HyperDGrad=1.e16 \
+  --HyperDDiv=1.e16
+
