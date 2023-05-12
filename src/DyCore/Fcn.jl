@@ -370,7 +370,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
             (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] 
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
@@ -568,7 +568,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
             (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
@@ -958,7 +958,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
             (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] 
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
@@ -1144,7 +1144,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += 0.5 * Pres[iP,jP,iz,iF] * 
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
             (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]

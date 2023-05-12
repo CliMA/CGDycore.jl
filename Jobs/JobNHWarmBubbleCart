@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHCart.jl \
+mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Problem="WarmBubble2DXCart" \
   --NumV=5 \
   --NumTr=0 \
@@ -19,7 +19,6 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Table="SSP-Knoth" \
   --TopoS="" \
   `#Topography `        \
-  --stretch=false \
   --H=10000.0 \
   --Lx=20000.0 \
   --Ly=2000.0 \

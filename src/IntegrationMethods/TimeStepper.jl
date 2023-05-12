@@ -111,7 +111,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
           if mod(i,PrintInt) == 0 && i >= PrintStartInt
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
-          if time[1] >= StartAverageTime
+          if time[1] >= StartAverageTime && StartAverageTime >= 0.0
             AverageInTime!(UAver,U,iAv)
             iAv += 1
           end  
