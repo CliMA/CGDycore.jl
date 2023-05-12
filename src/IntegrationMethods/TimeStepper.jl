@@ -105,15 +105,19 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
   if IntMethod == "Rosenbrock"
     @time begin
       for i=1:nIter
-        RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param,DiscType);
-        time[1] += dtau
-        if mod(i,PrintInt) == 0 && i >= PrintStartInt
-          unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+        Δt = @elapsed begin
+          RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param,DiscType);
+          time[1] += dtau
+          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+          end
+          if time[1] >= StartAverageTime
+            AverageInTime!(UAver,U,iAv)
+            iAv += 1
+          end  
         end
-        if time[1] >= StartAverageTime
-          AverageInTime!(UAver,U,iAv)
-          iAv += 1
-        end  
+        percent = i/nIter*100
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
   elseif IntMethod == "RosenbrockD"
