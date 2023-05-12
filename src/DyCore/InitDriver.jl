@@ -38,6 +38,7 @@ function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Mode
       lambda = 3.16
       AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"  
+      @show "AddExpStretchVerticalGrid"
       AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
     else
       AddVerticalGrid!(SubGrid,nz,H)

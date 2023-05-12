@@ -119,6 +119,7 @@ Model.Thermo = Thermo
 Model.Curl = Curl
 Model.ModelType = ModelType
 Model.Stretch = Stretch
+Model.StretchType = StretchType
 Model.HyperVisc = HyperVisc
 Model.HyperDCurl = HyperDCurl
 Model.HyperDGrad = HyperDGrad
