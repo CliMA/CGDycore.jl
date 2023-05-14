@@ -1603,21 +1603,18 @@ function GradColumn!(Gradu,Gradv,Gradw,cC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
   end
   @inbounds for iz = 2 : Nz
     @views @. GradZ = 0.5 * (cF[:,:,1,iz] - cF[:,:,2,iz-1])
-#   @views @. GraduF[:,:,2,iz-1] -= GradZ * dXdxI[:,:,2,iz-1,3,1]
-#   @views @. GraduF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,1]
-#   @views @. GradvF[:,:,2,iz-1] -= GradZ * dXdxI[:,:,2,iz-1,3,2]
-#   @views @. GradvF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,2]
     @views @. GradwF[:,:,2,iz-1] -= GradZ * dXdxI[:,:,2,iz-1,3,3]
     @views @. GradwF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,3]
   end
   @inbounds for iz = 1 : Nz
-#   @views @. GradZ = 0.5 * (cF[:,:,2,iz] - cF[:,:,1,iz])
     @views @. GradZ = -Phys.Grav * RhoC[:,:,iz] * 
-      (J[:,:,1,iz] + J[:,:,2,iz]) / (dXdxI[:,:,1,iz,3,3] + dXdxI[:,:,2,iz,3,3]) 
-    @views @. GraduF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,1]
+      J[:,:,1,iz] / dXdxI[:,:,1,iz,3,3]  
     @views @. GraduF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,1]
-    @views @. GradvF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,2]
     @views @. GradvF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,2]
+    @views @. GradZ = -Phys.Grav * RhoC[:,:,iz] * 
+      J[:,:,2,iz] / dXdxI[:,:,2,iz,3,3]  
+    @views @. GraduF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,1]
+    @views @. GradvF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,2]
     @views @. GradZ = 0.5 * (cF[:,:,2,iz] - cF[:,:,1,iz])
     @views @. GradwF[:,:,2,iz] -= GradZ * dXdxI[:,:,2,iz,3,3]
     @views @. GradwF[:,:,1,iz] -= GradZ * dXdxI[:,:,1,iz,3,3]
