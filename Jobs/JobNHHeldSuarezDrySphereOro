@@ -13,6 +13,9 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --SurfaceFluxMom=false \
   --VerticalDiffusionMom=false \
   --HorLimit=false \
+  --Damping=true \
+  --StrideDamp=10000 \
+  --Relax=1.0e-3 \
   --Decomp="EqualArea" \
   --SimDays=400 \
   --PrintDays=20 \
