@@ -125,7 +125,7 @@ function TopographySmoothing1!(hFCG,hCG,CG,Global,HyperDDiv)
   
     @views @. grad1CG[:,:] = (dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) * D1cCG[:,:] + 
       (dXdxI[:,:,1,2,1] + dXdxI[:,:,2,2,1]) * D2cCG[:,:]
-    @views @. grad2CG[:,:] = (dXdxI[:,:,1,1,1,2] + dXdxI[:,:,2,1,1,2]) * D1cCG[:,:] + 
+    @views @. grad2CG[:,:] = (dXdxI[:,:,1,1,2] + dXdxI[:,:,2,1,2]) * D1cCG[:,:] + 
       (dXdxI[:,:,1,2,2] + dXdxI[:,:,2,2,2]) * D2cCG[:,:]
 
     @views @. D1gradCG[:,:] = (dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) * grad1CG[:,:] + 
