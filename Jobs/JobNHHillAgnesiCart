@@ -8,7 +8,7 @@ mpirun -n 6 julia --project ~/Documents/Github/CliMA/CGDycore.jl/Examples/testNH
   --ProfpBGrd="AgnesiCart" \
   --ProfRhoBGrd="AgnesiCart" \
   --RefProfile=false \
-  --Curl=true \
+  --Curl=false \
   --ModelType="VectorInvariant" \
   --SurfaceFluxMom=false \
   --VerticalDiffusionMom=false \

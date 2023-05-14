@@ -166,7 +166,7 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
       for iP=1:OP
         ind=CG.Glob[iP,jP,iF]
         latN[ind] = latN[ind] + lat[iP,jP,iF] * (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / CG.M[1,ind]
-        @views @. dz[:,ind] +=  2.0 * (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])^2 / 
+        @views @. dz[:,ind] +=  2.0*(J[iP,jP,1,:,iF] + J[iP,jP,2,:,iF])^2 / 
           (dXdxI[iP,jP,1,:,3,3,iF] + dXdxI[iP,jP,2,:,3,3,iF])  / CG.M[:,ind]
         @inbounds for iz=1:nz
           if Global.Grid.Form == "Sphere"

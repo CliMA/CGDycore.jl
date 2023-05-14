@@ -395,7 +395,7 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
 #  end
 end 
 
-function GradColumn1!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
+function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
   @unpack TCacheC1, TCacheC2 = ThreadCache
   Nz = size(FuC,3)
   OrdPoly = Fe.OrdPoly
@@ -1522,7 +1522,7 @@ function Gradient!(Gradu,Gradv,Gradw,cC,
   end  
 end
 
-function GradColumn!(Gradu,Gradv,Gradw,cC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
+function GradColumn2!(Gradu,Gradv,Gradw,cC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
 
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2, TCacheCol3, TCacheCol4 = ThreadCache
   Nz = size(cC,3)
