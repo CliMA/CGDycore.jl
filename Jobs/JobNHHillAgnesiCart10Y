@@ -1,5 +1,5 @@
 mpirun -n 8 julia --project ~/Documents/Github/CliMA/CGDycore.jl/Examples/testNHCart.jl \
-  --Problem="HillAgnesiXCart" \
+  --Problem="HillAgnesiYCart" \
   --NumV=5 \
   --NumTr=0 \
   --ProfRho="AgnesiCart" \
@@ -20,12 +20,12 @@ mpirun -n 8 julia --project ~/Documents/Github/CliMA/CGDycore.jl/Examples/testNH
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --Thermo="" \
-  --SimMinutes=300 \
-  --PrintSeconds=300 \
+  --SimMinutes=30 \
+  --PrintSeconds=30 \
   --dtau=3 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  --TopoS="AgnesiCartX" \
+  --TopoS="AgnesiCartY" \
   `#Topography `        \
   --P1=0.0\
   --P2=10000.0\
@@ -33,10 +33,10 @@ mpirun -n 8 julia --project ~/Documents/Github/CliMA/CGDycore.jl/Examples/testNH
   --Stretch=true \
   --StretchType="ICON" \
   --H=19600.0 \
-  --Lx=400000.0 \
-  --Ly=40000.0 \
-  --x0=-200000.0 \
-  --y0=0.0 \
+  --Ly=400000.0 \
+  --Lx=40000.0 \
+  --y0=-200000.0 \
+  --x0=0.0 \
   --nz=80 \
   --nx=40 \
   --ny=2 \

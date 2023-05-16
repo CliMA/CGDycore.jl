@@ -20,7 +20,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --SimDays=400 \
   --PrintDays=20 \
   --StartAverageDays=200 \
-  --dtau=200 \
+  --dtau=300 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \

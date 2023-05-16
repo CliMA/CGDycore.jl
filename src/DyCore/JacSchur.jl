@@ -113,8 +113,10 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     @views @. J.JRhoW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
 
     dPresdTh!(dPdTh, Th, Rho, Tr, Global);
-    @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
-    @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
+    @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.5 * (Rho[1:nz-1] * dz[1:nz-1] + 
+      Rho[2:nz] * dz[2:nz])) 
+    @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.5 * (Rho[1:nz-1] * dz[1:nz-1] +
+      Rho[2:nz] * dz[2:nz])) 
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
 
@@ -126,9 +128,9 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
       @views @. J.JWRhoV[2,:,iC] = Dm
     end  
 
-    @views @. D[1:nz-1] = Global.Phys.Grav / (Rho[1:nz-1] + Rho[2:nz])
-    @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] 
-    @views @. J.JWRho[2,1:nz,iC] = -D 
+    @views @. D[1:nz-1] = Global.Phys.Grav  / (Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz])
+    @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] * dz[2:nz]
+    @views @. J.JWRho[2,1:nz,iC] = -D * dz
 
     @views @. D[1:nz-1] = -(Th[1:nz-1] * dz[1:nz-1] + Th[2:nz] * dz[2:nz]) /
       (dz[1:nz-1] + dz[2:nz])
