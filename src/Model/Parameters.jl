@@ -253,7 +253,7 @@ function Parameters(Problem::String)
   elseif Problem == "GalewskiSphere"
     @show Problem
     Param = ParamGalewskiSphere()
-  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
+  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" || Problem == "HeldSuarezMoistSphere"
     @show Problem
     Param = ParamHeldSuarezDrySphere()
   elseif Problem == "HillSchaerCart"

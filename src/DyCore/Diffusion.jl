@@ -4,20 +4,21 @@ function VerticalDiffusionScalar!(Fc,c,Rho,K,CG,Global,iF)
 
 nz = Global.Grid.nz
 gradqCG = Global.Cache.CacheC1
-@views dXdxIF33 = Global.Metric.dXdxIF[:,:,:,3,3,iF] 
-@views JF = Global.Metric.JF[:,:,:,iF] 
+@views dXdxI33 = Global.Metric.dXdxI[:,:,:,:,3,3,iF] 
+@views J = Global.Metric.J[:,:,:,:,iF] 
 qCG = Global.Cache.CacheC3
 @. qCG = c / Rho 
 # Gradient computation
   @inbounds for iz = 1:nz-1
-    @views @. gradqCG[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * dXdxIF33[:,:,iz+1] / JF[:,:,iz+1] 
+    @views @. gradqCG[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * 
+      (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / ( J[:,:,2,iz] + J[:,:,1,iz+1]) 
   end
 # Divergence  
-  @views @. Fc[:,:,1] += 0.5 * gradqCG[:,:,2] * dXdxIF33[:,:,2]
+  @views @. Fc[:,:,1] += gradqCG[:,:,2] * dXdxI33[:,:,2,1]
   @inbounds for iz = 2:nz-1
-    @views @. Fc[:,:,iz] += 0.5 * (gradqCG[:,:,iz+1] * dXdxIF33[:,:,iz+1] - gradqCG[:,:,iz] * dXdxIF33[:,:,iz])
+    @views @. Fc[:,:,iz] += (gradqCG[:,:,iz+1] * dXdxI33[:,:,2,iz] - gradqCG[:,:,iz] * dXdxI33[:,:,1,iz])
   end
-  @views @. Fc[:,:,nz] -= 0.5 * gradqCG[:,:,nz] * dXdxIF33[:,:,nz]
+  @views @. Fc[:,:,nz] -= gradqCG[:,:,nz] * dXdxI33[:,:,1,nz]
 end
 
 function VerticalDiffusionMomentum!(FuC,FvC,uC,vC,Rho,K,dXdxI33,J,Cache)
@@ -81,11 +82,11 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
     Cpv = Global.Phys.Cpv
     p0 = Global.Phys.p0
     @views p = Global.Cache.Pres[:,:,1,iF]
-    @views dXdxIF = Global.Metric.dXdxIF[:,:,1,3,3,iF]
+    @views dXdxI = Global.Metric.dXdxI[:,:,1,1,3,3,iF]
     @inbounds for j = 1:OP
       @inbounds for i = 1:OP
        (FTh,FRho,FRhoV) = BoundaryFluxHeldSuarez(
-         Th[i,j],Rho[i,j],Tr[i,j,RhoVPos],TSurf[i,j],p[i,j],dXdxIF[i,j],CH,CE,uStar[i,j], Rd, Cpd, Rv, Cpv, p0)
+         Th[i,j],Rho[i,j],Tr[i,j,RhoVPos],TSurf[i,j],p[i,j],dXdxI[i,j],CH,CE,uStar[i,j], Rd, Cpd, Rv, Cpv, p0)
        Fc[i,j,ThPos] += FTh
        Fc[i,j,RhoPos] += FRho
        Fc[i,j,RhoVPos+NumV] += FRhoV
