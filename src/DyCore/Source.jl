@@ -132,9 +132,6 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
      b = 0.0
      FRhoV = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
      L = L00 - (Cpl - Cpv) * T
-     if FRhoV < 0.0
-       @show FRhoV
-     end  
      FRho = FRhoV
      FRhoC = 0.0
      if Global.Model.Thermo == "InternalEnergy"
