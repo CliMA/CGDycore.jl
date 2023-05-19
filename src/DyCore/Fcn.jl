@@ -1,4 +1,4 @@
-function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
+function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
 (;  RhoPos,
     uPos,
@@ -52,17 +52,17 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
 
-  Rot1 .= 0.0
-  Rot2 .= 0.0
-  Grad1 .= 0.0
-  Grad2 .= 0.0
-  Div .= 0.0
-  DivTr .= 0.0
-  F .= 0.0
-  PresG .= 0.0
-  JJ .= 0.0
-  JRho .= 0.0
-  JRhoF .= 0.0
+  @. Rot1 = 0.0
+  @. Rot2 = 0.0
+  @. Grad1 = 0.0
+  @. Grad2 = 0.0
+  @. Div = 0.0
+  @. DivTr = 0.0
+  @. F = 0.0
+  @. PresG = 0.0
+  @. JJ = 0.0
+  @. JRho = 0.0
+  @. JRhoF = 0.0
 
 
   # Hyperdiffusion 
@@ -248,7 +248,8 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
     end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+#     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,DiscType)
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
@@ -310,7 +311,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
           Global.ThreadCache,Global.Model.HorLimit)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
@@ -319,7 +320,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
           Global.ThreadCache,Global.Model.HorLimit)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
@@ -342,7 +343,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT]
+            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / JJ[iz,ind]
           end
         end
       end
@@ -447,7 +448,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
     end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
@@ -505,19 +506,19 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
-          Global.ThreadCache,Global.Model.HorLimit)
+          Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
-          Global.ThreadCache,Global.Model.HorLimit)
+          Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
@@ -540,7 +541,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:VectorInvariant})
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT]
+            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / JJ[iz,ind]
           end
         end
       end
@@ -663,15 +664,15 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
 
-  Rot1 .= 0.0
-  Rot2 .= 0.0
-  Grad1 .= 0.0
-  Grad2 .= 0.0
-  Div .= 0.0
-  DivTr .= 0.0
-  F .= 0.0
-  PresG .= 0.0
-  JJ .= 0.0
+  @. Rot1 = 0.0
+  @. Rot2 = 0.0
+  @. Grad1 = 0.0
+  @. Grad2 = 0.0
+  @. Div = 0.0
+  @. DivTr = 0.0
+  @. F = 0.0
+  @. PresG = 0.0
+  @. JJ = 0.0
 
 
   # Hyperdiffusion 

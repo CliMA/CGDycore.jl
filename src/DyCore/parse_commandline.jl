@@ -117,6 +117,11 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--RelCloud"
+    help = "Relaxation parameter [1/s] for cloud microphysics"
+    arg_type = Float64
+    default = 0.0
+
     "--Source"
     help = "Source"
     arg_type = Bool

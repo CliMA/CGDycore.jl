@@ -22,6 +22,7 @@ BoundarySN = parsed_args["BoundarySN"]
 BoundaryBT = parsed_args["BoundaryBT"]
 Thermo = parsed_args["Thermo"]
 RefProfile = parsed_args["RefProfile"]
+Profile = parsed_args["Profile"]
 Curl = parsed_args["Curl"]
 ModelType = parsed_args["ModelType"]
 #Orography
@@ -109,6 +110,7 @@ end
 Model.ProfpBGrd = ProfpBGrd
 Model.ProfRhoBGrd = ProfRhoBGrd
 Model.RefProfile = RefProfile
+Model.Profile = Profile
 Model.RhoPos=1
 Model.uPos=2
 Model.vPos=3

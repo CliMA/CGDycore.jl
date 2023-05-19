@@ -247,7 +247,7 @@ end
 
 
 function Parameters(Problem::String)
-  if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro"
+  if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro" || Problem == "BaroWaveMoistSphere"
     @show Problem
     Param = ParamBaroWaveDrySphere()
   elseif Problem == "GalewskiSphere"

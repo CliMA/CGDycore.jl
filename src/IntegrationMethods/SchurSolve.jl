@@ -4,42 +4,42 @@ function triSolve!(x,tri,b)
   n = size(tri,2)
   x[1] = tri[2,1]
   @inbounds for i=1:n-1
-    x[i+1] = tri[2,i+1]-tri[3,i]/x[i]*tri[1,i+1]  
-    b[i+1] = b[i+1]-tri[3,i]/x[i]*b[i]  
+    @fastmath x[i+1] = tri[2,i+1]-tri[3,i]/x[i]*tri[1,i+1]  
+    @fastmath b[i+1] = b[i+1]-tri[3,i]/x[i]*b[i]  
   end
-  x[n] = b[n]/x[n]
+  @fastmath x[n] = b[n]/x[n]
   @inbounds for i=n-1:-1:1
-    x[i]=(b[i] - tri[1,i+1]*x[i+1])/x[i]  
+    @fastmath x[i]=(b[i] - tri[1,i+1]*x[i+1])/x[i]  
   end
 end
 
 function mulUL!(tri,biU,biL)
   n = size(biL,2)
-  tri[2,1] = tri[2,1] - biU[2,1]*biL[1,1] - biU[1,2]*biL[2,1]
-  tri[3,1] = tri[3,1] - biU[2,2]*biL[2,1]
+  @fastmath tri[2,1] = tri[2,1] - biU[2,1]*biL[1,1] - biU[1,2]*biL[2,1]
+  @fastmath tri[3,1] = tri[3,1] - biU[2,2]*biL[2,1]
   @inbounds for i=2:n-1
-    tri[1,i] = tri[1,i] - biU[1,i]*biL[1,i]
-    tri[2,i] = tri[2,i] - biU[2,i]*biL[1,i] - biU[1,i+1]*biL[2,i]
-    tri[3,i] = tri[3,i] - biU[2,i+1]*biL[2,i]
+    @fastmath tri[1,i] = tri[1,i] - biU[1,i]*biL[1,i]
+    @fastmath tri[2,i] = tri[2,i] - biU[2,i]*biL[1,i] - biU[1,i+1]*biL[2,i]
+    @fastmath tri[3,i] = tri[3,i] - biU[2,i+1]*biL[2,i]
   end
   i = n
-  tri[1,i] = tri[1,i] - biU[1,i]*biL[1,i]
-  tri[2,i] = tri[2,i] - biU[2,i]*biL[1,i]
+  @fastmath tri[1,i] = tri[1,i] - biU[1,i]*biL[1,i]
+  @fastmath tri[2,i] = tri[2,i] - biU[2,i]*biL[1,i]
 end
 
 function mulbiUv!(u,biU,v)
   n = size(biU,2)
   @inbounds for i=1:n-1
-    u[i] = u[i] + biU[2,i]*v[i] + biU[1,i+1]*v[i+1]
+    @fastmath u[i] = u[i] + biU[2,i]*v[i] + biU[1,i+1]*v[i+1]
   end
-  u[n] = u[n] + biU[2,n]*v[n]
+  @fastmath u[n] = u[n] + biU[2,n]*v[n]
 end
 
 function mulbiLv!(u,biL,v)
   n = size(biL,2)
-  u[1] = u[1] + biL[1,1]*v[1]
+  @fastmath u[1] = u[1] + biL[1,1]*v[1]
   @inbounds for i=2:n
-    u[i] = u[i] + biL[2,i-1]*v[i-1] + biL[1,i]*v[i]
+    @fastmath u[i] = u[i] + biL[2,i-1]*v[i-1] + biL[1,i]*v[i]
   end
 end
 
@@ -73,25 +73,25 @@ function SchurSolve!(k,v,J,fac,Global)
       invfac2=invfac/fac;
       if Global.Model.Damping
         if J.CompTri
-          @views tri[1,:,in2] .= 0
-          @views tri[2,:,in2] .= invfac2  .- invfac .* JWW[1,:,in2]
-          @views tri[3,:,in2] .= 0
+          @views @. tri[1,:,in2] = 0
+          @views @. tri[2,:,in2] = invfac2  - invfac * JWW[1,:,in2]
+          @views @. tri[3,:,in2] = 0
           @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
           @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
         end
-        rw .= invfac .* rw
+        @. rw = invfac * rw
         @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
         @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
         @views triSolve!(sw,tri[:,:,in2],rw)
       else
         if J.CompTri  
-          @views tri[1,:,in2] .= 0
-          @views tri[2,:,in2] .= invfac2   
-          @views tri[3,:,in2] .= 0
+          @views @. tri[1,:,in2] = 0
+          @views @. tri[2,:,in2] = invfac2   
+          @views @. tri[3,:,in2] = 0
           @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
           @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
         end
-        rw .= invfac .* rw
+        @. rw = invfac * rw
         @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
         @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
         @views triSolve!(sw,tri[:,:,in2],rw)
@@ -99,9 +99,9 @@ function SchurSolve!(k,v,J,fac,Global)
       @views mulbiLv!(rRho,JRhoW[:,:,in2],sw)
       @views mulbiLv!(rTh,JThW[:,:,in2],sw)
 
-      @views k[:,in2,1] .= fac .* rRho
-      @views k[:,in2,2:3] .= fac .* v[:,in2,2:3];
-      @views k[:,in2,5] .= fac .* rTh
+      @views @. k[:,in2,1] = fac * rRho
+      @views @. k[:,in2,2:3] = fac * v[:,in2,2:3];
+      @views @. k[:,in2,5] = fac * rTh
       @inbounds for iT = 1 : NumTr
         @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
         @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
@@ -123,28 +123,28 @@ function SchurSolve!(k,v,J,fac,Global)
       invfac2=invfac/fac;
       if Global.Model.Damping
         if J.CompTri
-          @views tri[1,:,in2] .= 0
-          @views tri[2,:,in2] .= invfac2  .- invfac .* JWW[1,:,in2]
-          @views tri[3,:,in2] .= 0
+          @views @. tri[1,:,in2] = 0
+          @views @. tri[2,:,in2] = invfac2  - invfac * JWW[1,:,in2]
+          @views @. tri[3,:,in2] = 0
           @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
           @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
           @views mulUL!(tri[:,:,in2],JWRhoV[:,:,in2],JTrW[:,:,in2,NumV + RhoVPos])
         end
-        rw .= invfac .* rw
+        @. rw = invfac * rw
         @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
         @views mulbiUv!(rw,JWRhoV[:,:,in2],rRhoV)
         @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
         @views triSolve!(sw,tri[:,:,in2],rw)
       else
         if J.CompTri  
-          @views tri[1,:,in2] .= 0
-          @views tri[2,:,in2] .= invfac2   
-          @views tri[3,:,in2] .= 0
+          @views @. tri[1,:,in2] = 0
+          @views @. tri[2,:,in2] = invfac2   
+          @views @. tri[3,:,in2] = 0
           @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
           @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
           @views mulUL!(tri[:,:,in2],JWRhoV[:,:,in2],JTrW[:,:,in2,RhoVPos])
         end
-        rw .= invfac .* rw
+        @. rw = invfac * rw
         @views mulbiUv!(rw,JWRho[:,:,in2],rRho)
         @views mulbiUv!(rw,JWRhoV[:,:,in2],rRhoV)
         @views mulbiUv!(rw,JWTh[:,:,in2],rTh)
@@ -153,9 +153,9 @@ function SchurSolve!(k,v,J,fac,Global)
       @views mulbiLv!(rRho,JRhoW[:,:,in2],sw)
       @views mulbiLv!(rTh,JThW[:,:,in2],sw)
 
-      @views k[:,in2,1] .= fac .* rRho
-      @views k[:,in2,2:3] .= fac .* v[:,in2,2:3];
-      @views k[:,in2,5] .= fac .* rTh
+      @views @. k[:,in2,1] = fac * rRho
+      @views @. k[:,in2,2:3] = fac * v[:,in2,2:3];
+      @views @. k[:,in2,5] = fac * rTh
       @inbounds for iT = 1 : NumTr
         @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
         @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]

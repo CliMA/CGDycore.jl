@@ -21,6 +21,7 @@ RefProfile = parsed_args["RefProfile"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
 Microphysics = parsed_args["Microphysics"]
+RelCloud = parsed_args["RelCloud"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
@@ -101,6 +102,10 @@ Model.uPos = 2
 Model.vPos = 3
 Model.wPos = 4
 Model.ThPos = 5
+if Model.Equation == "CompressibleMoist"
+  Model.RhoVPos = 1
+  Model.RhoCPos = 2
+end  
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping
@@ -112,6 +117,7 @@ Model.Buoyancy = Buoyancy
 Model.VerticalDiffusion = VerticalDiffusion
 Model.Source = Source
 Model.Microphysics = Microphysics
+Model.RelCloud = RelCloud
 Model.Source = Source
 Model.SurfaceFlux = SurfaceFlux
 Model.SurfaceFluxMom = SurfaceFluxMom
@@ -144,15 +150,29 @@ Global.Output.nPanel = nPanel
 Global.Output.RadPrint = H
 Global.Output.H = H
 if ModelType == "VectorInvariant" || ModelType == "Advection"
-  Global.Output.cNames = [
-    "Rho",
-    "u",
-    "v",
-    "wB",
-    "Th",
-    "Vort",
-    "Pres",
-    ]
+  if Model.Equation == "Compressible"  
+    Global.Output.cNames = [
+      "Rho",
+      "u",
+      "v",
+      "wB",
+      "Th",
+      "Vort",
+      "Pres",
+      ]
+  elseif Model.Equation == "CompressibleMoist"  
+    Global.Output.cNames = [
+      "Rho",
+      "u",
+      "v",
+      "wB",
+      "Th",
+      "Vort",
+      "Pres",
+      "Tr1",
+      "Tr2",
+      ]
+  end  
 elseif ModelType == "Conservative"
   Global.Output.cNames = [
     "Rho",

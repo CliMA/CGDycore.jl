@@ -39,7 +39,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
   StartAverageTime = StartAverageDays * 3600 * 24
   if StartAverageTime >= 0 && StartAverageTime < SimTime
     UAver = similar(U)
-    UAver .= 0.0
+    @. UAver = 0.0
     iAv = 1
   end  
   PrintStartInt=0

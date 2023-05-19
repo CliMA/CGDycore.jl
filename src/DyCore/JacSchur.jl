@@ -98,6 +98,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   Dp = J.CacheCol2
   Dm = J.CacheCol3
   dPdTh = J.CacheCol1
+  dPdRhoV = J.CacheCol1
   K = J.CacheCol1
 
   @inbounds for iC=1:nCol
@@ -109,6 +110,9 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
 
     @views @. D[1:nz-1] = -(Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz]) /
       (dz[1:nz-1] + dz[2:nz])
+    # JRhoW low bidiagonal matrix
+    # First row diagonal
+    # Second row lower diagonal
     @views @. J.JRhoW[1,:,iC] = D / dz
     @views @. J.JRhoW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
 
@@ -117,21 +121,32 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
       Rho[2:nz] * dz[2:nz])) 
     @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.5 * (Rho[1:nz-1] * dz[1:nz-1] +
       Rho[2:nz] * dz[2:nz])) 
+    # JWRhoTh upper bidiagonal matrix
+    # First row upper diagonal
+    # Second row diagonal
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
 
     if Global.Model.Equation == "CompressibleMoist"
-      dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Global);
-      @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
-      @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.25 * (Rho[1:nz-1] + Rho[2:nz])) / (dz[1:nz-1] + dz[2:nz])
+      dPresdRhoV!(dPdRhoV, Th, Rho, Tr, Pres, Global);
+      @views @. Dp[1:nz-1] = dPdRhoV[2:nz] /  (0.5 * (Rho[1:nz-1] * dz[1:nz-1] + 
+        Rho[2:nz] * dz[2:nz])) 
+      @views @. Dm[1:nz-1] = dPdRhoV[1:nz-1] / (0.5 * (Rho[1:nz-1] * dz[1:nz-1] +
+        Rho[2:nz] * dz[2:nz])) 
       @views @. J.JWRhoV[1,2:nz,iC] = -Dp[1:nz-1]
       @views @. J.JWRhoV[2,:,iC] = Dm
     end  
 
+    # JWRho upper bidiagonal matrix
+    # First row upper diagonal
+    # Second row diagonal
     @views @. D[1:nz-1] = Global.Phys.Grav  / (Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz])
     @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] * dz[2:nz]
     @views @. J.JWRho[2,1:nz,iC] = -D * dz
 
+    # JRhoThW low bidiagonal matrix
+    # First row diagonal
+    # Second row lower diagonal
     @views @. D[1:nz-1] = -(Th[1:nz-1] * dz[1:nz-1] + Th[2:nz] * dz[2:nz]) /
       (dz[1:nz-1] + dz[2:nz])
     @views @. J.JThW[1,:,iC] = D / dz

@@ -87,11 +87,13 @@ for i=1:1000
   F=SetImplEuler(z,dz,y0,Phys)
   res=nlsolve(F,y0)
   z=z+dz
+  @show y0
   @. Prof[i+1,2:end] = y0
   Prof[i+1,1] = z
 end
   
   return Prof
 
+  stop
 end
 

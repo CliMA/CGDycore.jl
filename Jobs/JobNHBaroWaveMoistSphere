@@ -1,12 +1,12 @@
 mpirun -n 6 julia --project Examples/testNHSphere.jl \
-  --Problem="BaroWaveDrySphere" \
+  --Problem="BaroWaveMoistSphere" \
   --NumV=5 \
-  --NumTr=0 \
-  --ProfRho="BaroWaveDrySphere" \
-  --ProfTheta="BaroWaveDrySphere" \
+  --NumTr=2 \
+  --ProfRho="BaroWaveMoistSphere" \
+  --ProfTheta="BaroWaveMoistSphere" \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
-  --ProfVel="BaroWaveDrySphere" \
+  --ProfVel="BaroWaveMoistSphere" \
   --Source=false \
   --Curl=true \
   --ModelType="VectorInvariant" \
@@ -14,12 +14,16 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --Buoyancy=true \
   --Decomp="EqualArea" \
+  --Equation="CompressibleMoist" \
+  --Microphysics=true \
+  --RelCloud=1.e-1 \
   --SimDays=10 \
   --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintDays=1 \
-  --StartAverageDays=1 \
+  --PrintHours=12 \
+  --PrintDays=0 \
+  --StartAverageDays=20 \
   --dtau=300 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

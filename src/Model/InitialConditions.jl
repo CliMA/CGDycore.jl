@@ -6,6 +6,7 @@ function InitialConditions(CG,Global,Param)
 
   if Global.Model.Profile
     Profile = TestRes(Global.Phys)
+    @show size(Profile)
   else
     Profile = zeros(0)  
   end  

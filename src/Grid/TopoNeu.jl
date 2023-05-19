@@ -283,6 +283,8 @@ function Orography(CG,Global)
     @. HeightCG += FHeightCG
     @. HeightCG = max(HeightCG,0.0)
   end
+  @show maximum(HeightCG)
+  @show minimum(HeightCG)
   return HeightCG
 end
 

@@ -64,7 +64,7 @@ function fVel(x,time::Float64,Global,Param)
         uS=0.0
         vS=0.0
       end
-    elseif ProfVel == "BaroWaveDrySphere"
+    elseif ProfVel == "BaroWaveDrySphere" || ProfVel == "BaroWaveMoistSphere"
       (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
       Z=max(R-Phys.RadEarth,0)
       T0=0.5*(Param.T0E+Param.T0P)

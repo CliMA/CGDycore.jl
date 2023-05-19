@@ -14,10 +14,10 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --VerticalDiffusionMom=false \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=4 \
-  --PrintDays=1 \
-  --StartAverageDays=1 \
-  --dtau=200 \
+  --SimDays=400 \
+  --PrintDays=20 \
+  --StartAverageDays=200 \
+  --dtau=300 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \

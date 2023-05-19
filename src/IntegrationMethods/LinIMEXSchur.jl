@@ -13,7 +13,7 @@ function LinIMEXSchur!(V,dt,Fcn,Jac,CG,Global,Param)
   NumTr=Global.Model.NumTr
 
   J = Global.J
-  Vn .= V
+  @. Vn = V
   @inbounds for iStage = 2 : nStage
     @views Fcn(f[:,:,:,iStage-1],V,CG,Global,Param);
     if iStage == 2
@@ -68,7 +68,7 @@ function LinIMEXSchur!(V,dt,Fcn,FcnE,FcnI,Jac,CG,Global,Param)
   NumTr=Global.Model.NumTr
 
   J = Global.J
-  Vn .= V
+  @. Vn = V
   fE = similar(V)
   fI = similar(V)
   @inbounds for iStage = 2 : nStage

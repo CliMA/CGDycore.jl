@@ -133,6 +133,61 @@ elseif str == "barowavedrysphere"
       TLoc=Param.T0+exp(delta/2*x[3])*dT;
       Rho=p/(Phys.Rd*TLoc);
   elseif str == "bryanfritsch"
+    z = x[3]
+    @views zP = Profile[:,1]
+    @show zP[1:5]
+    iz = 1000
+    for i = 2:size(zP,1)
+      if z <= zP[i]
+        iz = i - 1
+        break
+      end  
+    end
+    y0[1]=p
+y0[2]=rho
+y0[3]=T
+y0[4]=r_t
+y0[5]=r_v
+y0[6]=rho_v
+y0[7]=theta_e
+    z_l = zP[iz]
+    p_L = Profile[iz,2]
+    rho_l = Profile[iz,3]
+    T_l = Profile[iz,4]
+    rt_l = Profile[iz,5]
+    rv_l = Profile[iz,6]
+    Rhov_l = Profile[iz,7]
+    ThetaE_l = Profile[iz,8]
+    z_r = zP[iz+1]
+    p_r = Profile[iz+1,2]
+    rho_r = Profile[iz+1,3]
+    T_r = Profile[iz,4]
+    rt_r = Profile[iz+1,5]
+    rv_r = Profile[iz+1,6]
+    Rhov_r = Profile[iz+1,7]
+    ThetaE_r = Profile[iz+1,8]
+    kappa_M_l = (Phys.Rd  + Phys.Rv * rv_l) / (Phys.Cpd  + Phys.Cpv * rv_l + Phys.Cpl * rt_l)
+    kappa_M_r = (Phys.Rd  + Phys.Rv * rv_r) / (Phys.Cpd  + Phys.Cpv * rv_r + Phys.Cpl * rt_r)
+    #Rhod_l = Rho_l - Rhod_l * rt_l
+    Rhod_l = Rho_l / (1.0 + rt_l)
+    Rhod_r = Rho_r / (1.0 + rt_r)
+    @show z_l,z,z_r
+    @show rho_l,rho_r
+    stop
+
+#=
+
+    rho = (rho_r * (z - z_l) + rho_l * (z_r - z)) / equation.Δz
+    rho_θ = rho * (rho_θ_r / rho_r * (z - z_l) + rho_θ_l / rho_l * (z_r - z)) / equation.Δz
+    rho_qv = rho * (rho_qv_r / rho_r * (z - z_l) + rho_qv_l / rho_l * (z_r - z)) / equation.Δz
+    rho_qc = rho * (rho_qc_r / rho_r * (z - z_l) + rho_qc_l / rho_l * (z_r - z)) / equation.Δz
+
+    rho, rho_e, rho_qv, rho_qc = PerturbMoistProfile(x, rho, rho_θ, rho_qv, rho_qc, Param)
+
+    rho_v1 = rho * v1
+    rho_v2 = rho * v2
+    rho_e = rho_e +1/2 * rho *(v1^2 + v2^2)
+    =#
   elseif str == "warmbubble2dx"
       Grav=Phys.Grav;
       p0=Phys.p0;
@@ -472,9 +527,9 @@ function PerturbMoistProfile(x, Rho, RhoTh, rho_qv, rho_qc, Phys, Param)
   T_loc = p_loc / (Phys.Rd * Rho_d + Phys.Rv * Rho_qv)
   Rho_e = (Phys.Cvd * Rho_d + Phys.Cvv * Rho_qv + Phys.Cpl * Rho_qc) * T_loc + Phys.L00 * Rho_qv
 
-  if r < rc && Δθ > 0 
+  if r < rc && DeltaTh > 0 
     ThDens = RhoTh / Rho * (p_loc / Phys.p0)^(kappa_M - Phys.kappa)
-    ThDens_new = ThDens * (1 + Δθ * cospi(0.5*r/rc)^2 / 300)
+    ThDens_new = ThDens * (1 + DeltaTh * cospi(0.5*r/rc)^2 / 300)
     rt =(Rho_qv + Rho_qc) / Rho_d 
     rv = Rho_qv / Rho_d
     ThLoc = ThDens_new * (1 + rt)/(1 + (Phys.Rv / Phys.Rd) * rv)
