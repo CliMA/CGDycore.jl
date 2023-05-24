@@ -10,7 +10,6 @@ using StaticArrays
 using MPI
 using WriteVTK
 using ArgParse
-#using Metal
 #using StaticArrays
 using NetCDF
 using MuladdMacro
@@ -119,9 +118,8 @@ include("Model/InitProfileBryanFritsch.jl")
 
 include("Statistics/Averages.jl")
 
-include("GPU/AddVec.jl")
-
 include("DyCore/InitDriver.jl")
+include("GPU/CGGPU.jl")
 
 OOP = 5
 

@@ -9,7 +9,6 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Global,Param)
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
   RhoPos=Global.Model.RhoPos
-  @views RhoTemp = fV[:,:,RhoPos]
 
   @views @. RhoS[:,:,1] = V[:,:,RhoPos]
   if NumTr>0

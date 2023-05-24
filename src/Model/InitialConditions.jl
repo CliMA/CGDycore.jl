@@ -40,9 +40,10 @@ function InitialConditionsAdvection(CG,Global,Param)
   NumV = Model.NumV
   NumTr = Model.NumTr
   U = zeros(Float64,nz,CG.NumG,NumV+NumTr)
-  U[:,:,Model.RhoPos]=Project(fRho,0.0,CG,Global,Param)
+  Profile = zeros(0)
+  U[:,:,Model.RhoPos]=Project(fRho,0.0,CG,Global,Param,Profile)
   for i = 1 : NumTr
-    @views U[:,:,Model.NumV+i]=Project(fTr,0.0,CG,Global,Param).*U[:,:,Model.RhoPos]
+    @views U[:,:,Model.NumV+i]=Project(fTr,0.0,CG,Global,Param,Profile).*U[:,:,Model.RhoPos]
   end  
   return U
 end  

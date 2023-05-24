@@ -1,4 +1,4 @@
-function fTr(x,time,Global,Param)
+function fTr(x,time,Global,Param,Profile)
   Model=Global.Model
   Phys=Global.Phys
   str = lowercase(Model.ProfTr)

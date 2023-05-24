@@ -231,11 +231,11 @@ Base.@kwdef struct ParamAdvectionCubeCart
   Example = "AdvectionCubeCart"
   StreamFun = false
   uMax = 1.0
-  vMax = 0.0
-  x1 = 400.0
-  x2 = 600.0
-  y1 = 400.0
-  y2 = 600.0
+  vMax = 1.0
+  x1 = 399.0
+  x2 = 601.0
+  y1 = 399.0
+  y2 = 601.0
 end  
 
 Base.@kwdef struct ParamAdvectionCart

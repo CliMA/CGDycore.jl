@@ -6,13 +6,12 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     NumV,
     NumTr) = Global.Model
 
-  dtau = 0.5 * Global.TimeStepper.dtauStage
+  dtau = Global.TimeStepper.dtauStage
   HorLimit = Global.Model.HorLimit
   Grav=Global.Phys.Grav    
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  JF = Global.Metric.JF
   J = Global.Metric.J
   X = Global.Metric.X
   Temp1 = Global.Cache.Temp1
@@ -150,7 +149,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     @. FCG = 0.0
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
 #   Tracer transport
     @inbounds for iT = 1:NumTr
@@ -166,14 +165,8 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
-      if Global.Model.Upwind
-        @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
-          Global.ThreadCache)
-      else
-        @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-              Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)  
-      end
+      @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCach,Val(:VectorInvariant)e)  
     end
 
 
@@ -246,7 +239,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     @. FCG = 0.0
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
 #   Tracer transport
     @inbounds for iT = 1:NumTr
@@ -262,21 +255,15 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
-      if Global.Model.Upwind
-        @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
-          Global.ThreadCache)
-      else
-        @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-              Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)  
-      end
+      @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))  
     end
 
     if HorLimit
       @inbounds for iz=1:nz
         @inbounds for iT = 1:NumTr
-          @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
-          @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
+          @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:],iT])
+          @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:],iT])
           @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
             Global.Metric.J[:,:,:,iz,iF],CG.w,qMinS,qMaxS,Global.ThreadCache)
         end
@@ -313,7 +300,7 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  JF = Global.Metric.JF
+  J = Global.Metric.J
   X = Global.Metric.X
   Temp1 = Global.Cache.Temp1
   @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
@@ -376,7 +363,7 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
     end
     @. FCG = 0.0
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     @inbounds for iT=1:NumTr
       @views DivConvRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
@@ -442,7 +429,7 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
     end
     @. FCG = 0.0
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     @inbounds for iT = 1 : NumTr
       @views DivConvRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
