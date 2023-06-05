@@ -288,6 +288,18 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
         @views Interpolate!(ThCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
         vtk["Th", VTKCellData()] = ThCell
       end
+    elseif str == "ThE"  
+      ThECell = zeros(OrdPrint*OrdPrint*nz*NF)  
+      if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+      else
+        RhoPos = Global.Model.RhoPos
+        ThPos = Global.Model.ThPos
+        RhoVPos = Global.Model.RhoVPos
+        RhoCPos = Global.Model.RhoCPos
+        @views InterpolateThE!(ThECell,U[:,:,ThPos],U[:,:,RhoPos],U[:,:,NumV+RhoVPos],U[:,:,NumV+RhoCPos],
+          vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+        vtk["ThE", VTKCellData()] = ThECell 
+      end    
     elseif str == "ThDiff"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
         RhoPos = Global.Model.RhoPos
@@ -448,6 +460,25 @@ function InterpolateTh!(cCell,Pres,Rho,Inter,OrdPoly,OrdPrint,Glob,NF,nz,Phys)
         for i=1:OrdPoly+1
           cLoc = Pres[iz,Glob[i,j,iF]] / (Rho[iz,Glob[i,j,iF]] * Phys.Rd) * 
             (Phys.p0 / Pres[iz,Glob[i,j,iF]])^Phys.kappa   
+          @views @. cc = cc + Inter[:,:,i,j]*cLoc
+        end
+      end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
+function InterpolateThE!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,OrdPoly,OrdPrint,Glob,NF,nz,Phys)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    for iz=1:nz
+      @. cc = 0.0
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          ind = Glob[i,j,iF]  
+          cLoc = fThE(Rho[iz,ind],RhoV[iz,ind],RhoC[iz,ind],RhoTh[iz,ind],Phys)
           @views @. cc = cc + Inter[:,:,i,j]*cLoc
         end
       end

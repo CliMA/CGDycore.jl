@@ -6,7 +6,6 @@ function InitialConditions(CG,Global,Param)
 
   if Global.Model.Profile
     Profile = TestRes(Global.Phys)
-    @show size(Profile)
   else
     Profile = zeros(0)  
   end  
@@ -21,7 +20,12 @@ function InitialConditions(CG,Global,Param)
     U[:,:,Model.ThPos]=Project(fTheta,0.0,CG,Global,Param,Profile).*U[:,:,Model.RhoPos]
   end
   if NumTr>0
-    U[:,:,Model.RhoVPos+Model.NumV]=Project(fQv,0.0,CG,Global,Param,Profile).*U[:,:,Model.RhoPos]
+    if Model.RhoVPos > 0  
+      U[:,:,Model.RhoVPos+Model.NumV]=Project(fQv,0.0,CG,Global,Param,Profile).*U[:,:,Model.RhoPos]
+    end
+    if Model.RhoCPos > 0  
+      U[:,:,Model.RhoCPos+Model.NumV]=Project(fQc,0.0,CG,Global,Param,Profile).*U[:,:,Model.RhoPos]
+    end
   end
   if Global.Model.ModelType == "Conservative"
     @views @. U[:,:,Model.uPos] *= U[:,:,Model.RhoPos]  

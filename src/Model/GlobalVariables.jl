@@ -547,7 +547,8 @@ function PhysParameters()
   Cpl=4186.0e0
   Rd=Cpd-Cvd
   Rv=Cpv-Cvv
-  L00 = 2.5000e6 + (Cpl - Cpv) * 273.15
+# L00 = 2.5000e6 + (Cpl - Cpv) * 273.15
+  L00 = 2.5000e6 
   p0=1.0e5
   Gamma=Cpd/Cvd
   kappa=Rd/Cpd

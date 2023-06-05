@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHCart.jl \
+mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Problem="BryanFritschCart" \
   --NumV=5 \
   --NumTr=2 \
@@ -15,6 +15,9 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --PrintTime=100 \
   --Curl=true \
   --ModelType="VectorInvariant" \
+  --Equation="CompressibleMoist" \
+  --Microphysics=true \
+  --RelCloud=1.e0 \
   --dtau=.2 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
@@ -25,8 +28,8 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=40 \
-  --nx=20 \
+  --nz=80 \
+  --nx=40 \
   --ny=2 \
   --OrdPoly=4 \
   --HyperVisc=true \

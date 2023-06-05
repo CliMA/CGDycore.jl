@@ -122,6 +122,11 @@ function parse_commandline()
     arg_type = Float64
     default = 0.0
 
+    "--Rain"
+    help = "Remove cloud water"
+    arg_type = Float64
+    default = 1.0
+
     "--Source"
     help = "Source"
     arg_type = Bool

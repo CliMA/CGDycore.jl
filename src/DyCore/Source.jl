@@ -106,7 +106,6 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
      Cpv,
      Cpl,
      p0,
-     L00,
      kappa) = Global.Phys
    ThPos=Global.Model.ThPos
    RhoPos=Global.Model.RhoPos
@@ -126,22 +125,22 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
      kappaM = Rm / Cpml
      p = Pres[i]
      T = p / Rm
-     T_C = T - 273.15
-     p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
+     p_vs = fpvs(T,Global.Phys)
      a = p_vs / (Rv * T) - RhoV
-     b = 0.0
+     b = RhoC
      FRhoV = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
-     L = L00 - (Cpl - Cpv) * T
-     FRho = FRhoV
-     FRhoC = 0.0
+     L = LatHeat(T,Global.Phys)
+     FRhoC = -FRhoV * Global.Model.Rain
+     FRho = FRhoV + FRhoC
      if Global.Model.Thermo == "InternalEnergy"
      else    
-       FRhoTh = RhoTh*(Rv / Rm - L/(Cpml*T) - log(p / p0) * (Rv / Rm  + (Cpl- Cpv) / Cpml))*FRhoV
+       FRhoTh = RhoTh*((-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) * (Rv / Rm - Cpv / Cpml)  + Rv / Rm) * FRhoV +
+         (log(p/p0) * (Rm / Cpml) * (Cpl / Cpml)) * FRhoC)
        F[i,ThPos] += FRhoTh   
      end  
-     F[i,RhoPos] += FRho
+     F[i,RhoPos] += FRho 
      F[i,RhoVPos+NumV] += FRhoV
-     F[i,RhoCPos+NumV] -= FRhoC
+     F[i,RhoCPos+NumV] += FRhoC
   end  
 end
 
@@ -160,6 +159,13 @@ function Microphysics(RhoTh,Rho,RhoV,RhoC,Rd,
   FRhoV = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
   L = L00 - (Cpl - Cpv) * T
   FRhoTh = RhoTh*(-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) *(Rv / Rm  - Cpv / Cpml) + Rv / Rm)*FRhoV
+# PotM*( (-Lv/(Cpml*T+Eps) &
+#                       -LOG((p+Eps)/P0)*(Rm/Cpml)*(Rv/Rm-Cpv/Cpml) &
+#                       +Rv/Rm                                   &
+#                       )*Qcond                                   &
+#                       +(LOG((p+Eps)/P0)*(Rm/Cpml)*(Cpl/Cpml)        &
+#                       )*(-Qcond)                                   &
+#                     )
   FRho = FRhoV
   FRhoC = 0.0
   return (FRhoTh,FRho,FRhoV,FRhoC)
@@ -238,12 +244,6 @@ function SetRes(RhoTh0, Rho0, RhoV0, Rd, Cpd, Rv, Cpv, Cpl, L00, p0)
     p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
     RhoVS = p_vs / (Rv * T)
     L = L00 - (Cpl - Cpv) * T
-    @show T
-    @show RhoVS
-    @show RhoV
-    @show dRhoTh 
-    @show dRhoV
-    @show RhoTh*(Rv/Rm-log(p/p0)*(Rv/Rm+(Cpl-Cpv)/Cpml)-L/(Cpml*T))*dRhoV
     FdRhoV = RhoVS - RhoV
     FdRhoTh = dRhoTh - RhoTh*(-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) *(Rv / Rm - Cpv / Cpml) + Rv / Rm) * dRhoV
     return [FdRhoTh,FdRhoV]

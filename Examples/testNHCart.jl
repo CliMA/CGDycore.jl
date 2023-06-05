@@ -25,6 +25,9 @@ RefProfile = parsed_args["RefProfile"]
 Profile = parsed_args["Profile"]
 Curl = parsed_args["Curl"]
 ModelType = parsed_args["ModelType"]
+Equation = parsed_args["Equation"]
+Microphysics = parsed_args["Microphysics"]
+RelCloud = parsed_args["RelCloud"]
 #Orography
 TopoS = parsed_args["TopoS"]
 P1 = parsed_args["P1"]
@@ -45,7 +48,6 @@ Table = parsed_args["Table"]
 GridType = parsed_args["GridType"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
-Microphysics = parsed_args["Microphysics"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 VerticalDiffusionMom = parsed_args["VerticalDiffusionMom"]
@@ -88,7 +90,7 @@ Phys=CGDycore.PhysParameters()
 #ModelParameters
 Model = CGDycore.Model()
 # Initial conditions
-Model.Equation="Compressible"
+Model.Equation = Equation
 Model.NumV=NumV
 Model.NumTr=NumTr
 Model.Problem=Problem
@@ -116,6 +118,10 @@ Model.uPos=2
 Model.vPos=3
 Model.wPos=4
 Model.ThPos=5
+if Model.Equation == "CompressibleMoist"
+  Model.RhoVPos = 1
+  Model.RhoCPos = 2
+end
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping
@@ -127,6 +133,7 @@ Model.VerticalDiffusion = VerticalDiffusion
 Model.VerticalDiffusionMom = VerticalDiffusionMom
 Model.Source = Source
 Model.Microphysics = Microphysics
+Model.RelCloud = RelCloud
 Model.Source = Source
 Model.SurfaceFlux = SurfaceFlux
 Model.SurfaceFluxMom = SurfaceFluxMom
@@ -173,15 +180,29 @@ end
   Global.Output.vtk=0
   Global.Output.Flat=true
   Global.Output.H=H
-    if ModelType == "VectorInvariant" || ModelType == "Advection"
-    Global.Output.cNames = [
-      "Rho",
-      "u",
-      "v",
-      "wB",
-      "Th",
-      "Vort",
-      ]
+  if ModelType == "VectorInvariant" || ModelType == "Advection"
+    if Model.Equation == "Compressible"
+      Global.Output.cNames = [
+        "Rho",
+        "u",
+        "v",
+        "wB",
+        "Th",
+        "Pres",
+        ]
+    elseif Model.Equation == "CompressibleMoist"
+      Global.Output.cNames = [
+        "Rho",
+        "u",
+        "v",
+        "wB",
+        "Th",
+        "ThE",
+        "Pres",
+        "Tr1",
+        "Tr2",
+        ]
+    end    
   elseif ModelType == "Conservative"
     Global.Output.cNames = [
       "Rho",

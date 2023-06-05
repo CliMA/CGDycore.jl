@@ -16,6 +16,8 @@ function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Mode
     Grid=InputGridH("Grid/mesh_H24_no_pp.nc", OrientFaceSphere,Phys.RadEarth,Grid)
   elseif GridType == "SQuadGen"
     Grid = InputGrid("Grid/baroclinic_wave_2deg_x4.g",OrientFaceSphere,Phys.RadEarth,Grid)
+  elseif GridType == "Msh"
+    Grid = InputGridMsh("Grid/Quad.msh",OrientFaceSphere,Phys.RadEarth,Grid)
   elseif GridType == "CubedSphere"
     Grid = CubedGrid(nPanel,OrientFaceSphere,Phys.RadEarth,Grid)
   end

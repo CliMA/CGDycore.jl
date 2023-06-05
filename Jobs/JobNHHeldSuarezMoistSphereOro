@@ -18,12 +18,13 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Decomp="EqualArea" \
   --Equation="CompressibleMoist" \
   --Microphysics=true \
-  --RelCloud=1.e-2 \
+  --RelCloud=1.e-3 \
+  --Rain=0.0 \
   --SimDays=400 \
-  --PrintDays=20 \
-  --PrintSeconds=20 \
+  --PrintDays=0 \
+  --PrintSeconds=200 \
   --StartAverageDays=200 \
-  --dtau=300 \
+  --dtau=200 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS=""EarthOrography"" \

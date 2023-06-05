@@ -86,7 +86,7 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
     @inbounds for j = 1:OP
       @inbounds for i = 1:OP
        (FTh,FRho,FRhoV) = BoundaryFluxHeldSuarez(
-         Th[i,j],Rho[i,j],Tr[i,j,RhoVPos],TSurf[i,j],p[i,j],dXdxI[i,j],CH,CE,uStar[i,j], Rd, Cpd, Rv, Cpv, p0)
+         Th[i,j],Rho[i,j],Tr[i,j,RhoVPos],TSurf[i,j],p[i,j],dXdxI[i,j],CH,CE,uStar[i,j], Global.Phys)
        Fc[i,j,ThPos] += FTh
        Fc[i,j,RhoPos] += FRho
        Fc[i,j,RhoVPos+NumV] += FRhoV
@@ -95,22 +95,20 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
   end    
 end
 
-function BoundaryFluxHeldSuarez(Th,Rho,RhoV,TSurf,p,dXdxIF,CH,CE,uStar, Rd, Cpd, Rv, Cpv, p0)
-  RhoDry = Rho - RhoV
-  rrv=RhoV/RhoDry
-  Rm=Rd+rrv*Rv
-  Cpml=Cpd+Cpv*rrv
-  T = p / (RhoDry * Rd + RhoV * Rv)
-  T_C = TSurf - 273.15
-  p_vs = 611.2 * exp(17.62 * T_C / (243.12 + T_C))
-  RhoVSurface = p_vs / (Rv * TSurf) 
-  LatFlux = -0.5 * CE * uStar * dXdxIF  * (RhoV - RhoVSurface) 
-  SensFlux = -0.5 * CH * uStar * dXdxIF  * (T - TSurf) 
+function BoundaryFluxHeldSuarez(Th,Rho,RhoV,TSurf,p,dXdxIF,CH,CE,uStar, Phys)
+  RhoD = Rho - RhoV
+  Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
+  Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
+  T = p / Rm
+  p_vs =SatVap(TSurf,Phys)
+  RhoVSurface = p_vs / (Phys.Rv * TSurf) 
+  LatFlux = - 4.0 * CE * uStar * dXdxIF  * (RhoV - RhoVSurface) 
+  SensFlux = - 4.0 * CH * uStar * dXdxIF  * (T - TSurf) 
   FRho = LatFlux
   FRhoV = LatFlux
-  PrePi=(p / p0)^(Rm / Cpml)
+  PrePi=(p / Phys.p0)^(Rm / Cpml)
   FTh = Th * (SensFlux / T + ((Rv / Rm) - 1.0 / Rho - log(PrePi)*(Rv / Rm - Cpv / Cpml)) *  LatFlux)  
-  return (FTh,FRhoV,FRhoV)
+  return (FTh,FRho,FRhoV)
 end
 
 
