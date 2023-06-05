@@ -100,7 +100,7 @@ function BoundaryFluxHeldSuarez(Th,Rho,RhoV,TSurf,p,dXdxIF,CH,CE,uStar, Phys)
   Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
   Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
   T = p / Rm
-  p_vs =SatVap(TSurf,Phys)
+  p_vs = fpvs(TSurf,Phys)
   RhoVSurface = p_vs / (Phys.Rv * TSurf) 
   LatFlux = - 4.0 * CE * uStar * dXdxIF  * (RhoV - RhoVSurface) 
   SensFlux = - 4.0 * CH * uStar * dXdxIF  * (T - TSurf) 
@@ -125,7 +125,7 @@ function uStarCoefficient!(uStar,U,V,WC,CG,Global,iF)
 end
 
 function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF) 
-  if Global.Model.Problem == "HeldSuarezMoistSphere"
+  if Global.Model.Problem == "HeldSuarezMoistSphere" || Global.Model.Problem == "HeldSuarezMoistSphereOro"
     CE = Param.CE 
     p_pbl = Param.p_pbl 
     p_strato = Param.p_strato 

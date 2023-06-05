@@ -28,7 +28,7 @@ end
 end
 
 @inline function fpvs(T,Phys)
-  T_C = T - 273.15
+  T_C = T - Phys.T0
   611.2 * exp(17.62 * T_C / (243.12 + T_C))
 end
 
