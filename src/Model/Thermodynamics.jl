@@ -28,6 +28,9 @@ end
 end
 
 @inline function fpvs(T,Phys)
+  # ClaudiusClapperon
+  # Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
+  #   exp((Phys.L00 / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
   T_C = T - Phys.T0
   611.2 * exp(17.62 * T_C / (243.12 + T_C))
 end

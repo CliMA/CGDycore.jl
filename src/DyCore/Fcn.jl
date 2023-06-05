@@ -360,7 +360,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux
@@ -558,7 +558,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux

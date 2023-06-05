@@ -1,6 +1,4 @@
-function VerticalDiffusionScalar!(Fc,c,Rho,K,CG,Global,iF)
-
-#
+function VerticalDiffusionScalarRho!(Fc,FRho,c,Rho,K,CG,Global,iF)
 
 nz = Global.Grid.nz
 gradqCG = Global.Cache.CacheC1
@@ -10,10 +8,34 @@ qCG = Global.Cache.CacheC3
 @. qCG = c / Rho 
 # Gradient computation
   @inbounds for iz = 1:nz-1
-    @views @. gradqCG[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * 
+    @views @. gradqCG[:,:,iz+1] = (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * 
       (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / ( J[:,:,2,iz] + J[:,:,1,iz+1]) 
   end
 # Divergence  
+  @views @. Fc[:,:,1] += gradqCG[:,:,2] * dXdxI33[:,:,2,1]
+  @views @. FRho[:,:,1] += gradqCG[:,:,2] * dXdxI33[:,:,2,1]
+  @inbounds for iz = 2:nz-1
+    @views @. Fc[:,:,iz] += (gradqCG[:,:,iz+1] * dXdxI33[:,:,2,iz] - gradqCG[:,:,iz] * dXdxI33[:,:,1,iz])
+    @views @. FRho[:,:,iz] += (gradqCG[:,:,iz+1] * dXdxI33[:,:,2,iz] - gradqCG[:,:,iz] * dXdxI33[:,:,1,iz])
+  end
+  @views @. Fc[:,:,nz] -= gradqCG[:,:,nz] * dXdxI33[:,:,1,nz]
+  @views @. FRho[:,:,nz] -= gradqCG[:,:,nz] * dXdxI33[:,:,1,nz]
+end
+
+function VerticalDiffusionScalar!(Fc,c,Rho,K,CG,Global,iF)
+
+nz = Global.Grid.nz
+gradqCG = Global.Cache.CacheC1
+@views dXdxI33 = Global.Metric.dXdxI[:,:,:,:,3,3,iF]
+@views J = Global.Metric.J[:,:,:,:,iF]
+qCG = Global.Cache.CacheC3
+@. qCG = c / Rho
+# Gradient computation
+  @inbounds for iz = 1:nz-1
+    @views @. gradqCG[:,:,iz+1] = (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) *
+      (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / ( J[:,:,2,iz] + J[:,:,1,iz+1])
+  end
+# Divergence
   @views @. Fc[:,:,1] += gradqCG[:,:,2] * dXdxI33[:,:,2,1]
   @inbounds for iz = 2:nz-1
     @views @. Fc[:,:,iz] += (gradqCG[:,:,iz+1] * dXdxI33[:,:,2,iz] - gradqCG[:,:,iz] * dXdxI33[:,:,1,iz])
