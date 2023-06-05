@@ -66,7 +66,7 @@ function BoundaryFluxMomentum!(FuC,FvC,uC,vC,w,Global,Param,iF)
 end
 
 function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
-  if Global.Model.Problem == "HeldSuarezMoistSphere"
+  if Global.Model.Problem == "HeldSuarezMoistSphere" || Global.Model.Problem == "HeldSuarezMoistSphereOro"
     OP = CG.OrdPoly+1  
     ThPos=Global.Model.ThPos  
     RhoPos=Global.Model.RhoPos  
