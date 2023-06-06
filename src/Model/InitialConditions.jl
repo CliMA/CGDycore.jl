@@ -3,6 +3,8 @@ function InitialConditions(CG,Global,Param)
   nz = Global.Grid.nz
   NumV = Model.NumV
   NumTr = Model.NumTr
+  NumG = CG.NumG
+  OrdPoly = CG.OrdPoly
 
   if Global.Model.Profile
     Profile = TestRes(Global.Phys)
@@ -23,6 +25,20 @@ function InitialConditions(CG,Global,Param)
     for iF = 1 : size(U[:,:,Model.ThPos],2)    
       @. U[:,iF,Model.ThPos] *= (1.0 + 1.e-5 * (2.0*rand() - 1.0) * (400.0 <= Global.Metric.zP[:,iF] <= 2000.0))    
     end
+    J = Global.Metric.J
+    ThLoc = zeros(nz,NumG)
+    for iF=1:Global.Grid.NumFaces
+      for iz=1:nz
+        for j=1:OrdPoly+1
+          for i=1:OrdPoly+1
+            ind = CG.Glob[i,j,iF]
+            ThLoc[iz,ind] += U[iz,ind,Model.ThPos] * (J[i,j,1,iz,iF] + J[i,j,2,iz,iF]) / CG.M[iz,ind]
+          end
+        end
+      end
+    end
+    ExchangeData!(ThLoc,Global.Exchange)
+    @. U[:,:,Model.ThPos] = ThLoc
   end  
   if NumTr>0
     if Model.RhoVPos > 0  

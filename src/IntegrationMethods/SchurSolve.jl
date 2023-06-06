@@ -128,7 +128,7 @@ function SchurSolve!(k,v,J,fac,Global)
           @views @. tri[3,:,in2] = 0
           @views mulUL!(tri[:,:,in2],JWRho[:,:,in2],JRhoW[:,:,in2])
           @views mulUL!(tri[:,:,in2],JWTh[:,:,in2],JThW[:,:,in2])
-          @views mulUL!(tri[:,:,in2],JWRhoV[:,:,in2],JTrW[:,:,in2,NumV + RhoVPos])
+          @views mulUL!(tri[:,:,in2],JWRhoV[:,:,in2],JTrW[:,:,in2,RhoVPos])
         end
         @. rw = invfac * rw
         @views mulbiUv!(rw,JWRho[:,:,in2],rRho)

@@ -1,3 +1,80 @@
+function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
+(;  RhoPos,
+    uPos,
+    vPos,
+    wPos,
+    ThPos,
+    NumV,
+    NumTr) = Global.Model
+
+  Phys=Global.Phys
+  Grav=Global.Phys.Grav
+  OP=CG.OrdPoly+1;
+  NF=Global.Grid.NumFaces;
+  nz=Global.Grid.nz;
+  J = Global.Metric.J
+  RhoCG = Global.Cache.RhoCG
+  ThCG = Global.Cache.ThCG
+  TrCG = Global.Cache.TrCG
+  v1CG = Global.Cache.v1CG
+  v2CG = Global.Cache.v2CG
+  wCG = Global.Cache.wCG
+  KE = Global.Cache.KE
+  PresG = Global.Cache.PresG
+  @inbounds for iF in Global.Grid.BoundaryFaces
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+          RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
+          v1CG[iP,jP,iz] = U[iz,ind,uPos]
+          v2CG[iP,jP,iz] = U[iz,ind,vPos]
+          wCG[iP,jP,iz+1] = U[iz,ind,wPos]
+          ThCG[iP,jP,iz] = U[iz,ind,ThPos]
+          zPG[iP,jP,iz] = zP[iz,ind]
+          @inbounds for iT = 1:NumTr
+            TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
+          end
+        end
+      end
+    end
+#   Kinetic Energy    
+#   Pressure
+    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] *
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+        end
+      end
+    end
+  end  
+  ExchangeData3DSend(PresG,Global.Exchange)
+  @inbounds for iF in Global.Grid.InteriorFaces
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+        end
+      end
+    end
+#   Pressure
+    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        @inbounds for iz=1:nz
+          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] *
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+        end
+      end
+    end
+  end
+  ExchangeDataRecv!(PresG,Global.Exchange)
+end
+
 function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
 (;  RhoPos,
@@ -372,7 +449,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
           PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
-            (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] 
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -570,7 +647,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
           PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
-            (J[iP,jP,1,iz,iF] + J[iP,jP,1,iz,iF])  / CG.M[iz,ind]
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
