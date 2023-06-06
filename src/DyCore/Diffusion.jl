@@ -1,11 +1,11 @@
-function VerticalDiffusionScalarRho!(Fc,FRho,c,Rho,K,CG,Global,iF)
+function VerticalDiffusionScalarRho!(Fc,FRho,c,Rho,K,CG,dXdxI33,J,ThreadCache)
+  @unpack TCacheCC1, TCacheCC2 = ThreadCache
 
-nz = Global.Grid.nz
-gradqCG = Global.Cache.CacheC1
-@views dXdxI33 = Global.Metric.dXdxI[:,:,:,:,3,3,iF] 
-@views J = Global.Metric.J[:,:,:,:,iF] 
-qCG = Global.Cache.CacheC3
-@. qCG = c / Rho 
+  nz = size(Fc,3)
+  gradqCG  = TCacheCC1[Threads.threadid()]
+  qCG  = TCacheCC2[Threads.threadid()]
+
+  @views @. qCG = c / Rho 
 # Gradient computation
   @inbounds for iz = 1:nz-1
     @views @. gradqCG[:,:,iz+1] = (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * 
@@ -22,20 +22,20 @@ qCG = Global.Cache.CacheC3
   @views @. FRho[:,:,nz] -= gradqCG[:,:,nz] * dXdxI33[:,:,1,nz]
 end
 
-function VerticalDiffusionScalar!(Fc,c,Rho,K,CG,Global,iF)
+function VerticalDiffusionScalar!(Fc,c,Rho,K,CG,dXdxI33,J,ThreadCache)
+  @unpack TCacheCC1, TCacheCC2 = ThreadCache
 
-nz = Global.Grid.nz
-gradqCG = Global.Cache.CacheC1
-@views dXdxI33 = Global.Metric.dXdxI[:,:,:,:,3,3,iF]
-@views J = Global.Metric.J[:,:,:,:,iF]
-qCG = Global.Cache.CacheC3
-@. qCG = c / Rho
+  nz = size(Fc,3)
+  gradqCG  = TCacheCC1[Threads.threadid()]
+  qCG  = TCacheCC2[Threads.threadid()]
+
+  @views @. qCG = c / Rho 
 # Gradient computation
   @inbounds for iz = 1:nz-1
-    @views @. gradqCG[:,:,iz+1] = (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) *
-      (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / ( J[:,:,2,iz] + J[:,:,1,iz+1])
+    @views @. gradqCG[:,:,iz+1] = (K[:,:,iz] + K[:,:,iz+1]) * (qCG[:,:,iz+1] - qCG[:,:,iz]) * 
+      (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / ( J[:,:,2,iz] + J[:,:,1,iz+1]) 
   end
-# Divergence
+# Divergence  
   @views @. Fc[:,:,1] += gradqCG[:,:,2] * dXdxI33[:,:,2,1]
   @inbounds for iz = 2:nz-1
     @views @. Fc[:,:,iz] += (gradqCG[:,:,iz+1] * dXdxI33[:,:,2,iz] - gradqCG[:,:,iz] * dXdxI33[:,:,1,iz])
@@ -51,24 +51,24 @@ function VerticalDiffusionMomentum!(FuC,FvC,uC,vC,Rho,K,dXdxI33,J,Cache)
   @. K = 200.0  # noch zu berechnen
 # Gradient computation
   @inbounds for iz = 1:nz-1
-    @views @. graduC[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (uC[:,:,iz+1] - uC[:,:,iz]) * 
+    @. graduC[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (uC[:,:,iz+1] - uC[:,:,iz]) * 
       (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / (J[:,:,2,iz] + J[:,:,1,iz+1])
-    @views @. gradvC[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (vC[:,:,iz+1] - vC[:,:,iz]) * 
+    @. gradvC[:,:,iz+1] = 0.5 * (K[:,:,iz] + K[:,:,iz+1]) * (vC[:,:,iz+1] - vC[:,:,iz]) * 
       (dXdxI33[:,:,2,iz] + dXdxI33[:,:,1,iz+1]) / (J[:,:,2,iz] + J[:,:,1,iz+1])
   end
 # Divergence
-  @views @. FuC[:,:,1] += Rho[:,:,1] * graduC[:,:,2] * dXdxI33[:,:,2,1]
-  @views @. FvC[:,:,1] += Rho[:,:,1] * gradvC[:,:,2] * dXdxI33[:,:,2,1]
+  @. FuC[:,:,1] += Rho[:,:,1] * graduC[:,:,2] * dXdxI33[:,:,2,1]
+  @. FvC[:,:,1] += Rho[:,:,1] * gradvC[:,:,2] * dXdxI33[:,:,2,1]
   @inbounds for iz = 2:nz-1
-    @views @. FuC[:,:,iz] += Rho[:,:,iz] * (graduC[:,:,iz+1] * dXdxI33[:,:,2,iz]  - graduC[:,:,iz] * dXdxI33[:,:,1,iz])
-    @views @. FvC[:,:,iz] += Rho[:,:,iz] * (gradvC[:,:,iz+1] * dXdxI33[:,:,2,iz]  - gradvC[:,:,iz] * dXdxI33[:,:,1,iz])
+    @. FuC[:,:,iz] += Rho[:,:,iz] * (graduC[:,:,iz+1] * dXdxI33[:,:,2,iz]  - graduC[:,:,iz] * dXdxI33[:,:,1,iz])
+    @. FvC[:,:,iz] += Rho[:,:,iz] * (gradvC[:,:,iz+1] * dXdxI33[:,:,2,iz]  - gradvC[:,:,iz] * dXdxI33[:,:,1,iz])
   end
-  @views @. FuC[:,:,nz] -= Rho[:,:,nz] * graduC[:,:,nz] * dXdxI33[:,:,1,nz]
-  @views @. FvC[:,:,nz] -= Rho[:,:,nz] * gradvC[:,:,nz] * dXdxI33[:,:,1,nz]
+  @. FuC[:,:,nz] -= Rho[:,:,nz] * graduC[:,:,nz] * dXdxI33[:,:,1,nz]
+  @. FvC[:,:,nz] -= Rho[:,:,nz] * gradvC[:,:,nz] * dXdxI33[:,:,1,nz]
 end
 
 function BoundaryFluxScalar!(Fc,c,cS,CG,Global,Param,iF)
-  @views @. Fc -= Param.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
+  @. Fc -= Param.CTr * Global.Cache.uStar[:,:,iF] * (c - cS) *
     Global.Metric.dXdxIF[:,:,1,3,3,iF]
 end
 
@@ -176,7 +176,7 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF)
       end
     end
   else
-    @views @. K = 1.0  
+    @. K = 1.0  
   end   
   @. K = K * Rho
 

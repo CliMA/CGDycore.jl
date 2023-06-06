@@ -411,7 +411,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,
+          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       end  
     end  
 #   Tracer transport
@@ -437,7 +439,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,
+          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       end  
     end
     if Global.Model.SurfaceFlux
@@ -609,7 +613,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,
+          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       end  
     end  
 #   Tracer transport
@@ -635,7 +641,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,
+          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache)
       end  
     end
     if Global.Model.SurfaceFlux
