@@ -130,16 +130,16 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
      b = RhoC
      FPh = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
      L = LatHeat(T,Global.Phys)
-     FR = FPh * Global.Model.Rain
+     FR = -FPh * Global.Model.Rain
      if Global.Model.Thermo == "InternalEnergy"
      else    
        FRhoTh = RhoTh*((-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) * (Rv / Rm + (Cpl -Cpv) / Cpml)  + Rv / Rm) * FPh +
          (1.0 / Rho - log(p/p0) * (Rm / Cpml) * (Cpl / Cpml)) * FR)
        F[i,ThPos] += FRhoTh   
      end  
-     F[i,RhoPos] += FR
+     F[i,RhoPos] += -FR
      F[i,RhoVPos+NumV] += FPh
-     F[i,RhoCPos+NumV] += -FPh + FR
+     F[i,RhoCPos+NumV] += -FPh - FR
   end  
 end
 
