@@ -121,7 +121,7 @@ include("Model/InitProfileBryanFritsch.jl")
 include("Statistics/Averages.jl")
 
 include("DyCore/InitDriver.jl")
-include("GPU/CGGPU.jl")
+#include("GPU/CGGPU.jl")
 
 OOP = 5
 

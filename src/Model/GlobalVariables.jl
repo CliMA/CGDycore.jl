@@ -675,7 +675,7 @@ function Model()
   HorLimit = false
   Microphysics = false
   RelCloud = 0.0
-  Rain = 1.0
+  Rain = 0.0
   VerticalDiffusion = false
   VerticalDiffusionMom = false
   SurfaceFlux = false

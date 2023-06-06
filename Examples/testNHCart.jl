@@ -28,6 +28,7 @@ ModelType = parsed_args["ModelType"]
 Equation = parsed_args["Equation"]
 Microphysics = parsed_args["Microphysics"]
 RelCloud = parsed_args["RelCloud"]
+Rain = parsed_args["Rain"]
 #Orography
 TopoS = parsed_args["TopoS"]
 P1 = parsed_args["P1"]
@@ -134,6 +135,7 @@ Model.VerticalDiffusionMom = VerticalDiffusionMom
 Model.Source = Source
 Model.Microphysics = Microphysics
 Model.RelCloud = RelCloud
+Model.Rain = Rain
 Model.Source = Source
 Model.SurfaceFlux = SurfaceFlux
 Model.SurfaceFluxMom = SurfaceFluxMom

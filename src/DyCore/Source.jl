@@ -128,19 +128,18 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
      p_vs = fpvs(T,Global.Phys)
      a = p_vs / (Rv * T) - RhoV
      b = RhoC
-     FRhoV = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
+     FPh = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
      L = LatHeat(T,Global.Phys)
-     FRhoC = -FRhoV * Global.Model.Rain
-     FRho = FRhoV + FRhoC
+     FR = FPh * Global.Model.Rain
      if Global.Model.Thermo == "InternalEnergy"
      else    
-       FRhoTh = RhoTh*((-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) * (Rv / Rm - Cpv / Cpml)  + Rv / Rm) * FRhoV +
-         (log(p/p0) * (Rm / Cpml) * (Cpl / Cpml)) * FRhoC)
+       FRhoTh = RhoTh*((-L/(Cpml*T) - log(p / p0) * (Rm / Cpml) * (Rv / Rm + (Cpl -Cpv) / Cpml)  + Rv / Rm) * FPh +
+         (1.0 / Rho - log(p/p0) * (Rm / Cpml) * (Cpl / Cpml)) * FR)
        F[i,ThPos] += FRhoTh   
      end  
-     F[i,RhoPos] += FRho 
-     F[i,RhoVPos+NumV] += FRhoV
-     F[i,RhoCPos+NumV] += FRhoC
+     F[i,RhoPos] += FR
+     F[i,RhoVPos+NumV] += FPh
+     F[i,RhoCPos+NumV] += -FPh + FR
   end  
 end
 
