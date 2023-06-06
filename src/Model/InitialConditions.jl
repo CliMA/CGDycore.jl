@@ -19,10 +19,9 @@ function InitialConditions(CG,Global,Param)
   else
     U[:,:,Model.ThPos]=Project(fTheta,0.0,CG,Global,Param,Profile).*U[:,:,Model.RhoPos]
   end
-  Perturbation = true
-  if Perturbation
+  if Model.PertTh
     for iF = 1 : size(U[:,:,Model.ThPos],2)    
-      @. U[:,iF,Model.ThPos] *= (1.0 + 1.e-3 * (2.0*rand() - 1.0) * (400.0 <= Global.Metric.zP[:,iF] <= 2000.0))    
+      @. U[:,iF,Model.ThPos] *= (1.0 + 1.e-5 * (2.0*rand() - 1.0) * (400.0 <= Global.Metric.zP[:,iF] <= 2000.0))    
     end
   end  
   if NumTr>0

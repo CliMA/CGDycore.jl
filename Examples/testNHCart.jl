@@ -7,6 +7,7 @@ parsed_args = CGDycore.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
+PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
@@ -105,6 +106,7 @@ if ProfTheta == ""
 else
   Model.ProfTheta = ProfTheta  
 end  
+Model.PertTh = PertTh
 if ProfVel == ""
   Model.ProfVel = Problem
 else

@@ -8,6 +8,7 @@ mutable struct JStruct
     JWW::Array{Float64, 3}
     tri::Array{Float64, 3}
     sw::Array{Float64, 2}
+    JDiff::Array{Float64, 3}
     CompTri::Bool
     CompJac::Bool
     CacheCol1::Array{Float64, 1}
@@ -25,6 +26,7 @@ function JStruct()
   JWW=zeros(0,0,0)
   tri=zeros(0,0,0)
   sw=zeros(0,0)
+  JDiff=zeros(0,0,0)
   CompTri=false
   CompJac=false
   CacheCol1=zeros(0)
@@ -40,6 +42,7 @@ function JStruct()
     JWW,
     tri,
     sw,
+    JDiff,
     CompTri,
     CompJac,
     CacheCol1,
@@ -58,6 +61,7 @@ function JStruct(NumG,nz,NumTr)
   JWW=zeros(1,nz,NumG)
   tri=zeros(3,nz,NumG)
   sw=zeros(nz,NumG)
+  JDiff=zeros(3,nz,NumG)
   CompTri=false
   CompJac=false
   CacheCol1=zeros(nz)
@@ -73,6 +77,7 @@ function JStruct(NumG,nz,NumTr)
     JWW,
     tri,
     sw,
+    JDiff,
     CompTri,
     CompJac,
     CacheCol1,

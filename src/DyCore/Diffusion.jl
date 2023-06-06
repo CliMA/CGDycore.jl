@@ -160,6 +160,7 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF)
       @inbounds for iP = 1 : OP
         K[iP,jP,1] = 0.5 * CE * uStar[iP,jP] * (Global.Metric.J[iP,jP,1,1,iF] + Global.Metric.J[iP,jP,1,1,iF]) / 
           (Global.Metric.dXdxI[iP,jP,1,1,3,3,iF] + Global.Metric.dXdxI[iP,jP,2,1,3,3,iF])
+        K[iP,jP,1] = min(K[iP,jP,1], 10.0) 
       end
     end  
     @views p = Global.Cache.Pres[:,:,:,iF]
@@ -178,6 +179,24 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF)
     @views @. K = 1.0  
   end   
   @. K = K * Rho
+
+end
+
+function JacDiffusionScalar!(J,U,CG,Global,Param,::Val{:VectorInvariant})
+  (;  RhoPos,
+      uPos,
+      vPos,
+      wPos,
+      ThPos,
+      NumV,
+      NumTr) = Global.Model
+  nz=Global.Grid.nz;
+  NF=Global.Grid.NumFaces
+  nCol=size(U,2);
+  nJ=nCol*nz;
+
+  @inbounds for iC=1:nCol
+  end
 
 end
 

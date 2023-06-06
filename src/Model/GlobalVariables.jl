@@ -602,6 +602,7 @@ mutable struct ModelStruct
   vPos::Int
   wPos::Int
   ThPos::Int
+  PertTh::Bool
   RhoVPos::Int
   RhoCPos::Int
   NumV::Int
@@ -652,6 +653,7 @@ function Model()
   vPos = 0
   wPos = 0
   ThPos = 0
+  PertTh = false
   RhoVPos = 0
   RhoCPos = 0
   NumV = 0
@@ -700,6 +702,7 @@ function Model()
    vPos,
    wPos,
    ThPos,
+   PertTh,
    RhoVPos,
    RhoCPos,
    NumV,

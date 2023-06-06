@@ -32,6 +32,11 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--PertTh"
+    help = "Perturb initial conditions for potential temperature"
+    arg_type = Bool
+    default = false
+
     "--ProfVel"
     help = "Initial conditions for velocity"
     arg_type = String

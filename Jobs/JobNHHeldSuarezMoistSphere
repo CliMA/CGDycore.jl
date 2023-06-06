@@ -15,6 +15,9 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --VerticalDiffusion=true \
   --SurfaceFlux=true \
   --HorLimit=false \
+  --Damping=true \
+  --StrideDamp=10000 \
+  --Relax=1.0e-3 \
   --Decomp="EqualArea" \
   --Equation="CompressibleMoist" \
   --Microphysics=true \
