@@ -418,7 +418,7 @@ mutable struct OutputStruct
   PrintMinutes::Int
   PrintSeconds::Int
   PrintTime::Float64
-  PrintStartTime::Flot64
+  PrintStartTime::Float64
   StartAverageDays::Int
   PrintInt::Int
   PrintStartInt::Int
