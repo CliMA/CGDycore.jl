@@ -31,7 +31,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
   PrintMinutes = Output.PrintMinutes
   PrintSeconds = Output.PrintSeconds
   PrintTime = Output.PrintTime
-  PrintStartDays = Output.PrintStartDays
+  PrintStartTime = Output.PrintStartTime
   StartAverageDays = Output.StartAverageDays
   SimTime = 24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime
   nIter=ceil(SimTime/dtau)
@@ -108,7 +108,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
         Δt = @elapsed begin
           RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Global,Param,DiscType);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
           if time[1] >= StartAverageTime && StartAverageTime >= 0.0
@@ -126,7 +126,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
         Δt = @elapsed begin
           RosenbrockDSchur!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -140,7 +140,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
         Δt = @elapsed begin
           RosenbrockSchurSSP!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -154,7 +154,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
         Δt = @elapsed begin
           LinIMEXSchur!(U,dtau,FcnNHCurlVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
@@ -168,7 +168,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
         Δt = @elapsed begin
           IMEXSchur!(U,dtau,FcnNHCurlExp1DVecI!,FcnNHCurlImp1DGlobalVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
@@ -182,7 +182,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
         Δt = @elapsed begin
           MISSchur!(U,dtau,dtauFast,FcnNHCurlExp3DVecI!,FcnNHCurlImp3DVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
@@ -196,7 +196,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
         Δt = @elapsed begin
           RungeKuttaExplicit!(U,dtau,Fcn!,CG,Global,Param,DiscType)
           time[1] += dtau
-          if mod(i,PrintInt)==0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -240,7 +240,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
   PrintHours = Output.PrintHours
   PrintSeconds = Output.PrintSeconds
   PrintTime = Output.PrintTime
-  PrintStartDays = Output.PrintStartDays
+  PrintStartTime = Output.PrintStartTime
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
@@ -278,7 +278,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
         Δt = @elapsed begin
           RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -292,7 +292,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
         Δt = @elapsed begin
           RungeKuttaExplicit!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
           time[1] += dtau
-          if mod(i,PrintInt)==0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -306,7 +306,7 @@ function TimeStepperAdvection!(U,Trans,CG,Global,Param)
         Δt = @elapsed begin
           SSPRungeKutta!(time[1],U,dtau,FcnTracer!,CG,Global,Param)
           time[1] += dtau
-          if (mod(i,PrintInt) == 0 && i >= PrintStartInt) || i == nIter 
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -346,7 +346,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
   PrintHours = Output.PrintHours
   PrintSeconds = Output.PrintSeconds
   PrintTime = Output.PrintTime
-  PrintStartDays = Output.PrintStartDays
+  PrintStartTime = Output.PrintStartTime
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
@@ -384,7 +384,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
         Δt = @elapsed begin
           RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
           time[1] += dtau
-          if mod(i,PrintInt) == 0 && i >= PrintStartInt
+          if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
@@ -412,7 +412,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Global,Param)
         Δt = @elapsed begin
           @time SSPRungeKutta!(time[1],U,dtau,FcnTracerConv!,CG,Global,Param)
           time[1] += dtau
-          if (mod(i,PrintInt) == 0 && i >= PrintStartInt) || i == nIter 
+          if (mod(i,PrintInt) == 0 && time[1] >= PrintStartTime) || i == nIter
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end

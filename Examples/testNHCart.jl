@@ -78,6 +78,7 @@ PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
+PrintStartTime = parsed_args["PrintStartTime"]
 
 Param = CGDycore.Parameters(Problem)
 
@@ -219,9 +220,11 @@ end
   end
 
   Global.Output.PrintDays = PrintDays
+  Global.Output.PrintHours = PrintHours
+  Global.Output.PrintMinutes = PrintMinutes
   Global.Output.PrintSeconds = PrintSeconds
   Global.Output.PrintTime = PrintTime
-  Global.Output.PrintStartDays = 0
+  Global.Output.PrintStartTime = PrintStartTime
   Global.Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkStruct(Global.Output.OrdPrint,CGDycore.TransCartX,CG,Global)
 
