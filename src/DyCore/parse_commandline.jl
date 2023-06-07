@@ -384,7 +384,7 @@ function parse_commandline()
      arg_type = Float64
      default = 0.0
 
-    "--PrintSartTime"
+    "--PrintStartTime"
      help = "Print start"
      arg_type = Float64
      default = 0.0
