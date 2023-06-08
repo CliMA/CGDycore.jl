@@ -21,6 +21,7 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param,DiscType)
 #     @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,jStage]
       @views axpy!(ROS.a[iStage,jStage],k[:,:,:,jStage],V)
     end
+    FcnPrepare!(V,CG,Global,Param,DiscType)
     Fcn(fV,V,CG,Global,Param,DiscType)
     if iStage == 1
       Jac(J,V,CG,Global,Param,DiscType)

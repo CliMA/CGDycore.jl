@@ -20,8 +20,9 @@ Cache1::Array{FT, 2}
 Cache2::Array{FT, 2}
 Cache3::Array{FT, 2}
 Cache4::Array{FT, 2}
-Pres::Array{FT, 4}
-PresG::Array{FT, 2}
+PresCG::Array{FT, 3}
+AuxG::Array{FT, 3}
+Aux2DG::Array{FT, 3}
 Temp::Array{FT, 4}
 KE::Array{FT, 3}
 uStar::Array{FT, 3}
@@ -52,7 +53,7 @@ Rot2C::Array{FT, 3}
 Grad1C::Array{FT, 3}
 Grad2C::Array{FT, 3}
 DivC::Array{FT, 3}
-KV::Array{FT, 3}
+KVCG::Array{FT, 3}
 Temp1::Array{FT, 3}
 k::Array{FT, 4}
 Ymyn::Array{FT, 4}
@@ -91,8 +92,9 @@ Cache1=zeros(FT,0,0)
 Cache2=zeros(FT,0,0)
 Cache3=zeros(FT,0,0)
 Cache4=zeros(FT,0,0)
-Pres=zeros(FT,0,0,0,0)
-PresG=zeros(FT,0,0)
+PresCG=zeros(FT,0,0,0)
+AuxG=zeros(FT,0,0,0)
+Aux2DG=zeros(FT,0,0,0)
 Temp=zeros(FT,0,0,0,0)
 KE=zeros(FT,0,0,0)
 uStar=zeros(FT,0,0,0)
@@ -123,7 +125,7 @@ Rot2C=zeros(FT,0,0,0)
 Grad1C=zeros(FT,0,0,0)
 Grad2C=zeros(FT,0,0,0)
 DivC=zeros(FT,0,0,0)
-KV=zeros(FT,0,0,0)
+KVCG=zeros(FT,0,0,0)
 Temp1=zeros(FT,0,0,0)
 k=zeros(FT,0,0,0,0)
 Ymyn=zeros(FT,0,0,0,0)
@@ -161,8 +163,9 @@ return CacheStruct(
   Cache2,
   Cache3,
   Cache4,
-  Pres,
-  PresG,
+  PresCG,
+  AuxG,
+  Aux2DG,
   Temp,
   KE,
   uStar,
@@ -193,7 +196,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
-  KV,
+  KVCG,
   Temp1,
   k,
   Ymyn,
@@ -234,8 +237,9 @@ Cache1=zeros(nz,NumG)
 Cache2=zeros(nz,NumG)
 Cache3=zeros(nz,NumG)
 Cache4=zeros(nz,NumG)
-Pres=zeros(OP,OP,nz,NF)
-PresG=zeros(nz,NumG)
+PresCG=zeros(OP,OP,nz)
+AuxG=zeros(nz,NumG,2)
+Aux2DG=zeros(1,NumG,NumTr+1)
 Temp=zeros(OP,OP,nz,NF)
 KE=zeros(OP,OP,nz)
 uStar=zeros(OP,OP,NF)
@@ -266,7 +270,7 @@ Rot2C=zeros(OP,OP,nz)
 Grad1C=zeros(OP,OP,nz)
 Grad2C=zeros(OP,OP,nz)
 DivC=zeros(OP,OP,nz)
-KV=zeros(OP,OP,nz)
+KVCG=zeros(OP,OP,nz)
 Temp1=zeros(nz,NumG,NumV+NumTr+3)
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
@@ -304,8 +308,9 @@ return CacheStruct(
   Cache2,
   Cache3,
   Cache4,
-  Pres,
-  PresG,
+  PresCG,
+  AuxG,
+  Aux2DG,
   Temp,
   KE,
   uStar,
@@ -336,7 +341,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
-  KV,
+  KVCG,
   Temp1,
   k,
   Ymyn,

@@ -277,9 +277,10 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+        @views Pres = Global.Cache.AuxG[:,:,1]  
         RhoPos = Global.Model.RhoPos
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)  
-        @views InterpolateTh!(ThCell,Global.Cache.PresG,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+        @views InterpolateTh!(ThCell,Pres,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
         vtk["Th", VTKCellData()] = ThCell 
       else
         RhoPos = Global.Model.RhoPos
@@ -302,9 +303,10 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       end    
     elseif str == "ThDiff"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
+        @views Pres = Global.Cache.AuxG[:,:,1]  
         RhoPos = Global.Model.RhoPos
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)  
-        @views InterpolateTh!(ThCell,Global.Cache.PresG,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+        @views InterpolateTh!(ThCell,Pres,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
         vtk["Th", VTKCellData()] = ThCell 
       else
         RhoPos = Global.Model.RhoPos
@@ -317,8 +319,9 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
         vtk["ThDiff", VTKCellData()] = ThCell
       end
     elseif str == "Pres"   
+      @views Pres = Global.Cache.AuxG[:,:,1]  
       pCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      Interpolate!(pCell,Global.Cache.PresG,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      Interpolate!(pCell,Pres,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["p", VTKCellData()] = pCell 
     elseif  str == "Tr1" 
       Tr1Pos = Global.Model.NumV + 1

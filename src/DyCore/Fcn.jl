@@ -19,8 +19,22 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   v1CG = Global.Cache.v1CG
   v2CG = Global.Cache.v2CG
   wCG = Global.Cache.wCG
+  PresCG = Global.Cache.PresCG
+  KVCG = Global.Cache.KVCG
+  @views CdThCG = Global.Cache.ThCG[:,:,1]
+  @views CdTrCG = Global.Cache.TrCG[:,:,1,:]
   KE = Global.Cache.KE
-  PresG = Global.Cache.PresG
+  AuxG = Global.Cache.AuxG
+  @views PresG = Global.Cache.AuxG[:,:,1]
+  @views KVG = Global.Cache.AuxG[:,:,2]
+  @views CdThG = Global.Cache.Aux2DG[:,:,1]
+  @views CdTrG = Global.Cache.Aux2DG[:,:,2:1+NumTr]
+  Aux2DG = Global.Cache.Aux2DG
+  zPG = Global.Cache.zPG
+  zP = Global.Metric.zP
+  uStar = Global.Cache.uStar
+  @. PresG = 0.0
+  @. KVG = 0.0
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -38,41 +52,107 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         end
       end
     end
-#   Kinetic Energy    
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
+    @views Pressure!(PresCG,ThCG,RhoCG,TrCG,KE,zPG,Global)
+    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
+#     uStar
+      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCG[:,:,2],CG,
+        Global.Metric.dXdxI[:,:,1,1,:,:,iF],Global.Metric.nS[:,:,:,iF])
+
+#     Vertical Diffusion coefficient    
+      if Global.Model.VerticalDiffusion
+        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Global,Param,iF)
+      end   
+    end  
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
-        @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] *
+        for iz = 1 : nz
+          PresG[iz,ind] += PresCG[iP,jP,iz] *
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
-        end
+          KVG[iz,ind] += KVCG[iP,jP,iz] *
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+        end    
       end
     end
   end  
-  ExchangeData3DSend(PresG,Global.Exchange)
+  ExchangeData3DSend(AuxG,Global.Exchange)
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
+          RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
+          v1CG[iP,jP,iz] = U[iz,ind,uPos]
+          v2CG[iP,jP,iz] = U[iz,ind,vPos]
+          wCG[iP,jP,iz+1] = U[iz,ind,wPos]
+          ThCG[iP,jP,iz] = U[iz,ind,ThPos]
+          zPG[iP,jP,iz] = zP[iz,ind]
+          @inbounds for iT = 1:NumTr
+            TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
+          end
         end
       end
     end
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
+    @views Pressure!(PresCG,ThCG,RhoCG,TrCG,KE,zPG,Global)
+    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
+#     uStar
+      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCG[:,:,2],CG,
+        Global.Metric.dXdxI[:,:,1,1,:,:,iF],Global.Metric.nS[:,:,:,iF])
+
+#     Vertical Diffusion coefficient    
+      if Global.Model.VerticalDiffusion
+        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Global,Param,iF)
+      end   
+    end  
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] *
+          PresG[iz,ind] += PresCG[iP,jP,iz] *
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+          KVG[iz,ind] += KVCG[iP,jP,iz] *
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
         end
       end
     end
   end
-  ExchangeDataRecv!(PresG,Global.Exchange)
+  ExchangeData3DRecv!(AuxG,Global.Exchange)
+
+  @. CdThG = 0.0
+  @. CdTrG = 0.0
+  @inbounds for iF in Global.Grid.BoundaryFaces
+    if Global.Model.SurfaceFlux
+      Cd_coefficient!(CdThCG,CdTrCG,CG,Global,Param,iF)
+    end   
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        CdThG[1,ind,RhoPos] += CdThCG[iP,jP,1] *
+          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind]
+        @views @. CdTrG[1,ind,:] += CdTrCG[iP,jP,1,:] *
+          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind]
+      end
+    end
+  end  
+  ExchangeData3DSend(Aux2DG,Global.Exchange)
+  @inbounds for iF in Global.Grid.InteriorFaces
+    if Global.Model.SurfaceFlux
+      Cd_coefficient!(CdThCG,CdTrCG,CG,Global,Param,iF)
+    end   
+
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        ind = CG.Glob[iP,jP,iF]
+        CdThG[1,ind,RhoPos] += CdThCG[iP,jP,1] *
+          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Global.Metric.dz[1,ind]
+        @views @. CdTrG[1,ind,:] += CdTrCG[iP,jP,1,:] *
+          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Global.Metric.dz[1,ind]
+      end
+    end
+  end
+  ExchangeData3DRecv!(Aux2DG,Global.Exchange)
 end
 
 function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
@@ -121,11 +201,12 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @views ThCG = Global.Cache.ThCG[:,:,:]
   @views TrCG = Global.Cache.TrCG[:,:,:,:]
   KE = Global.Cache.KE
-  Pres = Global.Cache.Pres
-  PresG = Global.Cache.PresG
+  PresCG = Global.Cache.PresCG
+  @views PresG = Global.Cache.AuxG[:,:,1]
+  @views KVG = Global.Cache.AuxG[:,:,2]
   Temp = Global.Cache.Temp
   uStar = Global.Cache.uStar
-  KV = Global.Cache.KV
+  KVCG = Global.Cache.KVCG
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
 
@@ -136,7 +217,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @. Div = 0.0
   @. DivTr = 0.0
   @. F = 0.0
-  @. PresG = 0.0
+# @. PresG = 0.0
   @. JJ = 0.0
   @. JRho = 0.0
   @. JRhoF = 0.0
@@ -203,7 +284,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end
 
-  ExchangeData3DSend(Temp1,PresG,Global.Exchange)
+# ExchangeData3DSend(Temp1,PresG,Global.Exchange)
+  ExchangeData3DSend(Temp1,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -265,7 +347,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end
 
-  ExchangeData3DRecv!(Temp1,PresG,Global.Exchange)
+# ExchangeData3DRecv!(Temp1,PresG,Global.Exchange)
+  ExchangeData3DRecv!(Temp1,Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
@@ -285,6 +368,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           zPG[iP,jP,iz] = zP[iz,ind]
           pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
           RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
+          PresCG[iP,jP,iz] = PresG[iz,ind]
+          KVCG[iP,jP,iz] = KVG[iz,ind]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT] 
           end  
@@ -311,25 +396,25 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
+#   @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
 #   Temperature
 
-    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
-#     uStar
-      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
-
-#     Vertical Diffusion coefficient    
-      if Global.Model.VerticalDiffusion
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
-      end   
-    end   
+#    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
+##     uStar
+#      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
+#
+##     Vertical Diffusion coefficient    
+#      if Global.Model.VerticalDiffusion
+#        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
+#      end   
+#    end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 #     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,DiscType)
 
     if Global.Model.RefProfile
-      @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
+      @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
@@ -337,7 +422,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
       end
     else
-      @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],Pres[:,:,:,iF],RhoCG,CG,
+      @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],PresCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
         @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
@@ -374,7 +459,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         wCG[:,:,1],Global,Param,iF)  
     end  
     if Global.Model.VerticalDiffusionMom
-      @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KV,
+      @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KVCG,
         Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],Global.Cache)
     end  
 
@@ -411,7 +496,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,
           Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
@@ -439,21 +524,21 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,
+        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KVCG,CG,
           Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,Param,iF)
+      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],PresCG[:,:,1],CG,Global,Param,iF)
     end  
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
-            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+#         PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
+#           (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] 
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -469,7 +554,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end  
 
-  ExchangeData3DSend(F,PresG,Global.Exchange)
+# ExchangeData3DSend(F,PresG,Global.Exchange)
+  ExchangeData3DSend(F,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -488,6 +574,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           DivCG[iP,jP,iz] = Div[iz,ind] / JJ[iz,ind]
           pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
           RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
+          PresCG[iP,jP,iz] = PresG[iz,ind]
+          KVCG[iP,jP,iz] = KVG[iz,ind]
           zPG[iP,jP,iz] = zP[iz,ind]
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
@@ -515,24 +603,24 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
+#   @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
 #   Temperature
 
-    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
-#     uStar
-      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
-
-#     Vertical Diffusion coefficient    
-      if Global.Model.VerticalDiffusion
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
-      end   
-    end   
+#    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
+##     uStar
+#      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
+#
+##     Vertical Diffusion coefficient    
+#      if Global.Model.VerticalDiffusion
+#        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
+#      end   
+#    end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     if Global.Model.RefProfile
-      @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
+      @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
@@ -540,7 +628,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
       end
     else
-      @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],Pres[:,:,:,iF],RhoCG,CG,
+      @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],PresCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
         @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
@@ -577,7 +665,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         wCG[:,:,1],Global,Param,iF)  
     end  
     if Global.Model.VerticalDiffusionMom
-      @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KV,
+      @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KVCG,
         Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],Global.Cache)
     end  
 
@@ -613,7 +701,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,
           Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
@@ -641,21 +729,21 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KV,CG,
+        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KVCG,CG,
           Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],CG,Global,Param,iF)
+      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],PresCG[:,:,1],CG,Global,Param,iF)
     end  
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
-            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+#         PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
+#           (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -670,7 +758,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end  
     end
   end  
-  ExchangeData3DRecv!(F,PresG,Global.Exchange)
+# ExchangeData3DRecv!(F,PresG,Global.Exchange)
+  ExchangeData3DRecv!(F,Global.Exchange)
   @views @. F[:,:,RhoPos] /= JJ
   @views @. F[:,:,ThPos] /= JJ
   @inbounds for iT = 1:NumTr
@@ -745,7 +834,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
   PresG = Global.Cache.PresG
   Temp = Global.Cache.Temp
   uStar = Global.Cache.uStar
-  KV = Global.Cache.KV
+  KVCG = Global.Cache.KVCG
   qMin = Global.Cache.qMin
   qMax = Global.Cache.qMax
 
@@ -930,7 +1019,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
+        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
 
@@ -1007,7 +1096,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,Global,iF)
       end  
     end  
 #   Tracer transport
@@ -1033,7 +1122,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KVCG,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux
@@ -1116,7 +1205,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        eddy_diffusivity_coefficient!(KV,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
+        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
       end   
     end   
 
@@ -1193,7 +1282,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,Global,iF)
       end  
     end  
 #   Tracer transport
@@ -1219,7 +1308,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
           Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KV,CG,Global,iF)
+        @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KVCG,CG,Global,iF)
       end  
     end
     if Global.Model.SurfaceFlux

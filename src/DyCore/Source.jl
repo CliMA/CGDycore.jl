@@ -8,7 +8,6 @@ function Source!(F,U,Pres,CG,Global,Param,iG)
   NumTr = Model.NumTr
   ThPos = Model.ThPos
   nz = Global.Grid.nz
-  Problem = Model.Problem == "HeldSuarezSphere" || Model.Problem == "HeldSuarezMoistSphere"
 
   @views Rho = U[:,RhoPos]
   @views Th = U[:,ThPos]
@@ -76,29 +75,6 @@ function SourceHeldSuarez1!(FTh,FV,Rho,Th,V,Tr,latN,Global)
 end  
 
 
-function SourceMicroPhysicsv1(F,U,CG,Global,iG)
-  (; Rd,
-     Cpd,
-     Rv,
-     Cpv,
-     Cpl,
-     p0,
-     L00,
-     kappa) = Global.Phys
-  ThPos=Global.Model.ThPos
-  RhoPos=Global.Model.RhoPos
-  RhoVPos=Global.Model.RhoVPos
-  RhoCPos=Global.Model.RhoCPos
-  RelCloud = Global.Model.RelCloud
-  NumV=Global.Model.NumV
-  @views  Rho = U[:,..,RhoPos]  
-  @views  RhoV = U[:,..,RhoVPos+NumV]  
-  @views  RhoC = U[:,..,RhoCPos+NumV]  
-  @inbounds for i in eachindex(Rho)
-    RhoD = Rho[i] - RhoV[i] - RhoC[i]
-  end   
-end   
-
 function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
   (; Rd,
      Cpd,
@@ -117,8 +93,8 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
    @inbounds for i = 1:nz
      Rho = U[i,RhoPos]  
      RhoTh = U[i,ThPos]  
-     RhoV = U[i,NumV+RhoVPos]  
-     RhoC = U[i,NumV+RhoCPos]  
+     RhoV = max(U[i,NumV+RhoVPos], 0.0)  
+     RhoC = max(U[i,NumV+RhoCPos], 0.0)  
      RhoD = Rho - RhoV - RhoC
      Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
      Rm = Rd * RhoD + Rv * RhoV

@@ -671,8 +671,17 @@ function ExchangeDataFRecv!(cFMin,cFMax,Exchange)
   end
 end
 
-function ExchangeData3DSend(U,p,Exchange)
+function InitExchangeData3D(nz,nT,Exchange)
+  IndSendBuffer = Exchange.IndSendBuffer
+  IndRecvBuffer = Exchange.IndRecvBuffer
+  NeiProc = Exchange.NeiProc
+  @inbounds for iP in NeiProc
+    Exchange.RecvBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
+    Exchange.SendBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
+  end  
+end  
 
+function ExchangeData3DSend(U,p,Exchange)
 
   IndSendBuffer = Exchange.IndSendBuffer
   IndRecvBuffer = Exchange.IndRecvBuffer
@@ -681,23 +690,10 @@ function ExchangeData3DSend(U,p,Exchange)
   ProcNumber = Exchange.ProcNumber
   nz = size(U,1)
   nT = size(U,3)
-  if Exchange.InitRecvBuffer
-    @inbounds for iP in NeiProc
-      Exchange.RecvBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT + 1)
-      Exchange.SendBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT + 1)
-    end  
-    RecvBuffer3 = Exchange.RecvBuffer3
-    SendBuffer3 = Exchange.SendBuffer3
-    Exchange.InitRecvBuffer = false
-    Exchange.InitSendBuffer = false
-    rreq = Exchange.rreq
-    sreq = Exchange.sreq
-  else
-    RecvBuffer3 = Exchange.RecvBuffer3
-    SendBuffer3 = Exchange.SendBuffer3
-    rreq = Exchange.rreq
-    sreq = Exchange.sreq
-  end    
+  RecvBuffer3 = Exchange.RecvBuffer3
+  SendBuffer3 = Exchange.SendBuffer3
+  rreq = Exchange.rreq
+  sreq = Exchange.sreq
 
   @inbounds for iP in NeiProc
     i = 0
@@ -730,42 +726,29 @@ function ExchangeData3DSend(U,Exchange)
   ProcNumber = Exchange.ProcNumber
   nz = size(U,1)
   nT = size(U,3)
-  if Exchange.InitRecvBuffer
-    @inbounds for iP in NeiProc
-      Exchange.RecvBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
-      Exchange.SendBuffer3[iP] = zeros(nz,length(IndRecvBuffer[iP]),nT)
-    end  
-    RecvBuffer3 = Exchange.RecvBuffer3
-    SendBuffer3 = Exchange.SendBuffer3
-    Exchange.InitRecvBuffer = false
-    Exchange.InitSendBuffer = false
-    rreq = Exchange.rreq
-    sreq = Exchange.sreq
-  else
-    RecvBuffer3 = Exchange.RecvBuffer3
-    SendBuffer3 = Exchange.SendBuffer3
-    rreq = Exchange.rreq
-    sreq = Exchange.sreq
-  end    
+  RecvBuffer3 = Exchange.RecvBuffer3
+  SendBuffer3 = Exchange.SendBuffer3
+  rreq = Exchange.rreq
+  sreq = Exchange.sreq
 
   @inbounds for iP in NeiProc
     i = 0
     @views @inbounds for Ind in IndSendBuffer[iP]
       i += 1
-      @views @. SendBuffer3[iP][:,i,1:nT] = U[:,Ind,:]
+      @views @. SendBuffer3[iP][1:nz,i,1:nT] = U[:,Ind,:]
     end
   end
   i = 0
   @inbounds for iP in NeiProc
     tag = Proc + ProcNumber*iP
     i += 1
-    @views MPI.Irecv!(RecvBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
+    @views MPI.Irecv!(RecvBuffer3[iP][1:nz,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
   end  
   i = 0
   @inbounds for iP in NeiProc
     tag = iP + ProcNumber*Proc
     i += 1
-    @views MPI.Isend(SendBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
+    @views MPI.Isend(SendBuffer3[iP][1:nz,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
   end
 end
 
@@ -794,6 +777,7 @@ end
 
 function ExchangeData3DRecv!(U,Exchange)
 
+  nz = size(U,1)
   nT = size(U,3)
   IndRecvBuffer = Exchange.IndRecvBuffer
   NeiProc = Exchange.NeiProc
@@ -809,7 +793,7 @@ function ExchangeData3DRecv!(U,Exchange)
     i = 0
     @inbounds for Ind in IndRecvBuffer[iP]
       i += 1
-      @views @. U[:,Ind,:] += RecvBuffer3[iP][:,i,1:nT]
+      @views @. U[1:nz,Ind,:] += RecvBuffer3[iP][1:nz,i,1:nT]
     end
   end
 end  

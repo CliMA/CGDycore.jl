@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHCart.jl \
+mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Problem="BryanFritschCart" \
   --NumV=5 \
   --NumTr=2 \
@@ -12,7 +12,7 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=100 \
+  --PrintTime=0.2 \
   --Curl=true \
   --ModelType="VectorInvariant" \
   --Equation="CompressibleMoist" \

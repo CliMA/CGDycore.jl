@@ -87,7 +87,7 @@ function BoundaryFluxMomentum!(FuC,FvC,uC,vC,w,Global,Param,iF)
   end
 end
 
-function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
+function BoundaryFluxScalar!(Fc,Th,Rho,Tr,p,CG,Global,Param,iF)
   if Global.Model.Problem == "HeldSuarezMoistSphere" || Global.Model.Problem == "HeldSuarezMoistSphereOro"
     OP = CG.OrdPoly+1  
     ThPos=Global.Model.ThPos  
@@ -103,12 +103,12 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
     Rv = Global.Phys.Rv
     Cpv = Global.Phys.Cpv
     p0 = Global.Phys.p0
-    @views p = Global.Cache.Pres[:,:,1,iF]
     @views dXdxI = Global.Metric.dXdxI[:,:,1,1,3,3,iF]
     @inbounds for j = 1:OP
       @inbounds for i = 1:OP
+       RhoV = max(Tr[i,j,RhoVPos], 0.0) 
        (FTh,FRho,FRhoV) = BoundaryFluxHeldSuarez(
-         Th[i,j],Rho[i,j],Tr[i,j,RhoVPos],TSurf[i,j],p[i,j],dXdxI[i,j],CH,CE,uStar[i,j], Global.Phys)
+         Th[i,j],Rho[i,j],RhoV,p[i,j],TSurf[i,j],dXdxI[i,j],CH,CE,uStar[i,j], Global.Phys)
        Fc[i,j,ThPos] += FTh
        Fc[i,j,RhoPos] += FRho
        Fc[i,j,RhoVPos+NumV] += FRhoV
@@ -117,15 +117,15 @@ function BoundaryFluxScalar!(Fc,Th,Rho,Tr,CG,Global,Param,iF)
   end    
 end
 
-function BoundaryFluxHeldSuarez(Th,Rho,RhoV,TSurf,p,dXdxIF,CH,CE,uStar, Phys)
+function BoundaryFluxHeldSuarez(Th,Rho,RhoV,p,TSurf,dXdxIF,CH,CE,uStar, Phys)
   RhoD = Rho - RhoV
   Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
   Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
   T = p / Rm
   p_vs = fpvs(TSurf,Phys)
   RhoVSurface = p_vs / (Phys.Rv * TSurf) 
-  LatFlux = - 4.0 * CE * uStar * dXdxIF  * (RhoV - RhoVSurface) 
-  SensFlux = - 4.0 * CH * uStar * dXdxIF  * (T - TSurf) 
+  LatFlux = - 2.0 * CE * uStar * dXdxIF  * (RhoV - RhoVSurface) 
+  SensFlux = - 2.0 * CH * uStar * dXdxIF  * (T - TSurf) 
   FRho = LatFlux
   FRhoV = LatFlux
   PrePi=(p / Phys.p0)^(Rm / Cpml)
@@ -134,24 +134,43 @@ function BoundaryFluxHeldSuarez(Th,Rho,RhoV,TSurf,p,dXdxIF,CH,CE,uStar, Phys)
 end
 
 
-function uStarCoefficient!(uStar,U,V,WC,CG,Global,iF)
+function uStarCoefficient!(uStar,U,V,WC,CG,dXdxI,nS)
 # Computation norm_v_a
 # |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)
   OP = CG.OrdPoly+1  
   @inbounds for j = 1:OP
     @inbounds for i = 1:OP
-      uStar[i,j] = sqrt(U[i,j] * U[i,j] + V[i,j] * V[i,j] + WC[i,j] * WC[i,j] - 
-        (Global.Metric.nS[i,j,1,iF] * U[i,j] + Global.Metric.nS[i,j,2,iF] * V[i,j] + Global.Metric.nS[i,j,3,iF] * WC[i,j])^2)
+      v1 = U[i,j] 
+      v2 = V[i,j] 
+      WS = -(dXdxI[i,j,3,1]* v1 + 
+        dXdxI[i,j,3,2] * v2) / 
+        dXdxI[i,j,3,3]
+      w = 0.5 * (WS + WC[i,j])  
+      uStar[i,j] = sqrt(v1 * v1 + v2 * v2 + w * w - 
+        (nS[i,j,1] * v1 + nS[i,j,2] * v2 + nS[i,j,3] * w)^2)
     end
   end  
 end
 
-function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF) 
+function Cd_coefficient!(CdTh,CdTr,CG,Global,Param,iF) 
+  if Global.Model.Problem == "HeldSuarezMoistSphere" || Global.Model.Problem == "HeldSuarezMoistSphereOro"
+    @views uStar = Global.Cache.uStar[:,:,iF]
+    OP = CG.OrdPoly + 1  
+    @inbounds for jP = 1 : OP
+      @inbounds for iP = 1 : OP
+        CdTh[iP,jP] = Param.CH * uStar[iP,jP]
+        CdTr[iP,jP,1] = Param.CE * uStar[iP,jP] 
+        CdTr[iP,jP,2] = 0
+      end
+    end  
+  end    
+end
+function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,p,CG,Global,Param,iF) 
   if Global.Model.Problem == "HeldSuarezMoistSphere" || Global.Model.Problem == "HeldSuarezMoistSphereOro"
     CE = Param.CE 
     p_pbl = Param.p_pbl 
     p_strato = Param.p_strato 
-    OP = CG.OrdPoly+1  
+    OP = CG.OrdPoly + 1  
     nz = Global.Grid.nz
 #   Computation norm_v_a  
 #   |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)  
@@ -160,10 +179,8 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF)
       @inbounds for iP = 1 : OP
         K[iP,jP,1] = 0.5 * CE * uStar[iP,jP] * (Global.Metric.J[iP,jP,1,1,iF] + Global.Metric.J[iP,jP,2,1,iF]) / 
           (Global.Metric.dXdxI[iP,jP,1,1,3,3,iF] + Global.Metric.dXdxI[iP,jP,2,1,3,3,iF])
-        K[iP,jP,1] = min(K[iP,jP,1], 10.0) 
       end
     end  
-    @views p = Global.Cache.Pres[:,:,:,iF]
     @inbounds for iz = nz : -1 : 1
       @inbounds for jP = 1 : OP
         @inbounds for iP = 1 : OP
@@ -182,23 +199,6 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,CG,Global,Param,iF)
 
 end
 
-function JacDiffusionScalar!(J,U,CG,Global,Param,::Val{:VectorInvariant})
-  (;  RhoPos,
-      uPos,
-      vPos,
-      wPos,
-      ThPos,
-      NumV,
-      NumTr) = Global.Model
-  nz=Global.Grid.nz;
-  NF=Global.Grid.NumFaces
-  nCol=size(U,2);
-  nJ=nCol*nz;
-
-  @inbounds for iC=1:nCol
-  end
-
-end
 
 
 

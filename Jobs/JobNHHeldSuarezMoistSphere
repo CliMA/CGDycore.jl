@@ -10,8 +10,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --ModelType="VectorInvariant" \
   --Curl=true \
-  --SurfaceFluxMom=false \
   --VerticalDiffusionMom=false \
+  --SurfaceFluxMom=false \
   --VerticalDiffusion=true \
   --SurfaceFlux=true \
   --HorLimit=false \
@@ -25,9 +25,9 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Rain=1.0 \
   --PertTh=true \
   --SimDays=10 \
-  --PrintDays=0 \
-  --PrintSeconds=200 \
-  --PrintStartTime=259200 \
+  --PrintDays=1 \
+  --PrintSeconds=0 \
+  --PrintStartTime=0 \
   --StartAverageDays=200 \
   --dtau=200 \
   --IntMethod="Rosenbrock" \

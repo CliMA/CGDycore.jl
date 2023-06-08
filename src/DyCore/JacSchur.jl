@@ -100,6 +100,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   nJ=nCol*nz;
 
   D = J.CacheCol2
+  @views DF = J.CacheCol2[1:nz-1]
   Dp = J.CacheCol2
   Dm = J.CacheCol3
   dPdTh = J.CacheCol1
@@ -107,7 +108,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   K = J.CacheCol1
 
   @inbounds for iC=1:nCol
-    @views Pres = Global.Cache.PresG[:,iC]
+    @views Pres = Global.Cache.AuxG[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
     @views Th = U[:,iC,ThPos]
     @views Tr = U[:,iC,NumV+1:end]
@@ -174,6 +175,19 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     if Global.Model.Damping
       @views DampingKoeff!(J.JWW[1,:,iC],CG,Global)
     end
+    if Global.Model.VerticalDiffusion
+      @views JDiff = J.JDiff[:,:,iC]
+      @views KV = Global.Cache.AuxG[:,iC,2]
+      # The Rho factor is already included in KV
+      @views @. DF = - (KV[1:nz-1] + KV[2:nz]) / (dz[1:nz-1] + dz[2:nz])
+      # J tridiagonal matrix
+      # First row upper diagonal
+      # Second row diagonal
+      # Third row lower diagonal
+      @views @. JDiff[1,1:nz-1] = DF / Rho[2:nz] / dz[1:nz-1]
+      @views @. JDiff[3,2:nz] = DF / Rho[1:nz-1] / dz[2:nz]
+      @views @. JDiff[2,:] = JDiff[1,:] + JDiff[3,:]
+    end
   end
 end
 
@@ -197,7 +211,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:Conservative})
   K = J.CacheCol1
 
   @inbounds for iC=1:nCol
-    @views Pres = Global.Cache.PresG[:,iC]
+    @views Pres = Global.Cache.AuxG[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
     @views Th = U[:,iC,ThPos]
     @views Tr = U[:,iC,NumV+1:end]
@@ -246,6 +260,20 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:Conservative})
     if Global.Model.Damping
       @views DampingKoeff!(J.JWW[1,:,iC],CG,Global)
     end
+    if Global.Model.VerticalDiffusion
+      @show "JDiff"  
+      @views JDiff = J.JDiff[:,:,iC]
+      @views KV = Global.Cache.AuxG[:,iC,2]
+      # The Rho factor is already included in KV
+      @views @. DF = - (KV[1:nz-1] + KV[2:nz]) / (dz[1:nz-1] + dz[2:nz])
+      # J tridiagonal matrix
+      # First row upper diagonal
+      # Second row diagonal
+      # Third row lower diagonal
+      @views @. JDiff[1,1:nz-1] = DF / Rho[2:nz] / dz[1:nz-1]
+      @views @. JDiff[3,2:nz] = DF / Rho[1:nz-1] / dz[2:nz]
+      @views @. JDiff[2,:] = JDiff[1,:] + JDiff[3,:]
+    end    
   end
 end
 

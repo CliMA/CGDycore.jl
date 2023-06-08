@@ -213,4 +213,6 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
 elseif ModelType == "Conservative"
   DiscType = Val(:Conservative)  
 end  
+nT = max(5,NumV + NumTr + 3)
+CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
 CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Global,Param,DiscType)
