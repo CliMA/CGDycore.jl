@@ -9,6 +9,7 @@ mutable struct JStruct
     tri::Array{Float64, 3}
     sw::Array{Float64, 2}
     JDiff::Array{Float64, 3}
+    JAdv::Array{Float64, 3}
     CompTri::Bool
     CompJac::Bool
     CacheCol1::Array{Float64, 1}
@@ -27,6 +28,7 @@ function JStruct()
   tri=zeros(0,0,0)
   sw=zeros(0,0)
   JDiff=zeros(0,0,0)
+  JAdv=zeros(0,0,0)
   CompTri=false
   CompJac=false
   CacheCol1=zeros(0)
@@ -43,6 +45,7 @@ function JStruct()
     tri,
     sw,
     JDiff,
+    JAdv,
     CompTri,
     CompJac,
     CacheCol1,
@@ -62,6 +65,7 @@ function JStruct(NumG,nz,NumTr)
   tri=zeros(3,nz,NumG)
   sw=zeros(nz,NumG)
   JDiff=zeros(3,nz,NumG)
+  JAdv=zeros(3,nz,NumG)
   CompTri=false
   CompJac=false
   CacheCol1=zeros(nz)
@@ -78,6 +82,7 @@ function JStruct(NumG,nz,NumTr)
     tri,
     sw,
     JDiff,
+    JAdv,
     CompTri,
     CompJac,
     CacheCol1,
@@ -100,6 +105,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   nJ=nCol*nz;
 
   D = J.CacheCol2
+  abswCon = J.CacheCol2
   @views DF = J.CacheCol2[1:nz-1]
   Dp = J.CacheCol2
   Dm = J.CacheCol3
@@ -177,6 +183,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     end
     if Global.Model.VerticalDiffusion
       @views JDiff = J.JDiff[:,:,iC]
+      @. JDiff = 0.0
       @views KV = Global.Cache.AuxG[:,iC,2]
       # The Rho factor is already included in KV
       @views @. DF = - (KV[1:nz-1] + KV[2:nz]) / (dz[1:nz-1] + dz[2:nz])
@@ -184,10 +191,21 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
       # First row upper diagonal
       # Second row diagonal
       # Third row lower diagonal
-      @views @. JDiff[1,1:nz-1] = DF / Rho[2:nz] / dz[1:nz-1]
-      @views @. JDiff[3,2:nz] = DF / Rho[1:nz-1] / dz[2:nz]
-      @views @. JDiff[2,:] = JDiff[1,:] + JDiff[3,:]
+      @views @. JDiff[1,2:nz] = DF / Rho[2:nz] / dz[1:nz-1]
+      @views @. JDiff[3,1:nz-1] = DF / Rho[1:nz-1] / dz[2:nz]
+      @views @. JDiff[2,2:nz] = -DF
+      @views @. JDiff[2,1:nz-1] += -DF
+      @views @. JDiff[2,1:nz] /= (Rho * dz)
     end
+    @views JAdv = J.JAdv[:,:,iC]
+    @. JAdv = 0.0
+    @views wCon = Global.Cache.AuxG[:,iC,3]
+    @. abswCon = abs(wCon)
+    @views @. JAdv[1,2:nz] = -(abswCon[1:nz-1] - wCon[1:nz-1]) / (2.0 * Rho[2:nz] * dz[1:nz-1])
+    @views @. JAdv[3,1:nz-1] = (-abswCon[1:nz-1] - wCon[1:nz-1]) / (2.0 * Rho[1:nz-1] * dz[2:nz]) 
+    @views @. JAdv[2,2:nz] = +abswCon[1:nz-1] - wCon[1:nz-1] 
+    @views @. JAdv[2,1:nz-1] += +abswCon[1:nz-1] + wCon[1:nz-1]
+    @views @. JAdv[2,1:nz] /= (2.0 * Rho * dz)
   end
 end
 

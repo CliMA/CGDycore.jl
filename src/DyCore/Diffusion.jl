@@ -177,8 +177,9 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,p,CG,Global,Param,iF)
     @views uStar = Global.Cache.uStar[:,:,iF]
     @inbounds for jP = 1 : OP
       @inbounds for iP = 1 : OP
-        K[iP,jP,1] = 0.5 * CE * uStar[iP,jP] * (Global.Metric.J[iP,jP,1,1,iF] + Global.Metric.J[iP,jP,2,1,iF]) / 
-          (Global.Metric.dXdxI[iP,jP,1,1,3,3,iF] + Global.Metric.dXdxI[iP,jP,2,1,3,3,iF])
+#       K[iP,jP,1] = CE * uStar[iP,jP] * (Global.Metric.J[iP,jP,1,1,iF] + Global.Metric.J[iP,jP,2,1,iF]) / 
+#         (Global.Metric.dXdxI[iP,jP,1,1,3,3,iF] + Global.Metric.dXdxI[iP,jP,2,1,3,3,iF])
+        K[iP,jP,1] = CE * uStar[iP,jP] * Global.Grid.dzeta[1]
       end
     end  
     @inbounds for iz = nz : -1 : 1

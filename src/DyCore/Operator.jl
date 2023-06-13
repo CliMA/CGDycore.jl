@@ -2083,6 +2083,21 @@ function KineticEnergy!(KE,uC,vC,wF,J)
        
 end
 
+function wContra!(wConC,uC,vC,wC,RhoC,dXdxI,J)
+  Nz = size(uC,3)
+  for iz = 1 : Nz - 1
+    @views @. wConC[:,:,iz] = 
+      (uC[:,:,iz] * dXdxI[:,:,2,iz,1] + uC[:,:,iz+1] * dXdxI[:,:,1,iz+1,1] + 
+      vC[:,:,iz] * dXdxI[:,:,2,iz,2] + vC[:,:,iz+1] * dXdxI[:,:,1,iz+1,2] + 
+      wC[:,:,iz+1] * (dXdxI[:,:,2,iz,3] + dXdxI[:,:,1,iz+1,3])) / 
+      sqrt((dXdxI[:,:,2,iz,1] + dXdxI[:,:,1,iz+1,1]) * (dXdxI[:,:,2,iz,1] + dXdxI[:,:,1,iz+1,1]) +
+      (dXdxI[:,:,2,iz,2] + dXdxI[:,:,1,iz+1,2]) * (dXdxI[:,:,2,iz,2] + dXdxI[:,:,1,iz+1,2]) +
+      (dXdxI[:,:,2,iz,3] + dXdxI[:,:,1,iz+1,3]) * (dXdxI[:,:,2,iz,3] + dXdxI[:,:,1,iz+1,3])) *
+      ((RhoC[:,:,iz] * J[:,:,2,iz] + RhoC[:,:,iz+1] * J[:,:,1,iz+1]) /
+      (J[:,:,2,iz] + J[:,:,1,iz+1]))
+  end     
+end
+
 function BoundaryW!(wCG,uC,vC,Fe,J,dXdxI)
   OrdPoly = Fe.OrdPoly
   @inbounds for i = 1 : OrdPoly +1

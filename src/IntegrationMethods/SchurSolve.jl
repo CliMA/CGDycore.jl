@@ -57,8 +57,9 @@ function SchurSolve!(k,v,J,fac,Global)
   JTrW=J.JTrW
   JWW=J.JWW
   JDiff = J.JDiff
-  CdTh = Global.Cache.Aux2DG[:,:,1]
-  CdTr = Global.Cache.Aux2DG[:,:,2:end]
+  JAdv = J.JAdv
+  @views CdTh = Global.Cache.Aux2DG[:,:,1]
+  @views CdTr = Global.Cache.Aux2DG[:,:,2:end]
   NumV = Global.Model.NumV
   if size(k,3) > Global.Model.NumV
     NumTr = Global.Model.NumTr
@@ -72,6 +73,7 @@ function SchurSolve!(k,v,J,fac,Global)
   if Global.Model.VerticalDiffusion
     @inbounds for in2=1:n2
       if J.CompTri
+        @views @. JDiff[:,:,in2] += JAdv[:,:,in2]  
         @views @. JDiff[2,:,in2] = invfac  + JDiff[2,:,in2]  
       end
       JDiff[2,1,in2] += CdTh[1,in2]  

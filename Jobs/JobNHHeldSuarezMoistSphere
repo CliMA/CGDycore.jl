@@ -25,11 +25,11 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Rain=1.0 \
   --PertTh=true \
   --SimDays=10 \
-  --PrintDays=1 \
-  --PrintSeconds=0 \
+  --PrintDays=0 \
+  --PrintSeconds=7200 \
   --PrintStartTime=0 \
   --StartAverageDays=200 \
-  --dtau=200 \
+  --dtau=300 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
