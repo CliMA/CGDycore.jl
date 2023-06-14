@@ -73,8 +73,8 @@ function SchurSolve!(k,v,J,fac,Global)
   if Global.Model.VerticalDiffusion
     @inbounds for in2=1:n2
       if J.CompTri
+        @views @. JAdv[2,:,in2] = invfac  + JAdv[2,:,in2]  
         @views @. JDiff[:,:,in2] += JAdv[:,:,in2]  
-        @views @. JDiff[2,:,in2] = invfac  + JDiff[2,:,in2]  
       end
       JDiff[2,1,in2] += CdTh[1,in2]  
       @views rTh=v[:,in2,5]
@@ -82,6 +82,14 @@ function SchurSolve!(k,v,J,fac,Global)
       @views triSolve!(sTh,JDiff[:,:,in2],rTh)
       @. rTh = invfac * sTh
       JDiff[2,1,in2] -= CdTh[1,in2] 
+      @views rTh=v[:,in2,1]
+      @views sTh=k[:,in2,1]
+      @views triSolve!(sTh,JAdv[:,:,in2],rTh)
+      @. rTh = invfac * sTh
+      @views rTh=v[:,in2,2]
+      @views sTh=k[:,in2,2]
+      @views triSolve!(sTh,JAdv[:,:,in2],rTh)
+      @. rTh = invfac * sTh
     end
     if Global.Model.Equation == "CompressibleMoist"
       @inbounds for in2=1:n2
