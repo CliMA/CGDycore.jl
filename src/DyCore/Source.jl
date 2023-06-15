@@ -12,13 +12,13 @@ function Source!(F,U,Pres,CG,Global,Param,iG)
   @views Rho = U[:,RhoPos]
   @views Th = U[:,ThPos]
   @views Tr = U[:,NumV+1:NumV+NumTr]
-# @time if Problem  == "HeldSuarezSphere" || Problem == "HeldSuarezMoistSphere"
-# if Problem  
+  if Problem  == "HeldSuarezSphere" || Problem == "HeldSuarezMoistSphere" ||
+     Problem  == "HeldSuarezSphereOro" || Problem == "HeldSuarezMoistSphereOro"
     @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,Pres,
       Param.sigma_b,Param.k_s,Param.k_a,Param.k_f,Param.T_min,Param.T_equator,
       Param.DeltaT_y,Param.DeltaTh_z,
       Global.latN[iG],Global)
-# end
+  end
 end
 
 function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,Pres,
