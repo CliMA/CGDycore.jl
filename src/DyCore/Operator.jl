@@ -2083,10 +2083,10 @@ function KineticEnergy!(KE,uC,vC,wF,J)
        
 end
 
-function wContra!(wConC,uC,vC,wC,RhoC,dXdxI,J)
+function wContraFace!(wConF,uC,vC,wC,RhoC,dXdxI,J)
   Nz = size(uC,3)
   for iz = 1 : Nz - 1
-    @views @. wConC[:,:,iz] = 
+    @views @. wConF[:,:,iz] = 
       (uC[:,:,iz] * dXdxI[:,:,2,iz,1] + uC[:,:,iz+1] * dXdxI[:,:,1,iz+1,1] + 
       vC[:,:,iz] * dXdxI[:,:,2,iz,2] + vC[:,:,iz+1] * dXdxI[:,:,1,iz+1,2] + 
       wC[:,:,iz+1] * (dXdxI[:,:,2,iz,3] + dXdxI[:,:,1,iz+1,3])) / 
@@ -2096,6 +2096,33 @@ function wContra!(wConC,uC,vC,wC,RhoC,dXdxI,J)
       ((RhoC[:,:,iz] * J[:,:,2,iz] + RhoC[:,:,iz+1] * J[:,:,1,iz+1]) /
       (J[:,:,2,iz] + J[:,:,1,iz+1]))
   end     
+end
+
+function wContraCell!(wConC,uC,vC,wC,RhoC,dXdxI,J)
+  Nz = size(uC,3)
+  @views @. wConC[:,:,1] =
+    (uC[:,:,1] * (dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) +
+    vC[:,:,1] * (dXdxI[:,:,1,1,2] + dXdxI[:,:,2,1,2]) +
+    wC[:,:,2] * dXdxI[:,:,2,1,3]) /
+    sqrt((dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) * (dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) +
+    (dXdxI[:,:,1,1,2] + dXdxI[:,:,2,1,2]) * (dXdxI[:,:,1,1,2] + dXdxI[:,:,2,1,2]) +
+    (dXdxI[:,:,1,1,3] + dXdxI[:,:,2,1,3]) * (dXdxI[:,:,1,1,3] + dXdxI[:,:,2,1,3]))
+  for iz = 2 : Nz - 1
+    @views @. wConC[:,:,iz] =
+      (uC[:,:,iz] * (dXdxI[:,:,1,iz,1] + dXdxI[:,:,2,iz,1]) +
+      vC[:,:,iz] * (dXdxI[:,:,1,iz,2] + dXdxI[:,:,2,iz,2]) +
+      wC[:,:,iz] * dXdxI[:,:,1,iz,3] + wC[:,:,iz+1] * dXdxI[:,:,2,iz,3]) /
+      sqrt((dXdxI[:,:,1,iz,1] + dXdxI[:,:,2,iz,1]) * (dXdxI[:,:,1,iz,1] + dXdxI[:,:,2,iz,1]) +
+      (dXdxI[:,:,1,iz,2] + dXdxI[:,:,2,iz,2]) * (dXdxI[:,:,1,iz,2] + dXdxI[:,:,2,iz,2]) +
+      (dXdxI[:,:,1,iz,3] + dXdxI[:,:,2,iz,3]) * (dXdxI[:,:,1,iz,3] + dXdxI[:,:,2,iz,3]))
+  end
+  @views @. wConC[:,:,Nz] =
+    (uC[:,:,Nz] * (dXdxI[:,:,1,Nz,1] + dXdxI[:,:,2,Nz,1]) +
+    vC[:,:,Nz] * (dXdxI[:,:,1,Nz,2] + dXdxI[:,:,2,Nz,2]) +
+    wC[:,:,Nz] * dXdxI[:,:,1,Nz,3] ) /
+    sqrt((dXdxI[:,:,1,Nz,1] + dXdxI[:,:,2,Nz,1]) * (dXdxI[:,:,1,Nz,1] + dXdxI[:,:,2,Nz,1]) +
+    (dXdxI[:,:,1,Nz,2] + dXdxI[:,:,2,Nz,2]) * (dXdxI[:,:,1,Nz,2] + dXdxI[:,:,2,Nz,2]) +
+    (dXdxI[:,:,1,Nz,3] + dXdxI[:,:,2,Nz,3]) * (dXdxI[:,:,1,Nz,3] + dXdxI[:,:,2,Nz,3]))
 end
 
 function BoundaryW!(wCG,uC,vC,Fe,J,dXdxI)

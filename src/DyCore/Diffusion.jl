@@ -76,11 +76,18 @@ function BoundaryFluxMomentum!(FuC,FvC,uC,vC,w,Global,Param,iF)
  
   @views nS = Global.Metric.nS[:,:,:,iF]
   @views FS = Global.Metric.FS[:,:,iF]
+  @views dXdxI = Global.Metric.dXdxI[:,:,1,1,:,:,iF]
   OP = size(uC,1)
   @inbounds for j = 1 : OP
     @inbounds for i = 1 : OP
-      nSTV = uC[i,j] * nS[i,j,1] + vC[i,j] * nS[i,j,2] + w[i,j] * nS[i,j,3]
-      uStar = sqrt(uC[i,j] * uC[i,j] + vC[i,j] * vC[i,j] + w[i,j] * w[i,j] - nSTV * nSTV) 
+      v1 = uC[i,j] 
+      v2 = vC[i,j] 
+      WS = -(dXdxI[i,j,3,1]* v1 + 
+        dXdxI[i,j,3,2] * v2) / 
+        dXdxI[i,j,3,3]
+      ww = 0.5 * (WS + w[i,j])  
+      nU = nS[i,j,1] * v1 + nS[i,j,2] * v2 + nS[i,j,3] * ww
+      uStar = sqrt((v1 - nS[i,j,1] * nU)^2 + (v2 - nS[i,j,2] * nU)^2 + (ww - nS[i,j,3] * nU)^2) 
       FuC[i,j] -= Param.CMom * uStar * FS[i,j] * (uC[i,j] - nSTV * nS[i,j,1])
       FvC[i,j] -= Param.CMom * uStar * FS[i,j] * (vC[i,j] - nSTV * nS[i,j,2])
     end  
@@ -146,8 +153,8 @@ function uStarCoefficient!(uStar,U,V,WC,CG,dXdxI,nS)
         dXdxI[i,j,3,2] * v2) / 
         dXdxI[i,j,3,3]
       w = 0.5 * (WS + WC[i,j])  
-      uStar[i,j] = sqrt(v1 * v1 + v2 * v2 + w * w - 
-        (nS[i,j,1] * v1 + nS[i,j,2] * v2 + nS[i,j,3] * w)^2)
+      nU = nS[i,j,1] * v1 + nS[i,j,2] * v2 + nS[i,j,3] * w
+      uStar[i,j] = sqrt((v1 - nS[i,j,1] * nU)^2 + (v2 - nS[i,j,2] * nU)^2 + (w - nS[i,j,3] * nU)^2) 
     end
   end  
 end
@@ -177,9 +184,8 @@ function eddy_diffusivity_coefficient!(K,U,V,WC,Rho,p,CG,Global,Param,iF)
     @views uStar = Global.Cache.uStar[:,:,iF]
     @inbounds for jP = 1 : OP
       @inbounds for iP = 1 : OP
-#       K[iP,jP,1] = CE * uStar[iP,jP] * (Global.Metric.J[iP,jP,1,1,iF] + Global.Metric.J[iP,jP,2,1,iF]) / 
-#         (Global.Metric.dXdxI[iP,jP,1,1,3,3,iF] + Global.Metric.dXdxI[iP,jP,2,1,3,3,iF])
-        K[iP,jP,1] = CE * uStar[iP,jP] * Global.Grid.dzeta[1]
+        K[iP,jP,1] = CE * uStar[iP,jP] * (Global.Metric.J[iP,jP,1,1,iF] + Global.Metric.J[iP,jP,2,1,iF]) / 
+          (Global.Metric.dXdxI[iP,jP,1,1,3,3,iF] + Global.Metric.dXdxI[iP,jP,2,1,3,3,iF])
       end
     end  
     @inbounds for iz = nz : -1 : 1

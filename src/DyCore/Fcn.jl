@@ -21,14 +21,16 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   wCG = Global.Cache.wCG
   PresCG = Global.Cache.PresCG
   KVCG = Global.Cache.KVCG
-  wConCG = Global.Cache.pBGrdCG
+  wConFCG = Global.Cache.pBGrdCG
+  wConCCG = Global.Cache.RhoBGrdCG
   @views CdThCG = Global.Cache.ThCG[:,:,1]
   @views CdTrCG = Global.Cache.TrCG[:,:,1,:]
   KE = Global.Cache.KE
   AuxG = Global.Cache.AuxG
   @views PresG = Global.Cache.AuxG[:,:,1]
   @views KVG = Global.Cache.AuxG[:,:,2]
-  @views wConG = Global.Cache.AuxG[:,:,3]
+  @views wConFG = Global.Cache.AuxG[:,:,3]
+  @views wConCG = Global.Cache.AuxG[:,:,4]
   @views CdThG = Global.Cache.Aux2DG[:,:,1]
   @views CdTrG = Global.Cache.Aux2DG[:,:,2:1+NumTr]
   Aux2DG = Global.Cache.Aux2DG
@@ -65,7 +67,9 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Global,Param,iF)
       end   
     end  
-    @views wContra!(wConCG,v1CG,v2CG,wCG,RhoCG,
+    @views wContraFace!(wConFCG,v1CG,v2CG,wCG,RhoCG,
+      Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
+    @views wContraCell!(wConCCG,v1CG,v2CG,wCG,RhoCG,
       Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -75,7 +79,9 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           KVG[iz,ind] += KVCG[iP,jP,iz] *
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
-          wConG[iz,ind] += wConCG[iP,jP,iz] *
+          wConFG[iz,ind] += wConFCG[iP,jP,iz] *
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+          wConCG[iz,ind] += wConCCG[iP,jP,iz] *
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
         end    
       end
@@ -111,7 +117,9 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Global,Param,iF)
       end   
     end  
-    @views wContra!(wConCG,v1CG,v2CG,wCG,RhoCG,
+    @views wContraFace!(wConFCG,v1CG,v2CG,wCG,RhoCG,
+      Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
+    @views wContraCell!(wConCCG,v1CG,v2CG,wCG,RhoCG,
       Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -121,7 +129,9 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           KVG[iz,ind] += KVCG[iP,jP,iz] *
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
-          wConG[iz,ind] += wConCG[iP,jP,iz] *
+          wConFG[iz,ind] += wConFCG[iP,jP,iz] *
+            (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
+          wConCG[iz,ind] += wConCCG[iP,jP,iz] *
             (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
         end
       end

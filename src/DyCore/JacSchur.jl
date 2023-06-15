@@ -9,7 +9,8 @@ mutable struct JStruct
     tri::Array{Float64, 3}
     sw::Array{Float64, 2}
     JDiff::Array{Float64, 3}
-    JAdv::Array{Float64, 3}
+    JAdvC::Array{Float64, 3}
+    JAdvF::Array{Float64, 3}
     CompTri::Bool
     CompJac::Bool
     CacheCol1::Array{Float64, 1}
@@ -28,7 +29,8 @@ function JStruct()
   tri=zeros(0,0,0)
   sw=zeros(0,0)
   JDiff=zeros(0,0,0)
-  JAdv=zeros(0,0,0)
+  JAdvC=zeros(0,0,0)
+  JAdvF=zeros(0,0,0)
   CompTri=false
   CompJac=false
   CacheCol1=zeros(0)
@@ -45,7 +47,8 @@ function JStruct()
     tri,
     sw,
     JDiff,
-    JAdv,
+    JAdvC,
+    JAdvF,
     CompTri,
     CompJac,
     CacheCol1,
@@ -65,7 +68,8 @@ function JStruct(NumG,nz,NumTr)
   tri=zeros(3,nz,NumG)
   sw=zeros(nz,NumG)
   JDiff=zeros(3,nz,NumG)
-  JAdv=zeros(3,nz,NumG)
+  JAdvC=zeros(3,nz,NumG)
+  JAdvF=zeros(3,nz-1,NumG)
   CompTri=false
   CompJac=false
   CacheCol1=zeros(nz)
@@ -82,7 +86,8 @@ function JStruct(NumG,nz,NumTr)
     tri,
     sw,
     JDiff,
-    JAdv,
+    JAdvC,
+    JAdvF,
     CompTri,
     CompJac,
     CacheCol1,
@@ -90,7 +95,6 @@ function JStruct(NumG,nz,NumTr)
     CacheCol3,
   )
 end
-
 function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   (;  RhoPos,
       uPos,
@@ -105,7 +109,8 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   nJ=nCol*nz;
 
   D = J.CacheCol2
-  abswCon = J.CacheCol2
+  abswConF = J.CacheCol2
+  abswConC = J.CacheCol2
   @views DF = J.CacheCol2[1:nz-1]
   Dp = J.CacheCol2
   Dm = J.CacheCol3
@@ -197,15 +202,25 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
       @views @. JDiff[2,1:nz-1] += -DF
       @views @. JDiff[2,1:nz] /= (Rho * dz)
     end
-    @views JAdv = J.JAdv[:,:,iC]
-    @. JAdv = 0.0
-    @views wCon = Global.Cache.AuxG[:,iC,3]
-    @. abswCon = abs(wCon)
-    @views @. JAdv[1,2:nz] = -(abswCon[1:nz-1] - wCon[1:nz-1]) / (2.0 * Rho[2:nz] * dz[1:nz-1])
-    @views @. JAdv[3,1:nz-1] = (-abswCon[1:nz-1] - wCon[1:nz-1]) / (2.0 * Rho[1:nz-1] * dz[2:nz]) 
-    @views @. JAdv[2,2:nz] = +abswCon[1:nz-1] - wCon[1:nz-1] 
-    @views @. JAdv[2,1:nz-1] += +abswCon[1:nz-1] + wCon[1:nz-1]
-    @views @. JAdv[2,1:nz] /= (2.0 * Rho * dz)
+    @views JAdvC = J.JAdvC[:,:,iC]
+    @. JAdvC = 0.0
+    @views wConF = Global.Cache.AuxG[:,iC,3]
+    @. abswConF = abs(wConF)
+    @views @. JAdvC[1,2:nz] = -(abswConF[1:nz-1] - wConF[1:nz-1]) / (2.0 * Rho[2:nz] * dz[1:nz-1])
+    @views @. JAdvC[3,1:nz-1] = (-abswConF[1:nz-1] - wConF[1:nz-1]) / (2.0 * Rho[1:nz-1] * dz[2:nz]) 
+    @views @. JAdvC[2,2:nz] = +abswConF[1:nz-1] - wConF[1:nz-1] 
+    @views @. JAdvC[2,1:nz-1] += +abswConF[1:nz-1] + wConF[1:nz-1]
+    @views @. JAdvC[2,1:nz] /= (2.0 * Rho * dz)
+
+    @views JAdvF = J.JAdvF[:,:,iC]
+    @. JAdvF = 0.0
+    @views wConC = Global.Cache.AuxG[1:nz,iC,4]
+    @. abswConC = abs(wConC)
+    @views @. JAdvF[1,2:nz-1] = -(abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[1:nz-2] + dz[2:nz-1])
+    @views @. JAdvF[3,1:nz-2] = (-abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[2:nz-1] + dz[3:nz]) 
+    @views @. JAdvF[2,2:nz-1] = +abswConC[2:nz-1] - wConC[2:nz-1] 
+    @views @. JAdvF[2,1:nz-2] += +abswConC[2:nz] + wConC[2:nz-1]
+    @views @. JAdvF[2,1:nz-1] /= (dz[1:nz-1] + dz[2:nz])
   end
 end
 
@@ -294,4 +309,3 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:Conservative})
     end    
   end
 end
-
