@@ -12,6 +12,7 @@ function Source!(F,U,Pres,CG,Global,Param,iG)
   @views Rho = U[:,RhoPos]
   @views Th = U[:,ThPos]
   @views Tr = U[:,NumV+1:NumV+NumTr]
+  Problem = Global.Model.Problem
   if Problem  == "HeldSuarezSphere" || Problem == "HeldSuarezMoistSphere" ||
      Problem  == "HeldSuarezSphereOro" || Problem == "HeldSuarezMoistSphereOro"
     @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,Pres,

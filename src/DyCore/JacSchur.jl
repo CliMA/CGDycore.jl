@@ -218,8 +218,8 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     @. abswConC = abs(wConC)
     @views @. JAdvF[1,2:nz-1] = -(abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[1:nz-2] + dz[2:nz-1])
     @views @. JAdvF[3,1:nz-2] = (-abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[2:nz-1] + dz[3:nz]) 
-    @views @. JAdvF[2,2:nz-1] = +abswConC[2:nz-1] - wConC[2:nz-1] 
-    @views @. JAdvF[2,1:nz-2] += +abswConC[2:nz] + wConC[2:nz-1]
+    @views @. JAdvF[2,1:nz-1] = +abswConC[1:nz-1] - wConC[1:nz-1] 
+    @views @. JAdvF[2,1:nz-2] += +abswConC[2:nz] + wConC[2:nz]
     @views @. JAdvF[2,1:nz-1] /= (dz[1:nz-1] + dz[2:nz])
   end
 end
