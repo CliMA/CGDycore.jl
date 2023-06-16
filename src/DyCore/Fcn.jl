@@ -236,7 +236,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @. Div = 0.0
   @. DivTr = 0.0
   @. F = 0.0
-# @. PresG = 0.0
   @. JJ = 0.0
   @. JRho = 0.0
   @. JRhoF = 0.0
@@ -303,7 +302,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end
 
-# ExchangeData3DSend(Temp1,PresG,Global.Exchange)
   ExchangeData3DSend(Temp1,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
@@ -366,7 +364,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end
 
-# ExchangeData3DRecv!(Temp1,PresG,Global.Exchange)
   ExchangeData3DRecv!(Temp1,Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
@@ -414,19 +411,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
-#   Pressure
-#   @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
-#   Temperature
-
-#    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
-##     uStar
-#      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
-#
-##     Vertical Diffusion coefficient    
-#      if Global.Model.VerticalDiffusion
-#        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
-#      end   
-#    end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
@@ -450,9 +434,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     if Global.Model.Curl
 #     3-dim Curl and Grad of kinetic Energy
 #     Kinetic energy
-#     KineticEnergy!(KE,v1CG,v2CG,wCG,Global.Metric.J[:,:,:,:,iF])
-#     @views RhoGradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],KE,RhoCG,CG,
-#       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @views RhoGradKinColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
@@ -556,8 +537,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-#         PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
-#           (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] 
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -573,7 +552,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end  
 
-# ExchangeData3DSend(F,PresG,Global.Exchange)
   ExchangeData3DSend(F,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
@@ -621,19 +599,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
       Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
-#   Pressure
-#   @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
-#   Temperature
-
-#    if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
-##     uStar
-#      @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCCG[:,:,1],CG,Global,iF)
-#
-##     Vertical Diffusion coefficient    
-#      if Global.Model.VerticalDiffusion
-#        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCCG,RhoCG,CG,Global,Param,iF)
-#      end   
-#    end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
@@ -656,9 +621,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     if Global.Model.Curl
 #     3-dim Curl and Grad of kinetic Energy
 #     Kinetic energy
-#     KineticEnergy!(KE,v1CG,v2CG,wCG,Global.Metric.J[:,:,:,:,iF])
-#     @views RhoGradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],KE,RhoCG,CG,
-#       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @views RhoGradKinColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
@@ -761,8 +723,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-#         PresG[iz,ind,RhoPos] += Pres[iP,jP,iz,iF] * 
-#           (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])  / CG.M[iz,ind]
           F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos]
           F[iz,ind,uPos] += FCG[iP,jP,iz,uPos]
           F[iz,ind,vPos] += FCG[iP,jP,iz,vPos]
@@ -777,7 +737,6 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end  
     end
   end  
-# ExchangeData3DRecv!(F,PresG,Global.Exchange)
   ExchangeData3DRecv!(F,Global.Exchange)
   @views @. F[:,:,RhoPos] /= JJ
   @views @. F[:,:,ThPos] /= JJ

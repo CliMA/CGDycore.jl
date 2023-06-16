@@ -12,14 +12,15 @@ function Source!(F,U,Pres,CG,Global,Param,iG)
   @views Rho = U[:,RhoPos]
   @views Th = U[:,ThPos]
   @views Tr = U[:,NumV+1:NumV+NumTr]
-  Problem = Global.Model.Problem
-  if Problem  == "HeldSuarezSphere" || Problem == "HeldSuarezMoistSphere" ||
-     Problem  == "HeldSuarezSphereOro" || Problem == "HeldSuarezMoistSphereOro"
+# @time if Global.Model.Problem  == "HeldSuarezSphere" || 
+#   Global.Model.Problem == "HeldSuarezMoistSphere" || 
+#   Global.Model.Problem  == "HeldSuarezSphereOro" || 
+#   Global.Model.Problem == "HeldSuarezMoistSphereOro"
     @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,Pres,
       Param.sigma_b,Param.k_s,Param.k_a,Param.k_f,Param.T_min,Param.T_equator,
       Param.DeltaT_y,Param.DeltaTh_z,
       Global.latN[iG],Global)
-  end
+# end
 end
 
 function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,Pres,
@@ -30,7 +31,6 @@ function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,Pres,
   @views Teq = Global.Cache.Cache2[:,1]
   @views ΔρT = Global.Cache.Cache3[:,1]
   @views kT = Global.Cache.Cache3[:,1]
-# Pressure!(Sigma,Th,Rho,Tr,Global)
   @. Sigma = Pres
   @. Sigma = Sigma / Phys.p0
   @. height_factor = max(0.0, (Sigma - sigma_b) / (1.0 - sigma_b))

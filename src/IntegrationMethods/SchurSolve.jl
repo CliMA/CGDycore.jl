@@ -75,6 +75,7 @@ function SchurSolve!(k,v,J,fac,Global)
     @inbounds for in2=1:n2
       if J.CompTri
         @views @. JAdvC[2,:,in2] = invfac  + JAdvC[2,:,in2]  
+        @views @. JAdvF[2,:,in2] = invfac  + JAdvF[2,:,in2]  
         @views @. JDiff[:,:,in2] += JAdvC[:,:,in2]  
       end
       JDiff[2,1,in2] += CdTh[1,in2]  
