@@ -5,7 +5,8 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param,DiscType)
   fV = Global.Cache.fV
   Vn = Global.Cache.Vn
 
-  Global.J.CompTri = true
+  J = Global.J
+  J.CompTri = true
   @. Vn = V
   @inbounds for iStage = 1 : nStage
     @. V = Vn
@@ -15,13 +16,13 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param,DiscType)
     FcnPrepare!(V,CG,Global,Param,DiscType)
     Fcn(fV,V,CG,Global,Param,DiscType)
     if iStage == 1
-      Jac(Global.J,V,CG,Global,Param,DiscType)
+      Jac(J,V,CG,Global,Param,DiscType)
     end  
     @inbounds for jStage = 1 : iStage - 1
       fac = ROS.c[iStage,jStage] / dt
       @views axpy!(fac,k[:,:,:,jStage],fV)
     end
-    @views SchurSolve!(k[:,:,:,iStage],fV,Global.J,dt*ROS.Gamma[iStage,iStage],Global)
+    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.Gamma[iStage,iStage],Global)
   end
   @. V = Vn
   @inbounds for iStage = 1 : nStage
@@ -162,6 +163,5 @@ function RosenbrockSchurSSP!(V,dt,Fcn,Jac,CG,Global)
       @views @. V[:,:,NumV+1:end] = VS[:,:,:,iStage+1]
     end  
   end
-# @show sum(V[:,:,6].*CG.MMass)
 end
 

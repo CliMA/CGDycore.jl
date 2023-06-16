@@ -79,13 +79,13 @@ function SchurSolve!(k,v,J,fac,Global)
         @views @. JDiff[:,:,in2] += JAdvC[:,:,in2]  
       end
       JDiff[2,1,in2] += CdTh[1,in2]  
-      @views rTh=v[:,in2,5]
-      @views sTh=k[:,in2,5]
+      @views rTh = v[:,in2,5]
+      @views sTh = k[:,in2,5]
       @views triSolve!(sTh,JDiff[:,:,in2],rTh)
       @. rTh = invfac * sTh
       JDiff[2,1,in2] -= CdTh[1,in2] 
-      @views rTh=v[:,in2,2]
-      @views sTh=k[:,in2,2]
+      @views rTh = v[:,in2,2]
+      @views sTh = k[:,in2,2]
       @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
       @. rTh = invfac * sTh
       @views rTh=v[:,in2,3]

@@ -95,6 +95,7 @@ function JStruct(NumG,nz,NumTr)
     CacheCol3,
   )
 end
+
 function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   (;  RhoPos,
       uPos,
@@ -103,20 +104,20 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
       ThPos,
       NumV,
       NumTr) = Global.Model
-  nz=Global.Grid.nz;
+  nz=Global.Grid.nz
   NF=Global.Grid.NumFaces
-  nCol=size(U,2);
-  nJ=nCol*nz;
+  nCol=size(U,2)
+  nJ=nCol*nz
 
-  D = J.CacheCol2
-  abswConF = J.CacheCol2
-  abswConC = J.CacheCol2
-  @views DF = J.CacheCol2[1:nz-1]
-  Dp = J.CacheCol2
-  Dm = J.CacheCol3
   dPdTh = J.CacheCol1
   dPdRhoV = J.CacheCol1
   K = J.CacheCol1
+  abswConF = J.CacheCol1
+  abswConC = J.CacheCol1
+  D = J.CacheCol2
+  @views DF = J.CacheCol2[1:nz-1]
+  Dp = J.CacheCol2
+  Dm = J.CacheCol3
 
   @inbounds for iC=1:nCol
     @views Pres = Global.Cache.AuxG[:,iC,1]
@@ -133,7 +134,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     @views @. J.JRhoW[1,:,iC] = D / dz
     @views @. J.JRhoW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
 
-    dPresdTh!(dPdTh, Th, Rho, Tr, Global);
+    dPresdTh!(dPdTh, Th, Rho, Tr, Global)
     @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.5 * (Rho[1:nz-1] * dz[1:nz-1] + 
       Rho[2:nz] * dz[2:nz])) 
     @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.5 * (Rho[1:nz-1] * dz[1:nz-1] +
@@ -145,7 +146,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     @views @. J.JWTh[2,:,iC] = Dm
 
     if Global.Model.Equation == "CompressibleMoist"
-      dPresdRhoV!(dPdRhoV, Th, Rho, Tr, Pres, Global);
+      dPresdRhoV!(dPdRhoV, Th, Rho, Tr, Pres, Global)
       @views @. Dp[1:nz-1] = dPdRhoV[2:nz] /  (0.5 * (Rho[1:nz-1] * dz[1:nz-1] + 
         Rho[2:nz] * dz[2:nz])) 
       @views @. Dm[1:nz-1] = dPdRhoV[1:nz-1] / (0.5 * (Rho[1:nz-1] * dz[1:nz-1] +
@@ -225,17 +226,17 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
 end
 
 function JacSchur!(J,U,CG,Global,Param,::Val{:Conservative})
-  (;  RhoPos,
+  (  RhoPos,
       uPos,
       vPos,
       wPos,
       ThPos,
       NumV,
       NumTr) = Global.Model
-  nz=Global.Grid.nz;
+  nz=Global.Grid.nz
   NF=Global.Grid.NumFaces
-  nCol=size(U,2);
-  nJ=nCol*nz;
+  nCol=size(U,2)
+  nJ=nCol*nz
 
   D = J.CacheCol2
   Dp = J.CacheCol2
@@ -253,14 +254,14 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:Conservative})
     @views @. J.JRhoW[1,:,iC] = -1.0 / dz
     @views @. J.JRhoW[2,1:nz-1,iC] = 1.0 / dz[2:nz]
 
-    dPresdTh!(dPdTh, Th, Rho, Tr, Global);
+    dPresdTh!(dPdTh, Th, Rho, Tr, Global)
     @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.5 * (dz[1:nz-1] + dz[2:nz]))
     @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.5 * (dz[1:nz-1] + dz[2:nz]))
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
 
     if Global.Model.Equation == "CompressibleMoist"
-      dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Global);
+      dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Global)
       @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (0.5 * (dz[1:nz-1] + dz[2:nz]))
       @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (0.5 *(dz[1:nz-1] + dz[2:nz]))
       @views @. J.JWRhoV[1,2:nz,iC] = -Dp[1:nz-1]

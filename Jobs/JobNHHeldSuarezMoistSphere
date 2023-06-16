@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --NumV=5 \
   --NumTr=2 \
@@ -26,7 +26,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --PertTh=true \
   --SimDays=10 \
   --PrintDays=0 \
-  --PrintSeconds=7200 \
+  --PrintSeconds=300 \
   --PrintStartTime=0 \
   --StartAverageDays=200 \
   --dtau=300 \
