@@ -109,6 +109,9 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   nCol=size(U,2)
   nJ=nCol*nz
 
+  @. J.CacheCol1 = 0.0
+  @. J.CacheCol2 = 0.0
+  @. J.CacheCol3 = 0.0
   dPdTh = J.CacheCol1
   dPdRhoV = J.CacheCol1
   K = J.CacheCol1
@@ -215,7 +218,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
 
     @views JAdvF = J.JAdvF[:,:,iC]
     @. JAdvF = 0.0
-    @views wConC = Global.Cache.AuxG[1:nz,iC,4]
+    @views wConC = Global.Cache.AuxG[:,iC,4]
     @. abswConC = abs(wConC)
     @views @. JAdvF[1,2:nz-1] = -(abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[1:nz-2] + dz[2:nz-1])
     @views @. JAdvF[3,1:nz-2] = (-abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[2:nz-1] + dz[3:nz]) 

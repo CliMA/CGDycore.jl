@@ -74,8 +74,8 @@ function SchurSolve!(k,v,J,fac,Global)
   if Global.Model.VerticalDiffusion
     @inbounds for in2=1:n2
       if J.CompTri
-        @views @. JAdvC[2,:,in2] = invfac  + JAdvC[2,:,in2]  
-        @views @. JAdvF[2,:,in2] = invfac  + JAdvF[2,:,in2]  
+        @views @. JAdvC[2,:,in2] += invfac
+        @views @. JAdvF[2,:,in2] += invfac
         @views @. JDiff[:,:,in2] += JAdvC[:,:,in2]  
       end
       JDiff[2,1,in2] += CdTh[1,in2]  
@@ -84,16 +84,19 @@ function SchurSolve!(k,v,J,fac,Global)
       @views triSolve!(sTh,JDiff[:,:,in2],rTh)
       @. rTh = invfac * sTh
       JDiff[2,1,in2] -= CdTh[1,in2] 
+
       @views rTh = v[:,in2,2]
       @views sTh = k[:,in2,2]
       @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
       @. rTh = invfac * sTh
+
       @views rTh=v[:,in2,3]
       @views sTh=k[:,in2,3]
       @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
       @. rTh = invfac * sTh
-      @views rTh=v[2:n1,in2,4]
-      @views sTh=k[2:n1,in2,4]
+
+      @views rTh=v[1:n1-1,in2,4]
+      @views sTh=k[1:n1-1,in2,4]
       @views triSolve!(sTh,JAdvF[:,:,in2],rTh)
       @. rTh = invfac * sTh
     end

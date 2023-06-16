@@ -2101,9 +2101,7 @@ end
 function wContraCell!(wConC,uC,vC,wC,RhoC,dXdxI,J)
   Nz = size(uC,3)
   @views @. wConC[:,:,1] =
-    (uC[:,:,1] * (dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) +
-    vC[:,:,1] * (dXdxI[:,:,1,1,2] + dXdxI[:,:,2,1,2]) +
-    wC[:,:,2] * dXdxI[:,:,2,1,3]) /
+    (uC[:,:,1] * dXdxI[:,:,2,1,1] + vC[:,:,1] * dXdxI[:,:,2,1,2] + wC[:,:,2] * dXdxI[:,:,2,1,3]) /
     sqrt((dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) * (dXdxI[:,:,1,1,1] + dXdxI[:,:,2,1,1]) +
     (dXdxI[:,:,1,1,2] + dXdxI[:,:,2,1,2]) * (dXdxI[:,:,1,1,2] + dXdxI[:,:,2,1,2]) +
     (dXdxI[:,:,1,1,3] + dXdxI[:,:,2,1,3]) * (dXdxI[:,:,1,1,3] + dXdxI[:,:,2,1,3]))
@@ -2117,9 +2115,7 @@ function wContraCell!(wConC,uC,vC,wC,RhoC,dXdxI,J)
       (dXdxI[:,:,1,iz,3] + dXdxI[:,:,2,iz,3]) * (dXdxI[:,:,1,iz,3] + dXdxI[:,:,2,iz,3]))
   end
   @views @. wConC[:,:,Nz] =
-    (uC[:,:,Nz] * (dXdxI[:,:,1,Nz,1] + dXdxI[:,:,2,Nz,1]) +
-    vC[:,:,Nz] * (dXdxI[:,:,1,Nz,2] + dXdxI[:,:,2,Nz,2]) +
-    wC[:,:,Nz] * dXdxI[:,:,1,Nz,3] ) /
+    (uC[:,:,Nz] * dXdxI[:,:,1,Nz,1] + vC[:,:,Nz] * dXdxI[:,:,1,Nz,2] + wC[:,:,Nz] * dXdxI[:,:,1,Nz,3] ) /
     sqrt((dXdxI[:,:,1,Nz,1] + dXdxI[:,:,2,Nz,1]) * (dXdxI[:,:,1,Nz,1] + dXdxI[:,:,2,Nz,1]) +
     (dXdxI[:,:,1,Nz,2] + dXdxI[:,:,2,Nz,2]) * (dXdxI[:,:,1,Nz,2] + dXdxI[:,:,2,Nz,2]) +
     (dXdxI[:,:,1,Nz,3] + dXdxI[:,:,2,Nz,3]) * (dXdxI[:,:,1,Nz,3] + dXdxI[:,:,2,Nz,3]))
