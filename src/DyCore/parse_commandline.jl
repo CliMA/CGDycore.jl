@@ -42,6 +42,11 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--ProfVelGeo"
+    help = "Initial conditions for geostrophic velocity"
+    arg_type = String
+    default = ""
+
     "--ProfVelW"
     help = "Initial conditions for vertical velocity"
     arg_type = String
@@ -79,6 +84,11 @@ function parse_commandline()
 
     "--Damping"
     help = "Rayleigh damping"
+    arg_type = Bool
+    default = false
+
+    "--Geos"
+    help = "Rayleigh damping with geostrphic wind"
     arg_type = Bool
     default = false
 

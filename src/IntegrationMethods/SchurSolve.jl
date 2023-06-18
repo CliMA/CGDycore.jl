@@ -110,6 +110,40 @@ function SchurSolve!(k,v,J,fac,Global)
         JDiff[2,1,in2] -= CdTr[1,in2,1] 
       end  
     end    
+  else
+    @inbounds for in2=1:n2
+      if J.CompTri
+        @views @. JAdvC[2,:,in2] += invfac
+        @views @. JAdvF[2,:,in2] += invfac
+      end
+      @views rTh = v[:,in2,5]
+      @views sTh = k[:,in2,5]
+      @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
+      @. rTh = invfac * sTh
+
+      @views rTh = v[:,in2,2]
+      @views sTh = k[:,in2,2]
+      @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
+      @. rTh = invfac * sTh
+
+      @views rTh=v[:,in2,3]
+      @views sTh=k[:,in2,3]
+      @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
+      @. rTh = invfac * sTh
+
+      @views rTh=v[1:n1-1,in2,4]
+      @views sTh=k[1:n1-1,in2,4]
+      @views triSolve!(sTh,JAdvF[:,:,in2],rTh)
+      @. rTh = invfac * sTh
+    end
+    if Global.Model.Equation == "CompressibleMoist"
+      @inbounds for in2=1:n2
+        @views rTh=v[:,in2,NumV+1]
+        @views sTh=k[:,in2,NumV+1]
+        @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
+        @. rTh = invfac * sTh
+      end  
+    end    
   end    
 
   if Global.Model.Equation == "Compressible"

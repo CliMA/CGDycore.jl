@@ -250,6 +250,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
           v1CG[iP,jP,iz] = U[iz,ind,uPos]
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
+#         wCG[iP,jP,iz+1] = U[iz,ind,wPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
         end
       end
@@ -262,6 +263,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+#   @views DivGradF!(DivwCG,wCG,CG,
+#    Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -277,6 +280,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         end
         @inbounds for iz=1:nz-1
           JRhoF[iz,ind] += (J[iP,jP,2,iz,iF] * RhoCG[iP,jP,iz] + J[iP,jP,1,iz+1,iF] * RhoCG[iP,jP,iz+1])
+#         Divw[iz,ind] += DivwCG[iP,jP,iz+1] 
         end
       end
     end
@@ -748,8 +752,15 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @views @. F[1:nz-1,:,wPos] /= JRhoF[1:nz-1,:]
 
   if Global.Model.Damping
-    @inbounds for iG=1:CG.NumG
-      @views Damping!(F[:,iG,wPos],U[:,iG,wPos],Global)  
+    if Global.Model.Geos
+      @inbounds for iG=1:CG.NumG
+        @views Damping!(F[:,iG,uPos],F[:,iG,vPos],F[:,iG,wPos],U[:,iG,uPos],
+          U[:,iG,vPos],U[:,iG,wPos],Global.UGeo[:,iG],Global.VGeo[:,iG],Global)  
+      end
+    else    
+      @inbounds for iG=1:CG.NumG
+        @views Damping!(F[:,iG,wPos],U[:,iG,wPos],Global)  
+      end
     end
   end
   if Global.Model.Source

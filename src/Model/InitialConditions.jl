@@ -56,6 +56,9 @@ function InitialConditions(CG,Global,Param)
   Global.RhoBGrd = Project(fRhoBGrd,0.0,CG,Global,Param,Profile)
   Global.ThetaBGrd = zeros(nz,CG.NumG)
   Global.TBGrd = zeros(nz,CG.NumG)
+  if Global.Model.Geos
+    (Global.UGeo,Global.VGeo) = ProjectVec(fVelGeo,0.0,CG,Global,Param)
+  end  
   return U
 end  
 

@@ -1,10 +1,11 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --NumV=5 \
   --NumTr=2 \
   --ProfRho="DecayingTemperatureProfile" \
   --ProfTheta="DecayingTemperatureProfile" \
   --ProfVel="Const" \
+  --ProfVelGeo="BaroWaveDrySphere" \
   --Source=true \
   --Coriolis=true \
   --Upwind=true \
@@ -16,6 +17,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --SurfaceFlux=true \
   --HorLimit=false \
   --Damping=true \
+  --Geos=true \
   --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \

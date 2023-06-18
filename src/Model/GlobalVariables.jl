@@ -598,6 +598,7 @@ mutable struct ModelStruct
   ProfTheta::String
   ProfTr::String
   ProfVel::String
+  ProfVelGeo::String
   ProfVelW::String
   ProfpBGrd::String
   ProfRhoBGrd::String
@@ -617,6 +618,7 @@ mutable struct ModelStruct
   ModelType::String
   Source::Bool
   Damping::Bool
+  Geos::Bool
   Relax::Float64
   StrideDamp::Float64
   Coriolis::Bool
@@ -649,6 +651,7 @@ function Model()
   ProfTheta = ""
   ProfTr = ""
   ProfVel = ""
+  ProfVelGeo = ""
   ProfVelW = ""
   ProfpBGrd = ""
   ProfRhoBGrd = ""
@@ -668,6 +671,7 @@ function Model()
   ModelType = "VectorInvariant"
   Source = false
   Damping = false
+  Geos = false
   Relax = 0.0
   StrideDamp = 0.0
   Coriolis = false
@@ -698,6 +702,7 @@ function Model()
    ProfTheta,
    ProfTr,
    ProfVel,
+   ProfVelGeo,
    ProfVelW,
    ProfpBGrd,
    ProfRhoBGrd,
@@ -717,6 +722,7 @@ function Model()
    ModelType,
    Source,
    Damping,
+   Geos,
    Relax,
    StrideDamp,
    Coriolis,
@@ -761,6 +767,8 @@ mutable struct GlobalStruct{FT<:Real,TCache}
   TBGrd::Array{Float64, 2}
   pBGrd::Array{Float64, 2}
   RhoBGrd::Array{Float64, 2}
+  UGeo::Array{Float64, 2}
+  VGeo::Array{Float64, 2}
 end
 function GlobalStruct{FT}(Grid::GridStruct,
                 Model::ModelStruct,
@@ -780,6 +788,8 @@ function GlobalStruct{FT}(Grid::GridStruct,
   TBGrd = zeros(0,0)
   pBGrd = zeros(0,0)
   RhoBGrd = zeros(0,0)
+  UGeo = zeros(0,0)
+  VGeo = zeros(0,0)
   return GlobalStruct{FT,typeof(tcache)}(
     Metric,
     Grid,
@@ -798,5 +808,7 @@ function GlobalStruct{FT}(Grid::GridStruct,
     TBGrd,
     pBGrd,
     RhoBGrd,
+    UGeo,
+    VGeo,
     )
 end  

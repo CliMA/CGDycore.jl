@@ -9,9 +9,11 @@ ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
+ProfVelGeo = parsed_args["ProfVelGeo"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
+Geos = parsed_args["Geos"]
 Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
 Coriolis = parsed_args["Coriolis"]
@@ -98,6 +100,11 @@ if ProfVel == ""
 else
   Model.ProfVel = ProfVel  
 end  
+if ProfVelGeo == ""
+  Model.ProfVelGeo = Problem
+else
+  Model.ProfVelGeo = ProfVelGeo  
+end  
 Model.RefProfile = RefProfile
 Model.ProfpBGrd = ProfpBGrd
 Model.ProfRhoBGrd = ProfRhoBGrd
@@ -113,6 +120,7 @@ end
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping
+Model.Geos = Geos
 Model.StrideDamp = StrideDamp
 Model.Relax = Relax
 Model.Coriolis = Coriolis
