@@ -1235,7 +1235,7 @@ end
 
 function DivGradF!(F,cF,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,3) - 1
   D = Fe.DS
   DW = Fe.DW
 
@@ -1271,7 +1271,7 @@ end
 
 function DivGradF!(F,cF,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,3) - 1
   D = Fe.DS
   DW = Fe.DW
 
