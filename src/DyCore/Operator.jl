@@ -1246,7 +1246,7 @@ function DivGradF!(F,cF,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
   temp = TCacheC1[Threads.threadid()]
   Div = TCacheC2[Threads.threadid()]
 
-  @inbounds for iz = 2 : Nz - 1 
+  @inbounds for iz = 2 : Nz
     @. DxcF = 0.0
     @. DycF = 0.0
     @views DerivativeX!(DxcF,cF[:,:,iz],D)
@@ -1265,11 +1265,11 @@ function DivGradF!(F,cF,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
       (dXdxI[:,:,2,iz-1,2,2] + dXdxI[:,:,1,iz,2,2]) * GradDy
     DerivativeY!(Div,temp,DW)
 
-    @views @. F[:,:,iz] -= Koeff * Div / (J[:,:,2,iz-1] + J[:,:,1,iz])
+    @views @. F[:,:,iz] -= 0.5 * (RhoC[:,:,2,iz-1] + RhoC[:,:,1,iz]) * Koeff * Div / (J[:,:,2,iz-1] + J[:,:,1,iz])
   end    
 end    
 
-function DivGradF!(F,cF,RhoC,Fe,dXdxI,J,ThreadCache)
+function DivGradF!(F,cF,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
   Nz = size(F,3)
   D = Fe.DS
@@ -1283,7 +1283,7 @@ function DivGradF!(F,cF,RhoC,Fe,dXdxI,J,ThreadCache)
   temp = TCacheC1[Threads.threadid()]
   Div = TCacheC2[Threads.threadid()]
 
-  @inbounds for iz = 2 : Nz - 1
+  @inbounds for iz = 2 : Nz
     @. DxcF = 0.0
     @. DycF = 0.0
     @views DerivativeX!(DxcF,cF[:,:,iz],D)

@@ -198,7 +198,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @views Grad2 = Global.Cache.Temp1[:,:,4]
   @views Div = Global.Cache.Temp1[:,:,NumV]
   @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
-  @views JJ = Global.Cache.Temp1[:,:,NumV+NumTr+1]
+  @views Divw = Global.Cache.Temp1[:,:,NumV+NumTr+1]
   @views JRho = Global.Cache.Temp1[:,:,NumV+NumTr+2]
   @views JRhoF = Global.Cache.Temp1[:,:,NumV+NumTr+3]
   FCG=Global.Cache.FCC
@@ -208,6 +208,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   Grad1CG=Global.Cache.Grad1C
   Grad2CG=Global.Cache.Grad2C
   DivCG=Global.Cache.DivC
+  DivwCG=Global.Cache.DivwC
   DivTrCG=Global.Cache.DivC
   @views RhoCG = Global.Cache.RhoCG[:,:,:]
   v1CG = Global.Cache.v1CG
@@ -234,23 +235,23 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @. Grad1 = 0.0
   @. Grad2 = 0.0
   @. Div = 0.0
+  @. Divw = 0.0
   @. DivTr = 0.0
   @. F = 0.0
-  @. JJ = 0.0
   @. JRho = 0.0
   @. JRhoF = 0.0
 
 
   # Hyperdiffusion 
   @inbounds for iF in Global.Grid.BoundaryFaces
-    @inbounds for jP=1:OP
-      @inbounds for iP=1:OP
+    @inbounds for jP = 1 : OP
+      @inbounds for iP = 1 : OP
         ind = CG.Glob[iP,jP,iF]
-        @inbounds for iz=1:nz
+        @inbounds for iz = 1 : nz
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
           v1CG[iP,jP,iz] = U[iz,ind,uPos]
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
-#         wCG[iP,jP,iz+1] = U[iz,ind,wPos]
+          wCG[iP,jP,iz+1] = U[iz,ind,wPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
         end
       end
@@ -263,24 +264,23 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
-#   @views DivGradF!(DivwCG,wCG,CG,
-#    Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+    @views DivGradF!(DivwCG,wCG,CG,
+     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
-    @inbounds for jP=1:OP
-      @inbounds for iP=1:OP
+    @inbounds for jP = 1 : OP
+      @inbounds for iP = 1 : OP
         ind = CG.Glob[iP,jP,iF]
-        @inbounds for iz=1:nz
+        @inbounds for iz = 1 : nz
           Rot1[iz,ind] += Rot1CG[iP,jP,iz] 
           Rot2[iz,ind] += Rot2CG[iP,jP,iz] 
           Grad1[iz,ind] += Grad1CG[iP,jP,iz] 
           Grad2[iz,ind] += Grad2CG[iP,jP,iz] 
           Div[iz,ind] += DivCG[iP,jP,iz] 
-          JJ[iz,ind] += J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]
           JRho[iz,ind] += (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]) * RhoCG[iP,jP,iz]
         end
         @inbounds for iz=1:nz-1
           JRhoF[iz,ind] += (J[iP,jP,2,iz,iF] * RhoCG[iP,jP,iz] + J[iP,jP,1,iz+1,iF] * RhoCG[iP,jP,iz+1])
-#         Divw[iz,ind] += DivwCG[iP,jP,iz+1] 
+          Divw[iz,ind] += DivwCG[iP,jP,iz+1] 
         end
       end
     end
@@ -316,6 +316,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
           v1CG[iP,jP,iz] = U[iz,ind,uPos]
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
+          wCG[iP,jP,iz+1] = U[iz,ind,wPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
         end
       end
@@ -328,6 +329,8 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+    @views DivGradF!(DivwCG,wCG,CG,
+     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -338,11 +341,11 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Grad1[iz,ind] += Grad1CG[iP,jP,iz] 
           Grad2[iz,ind] += Grad2CG[iP,jP,iz] 
           Div[iz,ind] += DivCG[iP,jP,iz] 
-          JJ[iz,ind] += J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]
           JRho[iz,ind] += (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]) * RhoCG[iP,jP,iz]
         end
         @inbounds for iz=1:nz-1
           JRhoF[iz,ind] += (J[iP,jP,2,iz,iF] * RhoCG[iP,jP,iz] + J[iP,jP,1,iz+1,iF] * RhoCG[iP,jP,iz+1])
+          Divw[iz,ind] += DivwCG[iP,jP,iz+1] 
         end
       end
     end
@@ -371,20 +374,20 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   ExchangeData3DRecv!(Temp1,Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
-    @inbounds for jP=1:OP
-      @inbounds for iP=1:OP
+    @inbounds for jP = 1 : OP
+      @inbounds for iP = 1 : OP
         ind = CG.Glob[iP,jP,iF]
-        @inbounds for iz=1:nz
+        @inbounds for iz = 1 : nz
           RhoCG[iP,jP,iz] = U[iz,ind,RhoPos]
           v1CG[iP,jP,iz] = U[iz,ind,uPos]
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
           wCG[iP,jP,iz+1] = U[iz,ind,wPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
-          Rot1CG[iP,jP,iz] = Rot1[iz,ind] / JJ[iz,ind]
-          Rot2CG[iP,jP,iz] = Rot2[iz,ind] / JJ[iz,ind]
-          Grad1CG[iP,jP,iz] = Grad1[iz,ind] / JJ[iz,ind]
-          Grad2CG[iP,jP,iz] = Grad2[iz,ind] / JJ[iz,ind]
-          DivCG[iP,jP,iz] = Div[iz,ind] / JJ[iz,ind]
+          Rot1CG[iP,jP,iz] = Rot1[iz,ind] / CG.M[iz,ind]
+          Rot2CG[iP,jP,iz] = Rot2[iz,ind] / CG.M[iz,ind]
+          Grad1CG[iP,jP,iz] = Grad1[iz,ind] / CG.M[iz,ind]
+          Grad2CG[iP,jP,iz] = Grad2[iz,ind] / CG.M[iz,ind]
+          DivCG[iP,jP,iz] = Div[iz,ind] / CG.M[iz,ind]
           zPG[iP,jP,iz] = zP[iz,ind]
           pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
           RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
@@ -393,6 +396,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT] 
           end  
+        end
+        @inbounds for iz = 1 : nz - 1
+          DivwCG[iP,jP,iz+1] = Divw[iz,ind] / CG.MW[iz,ind]
         end
       end
     end
@@ -407,6 +413,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivRhoGrad!(FCG[:,:,:,ThPos],DivCG,RhoCG,CG,
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Global.Model.HyperDDiv)
+    @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
@@ -511,7 +520,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / JJ[iz,ind]
+            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / CG.M[iz,ind]
           end
         end
       end
@@ -568,11 +577,11 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           v2CG[iP,jP,iz] = U[iz,ind,vPos]
           wCG[iP,jP,iz+1] = U[iz,ind,wPos]
           ThCG[iP,jP,iz] = U[iz,ind,ThPos]
-          Rot1CG[iP,jP,iz] = Rot1[iz,ind] / JJ[iz,ind]
-          Rot2CG[iP,jP,iz] = Rot2[iz,ind] / JJ[iz,ind]
-          Grad1CG[iP,jP,iz] = Grad1[iz,ind] / JJ[iz,ind]
-          Grad2CG[iP,jP,iz] = Grad2[iz,ind] / JJ[iz,ind]
-          DivCG[iP,jP,iz] = Div[iz,ind] / JJ[iz,ind]
+          Rot1CG[iP,jP,iz] = Rot1[iz,ind] / CG.M[iz,ind]
+          Rot2CG[iP,jP,iz] = Rot2[iz,ind] / CG.M[iz,ind]
+          Grad1CG[iP,jP,iz] = Grad1[iz,ind] / CG.M[iz,ind]
+          Grad2CG[iP,jP,iz] = Grad2[iz,ind] / CG.M[iz,ind]
+          DivCG[iP,jP,iz] = Div[iz,ind] / CG.M[iz,ind]
           pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
           RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
           PresCG[iP,jP,iz] = PresG[iz,ind]
@@ -581,6 +590,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           @inbounds for iT = 1:NumTr
             TrCG[iP,jP,iz,iT] = U[iz,ind,NumV+iT]
           end  
+        end
+        @inbounds for iz = 1 : nz - 1
+          DivwCG[iP,jP,iz+1] = Divw[iz,ind] / CG.MW[iz,ind]
         end
       end
     end
@@ -595,6 +607,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivRhoGrad!(FCG[:,:,:,ThPos],DivCG,RhoCG,CG,
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Global.Model.HyperDDiv)
+    @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
@@ -697,7 +712,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / JJ[iz,ind]
+            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / CG.M[iz,ind]
           end
         end
       end
@@ -742,10 +757,10 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end  
   ExchangeData3DRecv!(F,Global.Exchange)
-  @views @. F[:,:,RhoPos] /= JJ
-  @views @. F[:,:,ThPos] /= JJ
+  @views @. F[:,:,RhoPos] /= CG.M
+  @views @. F[:,:,ThPos] /= CG.M
   @inbounds for iT = 1:NumTr
-    @views @.  F[:,:,iT+NumV] /= JJ
+    @views @.  F[:,:,iT+NumV] /= CG.M
   end
   @views @. F[:,:,uPos] /= JRho
   @views @. F[:,:,vPos] /= JRho

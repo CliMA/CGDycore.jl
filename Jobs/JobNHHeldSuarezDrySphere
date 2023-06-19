@@ -1,5 +1,5 @@
 mpirun -n 6 julia --project Examples/testNHSphere.jl \
-  --Problem="HeldSuarezDrySphereOro" \
+  --Problem="HeldSuarezDrySphere" \
   --NumV=5 \
   --NumTr=0 \
   --ProfRho="DecayingTemperatureProfile" \
