@@ -148,7 +148,7 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
-        CdThG[1,ind,RhoPos] += CdThCG[iP,jP,1] *
+        CdThG[1,ind] += CdThCG[iP,jP] *
           (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind]
         @views @. CdTrG[1,ind,:] += CdTrCG[iP,jP,1,:] *
           (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind]
@@ -164,7 +164,7 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
-        CdThG[1,ind,RhoPos] += CdThCG[iP,jP,1] *
+        CdThG[1,ind] += CdThCG[iP,jP,1] *
           (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Global.Metric.dz[1,ind]
         @views @. CdTrG[1,ind,:] += CdTrCG[iP,jP,1,:] *
           (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Global.Metric.dz[1,ind]
