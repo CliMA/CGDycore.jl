@@ -68,20 +68,22 @@ if str == "SSP-Knoth"
 elseif str == "RK3_H"
     transformed=true;
     nStage=3;
-    alpha=[0 0 0
-      1/3 0 0
-      0 1/2 0];
+    alpha=[0.0 0.0 0.0
+      1.0/3.0 0.0 0.0
+      0.0 1.0/2.0 0.0];
     g=(3.0+sqrt(3.0))/6.0;
-    Gamma=[g 0 0
-               (1-12*g^2)/(-9+36*g) g 0
+    Gamma=[g 0.0 0.0
+               (1-12*g^2)/(-9+36*g) g 0.0
                -1/4+2*g 1/4-3*g g];
-    b=[0,0,1];
+    b=[0.0,0.0,1.0];
     a=alpha/Gamma;
     c=-inv(Gamma);
     m=Gamma'\b;
     a=[a
        m']
-    d=Gamma[1,1];
+    d=alpha*ones(nStage);
+    SSP=SSPRungeKuttaMethod()
+    b2=zeros(0)
 elseif str == "RODAS_N"
     ROS.transformed=false;
     ROS.nStage=4;

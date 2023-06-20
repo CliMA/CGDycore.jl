@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --NumV=5 \
   --NumTr=2 \
@@ -33,7 +33,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --StartAverageDays=200 \
   --dtau=300 \
   --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --Table="RK3_H" \
   --TopoS="" \
   --Stretch=true \
   --StretchType="Exp" \
