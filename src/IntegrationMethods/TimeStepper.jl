@@ -117,7 +117,10 @@ function TimeStepper!(U,Fcn!,Trans,CG,Global,Param,DiscType)
           end  
         end
         percent = i/nIter*100
-        @info "Iteration: $i took $Δt, $percent% complete"
+        if Proc == 1
+          @show i,percent
+        end  
+#       @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
   elseif IntMethod == "RosenbrockD"
