@@ -33,7 +33,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --StartAverageDays=200 \
   --dtau=300 \
   --IntMethod="Rosenbrock" \
-  --Table="RK3_H" \
+  --Table="ROSRK3" \
   --TopoS="" \
   --Stretch=true \
   --StretchType="Exp" \

@@ -113,8 +113,6 @@ Topography=(TopoS=TopoS,H=H,Rad=RadEarth)
 
 OrdPolyZ = 1
 
-Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
-
 (CG,Global) = CGDycore.InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
 
 Model.HyperVisc = HyperVisc
@@ -126,33 +124,35 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
 
 # Output
-  Output.vtkFileName=string(vtkFileName*"_")
-  Output.vtk=0
-  Output.Flat=Flat
-  Output.nPanel=nPanel
-  Output.RadPrint=H
-  Output.H=H
-  Output.cNames = [
+  Global.Output.vtkFileName=string(vtkFileName*"_")
+  Global.Output.vtk=0
+  Global.Output.Flat=Flat
+  Global.Output.nPanel=nPanel
+  Global.Output.RadPrint=H
+  Global.Output.H=H
+  Global.Output.cNames = [
     "Rho",
     "Tr1",
 ]
-  Output.PrintDays = PrintDays
-  Output.PrintHours = PrintHours
-  Output.PrintSeconds = PrintSeconds
-  Output.PrintTime = PrintTime
-  Output.PrintStartDays = 0
-  Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkInit3D(Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+  Global.Output.PrintDays = PrintDays
+  Global.Output.PrintHours = PrintHours
+  Global.Output.PrintSeconds = PrintSeconds
+  Global.Output.PrintTime = PrintTime
+  Global.Output.PrintStartTime = 0
+  Global.Output.OrdPrint=CG.OrdPoly
+  Global.vtkCache = CGDycore.vtkStruct(Global.Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
 
   # TimeStepper
   time=[0.0]
-  TimeStepper.IntMethod = IntMethod
-  TimeStepper.Table = Table
-  TimeStepper.dtau = dtau
-  TimeStepper.SimDays = SimDays
-  TimeStepper.SimHours = SimHours
-  TimeStepper.SimMinutes = SimMinutes
-  TimeStepper.SimSeconds = SimSeconds
-  TimeStepper.SimTime = SimTime
+  Global.TimeStepper.IntMethod = IntMethod
+  Global.TimeStepper.Table = Table
+  Global.TimeStepper.dtau = dtau
+  Global.TimeStepper.SimDays = SimDays
+  Global.TimeStepper.SimHours = SimHours
+  Global.TimeStepper.SimMinutes = SimMinutes
+  Global.TimeStepper.SimSeconds = SimSeconds
+  Global.TimeStepper.SimTime = SimTime
    
+  nT = NumV + NumTr
+  CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
   CGDycore.TimeStepperAdvection!(U,CGDycore.TransSphereX,CG,Global,Param)

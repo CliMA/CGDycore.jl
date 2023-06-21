@@ -327,7 +327,7 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       Tr1Pos = Global.Model.NumV + 1
       Tr1Cell = zeros(OrdPrint*OrdPrint*nz*NF)
       RhoPos = Global.Model.RhoPos
-      @views Interpolate!(Tr1Cell,U[:,:,Tr1Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @views InterpolateClipp!(Tr1Cell,U[:,:,Tr1Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["Tr1", VTKCellData()] = Tr1Cell
     elseif  str == "Tr2" 
       Tr2Pos = Global.Model.NumV + 2
@@ -414,6 +414,29 @@ function Interpolate!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
           @views @. cc = cc + Inter[:,:,i,j]*c[iz,Glob[i,j,iF]]
         end
       end
+      @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
+      icCell = icCell + OrdPrint*OrdPrint
+    end
+  end
+end
+
+function InterpolateClipp!(cCell,c,Rho,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
+  icCell  = 1
+  cc=zeros(OrdPrint,OrdPrint)
+  for iF=1:NF
+    for iz=1:nz
+      @. cc = 0.0
+      minC = 1.e40
+      maxC = -1.e40
+      for j=1:OrdPoly+1
+        for i=1:OrdPoly+1
+          minC = min(minC,c[iz,Glob[i,j,iF]] / Rho[iz,Glob[i,j,iF]])  
+          maxC = max(maxC,c[iz,Glob[i,j,iF]] / Rho[iz,Glob[i,j,iF]])  
+          @views @. cc = cc + Inter[:,:,i,j]*c[iz,Glob[i,j,iF]] / Rho[iz,Glob[i,j,iF]]
+        end
+      end
+      @. cc = min(cc,maxC)
+      @. cc = max(cc,minC)
       @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)
       icCell = icCell + OrdPrint*OrdPrint
     end

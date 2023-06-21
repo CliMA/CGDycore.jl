@@ -1,271 +1,72 @@
 mutable struct RosenbrockStruct
-  transformed::Bool
   nStage::Int
   alpha::Array{Float64, 2}
   Gamma::Array{Float64, 2}
   b::Array{Float64, 1}
   a::Array{Float64, 2}
   c::Array{Float64, 2}
+  gamma::Float64
   m::Array{Float64, 1}
-  d::Array{Float64, 1}
-  b2::Array{Float64, 1}
-  SSP::SSPRungeKuttaStruct
 end
 function RosenbrockMethod()
-  transformed=false
-  nStage=0
-  alpha=zeros(0,0)
-  Gamma=zeros(0,0)
-  b=zeros(0)
-  a=zeros(0,0)
-  c=zeros(0,0)
-  m=zeros(0)
-  d=zeros(0)
-  b2=zeros(0)
-  SSP=SSPRungeKuttaMethod()
+  nStage = 0
+  alpha = zeros(0,0)
+  Gamma = zeros(0,0)
+  b = zeros(0)
+  a = zeros(0,0)
+  c =zeros(0,0)
+  gamma = 0
+  m = zeros(0)
+  d = zeros(0)
+  SSP = SSPRungeKuttaMethod()
   return RosenbrockStruct(
-    transformed,
     nStage,
     alpha,
     Gamma,
     b,
     a,
     c,
+    gamma,
     m,
-    d,
-    b2,
-    SSP,
   )
 end
 
 
 function RosenbrockMethod(Method)
-str = Method
-if str == "SSP-Knoth"
-    transformed=true;
-    nStage=3;
-    alpha=[0 0 0
-      1 0 0
-      1/4 1/4 0];
-    d=alpha*ones(nStage);
-    b=[1/6,1/6,2/3];
-    Gamma=[1 0 0
-      0 1 0
-      -3/4 -3/4 1];
-    a=alpha/Gamma;
-    c=-inv(Gamma);
-    m=Gamma'\b;
+  str = Method
+  if str == "SSP-Knoth"
+    nStage = 3
+    alpha = [ 0  0  0
+              1  0  0
+            1/4 1/4 0]
+    b = [1/6,1/6,2/3]
+    Gamma = [ 1    0  0
+              0    1  0
+            -3/4 -3/4 1]
+    gamma = 1        
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
     a=[a
        m']
-    SSP=SSPRungeKuttaMethod([1 0 0
-                3/4 1/4 0
-                1/3 0 2/3],
-                [1 0 0
-                0 1/4 0
-                0 0 2/3])
-    b2=zeros(0)
 
-elseif str == "RK3_H"
-    transformed=true;
-    nStage=3;
-    alpha=[0.0 0.0 0.0
-      1.0/3.0 0.0 0.0
-      0.0 1.0/2.0 0.0];
-    g=(3.0+sqrt(3.0))/6.0;
-    g = 1.0
-    Gamma=[g 0.0 0.0
-               (1-12*g^2)/(-9+36*g) g 0.0
-               -1/4+2*g 1/4-3*g g];
-    b=[0.0,0.0,1.0];
-    a=alpha/Gamma;
-    c=-inv(Gamma);
-    m=Gamma'\b;
+  elseif str == "ROSRK3"
+    nStage = 3
+    alpha=[ 0  0  0
+           1/3 0  0
+            0 1/2 0]
+    gamma = 1
+    Gamma=[                        gamma           0     0
+           (1-12*gamma^2) /(-9+36*gamma)       gamma     0
+                            -1/4+2*gamma 1/4-3*gamma gamma]
+    b=[0,0,1]
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
     a=[a
        m']
-    d=alpha*ones(nStage);
-    SSP=SSPRungeKuttaMethod()
-    b2=zeros(0)
-elseif str == "RODAS_N"
-    ROS.transformed=false;
-    ROS.nStage=4;
-    ROS.alpha=[0 0 0 0
-      0 0 0 0
-      1. 0 0 0
-      0.75 -0.25 0.5 0];
-    ROS.Gamma=[0.5 0 0 0
-      1. 0.5 0 0
-      -0.25 -0.25 0.5 0
-      1.0 / 12 1.0 / 12 -2. / 3 0.5];
-    ROS.b  = [5. / 6 -1.0 / 6 -1.0 / 6 0.5];
-elseif str == "RODAS"
-    transformed=true;
-    nStage=4;
-    alpha=[0 0 0 0
-      0 0 0 0
-      1. 0 0 0
-      0.75 -0.25 0.5 0];
-    d=alpha*ones(nStage);
-    Gamma=[0.5 0 0 0
-      1. 0.5 0 0
-      -0.25 -0.25 0.5 0
-      1.0 / 12 1.0 / 12 -2. / 3 0.5];
-    b  = [5. / 6, -1.0 / 6, -1.0 / 6, 0.5];
-    a=alpha/Gamma;
-    c=-inv(Gamma);
-    m=Gamma'\b;
-    a=[a
-       m']
-    SSP=SSPRungeKuttaMethod()
-    b2=zeros(0)
-elseif str == "TSROSWSANDU3_N"
-    ROS.transformed=false;
-    ROS.nStage=3;
-    ROS.alpha=[0 0 0
-      0.43586652150845899941601945119356 0 0
-      0.43586652150845899941601945119356 0 0];
-    ROS.Gamma=[0.43586652150845899941601945119356 0 0
-      -0.19294655696029095575009695436041 0.43586652150845899941601945119356 0
-      0 1.74927148125794685173529749738960 0.43586652150845899941601945119356];
-    ROS.b=[-0.75457412385404315829818998646589,1.94100407061964420292840123379419
-      ,-0.18642994676560104463021124732829];
-elseif str == "TSROSWSANDU3"
-    ROS.transformed=true;
-    ROS.nStage=3;
-    ROS.alpha=[0 0 0
-      0.43586652150845899941601945119356 0 0
-      0.43586652150845899941601945119356 0 0];
-    ROS.Gamma=[0.43586652150845899941601945119356 0 0
-      -0.19294655696029095575009695436041 0.43586652150845899941601945119356 0
-      0 1.74927148125794685173529749738960 0.43586652150845899941601945119356];
-    ROS.b=[-0.75457412385404315829818998646589,1.94100407061964420292840123379419
-      ,-0.18642994676560104463021124732829];
-    ROS.a=ROS.alpha/ROS.Gamma;
-    ROS.c=-inv(ROS.Gamma);
-    ROS.m=ROS.b/ROS.Gamma;
-    ROS.d=ROS.Gamma[1,1];
-elseif str == "TROSWLASSP3P4S2C"
-    r=5;
-    ROS.transformed=false;
-    ROS.nStage=4;
-    ROS.alpha = [0 0 0 0
-      1.0 / 2. 0 0 0
-      1.0 / 2. 1.0 / 2. 0 0
-      1.0 / 6. 1.0 / 6. 1.0 / 6. 0 ];
-    ROS.Gamma= [1.0 / 2. 0 0 0
-      0.0 3. / 4. 0 0
-      -2. / 3. -23. / 9. 2. / 9. 0
-      1.0 / 18. 65. / 108. -2. / 27 0];
-    ROS.b = [1.0 / 6.,1.0 / 6.,1.0 / 6.,1.0 / 2.];
-    ROS.b2= [3. / 16.,10. / 16.,3. / 16.,0];
-
-    #ROS.m
-elseif str == "ROSEul"
-    transformed = true
-    nStage=1;
-    alpha=zeros(nStage,nStage)
-    a=zeros(nStage,nStage)
-    Gamma=zeros(nStage,nStage)
-    c=zeros(nStage,nStage)
-    Gamma[1,1]=1.0
-    m=[1.0]
-    b=[0.0]
-    b2=[0.0]
-    d=[0.0]
-    SSP=SSPRungeKuttaMethod()
-elseif str == "ROS3Pw"
-    ROS.nStage=3;
-    ROS.beta0=7.88675134594812865529e-01;
-    ROS.alpha[1,1]=2.0e0;
-    ROS.alpha[2,1]=6.33974596215561403412e-01;
-    ROS.alpha[3,1]=1.63397459621556140341e+00;
-    ROS.alpha[3,2]=2.94228634059947813384e-01;
-    ROS.alpha[3,3]=1.07179676972449078320e+00;
-
-    ROS.beta[2,1]=-2.53589838486224561365e+00;
-    ROS.beta[3,1]=-1.62740473580835520728e+00;
-    ROS.beta[3,2]=-2.74519052838329002952e-01;
-    ROS.alpha=ROS.alpha*ROS.beta0;
-    ROS.beta=ROS.beta*ROS.beta0;
-    ROS.d=ROS.beta0;
-elseif str == "ROS-AMF"
-    ROS.nStage=2;
-    ROS.transformed=true;
-    d=1/3+1/6*sqrt(3);
-
-    ROS.alpha=[0 0
-               2/3 0];
-    ROS.Gamma=[d 0
-               -4/3*d d];
-    ROS.b=[1/4,3/4];
-    ROS.a=ROS.alpha/ROS.Gamma;
-    ROS.c=-inv(ROS.Gamma);
-    ROS.m=ROS.b/ROS.Gamma;
-    ROS.d=ROS.Gamma[1,1];
-elseif str == "ROS-AMF_N"
-    ROS.nStage=2;
-    ROS.transformed=false;
-    d=1/3+1/6*sqrt(3);
-
-    ROS.alpha=[0 0
-               2/3 0];
-    ROS.Gamma=[d 0
-               -4/3*d d];
-    ROS.b=[1/4,3/4];
-    ROS.a=ROS.alpha/ROS.Gamma;
-    ROS.c=-inv(ROS.Gamma);
-    ROS.m=ROS.b/ROS.Gamma;
-    ROS.d=ROS.Gamma[1,1];
-elseif str == "ROS2"
-    ROS.nStage=2;
-    # Matrix form aftrer Wolfbrandt
-    #     d=.5;
-    #     a(2,1)=2. / 3.;
-    #     d(2,1)=.5;
-    #     b(1)=.25;
-    #     b(2)=.75
-    alpha=zeros(ROS.nStage,ROS.nStage);
-    gamma=zeros(ROS.nStage,ROS.nStage);
-    ROS.d=0.5+sqrt(3)/6;
-    d=ROS.d;
-    alpha[2,1]=2/3;
-    b[1,1]=0.25;
-    b[1,2]=0.75;
-    gamma[1,1]=d;
-    gamma[2,1]=-d/b(1,2);
-    gamma[2,2]=d;
-    ROS.a=alpha/gamma;
-    ROS.m=b/gamma;
-    ROS.c=inv(diag(diag(gamma)))-inv(gamma);
-elseif str == "ROSRK3"
-    ROS.transformed=true;
-    ROS.nStage=3;
-    ROS.a=zeros(ROS.nStage,ROS.nStage);
-    ROS.c=zeros(ROS.nStage,ROS.nStage);
-    beta0=1;
-    #beta0=1.0/2.0
-    #beta0=(3.0+sqrt(3.0))/6.0;
-    alpha = zeros(3,3) # TODO: Check with Oswald
-    beta = zeros(3,2) # TODO: Check with Oswald
-    alpha[1,1]=1.0/(3.0*beta0);
-    alpha[2,1]=(-1.0 + 12.0*beta0^2.0)/(18.0*beta0^2.0*(-1.0 + 4.0*beta0));
-    alpha[2,2]=1.0/(2.0*beta0);
-    alpha[3,1]=   (1.0 - 3.0*beta0*(7.0 + 16.0*beta0*(-2.0 + 3.0*beta0)))/
-      (36.0*beta0^3.0*(-1.0 + 4.0*beta0));
-    alpha[3,2]=   (-1.0 + 12.0*beta0)/(4.0*beta0^2.0);
-    alpha[3,3]=   1.0/beta0;
-    beta[2,1]= (1.0 - 12.0*beta0^2.0)/(beta0^2.0*(-9.0 + 36.0*beta0));
-    beta[3,1]= (-1.0 + 3.0*beta0*(7.0 + 16.0*beta0*(-2.0 + 3.0*beta0)))/
-      (36. * beta0^3.0*(-1.0 + 4.0*beta0));
-    beta[3,2]= (0.250 - 3.0*beta0)/beta0^2.0;
-    alpha=alpha*beta0;
-    beta=beta*beta0;
-    ROS.a[2:3,1:2]=alpha[1:2,1:2];
-    ROS.m=alpha[3,:];
-    ROS.c=beta;
-    ROS.d=1;
-elseif str == "M1HOMME"
+  elseif str == "M1HOMME"
     nStage = 5
-    transformed = true
     AHat = [  0   0   0   0   0   0
              1/5  0   0   0   0   0
               0  1/5  0   0   0   0
@@ -284,34 +85,23 @@ elseif str == "M1HOMME"
     alpha = AHat[2:end,1:end-1]
     Gamma = A[2:end,2:end] - AHat[2:end,2:end]
 
-    d=alpha*ones(nStage);
-    b = [0,0,  0,  0,  1,  0]          
+    b = [0,0,0,0,1,0]          
 
     Gamma = alpha \ Gamma * alpha       
     alpha = AHat[1:end,1:end-1]
 
     a = alpha / Gamma
     c = -inv(Gamma)
-#   m=Gamma'\bHat';
     m = a[end,:]
-#   @show m
-#   a=[a
-#      m']
-    SSP = SSPRungeKuttaMethod()
-    b2 = zeros(0)   
-    
-end
+  end
 return RosenbrockStruct(
-  transformed,
   nStage,
   alpha,
   Gamma,
   b,
   a,
   c,
+  gamma,
   m,
-  d,
-  b2,
-  SSP,
   )
 end

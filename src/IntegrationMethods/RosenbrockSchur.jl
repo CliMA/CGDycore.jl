@@ -22,7 +22,7 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param,DiscType)
       fac = ROS.c[iStage,jStage] / dt
       @views axpy!(fac,k[:,:,:,jStage],fV)
     end
-    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.Gamma[iStage,iStage],Global)
+    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.gamma,Global)
   end
   @. V = Vn
   @inbounds for iStage = 1 : nStage
