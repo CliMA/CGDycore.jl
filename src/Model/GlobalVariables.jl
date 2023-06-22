@@ -45,6 +45,7 @@ Rot2CG::Array{FT, 3}
 Grad1CG::Array{FT, 3}
 Grad2CG::Array{FT, 3}
 DivCG::Array{FT, 3}
+DivThCG::Array{FT, 3}
 DivwCG::Array{FT, 3}
 zPG::Array{FT, 3}
 pBGrdCG::Array{FT, 3}
@@ -54,6 +55,7 @@ Rot2C::Array{FT, 3}
 Grad1C::Array{FT, 3}
 Grad2C::Array{FT, 3}
 DivC::Array{FT, 3}
+DivThC::Array{FT, 3}
 DivwC::Array{FT, 3}
 KVCG::Array{FT, 3}
 Temp1::Array{FT, 3}
@@ -119,6 +121,7 @@ Rot2CG=zeros(FT,0,0,0)
 Grad1CG=zeros(FT,0,0,0)
 Grad2CG=zeros(FT,0,0,0)
 DivCG=zeros(FT,0,0,0)
+DivThCG=zeros(FT,0,0,0)
 DivwCG=zeros(FT,0,0,0)
 zPG=zeros(FT,0,0,0)
 pBGrdCG=zeros(FT,0,0,0)
@@ -128,6 +131,7 @@ Rot2C=zeros(FT,0,0,0)
 Grad1C=zeros(FT,0,0,0)
 Grad2C=zeros(FT,0,0,0)
 DivC=zeros(FT,0,0,0)
+DivThC=zeros(FT,0,0,0)
 DivwC=zeros(FT,0,0,0)
 KVCG=zeros(FT,0,0,0)
 Temp1=zeros(FT,0,0,0)
@@ -192,6 +196,7 @@ return CacheStruct(
   Grad1CG,
   Grad2CG,
   DivCG,
+  DivThCG,
   DivwCG,
   zPG,
   pBGrdCG,
@@ -201,6 +206,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
+  DivThC,
   DivwC,
   KVCG,
   Temp1,
@@ -268,6 +274,7 @@ Rot2CG=zeros(OP,OP,nz)
 Grad1CG=zeros(OP,OP,nz)
 Grad2CG=zeros(OP,OP,nz)
 DivCG=zeros(OP,OP,nz)
+DivThCG=zeros(OP,OP,nz)
 DivwCG=zeros(OP,OP,nz+1)
 zPG=zeros(OP,OP,nz)
 pBGrdCG=zeros(OP,OP,nz)
@@ -277,9 +284,10 @@ Rot2C=zeros(OP,OP,nz)
 Grad1C=zeros(OP,OP,nz)
 Grad2C=zeros(OP,OP,nz)
 DivC=zeros(OP,OP,nz)
+DivThC=zeros(OP,OP,nz)
 DivwC=zeros(OP,OP,nz+1)
 KVCG=zeros(OP,OP,nz)
-Temp1=zeros(nz,NumG,NumV+NumTr+3)
+Temp1=zeros(nz,NumG,max(NumV+NumTr,9+NumTr))
 k=zeros(0,0,0,0)
 Ymyn=zeros(0,0,0,0)
 Y=zeros(0,0,0,0)
@@ -341,6 +349,7 @@ return CacheStruct(
   Grad1CG,
   Grad2CG,
   DivCG,
+  DivThCG,
   DivwCG,
   zPG,
   pBGrdCG,
@@ -350,6 +359,7 @@ return CacheStruct(
   Grad1C,
   Grad2C,
   DivC,
+  DivThC,
   DivwC,
   KVCG,
   Temp1,

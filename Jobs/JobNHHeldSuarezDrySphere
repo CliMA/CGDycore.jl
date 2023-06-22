@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezDrySphere" \
   --NumV=5 \
   --NumTr=0 \
@@ -14,9 +14,9 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --VerticalDiffusionMom=false \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=0 \
-  --SimSeconds=900 \
-  --PrintDays=20 \
+  --SimDays=100 \
+  --SimSeconds=0 \
+  --PrintDays=1 \
   --StartAverageDays=200 \
   --dtau=300 \
   --IntMethod="Rosenbrock" \

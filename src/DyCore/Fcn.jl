@@ -196,11 +196,12 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @views Rot2 = Global.Cache.Temp1[:,:,2]
   @views Grad1 = Global.Cache.Temp1[:,:,3]
   @views Grad2 = Global.Cache.Temp1[:,:,4]
-  @views Div = Global.Cache.Temp1[:,:,NumV]
-  @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
-  @views Divw = Global.Cache.Temp1[:,:,NumV+NumTr+1]
-  @views JRho = Global.Cache.Temp1[:,:,NumV+NumTr+2]
-  @views JRhoF = Global.Cache.Temp1[:,:,NumV+NumTr+3]
+  @views Div = Global.Cache.Temp1[:,:,5]
+  @views DivTh = Global.Cache.Temp1[:,:,6]
+  @views Divw = Global.Cache.Temp1[:,:,7]
+  @views JRho = Global.Cache.Temp1[:,:,8]
+  @views JRhoF = Global.Cache.Temp1[:,:,9]
+  @views DivTr = Global.Cache.Temp1[:,:,9+1:9+NumTr]
   FCG=Global.Cache.FCC
   FwCG=Global.Cache.FwCC
   Rot1CG=Global.Cache.Rot1C
@@ -208,6 +209,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   Grad1CG=Global.Cache.Grad1C
   Grad2CG=Global.Cache.Grad2C
   DivCG=Global.Cache.DivC
+  DivThCG=Global.Cache.DivThC
   DivwCG=Global.Cache.DivwC
   DivTrCG=Global.Cache.DivC
   @views RhoCG = Global.Cache.RhoCG[:,:,:]
@@ -235,6 +237,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   @. Grad1 = 0.0
   @. Grad2 = 0.0
   @. Div = 0.0
+  @. DivTh = 0.0
   @. Divw = 0.0
   @. DivTr = 0.0
   @. F = 0.0
@@ -262,7 +265,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
-    @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
+    @views DivRhoGrad!(DivCG,RhoCG,RhoCG,CG,
+     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+    @views DivRhoGrad!(DivThCG,ThCG,RhoCG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradF!(DivwCG,wCG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
@@ -276,6 +281,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Grad1[iz,ind] += Grad1CG[iP,jP,iz] 
           Grad2[iz,ind] += Grad2CG[iP,jP,iz] 
           Div[iz,ind] += DivCG[iP,jP,iz] 
+          DivTh[iz,ind] += DivThCG[iP,jP,iz] 
           JRho[iz,ind] += (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]) * RhoCG[iP,jP,iz]
         end
         @inbounds for iz=1:nz-1
@@ -327,7 +333,9 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
-    @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
+    @views DivRhoGrad!(DivCG,RhoCG,RhoCG,CG,
+     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+    @views DivRhoGrad!(DivThCG,ThCG,RhoCG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradF!(DivwCG,wCG,CG,
      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
@@ -341,6 +349,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Grad1[iz,ind] += Grad1CG[iP,jP,iz] 
           Grad2[iz,ind] += Grad2CG[iP,jP,iz] 
           Div[iz,ind] += DivCG[iP,jP,iz] 
+          DivTh[iz,ind] += DivThCG[iP,jP,iz] 
           JRho[iz,ind] += (J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF]) * RhoCG[iP,jP,iz]
         end
         @inbounds for iz=1:nz-1
@@ -388,6 +397,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Grad1CG[iP,jP,iz] = Grad1[iz,ind] / CG.M[iz,ind]
           Grad2CG[iP,jP,iz] = Grad2[iz,ind] / CG.M[iz,ind]
           DivCG[iP,jP,iz] = Div[iz,ind] / CG.M[iz,ind]
+          DivThCG[iP,jP,iz] = DivTh[iz,ind] / CG.M[iz,ind]
           zPG[iP,jP,iz] = zP[iz,ind]
           pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
           RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
@@ -412,7 +422,10 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
-    @views DivRhoGrad!(FCG[:,:,:,ThPos],DivCG,RhoCG,CG,
+    @views DivRhoGrad!(FCG[:,:,:,RhoPos],DivCG,RhoCG,CG,
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Global.Model.HyperDDiv)
+    @views DivRhoGrad!(FCG[:,:,:,ThPos],DivThCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
     @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
@@ -582,6 +595,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
           Grad1CG[iP,jP,iz] = Grad1[iz,ind] / CG.M[iz,ind]
           Grad2CG[iP,jP,iz] = Grad2[iz,ind] / CG.M[iz,ind]
           DivCG[iP,jP,iz] = Div[iz,ind] / CG.M[iz,ind]
+          DivThCG[iP,jP,iz] = DivTh[iz,ind] / CG.M[iz,ind]
           pBGrdCG[iP,jP,iz] = Global.pBGrd[iz,ind]
           RhoBGrdCG[iP,jP,iz] = Global.RhoBGrd[iz,ind]
           PresCG[iP,jP,iz] = PresG[iz,ind]
@@ -606,7 +620,10 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
-    @views DivRhoGrad!(FCG[:,:,:,ThPos],DivCG,RhoCG,CG,
+    @views DivRhoGrad!(FCG[:,:,:,RhoPos],DivCG,RhoCG,CG,
+      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Global.Model.HyperDDiv)
+    @views DivRhoGrad!(FCG[:,:,:,ThPos],DivThCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
     @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
