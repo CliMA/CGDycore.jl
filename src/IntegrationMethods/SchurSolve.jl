@@ -116,6 +116,12 @@ function SchurSolve!(k,v,J,fac,Global)
         @views @. JAdvC[2,:,in2] += invfac
         @views @. JAdvF[2,:,in2] += invfac
       end
+      @views rTh = v[:,in2,1]
+      @views sTh = k[:,in2,1]
+      @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
+      @. rTh = invfac * sTh
+
+      @views rTh = v[:,in2,2]
       @views rTh = v[:,in2,5]
       @views sTh = k[:,in2,5]
       @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
