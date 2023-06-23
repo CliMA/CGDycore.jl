@@ -16,7 +16,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Decomp="EqualArea" \
   --SimDays=100 \
   --SimSeconds=0 \
-  --PrintDays=1 \
+  --PrintDays=0 \
+  --PrintSeconds=300 \
   --StartAverageDays=200 \
   --dtau=300 \
   --IntMethod="Rosenbrock" \
