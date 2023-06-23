@@ -1008,9 +1008,10 @@ function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,
   @inbounds for iz = 1 : Nz - 1
     @inbounds for i = 1 : OrdPoly + 1
       @inbounds for j = 1 : OrdPoly + 1
-        wC = (dXdxI[i,j,2,iz,3,1] * uC[i,j,iz] + dXdxI[i,j,2,iz,3,2] * vC[i,j,iz] +
-          dXdxI[i,j,1,iz+1,3,1] * uC[i,j,iz+1] + dXdxI[i,j,1,iz+1,3,2] * vC[i,j,iz+1] + 
-          (dXdxI[i,j,2,iz,3,3] + dXdxI[i,j,1,iz+1,3,3]) * w[i,j,iz+1])
+        wC = ((dXdxI[i,j,2,iz,3,1] * uC[i,j,iz] + dXdxI[i,j,2,iz,3,2] * vC[i,j,iz] +
+          dXdxI[i,j,2,iz,3,3] * w[i,j,iz+1]) * RhoC[i,j,iz]  +
+          (dXdxI[i,j,1,iz+1,3,1] * uC[i,j,iz+1] + dXdxI[i,j,1,iz+1,3,2] * vC[i,j,iz+1] + 
+           dXdxI[i,j,1,iz+1,3,3] * w[i,j,iz+1]) * RhoC[i,j,iz+1])
         Flux = 1 / 2 * ((wC + abs(wC)) * TrRe[i,j,2,iz] +
           (wC - abs(wC)) * TrRe[i,j,1,iz+1])
         FRhoTrC[i,j,iz] -= Flux
