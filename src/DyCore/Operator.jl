@@ -1240,7 +1240,7 @@ function DivGradF!(F,cF,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
       (dXdxI[:,:,2,iz-1,2,2] + dXdxI[:,:,1,iz,2,2]) * GradDy
     DerivativeY!(Div,temp,DW)
 
-    @views @. F[:,:,iz] -= 1/2 * (RhoC[:,:,2,iz-1] + RhoC[:,:,1,iz]) * Koeff * Div / (J[:,:,2,iz-1] + J[:,:,1,iz])
+    @views @. F[:,:,iz] -= 1/2 * (RhoC[:,:,iz-1] + RhoC[:,:,iz]) * Koeff * Div / (J[:,:,2,iz-1] + J[:,:,1,iz])
   end    
 end    
 
