@@ -244,6 +244,6 @@ end
   elseif ModelType == "Conservative"
     DiscType = Val(:Conservative)
   end
-  nT = max(5,NumV + NumTr + 3)
+  nT = max(9 + NumTr, NumV + NumTr)
   CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
   CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransCartX,CG,Global,Param,DiscType)
