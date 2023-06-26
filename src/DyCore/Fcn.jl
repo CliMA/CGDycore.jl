@@ -267,7 +267,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
 #   @views DivRhoGrad!(DivCG,RhoCG,RhoCG,CG,
 #     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
-    @views Divrad!(DivCG,RhoCG,CG,
+    @views DivGrad!(DivCG,RhoCG,CG,
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
 #   @views DivRhoGrad!(DivThCG,ThCG,RhoCG,CG,
 #     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
