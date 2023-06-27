@@ -1,13 +1,12 @@
 mutable struct JStruct
     JRhoW::Array{Float64, 3}
-    JWTh::Array{Float64, 3}
+    JWRhoTh::Array{Float64, 3}
     JWRho::Array{Float64, 3}
     JWRhoV::Array{Float64, 3}
-    JThW::Array{Float64, 3}
+    JRhoThW::Array{Float64, 3}
     JTrW::Array{Float64, 4}
     JWW::Array{Float64, 3}
     tri::Array{Float64, 3}
-    sw::Array{Float64, 2}
     JDiff::Array{Float64, 3}
     JAdvC::Array{Float64, 3}
     JAdvF::Array{Float64, 3}
@@ -20,14 +19,13 @@ end
 
 function JStruct()
   JRhoW=zeros(0,0,0)
-  JWTh=zeros(0,0,0)
+  JWRhoTh=zeros(0,0,0)
   JWRho=zeros(0,0,0)
   JWRhoV=zeros(0,0,0)
-  JThW=zeros(0,0,0)
+  JRhoThW=zeros(0,0,0)
   JTrW=zeros(0,0,0,0)
   JWW=zeros(0,0,0)
   tri=zeros(0,0,0)
-  sw=zeros(0,0)
   JDiff=zeros(0,0,0)
   JAdvC=zeros(0,0,0)
   JAdvF=zeros(0,0,0)
@@ -38,14 +36,13 @@ function JStruct()
   CacheCol3=zeros(0)
   return JStruct(
     JRhoW,
-    JWTh,
+    JWRhoTh,
     JWRho,
     JWRhoV,
-    JThW,
+    JRhoThW,
     JTrW,
     JWW,
     tri,
-    sw,
     JDiff,
     JAdvC,
     JAdvF,
@@ -58,15 +55,14 @@ function JStruct()
 end  
 
 function JStruct(NumG,nz,NumTr)
-  JRhoW=zeros(2,nz,NumG)
-  JWTh=zeros(2,nz,NumG)
-  JWRho=zeros(2,nz,NumG)
-  JWRhoV=zeros(2,nz,NumG)
-  JThW=zeros(2,nz,NumG)
-  JTrW=zeros(2,nz,NumG,NumTr)
-  JWW=zeros(1,nz,NumG)
-  tri=zeros(3,nz,NumG)
-  sw=zeros(nz,NumG)
+  JRhoW=zeros(2,nz-1,NumG)
+  JWRhoTh=zeros(2,nz-1,NumG)
+  JWRho=zeros(2,nz-1,NumG)
+  JWRhoV=zeros(2,nz-1,NumG)
+  JRhoThW=zeros(2,nz-1,NumG)
+  JTrW=zeros(2,nz-1,NumG,NumTr)
+  JWW=zeros(1,nz-1,NumG)
+  tri=zeros(3,nz-1,NumG)
   JDiff=zeros(3,nz,NumG)
   JAdvC=zeros(3,nz,NumG)
   JAdvF=zeros(3,nz-1,NumG)
@@ -77,14 +73,13 @@ function JStruct(NumG,nz,NumTr)
   CacheCol3=zeros(nz)
   return JStruct(
     JRhoW,
-    JWTh,
+    JWRhoTh,
     JWRho,
     JWRhoV,
-    JThW,
+    JRhoThW,
     JTrW,
     JWW,
     tri,
-    sw,
     JDiff,
     JAdvC,
     JAdvF,
@@ -119,60 +114,55 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   abswConC = J.CacheCol1
   D = J.CacheCol2
   @views DF = J.CacheCol2[1:nz-1]
-  Dp = J.CacheCol2
-  Dm = J.CacheCol3
+  RhoF = J.CacheCol2[1:nz-1]
+  RhoThF = J.CacheCol2[1:nz-1]
+  RhoTrF = J.CacheCol2[1:nz-1]
 
   @inbounds for iC=1:nCol
     @views Pres = Global.Cache.AuxG[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
-    @views Th = U[:,iC,ThPos]
+    @views RhoTh = U[:,iC,ThPos]
     @views Tr = U[:,iC,NumV+1:end]
     @views dz = Global.Metric.dz[:,iC]
 
-    @views @. D[1:nz-1] = -(Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz]) /
+    @views @. RhoF = (Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz]) /
       (dz[1:nz-1] + dz[2:nz])
     # JRhoW low bidiagonal matrix
     # First row diagonal
     # Second row lower diagonal
-    @views @. J.JRhoW[1,:,iC] = D / dz
-    @views @. J.JRhoW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
+    @views @. J.JRhoW[1,:,iC] = -RhoF / dz[1:nz-1]
+    @views @. J.JRhoW[2,:,iC] = RhoF / dz[2:nz]
 
-    dPresdTh!(dPdTh, Th, Rho, Tr, Global)
-    @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (1/2 * (Rho[1:nz-1] * dz[1:nz-1] + 
-      Rho[2:nz] * dz[2:nz])) 
-    @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (1/2 * (Rho[1:nz-1] * dz[1:nz-1] +
-      Rho[2:nz] * dz[2:nz])) 
+    dPresdTh!(dPdTh, RhoTh, Rho, Tr, Global)
     # JWRhoTh upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
-    @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
-    @views @. J.JWTh[2,:,iC] = Dm
+    @views @. J.JWRhoTh[1,:,iC] = -dPdTh[2:nz] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
+    @views @. J.JWRhoTh[2,:,iC] = dPdTh[1:nz-1] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
 
     if Global.Model.Equation == "CompressibleMoist"
-      dPresdRhoV!(dPdRhoV, Th, Rho, Tr, Pres, Global)
-      @views @. Dp[1:nz-1] = dPdRhoV[2:nz] /  (1/2 * (Rho[1:nz-1] * dz[1:nz-1] + 
-        Rho[2:nz] * dz[2:nz])) 
-      @views @. Dm[1:nz-1] = dPdRhoV[1:nz-1] / (1/2 * (Rho[1:nz-1] * dz[1:nz-1] +
-        Rho[2:nz] * dz[2:nz])) 
-      @views @. J.JWRhoV[1,2:nz,iC] = -Dp[1:nz-1]
-      @views @. J.JWRhoV[2,:,iC] = Dm
+      dPresdRhoV!(dPdRhoV, RhoTh, Rho, Tr, Pres, Global)
+      @views @. J.JWRhoV[1,:,iC] = - dPdRhoV[2:nz] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
+      @views @. J.JWRhoV[2,:,iC] = dPdRhoV[1:nz-1] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
     end  
 
     # JWRho upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
-    @views @. D[1:nz-1] = Global.Phys.Grav  / (Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz])
-    @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] * dz[2:nz]
-    @views @. J.JWRho[2,1:nz,iC] = -D * dz
+    @views @. J.JWRho[1,:,iC] = -Global.Phys.Grav * dz[2:nz] / RhoF / ( dz[1:nz-1] + dz[2:nz])
+    @views @. J.JWRho[2,:,iC] = -Global.Phys.Grav * dz[1:nz-1] / RhoF / ( dz[1:nz-1] + dz[2:nz]) 
 
+    @views @. RhoThF = (RhoTh[1:nz-1] * dz[1:nz-1] + RhoTh[2:nz] * dz[2:nz]) /
+      (dz[1:nz-1] + dz[2:nz])
     # JRhoThW low bidiagonal matrix
     # First row diagonal
     # Second row lower diagonal
-    @views @. D[1:nz-1] = -(Th[1:nz-1] * dz[1:nz-1] + Th[2:nz] * dz[2:nz]) /
-      (dz[1:nz-1] + dz[2:nz])
-    @views @. J.JThW[1,:,iC] = D / dz
-    @views @. J.JThW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
+    @views @. J.JRhoThW[1,:,iC] = -RhoThF / dz[1:nz-1]
+    @views @. J.JRhoThW[2,:,iC] = RhoThF / dz[2:nz]
+
+
     if Global.Model.Thermo == "TotalEnergy" 
+      # Noch Falsch Oswald  
       @views @. D[1:nz-1] -= 1/2*(Pres[1:nz-1] + Pres[2:nz]) 
     elseif Global.Model.Thermo == "InternalEnergy"
       @views @. D = Pres / dz
@@ -181,10 +171,11 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     end  
 
     @inbounds for iT = 1 : NumTr
-      @views @. D[1:nz-1] = -(Tr[1:nz-1,iT] * dz[1:nz-1] + Tr[2:nz,iT] * dz[2:nz]) /
+      @views @. RhoTrF = (Tr[1:nz-1,iT] * dz[1:nz-1] + Tr[2:nz,iT] * dz[2:nz]) /
         (dz[1:nz-1] + dz[2:nz])
-      @views @. J.JTrW[1,:,iC,iT] = D / dz
-      @views @. J.JTrW[2,1:nz-1,iC,iT] = -D[1:nz-1] / dz[2:nz]
+        
+      @views @. J.JTrW[1,:,iC,iT] = -RhoTrF / dz[1:nz-1]
+      @views @. J.JTrW[2,:,iC,iT] = RhoTrF / dz[2:nz]
     end    
 
     if Global.Model.Damping
