@@ -9,6 +9,7 @@ function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param,DiscType)
     @inbounds for jStage=1:iStage-1
       @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
     end
+    @views FcnPrepare!(V,CG,Global,Param,DiscType)
     @views Fcn(f[:,:,:,iStage],V,CG,Global,Param,DiscType)
   end
   @. V = Vn

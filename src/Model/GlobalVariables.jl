@@ -648,6 +648,7 @@ mutable struct ModelStruct
   HyperVisc::Bool
   HyperDCurl::Float64
   HyperDGrad::Float64
+  HyperDRhoDiv::Float64
   HyperDDiv::Float64
   Upwind::Bool
   HorLimit::Bool
@@ -655,6 +656,8 @@ mutable struct ModelStruct
   RelCloud::Float64
   Rain::Float64
   VerticalDiffusion::Bool
+  JacVerticalDiffusion::Bool
+  JacVerticalAdvection::Bool
   VerticalDiffusionMom::Bool
   SurfaceFlux::Bool
   SurfaceFluxMom::Bool
@@ -701,6 +704,7 @@ function Model()
   HyperVisc = false
   HyperDCurl = 0.0
   HyperDGrad = 0.0
+  HyperDRhoDiv = 0.0
   HyperDDiv = 0.0
   Upwind = false
   HorLimit = false
@@ -708,6 +712,8 @@ function Model()
   RelCloud = 0.0
   Rain = 0.0
   VerticalDiffusion = false
+  JacVerticalDiffusion = false
+  JacVerticalAdvection = false
   VerticalDiffusionMom = false
   SurfaceFlux = false
   SurfaceFluxMom = false
@@ -752,6 +758,7 @@ function Model()
    HyperVisc,
    HyperDCurl,
    HyperDGrad,
+   HyperDRhoDiv,
    HyperDDiv,
    Upwind,
    HorLimit,
@@ -759,6 +766,8 @@ function Model()
    RelCloud,
    Rain,
    VerticalDiffusion,
+   JacVerticalDiffusion,
+   JacVerticalAdvection,
    VerticalDiffusionMom,
    SurfaceFlux,
    SurfaceFluxMom,

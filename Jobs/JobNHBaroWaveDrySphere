@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 16  --use-hwthread-cpus julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphere" \
   --NumV=5 \
   --NumTr=0 \
@@ -22,13 +22,13 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --PrintDays=1 \
   --StartAverageDays=0 \
   --Flat=true \
-  --dtau=300 \
+  --dtau=100 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=true \
   --StretchType="Exp" \
-  --GridType="CubedSphere" \
+  --GridType="SQuadGen" \
   --nz=45 \
   --nPanel=16 \
   --H=30000.0 \

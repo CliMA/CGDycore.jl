@@ -975,8 +975,7 @@ function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,
         JCp1 = (J[i,j,1,2] + J[i,j,2,2])  
         Tr = RhoTrC[i,j,1] / RhoC[i,j,1]
         Trp1 = RhoTrC[i,j,2] / RhoC[i,j,2]
-#       Tr0 = ((3 * Tr - 2 * Trp1) * JC + Tr * JCp1) / (JC + JCp1)
-        Tr0 = Tr
+        Tr0 = ((3 * Tr - 2 * Trp1) * JC + Tr * JCp1) / (JC + JCp1)
         TrRe[i,j,1,1],TrRe[i,j,2,1] = RecU3(Tr0,Tr,Trp1,JC,JC,JCp1)
         TrRe[i,j,1,1] = Tr
         TrRe[i,j,2,1] = Tr
@@ -1001,8 +1000,7 @@ function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,
         JC = (J[i,j,1,Nz] + J[i,j,2,Nz])  
         Trm1 = RhoTrC[i,j,Nz-1] / RhoC[i,j,Nz-1]
         Tr = RhoTrC[i,j,Nz] / RhoC[i,j,Nz]
-#       Tr1 = ((3 * Tr - 2 * Trm1) * JC + Tr * JCm1) / (JCm1 + JC)
-        Tr1 = Tr
+        Tr1 = ((3 * Tr - 2 * Trm1) * JC + Tr * JCm1) / (JCm1 + JC)
         TrRe[i,j,1,Nz],TrRe[i,j,2,Nz] = RecU3(Trm1,Tr,Tr1,JCm1,JC,JC)
       end  
     end    
@@ -1902,8 +1900,8 @@ function Gradient!(Gradu,Gradv,Gradw,cC,
       end
     end
   else
-    @views @. cF[:,:,1,iz] = cC[:,:,iz]
-    @views @. cF[:,:,2,iz] = cC[:,:,iz]
+    @views @. cF[:,:,1,1] = cC[:,:,1]
+    @views @. cF[:,:,2,1] = cC[:,:,1]
   end  
 
   @inbounds for iz = 1 : Nz
@@ -2006,8 +2004,8 @@ function GradColumn!(Gradu,Gradv,Gradw,cC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
       end
     end
   else
-    @views @. cF[:,:,1,iz] = cC[:,:,iz]
-    @views @. cF[:,:,2,iz] = cC[:,:,iz]
+    @views @. cF[:,:,1,1] = cC[:,:,1]
+    @views @. cF[:,:,2,1] = cC[:,:,1]
   end  
 
   @inbounds for iz = 1 : Nz

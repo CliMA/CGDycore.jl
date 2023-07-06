@@ -152,6 +152,16 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--JacVerticalDiffusion"
+    help = "Jacobian Vertical diffusion"
+    arg_type = Bool
+    default = false
+
+    "--JacVerticalAdvection"
+    help = "Jacobian Vertical advection"
+    arg_type = Bool
+    default = false
+
     "--VerticalDiffusionMom"
     help = "Vertical diffusion for momentum"
     arg_type = Bool
@@ -334,6 +344,11 @@ function parse_commandline()
 
     "--HyperDGrad"
     help = "HyperDGrad"
+    arg_type = Float64
+    default = 0.0
+
+    "--HyperDRhoDiv"
+    help = "HyperDRhoDiv"
     arg_type = Float64
     default = 0.0
 

@@ -28,6 +28,8 @@ RelCloud = parsed_args["RelCloud"]
 Rain = parsed_args["Rain"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
+JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
+JacVerticalAdvection = parsed_args["JacVerticalAdvection"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 NumV = parsed_args["NumV"]
@@ -60,6 +62,7 @@ OrdPoly = parsed_args["OrdPoly"]
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
 HyperDGrad = parsed_args["HyperDGrad"]
+HyperDRhoDiv = parsed_args["HyperDRhoDiv"]
 HyperDDiv = parsed_args["HyperDDiv"]
 # Output
 PrintDays = parsed_args["PrintDays"]
@@ -127,6 +130,8 @@ Model.Coriolis = Coriolis
 Model.CoriolisType = CoriolisType
 Model.Buoyancy = Buoyancy
 Model.VerticalDiffusion = VerticalDiffusion
+Model.JacVerticalDiffusion = JacVerticalDiffusion
+Model.JacVerticalAdvection = JacVerticalAdvection
 Model.Source = Source
 Model.Microphysics = Microphysics
 Model.RelCloud = RelCloud
@@ -142,6 +147,7 @@ Model.StretchType = StretchType
 Model.HyperVisc = HyperVisc
 Model.HyperDCurl = HyperDCurl
 Model.HyperDGrad = HyperDGrad
+Model.HyperDRhoDiv = HyperDRhoDiv
 Model.HyperDDiv = HyperDDiv
 
 OrdPolyZ = 1
@@ -184,6 +190,15 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "Pres",
       "Tr1",
       "Tr2",
+      ]
+  elseif Model.Equation == "Shallow"  
+    Global.Output.cNames = [
+      "Rho",
+      "u",
+      "v",
+      "Th",
+      "Vort",
+      "Pres",
       ]
   end  
 elseif ModelType == "Conservative"

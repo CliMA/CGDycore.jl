@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 16  --use-hwthread-cpus julia --project Examples/testNHSphere.jl \
   --Problem="GalewskiSphere" \
   --NumV=5 \
   --NumTr=0 \
@@ -8,23 +8,27 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Source=false \
   --Coriolis=true \
   --Upwind=false \
-  --Equation=Shallow \
+  --ModelType="VectorInvariant" \
+  --Curl=false \
+  --Equation="Shallow" \
+  --Buoyancy=false \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
   --SimDays=6 \
-  --PrintSeconds=43200 \
+  --PrintSeconds=0 \
+  --PrintHours=12 \
   --Flat=false \
   --dtau=100 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
-  --stretch=false \
   --GridType="CubedSphere" \
   --nz=1 \
   --nPanel=32 \
-  --H=30000.0 \
+  --H=300.0 \
   --OrdPoly=4 \
   --HyperVisc=true \
   --HyperDCurl=1.e14 \
   --HyperDGrad=1.e14 \
-  --HyperDDiv=1.e14
+  --HyperDRhoDiv=0.e14 \
+  --HyperDDiv=0.e14

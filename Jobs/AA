@@ -20,8 +20,8 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Rain=0.0 \
   --RelCloud=1.e0 \
   --dtau=.2 \
-  --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --IntMethod="RungeKutta" \
+  --Table="RK4" \
   --TopoS="" \
   `#Topography `        \
   --H=10000.0 \

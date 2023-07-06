@@ -70,7 +70,7 @@ function SchurSolve!(k,v,J,fac,Global)
   invfac=1/fac
   invfac2=invfac/fac
 
-  if Global.Model.VerticalDiffusion
+  if Global.Model.JacVerticalDiffusion && Global.Model.JacVerticalAdvection
     @inbounds for in2=1:n2
       if J.CompTri
         @views @. JAdvC[2,:,in2] += invfac
@@ -109,7 +109,7 @@ function SchurSolve!(k,v,J,fac,Global)
         JDiff[2,1,in2] -= CdTr[1,in2,1] 
       end  
     end    
-  else
+  elseif Global.Model.JacVerticalAdvection
     @inbounds for in2=1:n2
       if J.CompTri
         @views @. JAdvC[2,:,in2] += invfac
