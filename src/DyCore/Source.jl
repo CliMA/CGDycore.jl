@@ -36,7 +36,7 @@ function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,Pres,
   @. height_factor = max(0.0, (Sigma - sigma_b) / (1.0 - sigma_b))
   @. FV -= (k_f * height_factor) * V 
   @. kT =
-    (k_a + (k_s - k_a) * height_factor * cos(latN)^4)  
+    (Sigma < 0.7) * (k_a + (k_s - k_a) * height_factor * cos(latN)^4) # Oswald 
   @. Teq = (T_equator - DeltaT_y * sin(latN)^2 - DeltaTh_z * log(Sigma) * cos(latN)^2) * Sigma^Phys.kappa
   @. Teq = max(T_min, Teq)
   @. ΔρT =  kT * (Phys.p0 * Sigma / (Rho * Phys.Rd) - Teq)
