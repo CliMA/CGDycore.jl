@@ -952,13 +952,10 @@ function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,
   temp = TCacheC1[Threads.threadid()]
   FluxZ = TCacheC2[Threads.threadid()]
 
-
-  @inbounds for iz = 1 : Nz
-    if HorLimit
-      @views DivConvRhoTrCell!(FRhoTrC[:,:,iz],uC[:,:,iz],vC[:,:,iz],
-        w[:,:,iz],w[:,:,iz+1],RhoTrC[:,:,iz],Fe,
-        dXdxI[:,:,:,iz,:,:],J[:,:,:,iz],ThreadCache)
-    else
+  if HorLimit
+    DivConvRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCache)
+  else  
+    @inbounds for iz = 1 : Nz
       @views @. temp = -RhoTrC[:,:,iz] * ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * uC[:,:,iz] +
         (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * vC[:,:,iz]) 
       @views DerivativeX!(FRhoTrC[:,:,iz],temp,D)
@@ -1551,7 +1548,7 @@ function Buoyancy!(FwF,RhoC,J,Phys)
 
 end
 
-function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
+function DivConvRhoTrColumnOld!(FRhoTrC,uC,vC,wF,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheC5,  TCacheCol1 = ThreadCache
   Nz = size(uC,3)
   OrdPoly = Fe.OrdPoly
@@ -1588,9 +1585,9 @@ function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
       @views @. FluxHighX[:,j] *= w[j]
     end  
 
-    @views @. uCL = 1/2 * (uCLoc[1:end-1,:] + uCLoc[2:end,:])
-    @views @. FluxLowX = -1/2 *  ((abs(uCL) + uCL) * RhoTrC[1:end-1,:,iz] +
-            (uCL - abs(uCL)) * RhoTrC[2:end,:,iz])
+    @views @. uCL = 1/2 * (uCLoc[1:end-1,:] * RhoC[1:end-1,:,iz] + uCLoc[2:end,:] * RhoC[2:end,:,iz])
+    @views @. FluxLowX = -1/2 *  ((abs(uCL) + uCL) * RhoTrC[1:end-1,:,iz] / RhoC[1:end-1,:,iz] +
+            (uCL - abs(uCL)) * RhoTrC[2:end,:,iz] / RhoC[2:end,:,iz])
     @inbounds for j = 1 : OrdPoly + 1
       @views @. FluxLowX[:,j] *= w[j]
     end  
@@ -1605,7 +1602,7 @@ function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
       @views @. alphaX[2:end-1,j] = max(e[1:end-1],e[2:end])
       alphaX[end,j] = e[end]
     end
-    @. alphaX = alphaX * .4
+    @. alphaX = 0
     @. FluxX = alphaX * FluxLowX + (1 - alphaX) * FluxHighX
     @views @. FRhoTrC[1,:,iz] += FluxX[1,:] 
     @views @. FRhoTrC[2:end-1,:,iz] += FluxX[2:end,:] - FluxX[1:end-1,:] 
@@ -1620,9 +1617,9 @@ function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
       @views @. FluxHighY[i,:] *= w[i]
     end  
 
-    @views @. vCL = 1/2 * (vCLoc[:,1:end-1] + vCLoc[:,2:end])
-    @views @. FluxLowY = -1/2 *  ((abs(vCL) + vCL) * RhoTrC[:,1:end-1,iz] +
-      (vCL - abs(vCL)) * RhoTrC[:,2:end,iz])
+    @views @. vCL = 1/2 * (vCLoc[:,1:end-1] * RhoC[:,1:end-1,iz] + vCLoc[:,2:end] * RhoTrC[:,2:end,iz])
+    @views @. FluxLowY = -1/2 *  ((abs(vCL) + vCL) * RhoTrC[:,1:end-1,iz] / RhoC[:,1:end-1,iz] +
+      (vCL - abs(vCL)) * RhoTrC[:,2:end,iz] / RhoC[:,2:end,iz])
     @inbounds for i = 1 : OrdPoly + 1
       @views @. FluxLowY[i,:] *= w[i]
     end  
@@ -1637,12 +1634,112 @@ function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,Fe,dXdxI,J,ThreadCache)
       @views @. alphaY[i,2:end-1] = max(e[1:end-1],e[2:end])
       alphaY[i,end] = e[end]
     end
-    @. alphaY = alphaY * .4
 
+    @. alphaY = 0
     @. FluxY = alphaY * FluxLowY + (1 - alphaY) * FluxHighY
     @views @. FRhoTrC[:,1,iz] += FluxY[:,1]
     @views @. FRhoTrC[:,2:end-1,iz] += FluxY[:,2:end] - FluxY[:,1:end-1] 
     @views @. FRhoTrC[:,end,iz] += -FluxY[:,end]
+  end    
+end
+function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCache)
+  @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheC5,  TCacheCol1 = ThreadCache
+  Nz = size(uC,3)
+  OrdPoly = Fe.OrdPoly
+  D = Fe.DS
+  S = Fe.S
+  w = Fe.w
+  uCLoc = TCacheC1[Threads.threadid()]
+  @views FluxLowX = TCacheC1[Threads.threadid()][1:end-1,:]
+  TempH = TCacheC2[Threads.threadid()]
+  @views dxF = TCacheC2[Threads.threadid()][:,1]
+  @views e = TCacheC2[Threads.threadid()][1:end-2,1]
+  @views FluxX = TCacheC2[Threads.threadid()][1:end-1,:]
+  @views FluxHighX = TCacheC3[Threads.threadid()][1:end-1,:]
+  @views uCL = TCacheC4[Threads.threadid()][1:end-1,:]
+  @views dxC = TCacheC4[Threads.threadid()][1:end-1,1]
+  @views alphaX = TCacheC5[Threads.threadid()][1:end-1,:]
+
+  vCLoc = TCacheC1[Threads.threadid()]
+  @views FluxLowY = TCacheC1[Threads.threadid()][:,1:end-1]
+  @views dyF = TCacheC2[Threads.threadid()][:,1]
+  @views FluxY = TCacheC2[Threads.threadid()][:,1:end-1]
+  @views FluxHighY = TCacheC3[Threads.threadid()][:,1:end-1]
+  @views vCL = TCacheC4[Threads.threadid()][:,1:end-1]
+  @views dyC = TCacheC4[Threads.threadid()][1:end-1,1]
+  @views alphaY = TCacheC5[Threads.threadid()][:,1:end-1]
+
+  @inbounds for iz = 1 : Nz  
+    @views @. uCLoc =  ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * uC[:,:,iz] +
+      (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * vC[:,:,iz] + 
+      dXdxI[:,:,1,iz,1,3] * wF[:,:,iz] + dXdxI[:,:,2,iz,1,3] * wF[:,:,iz+1])
+    @views @. TempH = uCLoc * RhoTrC[:,:,iz]   
+    FluxX!(FluxHighX,TempH,S)
+    @inbounds for j = 1 : OrdPoly + 1
+      @views @. FluxHighX[:,j] *= w[j]
+    end  
+
+    @views @. TempH = -uCLoc * RhoC[:,:,iz]   
+    FluxX!(uCL,TempH,S)
+    #@views @. uCL = 1/2 * (uCLoc[1:end-1,:] * RhoC[1:end-1,:,iz] + uCLoc[2:end,:] * RhoC[2:end,:,iz])
+    @views @. FluxLowX = -1/2 *  ((abs(uCL) + uCL) * RhoTrC[1:end-1,:,iz] / RhoC[1:end-1,:,iz] +
+            (uCL - abs(uCL)) * RhoTrC[2:end,:,iz] / RhoC[2:end,:,iz])
+    @inbounds for j = 1 : OrdPoly + 1
+      @views @. FluxLowX[:,j] *= w[j]
+    end  
+    @inbounds for j = 1 : OrdPoly + 1
+      @views @. dxF = 1/2 * w * (J[:,j,1,iz] + J[:,j,2,iz])
+      dxF[1] = 2 * dxF[1]
+      dxF[end] = 2 * dxF[end]
+      @views @.  dxC = 1/2*(dxF[1:end-1] + dxF[2:end])
+      @views Error!(e,RhoTrC[:,j,iz],dxC)
+      @. e = min(e,1)
+      alphaX[1,j] = e[1]
+      @views @. alphaX[2:end-1,j] = max(e[1:end-1],e[2:end])
+      alphaX[end,j] = e[end]
+    end
+
+    @. FluxX = alphaX * FluxLowX + (1 - alphaX) * FluxHighX
+    @inbounds for j = 1 : OrdPoly + 1
+      FRhoTrC[1,j,iz] += FluxX[1,j] / (w[1] * w[j]) 
+      @views @. FRhoTrC[2:end-1,j,iz] += (FluxX[2:end,j] - FluxX[1:end-1,j]) / (w[2:end-1] * w[j]) 
+      FRhoTrC[end,j,iz] += -FluxX[end,j] / (w[end] * w[j])
+    end
+    @views @. vCLoc =  ((dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * uC[:,:,iz] +
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * vC[:,:,iz] + 
+      dXdxI[:,:,1,iz,2,3] * wF[:,:,iz] + dXdxI[:,:,2,iz,2,3] * wF[:,:,iz+1])
+    @views @. TempH = vCLoc * RhoTrC[:,:,iz]
+    FluxY!(FluxHighY,TempH,S)
+    @inbounds for i = 1 : OrdPoly + 1
+      @views @. FluxHighY[i,:] *= w[i]
+    end  
+
+    @views @. TempH = -vCLoc * RhoC[:,:,iz]   
+    FluxY!(vCL,TempH,S)
+    #@views @. vCL = 1/2 * (vCLoc[:,1:end-1] * RhoC[:,1:end-1,iz] + vCLoc[:,2:end] * RhoC[:,2:end,iz])
+    @views @. FluxLowY = -1/2 *  ((abs(vCL) + vCL) * RhoTrC[:,1:end-1,iz] / RhoC[:,1:end-1,iz] +
+      (vCL - abs(vCL)) * RhoTrC[:,2:end,iz] / RhoC[:,2:end,iz])
+    @inbounds for i = 1 : OrdPoly + 1
+      @views @. FluxLowY[i,:] *= w[i]
+    end  
+    @inbounds for i = 1 : OrdPoly + 1
+      @views @. dyF = 1/2 * w * (J[i,:,1,iz] + J[i,:,2,iz])
+      dyF[1] = 2 * dyF[1]
+      dyF[end] = 2 * dyF[end]
+      @views @. dyC = 1/2 * (dyF[1:end-1] + dyF[2:end])
+      @views Error!(e,RhoTrC[i,:,iz],dyC)
+      @. e = min(e,1)
+      alphaY[i,1] = e[1]
+      @views @. alphaY[i,2:end-1] = max(e[1:end-1],e[2:end])
+      alphaY[i,end] = e[end]
+    end
+
+    @. FluxY = alphaY * FluxLowY + (1 - alphaY) * FluxHighY
+    @inbounds for i = 1 : OrdPoly +1
+      FRhoTrC[i,1,iz] += FluxY[i,1] / (w[1] * w[i])
+      @views @. FRhoTrC[i,2:end-1,iz] += (FluxY[i,2:end] - FluxY[i,1:end-1]) / (w[2:end-1] * w[i])
+      FRhoTrC[i,end,iz] += -FluxY[i,end] / (w[end] * w[i])
+    end
   end    
 end
 

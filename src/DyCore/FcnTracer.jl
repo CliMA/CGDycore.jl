@@ -362,7 +362,7 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     @inbounds for iT=1:NumTr
-      @views DivConvRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+      @views DivConvRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
               Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     end
 
@@ -370,9 +370,9 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          F[iz,ind,RhoPos] += 0.5 * FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
+          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
           @inbounds for iT = 1:NumTr
-            F[iz,ind,iT+NumV] += 0.5 * FCG[iP,jP,iz,iT+NumV] / CG.MMass[iz,ind]
+            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.M[iz,ind]
           end
         end
       end
@@ -428,7 +428,7 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     @inbounds for iT = 1 : NumTr
-      @views DivConvRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+      @views DivConvRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     end
 
@@ -436,9 +436,9 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         @inbounds for iz=1:nz
-          F[iz,ind,RhoPos] += 0.5 * FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
+          F[iz,ind,RhoPos] += FCG[iP,jP,iz,RhoPos] / CG.M[iz,ind]
           @inbounds for iT = 1:NumTr
-            F[iz,ind,iT+NumV] += 0.5 * FCG[iP,jP,iz,iT+NumV] / CG.MMass[iz,ind]
+            F[iz,ind,iT+NumV] += FCG[iP,jP,iz,iT+NumV] / CG.M[iz,ind]
           end
         end
       end
