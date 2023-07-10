@@ -1166,6 +1166,7 @@ function DivRhoGrad!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
     @views @. F[:,:,iz] -= Koeff * Div / (J[:,:,1,iz] + J[:,:,2,iz])
   end    
 end    
+
 function DivGrad!(F,cC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
   Nz = size(F,3)
@@ -1199,6 +1200,59 @@ function DivGrad!(F,cC,Fe,dXdxI,J,ThreadCache,Koeff)
     DerivativeY!(Div,temp,DW)
 
     @views @. F[:,:,iz] -= Koeff * Div / (J[:,:,1,iz] + J[:,:,2,iz])
+  end    
+end    
+
+function DivGradHor!(F,cC,Fe,dXdxI,J,ThreadCache,Koeff)
+  @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
+  Nz = size(F,3)
+  D = Fe.DS
+  DW = Fe.DW
+
+  DxcC = TCacheC1[Threads.threadid()]
+  DycC = TCacheC2[Threads.threadid()]
+  GradDx = TCacheC3[Threads.threadid()]
+  GradDy = TCacheC4[Threads.threadid()]
+  tempC = TCacheC3[Threads.threadid()]
+  temp = TCacheC1[Threads.threadid()]
+  Div = TCacheC2[Threads.threadid()]
+
+  @inbounds for iz = 1 : Nz
+    @. DxcC = 0
+    @. DycC = 0
+    @views @. tempC = cC[:,:,iz] 
+    DerivativeX!(DxcC,tempC,D)
+    DerivativeY!(DycC,tempC,D)
+
+    @views @. GradDx = ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * DxcC + 
+      (dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * DycC) / 
+      (J[:,:,1,iz] + J[:,:,2,iz])
+    @views @. GradDy = ((dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * DxcC + 
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * DycC) /
+      (J[:,:,1,iz] + J[:,:,2,iz])
+
+    if iz > 1
+      @views @. GradDx += 0.25 * (dXdxI[:,:,2,iz-1,3,1] + dXdxI[:,:,1,iz,3,1]) * (cC[:,:,iz] - cC[:,:,iz-1]) /
+      (J[:,:,2,iz-1] + J[:,:,1,iz])
+      @views @. GradDy += 0.25 * (dXdxI[:,:,2,iz-1,3,2] + dXdxI[:,:,1,iz,3,2]) * (cC[:,:,iz] - cC[:,:,iz-1]) / 
+      (J[:,:,2,iz-1] + J[:,:,1,iz])
+    elseif iz < Nz
+      @views @. GradDx += 0.25 * (dXdxI[:,:,2,iz,3,1] + dXdxI[:,:,1,iz+1,3,1]) * (cC[:,:,iz+1] - cC[:,:,iz]) /
+      (J[:,:,2,iz] + J[:,:,1,iz+1])
+      @views @. GradDy += 0.25 * (dXdxI[:,:,2,iz,3,2] + dXdxI[:,:,1,iz+1,3,2]) * (cC[:,:,iz+1] - cC[:,:,iz]) /
+      (J[:,:,2,iz] + J[:,:,1,iz+1])
+    end
+        
+    
+    @. Div = 0
+    @views @. temp = (dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * GradDx + 
+      (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * GradDy
+    DerivativeX!(Div,temp,DW)
+    @views @. temp = (dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * GradDx + 
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * GradDy
+    DerivativeY!(Div,temp,DW)
+
+    @views @. F[:,:,iz] -= Koeff * Div
   end    
 end    
 
@@ -1275,6 +1329,59 @@ function DivGrad!(F,cC,Fe,dXdxI,J,ThreadCache)
     DerivativeY!(Div,temp,DW)
 
     @views @. F[:,:,iz] = Div / (J[:,:,1,iz] + J[:,:,2,iz])
+  end    
+end    
+
+function DivGradHor!(F,cC,Fe,dXdxI,J,ThreadCache)
+  @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
+  Nz = size(F,3)
+  D = Fe.DS
+  DW = Fe.DW
+
+  DxcC = TCacheC1[Threads.threadid()]
+  DycC = TCacheC2[Threads.threadid()]
+  GradDx = TCacheC3[Threads.threadid()]
+  GradDy = TCacheC4[Threads.threadid()]
+  tempC = TCacheC3[Threads.threadid()]
+  temp = TCacheC1[Threads.threadid()]
+  Div = TCacheC2[Threads.threadid()]
+
+  @inbounds for iz = 1 : Nz
+    @. DxcC = 0
+    @. DycC = 0
+    @views @. tempC = cC[:,:,iz] 
+    DerivativeX!(DxcC,tempC,D)
+    DerivativeY!(DycC,tempC,D)
+
+    @views @. GradDx = ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * DxcC + 
+      (dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * DycC) / 
+      (J[:,:,1,iz] + J[:,:,2,iz])
+    @views @. GradDy = ((dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * DxcC + 
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * DycC) /
+      (J[:,:,1,iz] + J[:,:,2,iz])
+
+    if iz > 1
+      @views @. GradDx += 0.25 * (dXdxI[:,:,2,iz-1,3,1] + dXdxI[:,:,1,iz,3,1]) * (cC[:,:,iz] - cC[:,:,iz-1]) /
+      (J[:,:,2,iz-1] + J[:,:,1,iz])
+      @views @. GradDy += 0.25 * (dXdxI[:,:,2,iz-1,3,2] + dXdxI[:,:,1,iz,3,2]) * (cC[:,:,iz] - cC[:,:,iz-1]) / 
+      (J[:,:,2,iz-1] + J[:,:,1,iz])
+    elseif iz < Nz
+      @views @. GradDx += 0.25 * (dXdxI[:,:,2,iz,3,1] + dXdxI[:,:,1,iz+1,3,1]) * (cC[:,:,iz+1] - cC[:,:,iz]) /
+      (J[:,:,2,iz] + J[:,:,1,iz+1])
+      @views @. GradDy += 0.25 * (dXdxI[:,:,2,iz,3,2] + dXdxI[:,:,1,iz+1,3,2]) * (cC[:,:,iz+1] - cC[:,:,iz]) /
+      (J[:,:,2,iz] + J[:,:,1,iz+1])
+    end
+        
+    
+    @. Div = 0
+    @views @. temp = (dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * GradDx + 
+      (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * GradDy
+    DerivativeX!(Div,temp,DW)
+    @views @. temp = (dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * GradDx + 
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * GradDy
+    DerivativeY!(Div,temp,DW)
+
+    @views @. F[:,:,iz] = Div 
   end    
 end    
 

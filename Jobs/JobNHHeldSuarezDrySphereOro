@@ -8,7 +8,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Source=true \
   --Coriolis=true \
   --Upwind=true \
-  --HorLimit=true \
+  --HorLimit=false \
   --ModelType="VectorInvariant" \
   --Curl=true \
   --SurfaceFluxMom=false \
@@ -34,5 +34,5 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --HyperVisc=true \
   --HyperDCurl=1.e16 \
   --HyperDGrad=1.e16 \
-  --HyperDDiv=0.e16
+  --HyperDDiv=1.e16
 
