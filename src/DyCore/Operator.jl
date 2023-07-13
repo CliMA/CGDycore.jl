@@ -1204,11 +1204,11 @@ function DivRhoGradHor!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
     end
 
     @. Div = 0
-    @views @. temp = RhoC[:,:,iz] * (dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * GradDx + 
-      (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * GradDy 
+    @views @. temp = RhoC[:,:,iz] * ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * GradDx + 
+      (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * GradDy) 
     DerivativeX!(Div,temp,DW)
-    @views @. temp = RhoC[:,:,iz] * (dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * GradDx + 
-      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * GradDy
+    @views @. temp = RhoC[:,:,iz] * ((dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * GradDx + 
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * GradDy)
     DerivativeY!(Div,temp,DW)
 
     @views @. F[:,:,iz] -= Koeff * Div 
