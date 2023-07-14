@@ -1580,7 +1580,7 @@ function GradDiv!(FuC,FvC,uC,vC,Fe,dXdxI,J,ThreadCache)
       (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * vC[:,:,iz]
     DerivativeY!(Div,temp,D)
 
-    @. Div /= (J[:,:,1,iz] + J[:,:,2,iz])
+    @views @. Div /= (J[:,:,1,iz] + J[:,:,2,iz])
 
     @. DxDiv = 0
     @. DyDiv = 0
@@ -1614,7 +1614,7 @@ function GradDiv!(FuC,FvC,RhouC,RhovC,RhoC,Fe,dXdxI,J,ThreadCache)
       (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * RhovC[:,:,iz]) / RhoC[:,:,iz]
     DerivativeY!(Div,temp,D)
 
-    @. Div /= (J[:,:,1,iz] + J[:,:,2,iz]) 
+    @views @. Div /= (J[:,:,1,iz] + J[:,:,2,iz]) 
 
     @. DxDiv = 0
     @. DyDiv = 0
@@ -1648,7 +1648,7 @@ function GradDiv!(FuC,FvC,uC,vC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
       (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * vC[:,:,iz]
     DerivativeY!(Div,temp,D)
 
-    @. Div /= (J[:,:,1,iz] + J[:,:,2,iz])
+    @views @. Div /= (J[:,:,1,iz] + J[:,:,2,iz])
 
     @. DxDiv = 0
     @. DyDiv = 0
@@ -1682,7 +1682,7 @@ function RotCurl!(FuC,FvC,uC,vC,Fe,dXdxI,J,ThreadCache)
       (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * uC[:,:,iz]
     DerivativeY!(W,temp,D)
     
-    @. W /= (J[:,:,1,iz] + J[:,:,2,iz])
+    @views @. W /= (J[:,:,1,iz] + J[:,:,2,iz])
 
     @. DxW = 0
     @. DyW = 0
@@ -1715,7 +1715,7 @@ function RotCurl!(FuC,FvC,RhouC,RhovC,RhoC,Fe,dXdxI,J,ThreadCache)
       (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * RhouC[:,:,iz]) / RhoC[:,:,iz]
     DerivativeY!(W,temp,D)
 
-    @. W /= (J[:,:,1,iz] + J[:,:,2,iz])
+    @. @views W /= (J[:,:,1,iz] + J[:,:,2,iz])
 
     @. DxW = 0
     @. DyW = 0
@@ -1748,7 +1748,7 @@ function RotCurl!(FuC,FvC,uC,vC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
       (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * uC[:,:,iz]
     DerivativeY!(W,temp,D)
 
-    @. W /= (J[:,:,1,iz] + J[:,:,2,iz])
+    @. @views W /= (J[:,:,1,iz] + J[:,:,2,iz])
 
     @. DxW = 0
     @. DyW = 0

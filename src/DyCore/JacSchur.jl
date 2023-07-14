@@ -114,9 +114,9 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   abswConC = J.CacheCol1
   D = J.CacheCol2
   @views DF = J.CacheCol2[1:nz-1]
-  RhoF = J.CacheCol2[1:nz-1]
-  RhoThF = J.CacheCol2[1:nz-1]
-  RhoTrF = J.CacheCol2[1:nz-1]
+  @views RhoF = J.CacheCol2[1:nz-1]
+  @views RhoThF = J.CacheCol2[1:nz-1]
+  @views RhoTrF = J.CacheCol2[1:nz-1]
 
   @inbounds for iC=1:nCol
     @views Pres = Global.Cache.AuxG[:,iC,1]

@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project --check-bounds=yes Examples/testNHSphere.jl \
+mpirun -n 1 julia --project --check-bounds=yes Examples/testNHSphere.jl \
   --Problem="HeldSuarezDrySphere" \
   --NumV=5 \
   --NumTr=0 \
@@ -27,7 +27,7 @@ mpirun -n 6 julia --project --check-bounds=yes Examples/testNHSphere.jl \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=45 \
-  --nPanel=16 \
+  --nPanel=6 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
