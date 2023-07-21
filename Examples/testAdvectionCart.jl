@@ -182,7 +182,7 @@ end
   Global.Output.PrintDays = PrintDays
   Global.Output.PrintSeconds = PrintSeconds
   Global.Output.PrintTime = PrintTime
-  Global.Output.PrintStartDays = 0
+  Global.Output.PrintStartTime = 0
   Global.Output.OrdPrint=CG.OrdPoly
   Global.vtkCache = CGDycore.vtkStruct(Global.Output.OrdPrint,CGDycore.TransCartX,CG,Global)
 
@@ -198,4 +198,6 @@ end
   Global.TimeStepper.SimSeconds = SimSeconds
   Global.TimeStepper.SimTime = SimTime
 
+  nT = NumV + NumTr
+  CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
   CGDycore.TimeStepperAdvection!(U,CGDycore.TransCartX,CG,Global,Param)

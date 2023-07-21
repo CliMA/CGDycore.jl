@@ -1,10 +1,10 @@
-mpirun -n 2 julia --project --check-bounds=yes Examples/testAdvectionCart.jl \
+mpirun -n 6 julia --project --check-bounds=yes Examples/testAdvectionCart.jl \
   --Problem="AdvectionCubeCart" \
   --NumV=1 \
   --NumTr=1 \
   --ProfTr="AdvectionCubeCart" \
   --ProfVel="Const" \
-  --HorLimit=true \
+  --HorLimit=false \
   --vtkFileName="AdvectionCubeCart" \
   --SimTime=1000.0 \
   --PrintTime=10.0 \
@@ -16,16 +16,16 @@ mpirun -n 2 julia --project --check-bounds=yes Examples/testAdvectionCart.jl \
   --H=1.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nx=2 \
-  --ny=2 \
-  --OrdPoly=1 \
+  --nx=40 \
+  --ny=40 \
+  --OrdPoly=4 \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --HyperVisc=true \
-  --HyperDCurl=0.e5 \
-  --HyperDGrad=0.e5 \
-  --HyperDDiv=0.e5
+  --HyperDCurl=1.e4 \
+  --HyperDGrad=1.e4 \
+  --HyperDDiv=1.e4
 
 
 

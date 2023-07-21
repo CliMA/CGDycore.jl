@@ -1342,6 +1342,40 @@ function DivRhoGrad!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
   end    
 end    
 
+function DivRhoGradE!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
+  @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
+  Nz = size(F,3)
+  N = size(F,1)
+  D = Fe.DS
+  DW = Fe.DW
+
+  @. F = 0
+  @inbounds for iz = 1 : Nz
+    @inbounds for j = 1 : N
+      @inbounds for i = 1 : N  
+        Dxc = 0
+        Dyc = 0
+        @inbounds for k = 1 : N  
+          Dxc += D[i,k] * (cC[k,j,iz] / RhoC[k,j,iz])
+          Dyc += D[j,k] * (cC[i,k,iz] / RhoC[i,k,iz])
+        end
+        GradDx = ((dXdxI[i,j,1,iz,1,1] + dXdxI[i,j,2,iz,1,1]) * Dxc + 
+          (dXdxI[i,j,1,iz,2,1] + dXdxI[i,j,2,iz,2,1]) * Dyc) / (J[i,j,1,iz] + J[i,j,2,iz])
+        GradDy = ((dXdxI[i,j,1,iz,1,2] + dXdxI[i,j,2,iz,1,2]) * Dxc + 
+          (dXdxI[i,j,1,iz,2,2] + dXdxI[i,j,2,iz,2,2]) * Dyc) / (J[i,j,1,iz] + J[i,j,2,iz])
+        tempx = (dXdxI[i,j,1,iz,1,1] + dXdxI[i,j,2,iz,1,1]) * GradDx + 
+          (dXdxI[i,j,1,iz,1,2] + dXdxI[i,j,2,iz,1,2]) * GradDy
+        tempy = (dXdxI[i,j,1,iz,2,1] + dXdxI[i,j,2,iz,2,1]) * GradDx + 
+          (dXdxI[i,j,1,iz,2,2] + dXdxI[i,j,2,iz,2,2]) * GradDy
+        for k = 1 : N
+          F[k,j,iz] += DW[k,i] * tempx
+          F[i,k,iz] += DW[k,j] * tempy
+        end  
+      end
+    end  
+  end    
+end    
+
 function DivRhoGradHor!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
   Nz = size(F,3)

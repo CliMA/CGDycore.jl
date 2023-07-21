@@ -55,13 +55,13 @@ function FcnTracer!(F,U,time,CG,Global,Param)
           end
         end
       end
-      @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
+      @views DivRhoGradE!(DivCG,ThCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTr[iz,ind,iT] += 0.5 * DivCG[iP,jP,iz] / CG.M[iz,ind]
+            DivTr[iz,ind,iT] += DivCG[iP,jP,iz] / CG.M[iz,ind]
           end
         end
       end
@@ -88,13 +88,13 @@ function FcnTracer!(F,U,time,CG,Global,Param)
           end
         end
       end
-      @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
+      @views DivRhoGradE!(DivCG,ThCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
           @inbounds for iz=1:nz
-            DivTr[iz,ind,iT] += 0.5 * DivCG[iP,jP,iz] / CG.M[iz,ind]
+            DivTr[iz,ind,iT] += DivCG[iP,jP,iz] / CG.M[iz,ind]
           end
         end
       end
@@ -170,8 +170,8 @@ function FcnTracer!(F,U,time,CG,Global,Param)
     if HorLimit
       @inbounds for iz=1:nz
         @inbounds for iT = 1:NumTr
-          @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:]])
-          @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:]])
+          @views qMinS=minimum(qMin[iz,CG.Stencil[iF,:],iT])
+          @views qMaxS=maximum(qMax[iz,CG.Stencil[iF,:],iT])
           @views HorLimiter!(FCG[:,:,iz,iT+NumV],TrCG[:,:,iz,iT],RhoCG,RhoCG,dtau,
             Global.Metric.J[:,:,:,iz,iF],CG.w,qMinS,qMaxS,Global.ThreadCache)
         end
