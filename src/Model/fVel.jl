@@ -212,6 +212,10 @@ function fVel(x,time::Float64,Global,Param)
     elseif ProfVel == "linear"
       uS=x[3]
       vS=0
+    elseif ProfVel == "RotationalCart"
+      uS = 1.0
+      uS = -(x[3] - Param.zC) / 1000.0  
+      vS = 0
     else
       uS=0
       vS=0

@@ -20,6 +20,9 @@ function fVelW(x,time,Global,Param)
     w = Param.uMax * sinpi(x[3] / Param.H) * cospi(time / Param.EndTime)
   elseif str == "heldsuarezcart"
     w=sin(pi*x[3]/Param.H)
+  elseif str == "rotationalcart"
+    w = sinpi(x[3] / Param.H) * cospi(time / Param.EndTime)
+#   w = (x[1] - Param.xC) / 1000.0
   else
     w=0;
   end

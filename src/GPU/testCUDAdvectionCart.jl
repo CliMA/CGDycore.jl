@@ -175,6 +175,8 @@ end
 
 
   U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
+  dU = CuArray(U)
+  copyto!(dU,U)
 
 # Output
   Global.Output.vtkFileName=string(Problem*"_")

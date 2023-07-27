@@ -55,7 +55,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
           end
         end
       end
-      @views DivRhoGradE!(DivCG,ThCG,RhoCG,CG,
+      @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
@@ -88,7 +88,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
           end
         end
       end
-      @views DivRhoGradE!(DivCG,ThCG,RhoCG,CG,
+      @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
@@ -119,6 +119,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @views Curl!(v1CG,v2CG,PsiCG,CG,Global.Metric.dXdxI[:,:,:,:,:,:,iF],
         Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     else
+      @. wCG = 0.0  
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
@@ -126,8 +127,12 @@ function FcnTracer!(F,U,time,CG,Global,Param)
             @views (uu,vv) = fVel(x,time,Global,Param)
             v1CG[iP,jP,iz] = uu
             v2CG[iP,jP,iz] = vv
-            wCG[iP,jP,iz+1] = 0.0
           end
+          @inbounds for iz=1:nz-1
+            x = SVector{3}(0.5 * (X[iP,jP,2,:,iz,iF] .+ X[iP,jP,1,:,iz+1,iF]))
+            ww = fVelW(x,time,Global,Param)
+            wCG[iP,jP,iz+1] = ww
+          end  
         end  
       end  
     end
@@ -161,8 +166,14 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
-      @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))  
+      if Global.Model.Upwind
+        @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
+      else
+        @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+      end
     end
 
 
@@ -209,6 +220,7 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @views Curl!(v1CG,v2CG,PsiCG,CG,Global.Metric.dXdxI[:,:,:,:,:,:,iF],
         Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
     else
+      @. wCG = 0.0  
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           @inbounds for iz=1:nz
@@ -216,8 +228,12 @@ function FcnTracer!(F,U,time,CG,Global,Param)
             @views (uu,vv) = fVel(x,time,Global,Param)
             v1CG[iP,jP,iz] = uu
             v2CG[iP,jP,iz] = vv
-            wCG[iP,jP,iz+1] = 0.0 
           end 
+          @inbounds for iz=1:nz-1
+            x = SVector{3}(0.5 * (X[iP,jP,2,:,iz,iF] .+ X[iP,jP,1,:,iz+1,iF]))
+            ww = fVelW(x,time,Global,Param)
+            wCG[iP,jP,iz+1] = ww
+          end
         end  
       end  
     end 
@@ -251,8 +267,14 @@ function FcnTracer!(F,U,time,CG,Global,Param)
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
         Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
-      @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))  
+      if Global.Model.Upwind
+        @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
+      else
+        @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
+          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+      end
     end
 
     if HorLimit
@@ -345,6 +367,17 @@ function FcnTracerConv!(F,U,time::Float64,CG,Global,Param)
         end
       end
       @. wCG = 0.0
+      @inbounds for jP=1:OP
+        @inbounds for iP=1:OP
+          @inbounds for iz=1:nz-1
+            x[1] = 0.5 * (X[iP,jP,2,1,iz,iF] + X[iP,jP,1,1,iz+1,iF])
+            x[2] = 0.5 * (X[iP,jP,2,2,iz,iF] + X[iP,jP,1,2,iz+1,iF])
+            x[3] = 0.5 * (X[iP,jP,2,3,iz,iF] + X[iP,jP,1,3,iz+1,iF])
+            ww = @gc_preserve fVelw(x,time,Global,Param)
+            wCG[iP,jP,iz+1] = uu
+          end
+        end
+      end
     end
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP

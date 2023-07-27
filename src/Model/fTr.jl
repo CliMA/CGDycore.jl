@@ -93,6 +93,12 @@ function fTr(x,time,Global,Param,Profile)
     else
       Tr = 0
     end
+  elseif str == "rotationalcart"
+    if x[1] >= Param.x1 && x[1] <= Param.x2 && x[3] >= Param.z1 && x[3] <= Param.z2
+      Tr = 1
+    else
+      Tr = 0
+    end
   else
     Tr  =  0.0  
   end

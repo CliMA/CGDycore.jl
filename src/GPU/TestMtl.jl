@@ -1,8 +1,7 @@
 using CGDycore
 using MPI
 using Base
-using CUDA
-using BenchmarkTools
+using Metal
 
 function DivRhoTrColumnE1!(FRhoTrC,uC,vC,w,RhoTrC,D,dXdxI)
 
@@ -56,21 +55,25 @@ function DivRhoTrColumnE2!(FRhoTrC,uC,vC,w,RhoTrC,D,dXdxI)
   zThreads = 30
   threads = (N, N, zThreads)
   zBlocks = cld(N*N*Nz*NF,N*N*zThreads)
-  blocks  = (1, 1, zBlocks)
-  @. FRhoTrC = 0
-  @show blocks,threads
-  @cuda blocks=blocks threads=threads DivRhoTrColumnKernel!(FRhoTrC,uC,vC,w,RhoTrC,
-    D,dXdxI,N,Nz,NF)
-  CUDA.@time @cuda blocks=blocks threads=threads DivRhoTrColumnKernel!(FRhoTrC,uC,vC,
-    w,RhoTrC,D,dXdxI,N,Nz,NF)
+  grid  = (1, 1, zBlocks)
+  fill(FRhoTrC,0)
+  @show grid,threads
+# @cuda grid=grid threads=threads DivRhoTrColumnKernel!(FRhoTrC,uC,vC,w,RhoTrC,
+#   D,dXdxI,N,Nz,NF)
+# Metal.@time @cuda grid=grid threads=threads DivRhoTrColumnKernel!(FRhoTrC,uC,vC,
+#   w,RhoTrC,D,dXdxI,N,Nz,NF)
 
 end
 
 function DivRhoTrColumnKernel!(FRhoTrC,uC,vC,w,RhoTrC,D,dXdxI,N,Nz,NF)
 
-  i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-  j = (blockIdx().y-1) * blockDim().y + threadIdx().y
-  l = (blockIdx().z-1) * blockDim().z + threadIdx().z
+#index = thread_position_in_grid_1d()
+#  stride = threads_per_threadgroup_1d()
+
+  i = (thread_position_in_grid_1d() - 1) * threads_per_threadgroup_1d() + thread_position_in_threadgroup_1d
+  j = (thread_position_in_grid_2d() - 1) * threads_per_threadgroup_1d() + thread_position_in_threadgroup_2d
+  l = (thread_position_in_grid_3d() - 1) * threads_per_threadgroup_3d() + thread_position_in_threadgroup_3d
+
   iz = mod(l,Nz)
   if iz == 0
     iz = Nz
@@ -82,14 +85,19 @@ function DivRhoTrColumnKernel!(FRhoTrC,uC,vC,w,RhoTrC,D,dXdxI,N,Nz,NF)
       dXdxI[i,j,1,iz,iF,3,2] * vC[i,j,iz,iF] + dXdxI[i,j,1,iz,iF,3,3] * w[i,j,iz,iF])
     temp2 = -RhoTrC[i,j,iz,iF] * (dXdxI[i,j,2,iz,iF,3,1] * uC[i,j,iz,iF] +
       dXdxI[i,j,2,iz,iF,3,2] * vC[i,j,iz,iF] + dXdxI[i,j,2,iz,iF,3,3] * w[i,j,iz+1,iF])
-    CUDA.@atomic FRhoTrC[i,j,iz,iF] += (temp2 - temp1)
+#   Metal.@atomic FRhoTrC[i,j,iz,iF] += (temp2 - temp1)
+    FRhoTrC[i,j,iz,iF] += (temp2 - temp1)
     if iz > 1
-      CUDA.@atomic FRhoTrC[i,j,iz-1,iF] -= 1/2 * temp1
-      CUDA.@atomic FRhoTrC[i,j,iz,iF] += 1/2 * temp2
+#     Metal.@atomic FRhoTrC[i,j,iz-1,iF] -= 1/2 * temp1
+#     Metal.@atomic FRhoTrC[i,j,iz,iF] += 1/2 * temp2
+      FRhoTrC[i,j,iz-1,iF] -= 1/2 * temp1
+      FRhoTrC[i,j,iz,iF] += 1/2 * temp2
     end
     if iz < Nz
-      CUDA.@atomic FRhoTrC[i,j,iz,iF] -= 1/2 * temp2
-      CUDA.@atomic FRhoTrC[i,j,iz+1,iF] += 1/2 * temp1
+#     Metal.@atomic FRhoTrC[i,j,iz,iF] -= 1/2 * temp2
+#     Metal.@atomic FRhoTrC[i,j,iz+1,iF] += 1/2 * temp1
+      FRhoTrC[i,j,iz,iF] -= 1/2 * temp2
+      FRhoTrC[i,j,iz+1,iF] += 1/2 * temp1
     end
     tempx = -RhoTrC[i,j,iz,iF] * ((dXdxI[i,j,1,iz,iF,1,1] + dXdxI[i,j,2,iz,iF,1,1]) * uC[i,j,iz,iF] +
       (dXdxI[i,j,1,iz,iF,1,2] + dXdxI[i,j,2,iz,iF,1,2]) * vC[i,j,iz,iF] +
@@ -98,8 +106,10 @@ function DivRhoTrColumnKernel!(FRhoTrC,uC,vC,w,RhoTrC,D,dXdxI,N,Nz,NF)
       (dXdxI[i,j,1,iz,iF,2,2] + dXdxI[i,j,2,iz,iF,2,2]) * vC[i,j,iz,iF] +
       dXdxI[i,j,1,iz,iF,2,3] * w[i,j,iz,iF] + dXdxI[i,j,2,iz,iF,2,3] * w[i,j,iz+1,iF])
     for k = 1 : N
-      CUDA.@atomic FRhoTrC[k,j,iz,iF] += D[k,i] * tempx
-      CUDA.@atomic FRhoTrC[i,k,iz,iF] += D[k,j] * tempy
+#     Metal.@atomic FRhoTrC[k,j,iz,iF] += D[k,i] * tempx
+#     Metal.@atomic FRhoTrC[i,k,iz,iF] += D[k,j] * tempy
+      FRhoTrC[k,j,iz,iF] += D[k,i] * tempx
+      FRhoTrC[i,k,iz,iF] += D[k,j] * tempy
     end
   end
   return nothing
@@ -144,18 +154,18 @@ function DivRhoGradE2!(F,cC,RhoC,DD,DW,dXdxI,J)
   zThreads = 40
   threads = (N, N, zThreads)
   zBlocks = cld(N*N*Nz*NF,N*N*zThreads) 
-  blocks  = (1, 1, zBlocks)
-  @. F = 0
-  @show blocks,threads
-  @cuda blocks=blocks threads=threads DivRhoGradKernel!(F,cC,RhoC,DD,DW,dXdxI,J,N,Nz,NF)
-  CUDA.@time @cuda blocks=blocks threads=threads DivRhoGradKernel!(F,cC,RhoC,DD,DW,dXdxI,J,N,Nz,NF)
+  grid  = (1, 1, zBlocks)
+  fill(F,0)
+  @show grid,threads
+  @metal threads=threads grid=grid DivRhoGradKernel!(F,cC,RhoC,DD,DW,dXdxI,J,N,Nz,NF)
+# Metal.@time @cuda grid=grid threads=threads DivRhoGradKernel!(F,cC,RhoC,DD,DW,dXdxI,J,N,Nz,NF)
 end
 
 function DivRhoGradKernel!(F,cC,RhoC,D,DW,dXdxI,J,N,Nz,NF)
 
-  i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-  j = (blockIdx().y-1) * blockDim().y + threadIdx().y
-  l = (blockIdx().z-1) * blockDim().z + threadIdx().z
+  i = (thread_position_in_grid_1d() - 1) * threads_per_threadgroup_1d() + thread_position_in_threadgroup_1d
+  j = (thread_position_in_grid_2d() - 1) * threads_per_threadgroup_1d() + thread_position_in_threadgroup_2d
+  l = (thread_position_in_grid_3d() - 1) * threads_per_threadgroup_3d() + thread_position_in_threadgroup_3d
   iz = mod(l,Nz)
   if iz == 0
     iz = Nz
@@ -178,8 +188,10 @@ function DivRhoGradKernel!(F,cC,RhoC,D,DW,dXdxI,J,N,Nz,NF)
     tempy = (dXdxI[i,j,1,iz,iF,2,1] + dXdxI[i,j,2,iz,iF,2,1]) * GradDx +
       (dXdxI[i,j,1,iz,iF,2,2] + dXdxI[i,j,2,iz,iF,2,2]) * GradDy
     for k = 1 : N
-      CUDA.@atomic F[k,j,iz,iF] = F[k,j,iz,iF] + DW[k,i] * tempx
-      CUDA.@atomic F[i,k,iz,iF] = F[i,k,iz,iF] + DW[k,j] * tempy
+#     Metal.@atomic F[k,j,iz,iF] = F[k,j,iz,iF] + DW[k,i] * tempx
+#     Metal.@atomic F[i,k,iz,iF] = F[i,k,iz,iF] + DW[k,j] * tempy
+      F[k,j,iz,iF] = F[k,j,iz,iF] + DW[k,i] * tempx
+      F[i,k,iz,iF] = F[i,k,iz,iF] + DW[k,j] * tempy
     end
   end
   return nothing
@@ -204,25 +216,25 @@ RhoC = ones(Float32,OrdPoly+1,OrdPoly+1,Nz,NF)
 dXdxI = rand(Float32,OrdPoly+1,OrdPoly+1,2,Nz,NF,3,3)
 J = ones(Float32,OrdPoly+1,OrdPoly+1,2,Nz,NF)
 
-dDW = CuArray(DW32)
+dDW = MtlArray(DW32)
 copyto!(dDW,DW32)
-dDS = CuArray(DS32)
+dDS = MtlArray(DS32)
 copyto!(dDS,DS32)
-dF = CuArray(F)
+dF = MtlArray(F)
 copyto!(dF,F)
-dcC = CuArray(cC)
+dcC = MtlArray(cC)
 copyto!(dcC,cC)
-duC = CuArray(uC)
+duC = MtlArray(uC)
 copyto!(duC,uC)
-dvC = CuArray(vC)
+dvC = MtlArray(vC)
 copyto!(dvC,vC)
-dw = CuArray(w)
+dw = MtlArray(w)
 copyto!(dw,w)
-dRhoC = CuArray(RhoC)
+dRhoC = MtlArray(RhoC)
 copyto!(dRhoC,RhoC)
-ddXdxI = CuArray(dXdxI)
+ddXdxI = MtlArray(dXdxI)
 copyto!(ddXdxI,dXdxI)
-dJ = CuArray(J)
+dJ = MtlArray(J)
 copyto!(dJ,J)
 
 

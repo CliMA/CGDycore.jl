@@ -239,6 +239,21 @@ Base.@kwdef struct ParamAdvectionCubeCart
   y2 = 601.0
 end  
 
+Base.@kwdef struct ParamAdvectionCubeRotCart
+  Example = "AdvectionCubeRotCart"
+  StreamFun = false
+  uMax = 1.0
+  vMax = 1.0
+  xC = 500.0
+  zC = 500.0
+  x1 = 299.0
+  x2 = 501.0
+  z1 = 299.0
+  z2 = 501.0
+  EndTime = 1000.0
+  H = 1000.0
+end
+
 Base.@kwdef struct ParamAdvectionCart
   Example = "AdvectionCart"
   xC = 0.0
@@ -285,6 +300,9 @@ function Parameters(Problem::String)
   elseif Problem == "AdvectionCubeCart"
     @show Problem
     Param = ParamAdvectionCubeCart()
+  elseif Problem == "AdvectionCubeRotCart"
+    @show Problem
+    Param = ParamAdvectionCubeRotCart()
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()
