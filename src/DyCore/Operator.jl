@@ -715,15 +715,10 @@ function DivRhoColumn!(FRhoC,RhouC,RhovC,Rhow,Fe,dXdxI,ThreadCache,::Val{:Vector
   end 
 end 
 
-function DivRhoTrColumnE!(FRhoTrC,uC,vC,w,RhoTrC,Fe,dXdxI)
+function DivRhoTrColumnE!(FRhoTrC,uC,vC,w,RhoTrC,D,dXdxI)
 
   N = size(uC,1)
   Nz = size(uC,3)
-  OrdPoly = Fe.OrdPoly
-  D = Fe.DS
-
-  tempZ = TCacheCol1[Threads.threadid()]
-  FluxZ = TCacheC2[Threads.threadid()]
 
   @inbounds for iz = 1 : Nz
     @inbounds for j = 1 : N
@@ -761,9 +756,9 @@ function DivRhoTrColumnE!(FRhoTrC,uC,vC,w,RhoTrC,Fe,dXdxI)
     end
   end
 end
+
 function DivRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,Fe,dXdxI,ThreadCache,::Val{:VectorInvariant})
   @unpack TCacheC1, TCacheC2, TCacheCol1 = ThreadCache
-  N = size(uC,1)
   Nz = size(uC,3)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
@@ -779,26 +774,12 @@ function DivRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,Fe,dXdxI,ThreadCache,::Val{:Vect
       dXdxI[:,:,2,iz,3,2] * vC[:,:,iz] + dXdxI[:,:,2,iz,3,3] * w[:,:,iz+1])
   end    
   @inbounds for iz = 1 : Nz  
-    @inbounds for j = 1 : N
-      @inbounds for i = 1 : N
-        tempx = -RhoTrC[i,j,iz] * ((dXdxI[i,j,1,iz,1,1] + dXdxI[i,j,2,iz,1,1]) * uC[i,j,iz] +
-          (dXdxI[i,j,1,iz,1,2] + dXdxI[i,j,2,iz,1,2]) * vC[i,j,iz] +
-          dXdxI[i,j,1,iz,1,3] * w[i,j,iz] + dXdxI[i,j,2,iz,1,3] * w[i,j,iz+1])
-        tempy = -RhoTrC[i,j,iz] * ((dXdxI[i,j,1,iz,2,1] + dXdxI[i,j,2,iz,2,1]) * uC[i,j,iz] +
-          (dXdxI[i,j,1,iz,2,2] + dXdxI[i,j,2,iz,2,2]) * vC[i,j,iz] +
-          dXdxI[i,j,1,iz,2,3] * w[i,j,iz] + dXdxI[i,j,2,iz,2,3] * w[i,j,iz+1])
-        for k = 1 : N
-          FRhoTrC[k,j,iz] += D[k,i] * tempx
-          FRhoTrC[i,k,iz] += D[k,j] * tempy
-        end
-      end
-    end
-#   @views @. temp = -RhoTrC[:,:,iz] * ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * uC[:,:,iz] +
-#     (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * vC[:,:,iz])
-#   @views DerivativeX!(FRhoTrC[:,:,iz],temp,D)
-#   @views @. temp = -RhoTrC[:,:,iz] * ((dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * uC[:,:,iz] +
-#     (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * vC[:,:,iz])  
-#   @views DerivativeY!(FRhoTrC[:,:,iz],temp,D)
+    @views @. temp = -RhoTrC[:,:,iz] * ((dXdxI[:,:,1,iz,1,1] + dXdxI[:,:,2,iz,1,1]) * uC[:,:,iz] +
+      (dXdxI[:,:,1,iz,1,2] + dXdxI[:,:,2,iz,1,2]) * vC[:,:,iz])
+    @views DerivativeX!(FRhoTrC[:,:,iz],temp,D)
+    @views @. temp = -RhoTrC[:,:,iz] * ((dXdxI[:,:,1,iz,2,1] + dXdxI[:,:,2,iz,2,1]) * uC[:,:,iz] +
+      (dXdxI[:,:,1,iz,2,2] + dXdxI[:,:,2,iz,2,2]) * vC[:,:,iz])  
+    @views DerivativeY!(FRhoTrC[:,:,iz],temp,D)
 
     @views @. FRhoTrC[:,:,iz] += (tempZ[:,:,2,iz] - tempZ[:,:,1,iz])
   end    
@@ -1403,19 +1384,19 @@ function DivRhoGrad!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
   end    
 end    
 
-function DivRhoGradE!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
-  @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
+function DivRhoGradE!(F,cC,RhoC,D,DW,dXdxI,J)
   Nz = size(F,3)
   N = size(F,1)
-  D = Fe.DS
-  DW = Fe.DW
+# D = Fe.DS
+# DW = Fe.DW
+  FT = eltype(F)
 
-  @. F = 0
+  @. F = FT(0)
   @inbounds for iz = 1 : Nz
     @inbounds for j = 1 : N
       @inbounds for i = 1 : N  
-        Dxc = 0
-        Dyc = 0
+        Dxc = FT(0)
+        Dyc = FT(0)
         @inbounds for k = 1 : N  
           Dxc += D[i,k] * (cC[k,j,iz] / RhoC[k,j,iz])
           Dyc += D[j,k] * (cC[i,k,iz] / RhoC[i,k,iz])
@@ -2770,3 +2751,4 @@ function ax!(a::AbstractArray{T,3}, x::AbstractArray{T,3}, y::AbstractArray{T,3}
   end
   return y
 end
+

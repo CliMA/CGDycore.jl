@@ -146,6 +146,15 @@ function DivRhoGradE1!(F,cC,RhoC,D,DW,dXdxI,J)
   end
 end
 
+function memset_kernel(array, value)
+  i = thread_position_in_grid_1d()
+  if i <= length(array)
+    @inbounds array[i] = value
+  end
+  return
+end
+
+
 function DivRhoGradE2!(F,cC,RhoC,DD,DW,dXdxI,J)
 
   Nz = size(F,3)
@@ -157,15 +166,21 @@ function DivRhoGradE2!(F,cC,RhoC,DD,DW,dXdxI,J)
   grid  = (1, 1, zBlocks)
   fill(F,0)
   @show grid,threads
-  @metal threads=threads grid=grid DivRhoGradKernel!(F,cC,RhoC,DD,DW,dXdxI,J,N,Nz,NF)
+  a = MtlArray{Float32}(undef, 512)
+  @show "Start"
+  Metal.@metal threads=512 memset_kernel(a, 42)
+  @show "End"
+# @metal threads=512 grid=2 DivRhoGradKernel!(F,cC,RhoC,DD,DW,dXdxI,J,N,Nz,NF)
 # Metal.@time @cuda grid=grid threads=threads DivRhoGradKernel!(F,cC,RhoC,DD,DW,dXdxI,J,N,Nz,NF)
 end
 
 function DivRhoGradKernel!(F,cC,RhoC,D,DW,dXdxI,J,N,Nz,NF)
 
-  i = (thread_position_in_grid_1d() - 1) * threads_per_threadgroup_1d() + thread_position_in_threadgroup_1d
-  j = (thread_position_in_grid_2d() - 1) * threads_per_threadgroup_1d() + thread_position_in_threadgroup_2d
-  l = (thread_position_in_grid_3d() - 1) * threads_per_threadgroup_3d() + thread_position_in_threadgroup_3d
+  i = thread_position_in_threadgroup_1d()
+# i = (threadgroup_position_in_grid_3d().x - 1) * threads_per_threadgroup_3d().x + thread_position_in_threadgroup_3d().x
+# j = (threadgroup_position_in_grid_3d().y - 1) * threads_per_threadgroup_3d().y + thread_position_in_threadgroup_3d().y
+# l = (threadgroup_position_in_grid_3d().z - 1) * threads_per_threadgroup_3d().z + thread_position_in_threadgroup_3d().z
+#=
   iz = mod(l,Nz)
   if iz == 0
     iz = Nz
@@ -194,6 +209,7 @@ function DivRhoGradKernel!(F,cC,RhoC,D,DW,dXdxI,J,N,Nz,NF)
       F[i,k,iz,iF] = F[i,k,iz,iF] + DW[k,j] * tempy
     end
   end
+=#  
   return nothing
 end
 
