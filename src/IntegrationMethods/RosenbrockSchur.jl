@@ -1,9 +1,9 @@
-function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param,DiscType)
+function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Metric,Cache,Global,Param,DiscType)
   ROS = Global.TimeStepper.ROS
   nStage = ROS.nStage
-  k = Global.Cache.k
-  fV = Global.Cache.fV
-  Vn = Global.Cache.Vn
+  k = Cache.k
+  fV = Cache.fV
+  Vn = Cache.Vn
 
   J = Global.J
   J.CompTri = true
@@ -13,16 +13,16 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Global,Param,DiscType)
     @inbounds for jStage = 1 : iStage-1
       @views axpy!(ROS.a[iStage,jStage],k[:,:,:,jStage],V)
     end
-    FcnPrepare!(V,CG,Global,Param,DiscType)
-    Fcn(fV,V,CG,Global,Param,DiscType)
+    FcnPrepare!(V,CG,Metric,Cache,Global,Param,DiscType)
+    Fcn(fV,V,CG,Metric,Cache,Global,Param,DiscType)
     if iStage == 1
-      Jac(J,V,CG,Global,Param,DiscType)
+      Jac(J,V,CG,Metric,Cache,Global,Param,DiscType)
     end  
     @inbounds for jStage = 1 : iStage - 1
       fac = ROS.c[iStage,jStage] / dt
       @views axpy!(fac,k[:,:,:,jStage],fV)
     end
-    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.gamma,Global)
+    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.gamma,Cache,Global)
   end
   @. V = Vn
   @inbounds for iStage = 1 : nStage
@@ -37,9 +37,9 @@ function RosenbrockSchurMIS!(V,dt,Fcn,R,Jac,CG,Global,Param)
   nV3=size(V,3)
   nJ=nV1*nV2*nV3
   nStage=ROS.nStage
-  k=Global.Cache.k
-  fV=Global.Cache.fV
-  Vn=Global.Cache.Vn
+  k=Cache.k
+  fV=Cache.fV
+  Vn=Cache.Vn
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
 
@@ -75,9 +75,9 @@ function RosenbrockDSchur!(V,dt,Fcn,Jac,CG,Global)
   nV3=size(V,3)
   nJ=nV1*nV2*nV3
   nStage=ROS.nStage
-  k=Global.Cache.k
-  fV=Global.Cache.fV
-  Vn=Global.Cache.Vn
+  k=Cache.k
+  fV=Cache.fV
+  Vn=Cache.Vn
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
 
@@ -111,13 +111,13 @@ function RosenbrockSchurSSP!(V,dt,Fcn,Jac,CG,Global)
   nV3=size(V,3)
   nJ=nV1*nV2*nV3
   nStage=ROS.nStage
-  k=Global.Cache.k
-  fV=Global.Cache.fV
-  fS=Global.Cache.fS
-  fRhoS=Global.Cache.fRhoS
-  VS=Global.Cache.VS
-  RhoS=Global.Cache.RhoS
-  Vn=Global.Cache.Vn
+  k=Cache.k
+  fV=Cache.fV
+  fS=Cache.fS
+  fRhoS=Cache.fRhoS
+  VS=Cache.VS
+  RhoS=Cache.RhoS
+  Vn=Cache.Vn
   NumV=Global.Model.NumV
   NumTr=Global.Model.NumTr
   RhoPos=Global.Model.RhoPos

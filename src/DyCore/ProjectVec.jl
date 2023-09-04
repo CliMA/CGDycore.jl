@@ -1,4 +1,4 @@
-function ProjectVec(Fun,time,CG,Global,Param)
+function ProjectVec(Fun,time,CG,Metric,Global,Param)
   OrdPoly=CG.OrdPoly;
   OrdPolyZ=CG.OrdPolyZ;
   nz=Global.Grid.nz;
@@ -6,7 +6,7 @@ function ProjectVec(Fun,time,CG,Global,Param)
   vS=zeros(nz,CG.NumG);
   uLoc=zeros(OrdPoly+1,OrdPoly+1);
   vLoc=zeros(OrdPoly+1,OrdPoly+1);
-  X = Global.Metric.X
+  X = Metric.X
   for iF=1:Global.Grid.NumFaces
     for j=1:OrdPoly+1
       for i=1:OrdPoly+1
@@ -23,11 +23,11 @@ function ProjectVec(Fun,time,CG,Global,Param)
   return (uS,vS)
 end
 
-function ProjectVec!(uS,vS,Fun,time,CG,Global,Param)
+function ProjectVec!(uS,vS,Fun,time,CG,Metric,Global,Param)
   OrdPoly=CG.OrdPoly;
   OrdPolyZ=CG.OrdPolyZ;
   nz=Global.Grid.nz;
-  X = Global.Metric.X
+  X = Metric.X
   @. uS = 0.0
   @. vS = 0.0
   x=zeros(3)

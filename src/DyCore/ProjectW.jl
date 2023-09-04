@@ -1,10 +1,10 @@
-function ProjectW(Fun,time,CG,Global,Param)
+function ProjectW(Fun,time,CG,Metric,Global,Param)
 OrdPoly=CG.OrdPoly;
 nz=Global.Grid.nz;
 w=zeros(nz,CG.NumG);
 fLoc=zeros(OrdPoly+1,OrdPoly+1);
-X = Global.Metric.X
-JF = Global.Metric.JF
+X = Metric.X
+JF = Metric.JF
 for iz=1:nz-1
   for iF=1:Global.Grid.NumFaces
     for j=1:OrdPoly+1
@@ -18,11 +18,11 @@ end
 return w
 end
 
-function ProjectW!(w,Fun,time,CG,Global,Param)
+function ProjectW!(w,Fun,time,CG,Metric,Global,Param)
   OrdPoly=CG.OrdPoly;
   nz=Global.Grid.nz;
-  X = Global.Metric.X
-  JF = Global.Metric.JF
+  X = Metric.X
+  JF = Metric.JF
   @. w = 0.0
   @inbounds for iz=1:nz-1
     @inbounds for iF=1:Global.Grid.NumFaces

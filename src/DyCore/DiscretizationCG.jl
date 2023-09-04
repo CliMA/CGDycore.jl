@@ -1,53 +1,61 @@
-mutable struct CGStruct
+mutable struct CGStruct{FT<:Real,
+                        AT2<:AbstractArray,
+                        IT1<:AbstractArray,
+                        IT2<:AbstractArray,
+                        IT3<:AbstractArray}
     OrdPoly::Int
     OrdPolyZ::Int
-    Glob::Array{Int, 3}
-    Stencil::Array{Int, 2}
+    Glob::IT3
+    Stencil::IT2
     NumG::Int
     NumI::Int
-    w::Array{Float64, 1}
-    xw::Array{Float64, 1}
-    xe::Array{Float64, 1}
-    IntXE2F::Array{Float64, 2}
-    xwZ::Array{Float64, 1}
-    IntZE2F::Array{Float64, 2}
-    DW::Array{Float64, 2}
-    DWT::Array{Float64, 2}
-    DS::Array{Float64, 2}
-    DST::Array{Float64, 2}
-    DSZ::Array{Float64, 2}
-    S::Array{Float64, 2}
-    M::Array{Float64, 2}
-    MMass::Array{Float64, 2}
-    MW::Array{Float64, 2}
+    w::Array{FT, 1}
+    xw::Array{FT, 1}
+    xe::Array{FT, 1}
+    IntXE2F::Array{FT, 2}
+    xwZ::Array{FT, 1}
+    IntZE2F::Array{FT, 2}
+    DW::AT2
+    DWT::Array{FT, 2}
+    DS::AT2
+    DST::Array{FT, 2}
+    DSZ::Array{FT, 2}
+    S::Array{FT, 2}
+    M::AT2
+    MMass::AT2
+    MW::AT2
     Boundary::Array{Int, 1}
-    MasterSlave::Array{Int, 1}
+    MasterSlave::IT1
 end
-function CGStruct()
- OrdPoly=0
-OrdPolyZ=0
-Glob=zeros(0,0,0)
-Stencil=zeros(0,0)
-NumG=0
-NumI=0
-w=zeros(0)
-xw=zeros(0)
-xe=zeros(0)
-IntXE2F=zeros(0,0)
-xwZ=zeros(0)
-IntZE2F=zeros(0,0)
-DW=zeros(0,0)
-DWT=zeros(0,0)
-DS=zeros(0,0)
-DST=zeros(0,0)
-DSZ=zeros(0,0)
-S=zeros(0,0)
-M=zeros(0,0)
-MMass=zeros(0,0)
-MW=zeros(0,0)
-Boundary=zeros(0)
-MasterSlave = zeros(0)
- return CGStruct(
+function CGStruct{FT}(backend) where FT<:Real
+  OrdPoly = 0
+  OrdPolyZ = 0
+  Glob = KernelAbstractions.zeros(backend,Int,0,0,0)
+  Stencil = KernelAbstractions.zeros(backend,Int,0,0)
+  NumG = 0
+  NumI = 0
+  w = zeros(FT,0)
+  xw = zeros(FT,0)
+  xe = zeros(FT,0)
+  IntXE2F = zeros(FT,0,0)
+  xwZ = zeros(FT,0)
+  IntZE2F = zeros(FT,0,0)
+  DW = KernelAbstractions.zeros(backend,FT,0,0)
+  DWT = zeros(FT,0,0)
+  DS = KernelAbstractions.zeros(backend,FT,0,0)
+  DST = zeros(FT,0,0)
+  DSZ = zeros(FT,0,0)
+  S = zeros(FT,0,0)
+  M = KernelAbstractions.zeros(backend,FT,0,0)
+  MMass = KernelAbstractions.zeros(backend,FT,0,0)
+  MW = KernelAbstractions.zeros(backend,FT,0,0)
+  Boundary = zeros(Int,0)
+  MasterSlave = KernelAbstractions.zeros(backend,Int,0)
+ return CGStruct{FT,
+                 typeof(DW),
+                 typeof(MasterSlave),
+                 typeof(Stencil),
+                 typeof(Glob)}( 
     OrdPoly,
     OrdPolyZ,
     Glob,
@@ -74,24 +82,22 @@ MasterSlave = zeros(0)
  )
 end 
 
-function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global)
-  DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zeros(OrdPoly+1,OrdPoly+1,Global.Grid.NumFaces))
-end  
 
-function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
+function DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,Jacobi,Global,zs) 
 # Discretization
   Grid = Global.Grid
   OP=OrdPoly+1
   OPZ=OrdPolyZ+1
-  nz=Grid.nz;
+  nz=Grid.nz
   NF=Grid.NumFaces
 
-  CG = CGStruct()
-  CG.OrdPoly=OrdPoly;
-  CG.OrdPolyZ=OrdPolyZ;
+  CG = CGStruct{FT}(backend)
+  Metric = MetricStruct{FT}(backend,OP,OPZ,Global.Grid.NumFaces,nz)
+  CG.OrdPoly=OrdPoly
+  CG.OrdPolyZ=OrdPolyZ
 
-  (CG.w,CG.xw)=GaussLobattoQuad(CG.OrdPoly);
-  (wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ);
+  (CG.w,CG.xw)=GaussLobattoQuad(CG.OrdPoly)
+  (wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ)
   CG.xe = zeros(OrdPoly+1)
   CG.xe[1] = -1.0
   for i = 2 : OrdPoly
@@ -113,69 +119,69 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
     end
   end
 
-  (CG.DW,CG.DS)=DerivativeMatrixSingle(CG.OrdPoly);
-  CG.DST=CG.DS'
-  CG.DWT=CG.DW'
+  (DW,DS)=DerivativeMatrixSingle(CG.OrdPoly)
+  CG.DS = KernelAbstractions.zeros(backend,FT,size(DS))
+  copyto!(CG.DS,DS)
+  CG.DW = KernelAbstractions.zeros(backend,FT,size(DW))
+  copyto!(CG.DW,DW)
+  CG.DST=DS'
+  CG.DWT=DW'
 
-  Q = diagm(CG.w) * CG.DS
+  Q = diagm(CG.w) * DS
   CG.S = Q - Q'
-  (DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ);
-  (CG.Glob,CG.NumG,CG.NumI,CG.Stencil,CG.MasterSlave) =
-    NumberingFemCG(Grid,OrdPoly);  
+  (DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ)
+  (Glob,CG.NumG,CG.NumI,Stencil,MasterSlave) =
+    NumberingFemCG(Grid,OrdPoly)  
 
 
-  dXdxI = Global.Metric.dXdxI
-  nS = Global.Metric.nS
-  FS = Global.Metric.FS
-  Global.Metric.dz = zeros(nz,CG.NumG)
-  Global.Metric.zP = zeros(nz,CG.NumG)
-  dz = Global.Metric.dz
-  zP = Global.Metric.zP
-  J = Global.Metric.J;
-  lat = Global.Metric.lat;
-  X = Global.Metric.X;
-  dXdx   = zeros(OP,OP,OPZ,nz,3,3,NF)
-  dXdxILoc  = zeros(OP,OP,OPZ,nz,3,3,NF)
+  dXdxI = zeros(3,3,OPZ,OP,OP,nz,NF)
+  nS = zeros(OP,OP,3,NF)
+  FS = zeros(OP,OP,NF)
+  dz = zeros(nz,CG.NumG)
+  zP = zeros(nz,CG.NumG)
+  J = zeros(OP,OP,OPZ,nz,NF)
+  lat = zeros(OP,OP,NF)
+  X = zeros(OP,OP,OPZ,3,nz,NF)
 
-  for iF=1:Grid.NumFaces
-    for iz=1:nz
-      zI=[Grid.z[iz],Grid.z[iz+1]];
-      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
-      #(X_Fz1,J_Fz1,dXdx_F1,dXdxI_Fz1,lat_Fz1)=JacobiDG3Neu(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
-      X[:,:,:,:,iz,iF]=X_Fz;
-      J[:,:,:,iz,iF]=J_Fz;
-      dXdx[:,:,:,iz,:,:,iF]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
-      dXdxI[:,:,:,iz,:,:,iF]=reshape(dXdxI_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
-      lat[:,:,iF]=lat_Fz;
+  for iF = 1 : NF
+    for iz = 1 : nz
+      zI = [Grid.z[iz],Grid.z[iz+1]]
+      @views (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz) = Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF])
+      @views @. X[:,:,:,:,iz,iF] = X_Fz
+      @views @. J[:,:,:,iz,iF] = J_Fz
+      @views @. dXdxI[:,:,:,:,:,iz,iF] = dXdxI_Fz
+      @views @. lat[:,:,iF] = lat_Fz
+      if iz == 1
+        #   Surface normal
+        @views @. FS[:,:,iF] = sqrt(dXdxI_Fz[3,1,1,:,:] * dXdxI_Fz[3,1,1,:,:] +
+          dXdxI_Fz[3,2,1,:,:] * dXdxI_Fz[3,2,1,:,:] + dXdxI_Fz[3,3,1,:,:] * dXdxI_Fz[3,3,1,:,:])
+        @views @. nS[:,:,1,iF] = dXdxI_Fz[3,1,1,:,:] / FS[:,:,iF]
+        @views @. nS[:,:,2,iF] = dXdxI_Fz[3,2,1,:,:] / FS[:,:,iF]
+        @views @. nS[:,:,3,iF] = dXdxI_Fz[3,3,1,:,:] / FS[:,:,iF]
+      end
     end
-#   Surface normal
-    @views @. FS[:,:,iF] = sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
-      dXdxI[:,:,1,1,3,2,iF] * dXdxI[:,:,1,1,3,2,iF] + dXdxI[:,:,1,1,3,3,iF] * dXdxI[:,:,1,1,3,3,iF])
-    @views @. nS[:,:,1,iF] = dXdxI[:,:,1,1,3,1,iF] / FS[:,:,iF]
-    @views @. nS[:,:,2,iF] = dXdxI[:,:,1,1,3,2,iF] / FS[:,:,iF]
-    @views @. nS[:,:,3,iF] = dXdxI[:,:,1,1,3,3,iF] / FS[:,:,iF]
   end
 
-  (CG.M,CG.MW,CG.MMass)=MassCG(CG,Global);
-  Global.latN=zeros(CG.NumG);
-  lat = Global.Metric.lat
+  (M,MW,MMass) = MassCG(CG,J,Glob,Global)
+  Global.latN = zeros(CG.NumG)
   latN = Global.latN
-  OP=CG.OrdPoly+1;
-  for iF=1:NF
-    for jP=1:OP
-      for iP=1:OP
-        ind=CG.Glob[iP,jP,iF]
-        latN[ind] = latN[ind] + lat[iP,jP,iF] * (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / CG.M[1,ind]
-        @views @. dz[:,ind] +=  2.0*(J[iP,jP,1,:,iF] + J[iP,jP,2,:,iF])^2 / 
-          (dXdxI[iP,jP,1,:,3,3,iF] + dXdxI[iP,jP,2,:,3,3,iF])  / CG.M[:,ind]
+  @inbounds for iF = 1 : NF
+    @inbounds for jP = 1 : OP
+      @inbounds for iP = 1 : OP
+        ind = Glob[iP,jP,iF]
+        latN[ind] = latN[ind] + lat[iP,jP,iF] * (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / M[1,ind]
+        @inbounds for iz=1:nz
+          dz[iz,ind] +=  2.0*(J[iP,jP,1,iz,iF] + J[iP,jP,2,iz,iF])^2 / 
+          (dXdxI[3,3,1,iP,jP,iz,iF] + dXdxI[3,3,2,iP,jP,iz,iF])  / M[iz,ind]
+        end
         @inbounds for iz=1:nz
           if Global.Grid.Form == "Sphere"
             r = norm(0.5 .* (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
             zP[iz,ind] += max(r-Global.Grid.Rad, 0.0) * 
-              (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / CG.M[iz,ind]
+              (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / M[iz,ind]
           else
             zP[iz,ind] += 0.5 * (X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF]) * 
-              (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / CG.M[iz,ind]
+              (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF]) / M[iz,ind]
           end
         end
       end
@@ -184,6 +190,31 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   ExchangeData!(dz,Global.Exchange)
   ExchangeData!(latN,Global.Exchange)
   ExchangeData!(zP,Global.Exchange)
+
+  copyto!(Metric.dXdxI,dXdxI)
+  copyto!(Metric.nS,nS)
+  copyto!(Metric.FS,FS)
+  Metric.dz = KernelAbstractions.zeros(backend,FT,size(dz))
+  copyto!(Metric.dz,dz)
+  Metric.zP = KernelAbstractions.zeros(backend,FT,size(zP))
+  copyto!(Metric.zP,zP)
+  copyto!(Metric.J,J)
+  copyto!(Metric.lat,lat)
+  copyto!(Metric.X,X)
+  CG.M = KernelAbstractions.zeros(backend,FT,size(M))
+  copyto!(CG.M,M)
+  CG.MMass = KernelAbstractions.zeros(backend,FT,size(MMass))
+  copyto!(CG.MMass,MMass)
+  CG.MW = KernelAbstractions.zeros(backend,FT,size(MW))
+  copyto!(CG.MW,MW)
+  CG.Glob = KernelAbstractions.zeros(backend,Int,size(Glob))
+  copyto!(CG.Glob,Glob)
+  CG.Stencil = KernelAbstractions.zeros(backend,Int,size(Stencil))
+  copyto!(CG.Stencil,Stencil)
+  CG.MasterSlave = KernelAbstractions.zeros(backend,Int,size(MasterSlave))
+  copyto!(CG.MasterSlave,MasterSlave)
+
+
 # Boundary nodes
   for iF = 1 : NF
     Side = 0
@@ -191,25 +222,29 @@ function DiscretizationCG(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
        Side += 1 
        if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
          if Side == 1
-           for i in CG.Glob[1:OP-1,1,iF]   
+           for i in Glob[1:OP-1,1,iF]   
              push!(CG.Boundary,i)
            end
          elseif Side == 2  
-           for i in CG.Glob[OP,1:OP-1,iF]
+           for i in Glob[OP,1:OP-1,iF]
              push!(CG.Boundary,i)
            end
          elseif Side == 3  
-           for i in CG.Glob[2:OP,OP,iF]
+           for i in Glob[2:OP,OP,iF]
              push!(CG.Boundary,i)
            end
          elseif Side == 4  
-           for i in CG.Glob[1,2:OP,iF]
+           for i in Glob[1,2:OP,iF]
              push!(CG.Boundary,i)
            end
          end  
        end  
     end
   end  
-  return (CG,Global)
+  return (CG,Metric,Global)
 end
 
+function DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,Jacobi,Global)
+  DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,Jacobi,Global,
+  zeros(OrdPoly+1,OrdPoly+1,Global.Grid.NumFaces))
+end  

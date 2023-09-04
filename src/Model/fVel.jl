@@ -199,8 +199,10 @@ function fVel(x,time::Float64,Global,Param)
       uS=u0*(cos(alpha0)*cos(lat)+sin(alpha0)*cos(lon)*sin(lat))
       vS =-u0*sin(alpha0)*sin(lon)
     elseif ProfVel == "Const"
-      uS=Param.uMax
-      vS=Param.vMax
+    # uS=Param.uMax
+    # vS=Param.vMax
+      uS=1.0
+      vS=1.0     
     elseif ProfVel == "sin"
       uS=Param.uMax*sin(pi*x[1]/Param.Lx)
       vS=Param.vMax*sin(pi*x[2]/Param.Ly)

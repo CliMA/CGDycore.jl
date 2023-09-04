@@ -91,7 +91,7 @@ function JStruct(NumG,nz,NumTr)
   )
 end
 
-function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
+function JacSchur!(J,U,CG,Metric,Cache,Global,Param,::Val{:VectorInvariant})
   (;  RhoPos,
       uPos,
       vPos,
@@ -119,11 +119,11 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
   @views RhoTrF = J.CacheCol2[1:nz-1]
 
   @inbounds for iC=1:nCol
-    @views Pres = Global.Cache.AuxG[:,iC,1]
+    @views Pres = Cache.AuxG[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
     @views RhoTh = U[:,iC,ThPos]
     @views Tr = U[:,iC,NumV+1:end]
-    @views dz = Global.Metric.dz[:,iC]
+    @views dz = Metric.dz[:,iC]
 
     @views @. RhoF = (Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz]) /
       (dz[1:nz-1] + dz[2:nz])
@@ -184,7 +184,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     if Global.Model.VerticalDiffusion
       @views JDiff = J.JDiff[:,:,iC]
       @. JDiff = 0
-      @views KV = Global.Cache.AuxG[:,iC,2]
+      @views KV = Cache.AuxG[:,iC,2]
       # The Rho factor is already included in KV
       @views @. DF = - (KV[1:nz-1] + KV[2:nz]) / (dz[1:nz-1] + dz[2:nz])
       # J tridiagonal matrix
@@ -199,7 +199,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
     end
     @views JAdvC = J.JAdvC[:,:,iC]
     @. JAdvC = 0
-    @views wConF = Global.Cache.AuxG[:,iC,3]
+    @views wConF = Cache.AuxG[:,iC,3]
     @. abswConF = abs(wConF)
     @views @. JAdvC[1,2:nz] = -(abswConF[1:nz-1] - wConF[1:nz-1]) / (2 * Rho[2:nz] * dz[1:nz-1])
     @views @. JAdvC[3,1:nz-1] = (-abswConF[1:nz-1] - wConF[1:nz-1]) / (2 * Rho[1:nz-1] * dz[2:nz]) 
@@ -209,7 +209,7 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:VectorInvariant})
 
     @views JAdvF = J.JAdvF[:,:,iC]
     @. JAdvF = 0
-    @views wConC = Global.Cache.AuxG[:,iC,4]
+    @views wConC = Cache.AuxG[:,iC,4]
     @. abswConC = abs(wConC)
     @views @. JAdvF[1,2:nz-1] = -(abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[1:nz-2] + dz[2:nz-1])
     @views @. JAdvF[3,1:nz-2] = (-abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[2:nz-1] + dz[3:nz]) 

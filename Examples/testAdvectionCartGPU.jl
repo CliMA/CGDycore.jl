@@ -1,9 +1,11 @@
 using CGDycore
 using MPI
+using Base
 using CUDA
 using CUDA.CUDAKernels
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using StaticArrays
 
 # Model
 parsed_args = CGDycore.parse_commandline()
@@ -79,8 +81,35 @@ PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
-
+# Device
+Device = parsed_args["Device"]
+GPUType = parsed_args["GPUType"]
+FloatTypeBackend = parsed_args["FloatTypeBackend"]
 Param = CGDycore.Parameters(Problem)
+
+
+if Device == "CPU"
+  backend = CPU()
+elseif Device == "GPU"
+  if GPUType == "CUDA"
+    backend = CUDABackend()
+    CUDA.allowscalar(true)
+  end
+else
+  @show "False device"
+  stop
+end
+
+if FloatTypeBackend == "Float64"
+  FTB = Float64
+elseif FloatTypeBackend == "Float32"
+  FTB = Float32
+else
+  @show "False FloatTypeBackend"
+  stop
+end
+
+KernelAbstractions.synchronize(backend)
 
 MPI.Init()
 
@@ -88,7 +117,7 @@ OrdPolyZ=1
 Parallel = true
 
 # Physical parameters
-Phys=CGDycore.PhysParameters()
+Phys=CGDycore.PhysParameters{FTB}()
 
 #ModelParameters
 Model = CGDycore.Model()
@@ -164,20 +193,15 @@ Topography=(TopoS=TopoS,
             P2=P2,
             P3=P3,
             P4=P4,
-            )
+           )
 
-Global = CGDycore.InitCart(OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
+  @show "vor InitCart"
+  (CG, Metric, Global) = CGDycore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
   Boundary,GridType,Topography,Decomp,Model,Phys)
 
-if TopoS == "EarthOrography"
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global,zS)
-else
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
-end
 
+  U = CGDycore.InitialConditionsAdvection(backend,FTB,CG,Metric,Global,Param)
 
-
-  U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
 
 # Output
   Global.Output.vtkFileName=string(Problem*"_")
@@ -193,7 +217,8 @@ end
   Global.Output.PrintTime = PrintTime
   Global.Output.PrintStartTime = 0
   Global.Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkStruct(Global.Output.OrdPrint,CGDycore.TransCartX,CG,Global)
+  @show "vor Global.vtkCache"
+  Global.vtkCache = CGDycore.vtkStruct{FTB}(backend,Global.Output.OrdPrint,CGDycore.TransCartX!,CG,Metric,Global)
 
 
   # TimeStepper
@@ -208,5 +233,10 @@ end
   Global.TimeStepper.SimTime = SimTime
 
   nT = NumV + NumTr
-  CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
-  CGDycore.TimeStepperAdvection!(U,CGDycore.TransCartX,CG,Global,Param)
+# CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
+  @show "vor TimeStepperGPUAdvection!"
+  if Device == "CPU" 
+    CGDycore.TimeStepperAdvection!(U,CGDycore.TransCartX,CG,Metric,Global,Param)
+  else
+    CGDycore.TimeStepperGPUAdvection!(U,CGDycore.TransCartX,CG,Metric,Global,Param)
+  end

@@ -1,4 +1,4 @@
-function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)    
+function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)    
 
   comm = MPI.COMM_WORLD
   Proc = MPI.Comm_rank(comm) + 1 
@@ -40,7 +40,6 @@ function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Mode
       lambda = 3.16
       AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"  
-      @show "AddExpStretchVerticalGrid"
       AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
     else
       AddVerticalGrid!(SubGrid,nz,H)
@@ -51,15 +50,14 @@ function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Mode
 
   Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
-  Global = GlobalStruct{Float64}(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
     Model.NumV,Model.NumTr,())
-  Global.Metric = Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  (CG,Global) = DiscretizationCG(OrdPoly,OrdPolyZ,JacobiSphere3,Global)
+  (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiSphere3,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = vtkStruct(1,TransSphereX,CG,Global)
+  vtkCachePart = vtkStruct{FT}(backend,1,TransSphereX!,CG,Metric,Global)
   unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
@@ -75,16 +73,16 @@ function InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Mode
   end
 
   if Topography.TopoS == "EarthOrography"
-    (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global,zS)
+    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiSphere3,Global,zS)
   else
-    (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiSphere3,Global)
+    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiSphere3,Global)
   end
 
-  return CG,Global
+  return CG,Metric,Global
 end  
 
 
-function InitCart(OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,GridType,Topography,Decomp,Model,Phys)    
+function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,GridType,Topography,Decomp,Model,Phys)    
 
   comm = MPI.COMM_WORLD
   Proc = MPI.Comm_rank(comm) + 1 
@@ -117,15 +115,14 @@ function InitCart(OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,GridType,Topo
 
   Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
-  Global = GlobalStruct{Float64}(SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
     Model.NumV,Model.NumTr,())
-  Global.Metric = Metric(OrdPoly+1,OrdPolyZ+1,SubGrid.NumFaces,nz)
-  (CG,Global) = DiscretizationCG(OrdPoly,OrdPolyZ,JacobiDG3Neu,Global)
+  (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiDG3,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = vtkStruct(1,TransCartX,CG,Global)
+  vtkCachePart = vtkStruct{FT}(backend,1,TransCartX!,CG,Metric,Global)
   unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
@@ -135,12 +132,17 @@ function InitCart(OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,GridType,Topo
     Output.Flat=false
     nzTemp = Global.Grid.nz
     Global.Grid.nz = 1
-    vtkCacheOrography = vtkStruct(OrdPoly,TransCartX,CG,Global)
+    vtkCacheOrography = vtkStruct{FT}(backend,OrdPoly,TransCartX!,CG,Metric,Global)
     unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
     Global.Grid.nz = nzTemp
   end
+  if Topography.TopoS == "EarthOrography"
+    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiDG3,Global,zS)
+  else
+    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiDG3,Global)
+  end
 
-  return Global
+  return CG, Metric, Global
 end  
 
 

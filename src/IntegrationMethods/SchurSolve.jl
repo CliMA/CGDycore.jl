@@ -42,7 +42,7 @@ function mulbiLv!(u,biL,v)
   u[n+1] = u[n+1] + biL[2,n]*v[n]
 end
 
-function SchurSolve!(k,v,J,fac,Global)
+function SchurSolve!(k,v,J,fac,Cache,Global)
 #   sw=(spdiags(repmat(invfac2,n,1),0,n,n)-invfac*JWW-JWRho*JRhoW-JWRhoTh*JRhoThW)\
 #     (invfac*rw+JWRho*rRho+JWRhoTh*rTh)
   n1 = size(v,1)
@@ -58,8 +58,8 @@ function SchurSolve!(k,v,J,fac,Global)
   JDiff = J.JDiff
   JAdvC = J.JAdvC
   JAdvF = J.JAdvF
-  @views CdTh = Global.Cache.Aux2DG[:,:,1]
-  @views CdTr = Global.Cache.Aux2DG[:,:,2:end]
+  @views CdTh = Cache.Aux2DG[:,:,1]
+  @views CdTr = Cache.Aux2DG[:,:,2:end]
   NumV = Global.Model.NumV
   if size(k,3) > Global.Model.NumV
     NumTr = Global.Model.NumTr

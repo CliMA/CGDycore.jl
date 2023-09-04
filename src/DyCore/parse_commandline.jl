@@ -424,6 +424,21 @@ function parse_commandline()
      arg_type = Bool
      default = true
 
+    "--Device"
+     help = "CPU or GPU"
+     arg_type = String
+     default = "CPU"
+
+    "--GPUType"
+     help = "Type of GPU, CUDA, AMD, Metal"
+     arg_type = String
+     default = "CUDA"
+
+    "--FloatTypeBackend"
+     help = "Type of Float for Backend"
+     arg_type = String
+     default = "Float32"
+
   end
   return parse_args(s)
 end

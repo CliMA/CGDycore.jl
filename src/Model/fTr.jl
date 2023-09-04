@@ -93,7 +93,8 @@ function fTr(x,time,Global,Param,Profile)
     else
       Tr = 0
     end
-  elseif str == "rotationalcart"
+    Tr = cos(pi*(x[1] - 500.0)/1000.0) * cos(pi*(x[2] - 500.0)/1000.0)
+  elseif str == "advectioncuberotcart"
     if x[1] >= Param.x1 && x[1] <= Param.x2 && x[3] >= Param.z1 && x[3] <= Param.z2
       Tr = 1
     else

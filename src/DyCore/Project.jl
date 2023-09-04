@@ -1,8 +1,8 @@
-function Project(Fun,time,CG,Global,Param,Profile)
+function Project(Fun,time,CG,Metric,Global,Param,Profile)
 OrdPoly=CG.OrdPoly;
 nz=Global.Grid.nz;
 p=zeros(nz,CG.NumG);
-X = Global.Metric.X
+X = Metric.X
 for iF=1:Global.Grid.NumFaces
   for j=1:OrdPoly+1
     for i=1:OrdPoly+1
@@ -17,11 +17,11 @@ end
 return p
 end
 
-function ProjectSurf(Fun,time,CG,Global,Param)
+function ProjectSurf(Fun,time,CG,Metric,Global,Param)
 OrdPoly=CG.OrdPoly;
 NF = Global.Grid.NumFaces
 p=zeros(OrdPoly+1,OrdPoly+1,NF);
-X = Global.Metric.X
+X = Metric.X
 for iF=1:Global.Grid.NumFaces
   for j=1:OrdPoly+1
     for i=1:OrdPoly+1

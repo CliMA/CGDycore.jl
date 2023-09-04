@@ -1,8 +1,8 @@
-function CreateCache(OP,nz,NumV,NumTr)
-  D2 = Array{Float64, 2}
-  D3 = Array{Float64, 3}
-  D4 = Array{Float64, 4}
-  D5 = Array{Float64, 5}
+function CreateCache(FT,OP,nz,NumV,NumTr)
+  D2 = Array{FT, 2}
+  D3 = Array{FT, 3}
+  D4 = Array{FT, 4}
+  D5 = Array{FT, 5}
   TCacheC1 = D2[D2(undef, OP, OP)
     for _ in 1:Threads.nthreads()]
   TCacheC2 = D2[D2(undef, OP, OP)

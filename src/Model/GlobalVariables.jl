@@ -1,4 +1,7 @@
-mutable struct CacheStruct{FT<:Real}
+using KernelAbstractions
+mutable struct CacheStruct{FT<:Real,
+                           AT3<:AbstractArray,
+                           AT4<:AbstractArray}
 CacheE1::Array{FT, 2}
 CacheE2::Array{FT, 2}
 CacheE3::Array{FT, 2}
@@ -58,23 +61,25 @@ DivC::Array{FT, 3}
 DivThC::Array{FT, 3}
 DivwC::Array{FT, 3}
 KVCG::Array{FT, 3}
-Temp1::Array{FT, 3}
+Temp1::AT3
+#Temp1::Array{FT, 3}
 k::Array{FT, 4}
 Ymyn::Array{FT, 4}
 Y::Array{FT, 4}
 Z::Array{FT, 4}
-fV::Array{FT, 3}
+fV::AT3
 R::Array{FT, 3}
 dZ::Array{FT, 3}
-fS::Array{FT, 4}
-fRhoS::Array{FT, 3}
-VS::Array{FT, 4}
-RhoS::Array{FT, 3}
+fS::AT4
+fRhoS::AT3
+VS::AT4
+RhoS::AT3
 f::Array{FT, 4}
 qMin::Array{FT, 3}
 qMax::Array{FT, 3}
 end
-function CacheStruct{FT}() where FT<:Real
+
+function CacheStruct{FT}(backend) where FT<:Real
 CacheE1=zeros(FT,0,0);
 CacheE2=zeros(FT,0,0);
 CacheE3=zeros(FT,0,0);
@@ -134,22 +139,25 @@ DivC=zeros(FT,0,0,0)
 DivThC=zeros(FT,0,0,0)
 DivwC=zeros(FT,0,0,0)
 KVCG=zeros(FT,0,0,0)
-Temp1=zeros(FT,0,0,0)
+Temp1=KernelAbstractions.zeros(backend,FT,0,0,0)
+#Temp1=zeros(FT,0,0,0)
 k=zeros(FT,0,0,0,0)
 Ymyn=zeros(FT,0,0,0,0)
 Y=zeros(FT,0,0,0,0)
 Z=zeros(FT,0,0,0,0)
-fV=zeros(FT,0,0,0)
+fV=KernelAbstractions.zeros(backend,FT,0,0,0)
 R=zeros(FT,0,0,0)
 dZ=zeros(FT,0,0,0)
-fS=zeros(FT,0,0,0,0)
-fRhoS=zeros(FT,0,0,0)
-VS=zeros(FT,0,0,0,0)
-RhoS=zeros(FT,0,0,0)
+fS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
+fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
+VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
+RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 f=zeros(FT,0,0,0,0)
 qMin=zeros(FT,0,0,0)
 qMax=zeros(FT,0,0,0)
-return CacheStruct(
+return CacheStruct{FT,
+                   typeof(Temp1),
+                   typeof(VS)}(
   CacheE1,
   CacheE2,
   CacheE3,
@@ -227,82 +235,85 @@ return CacheStruct(
 )
 end
 
-function CacheCreate(OP,NF,NGF,NumG,nz,NumV,NumTr)
-CacheE1=zeros(OP,OP);
-CacheE2=zeros(OP,OP);
-CacheE3=zeros(OP,OP);
-CacheE4=zeros(OP,OP);
-CacheE5=zeros(OP,OP);
-CacheF1=zeros(OP,OP,nz+1);
-CacheF2=zeros(OP,OP,nz+1);
-CacheF3=zeros(OP,OP,nz+1);
-CacheF4=zeros(OP,OP,nz+1);
-CacheF5=zeros(OP,OP,nz+1);
-CacheF6=zeros(OP,OP,nz+1);
+function CacheStruct{FT}(backend,OP,NF,NGF,NumG,nz,NumV,NumTr) where FT<:Real
+CacheE1=zeros(FT,OP,OP);
+CacheE2=zeros(FT,OP,OP);
+CacheE3=zeros(FT,OP,OP);
+CacheE4=zeros(FT,OP,OP);
+CacheE5=zeros(FT,OP,OP);
+CacheF1=zeros(FT,OP,OP,nz+1);
+CacheF2=zeros(FT,OP,OP,nz+1);
+CacheF3=zeros(FT,OP,OP,nz+1);
+CacheF4=zeros(FT,OP,OP,nz+1);
+CacheF5=zeros(FT,OP,OP,nz+1);
+CacheF6=zeros(FT,OP,OP,nz+1);
 CacheC1 = view(CacheF1,:,:,1:nz)
 CacheC2 = view(CacheF2,:,:,1:nz)
 CacheC3 = view(CacheF3,:,:,1:nz)
 CacheC4 = view(CacheF4,:,:,1:nz)
 CacheC5 = view(CacheF5,:,:,1:nz)
 CacheC6 = view(CacheF6,:,:,1:nz)
-Cache1=zeros(nz,NumG)
-Cache2=zeros(nz,NumG)
-Cache3=zeros(nz,NumG)
-Cache4=zeros(nz,NumG)
-PresCG=zeros(OP,OP,nz)
-AuxG=zeros(nz,NumG,4)
-Aux2DG=zeros(1,NumG,NumTr+1)
-Temp=zeros(OP,OP,nz,NF)
-KE=zeros(OP,OP,nz)
-uStar=zeros(OP,OP,NF)
-cTrS=zeros(OP,OP,NF,NumTr)
-TSurf=zeros(0,0,0)
-FCG=zeros(OP,OP,nz,NF,NumV+NumTr)
-FCC=zeros(OP,OP,nz,NumV+NumTr)
-FwCC=zeros(OP,OP,nz+1)
-Vn=zeros(nz,NumG,NumV+NumTr)
-RhoCG=zeros(OP,OP,nz)
-v1CG=zeros(OP,OP,nz)
-v2CG=zeros(OP,OP,nz)
-wCG=zeros(OP,OP,nz+1)
-Omega=zeros(OP,OP,nz+1)
-wCCG=zeros(OP,OP,nz)
-ThCG=zeros(OP,OP,nz)
-TrCG=zeros(OP,OP,nz,NumTr)
-Rot1CG=zeros(OP,OP,nz)
-Rot2CG=zeros(OP,OP,nz)
-Grad1CG=zeros(OP,OP,nz)
-Grad2CG=zeros(OP,OP,nz)
-DivCG=zeros(OP,OP,nz)
-DivThCG=zeros(OP,OP,nz)
-DivwCG=zeros(OP,OP,nz+1)
-zPG=zeros(OP,OP,nz)
-pBGrdCG=zeros(OP,OP,nz)
-RhoBGrdCG=zeros(OP,OP,nz)
-Rot1C=zeros(OP,OP,nz)
-Rot2C=zeros(OP,OP,nz)
+Cache1=zeros(FT,nz,NumG)
+Cache2=zeros(FT,nz,NumG)
+Cache3=zeros(FT,nz,NumG)
+Cache4=zeros(FT,nz,NumG)
+PresCG=zeros(FT,OP,OP,nz)
+AuxG=zeros(FT,nz,NumG,4)
+Aux2DG=zeros(FT,1,NumG,NumTr+1)
+Temp=zeros(FT,OP,OP,nz,NF)
+KE=zeros(FT,OP,OP,nz)
+uStar=zeros(FT,OP,OP,NF)
+cTrS=zeros(FT,OP,OP,NF,NumTr)
+TSurf=zeros(FT,0,0,0)
+FCG=zeros(FT,OP,OP,nz,NF,NumV+NumTr)
+FCC=zeros(FT,OP,OP,nz,NumV+NumTr)
+FwCC=zeros(FT,OP,OP,nz+1)
+Vn=zeros(FT,nz,NumG,NumV+NumTr)
+RhoCG=zeros(FT,OP,OP,nz)
+v1CG=zeros(FT,OP,OP,nz)
+v2CG=zeros(FT,OP,OP,nz)
+wCG=zeros(FT,OP,OP,nz+1)
+Omega=zeros(FT,OP,OP,nz+1)
+wCCG=zeros(FT,OP,OP,nz)
+ThCG=zeros(FT,OP,OP,nz)
+TrCG=zeros(FT,OP,OP,nz,NumTr)
+Rot1CG=zeros(FT,OP,OP,nz)
+Rot2CG=zeros(FT,OP,OP,nz)
+Grad1CG=zeros(FT,OP,OP,nz)
+Grad2CG=zeros(FT,OP,OP,nz)
+DivCG=zeros(FT,OP,OP,nz)
+DivThCG=zeros(FT,OP,OP,nz)
+DivwCG=zeros(FT,OP,OP,nz+1)
+zPG=zeros(FT,OP,OP,nz)
+pBGrdCG=zeros(FT,OP,OP,nz)
+RhoBGrdCG=zeros(FT,OP,OP,nz)
+Rot1C=zeros(FT,OP,OP,nz)
+Rot2C=zeros(FT,OP,OP,nz)
 Grad1C=zeros(OP,OP,nz)
 Grad2C=zeros(OP,OP,nz)
-DivC=zeros(OP,OP,nz)
-DivThC=zeros(OP,OP,nz)
-DivwC=zeros(OP,OP,nz+1)
-KVCG=zeros(OP,OP,nz)
-Temp1=zeros(nz,NumG,max(NumV+NumTr,9+NumTr))
-k=zeros(0,0,0,0)
-Ymyn=zeros(0,0,0,0)
-Y=zeros(0,0,0,0)
-Z=zeros(0,0,0,0)
-fV=zeros(0,0,0)
-R=zeros(0,0,0)
-dZ=zeros(0,0,0)
-fS=zeros(0,0,0,0)
-fRhoS=zeros(0,0,0)
-VS=zeros(0,0,0,0)
-RhoS=zeros(0,0,0)
-f=zeros(0,0,0,0)
-qMin=zeros(nz,NF+NGF,NumTr+1)
-qMax=zeros(nz,NF+NGF,NumTr+1)
-return CacheStruct(
+DivC=zeros(FT,OP,OP,nz)
+DivThC=zeros(FT,OP,OP,nz)
+DivwC=zeros(FT,OP,OP,nz+1)
+KVCG=zeros(FT,OP,OP,nz)
+Temp1=KernelAbstractions.zeros(backend,FT,nz,NumG,max(NumV+NumTr,9+NumTr))
+#Temp1=zeros(FT,nz,NumG,max(NumV+NumTr,9+NumTr))
+k=zeros(FT,0,0,0,0)
+Ymyn=zeros(FT,0,0,0,0)
+Y=zeros(FT,0,0,0,0)
+Z=zeros(FT,0,0,0,0)
+fV=KernelAbstractions.zeros(backend,FT,0,0,0)
+R=zeros(FT,0,0,0)
+dZ=zeros(FT,0,0,0)
+fS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
+fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
+VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
+RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
+f=zeros(FT,0,0,0,0)
+qMin=zeros(FT,nz,NF+NGF,NumTr+1)
+qMax=zeros(FT,nz,NF+NGF,NumTr+1)
+return CacheStruct{FT,
+                   typeof(Temp1),
+                   typeof(VS)}(
   CacheE1,
   CacheE2,
   CacheE3,
@@ -494,26 +505,38 @@ function OutputStruct(Topography::NamedTuple)
   )
 end  
 
-mutable struct MetricStruct
-  lat::Array{Float64, 3}
-  J::Array{Float64, 5}
-  X::Array{Float64, 6}
-  dXdxI::Array{Float64, 7}
-  nS::Array{Float64, 4}
-  FS::Array{Float64, 3}
-  dz::Array{Float64, 2}
-  zP::Array{Float64, 2}
+mutable struct MetricStruct{FT<:Real,
+                            AT2<:AbstractArray,
+                            AT3<:AbstractArray,
+                            AT4<:AbstractArray,
+                            AT5<:AbstractArray,
+                            AT6<:AbstractArray,
+                            AT7<:AbstractArray}
+  lat::AT3
+  J::AT5
+  X::AT6
+  dXdxI::AT7
+  nS::AT4
+  FS::AT3
+  dz::AT2
+  zP::AT2
 end
-function MetricStruct()
-    lat    = zeros(0,0,0)
-    J      = zeros(0,0,0,0,0)
-    X      = zeros(0,0,0,0,0,0)
-    dXdxI  = zeros(0,0,0,0,0,0,0)
-    nS = zeros(0,0,0,0)
-    FS = zeros(0,0,0)
-    dz = zeros(0,0)
-    zP = zeros(0,0)
-    return MetricStruct(
+function MetricStruct{FT}(backend) where FT<:Real
+  lat    = KernelAbstractions.zeros(backend,FT,0,0,0)
+  J      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
+  X      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
+  dXdxI  = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0,0)
+  nS = KernelAbstractions.zeros(backend,FT,0,0,0,0)
+  FS = KernelAbstractions.zeros(backend,FT,0,0,0)
+  dz = KernelAbstractions.zeros(backend,FT,0,0)
+  zP = KernelAbstractions.zeros(backend,FT,0,0)
+    return MetricStruct{FT,
+                        typeof(zP),
+                        typeof(FS),
+                        typeof(nS),
+                        typeof(J),
+                        typeof(X),
+                        typeof(dXdxI)}(
         lat,
         J,
         X,
@@ -524,16 +547,23 @@ function MetricStruct()
         zP,
     )
 end
-function Metric(OP,OPZ,NF,nz)
-    lat    = zeros(OP,OP,NF)
-    J      = zeros(OP,OP,OPZ,nz,NF)
-    X      = zeros(OP,OP,OPZ,3,nz,NF)
-    dXdxI  = zeros(OP,OP,OPZ,nz,3,3,NF)
-    nS = zeros(OP,OP,3,NF)
-    FS = zeros(OP,OP,NF)
-    dz = zeros(0,0)
-    zP = zeros(0,0)
-    return MetricStruct(
+function MetricStruct{FT}(backend,OP,OPZ,NF,nz) where FT<:Real
+    lat    = KernelAbstractions.zeros(backend,FT,OP,OP,NF)
+    J      = KernelAbstractions.zeros(backend,FT,OP,OP,OPZ,nz,NF)
+    X      = KernelAbstractions.zeros(backend,FT,OP,OP,OPZ,3,nz,NF)
+#   dXdxI  = KernelAbstractions.zeros(backend,FT,OP,OP,OPZ,nz,3,3,NF)
+    dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,OP,OP,nz,NF)
+    nS = KernelAbstractions.zeros(backend,FT,OP,OP,3,NF)
+    FS = KernelAbstractions.zeros(backend,FT,OP,OP,NF)
+    dz = KernelAbstractions.zeros(backend,FT,0,0)
+    zP = KernelAbstractions.zeros(backend,FT,0,0)
+    return MetricStruct{FT,
+                        typeof(zP),
+                        typeof(FS),
+                        typeof(nS),
+                        typeof(J),
+                        typeof(X),
+                        typeof(dXdxI)}(
         lat,
         J,
         X,
@@ -545,41 +575,41 @@ function Metric(OP,OPZ,NF,nz)
     )
 end
 
-mutable struct PhysParameters
-  RadEarth::Float64 
-  Grav::Float64 
-  Cpd::Float64
-  Cvd::Float64
-  Cpv::Float64
-  Cvv::Float64
-  Cpl::Float64
-  Rd::Float64
-  Rv::Float64
-  L00::Float64
-  p0::Float64
-  Gamma::Float64
-  kappa::Float64
-  Omega::Float64
-  T0::Float64
+struct PhysParameters{FT<:Real}
+  RadEarth::FT 
+  Grav::FT 
+  Cpd::FT
+  Cvd::FT
+  Cpv::FT
+  Cvv::FT
+  Cpl::FT
+  Rd::FT
+  Rv::FT
+  L00::FT
+  p0::FT
+  Gamma::FT
+  kappa::FT
+  Omega::FT
+  T0::FT
 end
-function PhysParameters()
+function PhysParameters{FT}() where FT<:Real
   RadEarth = 6.37122e+6
-  Grav = 9.81e0
-  Cpd=1004.0e0
-  Cvd=717.0e0
-  Cpv=1885.0e0
-  Cvv=1424.0e0
-  Cpl=4186.0e0
-  Rd=Cpd-Cvd
-  Rv=Cpv-Cvv
+  Grav =  9.81
+  Cpd = 1004.0
+  Cvd = 717.0
+  Cpv = 1885.0
+  Cvv = 1424.0
+  Cpl = 4186.0
+  Rd = Cpd - Cvd
+  Rv = Cpv - Cvv
 # L00 = 2.5000e6 + (Cpl - Cpv) * 273.15
-  L00 = 2.5000e6 
-  p0=1.0e5
-  Gamma=Cpd/Cvd
-  kappa=Rd/Cpd
-  Omega=2*pi/24.0/3600.0
+  L00 =  2.5000e6 
+  p0 = 1.0e5
+  Gamma = Cpd / Cvd
+  kappa = Rd / Cpd
+  Omega = 2 * pi / 24.0 / 3600.0
   T0 = 273.15
- return PhysParameters(
+ return PhysParameters{FT}(
   RadEarth,
   Grav,
   Cpd,
@@ -778,8 +808,9 @@ function Model()
    )
 end  
 
-mutable struct GlobalStruct{FT<:Real,TCache}
-  Metric::MetricStruct
+mutable struct GlobalStruct{FT<:Real,
+                            TCache}
+# Metric::MetricStruct{FT}
   Grid::GridStruct
   Model::ModelStruct
   ParallelCom::ParallelComStruct
@@ -787,8 +818,8 @@ mutable struct GlobalStruct{FT<:Real,TCache}
   Phys::PhysParameters
   Output::OutputStruct
   Exchange::ExchangeStruct
-  vtkCache::vtkStruct
-  Cache::CacheStruct{FT}
+  vtkCache::vtkStruct{FT}
+# Cache::CacheStruct{FT}
   J::JStruct
   latN::Array{Float64, 1}
   ThreadCache::TCache
@@ -799,7 +830,7 @@ mutable struct GlobalStruct{FT<:Real,TCache}
   UGeo::Array{Float64, 2}
   VGeo::Array{Float64, 2}
 end
-function GlobalStruct{FT}(Grid::GridStruct,
+function GlobalStruct{FT}(backend,Grid::GridStruct,
                 Model::ModelStruct,
                 TimeStepper::TimeStepperStruct,
                 ParallelCom::ParallelComStruct,
@@ -807,12 +838,12 @@ function GlobalStruct{FT}(Grid::GridStruct,
                 Output::OutputStruct,
                 Exchange::ExchangeStruct,
                 OP,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:Real
-  Metric=MetricStruct()
-  Cache=CacheStruct{FT}()
-  vtkCache = vtkStruct()
+# Metric=MetricStruct{FT}(backend)
+# Cache=CacheStruct{FT}(backend)
+  vtkCache = vtkStruct{FT}(backend)
   J=JStruct()
   latN=zeros(0)
-  tcache=(;CreateCache(OP,nz,NumV,NumTr)...,init_tcache)
+  tcache=(;CreateCache(FT,OP,nz,NumV,NumTr)...,init_tcache)
   ThetaBGrd = zeros(0,0)
   TBGrd = zeros(0,0)
   pBGrd = zeros(0,0)
@@ -820,7 +851,7 @@ function GlobalStruct{FT}(Grid::GridStruct,
   UGeo = zeros(0,0)
   VGeo = zeros(0,0)
   return GlobalStruct{FT,typeof(tcache)}(
-    Metric,
+#   Metric,
     Grid,
     Model,
     ParallelCom,
@@ -829,7 +860,7 @@ function GlobalStruct{FT}(Grid::GridStruct,
     Output,
     Exchange,
     vtkCache,
-    Cache,
+#   Cache,
     J,
     latN,
     tcache,

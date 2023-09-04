@@ -1,10 +1,10 @@
-function fVelW(x,time,Global,Param)
+function fVelW(x,time::Float64,Global,Param)
   Model=Global.Model
   Phys=Global.Phys
-  str = lowercase(Model.ProfVelW)
-  if str == "linear"
+  ProfVelW = Model.ProfVelW
+  if ProfVelW == "Linear"
     w=x[1];
-  elseif str == "advectionspheredcmip"
+  elseif ProfVelW == "AdvectionsphereDCMIP"
     (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
     Z=max(R-Phys.RadEarth,0);
     pZ = Phys.p0 * exp(-Z / Param.ScaleHeight)
@@ -16,15 +16,15 @@ function fVelW(x,time,Global,Param)
          exp((Param.p_top - pZ) / Param.b / Param.p_top)
     omega = Param.omega_0 * sin(LonP) * cos(Lat) * cos(2 * pi * time / Param.tau) * sp
     w = -omega / RhoZ / Phys.Grav  
-  elseif str == "advectiontestdeform"
+  elseif ProfVelW == "AdvectionTestDeform"
     w = Param.uMax * sinpi(x[3] / Param.H) * cospi(time / Param.EndTime)
-  elseif str == "heldsuarezcart"
+  elseif ProfVelW == "HeldSuarezCart"
     w=sin(pi*x[3]/Param.H)
-  elseif str == "rotationalcart"
+  elseif ProfVelW == "RotationalCart"
     w = sinpi(x[3] / Param.H) * cospi(time / Param.EndTime)
 #   w = (x[1] - Param.xC) / 1000.0
   else
-    w=0;
+    w=0.0
   end
   return w
 end

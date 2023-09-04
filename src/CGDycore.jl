@@ -16,6 +16,10 @@ using MuladdMacro
 using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using RootSolvers
+using CUDA
+using CUDA.CUDAKernels
+using KernelAbstractions
+using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 
 include("Grid/Geometry.jl")
 include("Grid/Node.jl")
@@ -72,6 +76,9 @@ include("DyCore/ThreadCache.jl")
 include("DyCore/TopographySmoothing.jl")
 include("DyCore/parse_commandline.jl")
 
+include("GPU/OperatorKernel.jl")
+include("GPU/vtkOutputKernel.jl")
+
 include("IntegrationMethods/JacStruc.jl")
 include("IntegrationMethods/LinIMEXMethod.jl")
 include("IntegrationMethods/LinIMEXSchur.jl")
@@ -108,6 +115,8 @@ include("Model/fTotEn.jl")
 include("Model/fThetaBGrd.jl")
 include("Model/fTr.jl")
 include("Model/fVel.jl")
+include("Model/fVelu.jl")
+include("Model/fVelv.jl")
 include("Model/fVelGeo.jl")
 include("Model/fPsi.jl")
 include("Model/fVelW.jl")
@@ -118,11 +127,11 @@ include("Model/InitialConditions.jl")
 include("Model/Parameters.jl")
 include("Model/Fun.jl")
 include("Model/InitProfileBryanFritsch.jl")
+include("Model/Example.jl")
 
 include("Statistics/Averages.jl")
 
 include("DyCore/InitDriver.jl")
-#include("GPU/CGGPU.jl")
 
 OOP = 5
 

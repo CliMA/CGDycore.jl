@@ -229,29 +229,29 @@ Base.@kwdef struct ParamAdvectionSphereDCMIP
 end
 
 Base.@kwdef struct ParamAdvectionCubeCart
-  Example = "AdvectionCubeCart"
-  StreamFun = false
-  uMax = 1.0
-  vMax = 1.0
-  x1 = 399.0
-  x2 = 601.0
-  y1 = 399.0
-  y2 = 601.0
+  Example::String = "AdvectionCubeCart"
+  StreamFun::Bool = false
+  uMax::Float64 = 1.0
+  vMax::Float64 = 1.0
+  x1::Float64 = 399.0
+  x2::Float64 = 601.0
+  y1::Float64 = 399.0
+  y2::Float64 = 601.0
 end  
 
 Base.@kwdef struct ParamAdvectionCubeRotCart
-  Example = "AdvectionCubeRotCart"
-  StreamFun = false
-  uMax = 1.0
-  vMax = 1.0
-  xC = 500.0
-  zC = 500.0
-  x1 = 299.0
-  x2 = 501.0
-  z1 = 299.0
-  z2 = 501.0
-  EndTime = 1000.0
-  H = 1000.0
+# Example::String = "AdvectionCubeRotCart"
+  StreamFun::Bool = false
+  uMax::Float64 = 1.0
+  vMax::Float64 = 0.0
+  xC::Float64 = 500.0
+  zC::Float64 = 500.0
+  x1::Float64 = 299.0
+  x2::Float64 = 501.0
+  z1::Float64 = 299.0
+  z2::Float64 = 501.0
+  EndTime::Float64 = 1000.0
+  H::Float64 = 1000.0
 end
 
 Base.@kwdef struct ParamAdvectionCart

@@ -1,4 +1,4 @@
-function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
+function FcnPrepare!(U,CG,Metric,Cache,Global,Param,DiscType::Val{:VectorInvariant})
 (;  RhoPos,
     uPos,
     vPos,
@@ -12,31 +12,31 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  J = Global.Metric.J
-  RhoCG = Global.Cache.RhoCG
-  ThCG = Global.Cache.ThCG
-  TrCG = Global.Cache.TrCG
-  v1CG = Global.Cache.v1CG
-  v2CG = Global.Cache.v2CG
-  wCG = Global.Cache.wCG
-  PresCG = Global.Cache.PresCG
-  KVCG = Global.Cache.KVCG
-  wConFCG = Global.Cache.pBGrdCG
-  wConCCG = Global.Cache.RhoBGrdCG
-  @views CdThCG = Global.Cache.ThCG[:,:,1]
-  @views CdTrCG = Global.Cache.TrCG[:,:,1,:]
-  KE = Global.Cache.KE
-  AuxG = Global.Cache.AuxG
-  @views PresG = Global.Cache.AuxG[:,:,1]
-  @views KVG = Global.Cache.AuxG[:,:,2]
-  @views wConFG = Global.Cache.AuxG[:,:,3]
-  @views wConCG = Global.Cache.AuxG[:,:,4]
-  @views CdThG = Global.Cache.Aux2DG[:,:,1]
-  @views CdTrG = Global.Cache.Aux2DG[:,:,2:1+NumTr]
-  Aux2DG = Global.Cache.Aux2DG
-  zPG = Global.Cache.zPG
-  zP = Global.Metric.zP
-  uStar = Global.Cache.uStar
+  J = Metric.J
+  RhoCG = Cache.RhoCG
+  ThCG = Cache.ThCG
+  TrCG = Cache.TrCG
+  v1CG = Cache.v1CG
+  v2CG = Cache.v2CG
+  wCG = Cache.wCG
+  PresCG = Cache.PresCG
+  KVCG = Cache.KVCG
+  wConFCG = Cache.pBGrdCG
+  wConCCG = Cache.RhoBGrdCG
+  @views CdThCG = Cache.ThCG[:,:,1]
+  @views CdTrCG = Cache.TrCG[:,:,1,:]
+  KE = Cache.KE
+  AuxG = Cache.AuxG
+  @views PresG = Cache.AuxG[:,:,1]
+  @views KVG = Cache.AuxG[:,:,2]
+  @views wConFG = Cache.AuxG[:,:,3]
+  @views wConCG = Cache.AuxG[:,:,4]
+  @views CdThG = Cache.Aux2DG[:,:,1]
+  @views CdTrG = Cache.Aux2DG[:,:,2:1+NumTr]
+  Aux2DG = Cache.Aux2DG
+  zPG = Cache.zPG
+  zP = Metric.zP
+  uStar = Cache.uStar
   @. AuxG = 0.0
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
@@ -60,7 +60,7 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
 #     uStar
       @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCG[:,:,2],CG,
-        Global.Metric.dXdxI[:,:,1,1,:,:,iF],Global.Metric.nS[:,:,:,iF])
+        Metric.dXdxI[:,:,1,:,:,1,iF],Metric.nS[:,:,:,iF])
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
@@ -68,9 +68,9 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end   
     end  
     @views wContraFace!(wConFCG,v1CG,v2CG,wCG,RhoCG,
-      Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
+      Metric.dXdxI[3,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF])
     @views wContraCell!(wConCCG,v1CG,v2CG,wCG,RhoCG,
-      Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
+      Metric.dXdxI[3,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF])
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -110,7 +110,7 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
 #     uStar
       @views uStarCoefficient!(uStar[:,:,iF],v1CG[:,:,1],v2CG[:,:,1],wCG[:,:,2],CG,
-        Global.Metric.dXdxI[:,:,1,1,:,:,iF],Global.Metric.nS[:,:,:,iF])
+        Metric.dXdxI[:,:,1,:,:,1,iF],Metric.nS[:,:,:,iF])
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
@@ -118,9 +118,9 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end   
     end  
     @views wContraFace!(wConFCG,v1CG,v2CG,wCG,RhoCG,
-      Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
+      Metric.dXdxI[3,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF])
     @views wContraCell!(wConCCG,v1CG,v2CG,wCG,RhoCG,
-      Global.Metric.dXdxI[:,:,:,:,3,:,iF],Global.Metric.J[:,:,:,:,iF])
+      Metric.dXdxI[3,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF])
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -165,16 +165,16 @@ function FcnPrepare!(U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
         CdThG[1,ind] += CdThCG[iP,jP,1] *
-          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Global.Metric.dz[1,ind]
+          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Metric.dz[1,ind]
         @views @. CdTrG[1,ind,:] += CdTrCG[iP,jP,:] *
-          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Global.Metric.dz[1,ind]
+          (J[iP,jP,1,1,iF] + J[iP,jP,2,1,iF])  / CG.M[1,ind] / Metric.dz[1,ind]
       end
     end
   end
   ExchangeData3DRecv!(Aux2DG,Global.Exchange)
 end
 
-function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
+function Fcn!(F,U,CG,Metric,Cache,Global,Param,DiscType::Val{:VectorInvariant})
 
 (;  RhoPos,
     uPos,
@@ -189,48 +189,48 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  J = Global.Metric.J
-  zP = Global.Metric.zP
-  Temp1 = Global.Cache.Temp1
-  @views Rot1 = Global.Cache.Temp1[:,:,1]
-  @views Rot2 = Global.Cache.Temp1[:,:,2]
-  @views Grad1 = Global.Cache.Temp1[:,:,3]
-  @views Grad2 = Global.Cache.Temp1[:,:,4]
-  @views Div = Global.Cache.Temp1[:,:,5]
-  @views DivTh = Global.Cache.Temp1[:,:,6]
-  @views Divw = Global.Cache.Temp1[:,:,7]
-  @views JRho = Global.Cache.Temp1[:,:,8]
-  @views JRhoF = Global.Cache.Temp1[:,:,9]
-  @views DivTr = Global.Cache.Temp1[:,:,9+1:9+NumTr]
-  FCG=Global.Cache.FCC
-  FwCG=Global.Cache.FwCC
-  Rot1CG=Global.Cache.Rot1C
-  Rot2CG=Global.Cache.Rot2C
-  Grad1CG=Global.Cache.Grad1C
-  Grad2CG=Global.Cache.Grad2C
-  DivCG=Global.Cache.DivC
-  DivThCG=Global.Cache.DivThC
-  DivwCG=Global.Cache.DivwC
-  DivTrCG=Global.Cache.DivC
-  @views RhoCG = Global.Cache.RhoCG[:,:,:]
-  v1CG = Global.Cache.v1CG
-  v2CG = Global.Cache.v2CG
-  wCG = Global.Cache.wCG
-  wCCG = Global.Cache.wCCG
-  zPG = Global.Cache.zPG
-  pBGrdCG = Global.Cache.pBGrdCG
-  RhoBGrdCG = Global.Cache.RhoBGrdCG
-  @views ThCG = Global.Cache.ThCG[:,:,:]
-  @views TrCG = Global.Cache.TrCG[:,:,:,:]
-  KE = Global.Cache.KE
-  PresCG = Global.Cache.PresCG
-  @views PresG = Global.Cache.AuxG[:,:,1]
-  @views KVG = Global.Cache.AuxG[:,:,2]
-  Temp = Global.Cache.Temp
-  uStar = Global.Cache.uStar
-  KVCG = Global.Cache.KVCG
-  qMin = Global.Cache.qMin
-  qMax = Global.Cache.qMax
+  J = Metric.J
+  zP = Metric.zP
+  Temp1 = Cache.Temp1
+  @views Rot1 = Cache.Temp1[:,:,1]
+  @views Rot2 = Cache.Temp1[:,:,2]
+  @views Grad1 = Cache.Temp1[:,:,3]
+  @views Grad2 = Cache.Temp1[:,:,4]
+  @views Div = Cache.Temp1[:,:,5]
+  @views DivTh = Cache.Temp1[:,:,6]
+  @views Divw = Cache.Temp1[:,:,7]
+  @views JRho = Cache.Temp1[:,:,8]
+  @views JRhoF = Cache.Temp1[:,:,9]
+  @views DivTr = Cache.Temp1[:,:,9+1:9+NumTr]
+  FCG=Cache.FCC
+  FwCG=Cache.FwCC
+  Rot1CG=Cache.Rot1C
+  Rot2CG=Cache.Rot2C
+  Grad1CG=Cache.Grad1C
+  Grad2CG=Cache.Grad2C
+  DivCG=Cache.DivC
+  DivThCG=Cache.DivThC
+  DivwCG=Cache.DivwC
+  DivTrCG=Cache.DivC
+  @views RhoCG = Cache.RhoCG[:,:,:]
+  v1CG = Cache.v1CG
+  v2CG = Cache.v2CG
+  wCG = Cache.wCG
+  wCCG = Cache.wCCG
+  zPG = Cache.zPG
+  pBGrdCG = Cache.pBGrdCG
+  RhoBGrdCG = Cache.RhoBGrdCG
+  @views ThCG = Cache.ThCG[:,:,:]
+  @views TrCG = Cache.TrCG[:,:,:,:]
+  KE = Cache.KE
+  PresCG = Cache.PresCG
+  @views PresG = Cache.AuxG[:,:,1]
+  @views KVG = Cache.AuxG[:,:,2]
+  Temp = Cache.Temp
+  uStar = Cache.uStar
+  KVCG = Cache.KVCG
+  qMin = Cache.qMin
+  qMax = Cache.qMax
 
   @. Rot1 = 0.0
   @. Rot2 = 0.0
@@ -262,15 +262,15 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       
 
     @views RotCurl!(Rot1CG,Rot2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGrad!(DivCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivThCG,ThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradF!(DivwCG,wCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP = 1 : OP
       @inbounds for iP = 1 : OP
@@ -300,7 +300,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         end
       end
       @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
@@ -330,15 +330,15 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       
 
     @views RotCurl!(Rot1CG,Rot2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGrad!(DivCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivThCG,ThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradF!(DivwCG,wCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -368,7 +368,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         end
       end
       @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
@@ -417,44 +417,44 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
 #   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDCurl)
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivGrad!(FCG[:,:,:,RhoPos],DivCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDRhoDiv)
     @views DivRhoGrad!(FCG[:,:,:,ThPos],DivThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
     @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
-      Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
+      Metric.J,Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
-#     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,DiscType)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+#     Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,DiscType)
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoBGrdCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     else
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],PresCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     end
     if Global.Model.Curl
@@ -462,21 +462,21 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 #     Kinetic energy
       @views RhoGradKinColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
     else
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
     end    
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
       if str == "Sphere"
         Omega = Global.Phys.Omega
         @views CoriolisColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,CG,
-          Global.Metric.X[:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Omega)
+          Metric.X[:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Omega)
       end
     end  
 #   Surface Momentum
@@ -486,7 +486,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end  
     if Global.Model.VerticalDiffusionMom
       @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KVCG,
-        Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],Global.Cache)
+        Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Cache)
     end  
 
 
@@ -495,35 +495,35 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       @views @. ThCG = ThCG + Pres[:,:,:,iF]  
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
-       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+       Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end  
@@ -539,19 +539,19 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end
 #     Hyperdiffusion, second Laplacian
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end
@@ -615,43 +615,43 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
     #   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDCurl)
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivGrad!(FCG[:,:,:,RhoPos],DivCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDRhoDiv)
     @views DivRhoGrad!(FCG[:,:,:,ThPos],DivThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
     @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
-      Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
+      Metric.J,Metric.dXdxI[:,:,:,:,:,1,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+      Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoBGrdCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     else
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],PresCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     end
     if Global.Model.Curl
@@ -659,21 +659,21 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 #     Kinetic energy
       @views RhoGradKinColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
     else
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
     end
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
       if str == "Sphere"
         Omega = Global.Phys.Omega
         @views CoriolisColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,CG,
-          Global.Metric.X[:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Omega)
+          Metric.X[:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Omega)
       end
     end  
 #   Surface Momentum
@@ -683,7 +683,7 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end  
     if Global.Model.VerticalDiffusionMom
       @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KVCG,
-        Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],Global.Cache)
+        Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Cache)
     end  
 
 #   Divergence of Thermodynamic Variable
@@ -691,35 +691,35 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       @views @. ThCG = ThCG + Pres[:,:,:,iF]  
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
-       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+       Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end  
@@ -735,19 +735,19 @@ function Fcn!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end
 #     Hyperdiffusion, second Laplacian
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end
@@ -822,48 +822,48 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  J = Global.Metric.J
-  zP = Global.Metric.zP
-  Temp1 = Global.Cache.Temp1
-  @views Rot1 = Global.Cache.Temp1[:,:,1]
-  @views Rot2 = Global.Cache.Temp1[:,:,2]
-  @views Grad1 = Global.Cache.Temp1[:,:,3]
-  @views Grad2 = Global.Cache.Temp1[:,:,4]
-  @views Div = Global.Cache.Temp1[:,:,5]
-  @views DivTh = Global.Cache.Temp1[:,:,6]
-  @views Divw = Global.Cache.Temp1[:,:,7]
-  @views JRho = Global.Cache.Temp1[:,:,8]
-  @views JRhoF = Global.Cache.Temp1[:,:,9]
-  @views DivTr = Global.Cache.Temp1[:,:,9+1:9+NumTr]
-  FCG=Global.Cache.FCC
-  FwCG=Global.Cache.FwCC
-  Rot1CG=Global.Cache.Rot1C
-  Rot2CG=Global.Cache.Rot2C
-  Grad1CG=Global.Cache.Grad1C
-  Grad2CG=Global.Cache.Grad2C
-  DivCG=Global.Cache.DivC
-  DivThCG=Global.Cache.DivThC
-  DivwCG=Global.Cache.DivwC
-  DivTrCG=Global.Cache.DivC
-  @views RhoCG = Global.Cache.RhoCG[:,:,:]
-  v1CG = Global.Cache.v1CG
-  v2CG = Global.Cache.v2CG
-  wCG = Global.Cache.wCG
-  wCCG = Global.Cache.wCCG
-  zPG = Global.Cache.zPG
-  pBGrdCG = Global.Cache.pBGrdCG
-  RhoBGrdCG = Global.Cache.RhoBGrdCG
-  @views ThCG = Global.Cache.ThCG[:,:,:]
-  @views TrCG = Global.Cache.TrCG[:,:,:,:]
-  KE = Global.Cache.KE
-  PresCG = Global.Cache.PresCG
-  @views PresG = Global.Cache.AuxG[:,:,1]
-  @views KVG = Global.Cache.AuxG[:,:,2]
-  Temp = Global.Cache.Temp
-  uStar = Global.Cache.uStar
-  KVCG = Global.Cache.KVCG
-  qMin = Global.Cache.qMin
-  qMax = Global.Cache.qMax
+  J = Metric.J
+  zP = Metric.zP
+  Temp1 = Cache.Temp1
+  @views Rot1 = Cache.Temp1[:,:,1]
+  @views Rot2 = Cache.Temp1[:,:,2]
+  @views Grad1 = Cache.Temp1[:,:,3]
+  @views Grad2 = Cache.Temp1[:,:,4]
+  @views Div = Cache.Temp1[:,:,5]
+  @views DivTh = Cache.Temp1[:,:,6]
+  @views Divw = Cache.Temp1[:,:,7]
+  @views JRho = Cache.Temp1[:,:,8]
+  @views JRhoF = Cache.Temp1[:,:,9]
+  @views DivTr = Cache.Temp1[:,:,9+1:9+NumTr]
+  FCG=Cache.FCC
+  FwCG=Cache.FwCC
+  Rot1CG=Cache.Rot1C
+  Rot2CG=Cache.Rot2C
+  Grad1CG=Cache.Grad1C
+  Grad2CG=Cache.Grad2C
+  DivCG=Cache.DivC
+  DivThCG=Cache.DivThC
+  DivwCG=Cache.DivwC
+  DivTrCG=Cache.DivC
+  @views RhoCG = Cache.RhoCG[:,:,:]
+  v1CG = Cache.v1CG
+  v2CG = Cache.v2CG
+  wCG = Cache.wCG
+  wCCG = Cache.wCCG
+  zPG = Cache.zPG
+  pBGrdCG = Cache.pBGrdCG
+  RhoBGrdCG = Cache.RhoBGrdCG
+  @views ThCG = Cache.ThCG[:,:,:]
+  @views TrCG = Cache.TrCG[:,:,:,:]
+  KE = Cache.KE
+  PresCG = Cache.PresCG
+  @views PresG = Cache.AuxG[:,:,1]
+  @views KVG = Cache.AuxG[:,:,2]
+  Temp = Cache.Temp
+  uStar = Cache.uStar
+  KVCG = Cache.KVCG
+  qMin = Cache.qMin
+  qMax = Cache.qMax
 
   @. Rot1 = 0.0
   @. Rot2 = 0.0
@@ -895,15 +895,15 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       
 
     @views RotCurl!(Rot1CG,Rot2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradHor!(DivCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGradHor!(DivThCG,ThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradF!(DivwCG,wCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP = 1 : OP
       @inbounds for iP = 1 : OP
@@ -933,7 +933,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         end
       end
       @views DivRhoGradHor!(DivCG,ThCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
@@ -963,15 +963,15 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       
 
     @views RotCurl!(Rot1CG,Rot2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradHor!(DivCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGradHor!(DivThCG,ThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivGradF!(DivwCG,wCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -1001,7 +1001,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
         end
       end
       @views DivRhoGradHor!(DivCG,ThCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
@@ -1050,44 +1050,44 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
 #   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDCurl)
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivGradHor!(FCG[:,:,:,RhoPos],DivCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDRhoDiv)
     @views DivRhoGradHor!(FCG[:,:,:,ThPos],DivThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
     @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
-      Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
+      Metric.J,Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
-#     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,DiscType)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+#     Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,DiscType)
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoBGrdCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     else
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],PresCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     end
     if Global.Model.Curl
@@ -1095,21 +1095,21 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 #     Kinetic energy
       @views RhoGradKinColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
     else
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
     end    
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
       if str == "Sphere"
         Omega = Global.Phys.Omega
         @views CoriolisColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,CG,
-          Global.Metric.X[:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Omega)
+          Metric.X[:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Omega)
       end
     end  
 #   Surface Momentum
@@ -1119,7 +1119,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end  
     if Global.Model.VerticalDiffusionMom
       @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KVCG,
-        Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],Global.Cache)
+        Metric.dXdxI[:,:,:,:,3,3,iF],Metric.J[:,:,:,:,iF],Cache)
     end  
 
 
@@ -1128,35 +1128,35 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       @views @. ThCG = ThCG + Pres[:,:,:,iF]  
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
-       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+       Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,3,3,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end  
@@ -1172,19 +1172,19 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end
 #     Hyperdiffusion, second Laplacian
       @views DivRhoGradHor!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,3,3,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end
@@ -1248,43 +1248,43 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
     #   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDCurl)
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivGradHor!(FCG[:,:,:,RhoPos],DivCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDRhoDiv)
     @views DivRhoGradHor!(FCG[:,:,:,ThPos],DivThCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
     @views DivGradF!(FwCG,DivwCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
-      Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
+      Metric.J,Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+      Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoBGrdCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     else
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],PresCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     end
     if Global.Model.Curl
@@ -1292,21 +1292,21 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 #     Kinetic energy
       @views RhoGradKinColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
     else
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
     end
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
       if str == "Sphere"
         Omega = Global.Phys.Omega
         @views CoriolisColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,CG,
-          Global.Metric.X[:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Omega)
+          Metric.X[:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Omega)
       end
     end  
 #   Surface Momentum
@@ -1316,7 +1316,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end  
     if Global.Model.VerticalDiffusionMom
       @views VerticalDiffusionMomentum!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,RhoCG,KVCG,
-        Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],Global.Cache)
+        Metric.dXdxI[:,:,:,:,3,3,iF],Metric.J[:,:,:,:,iF],Cache)
     end  
 
 #   Divergence of Thermodynamic Variable
@@ -1324,35 +1324,35 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       @views @. ThCG = ThCG + Pres[:,:,:,iF]  
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
-       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+       Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,3,3,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end  
@@ -1368,19 +1368,19 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end
 #     Hyperdiffusion, second Laplacian
       @views DivRhoGradHor!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KVCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,3,3,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,3,3,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache)
       end  
     end
@@ -1455,42 +1455,42 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
   nz=Global.Grid.nz;
-  J = Global.Metric.J
-  zP = Global.Metric.zP
-  Temp1 = Global.Cache.Temp1
-  @views Rot1 = Global.Cache.Temp1[:,:,1]
-  @views Rot2 = Global.Cache.Temp1[:,:,2]
-  @views Grad1 = Global.Cache.Temp1[:,:,3]
-  @views Grad2 = Global.Cache.Temp1[:,:,4]
-  @views Div = Global.Cache.Temp1[:,:,NumV]
-  @views DivTr = Global.Cache.Temp1[:,:,NumV+1:NumV+NumTr]
-  @views JJ = Global.Cache.Temp1[:,:,NumV+NumTr+1]
-  FCG=Global.Cache.FCC
-  FwCG=Global.Cache.FwCC
-  Rot1CG=Global.Cache.Rot1C
-  Rot2CG=Global.Cache.Rot2C
-  Grad1CG=Global.Cache.Grad1C
-  Grad2CG=Global.Cache.Grad2C
-  DivCG=Global.Cache.DivC
-  DivTrCG=Global.Cache.DivC
-  @views RhoCG = Global.Cache.RhoCG[:,:,:]
-  v1CG = Global.Cache.v1CG
-  v2CG = Global.Cache.v2CG
-  wCG = Global.Cache.wCG
-  wCCG = Global.Cache.wCCG
-  zPG = Global.Cache.zPG
-  pBGrdCG = Global.Cache.pBGrdCG
-  RhoBGrdCG = Global.Cache.RhoBGrdCG
-  @views ThCG = Global.Cache.ThCG[:,:,:]
-  @views TrCG = Global.Cache.TrCG[:,:,:,:]
-  KE = Global.Cache.KE
-  Pres = Global.Cache.Pres
-  PresG = Global.Cache.PresG
-  Temp = Global.Cache.Temp
-  uStar = Global.Cache.uStar
-  KVCG = Global.Cache.KVCG
-  qMin = Global.Cache.qMin
-  qMax = Global.Cache.qMax
+  J = Metric.J
+  zP = Metric.zP
+  Temp1 = Cache.Temp1
+  @views Rot1 = Cache.Temp1[:,:,1]
+  @views Rot2 = Cache.Temp1[:,:,2]
+  @views Grad1 = Cache.Temp1[:,:,3]
+  @views Grad2 = Cache.Temp1[:,:,4]
+  @views Div = Cache.Temp1[:,:,NumV]
+  @views DivTr = Cache.Temp1[:,:,NumV+1:NumV+NumTr]
+  @views JJ = Cache.Temp1[:,:,NumV+NumTr+1]
+  FCG=Cache.FCC
+  FwCG=Cache.FwCC
+  Rot1CG=Cache.Rot1C
+  Rot2CG=Cache.Rot2C
+  Grad1CG=Cache.Grad1C
+  Grad2CG=Cache.Grad2C
+  DivCG=Cache.DivC
+  DivTrCG=Cache.DivC
+  @views RhoCG = Cache.RhoCG[:,:,:]
+  v1CG = Cache.v1CG
+  v2CG = Cache.v2CG
+  wCG = Cache.wCG
+  wCCG = Cache.wCCG
+  zPG = Cache.zPG
+  pBGrdCG = Cache.pBGrdCG
+  RhoBGrdCG = Cache.RhoBGrdCG
+  @views ThCG = Cache.ThCG[:,:,:]
+  @views TrCG = Cache.TrCG[:,:,:,:]
+  KE = Cache.KE
+  Pres = Cache.Pres
+  PresG = Cache.PresG
+  Temp = Cache.Temp
+  uStar = Cache.uStar
+  KVCG = Cache.KVCG
+  qMin = Cache.qMin
+  qMax = Cache.qMax
 
   @. Rot1 = 0.0
   @. Rot2 = 0.0
@@ -1519,11 +1519,11 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       
 
     @views RotCurl!(Rot1CG,Rot2CG,v1CG,v2CG,RhoCG,CG,
-     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+     Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,RhoCG,CG,
-     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+     Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
-     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+     Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -1548,7 +1548,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
         end
       end
       @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
@@ -1577,11 +1577,11 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       
 
     @views RotCurl!(Rot1CG,Rot2CG,v1CG,v2CG,RhoCG,CG,
-     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+     Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,RhoCG,CG,
-     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+     Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
-     Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+     Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
@@ -1606,7 +1606,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
         end
       end
       @views DivRhoGrad!(DivCG,ThCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache)
       @inbounds for jP=1:OP
         @inbounds for iP=1:OP
           ind = CG.Glob[iP,jP,iF]
@@ -1649,19 +1649,19 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
 #   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDCurl)
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivRhoGrad!(FCG[:,:,:,ThPos],DivCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
-      Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
+      Metric.J,Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Pressure
     @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
@@ -1678,34 +1678,34 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
     end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoBGrdCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     else
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],Pres[:,:,:,iF],RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     end
     if Global.Model.Upwind
       @views DivRhoTrColumn!(FCG[:,:,:,uPos],v1CG,v2CG,wCG,v1CG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       @views DivRhoTrColumn!(FCG[:,:,:,vPos],v1CG,v2CG,wCG,v2CG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       @views MomentumWColumn!(FwCG,v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
     else    
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
     end
 
     if Global.Model.Coriolis
@@ -1713,7 +1713,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       if str == "Sphere"
         Omega = Global.Phys.Omega
         @views CoriolisColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,CG,
-          Global.Metric.X[:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Omega)
+          Metric.X[:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Omega)
       end
     end
 
@@ -1723,31 +1723,31 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       @views @. ThCG = ThCG + Pres[:,:,:,iF]  
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:Conservative))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:Conservative))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
-       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+       Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:Conservative))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,Global,iF)
@@ -1765,15 +1765,15 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       end
 #     Hyperdiffusion, second Laplacian
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit)
       else
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KVCG,CG,Global,iF)
@@ -1835,19 +1835,19 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
     #   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDCurl)
     @views GradDiv!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
     @views DivRhoGrad!(FCG[:,:,:,ThPos],DivCG,RhoCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+      Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
 
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:,:],v1CG[:,:,:],v2CG[:,:,:],CG,
-      Global.Metric.J,Global.Metric.dXdxI[:,:,:,1,:,:,iF])
+      Metric.J,Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Pressure
     @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Global)
@@ -1864,35 +1864,35 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
     end   
 
     @views DivRhoColumn!(FCG[:,:,:,RhoPos],v1CG,v2CG,wCG,CG,
-      Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+      Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
 
     if Global.Model.RefProfile
       @views @. pBGrdCG = Pres[:,:,:,iF] - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],pBGrdCG,RhoBGrdCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoBGrdCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoBGrdCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     else
       @views GradColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG[:,:,:],Pres[:,:,:,iF],RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoCG,Global.Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,:,iF],Phys)  
       end
     end
 
     if Global.Model.Upwind
       @views DivRhoTrColumn!(FCG[:,:,:,uPos],v1CG,v2CG,wCG,v1CG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       @views DivRhoTrColumn!(FCG[:,:,:,vPos],v1CG,v2CG,wCG,v2CG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       @views MomentumWColumn!(FwCG,v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
     else    
       @views MomentumColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
+        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:Conservative))
     end  
 
     if Global.Model.Coriolis
@@ -1900,7 +1900,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       if str == "Sphere"
         Omega = Global.Phys.Omega
         @views CoriolisColumn!(FCG[:,:,:,uPos],FCG[:,:,:,vPos],v1CG,v2CG,CG,
-          Global.Metric.X[:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Omega)
+          Metric.X[:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Omega)
       end
     end
 
@@ -1909,31 +1909,31 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       @views @. ThCG = ThCG + Pres[:,:,:,iF]  
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:Conservative))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
     elseif Global.Model.Thermo == "InternalEnergy" 
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:Conservative))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       @views SourceIntEnergy!(FCG[:,:,:,ThPos],Pres[:,:,:,iF],v1CG,v2CG,wCG,CG,
-       Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+       Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:Conservative))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,Global,iF)
@@ -1951,15 +1951,15 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       end
 #     Hyperdiffusion, second Laplacian
       @views DivRhoGrad!(FCG[:,:,:,iT+NumV],DivTrCG,RhoCG,CG,
-        Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],Global.ThreadCache,
+        Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Global.ThreadCache,
         Global.Model.HyperDDiv)
       if Global.Model.Upwind
         @views DivUpwindRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.Metric.J[:,:,:,:,iF],
+          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:Conservative))
       else
         @views DivRhoTrColumn!(FCG[:,:,:,iT+NumV],v1CG,v2CG,wCG,TrCG[:,:,:,iT],RhoCG,CG,
-          Global.Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
+          Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
       end
       if Global.Model.VerticalDiffusion
         @views VerticalDiffusionScalar!(FCG[:,:,:,iT+NumV],TrCG[:,:,:,iT],RhoCG,KVCG,CG,Global,iF)

@@ -1,6 +1,11 @@
 using CGDycore
 using MPI
 using Base
+using CUDA
+using CUDA.CUDAKernels
+using KernelAbstractions
+using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using StaticArrays
 
 # Model
 parsed_args = CGDycore.parse_commandline()
@@ -74,10 +79,21 @@ Flat = parsed_args["Flat"]
 
 Param = CGDycore.Parameters(Problem)
 
+Device = parsed_args["Device"]
+GPUType = parsed_args["GPUType"]
+FloatTypeBackend = parsed_args["FloatTypeBackend"]
+Param = CGDycore.Parameters(Problem)
+
+
+backend = CPU()
+FTB = Float64
+
+KernelAbstractions.synchronize(backend)
+
 MPI.Init()
 
 # Physical parameters
-Phys=CGDycore.PhysParameters()
+Phys=CGDycore.PhysParameters{FTB}()
 
 #ModelParameters
 Model = CGDycore.Model()
@@ -154,12 +170,11 @@ OrdPolyZ = 1
 
 Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
-(CG,Global) = CGDycore.InitSphere(OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
-
+(CG, Metric, Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
 
 
 # Initial values
-U = CGDycore.InitialConditions(CG,Global,Param)
+U = CGDycore.InitialConditions(CG,Metric,Global,Param)
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -176,8 +191,8 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-      "Vort",
-      "Pres",
+#     "Vort",
+#     "Pres",
       ]
   elseif Model.Equation == "CompressibleMoist"  
     Global.Output.cNames = [
@@ -186,10 +201,10 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-      "Vort",
-      "Pres",
-      "Tr1",
-      "Tr2",
+#     "Vort",
+#     "Pres",
+#     "Tr1",
+#     "Tr2",
       ]
   elseif Model.Equation == "Shallow"  
     Global.Output.cNames = [
@@ -197,8 +212,8 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "u",
       "v",
       "Th",
-      "Vort",
-      "Pres",
+#     "Vort",
+#     "Pres",
       ]
   end  
 elseif ModelType == "Conservative"
@@ -208,8 +223,8 @@ elseif ModelType == "Conservative"
     "Rhov",
     "w",
     "Th",
-    "Vort",
-    "Pres",
+#   "Vort",
+#   "Pres",
     ]
 end
 
@@ -221,7 +236,7 @@ Global.Output.StartAverageDays = StartAverageDays
 Global.Output.PrintStartTime = PrintStartTime
 Global.Output.OrdPrint = CG.OrdPoly
 
-Global.vtkCache = CGDycore.vtkStruct(Global.Output.OrdPrint,CGDycore.TransSphereX,CG,Global)
+Global.vtkCache = CGDycore.vtkStruct{FTB}(backend,Global.Output.OrdPrint,CGDycore.TransSphereX!,CG,Metric,Global)
 
 # TimeStepper
 time=[0.0]
@@ -238,4 +253,4 @@ elseif ModelType == "Conservative"
 end  
 nT = max(9 + NumTr, NumV + NumTr)
 CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
-CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Global,Param,DiscType)
+CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Metric,Global,Param,DiscType)

@@ -1,27 +1,29 @@
-mutable struct vtkStruct
-  vtkInter::Array{Float64,4}
+mutable struct vtkStruct{FT<:Real,
+                         AT4<:AbstractArray}
+  vtkInter::AT4
   cells
   pts::Array{Float64,2}
 end
-function vtkStruct()
-  vtkInter = zeros(Float64,0,0,0,0)
+function vtkStruct{FT}(backend) where FT<:Real
+  vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   pts = Array{Float64,2}(undef,0,0)
   cells = MeshCell[]
-    return vtkStruct(
+    return vtkStruct{FT,
+                     typeof(vtkInter)}(
     vtkInter,
     cells,
     pts,
   )
 end
 
-function vtkStruct(OrdPrint::Int,Trans,CG,Global)
+function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:Real
   OrdPoly = CG.OrdPoly
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
   Npts = 8 * NF * nz * OrdPrint * OrdPrint
   pts = Array{Float64,2}(undef,3,Npts)
   ipts = 1
-  X = zeros(8,3)
+  x = zeros(8,3)
   lam=zeros(8,1)
   theta=zeros(8,1)
   z=zeros(8,1)
@@ -29,8 +31,12 @@ function vtkStruct(OrdPrint::Int,Trans,CG,Global)
     dTol=2*pi/max(Global.Output.nPanel-1,1)
   end
 
+  
+  FTX = eltype(Metric.X)
+  X = zeros(FTX,OrdPoly+1,OrdPoly+1,2,3)
   for iF = 1 : NF
     for iz = 1 : nz
+      copyto!(X,Metric.X[:,:,:,:,iz,iF])
       dd = 2 / OrdPrint
       eta0 = -1
       for jRef = 1 : OrdPrint
@@ -38,17 +44,17 @@ function vtkStruct(OrdPrint::Int,Trans,CG,Global)
         eta1 = eta0 + dd
         for iRef = 1 : OrdPrint
           ksi1 = ksi0 + dd
-          X[1,:] = Trans(ksi0,eta0, -1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
-          X[2,:] = Trans(ksi1,eta0, -1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
-          X[3,:] = Trans(ksi1,eta1, -1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
-          X[4,:] = Trans(ksi0,eta1, -1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
-          X[5,:] = Trans(ksi0,eta0, 1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
-          X[6,:] = Trans(ksi1,eta0, 1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
-          X[7,:] = Trans(ksi1,eta1, 1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
-          X[8,:] = Trans(ksi0,eta1, 1.0,Global.Metric.X[:,:,:,:,iz,iF],CG,Global)
+          @views Trans(x[1,:],ksi0,eta0, -1.0,X[:,:,:,:],CG,Global)
+          @views Trans(x[2,:],ksi1,eta0, -1.0,X[:,:,:,:],CG,Global)
+          @views Trans(x[3,:],ksi1,eta1, -1.0,X[:,:,:,:],CG,Global)
+          @views Trans(x[4,:],ksi0,eta1, -1.0,X[:,:,:,:],CG,Global)
+          @views Trans(x[5,:],ksi0,eta0, 1.0,X[:,:,:,:],CG,Global)
+          @views Trans(x[6,:],ksi1,eta0, 1.0,X[:,:,:,:],CG,Global)
+          @views Trans(x[7,:],ksi1,eta1, 1.0,X[:,:,:,:],CG,Global)
+          @views Trans(x[8,:],ksi0,eta1, 1.0,X[:,:,:,:],CG,Global)
           if Global.Grid.Form == "Sphere" && Global.Output.Flat
             for i=1:8
-              (lam[i],theta[i],z[i]) = cart2sphere(X[i,1],X[i,2],X[i,3])
+              (lam[i],theta[i],z[i]) = cart2sphere(x[i,1],x[i,2],x[i,3])
             end 
             lammin = minimum(lam)
             lammax = maximum(lam)
@@ -68,7 +74,7 @@ function vtkStruct(OrdPrint::Int,Trans,CG,Global)
             end
           else
             for i=1:8
-              pts[:,ipts] = [X[i,1],X[i,2],X[i,3]]
+              pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
               ipts = ipts + 1
             end
           end
@@ -106,8 +112,11 @@ function vtkStruct(OrdPrint::Int,Trans,CG,Global)
     end
     eta0 = eta1
   end
-  return vtkStruct(
-    vtkInter,
+  dvtkInter = KernelAbstractions.zeros(backend,FT,size(vtkInter))
+  copyto!(dvtkInter,vtkInter)
+  return vtkStruct{FT,
+                   typeof(dvtkInter)}(
+    dvtkInter,
     cells,
     pts,
   )  
@@ -135,10 +144,10 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
       eta1 = eta0 + dd
       for iRef = 1 : OrdPrint
         ksi1 = ksi0 + dd
-        X[1,:] = Trans(ksi0,eta0, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
-        X[2,:] = Trans(ksi1,eta0, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
-        X[3,:] = Trans(ksi1,eta1, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
-        X[4,:] = Trans(ksi0,eta1, -1.0,Global.Metric.X[:,:,:,:,1,iF],CG,Global)
+        X[1,:] = Trans(ksi0,eta0, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
+        X[2,:] = Trans(ksi1,eta0, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
+        X[3,:] = Trans(ksi1,eta1, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
+        X[4,:] = Trans(ksi0,eta1, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
         if Global.Grid.Form == "Sphere" && Global.Output.Flat
           for i=1:4
             (lam[i],theta[i],z[i]) = cart2sphere(X[i,1],X[i,2],X[i,3])
@@ -211,7 +220,7 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
   )  
 end
 
-function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
+function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, nparts::Int)
 
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
@@ -230,28 +239,35 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
   vtk_filename_noext = filename * stepS;
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
 
+  backend = get_backend(U)				      
+  FTB = eltype(U)
+  cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,nz,NF)
   for i=1:length(Global.Output.cNames)
     str = Global.Output.cNames[i]
     if str == "Rho"
       RhoPos = Global.Model.RhoPos
       RhoCell = zeros(OrdPrint*OrdPrint*nz*NF) 
-      @views Interpolate!(RhoCell,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+#     @views Interpolate!(RhoCell,Rho,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @views InterpolateGPU!(cCell,U[:,:,RhoPos],vtkInter,CG.Glob)
+      @views copyto!(RhoCell,cCell)
       vtk["rho", VTKCellData()] = RhoCell
     elseif  str == "u" 
       uPos = Global.Model.uPos
       uCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views Interpolate!(uCell,U[:,:,uPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @views InterpolateGPU!(cCell,U[:,:,uPos],vtkInter,CG.Glob)
+      @views copyto!(uCell,cCell)
       vtk["u", VTKCellData()] = uCell
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
-      RhoPos = Global.Model.RhoPos
+      @views copyto!(temp,U[:,:,uPos])
       uCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views Interpolate!(uCell,U[:,:,uPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @views Interpolate!(uCell,temp,Rho,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["u", VTKCellData()] = uCell
     elseif  str == "v" 
       vPos = Global.Model.vPos
       vCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views Interpolate!(vCell,U[:,:,vPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @views InterpolateGPU!(cCell,U[:,:,vPos],vtkInter,CG.Glob)
+      @views copyto!(vCell,cCell)
       vtk["v", VTKCellData()] = vCell
     elseif  str == "Rhov" 
       vPos = Global.Model.vPos
@@ -265,15 +281,17 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views InterpolateW!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
-        vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Metric.dXdxI)
+        vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Metric.dXdxI)
       vtk["w", VTKCellData()] = wCell
     elseif  str == "wB" 
       uPos = Global.Model.uPos
       vPos = Global.Model.uPos
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views InterpolateWB!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
-        vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Metric.dXdxI)
+      InterpolateWBGPU!(cCell,U[:,:,uPos],U[:,:,vPos],U[:,:,wPos],vtkInter,Metric.dXdxI,CG.Glob)
+#     @views InterpolateWB!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
+#       vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Metric.dXdxI)
+      @views copyto!(wCell,cCell)
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
@@ -283,10 +301,11 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
         @views InterpolateTh!(ThCell,Pres,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
         vtk["Th", VTKCellData()] = ThCell 
       else
-        RhoPos = Global.Model.RhoPos
         ThPos = Global.Model.ThPos
+        RhoPos = Global.Model.RhoPos
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
-        @views Interpolate!(ThCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+        @views InterpolateRhoGPU!(cCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,CG.Glob)
+        copyto!(ThCell,cCell)
         vtk["Th", VTKCellData()] = ThCell
       end
     elseif str == "ThE"  
@@ -325,9 +344,11 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       vtk["p", VTKCellData()] = pCell 
     elseif  str == "Tr1" 
       Tr1Pos = Global.Model.NumV + 1
-      Tr1Cell = zeros(OrdPrint*OrdPrint*nz*NF)
       RhoPos = Global.Model.RhoPos
-      @views InterpolateClipp!(Tr1Cell,U[:,:,Tr1Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      Tr1Cell = zeros(OrdPrint*OrdPrint*nz*NF)
+#     @views InterpolateClipp!(Tr1Cell,temp,Rho,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      @views InterpolateRhoGPU!(cCell,U[:,:,Tr1Pos],U[:,:,RhoPos],vtkInter,CG.Glob)
+      copyto!(Tr1Cell,cCell)
       vtk["Tr1", VTKCellData()] = Tr1Cell
     elseif  str == "Tr2" 
       Tr2Pos = Global.Model.NumV + 2
@@ -339,7 +360,7 @@ function unstructured_vtkSphere(U,Trans,CG,Global, part::Int, nparts::Int)
       uPos = Global.Model.uPos
       vPos = Global.Model.vPos
       VortCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views InterpolateVort!(VortCell,U[:,:,uPos:vPos],vtkInter,OrdPrint,CG,Global)
+      @views InterpolateVort!(VortCell,U[:,:,uPos:vPos],vtkInter,OrdPrint,CG,Metric,Cache,Global)
       vtk["Vort", VTKCellData()] = VortCell
     end   
   end   
@@ -514,12 +535,12 @@ function InterpolateThE!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,OrdPoly,OrdPrint,Glob,N
   end
 end
 
-function InterpolateVort!(cCell,U,Inter,OrdPrint,CG,Global)
+function InterpolateVort!(cCell,U,Inter,OrdPrint,CG,Metric,Cache,Global)
   icCell  = 1
   cc=zeros(OrdPrint,OrdPrint)
-  v1CG = Global.Cache.v1CG
-  v2CG = Global.Cache.v2CG
-  VortCG = Global.Cache.KE
+  v1CG = Cache.v1CG
+  v2CG = Cache.v2CG
+  VortCG = Cache.KE
   OP = CG.OrdPoly + 1
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
@@ -533,8 +554,8 @@ function InterpolateVort!(cCell,U,Inter,OrdPrint,CG,Global)
         end
       end
     end
-    @views Rot!(VortCG,v1CG,v2CG,CG,Global.Metric.dXdxI[:,:,:,:,:,:,iF],
-      Global.Metric.J[:,:,:,:,iF],Global.ThreadCache)
+    @views Rot!(VortCG,v1CG,v2CG,CG,Metric.dXdxI[:,:,:,:,:,:,iF],
+      Metric.J[:,:,:,:,iF],Global.ThreadCache)
 
     @inbounds for iz=1:nz
       @. cc = 0.0
@@ -550,7 +571,7 @@ function InterpolateVort!(cCell,U,Inter,OrdPrint,CG,Global)
   end
 end
 
-function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Global)
+function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Metric,Global)
   icCell  = 1
   cc=zeros(OrdPrint,OrdPrint)
   v1CG = Global.Cache.v1CG
@@ -561,7 +582,7 @@ function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Global)
   OP = CG.OrdPoly + 1
   nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
-  zP = Global.Metric.zP
+  zP = Metric.zP
   if Global.Model.Thermo == "Energy"
     @inbounds for iF=1:NF
       @inbounds for jP=1:OP
@@ -580,7 +601,7 @@ function InterpolatePressure!(cCell,U,Inter,OrdPrint,CG,Global)
         for j=1:OP
           for i=1:OP
             ind = CG.Glob[i,j,iF]  
-            p = Pressure(U[iz,ind,:],KE[i,j,iz],zP[iz,ind],Global)  
+            p = Pressure(U[iz,ind,:],KE[i,j,iz],zP[iz,ind],Metric,Global)  
             @views @. cc = cc + Inter[:,:,i,j]*p
           end
         end
