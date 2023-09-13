@@ -1,6 +1,5 @@
-function fRho(x,time,Global,Param,Profile)
+function fRho(x,time,Phys,Global,Param,Profile)
   Model=Global.Model
-  Phys=Global.Phys
   # global Omega uM lat0G lat1G eN
   str = lowercase(Model.ProfRho)
   if str == "solidbody"

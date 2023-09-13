@@ -1,11 +1,9 @@
-using CGDycore
+include("../src/CGDycore.jl")
 using MPI
 using Base
-using CUDA
-using CUDA.CUDAKernels
+using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
-using StaticArrays
 
 # Model
 parsed_args = CGDycore.parse_commandline()
@@ -77,7 +75,6 @@ PrintSeconds = parsed_args["PrintSeconds"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
 
-Param = CGDycore.Parameters(Problem)
 
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
@@ -88,7 +85,6 @@ Param = CGDycore.Parameters(Problem)
 backend = CPU()
 FTB = Float64
 
-KernelAbstractions.synchronize(backend)
 
 MPI.Init()
 
@@ -174,7 +170,7 @@ Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
 
 # Initial values
-U = CGDycore.InitialConditions(CG,Metric,Global,Param)
+U = CGDycore.InitialConditions(CG,Metric,Phys,Global,Param)
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -251,6 +247,6 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
 elseif ModelType == "Conservative"
   DiscType = Val(:Conservative)  
 end  
-nT = max(9 + NumTr, NumV + NumTr)
+nT = max(6 + NumTr, NumV + NumTr)
 CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
-CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Metric,Global,Param,DiscType)
+CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)

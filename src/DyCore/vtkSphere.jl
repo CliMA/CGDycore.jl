@@ -8,13 +8,37 @@ function vtkStruct{FT}(backend) where FT<:Real
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   pts = Array{Float64,2}(undef,0,0)
   cells = MeshCell[]
-    return vtkStruct{FT,
-                     typeof(vtkInter)}(
-    vtkInter,
-    cells,
-    pts,
+  return vtkStruct{FT,
+                   typeof(vtkInter)}(
+  vtkInter,
+  cells,
+  pts,
   )
 end
+
+function vtkStruct{FT}(backend,Grid) where FT<:Real
+
+  vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0)
+  celltype = VTKCellTypes.VTK_TRIANGLE
+  cells = MeshCell[]
+  for iF = 1 : Grid.NumFaces
+    push!(cells, MeshCell(celltype, Grid.Faces[iF].N))
+  end
+  pts = Array{Float64,2}(undef,3,Grid.NumNodes)
+  for iN = 1 : Grid.NumNodes
+    pts[1,iN] = Grid.Nodes[iN].P.x  
+    pts[2,iN] = Grid.Nodes[iN].P.y  
+    pts[3,iN] = Grid.Nodes[iN].P.z  
+  end  
+
+  return vtkStruct{FT,
+                   typeof(vtkInter)}(
+  vtkInter,
+  cells,
+  pts,
+  )
+end                   
+
 
 function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:Real
   OrdPoly = CG.OrdPoly
@@ -219,6 +243,18 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
     pts,
   )  
 end
+
+function vtkSkeleton(vtkCache,filename, part::Int, nparts::Int)
+  cells = vtkCache.cells
+  pts = vtkCache.pts
+
+  step = 1
+  stepS="$step"
+  vtk_filename_noext = filename * stepS;
+  vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  outfiles=vtk_save(vtk);
+  return outfiles::Vector{String}
+end  
 
 function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, nparts::Int)
 

@@ -1,7 +1,7 @@
-function Pressure(U,KE,zP,Global)
-  Rd = Global.Phys.Rd
-  Cvd = Global.Phys.Cvd
-  Grav = Global.Phys.Grav
+function Pressure(U,KE,zP,Phys,Global)
+  Rd = Phys.Rd
+  Cvd = Phys.Cvd
+  Grav = Phys.Grav
   if Global.Model.Equation == "Compressible"
     p=(Rd/Cvd)*(U[5]-U[1]*(KE+Grav*zP))
   elseif Global.Model.Equation == "CompressibleMoist"
@@ -13,7 +13,7 @@ end
 fast_pow(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
 
 function Pressure!(p::AbstractArray{Float64,3},RhoTh::AbstractArray{Float64,3},Rho::AbstractArray{Float64,3},
-  Tr::AbstractArray{Float64,4},KE::AbstractArray{Float64,3},zP::AbstractArray{Float64,3},Global)
+  Tr::AbstractArray{Float64,4},KE::AbstractArray{Float64,3},zP::AbstractArray{Float64,3},Phys,Global)
   (; Rd,
      Cvd,
      Cpd,
@@ -24,7 +24,7 @@ function Pressure!(p::AbstractArray{Float64,3},RhoTh::AbstractArray{Float64,3},R
      p0,
      Grav,
      L00,
-     kappa) = Global.Phys
+     kappa) = Phys
 
   
   Equation = Global.Model.Equation
@@ -32,18 +32,22 @@ function Pressure!(p::AbstractArray{Float64,3},RhoTh::AbstractArray{Float64,3},R
   iE2 = size(p,2)
   iE3 = size(p,3)
   if Equation == "Compressible"
-     if Global.Model.Thermo == "TotalEnergy"
-       @inbounds for i in eachindex(p)  
-         p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
-       end  
-     elseif Global.Model.Thermo == "InternalEnergy"
-       @inbounds for i in eachindex(p)  
-         p[i] = (Rd / Cvd) * RhoTh[i] 
-       end  
-     else
-       @inbounds for i in eachindex(p)  
-         p[i] = p0 * fast_pow(Rd * RhoTh[i] / p0, 1.0 / (1.0 - kappa));
-       end  
+    if Global.Model.Thermo == "TotalEnergy"
+      @inbounds for i in eachindex(p)  
+        p[i] = (Rd / Cvd) * (RhoTh[i] - Rho[i] * (KE[i] + Grav * zP[i]))
+      end  
+    elseif Global.Model.Thermo == "InternalEnergy"
+      @inbounds for i in eachindex(p)  
+        p[i] = (Rd / Cvd) * RhoTh[i] 
+      end  
+    else
+      @inbounds for i3 = 1 : iE3
+        @inbounds for i2 = 1 : iE2
+          @inbounds for i1 = 1 : iE1
+            p[i1,i2,i3] = p0 * fast_pow(Rd * RhoTh[i1,i2,i3] / p0, 1.0 / (1.0 - kappa));
+          end  
+        end  
+      end  
     end
   elseif Equation == "CompressibleMoist"
     @views TrRhoV = Tr[:,:,:,Global.Model.RhoVPos]
@@ -84,7 +88,7 @@ function Pressure!(p::AbstractArray{Float64,3},RhoTh::AbstractArray{Float64,3},R
 end
 
 function Pressure!(p::AbstractArray{Float64,2},RhoTh::AbstractArray{Float64,2},Rho::AbstractArray{Float64,2},
-  Tr::AbstractArray{Float64,3},KE::AbstractArray{Float64,2},zP::AbstractArray{Float64,2},Global)
+  Tr::AbstractArray{Float64,3},KE::AbstractArray{Float64,2},zP::AbstractArray{Float64,2},Phys,Global)
   (; Rd,
      Cvd,
      Cpd,
@@ -95,7 +99,7 @@ function Pressure!(p::AbstractArray{Float64,2},RhoTh::AbstractArray{Float64,2},R
      p0,
      Grav,
      L00,
-     kappa) = Global.Phys
+     kappa) = Phys
 
   
   Equation = Global.Model.Equation
@@ -150,7 +154,7 @@ function Pressure!(p::AbstractArray{Float64,2},RhoTh::AbstractArray{Float64,2},R
 end
 
 function Pressure!(p::AbstractArray{Float64,1},RhoTh::AbstractArray{Float64,1},Rho::AbstractArray{Float64,1},
-  Tr::AbstractArray{Float64,2},KE::AbstractArray{Float64,1},zP::AbstractArray{Float64,1},Global)
+  Tr::AbstractArray{Float64,2},KE::AbstractArray{Float64,1},zP::AbstractArray{Float64,1},Phys,Global)
   (; Rd,
      Cvd,
      Cpd,
@@ -161,7 +165,7 @@ function Pressure!(p::AbstractArray{Float64,1},RhoTh::AbstractArray{Float64,1},R
      p0,
      Grav,
      L00,
-     kappa) = Global.Phys
+     kappa) = Phys
 
   
   Equation = Global.Model.Equation
@@ -214,7 +218,7 @@ function Pressure!(p::AbstractArray{Float64,1},RhoTh::AbstractArray{Float64,1},R
   end
 end
 
-function Temperature!(T,RhoTh,Rho,Tr,Global)
+function Temperature!(T,RhoTh,Rho,Tr,Phys,Global)
   (; Rd,
      Cvd,
      Cpd,
@@ -223,7 +227,7 @@ function Temperature!(T,RhoTh,Rho,Tr,Global)
      Cpv,
      Cpl,
      p0,
-     kappa) = Global.Phys
+     kappa) = Phys
 
   Equation = Global.Model.Equation
   if Equation == "Compressible"
@@ -247,7 +251,7 @@ function PressureMoist(RhoTh,Rho,RhoV,RhoC,Rd,Cpd,Rv,Cpv,Cpl,p0)
 end
 
 
-function dPresdTh!(dpdTh,RhoTh,Rho,Tr,Global)
+function dPresdTh!(dpdTh,RhoTh,Rho,Tr,Phys,Global)
   (; Rd,
      Cvd,
      Cpd,
@@ -256,7 +260,7 @@ function dPresdTh!(dpdTh,RhoTh,Rho,Tr,Global)
      Cpv,
      Cpl,
      p0,
-     kappa) = Global.Phys
+     kappa) = Phys
 
   Equation = Global.Model.Equation
   if Equation == "Compressible"
@@ -285,7 +289,7 @@ function dPresdRhoV!(dpdRhoV,RhoTh,Rho,Tr,Pres,Global)
      Cpv,
      Cpl,
      p0,
-     kappa) = Global.Phys
+     kappa) = Phys
 
   Equation = Global.Model.Equation
   if Equation == "Compressible"

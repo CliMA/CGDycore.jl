@@ -295,7 +295,7 @@ DivC=zeros(FT,OP,OP,nz)
 DivThC=zeros(FT,OP,OP,nz)
 DivwC=zeros(FT,OP,OP,nz+1)
 KVCG=zeros(FT,OP,OP,nz)
-Temp1=KernelAbstractions.zeros(backend,FT,nz,NumG,max(NumV+NumTr,9+NumTr))
+Temp1=KernelAbstractions.zeros(backend,FT,nz,NumG,max(NumV+NumTr,7+NumTr))
 #Temp1=zeros(FT,nz,NumG,max(NumV+NumTr,9+NumTr))
 k=zeros(FT,0,0,0,0)
 Ymyn=zeros(FT,0,0,0,0)
@@ -815,7 +815,7 @@ mutable struct GlobalStruct{FT<:Real,
   Model::ModelStruct
   ParallelCom::ParallelComStruct
   TimeStepper::TimeStepperStruct
-  Phys::PhysParameters
+# Phys::PhysParameters
   Output::OutputStruct
   Exchange::ExchangeStruct
   vtkCache::vtkStruct{FT}
@@ -834,7 +834,7 @@ function GlobalStruct{FT}(backend,Grid::GridStruct,
                 Model::ModelStruct,
                 TimeStepper::TimeStepperStruct,
                 ParallelCom::ParallelComStruct,
-                Phys::PhysParameters,
+#               Phys::PhysParameters,
                 Output::OutputStruct,
                 Exchange::ExchangeStruct,
                 OP,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:Real
@@ -856,7 +856,7 @@ function GlobalStruct{FT}(backend,Grid::GridStruct,
     Model,
     ParallelCom,
     TimeStepper,
-    Phys,
+#   Phys,
     Output,
     Exchange,
     vtkCache,

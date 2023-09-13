@@ -1,6 +1,5 @@
-function fVel(x,time::Float64,Global,Param)
+function fVel(x,time::Float64,Phys,Global,Param)
   Model = Global.Model
-  Phys = Global.Phys
   ProfVel = Model.ProfVel
   if ProfVel == "SolidBody"
     uS = 0.0

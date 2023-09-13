@@ -1,4 +1,4 @@
-function InitialConditions(CG,Metric,Global,Param)  
+function InitialConditions(CG,Metric,Phys,Global,Param)  
   Model = Global.Model
   nz = Global.Grid.nz
   NumV = Model.NumV
@@ -12,14 +12,14 @@ function InitialConditions(CG,Metric,Global,Param)
     Profile = zeros(0)  
   end  
   U = zeros(Float64,nz,CG.NumG,NumV+NumTr)
-  U[:,:,Model.RhoPos]=Project(fRho,0.0,CG,Metric,Global,Param,Profile)
-  (U[:,:,Model.uPos],U[:,:,Model.vPos])=ProjectVec(fVel,0.0,CG,Metric,Global,Param)
+  U[:,:,Model.RhoPos]=Project(fRho,0.0,CG,Metric,Phys,Global,Param,Profile)
+  (U[:,:,Model.uPos],U[:,:,Model.vPos])=ProjectVec(fVel,0.0,CG,Metric,Phys,Global,Param)
   if Global.Model.Thermo == "InternalEnergy"
-    U[:,:,Model.ThPos]=Project(fIntEn,0.0,CG,Metric,Global,Param,Profile).*U[:,:,Model.RhoPos]
+    U[:,:,Model.ThPos]=Project(fIntEn,0.0,CG,Metric,Phys,Global,Param,Profile).*U[:,:,Model.RhoPos]
   elseif Global.Model.Thermo == "TotalEnergy"
-    U[:,:,Model.ThPos]=Project(fTotEn,0.0,CG,Metric,Global,Param,Profile).*U[:,:,Model.RhoPos]
+    U[:,:,Model.ThPos]=Project(fTotEn,0.0,CG,Metric,Phys,Global,Param,Profile).*U[:,:,Model.RhoPos]
   else
-    U[:,:,Model.ThPos]=Project(fTheta,0.0,CG,Metric,Global,Param,Profile).*U[:,:,Model.RhoPos]
+    U[:,:,Model.ThPos]=Project(fTheta,0.0,CG,Metric,Phys,Global,Param,Profile).*U[:,:,Model.RhoPos]
   end
   if Model.PertTh
     for iF = 1 : size(U[:,:,Model.ThPos],2)    
@@ -42,27 +42,27 @@ function InitialConditions(CG,Metric,Global,Param)
   end  
   if NumTr>0
     if Model.RhoVPos > 0  
-      U[:,:,Model.RhoVPos+Model.NumV]=Project(fQv,0.0,CG,Metric,Global,Param,Profile).*U[:,:,Model.RhoPos]
+      U[:,:,Model.RhoVPos+Model.NumV]=Project(fQv,0.0,CG,Metric,Phys,Global,Param,Profile).*U[:,:,Model.RhoPos]
     end
     if Model.RhoCPos > 0  
-      U[:,:,Model.RhoCPos+Model.NumV]=Project(fQc,0.0,CG,Metric,Global,Param,Profile).*U[:,:,Model.RhoPos]
+      U[:,:,Model.RhoCPos+Model.NumV]=Project(fQc,0.0,CG,Metric,Phys,Global,Param,Profile).*U[:,:,Model.RhoPos]
     end
   end
   if Global.Model.ModelType == "Conservative"
     @views @. U[:,:,Model.uPos] *= U[:,:,Model.RhoPos]  
     @views @. U[:,:,Model.vPos] *= U[:,:,Model.RhoPos]  
   end  
-  Global.pBGrd = Project(fpBGrd,0.0,CG,Metric,Global,Param,Profile)
-  Global.RhoBGrd = Project(fRhoBGrd,0.0,CG,Metric,Global,Param,Profile)
+  Global.pBGrd = Project(fpBGrd,0.0,CG,Metric,Phys,Global,Param,Profile)
+  Global.RhoBGrd = Project(fRhoBGrd,0.0,CG,Metric,Phys,Global,Param,Profile)
   Global.ThetaBGrd = zeros(nz,CG.NumG)
   Global.TBGrd = zeros(nz,CG.NumG)
   if Global.Model.Geos
-    (Global.UGeo,Global.VGeo) = ProjectVec(fVelGeo,0.0,CG,Metric,Global,Param)
+    (Global.UGeo,Global.VGeo) = ProjectVec(fVelGeo,0.0,CG,Metric,Phys,Global,Param)
   end  
   return U
 end  
 
-function InitialConditionsAdvection(backend,FTB,CG,Metric,Global,Param)
+function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces

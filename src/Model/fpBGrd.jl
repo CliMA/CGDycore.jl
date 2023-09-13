@@ -1,6 +1,5 @@
-function fpBGrd(x,time,Global,Param,Profile)
+function fpBGrd(x,time,Phys,Global,Param,Profile)
   Model=Global.Model
-  Phys=Global.Phys
   str = lowercase(Model.ProfpBGrd)
   if str == "baldaufcart"
     delta=Param.Grav/(Param.Rd*Param.T0);

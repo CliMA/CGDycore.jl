@@ -91,7 +91,7 @@ function JStruct(NumG,nz,NumTr)
   )
 end
 
-function JacSchur!(J,U,CG,Metric,Cache,Global,Param,::Val{:VectorInvariant})
+function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvariant})
   (;  RhoPos,
       uPos,
       vPos,
@@ -133,7 +133,7 @@ function JacSchur!(J,U,CG,Metric,Cache,Global,Param,::Val{:VectorInvariant})
     @views @. J.JRhoW[1,:,iC] = -RhoF / dz[1:nz-1]
     @views @. J.JRhoW[2,:,iC] = RhoF / dz[2:nz]
 
-    dPresdTh!(dPdTh, RhoTh, Rho, Tr, Global)
+    dPresdTh!(dPdTh, RhoTh, Rho, Tr, Phys, Global)
     # JWRhoTh upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
@@ -141,7 +141,7 @@ function JacSchur!(J,U,CG,Metric,Cache,Global,Param,::Val{:VectorInvariant})
     @views @. J.JWRhoTh[2,:,iC] = dPdTh[1:nz-1] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
 
     if Global.Model.Equation == "CompressibleMoist"
-      dPresdRhoV!(dPdRhoV, RhoTh, Rho, Tr, Pres, Global)
+      dPresdRhoV!(dPdRhoV, RhoTh, Rho, Tr, Pres, Phys, Global)
       @views @. J.JWRhoV[1,:,iC] = - dPdRhoV[2:nz] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
       @views @. J.JWRhoV[2,:,iC] = dPdRhoV[1:nz-1] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
     end  
@@ -149,8 +149,8 @@ function JacSchur!(J,U,CG,Metric,Cache,Global,Param,::Val{:VectorInvariant})
     # JWRho upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
-    @views @. J.JWRho[1,:,iC] = -Global.Phys.Grav * dz[2:nz] / RhoF / ( dz[1:nz-1] + dz[2:nz])
-    @views @. J.JWRho[2,:,iC] = -Global.Phys.Grav * dz[1:nz-1] / RhoF / ( dz[1:nz-1] + dz[2:nz]) 
+    @views @. J.JWRho[1,:,iC] = -Phys.Grav * dz[2:nz] / RhoF / ( dz[1:nz-1] + dz[2:nz])
+    @views @. J.JWRho[2,:,iC] = -Phys.Grav * dz[1:nz-1] / RhoF / ( dz[1:nz-1] + dz[2:nz]) 
 
     @views @. RhoThF = (RhoTh[1:nz-1] * dz[1:nz-1] + RhoTh[2:nz] * dz[2:nz]) /
       (dz[1:nz-1] + dz[2:nz])
@@ -219,7 +219,7 @@ function JacSchur!(J,U,CG,Metric,Cache,Global,Param,::Val{:VectorInvariant})
   end
 end
 
-function JacSchur!(J,U,CG,Global,Param,::Val{:Conservative})
+function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
   (  RhoPos,
       uPos,
       vPos,
@@ -248,21 +248,21 @@ function JacSchur!(J,U,CG,Global,Param,::Val{:Conservative})
     @views @. J.JRhoW[1,:,iC] = -1.0 / dz
     @views @. J.JRhoW[2,1:nz-1,iC] = 1.0 / dz[2:nz]
 
-    dPresdTh!(dPdTh, Th, Rho, Tr, Global)
+    dPresdTh!(dPdTh, Th, Rho, Tr, Phys, Global)
     @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (1/2 * (dz[1:nz-1] + dz[2:nz]))
     @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (1/2 * (dz[1:nz-1] + dz[2:nz]))
     @views @. J.JWTh[1,2:nz,iC] = -Dp[1:nz-1]
     @views @. J.JWTh[2,:,iC] = Dm
 
     if Global.Model.Equation == "CompressibleMoist"
-      dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Global)
+      dPresdRhoV!(dPdTh, Th, Rho, Tr, Pres, Phys, Global)
       @views @. Dp[1:nz-1] = dPdTh[2:nz] /  (1/2 * (dz[1:nz-1] + dz[2:nz]))
       @views @. Dm[1:nz-1] = dPdTh[1:nz-1] / (1/2 *(dz[1:nz-1] + dz[2:nz]))
       @views @. J.JWRhoV[1,2:nz,iC] = -Dp[1:nz-1]
       @views @. J.JWRhoV[2,:,iC] = Dm
     end  
 
-    @views @. D[1:nz-1] = 1/2 * Global.Phys.Grav 
+    @views @. D[1:nz-1] = 1/2 * Phys.Grav 
     @views @. J.JWRho[1,2:nz,iC] = -D[1:nz-1] 
     @views @. J.JWRho[2,1:nz,iC] = -D 
 

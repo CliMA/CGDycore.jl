@@ -1,3 +1,84 @@
+function TriangularGridToGrid(TriangularGrid,Rad,Grid)
+  Grid.nBar=[ 0  1   0   1
+             -1  0  -1   0]
+  Grid.Dim = 3
+  Grid.Type = "Tri"
+  Grid.Rad = Rad
+  Grid.Form = "Sphere"
+
+  NumNodes = 0
+  NodeL = head(TriangularGrid.NodeList)
+  while ~attail(NodeL)
+    NumNodes += 1
+    NodeL.data.Number = NumNodes
+    NodeL = NodeL.next
+  end
+
+  Nodes = map(1:NumNodes) do i
+    Node()
+  end
+
+  NodeL = head(TriangularGrid.NodeList)
+  NumNodes = 0
+  while ~attail(NodeL)
+    NumNodes += 1
+    Nodes[NumNodes] = Node(NodeL.data.P,NumNodes)
+    NodeL = NodeL.next
+  end
+  Grid.Nodes = Nodes
+
+  NumEdges = 0
+  EdgeL = head(TriangularGrid.EdgeList)
+  while ~attail(EdgeL)
+    NumEdges += 1
+    EdgeL.data.Number = NumEdges
+    EdgeL = EdgeL.next
+  end
+
+  Edges = map(1:NumEdges) do i
+    Edge()
+  end
+
+  EdgeL = head(TriangularGrid.EdgeList)
+  NumEdges = 0
+  while ~attail(EdgeL)
+    NumEdges += 1
+    n1 = EdgeL.data.Node1.data.Number
+    n2 = EdgeL.data.Node2.data.Number
+    Edges[NumEdges] = Edge([n1,n2],Grid,NumEdges,NumEdges,"",NumEdges)
+    EdgeL = EdgeL.next
+  end
+  Grid.Edges = Edges
+
+  NumFaces = 0
+  FaceL = head(TriangularGrid.FaceList)
+  while ~attail(FaceL)
+    NumFaces += 1
+    FaceL.data.Number = NumFaces
+    FaceL = FaceL.next
+  end
+
+  Faces = map(1:NumFaces) do i
+    Face()
+  end
+
+  FaceL = head(TriangularGrid.FaceList)
+  NumFaces = 0
+  while ~attail(FaceL)
+    NumFaces += 1
+    e1 = FaceL.data.Edge1.data.Number
+    e2 = FaceL.data.Edge2.data.Number
+    e3 = FaceL.data.Edge3.data.Number
+    (Faces[NumFaces], Grid) = Face([e1,e2,e3],Grid,NumFaces,"",OrientFaceSphere;P=zeros(Float64,0,0))
+    FaceL = FaceL.next
+  end
+  Grid.Faces = Faces
+  Grid.NumNodes = size(Grid.Nodes,1)
+  Grid.NumEdges = size(Grid.Edges,1)
+  Grid.NumFaces = size(Grid.Faces,1)
+
+  return Grid
+end
 function InputGrid(filename,OrientFace,Rad,Grid)
 
   coord = ncread(filename, "coord")

@@ -10,16 +10,16 @@ using StaticArrays
 using MPI
 using WriteVTK
 using ArgParse
-#using StaticArrays
 using NetCDF
 using MuladdMacro
 using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using RootSolvers
-using CUDA
-using CUDA.CUDAKernels
+#using CUDA
+#using CUDA.CUDAKernels
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using PairedLinkedLists
 
 include("Grid/Geometry.jl")
 include("Grid/Node.jl")
@@ -43,6 +43,7 @@ include("Grid/NearestNeighbour.jl")
 include("Grid/vtkWriteHex.jl")
 include("Grid/Connectivity.jl")
 include("Grid/SubGrid.jl")
+include("Grid/Triangular.jl")
 include("Grid/InputGrid.jl")
 
 include("DG/DLagrange.jl")

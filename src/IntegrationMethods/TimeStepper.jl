@@ -1,5 +1,5 @@
 using KernelAbstractions
-function TimeStepper!(U,Fcn!,Trans,CG,Metric,Global,Param,DiscType)  
+function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)  
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -57,9 +57,9 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Global,Param,DiscType)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
     Global.J = JStruct(NumG,nz,NumTr)
-    Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
-    Cache.fV=zeros(size(U))
-    Cache.Vn=zeros(size(U))
+    Cache.k = zeros(size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
+    Cache.fV = KernelAbstractions.zeros(backend,FT,size(U))
+    Cache.Vn = similar(U)
   elseif IntMethod == "RosenbrockSSP"
     Global.J = JStruct(NumG,nz,NumTr)
     Cache.k=zeros(size(U[:,:,1:NumV])..., TimeStepper.ROS.nStage);
@@ -109,8 +109,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Global,Param,DiscType)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-#         RosenbrockSchur!(U,dtau,FcnHDiffRho!,JacSchur!,CG,Global,Param,DiscType);
-          RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Metric,Cache,Global,Param,DiscType);
+          RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Metric,Phys,Cache,Global,Param,DiscType);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
@@ -284,7 +283,7 @@ function TimeStepperAdvection!(U,Trans,CG,Metric,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
+          @time RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)

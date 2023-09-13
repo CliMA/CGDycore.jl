@@ -184,20 +184,19 @@ function MomentumColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,
   end  
 end
 
-function CoriolisColumn!(FuC,FvC,uC,vC,RhoC,Fe,X,J,Omega)
+function CoriolisColumn!(FuC,FvC,uC,vC,RhoC,Fe,X,J,Phys)
   Nz = size(FuC,3)
-  OrdPoly = Fe.OrdPoly
+  N = size(FuC,1)
 
   @inbounds for iz = 1 : Nz 
-    @inbounds for i = 1 : OrdPoly + 1
-      @inbounds for j = 1 : OrdPoly + 1
+    @inbounds for i = 1 : N
+      @inbounds for j = 1 : N
         x = 1/2 * (X[i,j,1,1,iz] + X[i,j,2,1,iz])  
         y = 1/2 * (X[i,j,1,2,iz] + X[i,j,2,2,iz])  
         z = 1/2 * (X[i,j,1,3,iz] + X[i,j,2,3,iz])  
-#       lon,lat,r = cart2sphere(x,y,z)
         r = sqrt(x^2 + y^2 + z^2);
         sinlat = z/r
-        W = -2 * Omega * sinlat * (J[i,j,1,iz] + J[i,j,2,iz])
+        W = -2 * Phys.Omega * sinlat * (J[i,j,1,iz] + J[i,j,2,iz])
         FuC[i,j,iz] -= RhoC[i,j,iz] * vC[i,j,iz] * W
         FvC[i,j,iz] += RhoC[i,j,iz] * uC[i,j,iz] * W
       end 

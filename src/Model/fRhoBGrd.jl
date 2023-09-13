@@ -1,6 +1,5 @@
-function fRhoBGrd(x,time,Global,Param,Profile)
+function fRhoBGrd(x,time,Phys,Global,Param,Profile)
   Model=Global.Model
-  Phys=Global.Phys
   str = lowercase(Model.ProfRhoBGrd)
   if str == "baldaufcart"
     delta=Param.Grav/(Param.Rd*Param.T0);

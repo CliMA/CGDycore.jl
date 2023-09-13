@@ -1,6 +1,5 @@
-function fTheta(x,time,Global,Param,Profile)
+function fTheta(x,time,Phys,Global,Param,Profile)
   Model=Global.Model
-  Phys=Global.Phys
   str = lowercase(Model.ProfTheta)
   if str == "solidbody"
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3]);

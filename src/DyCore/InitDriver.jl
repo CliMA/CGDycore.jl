@@ -50,7 +50,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
 
   Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
-  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,OrdPoly+1,nz,
     Model.NumV,Model.NumTr,())
   (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiSphere3,Global)
 
@@ -115,7 +115,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
 
   Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
-  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Phys,Output,Exchange,OrdPoly+1,nz,
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,OrdPoly+1,nz,
     Model.NumV,Model.NumTr,())
   (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiDG3,Global)
 

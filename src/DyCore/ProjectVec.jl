@@ -1,4 +1,4 @@
-function ProjectVec(Fun,time,CG,Metric,Global,Param)
+function ProjectVec(Fun,time,CG,Metric,Phys,Global,Param)
   OrdPoly=CG.OrdPoly;
   OrdPolyZ=CG.OrdPolyZ;
   nz=Global.Grid.nz;
@@ -13,7 +13,7 @@ function ProjectVec(Fun,time,CG,Metric,Global,Param)
         ind = CG.Glob[i,j,iF]
         for iz=1:nz
           x=0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
-          (uLoc,vLoc)=Fun(x,time,Global,Param);
+          (uLoc,vLoc)=Fun(x,time,Phys,Global,Param);
           uS[iz,ind]=uLoc
           vS[iz,ind]=vLoc
         end
@@ -23,7 +23,7 @@ function ProjectVec(Fun,time,CG,Metric,Global,Param)
   return (uS,vS)
 end
 
-function ProjectVec!(uS,vS,Fun,time,CG,Metric,Global,Param)
+function ProjectVec!(uS,vS,Fun,time,CG,Metric,Phys,Global,Param)
   OrdPoly=CG.OrdPoly;
   OrdPolyZ=CG.OrdPolyZ;
   nz=Global.Grid.nz;
@@ -39,7 +39,7 @@ function ProjectVec!(uS,vS,Fun,time,CG,Metric,Global,Param)
         ind = CG.Glob[i,j,iF]
         @inbounds for iz=1:nz
           @views @. x = 0.5*(X[i,j,1,:,iz,iF]+X[i,j,2,:,iz,iF]);
-          (uLoc,vLoc)=Fun(x,time,Global,Param);
+          (uLoc,vLoc)=Fun(x,time,Phys,Global,Param);
           uS[iz,ind] = uLoc
           vS[iz,ind] = vLoc
         end

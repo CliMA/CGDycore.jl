@@ -6,7 +6,6 @@ import LinearAlgebra: norm
 import LinearAlgebra: dot
 
 struct Point
-# P::Array{Float64,1}
   x::Float64
   y::Float64
   z::Float64

@@ -1,4 +1,4 @@
-function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Metric,Cache,Global,Param,DiscType)
+function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Metric,Phys,Cache,Global,Param,DiscType)
   ROS = Global.TimeStepper.ROS
   nStage = ROS.nStage
   k = Cache.k
@@ -13,20 +13,24 @@ function RosenbrockSchur!(V,dt,Fcn,Jac,CG,Metric,Cache,Global,Param,DiscType)
     @inbounds for jStage = 1 : iStage-1
       @views axpy!(ROS.a[iStage,jStage],k[:,:,:,jStage],V)
     end
-    FcnPrepare!(V,CG,Metric,Cache,Global,Param,DiscType)
-    Fcn(fV,V,CG,Metric,Cache,Global,Param,DiscType)
+    FcnPrepare!(V,CG,Metric,Phys,Cache,Global,Param,DiscType)
+#=
+    Fcn(fVV,CG,Metric,Phys,Cache,Global,Param,DiscType)
     if iStage == 1
-      Jac(J,V,CG,Metric,Cache,Global,Param,DiscType)
+      Jac(J,V,CG,Metric,Phys,Cache,Global,Param,DiscType)
     end  
     @inbounds for jStage = 1 : iStage - 1
       fac = ROS.c[iStage,jStage] / dt
       @views axpy!(fac,k[:,:,:,jStage],fV)
     end
     @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.gamma,Cache,Global)
+ =#
   end
   @. V = Vn
   @inbounds for iStage = 1 : nStage
+#=
     @views axpy!(ROS.m[iStage],k[:,:,:,iStage],V)
+ =#
   end
 end
 
