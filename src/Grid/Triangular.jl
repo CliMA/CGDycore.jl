@@ -26,7 +26,8 @@ mutable struct NodeTri_T
   Number::Int
 end
 
-function NodeTri_T(P,Edge)
+function NodeTri_T(P)
+  Edge = zeros(Int,0)
   NodeTri_T(P,Edge,0)
 end  
 
@@ -37,7 +38,8 @@ mutable struct EdgeTri_T{TN}
   Number::Int
 end
 
-function EdgeTri_T(Node1,Node2,Face)
+function EdgeTri_T(Node1,Node2)
+  Face = zeros(Int,0)
   EdgeTri_T(Node1,Node2,Face,0)
 end  
 
@@ -59,16 +61,25 @@ mutable struct TriangularGrid_T{TN,TE,TF}
   NodeList::DoublyLinkedList{TN}
   EdgeList::DoublyLinkedList{TE}
   FaceList::DoublyLinkedList{TF}
+  NumNodes::Int
+  NumEdges::Int
+  NumFaces::Int
 end
 
 function TriangularGrid_T()
   NodeList = DoublyLinkedList{NodeTri_T}()
   EdgeList = DoublyLinkedList{EdgeTri_T}()
   FaceList = DoublyLinkedList{FaceTri_T}()
+  NumNodes = 0
+  NumEdges = 0
+  NumFaces = 0
   return TriangularGrid_T{NodeTri_T,EdgeTri_T,FaceTri_T}(
     NodeList,
     EdgeList,
     FaceList,
+    NumNodes,
+    NumEdges,
+    NumFaces,
     )
 end  
 
@@ -77,23 +88,23 @@ function CreateIcosahedronGrid()
   IcosahedronGrid = TriangularGrid_T()
 
 # Nodes
-  Node = NodeTri_T(Point(0.0,0.0,Rad),[0])
+  Node = NodeTri_T(Point(0.0,0.0,Rad))
   push!(IcosahedronGrid.NodeList, Node)
   phi = atan(0.5)
   lam = 0.0
   for i = 1 : 5
-    Node = NodeTri_T(Point(Rad*cos(lam)*cos(phi),Rad*sin(lam)*cos(phi),Rad*sin(phi)),[0])  
+    Node = NodeTri_T(Point(Rad*cos(lam)*cos(phi),Rad*sin(lam)*cos(phi),Rad*sin(phi)))  
     push!(IcosahedronGrid.NodeList, Node)
     lam = lam + 2.0 * pi / 5.0
   end
   phi = -atan(0.5)
   lam = pi / 5.0
   for i = 1 : 5
-    Node = NodeTri_T(Point(Rad*cos(lam)*cos(phi),Rad*sin(lam)*cos(phi),Rad*sin(phi)),[0])  
+    Node = NodeTri_T(Point(Rad*cos(lam)*cos(phi),Rad*sin(lam)*cos(phi),Rad*sin(phi)))  
     push!(IcosahedronGrid.NodeList, Node)
     lam = lam + 2.0 * pi / 5.0
   end
-  Node = NodeTri_T(Point(0.0,0.0,-Rad),[0])
+  Node = NodeTri_T(Point(0.0,0.0,-Rad))
   push!(IcosahedronGrid.NodeList, Node)
 
   NodeTop = getnode(IcosahedronGrid.NodeList,1)
@@ -104,46 +115,46 @@ function CreateIcosahedronGrid()
 # Edges
   NodeLayerTop = NodeLayerTopFirst
   for i = 1 : 5
-    Edge = EdgeTri_T(NodeLayerTop,NodeTop,[0])
+    Edge = EdgeTri_T(NodeLayerTop,NodeTop)
     push!(IcosahedronGrid.EdgeList, Edge)
     NodeLayerTop = NodeLayerTop.next
   end  
   NodeLayerTop = NodeLayerTopFirst
   for i = 1 : 4
-    Edge = EdgeTri_T(NodeLayerTop,NodeLayerTop.next,[0])
+    Edge = EdgeTri_T(NodeLayerTop,NodeLayerTop.next)
     push!(IcosahedronGrid.EdgeList, Edge)
     NodeLayerTop = NodeLayerTop.next
   end  
-  Edge = EdgeTri_T(NodeLayerTop,NodeLayerTopFirst,[0])
+  Edge = EdgeTri_T(NodeLayerTop,NodeLayerTopFirst)
   push!(IcosahedronGrid.EdgeList, Edge)
 
   NodeLayerTop = NodeLayerTopFirst
   NodeLayerBottom = NodeLayerBottomFirst
   for i = 1 : 4
-    Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTop,[0])
+    Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTop)
     push!(IcosahedronGrid.EdgeList, Edge)
-    Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTop.next,[0])
+    Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTop.next)
     push!(IcosahedronGrid.EdgeList, Edge)
     NodeLayerTop = NodeLayerTop.next
     NodeLayerBottom = NodeLayerBottom.next
   end  
-  Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTop,[0])
+  Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTop)
   push!(IcosahedronGrid.EdgeList, Edge)
-  Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTopFirst,[0])
+  Edge = EdgeTri_T(NodeLayerBottom,NodeLayerTopFirst)
   push!(IcosahedronGrid.EdgeList, Edge)
 
   NodeLayerBottom = NodeLayerBottomFirst
   for i = 1 : 4
-    Edge = EdgeTri_T(NodeLayerBottom,NodeLayerBottom.next,[0])
+    Edge = EdgeTri_T(NodeLayerBottom,NodeLayerBottom.next)
     push!(IcosahedronGrid.EdgeList, Edge)
     NodeLayerBottom = NodeLayerBottom.next
   end  
-  Edge = EdgeTri_T(NodeLayerBottom,NodeLayerBottomFirst,[0])
+  Edge = EdgeTri_T(NodeLayerBottom,NodeLayerBottomFirst)
   push!(IcosahedronGrid.EdgeList, Edge)
 
   NodeLayerBottom = NodeLayerBottomFirst
   for i = 1 : 5
-    Edge = EdgeTri_T(NodeBottom,NodeLayerBottom,[0])
+    Edge = EdgeTri_T(NodeBottom,NodeLayerBottom)
     push!(IcosahedronGrid.EdgeList, Edge)
     NodeLayerBottom = NodeLayerBottom.next
   end  
@@ -202,9 +213,9 @@ end
 function RefineEdge!(Edge,NodeList,EdgeList)
   P1 = Edge.data.Node1.data.P
   P2 = Edge.data.Node2.data.P
-  NodeM = newnode(NodeList, NodeTri_T(MidPoint(P1,P2),[0]))
+  NodeM = newnode(NodeList, NodeTri_T(MidPoint(P1,P2)))
   insertafter!(NodeM, Edge.data.Node1)
-  EdgeNew = newnode(EdgeList, EdgeTri_T(NodeM,Edge.data.Node2,[0]))
+  EdgeNew = newnode(EdgeList, EdgeTri_T(NodeM,Edge.data.Node2))
   insertafter!(EdgeNew, Edge)
   Edge.data.Node2 = NodeM
 end  
@@ -262,11 +273,11 @@ function RefineFace!(Face,EdgeList,FaceList)
    Face2Edge1 = Edge3
    Face2OrientE1 = -1
  end
- EdgeI1 = newnode(EdgeList, EdgeTri_T(Edge2.data.Node2,Edge3.data.Node2,[0]))
+ EdgeI1 = newnode(EdgeList, EdgeTri_T(Edge2.data.Node2,Edge3.data.Node2))
  insertafter!(EdgeI1, Edge1N)
- EdgeI2 = newnode(EdgeList, EdgeTri_T(Edge3.data.Node2,Edge1.data.Node2,[0]))
+ EdgeI2 = newnode(EdgeList, EdgeTri_T(Edge3.data.Node2,Edge1.data.Node2))
  insertafter!(EdgeI2, Edge2N)
- EdgeI3 = newnode(EdgeList, EdgeTri_T(Edge1.data.Node2,Edge2.data.Node2,[0]))
+ EdgeI3 = newnode(EdgeList, EdgeTri_T(Edge1.data.Node2,Edge2.data.Node2))
  insertafter!(EdgeI3, Edge3N)
 
  Face1Edge3 = EdgeI1
@@ -312,3 +323,187 @@ function RefineFaceTriangularGrid!(TriangularGrid)
 end
 
 
+function NumberingTriangularGrid!(TriangularGrid)
+
+  NumNodes = 0
+  NodeL = head(TriangularGrid.NodeList)
+  while ~attail(NodeL)
+    NumNodes += 1
+    NodeL.data.Number = NumNodes
+    NodeL = NodeL.next
+  end
+  TriangularGrid.NumNodes = NumNodes
+
+
+  NumEdges = 0
+  EdgeL = head(TriangularGrid.EdgeList)
+  while ~attail(EdgeL)
+    NumEdges += 1
+    EdgeL.data.Number = NumEdges
+    push!(EdgeL.data.Node1.data.Edge,NumEdges)
+    push!(EdgeL.data.Node2.data.Edge,NumEdges)
+    EdgeL = EdgeL.next
+  end
+  TriangularGrid.NumEdges = NumEdges
+
+
+  NumFaces = 0
+  FaceL = head(TriangularGrid.FaceList)
+  while ~attail(FaceL)
+    NumFaces += 1
+    FaceL.data.Number = NumFaces
+    push!(FaceL.data.Edge1.data.Face,NumFaces)
+    push!(FaceL.data.Edge2.data.Face,NumFaces)
+    push!(FaceL.data.Edge3.data.Face,NumFaces)
+    FaceL = FaceL.next
+  end
+  TriangularGrid.NumFaces = NumFaces
+
+end
+
+function MidPoint(Face)
+
+  P = Point()
+  if Face.data.OrientE1 == 1
+    P = Face.data.Edge1.data.Node1.data.P
+  else
+    P = Face.data.Edge1.data.Node2.data.P
+  end
+  if Face.data.OrientE2 == 1
+    P = P + Face.data.Edge2.data.Node1.data.P
+  else
+    P = P + Face.data.Edge2.data.Node2.data.P
+  end
+  if Face.data.OrientE3 == 1
+    P = P + Face.data.Edge3.data.Node1.data.P
+  else
+    P = P + Face.data.Edge3.data.Node2.data.P
+  end
+  M = Div(P, Norm(P) / (3.0 * Rad))
+end
+
+function TriangularGridToGrid(TriangularGrid,Rad,Grid)
+  Grid.nBar=[ 0  1   0   1
+             -1  0  -1   0]
+  Grid.Dim = 3
+  Grid.Type = "Tri"
+  Grid.Rad = Rad
+  Grid.Form = "Sphere"
+
+  NumNodes = TriangularGrid.NumNodes
+
+  Nodes = map(1:NumNodes) do i
+    Node()
+  end
+
+  NodeL = head(TriangularGrid.NodeList)
+  NumNodes = 0
+  while ~attail(NodeL)
+    NumNodes += 1
+    Nodes[NumNodes] = Node(NodeL.data.P,NumNodes)
+    NodeL = NodeL.next
+  end
+  Grid.Nodes = Nodes
+
+  NumEdges = TriangularGrid.NumEdges
+
+  Edges = map(1:NumEdges) do i
+    Edge()
+  end
+
+  EdgeL = head(TriangularGrid.EdgeList)
+  NumEdges = 0
+  while ~attail(EdgeL)
+    NumEdges += 1
+    n1 = EdgeL.data.Node1.data.Number
+    n2 = EdgeL.data.Node2.data.Number
+    Edges[NumEdges] = Edge([n1,n2],Grid,NumEdges,NumEdges,"",NumEdges)
+    EdgeL = EdgeL.next
+  end
+  Grid.Edges = Edges
+
+  NumFaces = TriangularGrid.NumFaces
+
+  Faces = map(1:NumFaces) do i
+    Face()
+  end
+
+  FaceL = head(TriangularGrid.FaceList)
+  NumFaces = 0
+  while ~attail(FaceL)
+    NumFaces += 1
+    e1 = FaceL.data.Edge1.data.Number
+    e2 = FaceL.data.Edge2.data.Number
+    e3 = FaceL.data.Edge3.data.Number
+    (Faces[NumFaces], Grid) = Face([e1,e2,e3],Grid,NumFaces,"",OrientFaceSphere;P=zeros(Float64,0,0))
+    FaceL = FaceL.next
+  end
+  Grid.Faces = Faces
+  Grid.NumNodes = size(Grid.Nodes,1)
+  Grid.NumEdges = size(Grid.Edges,1)
+  Grid.NumFaces = size(Grid.Faces,1)
+
+  return Grid
+end
+
+function DelaunayGridToPolyGrid(TriangularGrid,Rad,Grid)
+  Grid.nBar=[ 0  1   0   1
+             -1  0  -1   0]
+  Grid.Dim = 3
+  Grid.Type = "Tri"
+  Grid.Rad = Rad
+  Grid.Form = "Sphere"
+
+  NumNodes = TriangularGrid.NumFaces
+
+  Nodes = map(1:NumNodes) do i
+    Node()
+  end
+
+  FaceL = head(TriangularGrid.FaceList)
+  NumNodes = 0
+  while ~attail(FaceL)
+    NumNodes += 1
+    Nodes[NumNodes] = Node(MidPoint(FaceL),NumNodes)
+    FaceL = FaceL.next
+  end
+  Grid.Nodes = Nodes
+
+  NumEdges = TriangularGrid.NumEdges
+
+  Edges = map(1:NumEdges) do i
+    Edge()
+  end
+
+  EdgeL = head(TriangularGrid.EdgeList)
+  NumEdges = 0
+  while ~attail(EdgeL)
+    NumEdges += 1
+    n1 = EdgeL.data.Face[1]
+    n2 = EdgeL.data.Face[2]
+    Edges[NumEdges] = Edge([n1,n2],Grid,NumEdges,NumEdges,"",NumEdges)
+    EdgeL = EdgeL.next
+  end
+  Grid.Edges = Edges
+
+  NumFaces = TriangularGrid.NumNodes
+
+  Faces = map(1:NumFaces) do i
+    Face()
+  end
+
+  NodeL = head(TriangularGrid.NodeList)
+  NumFaces = 0
+  while ~attail(NodeL)
+    NumFaces += 1
+    e = NodeL.data.Edge
+    (Faces[NumFaces], Grid) = Face(e,Grid,NumFaces,"",OrientFaceSphere;P=zeros(Float64,0,0))
+    NodeL = NodeL.next
+  end
+  Grid.Faces = Faces
+  Grid.NumNodes = size(Grid.Nodes,1)
+  Grid.NumEdges = size(Grid.Edges,1)
+  Grid.NumFaces = size(Grid.Faces,1)
+
+  return Grid
+end

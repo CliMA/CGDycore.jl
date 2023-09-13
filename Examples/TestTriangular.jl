@@ -15,13 +15,20 @@ for iRef = 1 : RefineLevel
   CGDycore.RefineEdgeTriangularGrid!(IcosahedronGrid)  
   CGDycore.RefineFaceTriangularGrid!(IcosahedronGrid)
 end
+CGDycore.NumberingTriangularGrid!(IcosahedronGrid)
 nz = 1
-Topography = (TopoS=TopoS,H=1)
-Grid = CGDycore.GridStruct(nz,Topography)
 Rad = 1.0
-Grid = CGDycore.TriangularGridToGrid(IcosahedronGrid,Rad,Grid)
-vtkSkeletonMesh = CGDycore.vtkStruct{Float64}(backend,Grid)
-CGDycore.vtkSkeleton(vtkSkeletonMesh,"Icosahedron", 1, 1)
+Topography = (TopoS=TopoS,H=1)
+
+GridTri = CGDycore.GridStruct(nz,Topography)
+GridTri = CGDycore.TriangularGridToGrid(IcosahedronGrid,Rad,GridTri)
+vtkSkeletonMeshTri = CGDycore.vtkStruct{Float64}(backend,GridTri)
+CGDycore.vtkSkeleton(vtkSkeletonMeshTri,"IcosahedronTri", 1, 1)
+
+GridDel = CGDycore.GridStruct(nz,Topography)
+GridDel = CGDycore.DelaunayGridToPolyGrid(IcosahedronGrid,Rad,GridDel)
+vtkSkeletonMeshDel = CGDycore.vtkStruct{Float64}(backend,GridDel)
+CGDycore.vtkSkeleton(vtkSkeletonMeshDel,"IcosahedronDel", 1, 1)
 
 
 # RefineCellTriangularGrid(IcosahedronGrid)

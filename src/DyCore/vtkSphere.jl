@@ -19,7 +19,7 @@ end
 function vtkStruct{FT}(backend,Grid) where FT<:Real
 
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0)
-  celltype = VTKCellTypes.VTK_TRIANGLE
+  celltype = VTKCellTypes.VTK_POLYGON
   cells = MeshCell[]
   for iF = 1 : Grid.NumFaces
     push!(cells, MeshCell(celltype, Grid.Faces[iF].N))
