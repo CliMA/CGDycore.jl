@@ -211,25 +211,25 @@ Base.@kwdef struct ParamAdvectionSphereSlottedCylinder
   StreamFun::Bool = false
 end  
 Base.@kwdef struct ParamAdvectionSphereDCMIP
-  xC = 0.0
-  H = H
-  R_t = RadEarth / 2.0
-  Z_t = 1000.0
-  z_c = 5.0e3
-  p_top = p_top
-  T_0 = T_0
-  ScaleHeight = ScaleHeight
-  b = 0.2
-  Lon_c1 = 150.0/360.0 * 2 * pi
-  Lon_c2 = 210.0/360.0 * 2 * pi
-  Lat_c = 0.0
-  tau = tau
-  omega_0 = omega_0
-  TimeDependent = true
+  xC::Float64 = 0.0
+  H::Float64 = H
+  R_t::Float64 = RadEarth / 2.0
+  Z_t::Float64 = 1000.0
+  z_c::Float64 = 5.0e3
+  p_top::Float64 = p_top
+  T_0::Float64 = T_0
+  ScaleHeight::Float64 = ScaleHeight
+  b::Float64 = 0.2
+  Lon_c1::Float64 = 150.0/360.0 * 2 * pi
+  Lon_c2::Float64 = 210.0/360.0 * 2 * pi
+  Lat_c::Float64 = 0.0
+  tau::Float64 = tau
+  omega_0::Float64 = omega_0
+  TimeDependent::Bool = true
 end
 
 Base.@kwdef struct ParamAdvectionCubeCart
-  Example::String = "AdvectionCubeCart"
+# Example::String = "AdvectionCubeCart"
   StreamFun::Bool = false
   uMax::Float64 = 1.0
   vMax::Float64 = 1.0

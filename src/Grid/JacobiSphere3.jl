@@ -10,6 +10,9 @@ dXdxI=zeros(3,3,n3,n,n)
 J=zeros(n,n,n3)
 hR=zeros(n,n,n3)
 theta=zeros(n,n)
+(_,DS)=DerivativeMatrixSingle(DG.OrdPoly)
+DST = DS'
+(_,DSZ)=DerivativeMatrixSingle(DG.OrdPolyZ)
 @inbounds for j=1:n
   @inbounds for i=1:n
     @inbounds for k=1:n3
@@ -19,8 +22,8 @@ theta=zeros(n,n)
   end
 end
 @inbounds for k=1:n3
-  dXdx[:,:,k,3,1]=DG.DS*hR[:,:,k]
-  dXdx[:,:,k,3,2]=reshape(hR[:,:,k],n,n)*DG.DST
+  dXdx[:,:,k,3,1]=DS*hR[:,:,k]
+  dXdx[:,:,k,3,2]=reshape(hR[:,:,k],n,n)*DST
 end
 @inbounds for j=1:n
   @inbounds for i=1:n

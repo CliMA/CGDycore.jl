@@ -217,7 +217,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
   end  
 end  
 
-function TimeStepperAdvection!(U,Trans,CG,Metric,Global,Param)  
+function TimeStepperAdvection!(U,Trans,CG,Metric,Phys,Global,Param)  
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -432,7 +432,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Metric,Global,Param)
   end
 end  
 
-function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Global,Param)  
+function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Phys,Global,Param,Profile)  
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -487,10 +487,10 @@ function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Global,Param)
     @time begin
       for i = 1 : nIter
         Δt = @elapsed begin
-          SSPRungeKutta!(time[1],U,dtau,FcnAdvectionGPU!,CG,Metric,Cache,Global,Param)
+          CUDA.@time SSPRungeKutta!(time[1],U,dtau,FcnAdvectionGPU!,CG,Metric,Phys,Cache,Global,Param,Profile)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Metric,Global,Proc,ProcNumber)
+            unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
           end
         end 
         percent = i/nIter*100
@@ -500,5 +500,5 @@ function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Global,Param)
   else
     error("Bad IntMethod")
   end
-  unstructured_vtkSphere(U,Trans,CG,Metric,Global,Proc,ProcNumber)
+  unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
 end  

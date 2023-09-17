@@ -1,0 +1,35 @@
+mpirun -n 6 julia --project --check-bounds=yes Examples/testAdvectionCart.jl \
+  --Problem="AdvectionCubeRotCart" \
+  --NumV=1 \
+  --NumTr=1 \
+  --ProfTr="RotationalCart" \
+  --ProfVel="RotationalCart" \
+  --ProfVelW="RotationalCart" \
+  --HorLimit=false \
+  --Upwind=true \
+  --vtkFileName="AdvectionCubeCart" \
+  --SimTime=1000.0 \
+  --PrintTime=10.0 \
+  --dtau=0.2\
+  --IntMethod="SSPRungeKutta" \
+  --Table="SSP32" \
+  --Lx=1000.0 \
+  --Ly=100.0 \
+  --H=1000.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nx=40 \
+  --ny=2 \
+  --nz=80 \
+  --OrdPoly=4 \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --HyperVisc=true \
+  --HyperDCurl=1.e4 \
+  --HyperDGrad=1.e4 \
+  --HyperDRhoDiv=1.e4 \
+  --HyperDDiv=1.e4
+
+
+

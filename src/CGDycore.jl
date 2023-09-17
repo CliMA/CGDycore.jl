@@ -15,8 +15,7 @@ using MuladdMacro
 using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using RootSolvers
-#using CUDA
-#using CUDA.CUDAKernels
+using CUDA
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using PairedLinkedLists

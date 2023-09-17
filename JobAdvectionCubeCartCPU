@@ -1,8 +1,7 @@
 mpirun -n 1 julia --project Examples/testAdvectionCartGPU.jl \
   --Problem="AdvectionCubeRotCart" \
-  --Device="GPU" \
-  --GPUType="CUDA" \
-  --FloatTypeBackend="Float32" \
+  --Device="CPU" \
+  --FloatTypeBackend="Float64" \
   --NumV=4 \
   --NumTr=1 \
   --ProfTr="AdvectionCubeRotCart" \
@@ -10,9 +9,9 @@ mpirun -n 1 julia --project Examples/testAdvectionCartGPU.jl \
   --HorLimit=false \
   --Upwind=false \
   --vtkFileName="AdvectionCubeRotCart" \
-  --SimTime=10.0 \
-  --PrintTime=1100.0 \
-  --dtau=0.2\
+  --SimTime=1000.0 \
+  --PrintTime=100.0 \
+  --dtau=0.1\
   --IntMethod="SSPRungeKutta" \
   --Table="SSP32" \
   --Lx=1000.0 \
@@ -20,17 +19,14 @@ mpirun -n 1 julia --project Examples/testAdvectionCartGPU.jl \
   --H=1000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nx=40 \
-  --ny=40 \
+  --nx=20 \
+  --ny=20 \
   --nz=64 \
-  --OrdPoly=3 \
+  --OrdPoly=4 \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --HyperVisc=true \
   --HyperDCurl=1.e4 \
   --HyperDGrad=1.e4 \
-  --HyperDDiv=1.e1
-
-
-
+  --HyperDDiv=1.e0

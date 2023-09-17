@@ -58,17 +58,12 @@ VerticalDiffusionMom = parsed_args["VerticalDiffusionMom"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 # Grid
-nx = parsed_args["nx"]
-ny = parsed_args["ny"]
 nz = parsed_args["nz"]
+nPanel = parsed_args["nPanel"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
 OrdPoly = parsed_args["OrdPoly"]
-Lx = parsed_args["Lx"]
-Ly = parsed_args["Ly"]
-x0 = parsed_args["x0"]
-y0 = parsed_args["y0"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -182,27 +177,21 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 
 
 
-Boundary = CGDycore.Boundary()
-Boundary.WE = BoundaryWE
-Boundary.SN = BoundarySN
-Boundary.BT = BoundaryBT
-Topography=(TopoS=TopoS,
-            H=H,
-            P1=P1,
-            P2=P2,
-            P3=P3,
-            P4=P4,
-           )
+# Grid
+Topography=(TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
-  @show "vor InitCart"
-  (CG, Metric, Global) = CGDycore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
-  Boundary,GridType,Topography,Decomp,Model,Phys)
-  @show CG.NumG,Global.Grid.nz
+OrdPolyZ = 1
 
-  Profile = CGDycore.RotationalCartExample()(Param,Phys)
+@show "vor InitSphere"
+
+(CG,Metric,Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,
+  Topography,Decomp,Model,Phys)
+@show CG.NumG,Global.Grid.nz
+
+Profile = CGDycore.DCMIPAdvectionExample()(Param,Phys)
 
 
-  U = CGDycore.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+U = CGDycore.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 
 # Output

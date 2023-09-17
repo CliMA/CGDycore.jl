@@ -605,7 +605,7 @@ end
     x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
     x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    _,uP,vP,_ = Profile(xS,time,Param,Phys)
+    _,uP,vP,_ = Profile(xS,time)
     @inbounds u[Iz,ind] = uP
     @inbounds v[Iz,ind] = vP
   end
@@ -615,7 +615,7 @@ end
     x2 = 0.5 * (X[I,J,2,2,Iz,IF] + X[I,J,1,2,Iz+1,IF])
     x3 = 0.5 * (X[I,J,2,3,Iz,IF] + X[I,J,1,3,Iz+1,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    @inbounds _,_,_,w[Iz,ind] = Profile(xS,time,Param,Phys)
+    @inbounds _,_,_,w[Iz,ind] = Profile(xS,time)
   end
 end
 
@@ -639,7 +639,7 @@ end
     x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
     x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    RhoP,uP,vP,_ = Profile(xS,time,Param,Phys)
+    RhoP,uP,vP,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
     @inbounds u[Iz,ind] = uP
     @inbounds v[Iz,ind] = vP
@@ -666,7 +666,7 @@ end
     x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
     x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    RhoP,_,_,_ = Profile(xS,time,Param,Phys)
+    RhoP,_,_,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
   end
 end
@@ -691,7 +691,8 @@ end
     x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
     x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    RhoP,_,_,_ ,TrP = Profile(xS,time,Param,Phys)
+#   RhoP,_,_,_ ,TrP = Profile(xS,time,Param,Phys)
+    RhoP,_,_,_ ,TrP = Profile(xS,time)
     @inbounds Tr[Iz,ind] = RhoP * TrP
   end
 end
@@ -716,12 +717,12 @@ end
     x2 = 0.5 * (X[I,J,2,2,Iz,IF] + X[I,J,1,2,Iz+1,IF])
     x3 = 0.5 * (X[I,J,2,3,Iz,IF] + X[I,J,1,3,Iz+1,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    _,_,_,wP = Profile(xS,time,Param)
+    _,_,_,wP = Profile(xS,time)
     @inbounds w[Iz,ind] = wP
   end
 end
 
-function FcnAdvectionGPU!(F,U,time,FE,Metric,Cache,Global,Param)
+function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -737,7 +738,6 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Cache,Global,Param)
   NF = size(Glob,3)
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
-  Phys = Global.Phys
 
 
 # State vector
@@ -752,15 +752,13 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Cache,Global,Param)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
 
-  Profile = RotationalCart(RotationalCartExample())
-
-  KuvwFunCKernel! = uvwFunCKernel!(backend, group)
+# KuvwFunCKernel! = uvwFunCKernel!(backend, group)
   KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
 
-  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
+# KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
+# KernelAbstractions.synchronize(backend)
 
   @. CacheF = 0
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)

@@ -62,7 +62,7 @@ function InitialConditions(CG,Metric,Phys,Global,Param)
   return U
 end  
 
-function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Param)
+function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
@@ -71,7 +71,6 @@ function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Param)
   N = CG.OrdPoly + 1
   Glob = CG.Glob
   X = Metric.X
-  Phys = Global.Phys 
   time = 0
 
   # Ranges
@@ -82,7 +81,7 @@ function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Param)
   U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,NumV+NumTr)
   @views Rho = U[:,:,Model.RhoPos]
   @views Tr = U[:,:,Model.NumV+1]
-  Profile = RotationalCart(RotationalCartExample())
+  #Profile = Example(RotationalCartExample())
   KRhoFunCKernel! = RhoFunCKernel!(backend, group)
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)

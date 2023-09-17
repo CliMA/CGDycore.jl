@@ -1,27 +1,22 @@
-mpirun -n 6 julia --project Examples/testNHCart.jl \
-  --Problem="BryanFritschCart" \
+mpirun -n 1 julia --project Examples/testNHCart.jl \
+  --Problem="WarmBubble2DXCart" \
   --NumV=5 \
-  --NumTr=2 \
-  --ProfRho="BryanFritsch" \
-  --ProfTheta="BryanFritsch" \
+  --NumTr=0 \
+  --ProfRho="WarmBubble2DX" \
+  --ProfTheta="WarmBubble2DX" \
   --ProfVel="Const" \
-  --Profile=true \
   --Damping=false \
   --Upwind=true \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=50 \
+  --PrintTime=100 \
   --Curl=true \
   --ModelType="VectorInvariant" \
-  --Equation="CompressibleMoist" \
-  --Microphysics=true \
-  --Rain=0.0 \
-  --RelCloud=1.e0 \
   --dtau=.2 \
-  --IntMethod="RungeKutta" \
-  --Table="RK4" \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
   --TopoS="" \
   `#Topography `        \
   --H=10000.0 \
@@ -29,8 +24,8 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=80 \
-  --nx=40 \
+  --nz=40 \
+  --nx=20 \
   --ny=2 \
   --OrdPoly=4 \
   --HyperVisc=true \
