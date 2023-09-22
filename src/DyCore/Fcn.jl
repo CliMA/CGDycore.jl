@@ -364,7 +364,6 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
   end
 
   ExchangeData3DRecv!(Temp1,Global.Exchange)
-  @show sum(abs.(Temp1))
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP = 1 : OP
@@ -746,7 +745,6 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     end
   end  
   ExchangeData3DRecv!(F,Global.Exchange)
-  @show sum(abs.(F))
   @views @. F[:,:,RhoPos] /= CG.M
   @views @. F[:,:,ThPos] /= CG.M
   @inbounds for iT = 1:NumTr
