@@ -1,7 +1,7 @@
-function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param,DiscType)
+function RungeKuttaExplicit!(V,dt,Fcn,CG,Metric,Phys,Cache,Global,Param,DiscType)
   RK=Global.TimeStepper.RK
-  f=Global.Cache.f
-  Vn=Global.Cache.Vn
+  f=Cache.f
+  Vn=Cache.Vn
 
   @. Vn = V
   @inbounds for iStage=1:RK.nStage
@@ -9,8 +9,8 @@ function RungeKuttaExplicit!(V,dt,Fcn,CG,Global,Param,DiscType)
     @inbounds for jStage=1:iStage-1
       @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
     end
-    @views FcnPrepare!(V,CG,Global,Param,DiscType)
-    @views Fcn(f[:,:,:,iStage],V,CG,Global,Param,DiscType)
+    @views FcnPrepare!(V,CG,Metric,Phys,Cache,Global,Param,DiscType)
+    @views Fcn(f[:,:,:,iStage],V,CG,Metric,Phys,Cache,Global,Param,DiscType)
   end
   @. V = Vn
   @inbounds for iStage=1:RK.nStage

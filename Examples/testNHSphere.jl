@@ -170,7 +170,9 @@ Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
 
 # Initial values
-U = CGDycore.InitialConditions(CG,Metric,Phys,Global,Param)
+Profile = CGDycore.GalewskiExample()(Param,Phys)
+
+U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -247,6 +249,6 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
 elseif ModelType == "Conservative"
   DiscType = Val(:Conservative)  
 end  
-nT = max(6 + NumTr, NumV + NumTr)
+nT = max(7 + NumTr, NumV + NumTr)
 CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
 CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)

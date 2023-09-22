@@ -1,6 +1,6 @@
 mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Problem="WarmBubble2DXCart" \
-  --Device="GPU" \
+  --Device="CPU" \
   --GPUType="CUDA" \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
@@ -18,8 +18,8 @@ mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Curl=true \
   --ModelType="VectorInvariant" \
   --dtau=.2 \
-  --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --IntMethod="RungeKutta" \
+  --Table="RK4" \
   --TopoS="" \
   `#Topography `        \
   --H=10000.0 \

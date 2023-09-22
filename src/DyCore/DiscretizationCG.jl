@@ -1,4 +1,4 @@
-mutable struct CGStruct{FT<:Real,
+mutable struct CGStruct{FT<:AbstractFloat,
                         AT2<:AbstractArray,
                         IT1<:AbstractArray,
                         IT2<:AbstractArray,
@@ -27,7 +27,7 @@ mutable struct CGStruct{FT<:Real,
     Boundary::Array{Int, 1}
     MasterSlave::IT1
 end
-function CGStruct{FT}(backend) where FT<:Real
+function CGStruct{FT}(backend) where FT<:AbstractFloat
   OrdPoly = 0
   OrdPolyZ = 0
   Glob = KernelAbstractions.zeros(backend,Int,0,0,0)

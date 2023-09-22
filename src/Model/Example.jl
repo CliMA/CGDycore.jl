@@ -46,7 +46,7 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     if rr < rC0
       Th = Th + DeltaTh * cos(0.5 * pi * rr /rC0)^2
     end
-    Rho = pLoc / ((pLoc / p0)^kappa * Rd * ThLoc)
+    Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     return (Rho,u,v,w,Th)
   end
   return local_profile
@@ -92,3 +92,29 @@ function (profile::DCMIPAdvectionExample)(Param,Phys)
   end
   return local_profile
 end
+
+Base.@kwdef struct GalewskiExample <: Example end
+
+function (profile::GalewskiExample)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    Grav=Phys.Grav 
+    Omega=Phys.Omega
+    (lon,lat,r)=cart2sphere(x[1],x[2],x[3])
+    r=Phys.RadEarth
+    Rho=(Grav*Param.H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG,Param)))/Grav +
+      Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2.0)*exp(-((pi/4.0-lat)/Param.betaG)^2.0)
+    Th = FT(1)   
+    if (lat<=Param.lat0G) || (lat>=Param.lat1G)
+      u=FT(0)
+    else
+      u=Param.uM/Param.eN*exp(1.0/((lat-Param.lat0G)*(lat-Param.lat1G)))
+    end
+    v = FT(0)
+    w = FT(0)
+
+    return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+

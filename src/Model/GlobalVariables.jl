@@ -1,5 +1,5 @@
 using KernelAbstractions
-mutable struct CacheStruct{FT<:Real,
+mutable struct CacheStruct{FT<:AbstractFloat,
                            AT3<:AbstractArray,
                            AT4<:AbstractArray}
 CacheE1::Array{FT, 2}
@@ -62,7 +62,6 @@ DivThC::Array{FT, 3}
 DivwC::Array{FT, 3}
 KVCG::Array{FT, 3}
 Temp1::AT3
-#Temp1::Array{FT, 3}
 k::Array{FT, 4}
 Ymyn::Array{FT, 4}
 Y::Array{FT, 4}
@@ -79,7 +78,7 @@ qMin::Array{FT, 3}
 qMax::Array{FT, 3}
 end
 
-function CacheStruct{FT}(backend) where FT<:Real
+function CacheStruct{FT}(backend) where FT<:AbstractFloat
 CacheE1=zeros(FT,0,0);
 CacheE2=zeros(FT,0,0);
 CacheE3=zeros(FT,0,0);
@@ -140,7 +139,6 @@ DivThC=zeros(FT,0,0,0)
 DivwC=zeros(FT,0,0,0)
 KVCG=zeros(FT,0,0,0)
 Temp1=KernelAbstractions.zeros(backend,FT,0,0,0)
-#Temp1=zeros(FT,0,0,0)
 k=zeros(FT,0,0,0,0)
 Ymyn=zeros(FT,0,0,0,0)
 Y=zeros(FT,0,0,0,0)
@@ -156,7 +154,7 @@ f=zeros(FT,0,0,0,0)
 qMin=zeros(FT,0,0,0)
 qMax=zeros(FT,0,0,0)
 return CacheStruct{FT,
-                   typeof(Temp1),
+                   typeof(RhoS),
                    typeof(VS)}(
   CacheE1,
   CacheE2,
@@ -235,7 +233,7 @@ return CacheStruct{FT,
 )
 end
 
-function CacheStruct{FT}(backend,OP,NF,NGF,NumG,nz,NumV,NumTr) where FT<:Real
+function CacheStruct{FT}(backend,OP,NF,NGF,NumG,nz,NumV,NumTr) where FT<:AbstractFloat
 CacheE1=zeros(FT,OP,OP);
 CacheE2=zeros(FT,OP,OP);
 CacheE3=zeros(FT,OP,OP);
@@ -296,7 +294,6 @@ DivThC=zeros(FT,OP,OP,nz)
 DivwC=zeros(FT,OP,OP,nz+1)
 KVCG=zeros(FT,OP,OP,nz)
 Temp1=KernelAbstractions.zeros(backend,FT,nz,NumG,max(NumV+NumTr,7+NumTr))
-#Temp1=zeros(FT,nz,NumG,max(NumV+NumTr,9+NumTr))
 k=zeros(FT,0,0,0,0)
 Ymyn=zeros(FT,0,0,0,0)
 Y=zeros(FT,0,0,0,0)
@@ -312,7 +309,7 @@ f=zeros(FT,0,0,0,0)
 qMin=zeros(FT,nz,NF+NGF,NumTr+1)
 qMax=zeros(FT,nz,NF+NGF,NumTr+1)
 return CacheStruct{FT,
-                   typeof(Temp1),
+                   typeof(RhoS),
                    typeof(VS)}(
   CacheE1,
   CacheE2,
@@ -505,7 +502,7 @@ function OutputStruct(Topography::NamedTuple)
   )
 end  
 
-mutable struct MetricStruct{FT<:Real,
+mutable struct MetricStruct{FT<:AbstractFloat,
                             AT2<:AbstractArray,
                             AT3<:AbstractArray,
                             AT4<:AbstractArray,
@@ -521,7 +518,7 @@ mutable struct MetricStruct{FT<:Real,
   dz::AT2
   zP::AT2
 end
-function MetricStruct{FT}(backend) where FT<:Real
+function MetricStruct{FT}(backend) where FT<:AbstractFloat
   lat    = KernelAbstractions.zeros(backend,FT,0,0,0)
   J      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
   X      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
@@ -547,7 +544,7 @@ function MetricStruct{FT}(backend) where FT<:Real
         zP,
     )
 end
-function MetricStruct{FT}(backend,OP,OPZ,NF,nz) where FT<:Real
+function MetricStruct{FT}(backend,OP,OPZ,NF,nz) where FT<:AbstractFloat
     lat    = KernelAbstractions.zeros(backend,FT,OP,OP,NF)
     J      = KernelAbstractions.zeros(backend,FT,OP,OP,OPZ,nz,NF)
     X      = KernelAbstractions.zeros(backend,FT,OP,OP,OPZ,3,nz,NF)
@@ -575,7 +572,7 @@ function MetricStruct{FT}(backend,OP,OPZ,NF,nz) where FT<:Real
     )
 end
 
-struct PhysParameters{FT<:Real}
+struct PhysParameters{FT<:AbstractFloat}
   RadEarth::FT 
   Grav::FT 
   Cpd::FT
@@ -592,7 +589,7 @@ struct PhysParameters{FT<:Real}
   Omega::FT
   T0::FT
 end
-function PhysParameters{FT}() where FT<:Real
+function PhysParameters{FT}() where FT<:AbstractFloat
   RadEarth = 6.37122e+6
   Grav =  9.81
   Cpd = 1004.0
@@ -808,7 +805,7 @@ function Model()
    )
 end  
 
-mutable struct GlobalStruct{FT<:Real,
+mutable struct GlobalStruct{FT<:AbstractFloat,
                             TCache}
 # Metric::MetricStruct{FT}
   Grid::GridStruct
@@ -837,7 +834,7 @@ function GlobalStruct{FT}(backend,Grid::GridStruct,
 #               Phys::PhysParameters,
                 Output::OutputStruct,
                 Exchange::ExchangeStruct,
-                OP,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:Real
+                OP,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:AbstractFloat
 # Metric=MetricStruct{FT}(backend)
 # Cache=CacheStruct{FT}(backend)
   vtkCache = vtkStruct{FT}(backend)

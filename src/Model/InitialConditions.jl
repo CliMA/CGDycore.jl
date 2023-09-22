@@ -1,11 +1,38 @@
-function InitialConditions(CG,Metric,Phys,Global,Param)  
+function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   Model = Global.Model
-  nz = Global.Grid.nz
+  Nz = Global.Grid.nz
+  NF = Global.Grid.NumFaces
   NumV = Model.NumV
   NumTr = Model.NumTr
-  NumG = CG.NumG
-  OrdPoly = CG.OrdPoly
+  N = CG.OrdPoly + 1
+  Glob = CG.Glob
+  X = Metric.X
+  time = 0
 
+
+  # Ranges
+  NzG = min(div(1024,N*N),Nz)
+  group = (N, N, NzG, 1)
+  ndrange = (N, N, Nz, NF)
+
+  U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,NumV+NumTr)
+  @views Rho = U[:,:,Model.RhoPos]
+  @views u = U[:,:,Model.uPos]
+  @views v = U[:,:,Model.vPos]
+  @views w = U[:,:,Model.wPos]
+  @views Th = U[:,:,Model.ThPos]
+  KRhoFunCKernel! = RhoFunCKernel!(backend, group)
+  KThFunCKernel! = ThFunCKernel!(backend, group)
+  KuvwFunCKernel! = uvwFunCKernel!(backend, group)
+
+  KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+  KThFunCKernel!(Profile,Th,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+#=
   if Global.Model.Profile
     Profile = TestRes(Global.Phys)
   else
@@ -59,6 +86,7 @@ function InitialConditions(CG,Metric,Phys,Global,Param)
   if Global.Model.Geos
     (Global.UGeo,Global.VGeo) = ProjectVec(fVelGeo,0.0,CG,Metric,Phys,Global,Param)
   end  
+  =#
   return U
 end  
 
@@ -80,7 +108,7 @@ function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Pa
 
   U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,NumV+NumTr)
   @views Rho = U[:,:,Model.RhoPos]
-  @views Tr = U[:,:,Model.NumV+1]
+  @views Th = U[:,:,Model.NumV+1]
   #Profile = Example(RotationalCartExample())
   KRhoFunCKernel! = RhoFunCKernel!(backend, group)
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)

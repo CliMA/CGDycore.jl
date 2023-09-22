@@ -1,3 +1,243 @@
+@kernel function GradKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob),Phys,::Val{BANK}=Val(1)) where BANK
+
+  gi, gj, gz, gF = @index(Group, NTuple)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,_,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
+
+  GraduF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  GradvF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  GradwF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  Pres = @localmem eltype(F) (N+1,N,ColumnTilesDim)
+  PresF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    @inbounds ind = Glob[I,J,IF]
+    @inbounds @views @. GraduF[I,J,:,iz] = 0
+    @inbounds @views @. GradvF[I,J,:,iz] = 0
+    @inbounds @views @. GradwF[I,J,:,iz] = 0
+    @inbounds Pres[I,J,iz] = PressureGPU(U[Iz,ind,5],Phys)
+  end
+
+  @synchronize
+
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    @inbounds ind = Glob[I,J,IF]
+    Izm1 = max(Iz - 1,1)
+    Izp1 = min(Iz + 1, Nz)
+    @inbounds JL = JJ[I,J,1,Izm1,IF] + JJ[I,J,2,Izm1,IF]
+    @inbounds JC = JJ[I,J,1,Iz,IF] + JJ[I,J,2,Iz,IF]
+    @inbounds JR = JJ[I,J,1,Izp1,IF] + JJ[I,J,2,Izp1,IF]
+    @inbounds pC = Pres[I,J,iz]
+    if iz > 1
+      @inbounds pL = Pres[I,J,iz-1]
+    else
+      Izm1 = max(Iz - 1,1)
+      @inbounds pL = ((3 * pC - 2 * Pres[I,J,iz+1]) * JC + pC * JR) / (JC + JR)
+    end
+    if iz < ColumnTilesDim 
+      @inbounds pR = Pres[I,J,iz+1]
+    else
+      Izp1 = min(Iz + 1, Nz)
+      @inbounds pR = ((3 * pC - 2 * Pres[I,J,iz-1]) * JC + pC * JL) / (JL + JC)
+    end
+
+    pFL, pFR = RecU3(pL,pC,pR,JL,JC,JR)
+    PresF[I,J,1,iz] = pFL
+    PresF[I,J,2,iz] = pFR
+  end
+
+  @synchronize
+  Iz = (gz - 1) * ColumnTilesDim + iz
+
+  if Iz <= Nz
+    DXPresF1 = 0
+    DYPresF1 = 0
+    DXPresF2 = 0
+    DYPresF2 = 0
+    for k = 1 : N
+      @inbounds DXPresF1 += D[I,k] * PresF[k,J,1,iz]
+      @inbounds DYPresF1 += D[J,k] * PresF[I,k,1,iz]
+      @inbounds DXPresF2 += D[I,k] * PresF[k,J,2,iz]
+      @inbounds DYPresF2 += D[J,k] * PresF[I,k,2,iz]
+    end
+    @inbounds GraduF[I,J,1,iz] +=
+      -(dXdxI[1,1,1,I,J,Iz,IF]  * DXPresF1 + dXdxI[2,1,1,I,J,Iz,IF]  * DYPresF1)
+    @inbounds GradvF[I,J,1,iz] +=
+      -(dXdxI[1,2,1,I,J,Iz,IF]  * DXPresF1 + dXdxI[2,2,1,I,J,Iz,IF]  * DYPresF1)
+    @inbounds GradwF[I,J,1,iz] +=
+      -(dXdxI[1,3,1,I,J,Iz,IF]  * DXPresF1 + dXdxI[2,3,1,I,J,Iz,IF]  * DYPresF1)
+    @inbounds GraduF[I,J,2,iz] +=
+      -(dXdxI[1,1,2,I,J,Iz,IF]  * DXPresF2 + dXdxI[2,1,2,I,J,Iz,IF]  * DYPresF2)
+    @inbounds GradvF[I,J,2,iz] +=
+      -(dXdxI[1,2,2,I,J,Iz,IF]  * DXPresF2 + dXdxI[2,2,2,I,J,Iz,IF]  * DYPresF2)
+    @inbounds GradwF[I,J,2,iz] +=
+      -(dXdxI[1,3,2,I,J,Iz,IF]  * DXPresF2 + dXdxI[2,3,1,I,J,Iz,IF]  * DYPresF2)
+
+    @inbounds ind = Glob[I,J,IF]
+    GradZ = -Phys.Grav * U[Iz,ind,1] *
+        JJ[I,J,1,Iz,IF] / dXdxI[3,3,1,I,J,Iz,IF]
+    GraduF[I,J,1,iz] += -GradZ * dXdxI[3,1,1,I,J,Iz,IF]
+    GradvF[I,J,1,iz] += -GradZ * dXdxI[3,2,1,I,J,Iz,IF]
+    GradZ = -Phys.Grav * U[Iz,ind,1] *
+      JJ[I,J,2,Iz,IF] / dXdxI[3,3,2,I,J,Iz,IF]
+    GraduF[I,J,2,iz] += -GradZ * dXdxI[3,1,2,I,J,Iz,IF]
+    GradvF[I,J,2,iz] += -GradZ * dXdxI[3,2,2,I,J,Iz,IF]
+
+  
+    GradZ = 1/2 * PresF[I,J,1,iz]
+    if Iz > 1
+      GradwF[I,J,2,iz-1] += -GradZ * dXdxI[3,3,2,I,J,Iz-1,IF]
+    end  
+    GradwF[I,J,1,iz] += -GradZ * dXdxI[3,3,1,I,J,Iz,IF]
+    GradwF[I,J,2,iz] += GradZ * dXdxI[3,3,2,I,J,Iz,IF]
+    if Iz < Nz
+      GradwF[I,J,1,iz+1] += -GradZ * dXdxI[3,3,1,I,J,Iz+1,IF]
+    end
+      
+    @inbounds GradZ = 1/2 * (PresF[I,J,2,iz] - PresF[I,J,1,iz])
+    @inbounds GraduF[I,J,2,iz] += -GradZ * dXdxI[3,1,2,I,J,Iz,IF]
+    @inbounds GraduF[I,J,1,iz] += -GradZ * dXdxI[3,1,1,I,J,Iz,IF]
+    @inbounds GradvF[I,J,2,iz] += -GradZ * dXdxI[3,2,2,I,J,Iz,IF]
+    @inbounds GradvF[I,J,1,iz] += -GradZ * dXdxI[3,2,1,I,J,Iz,IF]
+    @inbounds GradwF[I,J,2,iz] += -GradZ * dXdxI[3,3,2,I,J,Iz,IF]
+    @inbounds GradwF[I,J,1,iz] += -GradZ * dXdxI[3,3,1,I,J,Iz,IF]
+  end  
+
+  @synchronize
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    @inbounds ind = Glob[I,J,IF]
+    @inbounds @atomic F[Iz,ind,2] += (GraduF[I,J,1,iz] + GraduF[I,J,2,iz]) / M[Iz,ind] / U[Iz,ind,1]
+    @inbounds @atomic F[Iz,ind,3] += (GraduF[I,J,1,iz] + GraduF[I,J,2,iz]) / M[Iz,ind] / U[Iz,ind,1]
+    if iz > 1
+      @inbounds @atomic F[Iz,ind,4] += (GradwF[I,J,2,iz-1] + GradwF[I,J,1,iz] +
+        -Phys.Grav * (U[Iz-1,ind,1] * JJ[I,J,2,Iz-1] + U[Iz,ind,1] * JJ[I,J,1,Iz])) / 
+        (M[Iz,ind] * U[Iz,ind,1] + M[Iz-1,ind] * U[Iz-1,ind,1])
+    end  
+  end
+end
+
+@kernel function RhoGradKinKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
+
+  gi, gj, gz, gF = @index(Group, NTuple)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,_,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
+
+  RhoCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim)
+  uCol = @localmem eltype(F) (N+BANK,N,ColumnTilesDim)
+  vCol = @localmem eltype(F) (N+BANK,N,ColumnTilesDim)
+  wCol = @localmem eltype(F) (N+BANK,N,ColumnTilesDim+1)
+  GraduF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  GradvF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  GradwF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  KinF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    @inbounds ind = Glob[I,J,IF]
+    @inbounds RhoCol[I,J,iz] = U[Iz,ind,1]
+    @inbounds uCol[I,J,iz] = U[Iz,ind,2]
+    @inbounds vCol[I,J,iz] = U[Iz,ind,3]
+    @inbounds wCol[I,J,iz+1] = U[Iz,ind,4]
+    @inbounds @views @. GraduF[I,J,:,iz] = 0
+    @inbounds @views @. GradvF[I,J,:,iz] = 0
+    @inbounds @views @. GradwF[I,J,:,iz] = 0
+  end
+
+  @synchronize
+
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    KinF[I,J,1,iz] = 1/2 * (uCol[I,J,iz] * uCol[I,J,iz] + vCol[I,J,iz] * vCol[I,J,iz])  
+    KinF[I,J,2,iz] = KinF[I,J,1,iz] + 1/2 * wCol[I,J,iz+1] * wCol[I,J,iz+1]
+    KinF[I,J,1,iz] +=  1/2 * wCol[I,J,iz] * wCol[I,J,iz]
+  end  
+
+  @synchronize
+  Iz = (gz - 1) * ColumnTilesDim + iz
+
+  DXKinF1 = 0
+  DYKinF1 = 0
+  DXKinF2 = 0
+  DYKinF2 = 0
+  for k = 1 : N
+    @inbounds DXKinF1 += D[I,k] * KinF[k,J,1,iz]
+    @inbounds DYKinF1 += D[J,k] * KinF[I,k,1,iz]
+    @inbounds DXKinF2 += D[I,k] * KinF[k,J,2,iz]
+    @inbounds DYKinF2 += D[J,k] * KinF[I,k,2,iz]
+  end
+  @inbounds GraduF[I,J,1,iz] +=
+      -RhoCol[I,J,iz] * (dXdxI[1,1,1,I,J,Iz,IF]  * DXKinF1 + dXdxI[2,1,1,I,J,Iz,IF]  * DYKinF1)
+  @inbounds GradvF[I,J,1,iz] +=
+      -RhoCol[I,J,iz] * (dXdxI[1,2,1,I,J,Iz,IF]  * DXKinF1 + dXdxI[2,2,1,I,J,Iz,IF]  * DYKinF1)
+  @inbounds GradwF[I,J,1,iz] +=
+      -RhoCol[I,J,iz] * (dXdxI[1,3,1,I,J,Iz,IF]  * DXKinF1 + dXdxI[2,3,1,I,J,Iz,IF]  * DYKinF1)
+  @inbounds GraduF[I,J,2,iz] +=
+      -RhoCol[I,J,iz] * (dXdxI[1,1,2,I,J,Iz,IF]  * DXKinF2 + dXdxI[2,1,2,I,J,Iz,IF]  * DYKinF2)
+  @inbounds GradvF[I,J,2,iz] +=
+      -RhoCol[I,J,iz] * (dXdxI[1,2,2,I,J,Iz,IF]  * DXKinF2 + dXdxI[2,2,2,I,J,Iz,IF]  * DYKinF2)
+  @inbounds GradwF[I,J,2,iz] +=
+      -RhoCol[I,J,iz] * (dXdxI[1,3,2,I,J,Iz,IF]  * DXKinF2 + dXdxI[2,3,1,I,J,Iz,IF]  * DYKinF2)
+  if iz > 1    
+    @inbounds GraduZ11 = 1/2 * KinF[I,J,1,iz] * dXdxI[3,1,2,I,J,Iz-1,IF]
+    @inbounds GradvZ11 = 1/2 * KinF[I,J,1,iz] * dXdxI[3,2,2,I,J,Iz-1,IF]
+    @inbounds @atomic GraduF[I,J,2,iz-1] += -RhoCol[I,J,iz-1] * GraduZ11
+    @inbounds @atomic GradvF[I,J,2,iz-1] += -RhoCol[I,J,iz-1] * GradvZ11
+  end  
+  @inbounds GraduZ12 = 1/2 * KinF[I,J,1,iz] * dXdxI[3,1,1,I,J,Iz,IF]
+  @inbounds GradvZ12 = 1/2 * KinF[I,J,1,iz] * dXdxI[3,2,1,I,J,Iz,IF]
+  @inbounds GraduZ21 = 1/2 * KinF[I,J,2,iz] * dXdxI[3,1,2,I,J,Iz,IF]
+  @inbounds GradvZ21 = 1/2 * KinF[I,J,2,iz] * dXdxI[3,2,2,I,J,Iz,IF]
+  @inbounds @atomic GraduF[I,J,1,iz] += RhoCol[I,J,iz] * GraduZ12 
+  @inbounds @atomic GraduF[I,J,1,iz] += -RhoCol[I,J,iz] * GraduZ21 
+  @inbounds @atomic GradvF[I,J,1,iz] += RhoCol[I,J,iz] * GradvZ12 
+  @inbounds @atomic GradvF[I,J,1,iz] += -RhoCol[I,J,iz] * GradvZ21 
+  if Iz < Nz
+    @inbounds GraduZ22 = 1/2 * KinF[I,J,2,iz] * dXdxI[3,1,1,I,J,Iz+1,IF]
+    @inbounds GradvZ22 = 1/2 * KinF[I,J,2,iz] * dXdxI[3,2,1,I,J,Iz+1,IF]
+    @inbounds @atomic GraduF[I,J,2,iz+1] += RhoCol[I,J,iz+1] * GraduZ22
+    @inbounds @atomic GradvF[I,J,2,iz+1] += RhoCol[I,J,iz+1] * GradvZ22
+  end  
+
+  @inbounds GradZ = 1/2 * RhoCol[I,J,iz] * (KinF[I,J,2,iz] - KinF[I,J,1,iz])
+  @inbounds GraduF[I,J,2,iz] += -GradZ * dXdxI[3,1,2,I,J,Iz,IF]
+  @inbounds GraduF[I,J,1,iz] += -GradZ * dXdxI[3,1,1,I,J,Iz,IF]
+  @inbounds GradvF[I,J,2,iz] += -GradZ * dXdxI[3,2,2,I,J,Iz,IF]
+  @inbounds GradvF[I,J,1,iz] += -GradZ * dXdxI[3,2,1,I,J,Iz,IF]
+  @inbounds GradwF[I,J,2,iz] += -GradZ * dXdxI[3,3,2,I,J,Iz,IF]
+  @inbounds GradwF[I,J,1,iz] += -GradZ * dXdxI[3,3,1,I,J,Iz,IF]
+
+  @synchronize
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    @inbounds ind = Glob[I,J,IF]
+    @inbounds @atomic F[Iz,ind,2] += (GraduF[I,J,1,iz] + GraduF[I,J,2,iz]) / M[Iz,ind] / U[Iz,ind,1]
+    @inbounds @atomic F[Iz,ind,3] += (GraduF[I,J,1,iz] + GraduF[I,J,2,iz]) / M[Iz,ind] / U[Iz,ind,1]
+    if iz > 1
+      @inbounds @atomic F[Iz,ind,4] += (GradwF[I,J,2,iz-1] + GradwF[I,J,1,iz]) / 
+        (M[Iz,ind] * U[Iz,ind,1] + M[Iz-1,ind] * U[Iz-1,ind,1])
+    end  
+  end
+end
+
 @kernel function DivRhoGradKernel!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
 
@@ -465,7 +705,7 @@ end
     @inbounds JL = JJ[I,J,1,Iz,IF] + JJ[I,J,2,Iz,IF]
     @inbounds JR = JJ[I,J,1,Iz+1,IF] + JJ[I,J,2,Iz+1,IF]
     @inbounds JRR = JJ[I,J,1,Izp2,IF] + JJ[I,J,2,Izp2,IF]
-    cFL, cFR = RecU3(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
+    cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
     Flux = 0.25 * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
     @inbounds @atomic F[Iz,ind,5] += -Flux / M[Iz,ind]
     @inbounds @atomic F[Iz+1,ind,5] += Flux / M[Iz+1,ind]
@@ -510,6 +750,14 @@ end
     @inbounds @atomic F[Iz,ind,5] += FTrCol[I,J,iz] / M[Iz,ind]
   end
 end
+
+# we may be hitting a slow path:
+# https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
+fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
+
+@inline function PressureGPU(RhoTh,Phys)
+  Phys.p0 * fast_powGPU(Phys.Rd * RhoTh / Phys.p0, 1 / (1 - Phys.kappa))
+end  
 
 @inline function Contra12(Rho,u,v,dXdxI)
   @inbounds uCon = Rho * ((dXdxI[1,1,1] + dXdxI[1,1,2]) * u +
@@ -572,7 +820,7 @@ end
     Rho[2] * (dXdxI[1,1,2] * u[2] + dXdxI[2,1,2] * v[2] + dXdxI[3,1,2] * w)
 end
   
-@inline function RecU3(cLL,cL,cR,cRR,JLL,JL,JR,JRR)
+@inline function RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR)
 
   kR = (JL / (JL + JR)) * ((JLL + JL) / (JLL + JL + JR))
   kL = -(JL / (JLL + JL)) * (JR / (JLL + JL + JR))
@@ -697,6 +945,32 @@ end
   end
 end
 
+@kernel function ThFunCKernel!(Profile,Th,time,@Const(Glob),@Const(X),Param,Phys)
+
+  gi, gj, gz, gF = @index(Group, NTuple)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,_,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
+  Iz = (gz - 1) * ColumnTilesDim + iz
+
+  if Iz <= Nz
+    ind = Glob[I,J,IF]
+    x1 = 0.5 * (X[I,J,1,1,Iz,IF] + X[I,J,2,1,Iz,IF])
+    x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
+    x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
+    xS = SVector{3}(x1, x2 ,x3)
+#   RhoP,_,_,_ ,ThP = Profile(xS,time,Param,Phys)
+    RhoP,_,_,_ ,ThP = Profile(xS,time)
+    @inbounds Th[Iz,ind] = RhoP * ThP
+  end
+end
+
 
 @kernel function ComputeFunFKernel!(Profile,w,time,@Const(Glob),@Const(X),Param)
 
@@ -752,13 +1026,13 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
 
-# KuvwFunCKernel! = uvwFunCKernel!(backend, group)
+  KuvwFunCKernel! = uvwFunCKernel!(backend, group)
   KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
 
-# KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
-# KernelAbstractions.synchronize(backend)
+  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
 
   @. CacheF = 0
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
@@ -769,7 +1043,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
 end
 
 
-function FcnGPU!(F,U,time,FE,Metric,Cache,Global,Param)
+function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -786,7 +1060,6 @@ function FcnGPU!(F,U,time,FE,Metric,Cache,Global,Param)
   NF = size(Glob,3)
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
-  Phys = Global.Phys
 
 
 # State vector
@@ -795,7 +1068,8 @@ function FcnGPU!(F,U,time,FE,Metric,Cache,Global,Param)
   @views v = U[:,:,3]
   @views w = U[:,:,4]
   @views RhoTr = U[:,:,5]
-  @views CacheFTr = temp1[:,:,1]
+# Cache
+  @views CacheF = Temp1[:,:,1:5]
   @views FRho = F[:,:,1]
   @views FRhoTr = F[:,:,5]
 # Ranges
@@ -803,22 +1077,28 @@ function FcnGPU!(F,U,time,FE,Metric,Cache,Global,Param)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
 
+  KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
+  KGradKernel! = GradKernel!(backend,group)
+  KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
+  KHyperViscKernel! = HyperViscKernel!(backend, group)
+  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
 
-  KDivRhoGradKerne1l! = DivRhoGradKernel1!(backend, group)
-  KDivRhoTrUpwind3Kernel2! = DivRhoTrUpwind3Kernel2!(backend, group)
-
-
-  @. CacheFTr = 0
-  KDivRhoGradKernel1!(CacheFTr,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+  @. CacheF = 0
+  KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-# KDivRhoGradKernelKoeff!(FRhoTr,CacheFTr,Rho,DS,DW,dXdxI,J,M,Glob,Koeff,ndrange=ndrange)
-# KernelAbstractions.synchronize(backend)
-# KDivRhoKernel!(FRho,Rho,u,v,w,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-# KernelAbstractions.synchronize(backend)
-# KDivRhoTrUpwind3Kernel!(FRhoTr,RhoTr,Rho,u,v,w,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-# KernelAbstractions.synchronize(backend)
-  KDivRhoTrUpwind3Kernel2!(F,U,CacheFTr,DS,DW,dXdxI,J,M,Glob,Koeff,ndrange=ndrange)
+  @. F = 0
+  KDivRhoTrUpwind3Kernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,Koeff,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
+
+  KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+  @. F = 0
+  KGradKernel!(F,U,DS,dXdxI,J,M,Glob,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+  @show sum(abs.(F))
+  @show sum(abs.(U[:,:,1]))
+  stop
+
 end
-
 

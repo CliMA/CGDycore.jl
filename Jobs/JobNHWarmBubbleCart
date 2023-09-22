@@ -1,7 +1,10 @@
-mpirun -n 1 julia --project Examples/testNHCart.jl \
+mpirun -n 2 julia --project Examples/testNHCart.jl \
   --Problem="WarmBubble2DXCart" \
   --NumV=5 \
   --NumTr=0 \
+  --Device="CPU" \
+  --GPUType="CUDA" \
+  --FloatTypeBackend="Float64" \
   --ProfRho="WarmBubble2DX" \
   --ProfTheta="WarmBubble2DX" \
   --ProfVel="Const" \

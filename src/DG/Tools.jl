@@ -1,5 +1,5 @@
 @muladd @inline function DerivativeX!(Dc::AbstractArray{FT,2},c::AbstractArray{FT,2},
-  DX::AbstractArray{FT,2}) where FT<:Real
+  DX::AbstractArray{FT,2}) where FT<:AbstractFloat
   nx = size(c,1)
   ny = size(c,2)
   @inbounds for j = 1 : ny
@@ -11,7 +11,7 @@
   end 
 end
 @muladd @inline function DerivativeX!(Dc::AbstractArray{FT,3},c::AbstractArray{FT,3},
-  DX::AbstractArray{FT,2}) where FT<:Real
+  DX::AbstractArray{FT,2}) where FT<:AbstractFloat
   nx = size(c,1)
   ny = size(c,2)
   @inbounds for j = 1 : ny
@@ -24,7 +24,7 @@ end
 end
   
 @muladd @inline function DerivativeY!(Dc::AbstractArray{FT,2},c::AbstractArray{FT,2},
-  DY::AbstractArray{FT,2}) where FT<:Real
+  DY::AbstractArray{FT,2}) where FT<:AbstractFloat
   nx = size(c,1)
   ny = size(c,2)
   @inbounds for i = 1 : nx
@@ -37,7 +37,7 @@ end
 end
 
 @muladd @inline function DerivativeY!(Dc::AbstractArray{FT,3},c::AbstractArray{FT,3},
-  DY::AbstractArray{FT,2}) where FT<:Real
+  DY::AbstractArray{FT,2}) where FT<:AbstractFloat
   nx = size(c,1)
   ny = size(c,2)
   @inbounds for i = 1 : nx

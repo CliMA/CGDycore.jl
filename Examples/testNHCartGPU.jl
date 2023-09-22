@@ -2,9 +2,7 @@ using CGDycore
 using MPI
 using Base
 using CUDA
-using CUDA.CUDAKernels
 using KernelAbstractions
-using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using StaticArrays
 
 # Model
@@ -101,8 +99,7 @@ elseif Device == "GPU"
     CUDA.allowscalar(true)
   end
 else
-  @show "False device"
-  stop
+  backend = CPU()
 end
 
 if FloatTypeBackend == "Float64"
@@ -206,80 +203,79 @@ Topography=(TopoS=TopoS,
 (CG, Metric, Global) = CGDycore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
   Boundary,GridType,Topography,Decomp,Model,Phys)
 
-#if TopoS == "EarthOrography"
-#  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global,zS)
-#else
-#  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
-#end
+Profile = CGDycore.WarmBubbleCartExample()(Param,Phys)
 
-stop
-
-  U = CGDycore.InitialConditions(CG,Global,Param)
+U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 # Output
-  Global.Output.vtkFileName=string(Problem*"_")
-  Global.Output.vtk=0
-  Global.Output.Flat=true
-  Global.Output.H=H
-  if ModelType == "VectorInvariant" || ModelType == "Advection"
-    if Model.Equation == "Compressible"
-      Global.Output.cNames = [
-        "Rho",
-        "u",
-        "v",
-        "wB",
-        "Th",
-        "Pres",
-        ]
-    elseif Model.Equation == "CompressibleMoist"
-      Global.Output.cNames = [
-        "Rho",
-        "u",
-        "v",
-        "wB",
-        "Th",
-        "ThE",
-        "Pres",
-        "Tr1",
-        "Tr2",
-        ]
-    end    
-  elseif ModelType == "Conservative"
+Global.Output.vtkFileName=string(Problem*"_")
+Global.Output.vtk=0
+Global.Output.Flat=true
+Global.Output.H=H
+if ModelType == "VectorInvariant" || ModelType == "Advection"
+  if Model.Equation == "Compressible"
     Global.Output.cNames = [
       "Rho",
-      "Rhou",
-      "Rhov",
-      "w",
+      "u",
+      "v",
+      "wB",
       "Th",
-      "Vort",
+      "Pres",
       ]
-  end
+  elseif Model.Equation == "CompressibleMoist"
+    Global.Output.cNames = [
+      "Rho",
+      "u",
+      "v",
+      "wB",
+      "Th",
+      "ThE",
+      "Pres",
+      "Tr1",
+      "Tr2",
+      ]
+  end    
+elseif ModelType == "Conservative"
+  Global.Output.cNames = [
+    "Rho",
+    "Rhou",
+    "Rhov",
+    "w",
+    "Th",
+    "Vort",
+    ]
+end
 
-  Global.Output.PrintDays = PrintDays
-  Global.Output.PrintHours = PrintHours
-  Global.Output.PrintMinutes = PrintMinutes
-  Global.Output.PrintSeconds = PrintSeconds
-  Global.Output.PrintTime = PrintTime
-  Global.Output.PrintStartTime = PrintStartTime
-  Global.Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkStruct(Global.Output.OrdPrint,CGDycore.TransCartX,CG,Global)
+Global.Output.PrintDays = PrintDays
+Global.Output.PrintHours = PrintHours
+Global.Output.PrintMinutes = PrintMinutes
+Global.Output.PrintSeconds = PrintSeconds
+Global.Output.PrintTime = PrintTime
+Global.Output.PrintStartTime = PrintStartTime
+Global.Output.OrdPrint=CG.OrdPoly
+Global.vtkCache = CGDycore.vtkStruct{FTB}(backend,Global.Output.OrdPrint,CGDycore.TransCartX!,CG,Metric,Global)
 
 
-  # TimeStepper
-  time=[0.0]
-  Global.TimeStepper.IntMethod = IntMethod
-  Global.TimeStepper.Table = Table
-  Global.TimeStepper.dtau = dtau
-  Global.TimeStepper.SimDays = SimDays
-  Global.TimeStepper.SimHours = SimHours
-  Global.TimeStepper.SimMinutes = SimMinutes
-  Global.TimeStepper.SimSeconds = SimSeconds
-  Global.TimeStepper.SimTime = SimTime
-  if ModelType == "VectorInvariant" || ModelType == "Advection"
-    DiscType = Val(:VectorInvariant)
-  elseif ModelType == "Conservative"
-    DiscType = Val(:Conservative)
-  end
+# TimeStepper
+time=[0.0]
+Global.TimeStepper.IntMethod = IntMethod
+Global.TimeStepper.Table = Table
+Global.TimeStepper.dtau = dtau
+Global.TimeStepper.SimDays = SimDays
+Global.TimeStepper.SimHours = SimHours
+Global.TimeStepper.SimMinutes = SimMinutes
+Global.TimeStepper.SimSeconds = SimSeconds
+Global.TimeStepper.SimTime = SimTime
+if ModelType == "VectorInvariant" || ModelType == "Advection"
+  DiscType = Val(:VectorInvariant)
+elseif ModelType == "Conservative"
+  DiscType = Val(:Conservative)
+end
+if Device == "CPU"  || Device == "GPU"
+  nT = max(9 + NumTr, NumV + NumTr)
+  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.TransCartX,CG,Metric,Phys,Global,Param,DiscType)
+else    
   nT = max(9 + NumTr, NumV + NumTr)
   CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
-  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransCartX,CG,Global,Param,DiscType)
+  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransCartX,CG,Metric,Phys,Global,Param,DiscType)
+end    

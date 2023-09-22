@@ -199,10 +199,10 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RungeKuttaExplicit!(U,dtau,Fcn!,CG,Global,Param,DiscType)
+          RungeKuttaExplicit!(U,dtau,Fcn!,CG,Metric,Phys,Cache,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+            unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -283,7 +283,7 @@ function TimeStepperAdvection!(U,Trans,CG,Metric,Phys,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
+          RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
@@ -311,7 +311,7 @@ function TimeStepperAdvection!(U,Trans,CG,Metric,Phys,Global,Param)
     @time begin
       for i = 1 : nIter
         Δt = @elapsed begin
-          @time SSPRungeKutta!(time[1],U,dtau,FcnTracer!,CG,Metric,Cache,Global,Param)
+          SSPRungeKutta!(time[1],U,dtau,FcnTracer!,CG,Metric,Cache,Global,Param)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Metric,Global,Proc,ProcNumber)
@@ -487,7 +487,7 @@ function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Phys,Global,Param,Profile)
     @time begin
       for i = 1 : nIter
         Δt = @elapsed begin
-          CUDA.@time SSPRungeKutta!(time[1],U,dtau,FcnAdvectionGPU!,CG,Metric,Phys,Cache,Global,Param,Profile)
+          SSPRungeKutta!(time[1],U,dtau,FcnAdvectionGPU!,CG,Metric,Phys,Cache,Global,Param,Profile)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)

@@ -12,8 +12,8 @@ end
 # https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
 fast_pow(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
 
-function Pressure!(p::AbstractArray{Float64,3},RhoTh::AbstractArray{Float64,3},Rho::AbstractArray{Float64,3},
-  Tr::AbstractArray{Float64,4},KE::AbstractArray{Float64,3},zP::AbstractArray{Float64,3},Phys,Global)
+function Pressure!(p::AbstractArray{FT,3},RhoTh::AbstractArray{FT,3},Rho::AbstractArray{FT,3},
+  Tr::AbstractArray{FT,4},KE::AbstractArray{FT,3},zP::AbstractArray{FT,3},Phys,Global) where FT <: Real
   (; Rd,
      Cvd,
      Cpd,
@@ -44,7 +44,7 @@ function Pressure!(p::AbstractArray{Float64,3},RhoTh::AbstractArray{Float64,3},R
       @inbounds for i3 = 1 : iE3
         @inbounds for i2 = 1 : iE2
           @inbounds for i1 = 1 : iE1
-            p[i1,i2,i3] = p0 * fast_pow(Rd * RhoTh[i1,i2,i3] / p0, 1.0 / (1.0 - kappa));
+            p[i1,i2,i3] = p0 * fast_pow(Rd * RhoTh[i1,i2,i3] / p0, 1 / (1 - kappa));
           end  
         end  
       end  
@@ -153,8 +153,8 @@ function Pressure!(p::AbstractArray{Float64,2},RhoTh::AbstractArray{Float64,2},R
   end
 end
 
-function Pressure!(p::AbstractArray{Float64,1},RhoTh::AbstractArray{Float64,1},Rho::AbstractArray{Float64,1},
-  Tr::AbstractArray{Float64,2},KE::AbstractArray{Float64,1},zP::AbstractArray{Float64,1},Phys,Global)
+function Pressure!(p::AbstractArray{FT,1},RhoTh::AbstractArray{FT,1},Rho::AbstractArray{FT,1},
+  Tr::AbstractArray{FT,2},KE::AbstractArray{FT,1},zP::AbstractArray{FT,1},Phys,Global) where FT <: Real
   (; Rd,
      Cvd,
      Cpd,
