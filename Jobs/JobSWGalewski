@@ -1,4 +1,4 @@
-mpirun -n 1  julia --project Examples/testNHSphere.jl \
+mpirun -n 6  julia --project Examples/testNHSphere.jl \
   --Problem="GalewskiSphere" \
   --NumV=5 \
   --NumTr=0 \
@@ -9,14 +9,14 @@ mpirun -n 1  julia --project Examples/testNHSphere.jl \
   --Coriolis=true \
   --Upwind=false \
   --ModelType="VectorInvariant" \
-  --Curl=false \
+  --Curl=true \
   --Equation="Shallow" \
   --Buoyancy=false \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
   --SimDays=6 \
-  --PrintSeconds=3600 \
-  --PrintHours=0 \
+  --PrintSeconds=0 \
+  --PrintHours=12 \
   --Flat=false \
   --dtau=100 \
   --IntMethod="RungeKutta" \

@@ -168,7 +168,6 @@ Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
 (CG, Metric, Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
 
-
 # Initial values
 Profile = CGDycore.GalewskiExample()(Param,Phys)
 
@@ -189,13 +188,13 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-#     "Vort",
+      "Vort",
 #     "Pres",
       ]
   elseif Model.Equation == "CompressibleMoist"  
     Global.Output.cNames = [
       "Rho",
-      "u",
+#     "u",
       "v",
       "wB",
       "Th",
@@ -207,10 +206,10 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
   elseif Model.Equation == "Shallow"  
     Global.Output.cNames = [
       "Rho",
-      "u",
-      "v",
+#     "u",
+#     "v",
       "Th",
-#     "Vort",
+      "Vort",
 #     "Pres",
       ]
   end  
@@ -249,6 +248,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
 elseif ModelType == "Conservative"
   DiscType = Val(:Conservative)  
 end  
+@show DiscType
 nT = max(7 + NumTr, NumV + NumTr)
 CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
 CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)

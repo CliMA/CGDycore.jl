@@ -51,6 +51,7 @@ include("DG/GaussLobattoQuad.jl")
 include("DG/Lagrange.jl")
 include("DG/Tools.jl")
 
+include("DyCore/FiniteElement.jl")
 include("DyCore/Average.jl")
 include("DyCore/AverageFB.jl")
 include("DyCore/Damping.jl")

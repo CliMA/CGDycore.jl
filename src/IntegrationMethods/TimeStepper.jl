@@ -52,7 +52,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
   NumG = CG.NumG
   FT = eltype(U)
   backend = get_backend(U)
-  Cache=CacheStruct{FT}(backend,CG.OrdPoly+1,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
+  Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
     NumV,NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"

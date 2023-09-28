@@ -1,6 +1,6 @@
 mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Problem="WarmBubble2DXCart" \
-  --Device="CPU" \
+  --Device="" \
   --GPUType="CUDA" \
   --FloatTypeBackend="Float32" \
   --NumV=5 \

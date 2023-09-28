@@ -12,8 +12,8 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
   # Ranges
   NzG = min(div(1024,N*N),Nz)
-  group = (N, N, NzG, 1)
-  ndrange = (N, N, Nz, NF)
+  group = (N * N, NzG, 1)
+  ndrange = (N * N, Nz, NF)
 
   U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,NumV+NumTr)
   @views Rho = U[:,:,Model.RhoPos]

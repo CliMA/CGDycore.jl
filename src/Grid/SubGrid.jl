@@ -13,7 +13,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
       NumFaces += 1
       DictF[iF] = NumFaces 
       push!(FaceNumbers,iF)
-      @inbounds for i = 1 : 4
+      @inbounds for i = 1 : length(GlobalGrid.Faces[iF].N)
         push!(EdgeNumbers,GlobalGrid.Faces[iF].E[i])
         push!(NodeNumbers,GlobalGrid.Faces[iF].N[i])
       end
@@ -96,14 +96,17 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     GlobalGrid.Faces[FaceNumbers[i]].F = i
     Faces[i].FG = Faces[i].F
     Faces[i].F = i
-    Faces[i].E[1] = GlobalGrid.Edges[Faces[i].E[1]].E
-    Faces[i].E[2] = GlobalGrid.Edges[Faces[i].E[2]].E
-    Faces[i].E[3] = GlobalGrid.Edges[Faces[i].E[3]].E
-    Faces[i].E[4] = GlobalGrid.Edges[Faces[i].E[4]].E
-    Faces[i].N[1] = GlobalGrid.Nodes[Faces[i].N[1]].N
-    Faces[i].N[2] = GlobalGrid.Nodes[Faces[i].N[2]].N
-    Faces[i].N[3] = GlobalGrid.Nodes[Faces[i].N[3]].N
-    Faces[i].N[4] = GlobalGrid.Nodes[Faces[i].N[4]].N
+    for j = 1 : length(Faces[i].E)
+      Faces[i].E[j] = GlobalGrid.Edges[Faces[i].E[j]].E
+      Faces[i].N[j] = GlobalGrid.Nodes[Faces[i].N[j]].N
+    end
+#   Faces[i].E[2] = GlobalGrid.Edges[Faces[i].E[2]].E
+#   Faces[i].E[3] = GlobalGrid.Edges[Faces[i].E[3]].E
+#   Faces[i].E[4] = GlobalGrid.Edges[Faces[i].E[4]].E
+#   Faces[i].N[1] = GlobalGrid.Nodes[Faces[i].N[1]].N
+#   Faces[i].N[2] = GlobalGrid.Nodes[Faces[i].N[2]].N
+#   Faces[i].N[3] = GlobalGrid.Nodes[Faces[i].N[3]].N
+#   Faces[i].N[4] = GlobalGrid.Nodes[Faces[i].N[4]].N
   end
   # Physischer Rand und Prozessor Rand 
   @inbounds for i = 1:NumEdges
@@ -157,7 +160,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     StencilLoc=zeros(Int, 16,1);
     StencilLoc[:] .= iF;
     iS=0;
-    @inbounds for i=1:4
+    @inbounds for i=1:length(SubGrid.Faces[iF].N)
       iN=SubGrid.Faces[iF].N[i];
       @inbounds for j=1:size(SubGrid.Nodes[iN].F,1)
         jF=SubGrid.Nodes[iN].F[j];
@@ -185,6 +188,14 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
       push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  
     end  
   end  
+# if ProcNumber == 1
+#   for iF = 1 : SubGrid.NumFaces
+#     @show SubGrid.Faces[iF].F   
+#     @show SubGrid.Faces[iF].FG   
+#     @show SubGrid.Faces[iF].E   
+#     @show SubGrid.Faces[iF].N   
+#   end
+# end  
 
 
   return SubGrid

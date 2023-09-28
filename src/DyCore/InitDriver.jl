@@ -20,6 +20,15 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
     Grid = InputGridMsh("Grid/Quad.msh",OrientFaceSphere,Phys.RadEarth,Grid)
   elseif GridType == "CubedSphere"
     Grid = CubedGrid(nPanel,OrientFaceSphere,Phys.RadEarth,Grid)
+  elseif GridType == "TriangularSphere"
+    IcosahedronGrid = CGDycore.CreateIcosahedronGrid()
+    RefineLevel =  0
+    for iRef = 1 : RefineLevel
+      CGDycore.RefineEdgeTriangularGrid!(IcosahedronGrid)
+      CGDycore.RefineFaceTriangularGrid!(IcosahedronGrid)
+    end
+    CGDycore.NumberingTriangularGrid!(IcosahedronGrid)
+    Grid = CGDycore.TriangularGridToGrid(IcosahedronGrid,Rad,Grid)
   end
 
   if Decomp == "Hilbert"
@@ -50,9 +59,11 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
 
   Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
-  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,OrdPoly+1,nz,
+  DoF = (OrdPoly + 1) * (OrdPoly + 1)
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,DoF,nz,
     Model.NumV,Model.NumTr,())
-  (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiSphere3,Global)
+  CG = CGStruct(backend,FT,OrdPoly,OrdPolyZ,Global.Grid)
+  (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
@@ -73,11 +84,10 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   end
 
   if Topography.TopoS == "EarthOrography"
-    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiSphere3,Global,zS)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Global,zS)
   else
-    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiSphere3,Global)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Global)
   end
-
   return CG,Metric,Global
 end  
 
@@ -117,7 +127,8 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   Output = OutputStruct(Topography)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,OrdPoly+1,nz,
     Model.NumV,Model.NumTr,())
-  (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiDG3,Global)
+  CG = CGStruct(backend,FT,OrdPoly,OrdPolyZ,Global.Grid)
+  (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
@@ -135,11 +146,9 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
     vtkCacheOrography = vtkStruct{FT}(backend,OrdPoly,TransCartX!,CG,Metric,Global)
     unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
     Global.Grid.nz = nzTemp
-  end
-  if Topography.TopoS == "EarthOrography"
-    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiDG3,Global,zS)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global,zS)
   else
-    (CG,Metric,Global) = DiscretizationCG(backend,FT,OrdPoly,OrdPolyZ,JacobiDG3,Global)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global)
   end
 
   return CG, Metric, Global

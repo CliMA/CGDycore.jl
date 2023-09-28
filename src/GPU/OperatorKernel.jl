@@ -1,3 +1,46 @@
+#=
+@kernel function RotKernel!(Rot,@Const(U),@Const(D),@Const(dXdxI),
+  @Const(JJ),::Val{BANK}=Val(1)) where BANK
+
+  gi, gz, gF = @index(Group, NTuple)
+  ID, iz   = @index(Local, NTuple)
+  _,_,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  N = @uniform size(D,1)
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
+  RotLoc = @localmem eltype(F) (N,N,ColumnTilesDim)
+
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  I = div(ID,N)
+  J = div(Ind-I,N) + 1
+  if Iz <= Nz 
+    @inbounds tempx = ((dXdxID[1,1,1,ID,iz] + dXdxID[1,1,2,:,:,iz]) * vC[ID,iz] - 
+      (dXdxID[1,2,1,ID,iz] + dXdxID[1,2,2,ID,iz]) * uC[ID,iz])
+    @inbounds tempy = ((dXdxI[2,1,1,ID,iz] + dXdxI[2,1,2,ID,iz]) * vC[ID,iz] - 
+      (dXdxI[2,2,1,ID,iz] + dXdxI[2,2,2,I,iz]) * uC[ID,iz])
+    for k = 1 : N
+      @inbounds @atomic RotLoc[k,J,iz] += D[k,I] * tempx
+      @inbounds @atomic RotLoc[I,k,iz] += D[k,J] * tempy
+    end
+  end
+
+  @synchronize
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz 
+    for j = 1 : size(Inter,1) 
+      for i = 1 : size(Inter,2) 
+        @inbounds @atomic Rot[i,j,iz,IF] += Inter[i,j,I,J] * RotLoc[I,J]  
+      end    
+    end    
+  end    
+
+end  
+=#
+
 @kernel function GradKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),Phys,::Val{BANK}=Val(1)) where BANK
 
@@ -835,33 +878,33 @@ end
 
 @kernel function uvwFunCKernel!(Profile,u,v,w,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  gi, gz, gF = @index(Group, NTuple)
+  I, iz   = @index(Local, NTuple)
+  _,_,IF = @index(Global, NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
+  ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
-    ind = Glob[I,J,IF]
-    x1 = 0.5 * (X[I,J,1,1,Iz,IF] + X[I,J,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
+    ind = Glob[I,IF]
+    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,_ = Profile(xS,time)
     @inbounds u[Iz,ind] = uP
     @inbounds v[Iz,ind] = vP
   end
   if Iz <= Nz - 1
-    ind = Glob[I,J,IF]
-    x1 = 0.5 * (X[I,J,2,1,Iz,IF] + X[I,J,1,1,Iz+1,IF])
-    x2 = 0.5 * (X[I,J,2,2,Iz,IF] + X[I,J,1,2,Iz+1,IF])
-    x3 = 0.5 * (X[I,J,2,3,Iz,IF] + X[I,J,1,3,Iz+1,IF])
+    ind = Glob[I,IF]
+    x1 = 0.5 * (X[I,2,1,Iz,IF] + X[I,1,1,Iz+1,IF])
+    x2 = 0.5 * (X[I,2,2,Iz,IF] + X[I,1,2,Iz+1,IF])
+    x3 = 0.5 * (X[I,2,3,Iz,IF] + X[I,1,3,Iz+1,IF])
     xS = SVector{3}(x1, x2 ,x3)
     @inbounds _,_,_,w[Iz,ind] = Profile(xS,time)
   end
@@ -869,23 +912,23 @@ end
 
 @kernel function RhouvFunCKernel!(Profile,Rho,u,v,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  gi, gz, gF = @index(Group, NTuple)
+  I, iz   = @index(Local, NTuple)
+  _,_,IF = @index(Global, NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
+  ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
     ind = Glob[I,J,IF]
-    x1 = 0.5 * (X[I,J,1,1,Iz,IF] + X[I,J,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
+    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,uP,vP,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
@@ -896,23 +939,23 @@ end
 
 @kernel function RhoFunCKernel!(Profile,Rho,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  gi, gz, gF = @index(Group, NTuple)
+  I, iz   = @index(Local, NTuple)
+  _,_,IF = @index(Global, NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
+  ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
-    ind = Glob[I,J,IF]
-    x1 = 0.5 * (X[I,J,1,1,Iz,IF] + X[I,J,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
+    ind = Glob[I,IF]
+    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
@@ -921,25 +964,24 @@ end
 
 @kernel function TrFunCKernel!(Profile,Tr,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  gi, gz, gF = @index(Group, NTuple)
+  I, iz   = @index(Local, NTuple)
+  _,_,IF = @index(Global, NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
+  ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
-    ind = Glob[I,J,IF]
-    x1 = 0.5 * (X[I,J,1,1,Iz,IF] + X[I,J,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
+    ind = Glob[I,IF]
+    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-#   RhoP,_,_,_ ,TrP = Profile(xS,time,Param,Phys)
     RhoP,_,_,_ ,TrP = Profile(xS,time)
     @inbounds Tr[Iz,ind] = RhoP * TrP
   end
@@ -947,25 +989,24 @@ end
 
 @kernel function ThFunCKernel!(Profile,Th,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  gi, gz, gF = @index(Group, NTuple)
+  I, iz   = @index(Local, NTuple)
+  _,_,IF = @index(Global, NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
+  ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
-    ind = Glob[I,J,IF]
-    x1 = 0.5 * (X[I,J,1,1,Iz,IF] + X[I,J,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,J,1,2,Iz,IF] + X[I,J,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,J,1,3,Iz,IF] + X[I,J,2,3,Iz,IF])
+    ind = Glob[I,IF]
+    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-#   RhoP,_,_,_ ,ThP = Profile(xS,time,Param,Phys)
     RhoP,_,_,_ ,ThP = Profile(xS,time)
     @inbounds Th[Iz,ind] = RhoP * ThP
   end

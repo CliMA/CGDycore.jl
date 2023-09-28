@@ -46,11 +46,11 @@ return Edge
 end
 function RenumberingFace4(Face,Grid)
 local iN
-for iN_in=1:4
+for iN_in=1:length(Face.N)
   iN = iN_in
   N=Face.N[iN];
   num=0;
-  for iE=1:4
+  for iE=1:length(Face.E)
     if N==Grid.Edges[Face.E[iE]].N[1]
       num=num+1;
     end
@@ -66,23 +66,25 @@ if iN>1
   NTemp=[Face.N Face.N];
   ETemp=[Face.E Face.E];
   PTemp=[Face.P Face.P];
-  for i=1:4
+  for i=1:length(Face.N)
     Face.N[i]=NTemp[i+iN-1];
     Face.E[i]=ETemp[i+iN-1];
     Face.P[i]=PTemp[i+iN-1];
   end
 end
-OrientL=zeros(4,1);
-OrientL[1]=-1;
-OrientL[2]=1;
-OrientL[3]=1;
-OrientL[4]=-1;
-Face.OrientE = Vector{Int}(undef, 0)
-for i=1:4
-  if Grid.Edges[Face.E[i]].N[1]==Face.N[i]
-    push!(Face.OrientE, 1*OrientL[i]);
-  else
-    push!(Face.OrientE, -1*OrientL[i]);
+if length(Face.N) == 4
+  OrientL=zeros(4,1);
+  OrientL[1]=-1;
+  OrientL[2]=1;
+  OrientL[3]=1;
+  OrientL[4]=-1;
+  Face.OrientE = Vector{Int}(undef, 0)
+  for i=1:4
+    if Grid.Edges[Face.E[i]].N[1]==Face.N[i]
+      push!(Face.OrientE, 1*OrientL[i]);
+    else
+      push!(Face.OrientE, -1*OrientL[i]);
+    end
   end
 end
 return Face

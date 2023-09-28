@@ -16,7 +16,7 @@ DST = DS'
 @inbounds for j=1:n
   @inbounds for i=1:n
     @inbounds for k=1:n3
-      (X[i,j,k,:],dXdx[i,j,k,:,:],theta[i,j],hR[i,j,k]) =
+      (X[i,j,k,:],dXdx[i,j,k,:,:],hR[i,j,k]) =
         JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Topography.Rad,Topography,zs[i,j])
     end
   end
@@ -34,7 +34,11 @@ end
   end
 end
 
-return (X,J,dXdx,dXdxI,theta)
+X = reshape(X,n*n,n3,3)
+J = reshape(J,n*n,n3)
+dXdx = reshape(dXdx,n*n,n3,3,3)
+dXdxI = reshape(dXdxI,3,3,n3,n*n)
+return (X,J,dXdx,dXdxI)
 end
 
 function JacobiSphere3Loc(ksi1,ksi2,ksi3,F,z,Rad,Topography,zs)
@@ -100,7 +104,7 @@ D=[D [0; 0]
 X=[X1 X2 X3]*(Rad+hR)
 
 
-return (X,D,theta,hR)
+return (X,D,hR)
 
 end
 

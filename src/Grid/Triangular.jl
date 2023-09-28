@@ -443,6 +443,25 @@ function TriangularGridToGrid(TriangularGrid,Rad,Grid)
   Grid.NumEdges = size(Grid.Edges,1)
   Grid.NumFaces = size(Grid.Faces,1)
 
+  Grid=Renumbering(Grid)
+  @show "Triangular, vor FacesInNodes"
+  Grid=FacesInNodes(Grid)
+
+  #Boundary/Interior faces
+  BoundaryFaces = zeros(Int,0)
+  @inbounds for iE = 1 : Grid.NumEdges
+    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+      @inbounds for iN in Grid.Edges[iE].N
+        @inbounds for iF in Grid.Nodes[iN].F
+          push!(BoundaryFaces,iF)
+        end
+      end
+    end
+  end
+  BoundaryFaces = unique(BoundaryFaces)
+  Grid.BoundaryFaces = BoundaryFaces
+  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
+
   return Grid
 end
 
@@ -504,6 +523,25 @@ function DelaunayGridToPolyGrid(TriangularGrid,Rad,Grid)
   Grid.NumNodes = size(Grid.Nodes,1)
   Grid.NumEdges = size(Grid.Edges,1)
   Grid.NumFaces = size(Grid.Faces,1)
+
+  Grid=Renumbering(Grid)
+  @show "Triangular, vor FacesInNodes"
+  Grid=FacesInNodes(Grid)
+
+  #Boundary/Interior faces
+  BoundaryFaces = zeros(Int,0)
+  @inbounds for iE = 1 : Grid.NumEdges
+    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+      @inbounds for iN in Grid.Edges[iE].N
+        @inbounds for iF in Grid.Nodes[iN].F
+          push!(BoundaryFaces,iF)
+        end
+      end
+    end
+  end
+  BoundaryFaces = unique(BoundaryFaces)
+  Grid.BoundaryFaces = BoundaryFaces
+  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
 
   return Grid
 end

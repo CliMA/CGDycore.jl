@@ -51,7 +51,7 @@ NumGlobN=Grid.NumNodes;
 NumGlobE=Grid.NumEdges*(PolyOrd-1);
 NumGlobF=Grid.NumFaces*(PolyOrd-1)*(PolyOrd-1);
 
-Glob=zeros(Int,PolyOrd+1,PolyOrd+1,Grid.NumFaces)
+Glob=zeros(Int,(PolyOrd+1)*(PolyOrd+1),Grid.NumFaces)
 GlobLoc=zeros(Int,(PolyOrd+1)*(PolyOrd+1))
 for iF=1:Grid.NumFaces
   Face=Grid.Faces[iF];
@@ -81,7 +81,7 @@ for iF=1:Grid.NumFaces
     end
   end
   GlobLoc=GlobLoc[Per]
-  Glob[:,:,iF]=reshape(GlobLoc,PolyOrd+1,PolyOrd+1);
+  Glob[:,iF]=GlobLoc
 end
 
 NumG=NumGlobN+NumGlobE+NumGlobF;
@@ -93,7 +93,7 @@ for iF=1:Grid.NumFaces
   StencilLoc=zeros(Int, 16,1);
   StencilLoc[:] .= iF;
   iS=0;
-  for i=1:4
+  for i = 1 : length(Grid.Faces[iF].N)
     iN=Grid.Faces[iF].N[i];
     for j=1:size(Grid.Nodes[iN].F,1)
       jF=Grid.Nodes[iN].F[j];
@@ -135,5 +135,80 @@ for iF = 1 : Grid.NumFaces
 end  
     
 return (Glob,NumG,NumI,Stencil,MasterSlave)
+end
+
+function NumberingFemRT0(Grid,PolyOrd)
+NumGlobN=0
+NumGlobE=Grid.NumEdges
+NumGlobF=0
+
+Glob=zeros(Int,3,1,Grid.NumFaces)
+  GlobLoc=zeros(Int,3)
+  for iF=1:Grid.NumFaces
+    Face=Grid.Faces[iF];
+    ii=1;
+    for i=1:size(Face.E,1)
+      iE=Face.E[i];
+      if Grid.Edges[iE].N[1]==Face.N[i]
+        for j=1:PolyOrd-1
+          GlobLoc[ii]=Grid.Edges[Face.E[i]].E
+          ii=ii+1;
+        end
+      end
+    end
+  end
+  Glob[:,:,iF]=reshape(GlobLoc,3,1);
+
+  NumG=NumGlobN+NumGlobE+NumGlobF;
+  NumI=NumG;
+  Stencil=zeros(Int,Grid.NumFaces,13);
+
+  for iF=1:Grid.NumFaces
+    Stencil[iF,:] .= iF;
+    StencilLoc=zeros(Int, 16,1);
+    StencilLoc[:] .= iF;
+    iS=0;
+    for i=1:4
+      iN=Grid.Faces[iF].N[i];
+      for j=1:size(Grid.Nodes[iN].F,1)
+        jF=Grid.Nodes[iN].F[j];
+        inside=false;
+        for jS=1:iS
+          if StencilLoc[jS]==jF
+            inside=true;
+            break
+          end
+        end
+        if !inside
+          iS=iS+1;
+          StencilLoc[iS]=jF;
+        end
+      end
+    end
+    Stencil[iF,1:iS]=StencilLoc[1:iS];
+  end
+
+  MasterSlave=zeros(Int,NumG)
+  ii=1
+  for iN=1:Grid.NumNodes
+    MasterSlave[ii] = Grid.Nodes[iN].MasterSlave
+    ii = ii + 1
+  end  
+  for iE = 1 : Grid.NumEdges
+    for i=1:PolyOrd-1
+      MasterSlave[ii] = Grid.Edges[iE].MasterSlave 
+      ii = ii +1
+    end
+  end  
+  for iF = 1 : Grid.NumFaces
+    for j=1:PolyOrd-1
+      for i=1:PolyOrd-1
+        MasterSlave[ii] = 1
+        ii = ii +1
+      end  
+    end
+  end  
+    
+  return (Glob,NumG,NumI,Stencil,MasterSlave)
 end
 
