@@ -1,7 +1,7 @@
 function MomentumColumn!(FRhouC,FRhovC,FRhow,RhouC,RhovC,Rhow,RhoC,
   Fe,dXdxI,ThreadCache,::Val{:Conservative})
   @unpack TCacheC1, TCacheCol1, TCacheCol2, TCacheCol3 = ThreadCache
-  Nz = size(RhouC,3)
+  Nz = size(RhouC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -75,7 +75,7 @@ end
 function MomentumWColumn!(FRhow,RhouC,RhovC,Rhow,RhoC,
   Fe,dXdxI,ThreadCache,::Val{:Conservative})
   @unpack TCacheC1, TCacheCol1, TCacheCol2, TCacheCol3 = ThreadCache
-  Nz = size(RhouC,3)
+  Nz = size(RhouC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -204,7 +204,7 @@ function CoriolisColumn!(FuC,FvC,uC,vC,RhoC,Fe,X,J,Phys)
 end
 
 function CoriolisColumn!(FuC,FvC,RhouC,RhovC,Fe,X,J,Omega)
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   OrdPoly = Fe.OrdPoly
 
   @inbounds for iz = 1 : Nz 
@@ -227,7 +227,7 @@ end
 function MomentumColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Val{:VectorInvariantDeep})
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheCol1, TCacheCol2, 
     TCacheCol3, TCacheCCC1, TCacheCCC2, TCacheCCC3, TCacheCCC4 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -420,7 +420,7 @@ end
 
 function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -490,10 +490,9 @@ function RhoGradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache)
 #  end
 end 
 
-function GradColumn1!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
+function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
   @unpack TCacheC1, TCacheC2 = ThreadCache
-  Nz = size(FuC,3)
-  OrdPoly = Fe.OrdPoly
+  Nz = size(FuC,2)
   D = Fe.DS
 
   @views DXpC = TCacheC1[Threads.threadid()]
@@ -503,68 +502,30 @@ function GradColumn1!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
 
   @inbounds for iz = 1 : Nz 
     @. DXpC = 0
-    @views DerivativeX!(DXpC,pC[:,:,iz],D)
+    @views DerivativeX!(DXpC,pC[:,iz],D)
     @. DYpC = 0
-    @views DerivativeY!(DYpC,pC[:,:,iz],D)
-    @views @. FuC[:,:,iz] -=  
-      ((dXdxI[1,1,1,:,:,iz] + dXdxI[1,1,2,:,:,iz]) * DXpC + 
-      (dXdxI[2,1,1,:,:,iz] + dXdxI[2,1,2,:,:,iz]) * DYpC)
-    @views @. FvC[:,:,iz] -=   
-      ((dXdxI[1,2,1,:,:,iz] + dXdxI[1,2,2,:,:,iz]) * DXpC + 
-      (dXdxI[2,2,1,:,:,iz] + dXdxI[2,2,2,:,:,iz]) * DYpC)
-    @views @. Fw[:,:,iz] -= (dXdxI[1,3,1,:,:,iz] * DXpC + dXdxI[2,3,1,:,:,iz] * DYpC)
-    @views @. Fw[:,:,iz+1] -= (dXdxI[1,3,2,:,:,iz] * DXpC + dXdxI[2,3,2,:,:,iz] * DYpC)
+    @views DerivativeY!(DYpC,pC[:,iz],D)
+    @views @. FuC[:,iz] -=  
+      ((dXdxI[1,1,1,:,iz] + dXdxI[1,1,2,:,iz]) * DXpC + 
+      (dXdxI[2,1,1,:,iz] + dXdxI[2,1,2,:,iz]) * DYpC)
+    @views @. FvC[:,iz] -=   
+      ((dXdxI[1,2,1,:,iz] + dXdxI[1,2,2,:,iz]) * DXpC + 
+      (dXdxI[2,2,1,:,iz] + dXdxI[2,2,2,:,iz]) * DYpC)
+    @views @. Fw[:,iz] -= (dXdxI[1,3,1,:,iz] * DXpC + dXdxI[2,3,1,:,iz] * DYpC)
+    @views @. Fw[:,iz+1] -= (dXdxI[1,3,2,:,iz] * DXpC + dXdxI[2,3,2,:,iz] * DYpC)
+    @views @. GradZ = -Phys.Grav*RhoC[:,iz] * (J[:,1,iz] + J[:,2,iz]) / 
+      (dXdxI[3,3,1,:,iz] + dXdxI[3,3,1,:,iz])
+    @views @. FluxZ = GradZ * (dXdxI[3,1,1,:,iz] + dXdxI[3,1,2,:,iz])
+    @views @. FuC[:,iz] -= FluxZ 
+    @views @. FluxZ = GradZ * (dXdxI[3,2,1,:,iz] + dXdxI[3,2,2,:,iz])
+    @views @. FvC[:,iz] -= FluxZ 
   end  
-  @inbounds for iz = 2 : Nz 
-# @views @. FwF[:,:,iz] -= Phys.Grav *
-#   (RhoC[:,:,iz-1] * J[:,:,2,iz-1] +
-#   RhoC[:,:,iz] * J[:,:,iz])
-    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,1,iz] / dXdxI[3,3,1,:,:,iz] 
-    @views @. FluxZ = GradZ * dXdxI[3,1,1,:,:,iz]
-    @views @. FuC[:,:,iz] -= FluxZ 
-    @views @. FluxZ = GradZ * dXdxI[3,2,1,:,:,iz]
-    @views @. FvC[:,:,iz] -= FluxZ 
-    @views @. GradZ = 1/2 * (pC[:,:,iz] - pC[:,:,iz-1])
-    @views @. FluxZ = GradZ * dXdxI[3,3,1,:,:,iz]
-    @views @. Fw[:,:,iz] -= FluxZ # -Phys.Grav*RhoC[:,:,iz]*J[:,:,1,iz] 
-  end    
   @inbounds for iz = 1 : Nz - 1 
-    @views @. GradZ = -Phys.Grav*RhoC[:,:,iz] * J[:,:,2,iz] / dXdxI[3,3,2,:,:,iz] 
-    @views @. FluxZ = GradZ * dXdxI[3,1,2,:,:,iz]
-    @views @. FuC[:,:,iz] -= FluxZ 
-    @views @. FluxZ = GradZ * dXdxI[3,2,2,:,:,iz]
-    @views @. FvC[:,:,iz] -= FluxZ 
-    @views @. GradZ = 1/2 * (pC[:,:,iz+1] - pC[:,:,iz])
-    @views @. FluxZ =  GradZ * dXdxI[3,3,2,:,:,iz]
-    @views @. Fw[:,:,iz+1] -= FluxZ # -Phys.Grav*RhoC[:,:,iz] * J[:,:,2,iz]
+    @views @. GradZ = 1/2 * (pC[:,iz+1] - pC[:,iz])
+    @views @. FluxZ =  GradZ * (dXdxI[3,3,2,:,iz] + dXdxI[3,3,2,:,iz+1])
+    @show iz,FluxZ
+    @views @. Fw[:,iz+1] -= FluxZ 
   end    
-  if Nz  == 2
-    @views @. GradZ = 1/2 * (pC[:,:,1+1] - pC[:,:,1])
-    @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,1]
-    @views @. FuC[:,:,1] -= FluxZ
-    @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,2]
-    @views @. FvC[:,:,1] -= FluxZ 
-    @views @. FluxZ =  GradZ * dXdxI[:,:,1,1,3,3]
-    @views @. Fw[:,:,1] -= FluxZ 
-  elseif Nz > 2
-    @views @. GradZ = -Phys.Grav * RhoC[:,:,1] * J[:,:,1,1] / dXdxI[:,:,1,1,3,3]
-    @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,1]
-    @views @. FuC[:,:,1] -= FluxZ
-    @views @. FluxZ = GradZ * dXdxI[:,:,1,1,3,2]
-    @views @. FvC[:,:,1] -= FluxZ
-    @inbounds for i = 1 : OrdPoly + 1 
-      @inbounds for j = 1 : OrdPoly + 1 
-#       @views GradZ[i,j] = BoundaryDP(pC[i,j,1],pC[i,j,2],pC[i,j,3],  
-#         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) - 1/2 * (pC[i,j,1+1] - pC[i,j,1])  d  
-        p0 = BoundaryP(pC[i,j,1],pC[i,j,2],pC[i,j,3],  
-         J[i,j,:,1],J[i,j,:,2],J[i,j,:,3]) 
-        GradZ[i,j] = 1/2 * (pC[i,j,1] - p0)
-      end
-    end  
-#   @views @. GradZ = (pC[:,:,2] - pC[:,:,1]) - 1/2 * (pC[:,:,3] - pC[:,:,2])  
-    @views @. FluxZ =  GradZ * dXdxI[:,:,1,1,3,3]
-    @views @. Fw[:,:,1] -= FluxZ 
-  end 
 end 
 
 function DivRhoColumn!(FRhoC,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Val{:VectorInvariant})
@@ -603,7 +564,7 @@ end
 
 function DivRhoColumn!(FRhoC,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Val{:VectorInvariantDeep})
     @unpack TCacheC1, TCacheC2, TCacheCol1 = ThreadCache
-  Nz = size(uC,3)
+  Nz = size(uC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -641,7 +602,7 @@ end
 
 function DivRhoColumn!(FRhoC,RhouC,RhovC,Rhow,Fe,dXdxI,ThreadCache,::Val{:VectorInvariant})
     @unpack TCacheC1, TCacheC2, TCacheCol1 = ThreadCache
-  Nz = size(RhouC,3)
+  Nz = size(RhouC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -674,7 +635,7 @@ end
 
 function DivRhoColumn!(FRhoC,RhouC,RhovC,Rhow,Fe,dXdxI,ThreadCache,::Val{:VectorInvariantDeep})
     @unpack TCacheC1, TCacheC2, TCacheCol1 = ThreadCache
-  Nz = size(RhouC,3)
+  Nz = size(RhouC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -713,7 +674,7 @@ end
 function DivRhoColumnE!(FRhoC,uC,vC,w,RhoC,D,dXdxI)
 
   N = size(uC,1)
-  Nz = size(uC,3)
+  Nz = size(uC,2)
 
   @inbounds for iz = 1 : Nz
     @inbounds for j = 1 : N
@@ -755,7 +716,7 @@ end
 function DivRhoTrColumnE!(FRhoTrC,uC,vC,w,RhoTrC,D,dXdxI)
 
   N = size(uC,1)
-  Nz = size(uC,3)
+  Nz = size(uC,2)
 
   @inbounds for iz = 1 : Nz
     @inbounds for j = 1 : N
@@ -829,7 +790,7 @@ end
 
 function DivRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,Fe,dXdxI,ThreadCache,::Val{:VectorInvariantDeep})
   @unpack TCacheC1, TCacheC2, TCacheCol1 = ThreadCache
-  Nz = size(uC,3)
+  Nz = size(uC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -865,7 +826,7 @@ end
 
 function DivRhoTrColumn!(FRhoTrC,RhouC,RhovC,Rhow,RhoTrC,RhoC,Fe,dXdxI,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheCol1 = ThreadCache
-  Nz = size(RhouC,3)
+  Nz = size(RhouC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -904,7 +865,7 @@ end
 function DivUpwindRhoTrColumn!(FRhoTrC,RhouC,RhovC,Rhow,RhoTrC,RhoC,Fe,dXdxI,J,
   ThreadCache,HorLimit,::Val{:Conservative})
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2, TCacheCol3  = ThreadCache
-  Nz = size(RhouC,3)
+  Nz = size(RhouC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -1020,8 +981,8 @@ end
 function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,
   ThreadCache,HorLimit,::Val{:VectorInvariant})
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2 = ThreadCache
-  Nz = size(uC,3)
-  OrdPoly = Fe.OrdPoly
+  Nz = size(uC,2)
+  DoF = Fe.DoF
   D = Fe.DS
 
   tempZ = TCacheCol1[Threads.threadid()]
@@ -1033,64 +994,56 @@ function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,
     DivConvRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCache)
   else  
     @inbounds for iz = 1 : Nz
-      @views @. temp = -RhoTrC[:,:,iz] * ((dXdxI[1,1,1,:,:,iz] + dXdxI[1,1,2,:,:,iz]) * uC[:,:,iz] +
-        (dXdxI[1,2,1,:,:,iz] + dXdxI[1,2,2,:,:,iz]) * vC[:,:,iz]) 
-      @views DerivativeX!(FRhoTrC[:,:,iz],temp,D)
-      @views @. temp = -RhoTrC[:,:,iz] * ((dXdxI[2,1,1,:,:,iz] + dXdxI[2,1,2,:,:,iz]) * uC[:,:,iz] +
-        (dXdxI[2,2,1,:,:,iz] + dXdxI[2,2,2,:,:,iz]) * vC[:,:,iz])
-      @views DerivativeY!(FRhoTrC[:,:,iz],temp,D)
+      @views @. temp = -RhoTrC[:,iz] * ((dXdxI[1,1,1,:,iz] + dXdxI[1,1,2,:,iz]) * uC[:,iz] +
+        (dXdxI[1,2,1,:,iz] + dXdxI[1,2,2,:,iz]) * vC[:,iz]) 
+      @views DerivativeX!(FRhoTrC[:,iz],temp,D)
+      @views @. temp = -RhoTrC[:,iz] * ((dXdxI[2,1,1,:,iz] + dXdxI[2,1,2,:,iz]) * uC[:,iz] +
+        (dXdxI[2,2,1,:,iz] + dXdxI[2,2,2,:,iz]) * vC[:,iz])
+      @views DerivativeY!(FRhoTrC[:,iz],temp,D)
     end
   end  
 
   if Nz > 1
-    @inbounds for i = 1 : OrdPoly + 1
-      @inbounds for j = 1 : OrdPoly + 1
-        JC = (J[i,j,1,1] + J[i,j,2,1])  
-        JCp1 = (J[i,j,1,2] + J[i,j,2,2])  
-        Tr = RhoTrC[i,j,1] / RhoC[i,j,1]
-        Trp1 = RhoTrC[i,j,2] / RhoC[i,j,2]
-        Tr0 = ((3 * Tr - 2 * Trp1) * JC + Tr * JCp1) / (JC + JCp1)
-        TrRe[i,j,1,1],TrRe[i,j,2,1] = RecU3(Tr0,Tr,Trp1,JC,JC,JCp1)
-        TrRe[i,j,1,1] = Tr
-        TrRe[i,j,2,1] = Tr
-      end  
+    @inbounds for iD = 1 : DoF
+      JC = (J[iD,1,1] + J[iD,2,1])  
+      JCp1 = (J[iD,1,2] + J[iD,2,2])  
+      Tr = RhoTrC[iD,1] / RhoC[iD,1]
+      Trp1 = RhoTrC[iD,2] / RhoC[iD,2]
+      Tr0 = ((3 * Tr - 2 * Trp1) * JC + Tr * JCp1) / (JC + JCp1)
+      TrRe[iD,1,1],TrRe[iD,2,1] = RecU3(Tr0,Tr,Trp1,JC,JC,JCp1)
+      TrRe[iD,1,1] = Tr
+      TrRe[iD,2,1] = Tr
     end    
     @inbounds for iz = 2 : Nz - 1  
-      @inbounds for i = 1 : OrdPoly + 1
-        @inbounds for j = 1 : OrdPoly + 1
-          JCm1 = (J[i,j,1,iz-1] + J[i,j,2,iz-1])  
-          JC = (J[i,j,1,iz] + J[i,j,2,iz])  
-          JCp1 = (J[i,j,1,iz+1] + J[i,j,2,iz+1])  
-          Trm1 = RhoTrC[i,j,iz-1] / RhoC[i,j,iz-1]
-          Tr = RhoTrC[i,j,iz] / RhoC[i,j,iz]
-          Trp1 = RhoTrC[i,j,iz+1] / RhoC[i,j,iz+1]
-          TrRe[i,j,1,iz],TrRe[i,j,2,iz] = RecU3(Trm1,Tr,Trp1,JCm1,JC,JCp1)
-        end
+      @inbounds for iD = 1 : DoF
+        JCm1 = (J[iD,1,iz-1] + J[iD,2,iz-1])  
+        JC = (J[iD,1,iz] + J[iD,2,iz])  
+        JCp1 = (J[iD,1,iz+1] + J[iD,2,iz+1])  
+        Trm1 = RhoTrC[iD,iz-1] / RhoC[iD,iz-1]
+        Tr = RhoTrC[iD,iz] / RhoC[iD,iz]
+        Trp1 = RhoTrC[iD,iz+1] / RhoC[iD,iz+1]
+        TrRe[iD,1,iz],TrRe[iD,2,iz] = RecU3(Trm1,Tr,Trp1,JCm1,JC,JCp1)
       end  
     end    
-    @inbounds for i = 1 : OrdPoly + 1
-      @inbounds for j = 1 : OrdPoly + 1
-        JCm1 = (J[i,j,1,Nz-1] + J[i,j,2,Nz-1])  
-        JC = (J[i,j,1,Nz] + J[i,j,2,Nz])  
-        Trm1 = RhoTrC[i,j,Nz-1] / RhoC[i,j,Nz-1]
-        Tr = RhoTrC[i,j,Nz] / RhoC[i,j,Nz]
-        Tr1 = ((3 * Tr - 2 * Trm1) * JC + Tr * JCm1) / (JCm1 + JC)
-        TrRe[i,j,1,Nz],TrRe[i,j,2,Nz] = RecU3(Trm1,Tr,Tr1,JCm1,JC,JC)
-      end  
+    @inbounds for iD = 1 : DoF
+      JCm1 = (J[iD,1,Nz-1] + J[iD,2,Nz-1])  
+      JC = (J[iD,1,Nz] + J[iD,2,Nz])  
+      Trm1 = RhoTrC[iD,Nz-1] / RhoC[iD,Nz-1]
+      Tr = RhoTrC[iD,Nz] / RhoC[iD,Nz]
+      Tr1 = ((3 * Tr - 2 * Trm1) * JC + Tr * JCm1) / (JCm1 + JC)
+      TrRe[iD,1,Nz],TrRe[iD,2,Nz] = RecU3(Trm1,Tr,Tr1,JCm1,JC,JC)
     end    
   end    
   @inbounds for iz = 1 : Nz - 1
-    @inbounds for i = 1 : OrdPoly + 1
-      @inbounds for j = 1 : OrdPoly + 1
-        wC = ((dXdxI[3,1,2,i,j,iz] * uC[i,j,iz] + dXdxI[3,2,2,i,j,iz] * vC[i,j,iz] +
-          dXdxI[3,3,2,i,j,iz] * w[i,j,iz+1]) * RhoC[i,j,iz]  +
-          (dXdxI[3,1,1,i,j,iz+1] * uC[i,j,iz+1] + dXdxI[3,2,1,i,j,iz+1] * vC[i,j,iz+1] + 
-           dXdxI[3,3,1,i,j,iz+1] * w[i,j,iz+1]) * RhoC[i,j,iz+1])
-        Flux = 1 / 4 * ((wC + abs(wC)) * TrRe[i,j,2,iz] +
-          (wC - abs(wC)) * TrRe[i,j,1,iz+1])
-        FRhoTrC[i,j,iz] -= Flux
-        FRhoTrC[i,j,iz+1] += Flux
-      end
+    @inbounds for iD = 1 : DoF
+      wC = ((dXdxI[3,1,2,iD,iz] * uC[iD,iz] + dXdxI[3,2,2,iD,iz] * vC[iD,iz] +
+        dXdxI[3,3,2,iD,iz] * w[iD,iz+1]) * RhoC[iD,iz]  +
+        (dXdxI[3,1,1,iD,iz+1] * uC[iD,iz+1] + dXdxI[3,2,1,iD,iz+1] * vC[iD,iz+1] + 
+         dXdxI[3,3,1,iD,iz+1] * w[iD,iz+1]) * RhoC[iD,iz+1])
+      Flux = 1 / 4 * ((wC + abs(wC)) * TrRe[iD,2,iz] +
+        (wC - abs(wC)) * TrRe[iD,1,iz+1])
+      FRhoTrC[iD,iz] -= Flux
+      FRhoTrC[iD,iz+1] += Flux
     end  
   end    
 end 
@@ -1098,7 +1051,7 @@ end
 function DivUpwindRhoTrColumn!(FRhoTrC,uC,vC,w,RhoTrC,RhoC,Fe,dXdxI,J,
   ThreadCache,HorLimit,::Val{:VectorInvariantDeep})
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2 = ThreadCache
-  Nz = size(uC,3)
+  Nz = size(uC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -1210,7 +1163,7 @@ end
 
 function DivRhoGrad!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1247,7 +1200,7 @@ end
 
 function DivRhoGradHor!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
 
@@ -1295,7 +1248,7 @@ end
 
 function DivGrad!(F,cC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1332,7 +1285,7 @@ end
 
 function DivGradHor!(F,cC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
 
@@ -1385,7 +1338,7 @@ end
 
 function DivRhoGrad!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1423,7 +1376,7 @@ function DivRhoGrad!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
 end    
 
 function DivRhoGradE!(F,cC,RhoC,D,DW,dXdxI,J)
-  Nz = size(F,3)
+  Nz = size(F,2)
   N = size(F,1)
   FT = eltype(F)
 
@@ -1455,7 +1408,7 @@ function DivRhoGradE!(F,cC,RhoC,D,DW,dXdxI,J)
 end    
 
 function DivRhoGradE!(F,cC,RhoC,D,DW,dXdxI,J,Koeff)
-  Nz = size(F,3)
+  Nz = size(F,2)
   N = size(F,1)
   FT = eltype(F)
 
@@ -1489,7 +1442,7 @@ end
 
 function DivRhoGradHor!(F,cC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
 
@@ -1543,7 +1496,7 @@ end
 
 function DivGrad!(F,cC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1582,7 +1535,7 @@ end
 
 function DivGradHor!(F,cC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3)
+  Nz = size(F,2)
   D = Fe.DS
   DW = Fe.DW
 
@@ -1635,7 +1588,7 @@ end
 
 function DivGradF!(F,cF,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3) - 1
+  Nz = size(F,2) - 1
   D = Fe.DS
   DW = Fe.DW
 
@@ -1672,7 +1625,7 @@ end
 
 function DivGradF!(F,cF,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4 = ThreadCache
-  Nz = size(F,3) - 1
+  Nz = size(F,2) - 1
   D = Fe.DS
   DW = Fe.DW
 
@@ -1709,7 +1662,7 @@ end
 
 function GradDiv!(FuC,FvC,uC,vC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1733,7 +1686,7 @@ function GradDiv!(FuC,FvC,uC,vC,Fe,dXdxI,J,ThreadCache)
     @. DxDiv = 0
     @. DyDiv = 0
     DerivativeX!(DxDiv,Div,DW)
-    DerivativeX!(DyDiv,Div,DW)
+    DerivativeY!(DyDiv,Div,DW)
 
     @views @. FuC[:,iz] = ((dXdxI[1,1,1,:,iz] + dXdxI[1,1,2,:,iz]) * DxDiv +
       (dXdxI[2,1,1,:,iz] + dXdxI[2,1,2,:,iz]) * DyDiv) 
@@ -1744,7 +1697,7 @@ end
 
 function GradDiv!(FuC,FvC,RhouC,RhovC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1779,7 +1732,7 @@ end
 
 function GradDiv!(FuC,FvC,uC,vC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1814,7 +1767,7 @@ end
 
 function RotCurl!(FuC,FvC,uC,vC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1848,7 +1801,7 @@ end
 
 function RotCurl!(FuC,FvC,RhouC,RhovC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1882,7 +1835,7 @@ end
 
 function RotCurl!(FuC,FvC,uC,vC,RhoC,Fe,dXdxI,J,ThreadCache,Koeff)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
-  Nz = size(FuC,3)
+  Nz = size(FuC,2)
   D = Fe.DS
   DW = Fe.DW
   OP = Fe.OrdPoly + 1
@@ -1916,15 +1869,15 @@ end
 
 function Buoyancy!(FwF,RhoC,J,Phys)
 
-  @views @. FwF[:,:,2:end-1] -= Phys.Grav *
-    (RhoC[:,:,1:end-1] * J[:,:,2,1:end-1] +
-    RhoC[:,:,2:end] * J[:,:,1,2:end])
+  @views @. FwF[:,2:end-1] -= Phys.Grav *
+    (RhoC[:,1:end-1] * J[:,2,1:end-1] +
+    RhoC[:,2:end] * J[:,1,2:end])
 
 end
 
 function DivConvRhoTrColumnOld!(FRhoTrC,uC,vC,wF,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheC5,  TCacheCol1 = ThreadCache
-  Nz = size(uC,3)
+  Nz = size(uC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
   S = Fe.S
@@ -2018,7 +1971,7 @@ function DivConvRhoTrColumnOld!(FRhoTrC,uC,vC,wF,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCa
 end
 function DivConvRhoTrColumn!(FRhoTrC,uC,vC,wF,RhoTrC,RhoC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheC5,  TCacheCol1 = ThreadCache
-  Nz = size(uC,3)
+  Nz = size(uC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
   S = Fe.S
@@ -2206,7 +2159,7 @@ end
 
 function SourceIntEnergy!(F,cCG,uC,vC,wF,Fe,dXdxI,ThreadCache)
   @unpack TCacheC1, TCacheC2 = ThreadCache
-  Nz = size(uC,3)
+  Nz = size(uC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
 
@@ -2239,7 +2192,7 @@ end
 function Rot!(Rot,uC,vC,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheC3 = ThreadCache
 
-  Nz = size(Rot,3)
+  Nz = size(Rot,2)
   D = Fe.DS
 
   W = TCacheC1[Threads.threadid()]
@@ -2260,7 +2213,7 @@ end
 function Curl!(uC,vC,Psi,Fe,dXdxI,J,ThreadCache)
   @unpack TCacheC1, TCacheC2 = ThreadCache
 
-  Nz = size(Psi,3)
+  Nz = size(Psi,2)
   D = Fe.DS
 
   DxPsi = TCacheC1[Threads.threadid()]
@@ -2322,7 +2275,7 @@ end
 function Gradient!(Gradu,Gradv,Gradw,cC,
   Fe,dXdxI,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2, TCacheCol3, TCacheCol4 = ThreadCache
-  Nz = size(cC,3)
+  Nz = size(cC,2)
   D = Fe.DS
 
   GraduF = TCacheCol1[Threads.threadid()]
@@ -2422,10 +2375,10 @@ function Gradient!(Gradu,Gradv,Gradw,cC,
   end  
 end
 
-function GradColumn!(Gradu,Gradv,Gradw,cC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
+function GradColumn2!(Gradu,Gradv,Gradw,cC,RhoC,Fe,dXdxI,J,ThreadCache,Phys,IF)
 
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2, TCacheCol3, TCacheCol4 = ThreadCache
-  Nz = size(cC,3)
+  Nz = size(cC,2)
   OrdPoly = Fe.OrdPoly
   D = Fe.DS
   DoF = Fe.DoF
@@ -2525,7 +2478,7 @@ end
 function FunCGradient!(Gradu,Gradv,Gradw,cC,fC,
   Fe,dXdxI,ThreadCache)
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2, TCacheCol3, TCacheCol4 = ThreadCache
-  Nz = size(cC,3)
+  Nz = size(cC,2)
   D = Fe.DS
 
   GraduF = TCacheCol1[Threads.threadid()]
@@ -2788,28 +2741,28 @@ end
     d*(dxm*abs(cp)+(dxm+dxp)*abs(c)+dxp*abs(cm))+1.e-14);
 end
 
-function axpy!(a::T, x::AbstractArray{T,1}, y::AbstractArray{T,1}) where {T<:Number}
+function axpy!(a::T, x::AbstractArray{T,1}, y::AbstractArray{T,1}) where {T<:AbstractFloat}
   @simd for i in eachindex(x, y)
     @inbounds y[i] = muladd(a, x[i], y[i])
   end
   return y
 end
 
-function axpy!(a::T, x::AbstractArray{T,3}, y::AbstractArray{T,3}) where {T<:Number}
+function axpy!(a::T, x::AbstractArray{T,3}, y::AbstractArray{T,3}) where {T<:AbstractFloat}
   @simd for i in eachindex(x, y)
     @inbounds y[i] = muladd(a, x[i], y[i])
   end
   return y
 end
 
-function axpy!(a::AbstractArray{T,3}, x::AbstractArray{T,3}, y::AbstractArray{T,3}) where {T<:Number}
+function axpy!(a::AbstractArray{T,3}, x::AbstractArray{T,3}, y::AbstractArray{T,3}) where {T<:AbstractFloat}
   @simd for i in eachindex(x, y)
     @inbounds y[i] = muladd(a[i], x[i], y[i])
   end
   return y
 end
 
-function ax!(a::AbstractArray{T,3}, x::AbstractArray{T,3}, y::AbstractArray{T,3}) where {T<:Number}
+function ax!(a::AbstractArray{T,3}, x::AbstractArray{T,3}, y::AbstractArray{T,3}) where {T<:AbstractFloat}
   @simd for i in eachindex(a, x, y)
     @inbounds y[i] = a[i] * x[i]
   end

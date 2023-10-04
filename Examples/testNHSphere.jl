@@ -75,15 +75,34 @@ PrintSeconds = parsed_args["PrintSeconds"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
 
-
+# Device
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
+
 Param = CGDycore.Parameters(Problem)
 
+if Device == "CPU"
+  backend = CPU()
+elseif Device == "GPU"
+  if GPUType == "CUDA"
+    backend = CUDABackend()
+    CUDA.allowscalar(true)
+  end
+else
+  backend = CPU()
+end
 
-backend = CPU()
-FTB = Float64
+if FloatTypeBackend == "Float64"
+  FTB = Float64
+elseif FloatTypeBackend == "Float32"
+  FTB = Float32
+else
+  @show "False FloatTypeBackend"
+  stop
+end
+
+KernelAbstractions.synchronize(backend)
 
 
 MPI.Init()
@@ -169,7 +188,12 @@ Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 (CG, Metric, Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
 
 # Initial values
-Profile = CGDycore.GalewskiExample()(Param,Phys)
+if Problem == "Galewski"
+  Profile = CGDycore.GalewskiExample()(Param,Phys)
+elseif Problem == "BaroWaveDrySphere"
+  Profile = CGDycore.BaroWaveExample()(Param,Phys)
+end  
+
 
 U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
@@ -249,6 +273,14 @@ elseif ModelType == "Conservative"
   DiscType = Val(:Conservative)  
 end  
 @show DiscType
-nT = max(7 + NumTr, NumV + NumTr)
-CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
-CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
+
+if Device == "CPU"  || Device == "GPU"
+  @show "FcnGPU"  
+  nT = max(7 + NumTr, NumV + NumTr)
+  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
+else
+  @show "Fcn"  
+  nT = max(7 + NumTr, NumV + NumTr)
+  CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
+  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
+end

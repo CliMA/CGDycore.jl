@@ -71,7 +71,11 @@ end
     end
   end
 end
-return X,J,dXdx,dXdxI,theta
+X = reshape(X,n*n,nz,3)
+J = reshape(J,n*n,nz)
+dXdx = reshape(dXdx,n*n,nz,3,3)
+dXdxI = reshape(dXdxI,3,3,nz,n*n)
+return X,J,dXdx,dXdxI
 end
 
 

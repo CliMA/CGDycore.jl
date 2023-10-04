@@ -1,25 +1,29 @@
-mutable struct RosenbrockStruct
+mutable struct RosenbrockStruct{FT<:AbstractFloat,
+                               AT1<:AbstractArray,
+                               AT2<:AbstractArray}
   nStage::Int
-  alpha::Array{Float64, 2}
-  Gamma::Array{Float64, 2}
-  b::Array{Float64, 1}
-  a::Array{Float64, 2}
-  c::Array{Float64, 2}
+  alpha::AT2
+  Gamma::AT2
+  b::AT1
+  a::AT2
+  c::AT2
   gamma::Float64
-  m::Array{Float64, 1}
+  m::AT1
 end
-function RosenbrockMethod()
+
+function RosenbrockStruct{FT}(backend) where FT<:AbstractFloat
   nStage = 0
-  alpha = zeros(0,0)
-  Gamma = zeros(0,0)
-  b = zeros(0)
-  a = zeros(0,0)
-  c =zeros(0,0)
+  alpha = KernelAbstractions.zeros(backend,FT,0,0)
+  Gamma = KernelAbstractions.zeros(backend,FT,0,0)
+  b = KernelAbstractions.zeros(backend,FT,0)
+  a = KernelAbstractions.zeros(backend,FT,0,0)
+  c = KernelAbstractions.zeros(backend,FT,0,0)
   gamma = 0
-  m = zeros(0)
-  d = zeros(0)
-  SSP = SSPRungeKuttaMethod()
-  return RosenbrockStruct(
+  m = KernelAbstractions.zeros(backend,FT,0)
+  d = KernelAbstractions.zeros(backend,FT,0)
+  return RosenbrockStruct{FT,
+                          typeof(b),
+                          typeof(alpha)}(
     nStage,
     alpha,
     Gamma,
@@ -31,18 +35,24 @@ function RosenbrockMethod()
   )
 end
 
-
-function RosenbrockMethod(Method)
+function RosenbrockStruct{FT}(backend,Method) where FT<:AbstractFloat
   str = Method
   if str == "SSP-Knoth"
     nStage = 3
-    alpha = [ 0  0  0
-              1  0  0
-            1/4 1/4 0]
-    b = [1/6,1/6,2/3]
-    Gamma = [ 1    0  0
-              0    1  0
-            -3/4 -3/4 1]
+    alpha = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    alpha[2,1] = 1
+    alpha[3,1] = 1/4
+    alpha[3,2] = 1/4
+    b = KernelAbstractions.zeros(backend,FT,nStage)
+    b[1] = 1/6
+    b[2] = 1/6
+    b[3] = 2/3
+    Gamma = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    Gamma[1,1] = 1
+    Gamma[2,2] = 1
+    Gamma[3,1] = -3/4
+    Gamma[3,2] = -3/4
+    Gamma[3,3] = 1
     gamma = 1        
     a = alpha / Gamma
     c = -inv(Gamma)
@@ -52,14 +62,19 @@ function RosenbrockMethod(Method)
 
   elseif str == "ROSRK3"
     nStage = 3
-    alpha=[ 0  0  0
-           1/3 0  0
-            0 1/2 0]
+    alpha = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    alpha[2,1] = 1/3
+    alpha[3,2] = 1/2
+    b = KernelAbstractions.zeros(backend,FT,nStage)
+    b[3] = 1
     gamma = 1
-    Gamma=[                        gamma           0     0
-           (1-12*gamma^2) /(-9+36*gamma)       gamma     0
-                            -1/4+2*gamma 1/4-3*gamma gamma]
-    b=[0,0,1]
+    Gamma = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    Gamma[1,1] = gamma
+    Gamma[2,1] = (1-12*gamma^2) /(-9+36*gamma)
+    Gamma[2,2] = gamma
+    Gamma[3,1] = -1/4+2*gamma
+    Gamma[3,2] = 1/4-3*gamma
+    Gamma[3,3] = gamma
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
@@ -81,11 +96,12 @@ function RosenbrockMethod(Method)
               0       0     0   0  1/2   0
               5/18   5/18   0   0   0   8/18]
     b    =  [ 5/18   5/18   0   0   0   8/18]
-
-    alpha = AHat[2:end,1:end-1]
-    Gamma = A[2:end,2:end] - AHat[2:end,2:end]
-
-    b = [0,0,0,0,1,0]          
+    alpha = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    @views @. alpha = AHat[2:end,1:end-1]
+    Gamma = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    @views @. Gamma = A[2:end,2:end] - AHat[2:end,2:end]
+    b = KernelAbstractions.zeros(backend,FT,nStage)
+    b[nStage-1] = [0,0,0,0,1,0]          
 
     Gamma = alpha \ Gamma * alpha       
     alpha = AHat[1:end,1:end-1]
@@ -94,7 +110,9 @@ function RosenbrockMethod(Method)
     c = -inv(Gamma)
     m = a[end,:]
   end
-return RosenbrockStruct(
+return RosenbrockStruct{FT,
+                        typeof(b),
+                        typeof(alpha)}(
   nStage,
   alpha,
   Gamma,

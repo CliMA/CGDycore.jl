@@ -7,7 +7,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   ParallelCom.Proc = Proc
   ParallelCom.ProcNumber  = ProcNumber
 
-  TimeStepper = TimeStepperStruct()
+  TimeStepper = TimeStepperStruct{FT}(backend)
   Grid = GridStruct(nz,Topography)
 
   if GridType == "HealPix"
@@ -101,7 +101,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   ParallelCom.Proc = Proc
   ParallelCom.ProcNumber  = ProcNumber
 
-  TimeStepper = TimeStepperStruct()
+  TimeStepper = TimeStepperStruct{FT}(backend)
   Grid = GridStruct(nz,Topography)
 
   Grid = CartGrid(nx,ny,Lx,Ly,x0,y0,OrientFaceCart,Boundary,Grid)
@@ -125,7 +125,8 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
 
   Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
-  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,OrdPoly+1,nz,
+  DoF = (OrdPoly + 1) * (OrdPoly + 1)
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,DoF,nz,
     Model.NumV,Model.NumTr,())
   CG = CGStruct(backend,FT,OrdPoly,OrdPolyZ,Global.Grid)
   (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global)
@@ -150,6 +151,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   else
     (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global)
   end
+
 
   return CG, Metric, Global
 end  

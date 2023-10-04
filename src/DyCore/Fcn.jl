@@ -244,8 +244,8 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
-    @views DivGrad!(DivCG,RhoCG,CG,
-      Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
+#   @views DivGrad!(DivCG,RhoCG,CG,
+#     Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivThCG,ThCG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
 
@@ -295,13 +295,12 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
       end
     end
       
-
     @views RotCurl!(Rot1CG,Rot2CG,v1CG,v2CG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
     @views GradDiv!(Grad1CG,Grad2CG,v1CG,v2CG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
-    @views DivGrad!(DivCG,RhoCG,CG,
-      Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
+#   @views DivGrad!(DivCG,RhoCG,CG,
+#     Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
     @views DivRhoGrad!(DivThCG,ThCG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache)
 
@@ -338,6 +337,12 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
   end
 
   ExchangeData3DRecv!(Temp1,Global.Exchange)
+# for i = 1 : 6
+#   @views @. Temp1[:,:,i] /= CG.M[:,:]
+# end
+# @show sum(abs.(U))
+# @show sum(abs.(Temp1[:,:,1:6]))
+# stop
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for iD = 1 : DoF
@@ -378,9 +383,9 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     @views GradDiv!(FCG[:,:,uPos],FCG[:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
-    @views DivGrad!(FCG[:,:,RhoPos],DivCG,CG,
-      Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
-      Global.Model.HyperDRhoDiv)
+#   @views DivGrad!(FCG[:,:,RhoPos],DivCG,CG,
+#     Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
+#     Global.Model.HyperDRhoDiv)
     @views DivRhoGrad!(FCG[:,:,ThPos],DivThCG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
@@ -388,7 +393,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:],v1CG[:,:],v2CG[:,:],CG,
-      Metric.dXdxI[:,:,1,:,:,iF])
+      Metric.dXdxI[:,:,:,:,1,iF])
     @views @. wCCG = 0.5*(wCG[:,1:nz] + wCG[:,2:nz+1])
 
     @views DivRhoColumn!(FCG[:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
@@ -560,7 +565,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     end
     @. FCG = 0.0
     @. FwCG = 0.0
-
+#=
     #   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,uPos],FCG[:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
@@ -568,9 +573,9 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     @views GradDiv!(FCG[:,:,uPos],FCG[:,:,vPos],Grad1CG,Grad2CG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDGrad)
-    @views DivGrad!(FCG[:,:,RhoPos],DivCG,CG,
-      Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
-      Global.Model.HyperDRhoDiv)
+#   @views DivGrad!(FCG[:,:,RhoPos],DivCG,CG,
+#     Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
+#     Global.Model.HyperDRhoDiv)
     @views DivRhoGrad!(FCG[:,:,ThPos],DivThCG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
@@ -583,7 +588,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
 
     @views DivRhoColumn!(FCG[:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
-
+=#
     if Global.Model.RefProfile
       @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
@@ -596,9 +601,10 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
       @views GradColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG[:,:],PresCG,RhoCG,CG,
         Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,Phys)
       if Global.Model.Buoyancy
-        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,:,iF],Phys)  
+        @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,iF],Phys)  
       end
     end
+#=        
     if Global.Model.Curl
 #     3-dim Curl and Grad of kinetic Energy
 #     Kinetic energy
@@ -654,8 +660,8 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
        Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache)
     else
       if Global.Model.Upwind
-        @views DivUpwindRhoTrColumn!(FCG[:,:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
-          Metric.dXdxI[:,:,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
+        @views DivUpwindRhoTrColumn!(FCG[:,:,ThPos],v1CG,v2CG,wCG,ThCG,RhoCG,CG,
+          Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],
           Global.ThreadCache,Global.Model.HorLimit,Val(:VectorInvariant))
       else
         @views DivRhoTrColumn!(FCG[:,:,ThPos],v1CG,v2CG,wCG,ThCG,CG,
@@ -699,6 +705,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
       @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],PresCG[:,:,1],CG,Global,Param,iF)
     end  
 
+    =#
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz=1:nz
@@ -747,6 +754,11 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
       @views SourceMicroPhysics(F[:,iG,:],U[:,iG,:],PresG[:,iG],CG,Global,iG)
     end  
   end
+  @show sum(abs.(F[:,:,2]))
+  @show sum(abs.(F[:,:,3]))
+  @show sum(abs.(F[:,:,4]))
+  @show sum(abs.(F))
+  stop
 end
 
 

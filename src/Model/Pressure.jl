@@ -87,8 +87,8 @@ function Pressure!(p::AbstractArray{FT,3},RhoTh::AbstractArray{FT,3},Rho::Abstra
   end
 end
 
-function Pressure!(p::AbstractArray{Float64,2},RhoTh::AbstractArray{Float64,2},Rho::AbstractArray{Float64,2},
-  Tr::AbstractArray{Float64,3},KE::AbstractArray{Float64,2},zP::AbstractArray{Float64,2},Phys,Global)
+function Pressure!(p::AbstractArray{FT,2},RhoTh::AbstractArray{FT,2},Rho::AbstractArray{FT,2},
+  Tr::AbstractArray{FT,3},KE::AbstractArray{FT,2},zP::AbstractArray{FT,2},Phys,Global) where FT<:AbstractFloat
   (; Rd,
      Cvd,
      Cpd,
@@ -116,7 +116,7 @@ function Pressure!(p::AbstractArray{Float64,2},RhoTh::AbstractArray{Float64,2},R
        end  
      else
        @inbounds for i in eachindex(p)  
-         p[i] = p0 * fast_pow(Rd * RhoTh[i] / p0, 1.0 / (1.0 - kappa));
+         p[i] = p0 * fast_pow(Rd * RhoTh[i] / p0, FT(1) / (FT(1) - kappa));
        end  
     end
   elseif Equation == "CompressibleMoist"

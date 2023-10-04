@@ -376,7 +376,9 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
     elseif str == "Pres"   
       @views Pres = Cache.AuxG[:,:,1]  
       pCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      Interpolate!(pCell,Pres,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+#     Interpolate!(pCell,Pres,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+      InterpolateGPU!(cCell,Pres,vtkInter,CG.Glob)
+      @views copyto!(pCell,cCell)
       vtk["p", VTKCellData()] = pCell 
     elseif  str == "Tr1" 
       Tr1Pos = Global.Model.NumV + 1

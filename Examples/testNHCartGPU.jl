@@ -204,6 +204,12 @@ Topography=(TopoS=TopoS,
   Boundary,GridType,Topography,Decomp,Model,Phys)
 
 Profile = CGDycore.WarmBubbleCartExample()(Param,Phys)
+# Initial values
+if Problem == "Stratified" || Problem == "HillAgnesiXCart"
+  Profile = CGDycore.StratifiedExample()(Param,Phys)
+elseif Problem == "WarmBubble"
+  Profile = CGDycore.WarmBubbleCartExample()(Param,Phys)
+end
 
 U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 

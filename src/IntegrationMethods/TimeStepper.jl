@@ -1,5 +1,7 @@
 using KernelAbstractions
 function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)  
+  backend = get_backend(U)
+  FT = eltype(U)
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -8,7 +10,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
   Table = TimeStepper.Table
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP"
-    TimeStepper.ROS=RosenbrockMethod(Table)  
+    TimeStepper.ROS=RosenbrockStruct{FT}(backend,Table)  
   elseif IntMethod == "RungeKutta"  
     TimeStepper.RK=RungeKuttaMethod(Table)
   elseif IntMethod == "IMEX"   
@@ -21,7 +23,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
 
 # Simulation period
   time=[0.0]
-  dtau = TimeStepper.dtau
+  dtau = FT(TimeStepper.dtau)
   SimDays = TimeStepper.SimDays
   SimHours = TimeStepper.SimHours
   SimMinutes = TimeStepper.SimMinutes
@@ -50,8 +52,6 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
   NumTr = Global.Model.NumTr
   nz = Global.Grid.nz
   NumG = CG.NumG
-  FT = eltype(U)
-  backend = get_backend(U)
   Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
     NumV,NumTr)
 
@@ -199,7 +199,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RungeKuttaExplicit!(U,dtau,Fcn!,CG,Metric,Phys,Cache,Global,Param,DiscType)
+          @time RungeKuttaExplicit!(U,dtau,Fcn!,CG,Metric,Phys,Cache,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)

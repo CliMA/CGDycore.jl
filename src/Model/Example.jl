@@ -22,7 +22,6 @@ end
 
 Base.@kwdef struct WarmBubbleCartExample <: Example end
 
-
 function (profile::WarmBubbleCartExample)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
@@ -46,6 +45,31 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     if rr < rC0
       Th = Th + DeltaTh * cos(0.5 * pi * rr /rC0)^2
     end
+    Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
+    return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+
+Base.@kwdef struct StratifiedExample <: Example end
+
+function (profile::StratifiedExample)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    z = x[3]
+    u = Param.uMax
+    v = Param.vMax
+    w = FT(0)
+    NBr = Param.NBr
+    Grav = Phys.Grav
+    p0 = Phys.p0
+    Cpd = Phys.Cpd
+    Rd = Phys.Rd
+    kappa = Phys.kappa
+    Th0 = Param.Th0
+    S = NBr * NBr / Grav
+    Th = Th0 * exp(z *  S)
+    pLoc = p0 * (FT(1) - Grav / (Cpd * Th0 * S) * (FT(1) - exp(-S * z))).^(Cpd / Rd)
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     return (Rho,u,v,w,Th)
   end
@@ -114,6 +138,82 @@ function (profile::GalewskiExample)(Param,Phys)
     w = FT(0)
 
     return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+Base.@kwdef struct BaroWaveExample <: Example end
+
+function (profile::BaroWaveExample)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
+    Z = max(R - Phys.RadEarth, 0)
+    T0 = 0.5 * (Param.T0E + Param.T0P)
+    ConstA = 1.0 / Param.LapseRate
+    ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
+    ConstC = 0.5 * (Param.K + 2.0) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
+    ConstH = Phys.Rd * T0 / Phys.Grav
+    ScaledZ = Z / (Param.B * ConstH)
+    Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
+    ConstB * (1.0 - 2.0 * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    Tau2 = ConstC * (1.0 - 2.0 * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    IntTau1 = ConstA * (exp(Param.LapseRate / T0 * Z) - 1.0) +
+    ConstB * Z * exp(-ScaledZ * ScaledZ)
+    IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
+    if Param.Deep
+      RRatio = R / Param.EarthRadius
+    else
+      RRatio = 1.0
+    end
+    InteriorTerm = (RRatio * cos(Lat))^Param.K -
+    Param.K / (Param.K + 2.0) * (RRatio * cos(Lat))^(Param.K + 2.0)
+    Temperature = 1.0 / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
+    Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
+      (IntTau1 - IntTau2 * InteriorTerm))
+    Rho = Pressure / (Phys.Rd * Temperature)
+    Th = Rho * Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
+
+    InteriorTermU = (RRatio * cos(Lat))^(Param.K - 1.0) -
+         (RRatio * cos(Lat))^(Param.K + 1.0)
+      BigU = Phys.Grav / Phys.RadEarth * Param.K *
+        IntTau2 * InteriorTermU * Temperature
+      if Param.Deep
+        RCosLat = R * cos(Lat)
+      else
+        RCosLat =Phys.RadEarth * cos(Lat)
+      end
+      OmegaRCosLat = Phys.Omega*RCosLat
+
+      #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+      #                         _EXCEPTIONT("Negative discriminant detected.")
+      #                 }
+
+      uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+      vS = 0
+      # Exponential perturbation
+      GreatCircleR = acos(sin(Param.PertLat) * sin(Lat) +
+        cos(Param.PertLat) * cos(Lat) * cos(Lon - Param.PertLon))
+
+      GreatCircleR = GreatCircleR / Param.PertExpR
+
+      # Tapered perturbation with height
+      if Z < Param.PertZ
+        PertTaper = 1.0 - 3.0 * Z * Z / (Param.PertZ * Param.PertZ) +
+           2.0 * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
+      else
+        PertTaper = 0.0
+      end
+
+      # Apply perturbation in zonal velocity
+      if GreatCircleR < 1.0
+        uSPert = Param.Up * PertTaper * exp(-GreatCircleR * GreatCircleR)
+      else
+        uSPert = 0.0
+      end
+      uS = uS + uSPert
+      w = FT(0)
+
+    return (Rho,uS,vS,w,Th)
   end
   return local_profile
 end

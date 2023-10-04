@@ -387,7 +387,7 @@ return CacheStruct{FT,
   qMax,
 )
 end
-mutable struct TimeStepperStruct
+mutable struct TimeStepperStruct{FT<:AbstractFloat}
   IntMethod::String
   Table::String
   dtau::Float64
@@ -397,14 +397,14 @@ mutable struct TimeStepperStruct
   SimMinutes::Int
   SimSeconds::Int
   SimTime::Float64
-  ROS::RosenbrockStruct
+  ROS::RosenbrockStruct{FT}
   LinIMEX::LinIMEXStruct
   IMEX::IMEXStruct
   MIS::MISStruct
   RK::RungeKuttaStruct
   SSP::SSPRungeKuttaStruct
 end
-function TimeStepperStruct()
+function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
   IntMethod = ""
   Table = ""
   dtau  = 0.0
@@ -414,7 +414,7 @@ function TimeStepperStruct()
   SimMinutes = 0
   SimSeconds = 0
   SimTime = 0.0
-  ROS=RosenbrockMethod()
+  ROS=RosenbrockStruct{FT}(backend)
   LinIMEX=LinIMEXMethod()
   IMEX=IMEXMethod()
   MIS=MISMethod()

@@ -16,7 +16,7 @@
   if Iz <= Nz
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
-    RotLoc[I,J] = 0
+    RotLoc[I,J,iz] = 0
   end
   @synchronize
 
@@ -107,8 +107,7 @@ end
   end
 end
 
-@kernel function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),@Const(Inter),@Const(dXdxI),@Const(Glob),
-  ::Val{BANK}=Val(1)) where BANK
+@kernel function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),@Const(Inter),@Const(dXdxI),@Const(Glob))
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,_,IF = @index(Global, NTuple)
@@ -119,24 +118,29 @@ end
   NF = @uniform @ndrange()[4]
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  @uniform N = size(Glob,1)
+  @uniform N = size(Inter,3)
 
 
   Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz == 1
+    @inbounds cCell[I,J,Iz,IF] = 0
+    iD = 0  
     for jP = 1 : N
       for iP = 1 : N
-        @inbounds ind = Glob[iP,jP,IF]
-        @inbounds w0 = -(u[ind] * dXdxI[3,1,1,iP,jP,Iz,IF] +
-          v[ind] * dXdxI[3,2,1,iP,jP,Iz,IF]) / dXdxI[3,3,1,iP,jP,Iz,IF]
+        iD += 1
+        @inbounds ind = Glob[iD,IF]
+        @inbounds w0 = -(u[Iz,ind] * dXdxI[3,1,1,iD,Iz,IF] +
+          v[Iz,ind] * dXdxI[3,2,1,iD,Iz,IF]) / dXdxI[3,3,1,iD,Iz,IF]
         @inbounds  cCell[I,J,Iz,IF] += 0.5 * Inter[I,J,iP,jP] * (w[Iz,ind] + w0)
       end
     end
   elseif Iz <= Nz
     @inbounds cCell[I,J,Iz,IF] = 0
+    iD = 0
     for jP = 1 : N
       for iP = 1 : N
-        @inbounds ind = Glob[iP,jP,IF]
+        iD += 1
+        @inbounds ind = Glob[iD,IF]
         @inbounds  cCell[I,J,Iz,IF] += 0.5 * Inter[I,J,iP,jP] * (w[Iz,ind] + w[Iz-1,ind])
       end
     end
@@ -218,7 +222,7 @@ function InterpolateWBGPU!(cCell,u,v,w,Inter,dXdxI,Glob)
   FT = eltype(w)
 
   OrdPrint = size(Inter,1)
-  NF = size(Glob,3)
+  NF = size(Glob,2)
   Nz = size(w,1)
 
 # Ranges
@@ -227,6 +231,6 @@ function InterpolateWBGPU!(cCell,u,v,w,Inter,dXdxI,Glob)
   ndrange = (OrdPrint, OrdPrint, Nz, NF)
 
   KInterpolateWBKernel! = InterpolateWBKernel!(backend,group)
-  @views KInterpolateWBKernel!(cCell,u[1,:],v[1,:],w,Inter,dXdxI,Glob,ndrange=ndrange)
+  KInterpolateWBKernel!(cCell,u,v,w,Inter,dXdxI,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end

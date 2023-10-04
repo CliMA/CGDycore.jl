@@ -1,5 +1,8 @@
-mpirun -n 8 julia --project ~/Documents/Github/CliMA/CGDycore.jl/Examples/testNHCart.jl \
+mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Problem="HillAgnesiXCart" \
+  --Device="CPU" \
+  --GPUType="CUDA" \
+  --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
   --ProfRho="AgnesiCart" \
@@ -8,7 +11,7 @@ mpirun -n 8 julia --project ~/Documents/Github/CliMA/CGDycore.jl/Examples/testNH
   --ProfpBGrd="AgnesiCart" \
   --ProfRhoBGrd="AgnesiCart" \
   --RefProfile=false \
-  --Curl=false \
+  --Curl=true \
   --ModelType="VectorInvariant" \
   --SurfaceFluxMom=false \
   --VerticalDiffusionMom=false \
