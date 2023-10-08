@@ -27,7 +27,7 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     FT = eltype(x)
     u = Param.uMax
     v = Param.vMax
-    w = 0
+    w = FT(0)
     Grav = Phys.Grav
     p0 = Phys.p0
     Rd = Phys.Rd

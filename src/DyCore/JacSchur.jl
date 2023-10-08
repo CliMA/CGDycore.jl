@@ -1,40 +1,47 @@
-mutable struct JStruct
-    JRhoW::Array{Float64, 3}
-    JWRhoTh::Array{Float64, 3}
-    JWRho::Array{Float64, 3}
-    JWRhoV::Array{Float64, 3}
-    JRhoThW::Array{Float64, 3}
-    JTrW::Array{Float64, 4}
-    JWW::Array{Float64, 3}
-    tri::Array{Float64, 3}
-    JDiff::Array{Float64, 3}
-    JAdvC::Array{Float64, 3}
-    JAdvF::Array{Float64, 3}
+using KernelAbstractions
+mutable struct JStruct{FT<:AbstractFloat,
+                           AT1<:AbstractArray,
+                           AT3<:AbstractArray,
+                           AT4<:AbstractArray}
+    JRhoW::AT3
+    JWRhoTh::AT3
+    JWRho::AT3
+    JWRhoV::AT3
+    JRhoThW::AT3
+    JTrW::AT4
+    JWW::AT3
+    tri::AT3
+    JDiff::AT3
+    JAdvC::AT3
+    JAdvF::AT3
     CompTri::Bool
     CompJac::Bool
-    CacheCol1::Array{Float64, 1}
-    CacheCol2::Array{Float64, 1}
-    CacheCol3::Array{Float64, 1}
+    CacheCol1::AT1
+    CacheCol2::AT1
+    CacheCol3::AT1
 end
 
-function JStruct()
-  JRhoW=zeros(0,0,0)
-  JWRhoTh=zeros(0,0,0)
-  JWRho=zeros(0,0,0)
-  JWRhoV=zeros(0,0,0)
-  JRhoThW=zeros(0,0,0)
-  JTrW=zeros(0,0,0,0)
-  JWW=zeros(0,0,0)
-  tri=zeros(0,0,0)
-  JDiff=zeros(0,0,0)
-  JAdvC=zeros(0,0,0)
-  JAdvF=zeros(0,0,0)
+function JStruct{FT}(backend) where FT<:AbstractFloat
+  JRhoW=KernelAbstractions.zeros(backend,0,0,0)
+  JWRhoTh=KernelAbstractions.zeros(backend,0,0,0)
+  JWRho=KernelAbstractions.zeros(backend,0,0,0)
+  JWRhoV=KernelAbstractions.zeros(backend,0,0,0)
+  JRhoThW=KernelAbstractions.zeros(backend,0,0,0)
+  JTrW=KernelAbstractions.zeros(backend,0,0,0,0)
+  JWW=KernelAbstractions.zeros(backend,0,0,0)
+  tri=KernelAbstractions.zeros(backend,0,0,0)
+  JDiff=KernelAbstractions.zeros(backend,0,0,0)
+  JAdvC=KernelAbstractions.zeros(backend,0,0,0)
+  JAdvF=KernelAbstractions.zeros(backend,0,0,0)
   CompTri=false
   CompJac=false
-  CacheCol1=zeros(0)
-  CacheCol2=zeros(0)
-  CacheCol3=zeros(0)
-  return JStruct(
+  CacheCol1=KernelAbstractions.zeros(backend,0)
+  CacheCol2=KernelAbstractions.zeros(backend,0)
+  CacheCol3=KernelAbstractions.zeros(backend,0)
+  return JStruct{FT,
+                 typeof(CacheCol1),
+                 typeof(JRhoW),
+                 typeof(JTrW)}(
     JRhoW,
     JWRhoTh,
     JWRho,
@@ -54,24 +61,27 @@ function JStruct()
   )
 end  
 
-function JStruct(NumG,nz,NumTr)
-  JRhoW=zeros(2,nz-1,NumG)
-  JWRhoTh=zeros(2,nz-1,NumG)
-  JWRho=zeros(2,nz-1,NumG)
-  JWRhoV=zeros(2,nz-1,NumG)
-  JRhoThW=zeros(2,nz-1,NumG)
-  JTrW=zeros(2,nz-1,NumG,NumTr)
-  JWW=zeros(1,nz-1,NumG)
-  tri=zeros(3,nz-1,NumG)
-  JDiff=zeros(3,nz,NumG)
-  JAdvC=zeros(3,nz,NumG)
-  JAdvF=zeros(3,nz-1,NumG)
+function JStruct{FT}(backend,NumG,nz,NumTr) where FT<:AbstractFloat
+  JRhoW=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JWRhoTh=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JWRho=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JWRhoV=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JRhoThW=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JTrW=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG,NumTr)
+  JWW=KernelAbstractions.zeros(backend,FT,1,nz-1,NumG)
+  tri=KernelAbstractions.zeros(backend,FT,3,nz-1,NumG)
+  JDiff=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
+  JAdvC=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
+  JAdvF=KernelAbstractions.zeros(backend,FT,3,nz-1,NumG)
   CompTri=false
   CompJac=false
-  CacheCol1=zeros(nz)
-  CacheCol2=zeros(nz)
-  CacheCol3=zeros(nz)
-  return JStruct(
+  CacheCol1=KernelAbstractions.zeros(backend,FT,nz)
+  CacheCol2=KernelAbstractions.zeros(backend,FT,nz)
+  CacheCol3=KernelAbstractions.zeros(backend,FT,nz)
+  return JStruct{FT,
+                 typeof(CacheCol1),
+                 typeof(JRhoW),
+                 typeof(JTrW)}(
     JRhoW,
     JWRhoTh,
     JWRho,
@@ -216,6 +226,89 @@ function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvariant}
     @views @. JAdvF[2,1:nz-1] = +abswConC[1:nz-1] - wConC[1:nz-1] 
     @views @. JAdvF[2,1:nz-1] += +abswConC[2:nz] + wConC[2:nz]
     @views @. JAdvF[2,1:nz-1] /= (dz[1:nz-1] + dz[2:nz])
+  end
+end
+
+function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvariant})
+
+  backend = get_backend(U)
+  FT = eltype(U)
+
+  Nz = size(U,1)
+  NumG = size(U,2)
+
+  NG = div(1024,Nz)
+  group = (Nz, NG)
+  ndrange = (Nz, NumG)
+
+  KJacSchurKernel! = JacSchurKernel!(backend,group)
+
+  KJacSchurKernel!(J,U,CG,Metric,Phys,Cache,Global,Param,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+
+end
+
+
+@kernel function JacSchurKernel!(J,@Const(U),CG,Metric,Phys,Cache,Global,Param)
+  (;  RhoPos,
+      uPos,
+      vPos,
+      wPos,
+      ThPos,
+      NumV,
+      NumTr) = Global.Model
+  Nz, NG = @index(Group, NTuple)
+  iz, iC   = @index(Local, NTuple)
+  Iz,IC = @index(Global, NTuple)
+
+  Nz = @uniform @groupsize()[1]
+  NG = @uniform @groupsize()[2]
+  NumG = @uniform @ndrange()[2]    
+
+
+
+  if Iz < Nz && IC <= NumG
+    Pres = Cache.AuxG[Iz,IC,1]
+    RhoL = U[Iz,IC,RhoPos]
+    RhoR = U[Iz+1,IC,RhoPos]
+    RhoThL = U[Iz,IC,ThPos]
+    RhoThR = U[Iz+1,IC,ThPos]
+    @views TrL = U[Iz,IC,NumV+1:end]
+    @views TrR = U[Iz+1,IC,NumV+1:end]
+    dzL = Metric.dz[Iz,IC]
+    dzR = Metric.dz[Iz+1,IC]
+
+    RhoF = (RhoL * dzL + RhoR * dzR) / (dzL + dzR)
+    # JRhoW low bidiagonal matrix
+    # First row diagonal
+    # Second row lower diagonal
+    J.JRhoW[1,Iz,IC] = -RhoF / dzL
+    J.JRhoW[2,Iz,IC] = RhoF / dzR
+
+    dPdThL = dPresdTh(RhoThL, RhoL, TrL, Phys, Global)
+    dPdThR = dPresdTh(RhoThR, RhoR, TrR, Phys, Global)
+    # JWRhoTh upper bidiagonal matrix
+    # First row upper diagonal
+    # Second row diagonal
+    J.JWRhoTh[1,Iz,IC] = -dPdThR / RhoF / ( 1/2 * (dzL + dzR))
+    J.JWRhoTh[2,Iz,IC] = dPdThL / RhoF / ( 1/2 * (dzL + dzR))
+
+    if Global.Model.Equation == "CompressibleMoist"
+    end  
+
+    # JWRho upper bidiagonal matrix
+    # First row upper diagonal
+    # Second row diagonal
+    J.JWRho[1,Iz,IC] = -Phys.Grav * dzR / RhoF / (dzL + dzR)
+    J.JWRho[2,Iz,IC] = -Phys.Grav * dzL / RhoF / (dzL + dzR)
+
+    RhoThF = (RhoThL * dzL + RhoThR * dzR) / (dzL + dzR)
+    # JRhoThW low bidiagonal matrix
+    # First row diagonal
+    # Second row lower diagonal
+    J.JRhoThW[1,Iz,IC] = -RhoThF / dzL
+    J.JRhoThW[2,Iz,IC] = RhoThF / dzR
   end
 end
 

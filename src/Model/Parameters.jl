@@ -82,7 +82,6 @@ Base.@kwdef struct ParamHeldSuarezDrySphere
 end
 
 Base.@kwdef struct ParamHillSchaerCart
-  Example = "HillSchaerCart"
   Deep=false
   NBr=1.e-2
   Th0=300.0
@@ -93,7 +92,6 @@ Base.@kwdef struct ParamHillSchaerCart
 end
 
 Base.@kwdef struct ParamHillAgnesiXCart
-  Example::String = "HillAgnesiXCart"
   Deep::Bool = false
   NBr::Float64 = 1.e-2
   Th0::Float64 =300.0
@@ -109,7 +107,6 @@ Base.@kwdef struct ParamHillAgnesiXCart
 end
 
 Base.@kwdef struct ParamHillAgnesiYCart
-  Example = "HillAgnesiYCart"
   Deep=false
   NBr=1.e-2
   Th0=300.0
@@ -124,7 +121,6 @@ Base.@kwdef struct ParamHillAgnesiYCart
 end
 
 Base.@kwdef struct ParamWarmBubble2DXCart
-  Example = "WarmBubble2DXCart"
   Th0::Float64 = 300.0
   uMax::Float64 = 0.0
   vMax::Float64 = 0
@@ -136,7 +132,6 @@ Base.@kwdef struct ParamWarmBubble2DXCart
 end
 
 Base.@kwdef struct ParamBryanFritschCart
-  Example = "BryanFritschCart"
   Th0::Float64 = 300.0
   uMax::Float64 = 0.0
   vMax::Float64 = 0
@@ -148,7 +143,6 @@ Base.@kwdef struct ParamBryanFritschCart
 end
 
 Base.@kwdef struct ParamDensityCurrent2DXCart
-  Example = "DensityCurrent2DXCart"
   T0::Float64 = 300.0
   uMax::Float64 = 0.0
   vMax::Float64 = 0.0
@@ -161,7 +155,6 @@ Base.@kwdef struct ParamDensityCurrent2DXCart
 end  
 
 Base.@kwdef struct ParamTestGradient
-  Example = "TestGradient"
 end
 
 Base.@kwdef struct ParamHillGaussCart
@@ -229,7 +222,6 @@ Base.@kwdef struct ParamAdvectionSphereDCMIP
 end
 
 Base.@kwdef struct ParamAdvectionCubeCart
-# Example::String = "AdvectionCubeCart"
   StreamFun::Bool = false
   uMax::Float64 = 1.0
   vMax::Float64 = 1.0
@@ -240,7 +232,6 @@ Base.@kwdef struct ParamAdvectionCubeCart
 end  
 
 Base.@kwdef struct ParamAdvectionCubeRotCart
-# Example::String = "AdvectionCubeRotCart"
   StreamFun::Bool = false
   uMax::Float64 = 1.0
   vMax::Float64 = 0.0
@@ -255,7 +246,6 @@ Base.@kwdef struct ParamAdvectionCubeRotCart
 end
 
 Base.@kwdef struct ParamAdvectionCart
-  Example = "AdvectionCart"
   xC = 0.0
   H = H
 end  

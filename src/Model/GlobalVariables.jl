@@ -24,7 +24,7 @@ Cache2::Array{FT, 2}
 Cache3::Array{FT, 2}
 Cache4::Array{FT, 2}
 PresCG::Array{FT, 2}
-AuxG::Array{FT, 3}
+AuxG::AT3
 Aux2DG::Array{FT, 3}
 Temp::Array{FT, 3}
 KE::Array{FT, 2}
@@ -34,7 +34,7 @@ TSurf::Array{FT, 3}
 FCG::Array{FT, 4}
 FCC::Array{FT, 3}
 FwCC::Array{FT, 2}
-Vn::Array{FT, 3}
+Vn::AT3
 RhoCG::Array{FT, 2}
 v1CG::Array{FT, 2}
 v2CG::Array{FT, 2}
@@ -62,7 +62,7 @@ DivThC::Array{FT, 2}
 DivwC::Array{FT, 2}
 KVCG::Array{FT, 2}
 Temp1::AT3
-k::Array{FT, 4}
+k::AT4
 Ymyn::Array{FT, 4}
 Y::Array{FT, 4}
 Z::Array{FT, 4}
@@ -73,7 +73,7 @@ fS::AT4
 fRhoS::AT3
 VS::AT4
 RhoS::AT3
-f::Array{FT, 4}
+f::AT4
 qMin::Array{FT, 3}
 qMax::Array{FT, 3}
 end
@@ -101,7 +101,7 @@ Cache2=zeros(FT,0,0)
 Cache3=zeros(FT,0,0)
 Cache4=zeros(FT,0,0)
 PresCG=zeros(FT,0,0)
-AuxG=zeros(FT,0,0,0)
+AuxG=KernelAbstractions.zeros(backend,FT,0,0,0)
 Aux2DG=zeros(FT,0,0,0)
 Temp=zeros(FT,0,0,0)
 KE=zeros(FT,0,0)
@@ -111,7 +111,7 @@ TSurf=zeros(FT,0,0,0)
 FCG=zeros(FT,0,0,0,0)
 FCC=zeros(FT,0,0,0)
 FwCC=zeros(FT,0,0)
-Vn=zeros(FT,0,0,0)
+Vn=KernelAbstractions.zeros(backend,FT,0,0,0)
 RhoCG=zeros(FT,0,0)
 v1CG=zeros(FT,0,0)
 v2CG=zeros(FT,0,0)
@@ -139,7 +139,7 @@ DivThC=zeros(FT,0,0)
 DivwC=zeros(FT,0,0)
 KVCG=zeros(FT,0,0)
 Temp1=KernelAbstractions.zeros(backend,FT,0,0,0)
-k=zeros(FT,0,0,0,0)
+k=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 Ymyn=zeros(FT,0,0,0,0)
 Y=zeros(FT,0,0,0,0)
 Z=zeros(FT,0,0,0,0)
@@ -150,7 +150,7 @@ fS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
-f=zeros(FT,0,0,0,0)
+f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 qMin=zeros(FT,0,0,0)
 qMax=zeros(FT,0,0,0)
 return CacheStruct{FT,
@@ -256,7 +256,7 @@ Cache2=zeros(FT,nz,NumG)
 Cache3=zeros(FT,nz,NumG)
 Cache4=zeros(FT,nz,NumG)
 PresCG=zeros(FT,DoF,nz)
-AuxG=zeros(FT,nz,NumG,4)
+AuxG=KernelAbstractions.zeros(backend,FT,nz,NumG,4)
 Aux2DG=zeros(FT,1,NumG,NumTr+1)
 Temp=zeros(FT,DoF,nz,NF)
 KE=zeros(FT,DoF,nz)
@@ -266,7 +266,7 @@ TSurf=zeros(FT,0,0,0)
 FCG=zeros(FT,DoF,nz,NF,NumV+NumTr)
 FCC=zeros(FT,DoF,nz,NumV+NumTr)
 FwCC=zeros(FT,DoF,nz+1)
-Vn=zeros(FT,nz,NumG,NumV+NumTr)
+Vn=KernelAbstractions.zeros(backend,FT,nz,NumG,NumV+NumTr)
 RhoCG=zeros(FT,DoF,nz)
 v1CG=zeros(FT,DoF,nz)
 v2CG=zeros(FT,DoF,nz)
@@ -294,7 +294,7 @@ DivThC=zeros(FT,DoF,nz)
 DivwC=zeros(FT,DoF,nz+1)
 KVCG=zeros(FT,DoF,nz)
 Temp1=KernelAbstractions.zeros(backend,FT,nz,NumG,max(NumV+NumTr,7+NumTr))
-k=zeros(FT,0,0,0,0)
+k=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 Ymyn=zeros(FT,0,0,0,0)
 Y=zeros(FT,0,0,0,0)
 Z=zeros(FT,0,0,0,0)
@@ -811,7 +811,7 @@ mutable struct GlobalStruct{FT<:AbstractFloat,
   Exchange::ExchangeStruct
   vtkCache::vtkStruct{FT}
 # Cache::CacheStruct{FT}
-  J::JStruct
+# J::JStruct
   latN::Array{Float64, 1}
   ThreadCache::TCache
   ThetaBGrd::Array{Float64, 2}
@@ -832,7 +832,7 @@ function GlobalStruct{FT}(backend,Grid::GridStruct,
 # Metric=MetricStruct{FT}(backend)
 # Cache=CacheStruct{FT}(backend)
   vtkCache = vtkStruct{FT}(backend)
-  J=JStruct()
+# J=JStruct()
   latN=zeros(0)
   tcache=(;CreateCache(FT,DoF,nz,NumV,NumTr)...,init_tcache)
   ThetaBGrd = zeros(0,0)
@@ -852,7 +852,7 @@ function GlobalStruct{FT}(backend,Grid::GridStruct,
     Exchange,
     vtkCache,
 #   Cache,
-    J,
+#   J,
     latN,
     tcache,
     ThetaBGrd,

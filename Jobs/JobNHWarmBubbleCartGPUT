@@ -2,7 +2,7 @@ mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Problem="WarmBubble2DXCart" \
   --Device="" \
   --GPUType="CUDA" \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumTr=0 \
   --ProfRho="WarmBubble2DX" \
@@ -13,8 +13,8 @@ mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
-  --SimTime=1 \
-  --PrintTime=100 \
+  --SimTime=10\
+  --PrintTime=.2 \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --dtau=.2 \
@@ -27,10 +27,10 @@ mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=3 \
-  --nx=2 \
+  --nz=40 \
+  --nx=20 \
   --ny=2 \
-  --OrdPoly=2 \
+  --OrdPoly=4 \
   --HyperVisc=true \
   --HyperDCurl=1.e7 \
   --HyperDGrad=1.e7 \

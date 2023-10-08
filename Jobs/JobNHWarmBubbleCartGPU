@@ -18,8 +18,8 @@ mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --dtau=.2 \
-  --IntMethod="RungeKutta" \
-  --Table="RK4" \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
   --TopoS="" \
   `#Topography `        \
   --H=10000.0 \
@@ -27,7 +27,7 @@ mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=20 \
+  --nz=80 \
   --nx=40 \
   --ny=2 \
   --OrdPoly=4 \

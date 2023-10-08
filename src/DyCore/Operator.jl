@@ -171,11 +171,11 @@ function MomentumColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,
     @views @. Fw[:,iz] += (vCon[:,2,iz-1] + vCon[:,1,iz]) * Der 
 
     @views @. Der = 1/2 * (uC[:,iz] - uC[:,iz-1])  
-    @views @. FuC[:,iz-1] += (wCon[:,2,iz-1] + wCon[:,1,iz]) * Der
-    @views @. FuC[:,iz] += (wCon[:,2,iz-1] + wCon[:,1,iz]) * Der
+    @views @. FuC[:,iz-1] += wCon[:,2,iz-1] * Der
+    @views @. FuC[:,iz] += wCon[:,1,iz] * Der
     @views @. Der = 1/2 * (vC[:,iz] - vC[:,iz-1])  
-    @views @. FvC[:,iz-1] += (wCon[:,2,iz-1] + wCon[:,1,iz]) * Der
-    @views @. FvC[:,iz] += (wCon[:,2,iz-1] + wCon[:,1,iz]) * Der
+    @views @. FvC[:,iz-1] += wCon[:,2,iz-1]  * Der
+    @views @. FvC[:,iz] += wCon[:,1,iz] * Der
   end  
 
   for iz = 1 : Nz
@@ -523,7 +523,6 @@ function GradColumn!(FuC,FvC,Fw,pC,RhoC,Fe,dXdxI,J,ThreadCache,Phys)
   @inbounds for iz = 1 : Nz - 1 
     @views @. GradZ = 1/2 * (pC[:,iz+1] - pC[:,iz])
     @views @. FluxZ =  GradZ * (dXdxI[3,3,2,:,iz] + dXdxI[3,3,2,:,iz+1])
-    @show iz,FluxZ
     @views @. Fw[:,iz+1] -= FluxZ 
   end    
 end 

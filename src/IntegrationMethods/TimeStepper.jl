@@ -1,5 +1,5 @@
 using KernelAbstractions
-function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)  
+function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Global,Param,DiscType)  
   backend = get_backend(U)
   FT = eltype(U)
   TimeStepper = Global.TimeStepper
@@ -56,8 +56,10 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
     NumV,NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
-    Global.J = JStruct(NumG,nz,NumTr)
-    Cache.k = zeros(size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
+    @show "vor JStruct"  
+    JCache = JStruct{FT}(backend,NumG,nz,NumTr)
+    @show "nach JStruct"  
+    Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
     Cache.fV = KernelAbstractions.zeros(backend,FT,size(U))
     Cache.Vn = similar(U)
   elseif IntMethod == "RosenbrockSSP"
@@ -76,7 +78,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
     Cache.fV=zeros(size(U))
     Cache.Vn=zeros(size(U))
   elseif IntMethod == "RungeKutta"
-    Cache.f=zeros(size(U)..., TimeStepper.RK.nStage)
+    Cache.f=KernelAbstractions.zeros(backend,FT,size(U)..., TimeStepper.RK.nStage)
   elseif IntMethod == "MIS"
     Cache.f=zeros(size(U)..., TimeStepper.MIS.nStage)
     Cache.VS=zeros(size(U)..., TimeStepper.MIS.nStage - 1)
@@ -109,7 +111,7 @@ function TimeStepper!(U,Fcn!,Trans,CG,Metric,Phys,Global,Param,DiscType)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,Fcn!,JacSchur!,CG,Metric,Phys,Cache,Global,Param,DiscType);
+          RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Global,Param,DiscType);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)

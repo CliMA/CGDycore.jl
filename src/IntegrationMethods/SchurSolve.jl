@@ -42,6 +42,85 @@ function mulbiLv!(u,biL,v)
   u[n+1] = u[n+1] + biL[2,n]*v[n]
 end
 
+@kernel function SchurSolveKernel!(k,v,J,fac,Cache,Global)
+  IC, = @index(Global, NTuple)
+
+  NumG = @uniform @ndrange()[1]
+
+  tri = J.tri
+  JWRho = J.JWRho
+  JRhoW = J.JRhoW
+  JWRhoTh = J.JWRhoTh
+  JRhoThW=J.JRhoThW
+  JTrW=J.JTrW
+  JWW=J.JWW
+  invfac=1/fac
+  invfac2=invfac/fac
+
+  if IC <= NumG
+    @views rRho=v[:,IC,1]
+    @views rTh=v[:,IC,5]
+    @views rw=v[1:end-1,IC,4]
+    @views sw=k[1:end-1,IC,4]
+    k[end,IC,4] = 0
+    if Global.Model.Damping
+      if J.CompTri
+        @views @. tri[1,:,IC] = 0
+        @views @. tri[2,:,IC] = invfac2  - invfac * JWW[1,:,IC]
+        @views @. tri[3,:,IC] = 0
+        @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
+        @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
+      end
+      @. rw = invfac * rw
+      @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
+      @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
+      @views triSolve!(sw,tri[:,:,IC],rw)
+    else
+      if J.CompTri
+        @views @. tri[1,:,IC] = 0
+        @views @. tri[2,:,IC] = invfac2
+        @views @. tri[3,:,IC] = 0
+        @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
+        @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
+      end
+      @. rw = invfac * rw
+      @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
+      @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
+      @views triSolve!(sw,tri[:,:,IC],rw)
+    end
+    @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
+    @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
+
+    @views @. k[:,IC,1] = fac * rRho
+    @views @. k[:,IC,2:3] = fac * v[:,IC,2:3]
+    @views @. k[:,IC,5] = fac * rTh
+#   @inbounds for iT = 1 : NumTr
+#     @views mulbiLv!(v[:,IC,5+iT],JTrW[:,:,IC,iT],sw)
+#     @views @. k[:,IC,5+iT] = fac * v[:,IC,5+iT]
+#   end
+    if Global.Model.Damping
+      @views @. sw = sw / (1 - invfac * JWW[1,:,IC])
+    end
+  end    
+end
+
+function SchurSolveGPU!(k,v,J,fac,Cache,Global)
+  backend = get_backend(k)
+  FT = eltype(k)
+
+  Nz = size(k,1)
+  NumG = size(k,2)
+
+  group = (1024)
+  ndrange = (NumG)
+
+  KSchurSolveKernel! = SchurSolveKernel!(backend,group)
+
+  KSchurSolveKernel!(k,v,J,fac,Cache,Global,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+end
+
 function SchurSolve!(k,v,J,fac,Cache,Global)
 #   sw=(spdiags(repmat(invfac2,n,1),0,n,n)-invfac*JWW-JWRho*JRhoW-JWRhoTh*JRhoThW)\
 #     (invfac*rw+JWRho*rRho+JWRhoTh*rTh)

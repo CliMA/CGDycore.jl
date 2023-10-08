@@ -7,21 +7,18 @@ function MassCG(CG,J,Glob,Global)
   MMass = zeros(nz,CG.NumG)
   MW = zeros(nz-1,CG.NumG)
   @inbounds for iF = 1 : Global.Grid.NumFaces
-    @inbounds for iz = 1 : nz  
-      iD = 0
-      @inbounds for j = 1 : OrdPoly + 1
-        @inbounds for i = 1 : OrdPoly + 1
-          iD += 1
-          ind = Glob[iD,iF]  
+    iD = 0
+    @inbounds for j = 1 : OrdPoly + 1
+      @inbounds for i = 1 : OrdPoly + 1
+        iD += 1
+        ind = Glob[iD,iF]  
+        @inbounds for iz = 1 : nz  
           M[iz,ind] += (J[iD,1,iz,iF] + J[iD,2,iz,iF])
           MMass[iz,ind] += 0.5 * (J[iD,1,iz,iF] + J[iD,2,iz,iF]) * w[i] * w[j]
         end  
-      end
-    end
-    @inbounds for iz = 1 : nz - 1  
-      @inbounds for iD = 1 : DoF
-        ind = Glob[iD,iF]  
-        MW[iz,ind] += (J[iD,2,iz,iF] + J[iD,1,iz+1,iF])
+        @inbounds for iz = 1 : nz - 1  
+          MW[iz,ind] += (J[iD,2,iz,iF] + J[iD,1,iz+1,iF])
+        end
       end
     end
   end

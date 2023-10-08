@@ -279,9 +279,11 @@ elseif ModelType == "Conservative"
 end
 if Device == "CPU"  || Device == "GPU"
   nT = max(9 + NumTr, NumV + NumTr)
-  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.TransCartX,CG,Metric,Phys,Global,Param,DiscType)
+  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,CGDycore.TransCartX,
+    CG,Metric,Phys,Global,Param,DiscType)
 else    
   nT = max(9 + NumTr, NumV + NumTr)
   CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
-  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.TransCartX,CG,Metric,Phys,Global,Param,DiscType)
+  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.FcnPrepare!,CGDycore.JacSchur!,
+    CGDycore.TransCartX,CG,Metric,Phys,Global,Param,DiscType)
 end    

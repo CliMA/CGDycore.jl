@@ -565,8 +565,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     end
     @. FCG = 0.0
     @. FwCG = 0.0
-#=
-    #   Hyperdiffusion Part 2
+#   Hyperdiffusion Part 2
     @views RotCurl!(FCG[:,:,uPos],FCG[:,:,vPos],Rot1CG,Rot2CG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDCurl)
@@ -579,16 +578,12 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     @views DivRhoGrad!(FCG[:,:,ThPos],DivThCG,RhoCG,CG,
       Metric.dXdxI[:,:,:,:,:,iF],Metric.J[:,:,:,iF],Global.ThreadCache,
       Global.Model.HyperDDiv)
-
 #   Diagnostic values
 #   Boundary value for vertical velocity and cell center   
     @views BoundaryW!(wCG[:,:],v1CG[:,:],v2CG[:,:],CG,
       Metric.dXdxI[:,:,:,:,1,iF])
     @views @. wCCG = 0.5*(wCG[:,1:nz] + wCG[:,2:nz+1])
 
-    @views DivRhoColumn!(FCG[:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
-      Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
-=#
     if Global.Model.RefProfile
       @views @. pBGrdCG = PresCG - pBGrdCG  
       @views @. RhoBGrdCG = RhoCG - RhoBGrdCG  
@@ -604,7 +599,6 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
         @views Buoyancy!(FwCG,RhoCG,Metric.J[:,:,:,iF],Phys)  
       end
     end
-#=        
     if Global.Model.Curl
 #     3-dim Curl and Grad of kinetic Energy
 #     Kinetic energy
@@ -636,6 +630,9 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
         Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],Cache)
     end  
 
+#   Divergence of Density
+    @views DivRhoColumn!(FCG[:,:,RhoPos],v1CG,v2CG,wCG,RhoCG,CG,
+      Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
 #   Divergence of Thermodynamic Variable
     if Global.Model.Thermo == "TotalEnergy"
       @views @. ThCG = ThCG + Pres[:,:,:,iF]  
@@ -703,9 +700,8 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     end
     if Global.Model.SurfaceFlux
       @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],PresCG[:,:,1],CG,Global,Param,iF)
-    end  
+    end
 
-    =#
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz=1:nz
@@ -754,11 +750,6 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
       @views SourceMicroPhysics(F[:,iG,:],U[:,iG,:],PresG[:,iG],CG,Global,iG)
     end  
   end
-  @show sum(abs.(F[:,:,2]))
-  @show sum(abs.(F[:,:,3]))
-  @show sum(abs.(F[:,:,4]))
-  @show sum(abs.(F))
-  stop
 end
 
 
