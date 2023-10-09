@@ -1271,7 +1271,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
 # Cache
   @views CacheF = Temp1[:,:,1:5]
 # Ranges
-  NzG = min(div(1024,N*N),Nz)
+  NzG = min(div(512,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
 
@@ -1291,7 +1291,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
   KernelAbstractions.synchronize(backend)
 end
 
-@kernel function PressureKernel!(p,@Const(U),Phys,Global)
+@kernel function PressureKernel!(p,@Const(U),Phys)
   jz, jG = @index(Group, NTuple)
   Iz,IC = @index(Global, NTuple)
 
@@ -1309,14 +1309,14 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Global,Param,DiscType)
   Nz = size(U,1)
   NumG = size(U,2)
 
-  NG = div(1024,Nz)
+  NG = div(512,Nz)
   group = (Nz, NG)
   ndrange = (Nz, NumG)
   @views p = Cache.AuxG[:,:,1]
 
   KPressureKernel! = PressureKernel!(backend,group)
 
-  KPressureKernel!(p,U,Phys,Global,ndrange=ndrange)
+  KPressureKernel!(p,U,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end
 
@@ -1356,7 +1356,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
   @views FRhoTr = F[:,:,5]
   @views p = Cache.AuxG[:,:,1]
 # Ranges
-  NzG = min(div(1024,N*N),Nz)
+  NzG = min(div(512,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
 

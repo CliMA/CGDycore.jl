@@ -1,4 +1,4 @@
-function triSolve!(x,tri,b)
+@inline function triSolve!(x,tri,b)
 # Thomas algorithm, b and x used as intermediate storage
 # b is destroyed after the elemination
   n = size(tri,2)
@@ -13,7 +13,7 @@ function triSolve!(x,tri,b)
   end
 end
 
-function mulUL!(tri,biU,biL)
+@inline function mulUL!(tri,biU,biL)
   n = size(biL,2)
   tri[2,1] = tri[2,1] - biU[2,1]*biL[1,1] - biU[1,1]*biL[2,1]
   tri[3,1] = tri[3,1] - biU[2,2]*biL[2,1]
@@ -26,14 +26,14 @@ function mulUL!(tri,biU,biL)
   tri[2,n] = tri[2,n] - biU[2,n]*biL[1,n] - biU[1,n]*biL[2,n]
 end
 
-function mulbiUv!(u,biU,v)
+@inline function mulbiUv!(u,biU,v)
   n = size(biU,2)
   @inbounds for i=1:n
     u[i] = u[i] + biU[2,i]*v[i] + biU[1,i]*v[i+1]
   end
 end
 
-function mulbiLv!(u,biL,v)
+@inline function mulbiLv!(u,biL,v)
   n = size(biL,2)
   u[1] = u[1] + biL[1,1]*v[1]
   @inbounds for i=2:n
@@ -42,65 +42,66 @@ function mulbiLv!(u,biL,v)
   u[n+1] = u[n+1] + biL[2,n]*v[n]
 end
 
-@kernel function SchurSolveKernel!(k,v,J,fac,Cache,Global)
+@kernel function SchurSolveFacKernel!(Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
 
-  tri = J.tri
-  JWRho = J.JWRho
-  JRhoW = J.JRhoW
-  JWRhoTh = J.JWRhoTh
-  JRhoThW=J.JRhoThW
-  JTrW=J.JTrW
-  JWW=J.JWW
-  invfac=1/fac
-  invfac2=invfac/fac
+  invfac = 1 / fac
+  invfac2 = invfac / fac
 
   if IC <= NumG
-    @views rRho=v[:,IC,1]
-    @views rTh=v[:,IC,5]
-    @views rw=v[1:end-1,IC,4]
-    @views sw=k[1:end-1,IC,4]
-    k[end,IC,4] = 0
-    if Global.Model.Damping
-      if J.CompTri
-        @views @. tri[1,:,IC] = 0
-        @views @. tri[2,:,IC] = invfac2  - invfac * JWW[1,:,IC]
-        @views @. tri[3,:,IC] = 0
-        @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
-        @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
-      end
-      @. rw = invfac * rw
-      @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
-      @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
-      @views triSolve!(sw,tri[:,:,IC],rw)
-    else
-      if J.CompTri
-        @views @. tri[1,:,IC] = 0
-        @views @. tri[2,:,IC] = invfac2
-        @views @. tri[3,:,IC] = 0
-        @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
-        @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
-      end
-      @. rw = invfac * rw
-      @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
-      @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
-      @views triSolve!(sw,tri[:,:,IC],rw)
-    end
-    @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
-    @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
+    @inbounds @views rRho=v[:,IC,1]
+    @inbounds @views rTh=v[:,IC,5]
+    @inbounds @views rw=v[1:Nz-1,IC,4]
+    @inbounds @views sw=k[1:Nz-1,IC,4]
+    @inbounds k[end,IC,4] = 0
+    @inbounds @views @. tri[1,:,IC] = 0
+    @inbounds @views @. tri[2,:,IC] = invfac2
+    @inbounds @views @. tri[3,:,IC] = 0
+    @inbounds @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
+    @inbounds @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
+    @. rw = invfac * rw
+    @inbounds @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
+    @inbounds @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
+    @inbounds @views triSolve!(sw,tri[:,:,IC],rw)
+    @inbounds @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
+    @inbounds @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
+    for iz = 1 : Nz
+      @inbounds k[iz,IC,1] = fac * v[iz,IC,1]
+      @inbounds k[iz,IC,2] = fac * v[iz,IC,2]
+      @inbounds k[iz,IC,3] = fac * v[iz,IC,3]
+      @inbounds k[iz,IC,5] = fac * v[iz,IC,5]
+    end 
+  end    
+end
 
-    @views @. k[:,IC,1] = fac * rRho
-    @views @. k[:,IC,2:3] = fac * v[:,IC,2:3]
-    @views @. k[:,IC,5] = fac * rTh
-#   @inbounds for iT = 1 : NumTr
-#     @views mulbiLv!(v[:,IC,5+iT],JTrW[:,:,IC,iT],sw)
-#     @views @. k[:,IC,5+iT] = fac * v[:,IC,5+iT]
-#   end
-    if Global.Model.Damping
-      @views @. sw = sw / (1 - invfac * JWW[1,:,IC])
-    end
+@kernel function SchurSolveKernel!(Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
+  IC, = @index(Global, NTuple)
+
+  NumG = @uniform @ndrange()[1]
+
+  if IC <= NumG
+    invfac=1/fac
+    invfac2=invfac/fac
+    @inbounds @views rRho=v[:,IC,1]
+    @inbounds @views rTh=v[:,IC,5]
+    @inbounds @views rw=v[1:Nz-1,IC,4]
+    @inbounds @views sw=k[1:Nz-1,IC,4]
+    @inbounds k[end,IC,4] = 0
+    @. rw = invfac * rw
+    @inbounds @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
+    @inbounds @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
+    @inbounds @views triSolve!(sw,tri[:,:,IC],rw)
+    @inbounds @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
+    @inbounds @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
+
+    for iz = 1 : Nz
+      @inbounds k[iz,IC,1] = fac * v[iz,IC,1]
+      @inbounds k[iz,IC,2] = fac * v[iz,IC,2]
+      @inbounds k[iz,IC,3] = fac * v[iz,IC,3]
+      @inbounds k[iz,IC,5] = fac * v[iz,IC,5]
+    end 
   end    
 end
 
@@ -111,13 +112,20 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   Nz = size(k,1)
   NumG = size(k,2)
 
-  group = (1024)
+# group = (1024)
+  group = (12)
   ndrange = (NumG)
 
-  KSchurSolveKernel! = SchurSolveKernel!(backend,group)
-
-  KSchurSolveKernel!(k,v,J,fac,Cache,Global,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
+  if J.CompTri
+    KSchurSolveFacKernel! = SchurSolveFacKernel!(backend,group)
+    KSchurSolveFacKernel!(Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+  else
+    KSchurSolveKernel! = SchurSolveKernel!(backend,group)
+    KSchurSolveKernel!(Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+  end
+  J.CompTri = false
 
 end
 

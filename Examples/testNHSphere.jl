@@ -1,9 +1,9 @@
-include("../src/CGDycore.jl")
+using CGDycore
 using MPI
 using Base
-using StaticArrays
+using CUDA
 using KernelAbstractions
-using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using StaticArrays
 
 # Model
 parsed_args = CGDycore.parse_commandline()
@@ -185,6 +185,7 @@ OrdPolyZ = 1
 
 Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
+@show "InitSphere"
 (CG, Metric, Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
 
 # Initial values
@@ -195,6 +196,7 @@ elseif Problem == "BaroWaveDrySphere"
 end  
 
 
+@show "InitialConditions"
 U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 # Output
@@ -212,7 +214,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-      "Vort",
+#     "Vort",
 #     "Pres",
       ]
   elseif Model.Equation == "CompressibleMoist"  
@@ -277,7 +279,8 @@ end
 if Device == "CPU"  || Device == "GPU"
   @show "FcnGPU"  
   nT = max(7 + NumTr, NumV + NumTr)
-  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
+  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
+   CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
 else
   @show "Fcn"  
   nT = max(7 + NumTr, NumV + NumTr)

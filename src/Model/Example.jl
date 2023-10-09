@@ -161,7 +161,7 @@ function (profile::BaroWaveExample)(Param,Phys)
     ConstB * Z * exp(-ScaledZ * ScaledZ)
     IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
     if Param.Deep
-      RRatio = R / Param.EarthRadius
+      RRatio = R / Phys.RadEarth
     else
       RRatio = 1.0
     end

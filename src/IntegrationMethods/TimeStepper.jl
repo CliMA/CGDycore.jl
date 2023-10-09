@@ -56,9 +56,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Global,Param,
     NumV,NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
-    @show "vor JStruct"  
     JCache = JStruct{FT}(backend,NumG,nz,NumTr)
-    @show "nach JStruct"  
     Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
     Cache.fV = KernelAbstractions.zeros(backend,FT,size(U))
     Cache.Vn = similar(U)
@@ -201,7 +199,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Global,Param,
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RungeKuttaExplicit!(U,dtau,Fcn!,CG,Metric,Phys,Cache,Global,Param,DiscType)
+          @time RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)

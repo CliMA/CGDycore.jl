@@ -10,7 +10,7 @@ function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,
   @inbounds for iStage = 1 : nStage
     @. V = Vn
     @inbounds for jStage = 1 : iStage-1
-      @views axpy!(ROS.a[iStage,jStage],k[:,:,:,jStage],V)
+      @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,jStage]
     end
     FcnPrepare!(V,CG,Metric,Phys,Cache,Global,Param,DiscType)
     Fcn!(fV,V,CG,Metric,Phys,Cache,Global,Param,DiscType)
@@ -19,13 +19,13 @@ function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,
     end  
     @inbounds for jStage = 1 : iStage - 1
       fac = ROS.c[iStage,jStage] / dt
-      @views axpy!(fac,k[:,:,:,jStage],fV)
+      @views @. fV = fV + fac * k[:,:,:,jStage]
     end
     @views SchurSolveGPU!(k[:,:,:,iStage],fV,JCache,dt*ROS.gamma,Cache,Global)
   end
   @. V = Vn
   @inbounds for iStage = 1 : nStage
-    @views axpy!(ROS.m[iStage],k[:,:,:,iStage],V)
+    @views @. V = V + ROS.m[iStage] * k[:,:,:,iStage]
   end
 end
 

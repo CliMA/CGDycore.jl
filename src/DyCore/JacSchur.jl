@@ -237,27 +237,20 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvaria
   Nz = size(U,1)
   NumG = size(U,2)
 
-  NG = div(1024,Nz)
+  NG = div(512,Nz)
   group = (Nz, NG)
   ndrange = (Nz, NumG)
 
   KJacSchurKernel! = JacSchurKernel!(backend,group)
 
-  KJacSchurKernel!(J,U,CG,Metric,Phys,Cache,Global,Param,ndrange=ndrange)
+  KJacSchurKernel!(J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,Metric.dz,Phys,Param,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
 
 end
 
 
-@kernel function JacSchurKernel!(J,@Const(U),CG,Metric,Phys,Cache,Global,Param)
-  (;  RhoPos,
-      uPos,
-      vPos,
-      wPos,
-      ThPos,
-      NumV,
-      NumTr) = Global.Model
+@kernel function JacSchurKernel!(JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(dz),Phys,Param)
   Nz, NG = @index(Group, NTuple)
   iz, iC   = @index(Local, NTuple)
   Iz,IC = @index(Global, NTuple)
@@ -269,47 +262,47 @@ end
 
 
   if Iz < Nz && IC <= NumG
-    Pres = Cache.AuxG[Iz,IC,1]
+    RhoPos = 1
+    ThPos = 5
     RhoL = U[Iz,IC,RhoPos]
     RhoR = U[Iz+1,IC,RhoPos]
     RhoThL = U[Iz,IC,ThPos]
     RhoThR = U[Iz+1,IC,ThPos]
-    @views TrL = U[Iz,IC,NumV+1:end]
-    @views TrR = U[Iz+1,IC,NumV+1:end]
-    dzL = Metric.dz[Iz,IC]
-    dzR = Metric.dz[Iz+1,IC]
+    dzL = dz[Iz,IC]
+    dzR = dz[Iz+1,IC]
 
     RhoF = (RhoL * dzL + RhoR * dzR) / (dzL + dzR)
     # JRhoW low bidiagonal matrix
     # First row diagonal
     # Second row lower diagonal
-    J.JRhoW[1,Iz,IC] = -RhoF / dzL
-    J.JRhoW[2,Iz,IC] = RhoF / dzR
+    JRhoW[1,Iz,IC] = -RhoF / dzL
+    JRhoW[2,Iz,IC] = RhoF / dzR
 
-    dPdThL = dPresdTh(RhoThL, RhoL, TrL, Phys, Global)
-    dPdThR = dPresdTh(RhoThR, RhoR, TrR, Phys, Global)
+    dPdThL = dPresdThGPU(RhoThL, Phys)
+    dPdThR = dPresdThGPU(RhoThR, Phys)
     # JWRhoTh upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
-    J.JWRhoTh[1,Iz,IC] = -dPdThR / RhoF / ( 1/2 * (dzL + dzR))
-    J.JWRhoTh[2,Iz,IC] = dPdThL / RhoF / ( 1/2 * (dzL + dzR))
-
-    if Global.Model.Equation == "CompressibleMoist"
-    end  
+    JWRhoTh[1,Iz,IC] = -dPdThR / RhoF / ( 1/2 * (dzL + dzR))
+    JWRhoTh[2,Iz,IC] = dPdThL / RhoF / ( 1/2 * (dzL + dzR))
 
     # JWRho upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
-    J.JWRho[1,Iz,IC] = -Phys.Grav * dzR / RhoF / (dzL + dzR)
-    J.JWRho[2,Iz,IC] = -Phys.Grav * dzL / RhoF / (dzL + dzR)
+    JWRho[1,Iz,IC] = -Phys.Grav * dzR / RhoF / (dzL + dzR)
+    JWRho[2,Iz,IC] = -Phys.Grav * dzL / RhoF / (dzL + dzR)
 
     RhoThF = (RhoThL * dzL + RhoThR * dzR) / (dzL + dzR)
     # JRhoThW low bidiagonal matrix
     # First row diagonal
     # Second row lower diagonal
-    J.JRhoThW[1,Iz,IC] = -RhoThF / dzL
-    J.JRhoThW[2,Iz,IC] = RhoThF / dzR
+    JRhoThW[1,Iz,IC] = -RhoThF / dzL
+    JRhoThW[2,Iz,IC] = RhoThF / dzR
   end
+end
+
+@inline function dPresdThGPU(RhoTh, Phys)
+  dpdTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (1 - Phys.kappa))
 end
 
 function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})

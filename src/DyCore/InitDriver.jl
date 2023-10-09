@@ -109,6 +109,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   CellToProc = Decompose(Grid,ProcNumber)
   SubGrid = ConstructSubGrid(Grid,CellToProc,Proc)
 
+  @show "Stretch"
   if Model.Stretch
     if Model.StretchType == "ICON"  
       sigma = 1.0
@@ -151,6 +152,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   else
     (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global)
   end
+
 
 
   return CG, Metric, Global
