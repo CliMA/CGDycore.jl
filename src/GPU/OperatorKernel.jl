@@ -1,3 +1,105 @@
+@kernel function MomentumCoriolisKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),Phys)
+
+  gi, gj, gz, gF = @index(Group, NTuple)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,_,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
+  
+  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim)
+  uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
+  vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
+  wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds RhoCol[I,J,iz] = U[Iz,ind,1]
+    @inbounds uCol[I,J,iz] = U[Iz,ind,2]
+    @inbounds vCol[I,J,iz] = U[Iz,ind,3]
+    @inbounds wCol[I,J,iz+1] = U[Iz,ind,4]
+    if Iz == 1
+      wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] + 
+        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+     elseif iz == 1
+       wCol[I,J,1] = U[Iz-1,ind,4] 
+    end    
+  end  
+
+  @synchronize
+    
+  Iz = (gz - 1) * ColumnTilesDim + iz
+  if Iz <= Nz
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds uCon1 = -RhoCol[I,J,iz] * (dXdxI[1,1,1,ID,Iz,IF] * uCol[I,J,iz] +
+      dXdxI[1,2,1,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[1,3,1,ID,Iz,IF] * wCol[I,J,iz])
+    @inbounds uCon2 = -RhoCol[I,J,iz] * (dXdxI[1,1,2,ID,Iz,IF] * uCol[I,J,iz] +
+      dXdxI[1,2,2,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[1,3,2,ID,Iz,IF] * wCol[I,J,iz+1])
+    @inbounds vCon1 = -RhoCol[I,J,iz] * (dXdxI[2,1,1,ID,Iz,IF] * uCol[I,J,iz] +
+      dXdxI[2,2,1,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[2,3,1,ID,Iz,IF] * wCol[I,J,iz])
+    @inbounds vCon2 = -RhoCol[I,J,iz] * (dXdxI[2,1,2,ID,Iz,IF] * uCol[I,J,iz] +
+      dXdxI[2,2,2,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[2,3,2,ID,Iz,IF] * wCol[I,J,iz+1])
+    @inbounds wCon1 = -RhoCol[I,J,iz] * (dXdxI[3,1,1,ID,Iz,IF] * uCol[I,J,iz] +
+      dXdxI[3,2,1,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[3,3,1,ID,Iz,IF] * wCol[I,J,iz])
+    @inbounds wCon2 = -RhoCol[I,J,iz] * (dXdxI[3,1,2,ID,Iz,IF] * uCol[I,J,iz] +
+      dXdxI[3,2,2,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[3,3,2,ID,Iz,IF] * wCol[I,J,iz+1])
+
+    @inbounds Dxu = D[I,1] * uCol[1,J,iz]
+    @inbounds Dyu = D[J,1] * uCol[I,1,iz]
+    @inbounds Dxv = D[I,1] * vCol[1,J,iz]
+    @inbounds Dyv = D[J,1] * vCol[I,1,iz]
+    @inbounds Dxw1 = D[I,1] * wCol[1,J,iz]
+    @inbounds Dyw1 = D[J,1] * wCol[I,1,iz]
+    @inbounds Dxw2 = D[I,1] * wCol[1,J,iz+1]
+    @inbounds Dyw2 = D[J,1] * wCol[I,1,iz+1]
+    Izp = min(Iz+1,Nz)
+    Izm = max(Iz-1,1)
+    ind = Glob[ID,IF]
+    Dzu2 = 1/2 * (U[Izp,ind,2] - uCol[I,J,iz])
+    Dzv2 = 1/2 * (U[Izp,ind,3] - vCol[I,J,iz])
+    Dzu1 = 1/2 * (uCol[I,J,iz] - U[Izm,ind,2])
+    Dzv1 = 1/2 * (vCol[I,J,iz] - U[Izm,ind,3])
+    Dzw = 1/2 * (wCol[I,J,iz+1] - wCol[I,J,iz]) 
+    for k = 2 : N
+      @inbounds Dxu += D[I,k] * uCol[k,J,iz]
+      @inbounds Dyu += D[J,k] * uCol[I,k,iz]
+      @inbounds Dxv += D[I,k] * vCol[k,J,iz]
+      @inbounds Dyv += D[J,k] * vCol[I,k,iz]
+      @inbounds Dxw1 += D[I,k] * wCol[k,J,iz]
+      @inbounds Dyw1 += D[J,k] * wCol[I,k,iz]
+      @inbounds Dxw2 += D[I,k] * wCol[k,J,iz+1]
+      @inbounds Dyw2 += D[J,k] * wCol[I,k,iz+1]
+    end  
+    x = 1/2 * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
+    y = 1/2 * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
+    z = 1/2 * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
+    r = sqrt(x^2 + y^2 + z^2)
+    sinlat = z / r
+    W = -2 * Phys.Omega * sinlat * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    FuCoriolis = -RhoCol[I,J,iz] * vCol[I,J,iz] * W
+    FvCoriolis = RhoCol[I,J,iz] * uCol[I,J,iz] * W
+
+    @inbounds @atomic F[Iz,ind,2] += ((uCon1 + uCon2) * Dxu + (vCon1 + vCon2) * Dyu + 
+    wCon1 * Dzu1 + wCon2 * Dzu2 + FuCoriolis) / M[Iz,ind] / RhoCol[I,J,iz]
+    @inbounds @atomic F[Iz,ind,3] += ((uCon1 + uCon2) * Dxv + (vCon1 + vCon2) * Dyv +
+    wCon1 * Dzv1 + wCon2 * Dzv2 + FvCoriolis) / M[Iz,ind] / RhoCol[I,J,iz]
+  end  
+  if Iz > 1
+    @inbounds @atomic F[Iz-1,ind,4] += (uCon1 * Dxw1 + vCon1 * Dyw1 + wCon1 * Dzw) / MRho[Iz-1,ind] 
+  end  
+  if Iz < Nz
+    @inbounds @atomic F[Iz,ind,4] += (uCon2 * Dxw2 + vCon2 * Dyw2 + wCon2 * Dzw) / MRho[Iz,ind]
+  end  
+end  
+
 @kernel function MomentumKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(MRho),@Const(M),@Const(Glob),Phys)
 
@@ -15,7 +117,7 @@
   RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
-  wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  wCol = @localmem eltype(F) (N,N,ColumnTilesDim)
 
   Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
@@ -147,7 +249,7 @@ end
 
   if Iz < Nz
     @inbounds GradZ = 1/2 * (Pres[I,J,iz+1] - Pres[I,J,iz])  
-    @inbounds Gradw =  GradZ* (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1])
+    @inbounds Gradw =  GradZ* (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF])
     @inbounds @atomic F[Iz,ind,4] += -(Gradw + Gradw2 +
       Phys.Grav * (U[Iz,ind,1] * JJ[ID,2,Iz,IF] + U[Iz+1,ind,1] * JJ[ID,1,Iz+1,IF])) /
       MRho[Iz,ind]
@@ -1366,7 +1468,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKernelKoeff! = HyperViscKernelKoeff!(backend, group)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
-  KMomentumKernel! = MomentumKernel!(backend, group)
+  KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+# KMomentumKernel! = MomentumKernel!(backend, group)
 
   @. CacheF = 0
   @views MRho = CacheF[:,:,6]
@@ -1380,7 +1483,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
-  KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,Phys,ndrange=ndrange)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
+# KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)

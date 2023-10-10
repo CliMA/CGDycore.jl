@@ -246,20 +246,17 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvaria
   KJacSchurKernel!(J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,Metric.dz,Phys,Param,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
-
 end
 
 
 @kernel function JacSchurKernel!(JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(dz),Phys,Param)
-  Nz, NG = @index(Group, NTuple)
+  jz, jG = @index(Group, NTuple)
   iz, iC   = @index(Local, NTuple)
   Iz,IC = @index(Global, NTuple)
 
-  Nz = @uniform @groupsize()[1]
   NG = @uniform @groupsize()[2]
+  Nz = @uniform @ndrange()[1]
   NumG = @uniform @ndrange()[2]    
-
-
 
   if Iz < Nz && IC <= NumG
     RhoPos = 1
@@ -375,7 +372,6 @@ function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
       @views DampingKoeff!(J.JWW[1,:,iC],CG,Global)
     end
     if Global.Model.VerticalDiffusion
-      @show "JDiff"  
       @views JDiff = J.JDiff[:,:,iC]
       @views KV = Global.Cache.AuxG[:,iC,2]
       # The Rho factor is already included in KV

@@ -69,7 +69,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
   vtkCachePart = vtkStruct{FT}(backend,1,TransSphereX!,CG,Metric,Global)
-  unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
+  unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
   if Topography.TopoS == "EarthOrography"
@@ -79,7 +79,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
     nzTemp = Global.Grid.nz
     Global.Grid.nz = 1
     vtkCacheOrography = vtkStruct(OrdPoly,TransSphereX,CG,Global)
-    unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
+    unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
     Global.Grid.nz = nzTemp
   end
 
@@ -109,7 +109,6 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   CellToProc = Decompose(Grid,ProcNumber)
   SubGrid = ConstructSubGrid(Grid,CellToProc,Proc)
 
-  @show "Stretch"
   if Model.Stretch
     if Model.StretchType == "ICON"  
       sigma = 1.0

@@ -171,7 +171,7 @@ function (profile::BaroWaveExample)(Param,Phys)
     Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
     Rho = Pressure / (Phys.Rd * Temperature)
-    Th = Rho * Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
+    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
     InteriorTermU = (RRatio * cos(Lat))^(Param.K - 1.0) -
          (RRatio * cos(Lat))^(Param.K + 1.0)
