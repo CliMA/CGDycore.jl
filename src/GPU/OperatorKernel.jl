@@ -3,21 +3,18 @@
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  
   RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -28,14 +25,13 @@
     if Iz == 1
       wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] + 
         dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
-     elseif iz == 1
-       wCol[I,J,1] = U[Iz-1,ind,4] 
+    elseif iz == 1
+      wCol[I,J,1] = U[Iz-1,ind,4] 
     end    
   end  
 
   @synchronize
     
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -105,21 +101,18 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  
   RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   wCol = @localmem eltype(F) (N,N,ColumnTilesDim)
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -137,7 +130,6 @@ end
 
   @synchronize
     
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -199,18 +191,15 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-
   Pres = @localmem eltype(F) (N,N,ColumnTilesDim+1)
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -221,8 +210,6 @@ end
   end  
 
   @synchronize
-
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
     ID = I + (J - 1) * N  
@@ -262,14 +249,12 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
 
   RhoCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
@@ -280,7 +265,6 @@ end
   GradwF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
   KinF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -295,7 +279,6 @@ end
 
   @synchronize
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     KinF[I,J,1,iz] = 1/2 * (uCol[I,J,iz] * uCol[I,J,iz] + vCol[I,J,iz] * vCol[I,J,iz])  
@@ -304,7 +287,6 @@ end
   end  
 
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   DXKinF1 = 0
   DYKinF1 = 0
@@ -360,7 +342,6 @@ end
   @inbounds GradwF[I,J,1,iz] += -GradZ * dXdxI[3,3,1,ID,Iz,IF]
 
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -378,25 +359,22 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-
   cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim)
   FCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  Iz = (gz - 1) * ColumnTilesDim + iz
+
   if Iz <= Nz
     @inbounds ind = Glob[ID,IF]
     @inbounds cCol[I,J,iz] = U[Iz,ind,5] / U[Iz,ind,1]
     @inbounds FCol[I,J,iz] = 0.0
   end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     Dxc = D[I,1] * cCol[1,J,iz]
     Dyc = D[J,1] * cCol[I,1,iz]
@@ -413,7 +391,6 @@ end
   end
 
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     @inbounds ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,5] += FCol[I,J,iz] / M[Iz,ind]
@@ -425,14 +402,12 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
 
   ThCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   uCCol = @localmem eltype(F) (N,N, ColumnTilesDim)
@@ -443,7 +418,6 @@ end
   Div = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCxCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCyCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -457,7 +431,6 @@ end
   end
   @synchronize
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds Dxc = D[I,1] * ThCol[1,J,iz]
@@ -479,7 +452,6 @@ end
   end
 
   @synchronize 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     @inbounds DxCurl = DW[I,1] * Curl[1,J,iz]
     @inbounds DyCurl = DW[J,1] * Curl[I,1,iz]
@@ -516,14 +488,12 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
 
   ThCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   uCCol = @localmem eltype(F) (N,N, ColumnTilesDim)
@@ -534,7 +504,6 @@ end
   Div = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCxCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCyCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -548,7 +517,6 @@ end
   end
   @synchronize
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds Dxc = D[I,1] * ThCol[1,J,iz]
@@ -571,7 +539,6 @@ end
   end
 
   @synchronize 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     @inbounds DxCurl = DW[I,1] * Curl[1,J,iz]
     @inbounds DyCurl = DW[J,1] * Curl[I,1,iz]
@@ -600,14 +567,12 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
 
   RhoCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N, ColumnTilesDim)
@@ -619,7 +584,6 @@ end
   FvCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   FThCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   CurlCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
@@ -633,7 +597,6 @@ end
     @inbounds FThCol[I,J,iz+1] = 0
   end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
 #   DivGrad Th
     ID = I + (J - 1) * N  
@@ -666,7 +629,6 @@ end
   end
 
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
 #   CurlCurl (u,v)
     I = mod(ID-1,N) + 1
@@ -686,7 +648,6 @@ end
   end
 
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -700,21 +661,18 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-
   cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   uCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   vCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   wCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+1)
   FCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -745,7 +703,6 @@ end
     end
   end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz < Nz 
     @inbounds wCon = dXdxI[I,J,2,Iz,3,1,IF] * uCol[I,J,iz+1] + 
       dXdxI[I,J,2,Iz,3,2,IF] * vCol[I,J,iz+1] + 
@@ -773,7 +730,6 @@ end
     end
   end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz 
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
@@ -793,14 +749,12 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
 
   cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   uCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
@@ -808,7 +762,6 @@ end
   RhoCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   wCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+1)
   FCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -844,7 +797,6 @@ end
     end
   end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz < Nz 
     @inbounds wCon = RhoCol[I,J,iz+1] * (dXdxI[I,J,2,Iz,3,1,IF] * uCol[I,J,iz+1] + 
       dXdxI[I,J,2,Iz,3,2,IF] * vCol[I,J,iz+1] + dXdxI[I,J,2,Iz,3,3,IF] * wCol[I,J,iz+1]) +
@@ -871,7 +823,6 @@ end
     end
   end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz 
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
@@ -890,53 +841,43 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-
-  cCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  cCol = @localmem eltype(F) (N,N, ColumnTilesDim+3)
   uConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   vConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
-    @inbounds cCol[I,J,iz] = U[Iz,ind,5] / U[Iz,ind,1]
+    @inbounds cCol[I,J,iz+1] = U[Iz,ind,5] / U[Iz,ind,1]
     @views @inbounds (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds uConCol[I,J,iz] = uCon
     @inbounds vConCol[I,J,iz] = vCon
   end
+  if iz == 1
+    Izm1 = max(Iz - 1,1)
+    cCol[I,J,iz] = U[Izm1,ind,5] / U[Izm1,ind,1]
+  end
+  if iz == ColumnTilesDim || Iz = Nz
+    Izp1 = min(Iz + 1,Nz)
+    cCol[I,J,iz+2] = U[Izp1,ind,5] / U[Izp1,ind,1]
+    Izp2 = min(Iz + 2,Nz)
+    cCol[I,J,iz+3] = U[Izp2,ind,5] / U[Izp2,ind,1]
+  end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
+
   if Iz < Nz 
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
-    @inbounds ind = Glob[ID,IF]
-    @inbounds cL = cCol[I,J,iz]
-    if iz < ColumnTilesDim 
-      @inbounds cR = cCol[I,J,iz+1]
-    else
-      Izp1 = min(Iz + 1, Nz)
-      @inbounds cR = U[Izp1,ind,5] / U[Izp1,ind,1]
-    end  
-        
-    if iz > 1
-      @inbounds cLL = cCol[I,J,iz-1]
-    else
-      Izm1 = max(Iz - 1,1)
-      @inbounds cLL = U[Izm1,ind,5] / U[Izm1,ind,1]
-    end
-    if iz < ColumnTilesDim - 1
-      @inbounds cRR = cCol[I,J,iz+2]
-    else
-      Izp2 = min(Iz + 2, Nz)
-      @inbounds cRR = U[Izp2,ind,5] / U[Izp2,ind,1]
-    end
+    @inbounds cLL = cCol[I,J,iz]
+    @inbounds cL = cCol[I,J,iz+1]
+    @inbounds cR = cCol[I,J,iz+2]
+    @inbounds cRR = cCol[I,J,iz+3]
 
     @views @inbounds wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
       U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
@@ -960,13 +901,13 @@ end
     ID = I + (J - 1) * N  
     @inbounds DivRho = D[I,1] * uConCol[1,J,iz] 
     @inbounds DivRho += D[J,1] * vConCol[I,1,iz] 
-    @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz] 
+    @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
     @inbounds DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz]
     for k = 2 : N
       @inbounds DivRho += D[I,k] * uConCol[k,J,iz] 
       @inbounds DivRho += D[J,k] * vConCol[I,k,iz] 
-      @inbounds DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz] 
-      @inbounds DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz]
+      @inbounds DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
+      @inbounds DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
     end
     ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,1] += DivRho / M[Iz,ind]
@@ -979,14 +920,12 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
 
   cCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   CacheCol = @localmem eltype(F) (N,N, ColumnTilesDim)
@@ -996,7 +935,6 @@ end
   wCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   FTrCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   FRhoCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -1010,7 +948,6 @@ end
     @inbounds FTrCol[I,J,iz] = 0
   end
   @synchronize
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz < Nz 
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
@@ -1078,7 +1015,6 @@ end
   end
   @synchronize
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz 
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
@@ -1190,15 +1126,13 @@ end
 
   gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
-  _,_,IF = @index(Global, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
     ind = Glob[I,IF]
@@ -1224,15 +1158,12 @@ end
 
   gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
-  _,_,IF = @index(Global, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
     ind = Glob[ID,IF]
@@ -1251,15 +1182,12 @@ end
 
   gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
-  _,_,IF = @index(Global, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
     ind = Glob[I,IF]
@@ -1276,15 +1204,12 @@ end
 
   gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
-  _,_,IF = @index(Global, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
     ind = Glob[I,IF]
@@ -1301,15 +1226,12 @@ end
 
   gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
-  _,_,IF = @index(Global, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz
     ind = Glob[I,IF]
@@ -1327,14 +1249,12 @@ end
 
   gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
-
-  Iz = (gz - 1) * ColumnTilesDim + iz
 
   if Iz <= Nz - 1 
     ind = Glob[ID,IF]
@@ -1373,7 +1293,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
 # Cache
   @views CacheF = Temp1[:,:,1:5]
 # Ranges
-  NzG = min(div(512,N*N),Nz)
+  NzG = min(div(1024,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
 
@@ -1489,6 +1409,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
 
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-
+  @show sum(abs.(F))
 end
 
