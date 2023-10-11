@@ -863,7 +863,7 @@ end
     Izm1 = max(Iz - 1,1)
     cCol[I,J,iz] = U[Izm1,ind,5] / U[Izm1,ind,1]
   end
-  if iz == ColumnTilesDim || Iz = Nz
+  if iz == ColumnTilesDim || Iz == Nz
     Izp1 = min(Iz + 1,Nz)
     cCol[I,J,iz+2] = U[Izp1,ind,5] / U[Izp1,ind,1]
     Izp2 = min(Iz + 2,Nz)
@@ -902,7 +902,7 @@ end
     @inbounds DivRho = D[I,1] * uConCol[1,J,iz] 
     @inbounds DivRho += D[J,1] * vConCol[I,1,iz] 
     @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
-    @inbounds DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz]
+    @inbounds DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz+1]
     for k = 2 : N
       @inbounds DivRho += D[I,k] * uConCol[k,J,iz] 
       @inbounds DivRho += D[J,k] * vConCol[I,k,iz] 
