@@ -1409,6 +1409,5 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
 
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-  @show sum(abs.(F))
 end
 
