@@ -84,8 +84,8 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:A
             lammax = maximum(lam)
             if abs(lammin - lammax) > 2*pi-dTol
               for i = 1 : 8
-                if lam[i] < pi
-                  lam[i] = lam[i] + 2*pi
+                if lam[i] > pi
+                  lam[i] = lam[i] - 2*pi
                   if lam[i] > 3*pi
                     lam[i] = lam[i]  - 2*pi
                   end
@@ -176,6 +176,7 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
           for i=1:4
             (lam[i],theta[i],z[i]) = cart2sphere(X[i,1],X[i,2],X[i,3])
           end 
+#=
           lammin = minimum(lam)
           lammax = maximum(lam)
           if lammin < 0.0 || lammax > 2*pi
@@ -194,6 +195,7 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
             end
 #           @show "nac",lam
           end
+          =#
           for i = 1 : 4
             pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Output.RadPrint,0.0)/Global.Output.H/5.0]
             ipts = ipts + 1
@@ -285,13 +287,14 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
       RhoCell = zeros(OrdPrint*OrdPrint*nz*NF) 
 #     @views Interpolate!(RhoCell,Rho,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       @views InterpolateGPU!(cCell,U[:,:,RhoPos],vtkInter,CG.Glob)
-      @views copyto!(RhoCell,cCell)
+      @views copyto!(RhoCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["rho", VTKCellData()] = RhoCell
     elseif  str == "u" 
       uPos = Global.Model.uPos
       uCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views InterpolateGPU!(cCell,U[:,:,uPos],vtkInter,CG.Glob)
-      @views copyto!(uCell,cCell)
+      @views copyto!(uCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+#     @views Interpolate!(uCell,U[:,:,uPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["u", VTKCellData()] = uCell
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
@@ -303,7 +306,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
       vPos = Global.Model.vPos
       vCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views InterpolateGPU!(cCell,U[:,:,vPos],vtkInter,CG.Glob)
-      @views copyto!(vCell,cCell)
+      @views copyto!(vCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["v", VTKCellData()] = vCell
     elseif  str == "Rhov" 
       vPos = Global.Model.vPos
@@ -327,7 +330,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
       InterpolateWBGPU!(cCell,U[:,:,uPos],U[:,:,vPos],U[:,:,wPos],vtkInter,Metric.dXdxI,CG.Glob)
 #     @views InterpolateWB!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
 #       vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Metric.dXdxI)
-      @views copyto!(wCell,cCell)
+      @views copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
@@ -341,7 +344,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
         RhoPos = Global.Model.RhoPos
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
         @views InterpolateRhoGPU!(cCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,CG.Glob)
-        copyto!(ThCell,cCell)
+        copyto!(ThCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
         vtk["Th", VTKCellData()] = ThCell
       end
     elseif str == "ThE"  
@@ -378,7 +381,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
       pCell = zeros(OrdPrint*OrdPrint*nz*NF)
 #     Interpolate!(pCell,Pres,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       InterpolateGPU!(cCell,Pres,vtkInter,CG.Glob)
-      @views copyto!(pCell,cCell)
+      @views copyto!(pCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["p", VTKCellData()] = pCell 
     elseif  str == "Tr1" 
       Tr1Pos = Global.Model.NumV + 1
@@ -386,7 +389,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
       Tr1Cell = zeros(OrdPrint*OrdPrint*nz*NF)
 #     @views InterpolateClipp!(Tr1Cell,temp,Rho,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       @views InterpolateRhoGPU!(cCell,U[:,:,Tr1Pos],U[:,:,RhoPos],vtkInter,CG.Glob)
-      copyto!(Tr1Cell,cCell)
+      copyto!(Tr1Cell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["Tr1", VTKCellData()] = Tr1Cell
     elseif  str == "Tr2" 
       Tr2Pos = Global.Model.NumV + 2
@@ -400,7 +403,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
       VortCell = zeros(OrdPrint*OrdPrint*nz*NF)
 #     @views InterpolateVort!(VortCell,U[:,:,uPos:vPos],vtkInter,OrdPrint,CG,Metric,Cache,Global)
       InterpolateVortGPU!(cCell,U,vtkInter,CG,Metric)
-      copyto!(VortCell,cCell)
+      copyto!(VortCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["Vort", VTKCellData()] = VortCell
     end   
   end   
@@ -470,9 +473,11 @@ function Interpolate!(cCell,c,Inter,OrdPoly,OrdPrint,Glob,NF,nz)
   for iF=1:NF
     for iz=1:nz
       @. cc = 0.0
+      ID = 0
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
-          @views @. cc = cc + Inter[:,:,i,j]*c[iz,Glob[i,j,iF]]
+          ID += 1  
+          @views @. cc = cc + Inter[:,:,i,j]*c[iz,Glob[ID,iF]]
         end
       end
       @views cCell[icCell:icCell+OrdPrint*OrdPrint-1] = reshape(cc,OrdPrint*OrdPrint)

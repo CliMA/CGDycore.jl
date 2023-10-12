@@ -68,8 +68,8 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = vtkStruct{FT}(backend,1,TransSphereX!,CG,Metric,Global)
-  unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
+# vtkCachePart = vtkStruct{FT}(backend,1,TransSphereX!,CG,Metric,Global)
+# unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
   if Topography.TopoS == "EarthOrography"

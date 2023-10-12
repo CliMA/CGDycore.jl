@@ -202,6 +202,7 @@ U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
 Global.Output.vtk = 0
+@show Flat
 Global.Output.Flat = Flat
 Global.Output.nPanel = nPanel
 Global.Output.RadPrint = H
@@ -279,7 +280,8 @@ end
 if Device == "CPU"  || Device == "GPU"
   @show "FcnGPU"  
   nT = max(7 + NumTr, NumV + NumTr)
-  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchur!,
+  @show Global.Output.Flat
+  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
     CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
 else
   @show "Fcn"  
