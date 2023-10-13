@@ -439,6 +439,11 @@ function parse_commandline()
      arg_type = String
      default = "Float32"
 
+    "--NumberThreadGPU"
+     help = "Number of threads for GPU"
+     arg_type = Int
+     default = 256
+
   end
   return parse_args(s)
 end

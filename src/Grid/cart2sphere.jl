@@ -1,4 +1,6 @@
 function cart2sphere(x,y,z)
+FT = eltype(x)
+@show FT
 r=sqrt(x^2+y^2+z^2);
 phi=asin(z/r);
 
@@ -9,17 +11,18 @@ phi=asin(z/r);
 #     λ = atan(y, x)
 # end
 
-lam=0;
-if abs(abs(phi)-pi/2)>1.e-14
+lam=FT(0)
+if abs(abs(phi)-FT(pi/2))>FT(1.e-14)
   lam=atan(y,x); # TODO: check translation with Oswald
-  if lam<0.0
-    lam=lam+2*pi;
+  if lam<FT(0.0)
+    lam=lam+FT(2*pi);
   end
 end
-return (float(lam),float(phi),r)
+return (lam,phi,r)
 end
 
 function cart2sphereDeg(x,y,z)
+FT = eltype(x)
 r=sqrt(x^2+y^2+z^2);
 phi=asind(z/r);
 
@@ -30,8 +33,8 @@ phi=asind(z/r);
 #     λ = atan(y, x)
 # end
 
-lam=-180;
-if abs(abs(phi)-90.0)>1.e-14
+lam=-FT(180);
+if abs(abs(phi)-FT(90.0))>FT(1.e-14)
   lam=atand(y,x); # TODO: check translation with Oswald
 end
 return (float(lam),float(phi),r)

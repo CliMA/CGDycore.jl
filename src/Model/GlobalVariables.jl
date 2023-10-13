@@ -622,17 +622,20 @@ end
 mutable struct ParallelComStruct
   Proc::Int
   ProcNumber::Int
+  NumberThreadGPU::Int
 end  
 function ParallelComStruct()
   Proc = 1
   ProcNumber = 1
+  NumberThreadGPU = 256
   return ParallelComStruct(
     Proc,
     ProcNumber,
+    NumberThreadGPU,
   )
 end  
 
-mutable struct ModelStruct
+mutable struct ModelStruct{FT}
   Problem::String
   Profile::Bool
   ProfRho::String
@@ -660,22 +663,22 @@ mutable struct ModelStruct
   Source::Bool
   Damping::Bool
   Geos::Bool
-  Relax::Float64
-  StrideDamp::Float64
+  Relax::FT
+  StrideDamp::FT
   Coriolis::Bool
   CoriolisType::String
   Buoyancy::Bool
   RefProfile::Bool
   HyperVisc::Bool
-  HyperDCurl::Float64
-  HyperDGrad::Float64
-  HyperDRhoDiv::Float64
-  HyperDDiv::Float64
+  HyperDCurl::FT
+  HyperDGrad::FT
+  HyperDRhoDiv::FT
+  HyperDDiv::FT
   Upwind::Bool
   HorLimit::Bool
   Microphysics::Bool
-  RelCloud::Float64
-  Rain::Float64
+  RelCloud::FT
+  Rain::FT
   VerticalDiffusion::Bool
   JacVerticalDiffusion::Bool
   JacVerticalAdvection::Bool
@@ -688,7 +691,7 @@ mutable struct ModelStruct
   StretchType::String
 end
 
-function Model()
+function ModelStruct{FT}() where FT <:AbstractFloat
   Problem = ""
   Profile = false
   ProfRho = ""
@@ -742,7 +745,7 @@ function Model()
   Curl = true
   Stretch = false
   StretchType = ""
-  return ModelStruct(
+  return ModelStruct{FT}(
    Problem,
    Profile,
    ProfRho,
@@ -803,7 +806,7 @@ mutable struct GlobalStruct{FT<:AbstractFloat,
                             TCache}
 # Metric::MetricStruct{FT}
   Grid::GridStruct
-  Model::ModelStruct
+  Model::ModelStruct{FT}
   ParallelCom::ParallelComStruct
   TimeStepper::TimeStepperStruct
 # Phys::PhysParameters

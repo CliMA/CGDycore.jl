@@ -1,9 +1,8 @@
 @kernel function InterpolateRotKernel!(Rot,@Const(uC),@Const(vC),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(Inter),@Const(Glob))
 
-  gi, gz, gF = @index(Group, NTuple)
-  ID, iz   = @index(Local, NTuple)
-  _,_,IF = @index(Global, NTuple)
+  ID, iz   = @index(Local,  NTuple)
+  _,Iz,IF = @index(Global,  NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform size(D,1)
@@ -12,15 +11,13 @@
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   RotLoc = @localmem eltype(Rot) (N,N,ColumnTilesDim)
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
-    RotLoc[I,J,iz] = 0
+    RotLoc[I,J,iz] = eltype(Rot)(0)
   end
   @synchronize
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz 
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
@@ -36,7 +33,6 @@
   end
   @synchronize
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz 
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
@@ -52,9 +48,8 @@ end
 
 @kernel function InterpolateKernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  I, J, iz   = @index(Local,  NTuple)
+  _,_,Iz,IF = @index(Global,  NTuple)
 
 
   ColumnTilesDim = @uniform @groupsize()[3]
@@ -65,9 +60,8 @@ end
   @uniform N = size(Inter,3)
 
   
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
-    @inbounds cCell[I,J,Iz,IF] = 0
+    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
     iD = 0
     for jP = 1 : N
       for iP = 1 : N
@@ -81,9 +75,8 @@ end
 
 @kernel function InterpolateRhoKernel!(cCell,@Const(c),@Const(RhoC),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  I, J, iz   = @index(Local,  NTuple)
+  _,_,Iz,IF = @index(Global,  NTuple)
 
 
   ColumnTilesDim = @uniform @groupsize()[3]
@@ -93,9 +86,8 @@ end
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   @uniform N = size(Inter,3)
   
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz <= Nz
-    @inbounds cCell[I,J,Iz,IF] = 0
+    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
     ID = 0
     for jP = 1 : N
       for iP = 1 : N
@@ -108,9 +100,8 @@ end
 end
 
 @kernel function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),@Const(Inter),@Const(dXdxI),@Const(Glob))
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,_,IF = @index(Global, NTuple)
+  I, J, iz   = @index(Local,  NTuple)
+  _,_,Iz,IF = @index(Global,  NTuple)
 
 
   ColumnTilesDim = @uniform @groupsize()[3]
@@ -121,9 +112,8 @@ end
   @uniform N = size(Inter,3)
 
 
-  Iz = (gz - 1) * ColumnTilesDim + iz
   if Iz == 1
-    @inbounds cCell[I,J,Iz,IF] = 0
+    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
     iD = 0  
     for jP = 1 : N
       for iP = 1 : N
@@ -131,17 +121,17 @@ end
         @inbounds ind = Glob[iD,IF]
         @inbounds w0 = -(u[Iz,ind] * dXdxI[3,1,1,iD,Iz,IF] +
           v[Iz,ind] * dXdxI[3,2,1,iD,Iz,IF]) / dXdxI[3,3,1,iD,Iz,IF]
-        @inbounds  cCell[I,J,Iz,IF] += 0.5 * Inter[I,J,iP,jP] * (w[Iz,ind] + w0)
+        @inbounds  cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w0)
       end
     end
   elseif Iz <= Nz
-    @inbounds cCell[I,J,Iz,IF] = 0
+    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
     iD = 0
     for jP = 1 : N
       for iP = 1 : N
         iD += 1
         @inbounds ind = Glob[iD,IF]
-        @inbounds  cCell[I,J,Iz,IF] += 0.5 * Inter[I,J,iP,jP] * (w[Iz,ind] + w[Iz-1,ind])
+        @inbounds  cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w[Iz-1,ind])
       end
     end
   end
@@ -159,7 +149,7 @@ function InterpolateVortGPU!(Vort,U,Inter,FE,Metric)
   Nz = size(U,1)
 
 # Ranges
-  NzG = min(div(1024,DoF),Nz)
+  NzG = min(div(256,DoF),Nz)
   group = (DoF, NzG, 1)
   ndrange = (DoF, Nz, NF)
 
@@ -186,7 +176,7 @@ function InterpolateGPU!(cCell,c,Inter,Glob)
   Nz = size(c,1)
 
 # Ranges
-  NzG = min(div(1024,OrdPrint*OrdPrint),Nz)
+  NzG = min(div(256,OrdPrint*OrdPrint),Nz)
   group = (OrdPrint, OrdPrint, NzG, 1)
   ndrange = (OrdPrint, OrdPrint, Nz, NF)
 
@@ -206,7 +196,7 @@ function InterpolateRhoGPU!(cCell,c,Rho,Inter,Glob)
   Nz = size(c,1)
 
 # Ranges
-  NzG = min(div(1024,OrdPrint*OrdPrint),Nz)
+  NzG = min(div(256,OrdPrint*OrdPrint),Nz)
   group = (OrdPrint, OrdPrint, NzG, 1)
   ndrange = (OrdPrint, OrdPrint, Nz, NF)
 
@@ -226,7 +216,7 @@ function InterpolateWBGPU!(cCell,u,v,w,Inter,dXdxI,Glob)
   Nz = size(w,1)
 
 # Ranges
-  NzG = min(div(1024,OrdPrint*OrdPrint),Nz)
+  NzG = min(div(256,OrdPrint*OrdPrint),Nz)
   group = (OrdPrint, OrdPrint, NzG, 1)
   ndrange = (OrdPrint, OrdPrint, Nz, NF)
 

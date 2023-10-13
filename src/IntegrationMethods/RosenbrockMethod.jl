@@ -2,32 +2,22 @@ mutable struct RosenbrockStruct{FT<:AbstractFloat,
                                AT1<:AbstractArray,
                                AT2<:AbstractArray}
   nStage::Int
-  alpha::AT2
-  Gamma::AT2
-  b::AT1
   a::AT2
   c::AT2
-  gamma::Float64
+  gamma::FT
   m::AT1
 end
 
 function RosenbrockStruct{FT}(backend) where FT<:AbstractFloat
   nStage = 0
-  alpha = KernelAbstractions.zeros(backend,FT,0,0)
-  Gamma = KernelAbstractions.zeros(backend,FT,0,0)
-  b = KernelAbstractions.zeros(backend,FT,0)
   a = KernelAbstractions.zeros(backend,FT,0,0)
   c = KernelAbstractions.zeros(backend,FT,0,0)
-  gamma = 0
+  gamma = FT(0)
   m = KernelAbstractions.zeros(backend,FT,0)
-  d = KernelAbstractions.zeros(backend,FT,0)
   return RosenbrockStruct{FT,
-                          typeof(b),
-                          typeof(alpha)}(
+                          typeof(m),
+                          typeof(a)}(
     nStage,
-    alpha,
-    Gamma,
-    b,
     a,
     c,
     gamma,
@@ -39,26 +29,32 @@ function RosenbrockStruct{FT}(backend,Method) where FT<:AbstractFloat
   str = Method
   if str == "SSP-Knoth"
     nStage = 3
-    alpha = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    alpha = zeros(FT,nStage,nStage)
     alpha[2,1] = 1
     alpha[3,1] = 1/4
     alpha[3,2] = 1/4
-    b = KernelAbstractions.zeros(backend,FT,nStage)
+    b = zeros(FT,nStage)
     b[1] = 1/6
     b[2] = 1/6
     b[3] = 2/3
-    Gamma = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    Gamma = zeros(FT,nStage,nStage)
     Gamma[1,1] = 1
     Gamma[2,2] = 1
     Gamma[3,1] = -3/4
     Gamma[3,2] = -3/4
     Gamma[3,3] = 1
-    gamma = 1        
-    a = alpha / Gamma
-    c = -inv(Gamma)
-    m = Gamma'\b
-    a=[a
-       m']
+    gamma = FT(1)        
+    aCPU = alpha / Gamma
+    cCPU = -inv(Gamma)
+    mCPU = Gamma'\b
+    aCPU=[aCPU
+       mCPU']
+    a = KernelAbstractions.zeros(backend,FT,nStage+1,nStage)
+    c = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    m = KernelAbstractions.zeros(backend,FT,nStage)
+    copyto!(a,aCPU)
+    copyto!(m,mCPU)
+    copyto!(c,cCPU)
 
   elseif str == "ROSRK3"
     nStage = 3
@@ -111,12 +107,9 @@ function RosenbrockStruct{FT}(backend,Method) where FT<:AbstractFloat
     m = a[end,:]
   end
 return RosenbrockStruct{FT,
-                        typeof(b),
-                        typeof(alpha)}(
+                        typeof(m),
+                        typeof(a)}(
   nStage,
-  alpha,
-  Gamma,
-  b,
   a,
   c,
   gamma,

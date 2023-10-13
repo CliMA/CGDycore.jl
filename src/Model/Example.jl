@@ -147,34 +147,34 @@ function (profile::BaroWaveExample)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
-    Z = max(R - Phys.RadEarth, 0)
-    T0 = 0.5 * (Param.T0E + Param.T0P)
-    ConstA = 1.0 / Param.LapseRate
+    Z = max(R - Phys.RadEarth, FT(0))
+    T0 = FT(0.5) * (Param.T0E + Param.T0P)
+    ConstA = FT(1.0) / Param.LapseRate
     ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
-    ConstC = 0.5 * (Param.K + 2.0) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
+    ConstC = FT(0.5) * (Param.K + FT(2.0)) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
     ConstH = Phys.Rd * T0 / Phys.Grav
     ScaledZ = Z / (Param.B * ConstH)
     Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
-    ConstB * (1.0 - 2.0 * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
-    Tau2 = ConstC * (1.0 - 2.0 * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
-    IntTau1 = ConstA * (exp(Param.LapseRate / T0 * Z) - 1.0) +
+    ConstB * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    Tau2 = ConstC * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    IntTau1 = ConstA * (exp(Param.LapseRate / T0 * Z) - FT(1.0)) +
     ConstB * Z * exp(-ScaledZ * ScaledZ)
     IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
     if Param.Deep
       RRatio = R / Phys.RadEarth
     else
-      RRatio = 1.0
+      RRatio = FT(1.0)
     end
     InteriorTerm = (RRatio * cos(Lat))^Param.K -
-    Param.K / (Param.K + 2.0) * (RRatio * cos(Lat))^(Param.K + 2.0)
-    Temperature = 1.0 / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
     Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
     Rho = Pressure / (Phys.Rd * Temperature)
     Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
-    InteriorTermU = (RRatio * cos(Lat))^(Param.K - 1.0) -
-         (RRatio * cos(Lat))^(Param.K + 1.0)
+    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(Lat))^(Param.K + FT(1.0))
       BigU = Phys.Grav / Phys.RadEarth * Param.K *
         IntTau2 * InteriorTermU * Temperature
       if Param.Deep
@@ -198,21 +198,20 @@ function (profile::BaroWaveExample)(Param,Phys)
 
       # Tapered perturbation with height
       if Z < Param.PertZ
-        PertTaper = 1.0 - 3.0 * Z * Z / (Param.PertZ * Param.PertZ) +
-           2.0 * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
+        PertTaper = FT(1.0) - FT(3.0) * Z * Z / (Param.PertZ * Param.PertZ) +
+           FT(2.0) * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
       else
-        PertTaper = 0.0
+        PertTaper = FT(0.0)
       end
 
       # Apply perturbation in zonal velocity
-      if GreatCircleR < 1.0
+      if GreatCircleR < FT(1.0)
         uSPert = Param.Up * PertTaper * exp(-GreatCircleR * GreatCircleR)
       else
-        uSPert = 0.0
+        uSPert = FT(0.0)
       end
       uS = uS + uSPert
       w = FT(0)
-
     return (Rho,uS,vS,w,Th)
   end
   return local_profile

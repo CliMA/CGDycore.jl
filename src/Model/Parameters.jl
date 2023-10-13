@@ -10,41 +10,41 @@ Base.@kwdef struct ParamGalewskiSphere
   Omega = 2*pi/24.0/3600.0 
 end
 
-Base.@kwdef struct ParamBaroWaveDrySphere
-  T0E::Float64 = 310.0
-  T0P::Float64 = 240.0
-  B::Float64 = 2.0
-  K::Float64 = 3.0
-  LapseRate::Float64 = 0.005
-  U0::Float64 = -0.5
-  PertR::Float64 = 1.0/6.0
-  Up::Float64 = 1.0
-  PertExpR::Float64 = 0.1
-  PertLon::Float64 = pi/9.0
-  PertLat::Float64 = 2.0 * pi / 9.0
-  PertZ::Float64 = 15000.0
-  NBr::Float64 = 1.e-2
-  DeltaT::Float64 = 1
-  ExpDist::Float64 = 5
-  T0::Float64 = 300
-  TEq::Float64 = 300
-  T_init::Float64  = 315
-  lapse_rate::Float64  = -0.008
+Base.@kwdef struct ParamBaroWaveDrySphere{FT}
+  T0E::FT = 310.0
+  T0P::FT = 240.0
+  B::FT = 2.0
+  K::FT = 3.0
+  LapseRate::FT = 0.005
+  U0::FT = -0.5
+  PertR::FT = 1.0/6.0
+  Up::FT = 1.0
+  PertExpR::FT = 0.1
+  PertLon::FT = pi/9.0
+  PertLat::FT = 2.0 * pi / 9.0
+  PertZ::FT = 15000.0
+  NBr::FT = 1.e-2
+  DeltaT::FT = 1
+  ExpDist::FT = 5
+  T0::FT = 300
+  TEq::FT = 300
+  T_init::FT  = 315
+  lapse_rate::FT  = -0.008
   Deep::Bool = false
-  pert::Float64 = 0.1
-  uMax::Float64 = 1.0
-  vMax::Float64 = 0.0
-  DeltaT_y::Float64 = 0
-  DeltaTh_z::Float64 = -5
-  T_equator::Float64 = 315
-  T_min::Float64 = 200
-  sigma_b::Float64 = 7/10
-  z_D::Float64 = 20.0e3
+  pert::FT = 0.1
+  uMax::FT = 1.0
+  vMax::FT = 0.0
+  DeltaT_y::FT = 0
+  DeltaTh_z::FT = -5
+  T_equator::FT = 315
+  T_min::FT = 200
+  sigma_b::FT = 7/10
+  z_D::FT = 20.0e3
   #      Moist
-  q_0::Float64 = 0.018                # Maximum specific humidity (default: 0.018)
-  q_t::Float64 = 1.0e-12
+  q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
+  q_t::FT = 1.0e-12
   # Surface flux
-  CMom::Float64 = 1.e-3
+  CMom::FT = 1.e-3
 end
 
 Base.@kwdef struct ParamHeldSuarezDrySphere
@@ -252,10 +252,10 @@ end
 
 
 
-function Parameters(Problem::String)
+function Parameters(FT,Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro" || Problem == "BaroWaveMoistSphere"
     @show Problem
-    Param = ParamBaroWaveDrySphere()
+    Param = ParamBaroWaveDrySphere{FT}()
   elseif Problem == "GalewskiSphere"
     @show Problem
     Param = ParamGalewskiSphere()

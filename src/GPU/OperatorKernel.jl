@@ -1,7 +1,7 @@
 @kernel function MomentumCoriolisKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),Phys)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -59,11 +59,11 @@
     Izp = min(Iz+1,Nz)
     Izm = max(Iz-1,1)
     ind = Glob[ID,IF]
-    Dzu2 = 1/2 * (U[Izp,ind,2] - uCol[I,J,iz])
-    Dzv2 = 1/2 * (U[Izp,ind,3] - vCol[I,J,iz])
-    Dzu1 = 1/2 * (uCol[I,J,iz] - U[Izm,ind,2])
-    Dzv1 = 1/2 * (vCol[I,J,iz] - U[Izm,ind,3])
-    Dzw = 1/2 * (wCol[I,J,iz+1] - wCol[I,J,iz]) 
+    Dzu2 = eltype(F)(0.5) * (U[Izp,ind,2] - uCol[I,J,iz])
+    Dzv2 = eltype(F)(0.5) * (U[Izp,ind,3] - vCol[I,J,iz])
+    Dzu1 = eltype(F)(0.5) * (uCol[I,J,iz] - U[Izm,ind,2])
+    Dzv1 = eltype(F)(0.5) * (vCol[I,J,iz] - U[Izm,ind,3])
+    Dzw = eltype(F)(0.5) * (wCol[I,J,iz+1] - wCol[I,J,iz]) 
     for k = 2 : N
       @inbounds Dxu += D[I,k] * uCol[k,J,iz]
       @inbounds Dyu += D[J,k] * uCol[I,k,iz]
@@ -74,12 +74,12 @@
       @inbounds Dxw2 += D[I,k] * wCol[k,J,iz+1]
       @inbounds Dyw2 += D[J,k] * wCol[I,k,iz+1]
     end  
-    x = 1/2 * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
-    y = 1/2 * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
-    z = 1/2 * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
+    x = eltype(F)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
+    y = eltype(F)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
+    z = eltype(F)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
     r = sqrt(x^2 + y^2 + z^2)
     sinlat = z / r
-    W = -2 * Phys.Omega * sinlat * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    W = -eltype(F)(2) * Phys.Omega * sinlat * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     FuCoriolis = -RhoCol[I,J,iz] * vCol[I,J,iz] * W
     FvCoriolis = RhoCol[I,J,iz] * uCol[I,J,iz] * W
 
@@ -99,7 +99,7 @@ end
 @kernel function MomentumKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(MRho),@Const(M),@Const(Glob),Phys)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -189,7 +189,7 @@ end
 @kernel function GradKernel!(F,@Const(U),@Const(p),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(MRho),@Const(Glob),Phys,::Val{BANK}=Val(1)) where BANK
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -235,7 +235,7 @@ end
   end  
 
   if Iz < Nz
-    @inbounds GradZ = 1/2 * (Pres[I,J,iz+1] - Pres[I,J,iz])  
+    @inbounds GradZ = eltype(F)(0.5) * (Pres[I,J,iz+1] - Pres[I,J,iz])  
     @inbounds Gradw =  GradZ* (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF])
     @inbounds @atomic F[Iz,ind,4] += -(Gradw + Gradw2 +
       Phys.Grav * (U[Iz,ind,1] * JJ[ID,2,Iz,IF] + U[Iz+1,ind,1] * JJ[ID,1,Iz+1,IF])) /
@@ -247,7 +247,7 @@ end
 @kernel function RhoGradKinKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -357,7 +357,7 @@ end
 @kernel function DivRhoGradKernel!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -400,7 +400,7 @@ end
 @kernel function HyperViscKernel!(F,MRho,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob)) 
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -486,7 +486,7 @@ end
 @kernel function HyperViscKernelKoeff!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),KoeffCurl,KoeffGrad,KoeffDiv) 
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -565,7 +565,7 @@ end
 @kernel function DivRhoGradKernel1!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -659,7 +659,7 @@ end
   @Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -711,7 +711,7 @@ end
       (dXdxI[I,J,2,Iz,3,3,IF] + dXdxI[I,J,1,Iz+1,3,3,IF]) * wCol[I,J,iz+1]
     @inbounds cF = (JJ[ID,2,Iz,IF] * cCol[I,J,iz+1] + JJ[ID,1,Iz+1,IF] * cCol[I,J,iz+2]) /
       (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
-    Flux = 0.5 * wCon * cF
+    Flux = eltype(F)(0.5) * wCon * cF
     @inbounds @atomic FCol[I,J,iz+1] += -Flux
     @inbounds @atomic FCol[I,J,iz+2] += Flux
   end 
@@ -747,7 +747,7 @@ end
   @Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -839,7 +839,7 @@ end
 @kernel function DivRhoTrUpwind3Kernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -889,10 +889,10 @@ end
     @inbounds JR = JJ[ID,1,Iz+1,IF] + JJ[ID,2,Iz+1,IF]
     @inbounds JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
     cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
-    Flux = 0.25 * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
+    Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
     @inbounds @atomic F[Iz,ind,5] += -Flux / M[Iz,ind]
     @inbounds @atomic F[Iz+1,ind,5] += Flux / M[Iz+1,ind]
-    Flux = 0.5 * wCon
+    Flux = eltype(F)(0.5) * wCon
     @inbounds @atomic F[Iz,ind,1] += -Flux / M[Iz,ind]
     @inbounds @atomic F[Iz+1,ind,1] += Flux / M[Iz+1,ind]
   end 
@@ -918,7 +918,7 @@ end
 @kernel function DivRhoTrUpwind3Kernel!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),Koeff)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
+# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -980,7 +980,7 @@ end
     Flux = 0.25 * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
     @inbounds @atomic F[Iz,ind,5] += -Flux / M[Iz,ind]
     @inbounds @atomic F[Iz+1,ind,5] += Flux / M[Iz+1,ind]
-    Flux = 0.5 * wCon
+    Flux = eltype(F)(0.5) * wCon
     @inbounds @atomic F[Iz,ind,1] += -Flux / M[Iz,ind]
     @inbounds @atomic F[Iz+1,ind,1] += Flux / M[Iz+1,ind]
   end 
@@ -1124,7 +1124,6 @@ end
 
 @kernel function uvwFunCKernel!(Profile,u,v,w,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
   _,Iz,IF = @index(Global, NTuple)
 
@@ -1136,9 +1135,9 @@ end
 
   if Iz <= Nz
     ind = Glob[I,IF]
-    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,_ = Profile(xS,time)
     @inbounds u[Iz,ind] = uP
@@ -1146,9 +1145,9 @@ end
   end
   if Iz <= Nz - 1
     ind = Glob[I,IF]
-    x1 = 0.5 * (X[I,2,1,Iz,IF] + X[I,1,1,Iz+1,IF])
-    x2 = 0.5 * (X[I,2,2,Iz,IF] + X[I,1,2,Iz+1,IF])
-    x3 = 0.5 * (X[I,2,3,Iz,IF] + X[I,1,3,Iz+1,IF])
+    x1 = eltype(X)(0.5) * (X[I,2,1,Iz,IF] + X[I,1,1,Iz+1,IF])
+    x2 = eltype(X)(0.5) * (X[I,2,2,Iz,IF] + X[I,1,2,Iz+1,IF])
+    x3 = eltype(X)(0.5) * (X[I,2,3,Iz,IF] + X[I,1,3,Iz+1,IF])
     xS = SVector{3}(x1, x2 ,x3)
     @inbounds _,_,_,w[Iz,ind] = Profile(xS,time)
   end
@@ -1156,7 +1155,6 @@ end
 
 @kernel function RhouvFunCKernel!(Profile,Rho,u,v,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
   _,Iz,IF = @index(Global, NTuple)
 
@@ -1167,9 +1165,9 @@ end
 
   if Iz <= Nz
     ind = Glob[ID,IF]
-    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,uP,vP,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
@@ -1180,7 +1178,6 @@ end
 
 @kernel function RhoFunCKernel!(Profile,Rho,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
   _,Iz,IF = @index(Global, NTuple)
 
@@ -1191,9 +1188,9 @@ end
 
   if Iz <= Nz
     ind = Glob[I,IF]
-    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
@@ -1202,7 +1199,6 @@ end
 
 @kernel function TrFunCKernel!(Profile,Tr,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
   _,Iz,IF = @index(Global, NTuple)
 
@@ -1213,9 +1209,9 @@ end
 
   if Iz <= Nz
     ind = Glob[I,IF]
-    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,TrP = Profile(xS,time)
     @inbounds Tr[Iz,ind] = RhoP * TrP
@@ -1224,7 +1220,6 @@ end
 
 @kernel function ThFunCKernel!(Profile,Th,time,@Const(Glob),@Const(X),Param,Phys)
 
-  gi, gz, gF = @index(Group, NTuple)
   I, iz   = @index(Local, NTuple)
   _,Iz,IF = @index(Global, NTuple)
 
@@ -1235,9 +1230,9 @@ end
 
   if Iz <= Nz
     ind = Glob[I,IF]
-    x1 = 0.5 * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = 0.5 * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = 0.5 * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,ThP = Profile(xS,time)
     @inbounds Th[Iz,ind] = RhoP * ThP
@@ -1247,9 +1242,8 @@ end
 
 @kernel function ComputeFunFKernel!(Profile,w,time,@Const(Glob),@Const(X),Param)
 
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
@@ -1258,9 +1252,9 @@ end
 
   if Iz <= Nz - 1 
     ind = Glob[ID,IF]
-    x1 = 0.5 * (X[I,J,2,1,Iz,IF] + X[I,J,1,1,Iz+1,IF])
-    x2 = 0.5 * (X[I,J,2,2,Iz,IF] + X[I,J,1,2,Iz+1,IF])
-    x3 = 0.5 * (X[I,J,2,3,Iz,IF] + X[I,J,1,3,Iz+1,IF])
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,_,_,wP = Profile(xS,time)
     @inbounds w[Iz,ind] = wP
@@ -1314,7 +1308,6 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
 end
 
 @kernel function PressureKernel!(p,@Const(U),Phys)
-  jz, jG = @index(Group, NTuple)
   Iz,IC = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[2]
@@ -1360,6 +1353,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
   NF = size(Glob,2)
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+
 
   KoeffCurl = Global.Model.HyperDCurl
   KoeffGrad = Global.Model.HyperDGrad
@@ -1378,7 +1373,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
   @views FRhoTr = F[:,:,5]
   @views p = Cache.AuxG[:,:,1]
 # Ranges
-  NzG = min(div(512,N*N),Nz)
+  NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
 

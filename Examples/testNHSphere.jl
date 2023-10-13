@@ -2,6 +2,7 @@ using CGDycore
 using MPI
 using Base
 using CUDA
+using Metal
 using KernelAbstractions
 using StaticArrays
 
@@ -79,8 +80,8 @@ Flat = parsed_args["Flat"]
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
+NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
-Param = CGDycore.Parameters(Problem)
 
 if Device == "CPU"
   backend = CPU()
@@ -88,6 +89,10 @@ elseif Device == "GPU"
   if GPUType == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(true)
+  elseif GPUType == "Metal"
+    backend = MetalBackend()
+    Metal.allowscalar(true)
+    @show backend
   end
 else
   backend = CPU()
@@ -101,6 +106,7 @@ else
   @show "False FloatTypeBackend"
   stop
 end
+Param = CGDycore.Parameters(FTB,Problem)
 
 KernelAbstractions.synchronize(backend)
 
@@ -111,7 +117,7 @@ MPI.Init()
 Phys=CGDycore.PhysParameters{FTB}()
 
 #ModelParameters
-Model = CGDycore.Model()
+Model = CGDycore.ModelStruct{FTB}()
 
 # Initial conditions
 Model.Equation=Equation
@@ -275,9 +281,10 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
 elseif ModelType == "Conservative"
   DiscType = Val(:Conservative)  
 end  
-@show DiscType
+
 
 if Device == "CPU"  || Device == "GPU"
+  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   @show "FcnGPU"  
   nT = max(7 + NumTr, NumV + NumTr)
   @show Global.Output.Flat

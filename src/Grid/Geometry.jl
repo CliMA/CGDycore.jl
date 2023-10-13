@@ -38,23 +38,24 @@ cross(P1::Point,P2::Point)=Point([P1.y*P2.z-P1.z*P2.y,P1.z*P2.x-P1.x*P2.z,P1.x*P
 
 
 function sphere2cart(lam,phi,r)
-x=cos(lam)*cos(phi)*r;
-y=sin(lam)*cos(phi)*r;
-z=sin(phi)*r;
-return [x;y;z];
+x=cos(lam)*cos(phi)*r
+y=sin(lam)*cos(phi)*r
+z=sin(phi)*r
+return [xy;z];
 end
 
 function sphereDeg2cart(lam,phi,r)
-x=cosd(lam)*cosd(phi)*r;
-y=sind(lam)*cosd(phi)*r;
-z=sind(phi)*r;
-return [x;y;z];
+x=cosd(lam)*cosd(phi)*r
+y=sind(lam)*cosd(phi)*r
+z=sind(phi)*r
+return [xy;z];
 end
 
 
 function cart2sphere(x,y,z)
-r=sqrt(x^2+y^2+z^2);
-phi=asin(z/r);
+  FT = eltype(x)
+  r = sqrt(x^2 + y^2 + z^2)
+  phi = asin(z / r)
 
 # ϕ = atan(z, hypot(y, x))
 # if abs(ϕ) == 90
@@ -63,20 +64,19 @@ phi=asin(z/r);
 #     λ = atan(y, x)
 # end
 
-lam=0;
-if abs(abs(phi)-pi/2)>1.e-14
-  lam=atan(y,x); # TODO: check translation with Oswald
-  if lam<0.0
-    lam=lam+2*pi;
+  lam = FT(0)
+  if abs(abs(phi) - FT(pi/2))>FT(1.e-14)
+    lam = atan(y,x) # TODO: check translation with Oswald
+    if lam < FT(0.0)
+      lam = lam + FT(2*pi)
+    end
   end
-end
-#return (float(lam),float(phi),r)
-return lam,phi,r
+  return lam,phi,r
 end
 
 function cart2sphereDeg(x,y,z)
-r=sqrt(x^2+y^2+z^2);
-phi=asind(z/r);
+r=sqrt(x^2+y^2+z^2)
+phi=asind(z/r)
 
 # ϕ = atan(z, hypot(y, x))
 # if abs(ϕ) == 90
@@ -85,9 +85,9 @@ phi=asind(z/r);
 #     λ = atan(y, x)
 # end
 
-lam=-180;
+lam=-180
 if abs(abs(phi)-90.0)>1.e-14
-  lam=atand(y,x); # TODO: check translation with Oswald
+  lam=atand(y,x) # TODO: check translation with Oswald
 end
 return (float(lam),float(phi),r)
 end
