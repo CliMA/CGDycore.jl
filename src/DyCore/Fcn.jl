@@ -1,4 +1,6 @@
-function FcnPrepare!(U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvariant})
+function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
+  Param,DiscType::Val{:VectorInvariant})
+
 (;  RhoPos,
     uPos,
     vPos,
@@ -83,7 +85,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorIn
       end    
     end
   end  
-  ExchangeData3DSend(AuxG,Global.Exchange)
+  ExchangeData3DSend(AuxG,Exchange)
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
@@ -129,7 +131,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorIn
       end
     end
   end
-  ExchangeData3DRecv!(AuxG,Global.Exchange)
+  ExchangeData3DRecv!(AuxG,Exchange)
 
   @. CdThG = 0.0
   @. CdTrG = 0.0
@@ -145,7 +147,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorIn
         (J[iD,1,1,iF] + J[iD,2,1,iF])  / CG.M[1,ind]
     end
   end
-  ExchangeData3DSend(Aux2DG,Global.Exchange)
+  ExchangeData3DSend(Aux2DG,Exchange)
   @inbounds for iF in Global.Grid.InteriorFaces
     if Global.Model.SurfaceFlux
       Cd_coefficient!(CdThCG,CdTrCG,CG,Global,Param,iF)
@@ -159,10 +161,11 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorIn
         (J[iD,1,1,iF] + J[iD,2,1,iF])  / CG.M[1,ind] / Metric.dz[1,ind]
     end
   end
-  ExchangeData3DRecv!(Aux2DG,Global.Exchange)
+  ExchangeData3DRecv!(Aux2DG,Exchange)
 end
 
-function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvariant})
+function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
+  DiscType::Val{:VectorInvariant})
 
 (;  RhoPos,
     uPos,
@@ -281,7 +284,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     end
   end
 
-  ExchangeData3DSend(Temp1,Global.Exchange)
+  ExchangeData3DSend(Temp1,Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for iD = 1 : DoF
@@ -336,7 +339,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     end
   end
 
-  ExchangeData3DRecv!(Temp1,Global.Exchange)
+  ExchangeData3DRecv!(Temp1,Exchange)
 # for i = 1 : 6
 #   @views @. Temp1[:,:,i] /= CG.M[:,:]
 # end
@@ -532,7 +535,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
     end
   end  
 
-  ExchangeData3DSend(F,Global.Exchange)
+  ExchangeData3DSend(F,Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for iD = 1 : DoF
@@ -718,7 +721,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Global,Param,DiscType::Val{:VectorInvaria
       end
     end
   end  
-  ExchangeData3DRecv!(F,Global.Exchange)
+  ExchangeData3DRecv!(F,Exchange)
   @views @. F[:,:,RhoPos] /= CG.M
   @views @. F[:,:,ThPos] /= CG.M
   @inbounds for iT = 1:NumTr

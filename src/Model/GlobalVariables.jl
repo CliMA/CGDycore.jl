@@ -811,7 +811,7 @@ mutable struct GlobalStruct{FT<:AbstractFloat,
   TimeStepper::TimeStepperStruct
 # Phys::PhysParameters
   Output::OutputStruct
-  Exchange::ExchangeStruct
+# Exchange::ExchangeStruct
   vtkCache::vtkStruct{FT}
 # Cache::CacheStruct{FT}
 # J::JStruct
@@ -830,7 +830,7 @@ function GlobalStruct{FT}(backend,Grid::GridStruct,
                 ParallelCom::ParallelComStruct,
 #               Phys::PhysParameters,
                 Output::OutputStruct,
-                Exchange::ExchangeStruct,
+#               Exchange::ExchangeStruct,
                 DoF,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:AbstractFloat
 # Metric=MetricStruct{FT}(backend)
 # Cache=CacheStruct{FT}(backend)
@@ -852,7 +852,7 @@ function GlobalStruct{FT}(backend,Grid::GridStruct,
     TimeStepper,
 #   Phys,
     Output,
-    Exchange,
+#   Exchange,
     vtkCache,
 #   Cache,
 #   J,

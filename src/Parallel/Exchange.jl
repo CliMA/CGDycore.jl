@@ -1,4 +1,4 @@
-mutable struct ExchangeStruct
+mutable struct ExchangeStruct{FT<:AbstractFloat}
   IndSendBuffer::Dict{Int,Array{Int,1}}
   IndSendBufferF::Dict{Int,Array{Int,1}}
   IndRecvBuffer::Dict{Int,Array{Int,1}}
@@ -9,18 +9,18 @@ mutable struct ExchangeStruct
   InitSendBuffer::Bool
   InitSendBufferF::Bool
   SendBuffer::Dict
-  SendBuffer3::Dict{Int,Array{Float64, 3}}
-  SendBufferF::Dict{Int,Array{Float64, 4}}
+  SendBuffer3::Dict{Int,Array{FT, 3}}
+  SendBufferF::Dict{Int,Array{FT, 4}}
   InitRecvBuffer::Bool
   InitRecvBufferF::Bool
   RecvBuffer::Dict
-  RecvBuffer3::Dict{Int,Array{Float64, 3}}
-  RecvBufferF::Dict{Int,Array{Float64, 4}}
+  RecvBuffer3::Dict{Int,Array{FT, 3}}
+  RecvBufferF::Dict{Int,Array{FT, 4}}
   sreq::MPI.UnsafeMultiRequest
   rreq::MPI.UnsafeMultiRequest
 end
 
-function ExchangeStruct()
+function ExchangeStruct{FT}() where FT<:AbstractFloat
   IndSendBuffer = Dict()
   IndSendBufferF = Dict()
   IndRecvBuffer = Dict()
@@ -40,7 +40,7 @@ function ExchangeStruct()
   RecvBufferF = Dict()
   sreq = MPI.UnsafeMultiRequest(0)
   rreq = MPI.UnsafeMultiRequest(0)
-  return ExchangeStruct(
+  return ExchangeStruct{FT}(
     IndSendBuffer,
     IndSendBufferF,
     IndRecvBuffer,
@@ -64,7 +64,7 @@ function ExchangeStruct()
 end  
 
 
-function ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit)
+function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit) where FT<:AbstractFloat
 
   # Inner Nodes on Edges  
   NumInBoundEdges = 0
@@ -97,8 +97,8 @@ function ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit)
   GlobBuffer = Dict()
   SendBufferE = Dict()
   @inbounds for iP in eachindex(NeiProcE)
-    LocTemp=zeros(Int,0)  
-    GlobTemp=zeros(Int,0)  
+    LocTemp = zeros(Int,0)  
+    GlobTemp = zeros(Int,0)  
     @inbounds for iEB = 1 : NumInBoundEdges
       if InBoundEdgesP[iEB] == NeiProcE[iP]
         iE = InBoundEdges[iEB] 
@@ -180,8 +180,8 @@ function ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit)
   GlobBuffer = Dict()
   SendBufferN = Dict()
   @inbounds for iP in eachindex(NeiProcN)
-    LocTemp=zeros(Int,0)
-    GlobTemp=zeros(Int,0)
+    LocTemp = zeros(Int,0)
+    GlobTemp = zeros(Int,0)
     @inbounds for iNB = 1 : NumInBoundNodes
       if InBoundNodesP[iNB] == NeiProcN[iP]
         iN = InBoundNodes[iNB]
@@ -344,7 +344,7 @@ function ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit)
   sreq = MPI.UnsafeMultiRequest(length(NeiProcN))
   rreq = MPI.UnsafeMultiRequest(length(NeiProcN))
 
-  return ExchangeStruct(
+  return ExchangeStruct{FT}(
     SendBufferN,
     IndSendBufferF,
     RecvBufferN,
@@ -732,11 +732,12 @@ function ExchangeData3DSend(U,Exchange)
   sreq = Exchange.sreq
 
   @inbounds for iP in NeiProc
-    i = 0
-    @views @inbounds for Ind in IndSendBuffer[iP]
-      i += 1
-      @views @. SendBuffer3[iP][1:nz,i,1:nT] = U[:,Ind,:]
-    end
+    @views copyto!(SendBuffer3[iP][1:nz,:,1:nT],U[:,IndSendBuffer[iP],:])
+#   i = 0
+#   @views @inbounds for Ind in IndSendBuffer[iP]
+#     i += 1
+#     @views @. SendBuffer3[iP][1:nz,i,1:nT] = U[:,Ind,:]
+#   end
   end
   i = 0
   @inbounds for iP in NeiProc

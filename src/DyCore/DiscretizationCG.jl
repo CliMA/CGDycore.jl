@@ -1,4 +1,4 @@
-function DiscretizationCG(backend,FT,Jacobi,CG,Global,zs) 
+function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs) 
 # Discretization
   Grid = Global.Grid
   OP=CG.OrdPoly+1
@@ -34,7 +34,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Global,zs)
     end
   end
 
-  (M,MW,MMass) = MassCG(CG,J,CG.Glob,Global)
+  (M,MW,MMass) = MassCG(CG,J,CG.Glob,Exchange)
   Global.latN = zeros(CG.NumG)
   latN = Global.latN
   @inbounds for iF = 1 : NF
@@ -56,8 +56,8 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Global,zs)
       end
     end
   end
-  ExchangeData!(dz,Global.Exchange)
-  ExchangeData!(zP,Global.Exchange)
+  ExchangeData!(dz,Exchange)
+  ExchangeData!(zP,Exchange)
 
   copyto!(Metric.dXdxI,dXdxI)
   copyto!(Metric.nS,nS)
@@ -77,7 +77,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Global,zs)
   return (CG,Metric)
 end
 
-function DiscretizationCG(backend,FT,Jacobi,CG,Global)
-  DiscretizationCG(backend,FT,Jacobi,CG,Global,
+function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global)
+  DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,
   zeros(CG.OrdPoly+1,CG.OrdPoly+1,Global.Grid.NumFaces))
 end  

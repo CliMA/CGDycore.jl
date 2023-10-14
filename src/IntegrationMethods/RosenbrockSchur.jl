@@ -1,4 +1,6 @@
-function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,Global,Param,DiscType)
+function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,Exchange,
+  Global,Param,DiscType)
+
   ROS = Global.TimeStepper.ROS
   nStage = ROS.nStage
   k = Cache.k
@@ -12,8 +14,8 @@ function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,
     @inbounds for jStage = 1 : iStage-1
       @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,jStage]
     end
-    FcnPrepare!(V,CG,Metric,Phys,Cache,Global,Param,DiscType)
-    Fcn!(fV,V,CG,Metric,Phys,Cache,Global,Param,DiscType)
+    FcnPrepare!(V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+    Fcn!(fV,V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     if iStage == 1
       Jac(JCache,V,CG,Metric,Phys,Cache,Global,Param,DiscType)
     end  

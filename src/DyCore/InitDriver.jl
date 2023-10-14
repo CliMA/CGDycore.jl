@@ -57,19 +57,19 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
     AddVerticalGrid!(SubGrid,nz,H)
   end
 
-  Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
+  Exchange = ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
-  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,DoF,nz,
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
   CG = CGStruct(backend,FT,OrdPoly,OrdPolyZ,Global.Grid)
-  (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Global)
+  (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Exchange,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-# vtkCachePart = vtkStruct{FT}(backend,1,TransSphereX!,CG,Metric,Global)
-# unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
+  vtkCachePart = vtkStruct{FT}(backend,1,TransSphereX!,CG,Metric,Global)
+  unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
   if Topography.TopoS == "EarthOrography"
@@ -84,11 +84,11 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   end
 
   if Topography.TopoS == "EarthOrography"
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Global,zS)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Exchange,Global,zS)
   else
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Global)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Exchange,Global)
   end
-  return CG,Metric,Global
+  return CG,Metric,Exchange,Global
 end  
 
 
@@ -126,10 +126,10 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
-  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,Exchange,DoF,nz,
+  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
   CG = CGStruct(backend,FT,OrdPoly,OrdPolyZ,Global.Grid)
-  (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global)
+  (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Exchange,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
@@ -147,14 +147,14 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
     vtkCacheOrography = vtkStruct{FT}(backend,OrdPoly,TransCartX!,CG,Metric,Global)
     unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
     Global.Grid.nz = nzTemp
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global,zS)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Exchange,Global,zS)
   else
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Global)
+    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,Exchange,CG,Global)
   end
 
 
 
-  return CG, Metric, Global
+  return CG, Metric, Exchange, Global
 end  
 
 

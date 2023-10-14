@@ -192,7 +192,7 @@ OrdPolyZ = 1
 Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
 @show "InitSphere"
-(CG, Metric, Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
+(CG, Metric, Exchange, Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
 
 # Initial values
 if Problem == "Galewski"
@@ -289,11 +289,11 @@ if Device == "CPU"  || Device == "GPU"
   nT = max(7 + NumTr, NumV + NumTr)
   @show Global.Output.Flat
   CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
+    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 else
   @show "Fcn"  
   nT = max(7 + NumTr, NumV + NumTr)
   CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
   CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.FcnPrepare!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Global,Param,DiscType)
+    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 end

@@ -1317,7 +1317,7 @@ end
   end  
 end
 
-function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Global,Param,DiscType)
+function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   backend = get_backend(U)
   FT = eltype(U)
 
@@ -1335,7 +1335,7 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Global,Param,DiscType)
   KernelAbstractions.synchronize(backend)
 end
 
-function FcnGPU!(F,U,FE,Metric,Phys,Cache,Global,Param,DiscType)
+function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   backend = get_backend(F)
   FT = eltype(F)

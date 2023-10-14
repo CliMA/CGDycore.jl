@@ -1,12 +1,13 @@
-function MassCG(CG,J,Glob,Global)
+function MassCG(CG,J,Glob,Exchange)
   OrdPoly = CG.OrdPoly
   DoF = CG.DoF
   w = CG.w
-  nz = Global.Grid.nz
+  nz = size(J,3)
+  NF = size(Glob,2)
   M = zeros(nz,CG.NumG)
   MMass = zeros(nz,CG.NumG)
   MW = zeros(nz-1,CG.NumG)
-  @inbounds for iF = 1 : Global.Grid.NumFaces
+  @inbounds for iF = 1 : NF
     iD = 0
     @inbounds for j = 1 : OrdPoly + 1
       @inbounds for i = 1 : OrdPoly + 1
@@ -22,8 +23,8 @@ function MassCG(CG,J,Glob,Global)
       end
     end
   end
-  ExchangeData!(M,Global.Exchange)
-  ExchangeData!(MMass,Global.Exchange)
-  ExchangeData!(MW,Global.Exchange)
+  ExchangeData!(M,Exchange)
+  ExchangeData!(MMass,Exchange)
+  ExchangeData!(MW,Exchange)
   return (M,MW,MMass)
 end
