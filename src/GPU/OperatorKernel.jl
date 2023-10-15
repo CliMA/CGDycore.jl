@@ -1,7 +1,6 @@
 @kernel function MomentumCoriolisKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),Phys)
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -1403,6 +1402,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KernelAbstractions.synchronize(backend)
 
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+  ExchangeData3DSend(U,Exchange)
+
+  ExchangeData3DRecvGPU!(U,Exchange)
   KernelAbstractions.synchronize(backend)
 end
 

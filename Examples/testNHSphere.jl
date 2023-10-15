@@ -293,7 +293,7 @@ if Device == "CPU"  || Device == "GPU"
 else
   @show "Fcn"  
   nT = max(7 + NumTr, NumV + NumTr)
-  CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
+  CGDycore.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.FcnPrepare!,CGDycore.JacSchurGPU!,
     CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 end
