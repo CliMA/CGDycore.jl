@@ -83,9 +83,9 @@ FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 
-if Device == "CPU"
+if Device == "CPU" || Device == "CPU_P"
   backend = CPU()
-elseif Device == "GPU"
+elseif Device == "GPU" || Device == "GPU_P"
   if GPUType == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(true)
@@ -285,13 +285,16 @@ end
 
 if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
-  @show "FcnGPU"  
   nT = max(7 + NumTr, NumV + NumTr)
-  @show Global.Output.Flat
   CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
     CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+elseif Device == "CPU_P"  || Device == "GPU_P"
+  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
+  nT = max(7 + NumTr, NumV + NumTr)
+  CGDycore.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+  CGDycore.TimeStepper!(U,CGDycore.FcnGPU_P!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
+    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 else
-  @show "Fcn"  
   nT = max(7 + NumTr, NumV + NumTr)
   CGDycore.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.FcnPrepare!,CGDycore.JacSchurGPU!,
