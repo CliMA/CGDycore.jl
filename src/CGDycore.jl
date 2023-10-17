@@ -129,6 +129,7 @@ include("Model/Parameters.jl")
 include("Model/Fun.jl")
 include("Model/InitProfileBryanFritsch.jl")
 include("Model/Example.jl")
+include("Model/Force.jl")
 
 include("Statistics/Averages.jl")
 
