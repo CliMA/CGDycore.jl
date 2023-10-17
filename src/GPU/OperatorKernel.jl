@@ -1404,7 +1404,80 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
-  ExchangeData3DSend(U,Exchange)
+end
+
+function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+
+  backend = get_backend(F)
+  FT = eltype(F)
+  @. F = 0
+  Glob = FE.Glob
+  DS = FE.DS
+  DW = FE.DW
+  M = FE.M
+  dXdxI = Metric.dXdxI
+  X = Metric.X
+  J = Metric.J
+  DoF = FE.DoF
+  N = size(FE.DS,1)
+  Nz = size(F,1)
+  NF = size(Glob,2)
+  Koeff = Global.Model.HyperDDiv
+  Temp1 = Cache.Temp1
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+
+
+  KoeffCurl = Global.Model.HyperDCurl
+  KoeffGrad = Global.Model.HyperDGrad
+  KoeffDiv = Global.Model.HyperDDiv
+
+
+# State vector
+  @views Rho = U[:,:,1]
+  @views u = U[:,:,2]
+  @views v = U[:,:,3]
+  @views w = U[:,:,4]
+  @views RhoTr = U[:,:,5]
+# Cache
+  @views CacheF = Temp1[:,:,1:6]
+  @views FRho = F[:,:,1]
+  @views FRhoTr = F[:,:,5]
+  @views p = Cache.AuxG[:,:,1]
+# Ranges
+  NzG = min(div(NumberThreadGPU,N*N),Nz)
+  group = (N, N, NzG, 1)
+  ndrange = (N, N, Nz, NF)
+
+  KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
+  KGradKernel! = GradKernel!(backend,group)
+  KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
+  KHyperViscKernel! = HyperViscKernel!(backend, group)
+  KHyperViscKernelKoeff! = HyperViscKernelKoeff!(backend, group)
+  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
+  KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+# KMomentumKernel! = MomentumKernel!(backend, group)
+
+  @. CacheF = 0
+  @views MRho = CacheF[:,:,6]
+  KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+  @. F = 0
+  KHyperViscKernelKoeff!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+  KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
+# KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+  KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+  ExchangeData3DSendGPU(U,Exchange)
+  KernelAbstractions.synchronize(backend)
 
   ExchangeData3DRecvGPU!(U,Exchange)
   KernelAbstractions.synchronize(backend)
