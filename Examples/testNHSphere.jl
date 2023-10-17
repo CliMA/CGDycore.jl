@@ -82,6 +82,7 @@ GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
+MPI.Init()
 
 if Device == "CPU" || Device == "CPU_P"
   backend = CPU()
@@ -89,6 +90,7 @@ elseif Device == "GPU" || Device == "GPU_P"
   if GPUType == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(true)
+    CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
@@ -111,7 +113,6 @@ Param = CGDycore.Parameters(FTB,Problem)
 KernelAbstractions.synchronize(backend)
 
 
-MPI.Init()
 
 # Physical parameters
 Phys=CGDycore.PhysParameters{FTB}()
