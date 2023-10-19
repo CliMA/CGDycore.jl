@@ -31,6 +31,7 @@ Microphysics = parsed_args["Microphysics"]
 RelCloud = parsed_args["RelCloud"]
 Rain = parsed_args["Rain"]
 Source = parsed_args["Source"]
+Force = parsed_args["Force"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
 JacVerticalAdvection = parsed_args["JacVerticalAdvection"]
@@ -94,7 +95,7 @@ elseif Device == "GPU" || Device == "GPU_P"
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
-    @show backend
+    Metal.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   end
 else
   backend = CPU()
@@ -171,10 +172,10 @@ Model.VerticalDiffusion = VerticalDiffusion
 Model.JacVerticalDiffusion = JacVerticalDiffusion
 Model.JacVerticalAdvection = JacVerticalAdvection
 Model.Source = Source
+Model.Force = Force
 Model.Microphysics = Microphysics
 Model.RelCloud = RelCloud
 Model.Rain = Rain
-Model.Source = Source
 Model.SurfaceFlux = SurfaceFlux
 Model.SurfaceFluxMom = SurfaceFluxMom
 Model.Thermo = Thermo
@@ -200,11 +201,19 @@ if Problem == "Galewski"
   Profile = CGDycore.GalewskiExample()(Param,Phys)
 elseif Problem == "BaroWaveDrySphere"
   Profile = CGDycore.BaroWaveExample()(Param,Phys)
+elseif Problem == "HeldSuarezDrySphere"
+  Profile = CGDycore.HeldSuarezExample()(Param,Phys)
 end  
-
 
 @show "InitialConditions"
 U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+
+# Forcing
+if Problem == "HeldSuarezDrySphere"
+  Force = CGDycore.HeldSuarezForcing()(Param,Phys)
+else
+  Force =  CGDycore.NoForcing()(Param,Phys) 
+end
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -288,16 +297,16 @@ if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
   CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
 elseif Device == "CPU_P"  || Device == "GPU_P"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
   CGDycore.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   CGDycore.TimeStepper!(U,CGDycore.FcnGPU_P!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
 else
   nT = max(7 + NumTr, NumV + NumTr)
   CGDycore.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.FcnPrepare!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
 end

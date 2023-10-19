@@ -164,7 +164,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
   ExchangeData3DRecv!(Aux2DG,Exchange)
 end
 
-function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
+function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
   DiscType::Val{:VectorInvariant})
 
 (;  RhoPos,

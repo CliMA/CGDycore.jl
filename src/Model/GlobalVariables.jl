@@ -503,6 +503,7 @@ function OutputStruct(Topography::NamedTuple)
 end  
 
 mutable struct MetricStruct{FT<:AbstractFloat,
+                            AT1<:AbstractArray,
                             AT2<:AbstractArray,
                             AT3<:AbstractArray,
                             AT4<:AbstractArray,
@@ -516,6 +517,7 @@ mutable struct MetricStruct{FT<:AbstractFloat,
   FS::AT3
   dz::AT2
   zP::AT2
+  lat::AT1
 end
 function MetricStruct{FT}(backend) where FT<:AbstractFloat
   J      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
@@ -525,7 +527,9 @@ function MetricStruct{FT}(backend) where FT<:AbstractFloat
   FS = KernelAbstractions.zeros(backend,FT,0,0,0)
   dz = KernelAbstractions.zeros(backend,FT,0,0)
   zP = KernelAbstractions.zeros(backend,FT,0,0)
+  lat = KernelAbstractions.zeros(backend,FT,0)
     return MetricStruct{FT,
+                        typeof(lat),
                         typeof(zP),
                         typeof(FS),
                         typeof(nS),
@@ -539,6 +543,7 @@ function MetricStruct{FT}(backend) where FT<:AbstractFloat
         FS,
         dz,
         zP,
+        lat,
     )
 end
 function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
@@ -549,7 +554,9 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
     FS = KernelAbstractions.zeros(backend,FT,nQuad,NF)
     dz = KernelAbstractions.zeros(backend,FT,0,0)
     zP = KernelAbstractions.zeros(backend,FT,0,0)
+    lat = KernelAbstractions.zeros(backend,FT,0)
     return MetricStruct{FT,
+                        typeof(lat),
                         typeof(zP),
                         typeof(FS),
                         typeof(nS),
@@ -563,6 +570,7 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
         FS, 
         dz,
         zP,
+        lat,
     )
 end
 
@@ -635,7 +643,7 @@ function ParallelComStruct()
   )
 end  
 
-mutable struct ModelStruct{FT}
+Base.@kwdef mutable struct ModelStruct{FT}
   Problem::String
   Profile::Bool
   ProfRho::String
@@ -661,6 +669,7 @@ mutable struct ModelStruct{FT}
   Thermo::String
   ModelType::String
   Source::Bool
+  Force::Bool
   Damping::Bool
   Geos::Bool
   Relax::FT
@@ -717,6 +726,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Thermo = ""
   ModelType = "VectorInvariant"
   Source = false
+  Force = false
   Damping = false
   Geos = false
   Relax = 0.0
@@ -771,6 +781,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Thermo,
    ModelType,
    Source,
+   Force,
    Damping,
    Geos,
    Relax,

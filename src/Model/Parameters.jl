@@ -47,38 +47,39 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   CMom::FT = 1.e-3
 end
 
-Base.@kwdef struct ParamHeldSuarezDrySphere
-  day::Float64 = 3600.0 * 24.0
-  k_a::Float64= 1.0 / (40.0 * day)
-  k_f::Float64 = 1.0 / day
-  k_s::Float64 = 1.0 / (4.0 * day)
-  DeltaT_y::Float64 = 60.0
-  DeltaTh_z::Float64 = 10.0
-  T_equator::Float64 = 315.0
-  T_min::Float64 = 200.0
-  sigma_b::Float64 = 7.0/10.0
-  CE::Float64  = 0.0044
-  CH::Float64 = 0.0044
-  CTr::Float64 = 0.004
-  p_pbl::Float64 = 85000.0
-  p_strato::Float64 = 10000.0
-  T_virt_surf::Float64 = 290.0
-  T_min_ref::Float64 = 220.0
-  H_t::Float64 = 8.e3
-  q_0::Float64 = 0.018                # Maximum specific humidity (default: 0.018)
-  q_t::Float64 = 1e-12
-  T0E::Float64 = 310.0
-  T0P::Float64 = 240.0
-  B::Float64 = 2.0
-  K::Float64 = 3.0
-  LapseRate::Float64 = 0.005
-  DeltaTS::Float64 = 29.0
-  TSMin::Float64 = 271.0
-  DeltaLat::Float64 = 26.0 * pi / 180.0
-  uMax::Float64 = 0.0
-  vMax::Float64 = 0.0
-  CMom::Float64 = 1.e-3
+Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
+  day::FT = 3600.0 * 24.0
+  k_a::FT= 1.0 / (40.0 * day)
+  k_f::FT = 1.0 / day
+  k_s::FT = 1.0 / (4.0 * day)
+  DeltaT_y::FT = 60.0
+  DeltaTh_z::FT = 10.0
+  T_equator::FT = 315.0
+  T_min::FT = 200.0
+  sigma_b::FT = 7.0/10.0
+  CE::FT  = 0.0044
+  CH::FT = 0.0044
+  CTr::FT = 0.004
+  p_pbl::FT = 85000.0
+  p_strato::FT = 10000.0
+  T_virt_surf::FT = 290.0
+  T_min_ref::FT = 220.0
+  H_t::FT = 8.e3
+  q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
+  q_t::FT = 1e-12
+  T0E::FT = 310.0
+  T0P::FT = 240.0
+  B::FT = 2.0
+  K::FT = 3.0
+  LapseRate::FT = 0.005
+  DeltaTS::FT = 29.0
+  TSMin::FT = 271.0
+  DeltaLat::FT = 26.0 * pi / 180.0
+  uMax::FT = 0.0
+  vMax::FT = 0.0
+  CMom::FT = 1.e-3
   Deep::Bool = false
+  T_Init::FT = 300.0
 end
 
 Base.@kwdef struct ParamHillSchaerCart
@@ -262,7 +263,7 @@ function Parameters(FT,Problem::String)
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" || 
     Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
     @show Problem
-    Param = ParamHeldSuarezDrySphere()
+    Param = ParamHeldSuarezDrySphere{FT}()
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()

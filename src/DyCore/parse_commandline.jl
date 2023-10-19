@@ -147,6 +147,11 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--Force"
+    help = "Force"
+    arg_type = Bool
+    default = false
+
     "--VerticalDiffusion"
     help = "Vertical diffusion"
     arg_type = Bool

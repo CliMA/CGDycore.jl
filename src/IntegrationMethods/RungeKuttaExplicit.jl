@@ -10,7 +10,7 @@ function RungeKuttaExplicit!(V,dt,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Global,P
       @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,jStage]
     end
     @views FcnPrepare!(V,CG,Metric,Phys,Cache,Global,Param,DiscType)
-    @views Fcn!(f[:,:,:,iStage],V,CG,Metric,Phys,Cache,Global,Param,DiscType)
+    @views Fcn!(f[:,:,:,iStage],V,CG,Metric,Phys,Cache,Global,Param,Force,DiscType)
   end
   @. V = Vn
   @inbounds for iStage=1:RK.nStage

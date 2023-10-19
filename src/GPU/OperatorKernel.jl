@@ -1104,7 +1104,7 @@ end
 end
  
 @inline function Contra3(Rho,u,v,w,dXdxI)
-  wCon = Rho[1] * (dXdxI[1,2,1] * u[1] + dXdxI[2,2,1] * v[1] + dXdxI[3,2,1] * w) + 
+  @inbounds wCon = Rho[1] * (dXdxI[1,2,1] * u[1] + dXdxI[2,2,1] * v[1] + dXdxI[3,2,1] * w) + 
     Rho[2] * (dXdxI[1,1,2] * u[2] + dXdxI[2,1,2] * v[2] + dXdxI[3,1,2] * w)
 end
   
@@ -1133,20 +1133,20 @@ end
 
 
   if Iz <= Nz
-    ind = Glob[I,IF]
-    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    @inbounds ind = Glob[I,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,_ = Profile(xS,time)
     @inbounds u[Iz,ind] = uP
     @inbounds v[Iz,ind] = vP
   end
   if Iz <= Nz - 1
-    ind = Glob[I,IF]
-    x1 = eltype(X)(0.5) * (X[I,2,1,Iz,IF] + X[I,1,1,Iz+1,IF])
-    x2 = eltype(X)(0.5) * (X[I,2,2,Iz,IF] + X[I,1,2,Iz+1,IF])
-    x3 = eltype(X)(0.5) * (X[I,2,3,Iz,IF] + X[I,1,3,Iz+1,IF])
+    @inbounds ind = Glob[I,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,2,1,Iz,IF] + X[I,1,1,Iz+1,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,2,2,Iz,IF] + X[I,1,2,Iz+1,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,2,3,Iz,IF] + X[I,1,3,Iz+1,IF])
     xS = SVector{3}(x1, x2 ,x3)
     @inbounds _,_,_,w[Iz,ind] = Profile(xS,time)
   end
@@ -1163,10 +1163,10 @@ end
   NF = @uniform @ndrange()[3]
 
   if Iz <= Nz
-    ind = Glob[ID,IF]
-    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    @inbounds ind = Glob[ID,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,uP,vP,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
@@ -1186,10 +1186,10 @@ end
   NF = @uniform @ndrange()[3]
 
   if Iz <= Nz
-    ind = Glob[I,IF]
-    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    @inbounds ind = Glob[I,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ = Profile(xS,time)
     @inbounds Rho[Iz,ind] = RhoP
@@ -1207,10 +1207,10 @@ end
   NF = @uniform @ndrange()[3]
 
   if Iz <= Nz
-    ind = Glob[I,IF]
-    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    @inbounds ind = Glob[I,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,TrP = Profile(xS,time)
     @inbounds Tr[Iz,ind] = RhoP * TrP
@@ -1228,10 +1228,10 @@ end
   NF = @uniform @ndrange()[3]
 
   if Iz <= Nz
-    ind = Glob[I,IF]
-    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    @inbounds ind = Glob[I,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,ThP = Profile(xS,time)
     @inbounds Th[Iz,ind] = RhoP * ThP
@@ -1250,15 +1250,25 @@ end
   NF = @uniform @ndrange()[4]
 
   if Iz <= Nz - 1 
-    ind = Glob[ID,IF]
-    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
-    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
-    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    @inbounds ind = Glob[ID,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,_,_,wP = Profile(xS,time)
     @inbounds w[Iz,ind] = wP
   end
 end
+
+@kernel function ForceKernel!(F,U,p,lat,Force)
+  Iz,IG = @index(Global, NTuple)
+  NG = @uniform @ndrange()[2]
+
+  if IG <= NG
+    @inbounds @views F[Iz,IG,:] += Force(U[Iz,IG,:],p[Iz,IG],lat[IG])
+  end
+
+end  
 
 function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
 
@@ -1334,7 +1344,7 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KernelAbstractions.synchronize(backend)
 end
 
-function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -1349,6 +1359,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   DoF = FE.DoF
   N = size(FE.DS,1)
   Nz = size(F,1)
+  NDoF = size(F,2)
   NF = size(Glob,2)
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
@@ -1403,10 +1414,20 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
+
+  if Global.Model.Force
+    lat = Metric.lat  
+    NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
+    groupG = (Nz, NDoFG)  
+    ndrangeG = (Nz, NDoF)  
+    KForceKernel! = ForceKernel!(backend, groupG)
+    KForceKernel!(F,U,p,lat,Force,ndrange=ndrangeG)  
+    KernelAbstractions.synchronize(backend)
+  end  
 
 end
 
-function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -1422,6 +1443,7 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   N = size(FE.DS,1)
   Nz = size(F,1)
   NF = size(Glob,2)
+  NDoF = size(F,2)
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
@@ -1475,6 +1497,16 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
+
+  if Global.Model.Force
+    lat = Metric.lat  
+    NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
+    groupG = (Nz, NDoFG)  
+    ndrangeG = (Nz, NDoF)  
+    KForceKernel! = ForceKernel!(backend, groupG)
+    KForceKernel!(F,U,p,lat,Force,ndrange=ndrangeG)  
+    KernelAbstractions.synchronize(backend)
+  end  
 
   ExchangeData3DSendGPU(U,Exchange)
   KernelAbstractions.synchronize(backend)

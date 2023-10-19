@@ -15,6 +15,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   zP = zeros(nz,CG.NumG)
   J = zeros(nQuad,OPZ,nz,NF)
   X = zeros(nQuad,OPZ,3,nz,NF)
+  lat = zeros(CG.NumG)
 
   for iF = 1 : NF
     for iz = 1 : nz
@@ -40,6 +41,13 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   @inbounds for iF = 1 : NF
     @inbounds for iQ = 1 : nQuad
       ind = CG.Glob[iQ,iF]
+      if Global.Grid.Form == "Sphere"
+        x = 0.5 * (X[iQ,1,1,1,iF] + X[iQ,2,1,1,iF])
+        y = 0.5 * (X[iQ,1,1,2,iF] + X[iQ,2,1,2,iF])
+        z = 0.5 * (X[iQ,1,1,3,iF] + X[iQ,2,1,3,iF])
+        r = sqrt(x^2 + y^2 + z^2)
+        lat[ind] = asin(z / r)
+      end  
       @inbounds for iz=1:nz
         dz[iz,ind] +=  2.0*(J[iQ,1,iz,iF] + J[iQ,2,iz,iF])^2 / 
         (dXdxI[3,3,1,iQ,iz,iF] + dXdxI[3,3,2,iQ,iz,iF])  / M[iz,ind]
@@ -68,6 +76,10 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   copyto!(Metric.zP,zP)
   copyto!(Metric.J,J)
   copyto!(Metric.X,X)
+  if Global.Grid.Form == "Sphere"
+    Metric.lat = KernelAbstractions.zeros(backend,FT,size(lat))
+    copyto!(Metric.lat,lat)
+  end  
   CG.M = KernelAbstractions.zeros(backend,FT,size(M))
   copyto!(CG.M,M)
   CG.MMass = KernelAbstractions.zeros(backend,FT,size(MMass))

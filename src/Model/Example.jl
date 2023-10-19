@@ -141,6 +141,7 @@ function (profile::GalewskiExample)(Param,Phys)
   end
   return local_profile
 end
+
 Base.@kwdef struct BaroWaveExample <: Example end
 
 function (profile::BaroWaveExample)(Param,Phys)
@@ -217,3 +218,21 @@ function (profile::BaroWaveExample)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct HeldSuarezExample <: Example end
+
+function (profile::HeldSuarezExample)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
+    z=max(R-Phys.RadEarth,FT(0));
+    temp = Param.T_Init + Param.LapseRate * z + rand() * FT(0.1) * (z < FT(5000))
+    pres = Phys.p0 * (1 + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
+    Rho = pres / Phys.Rd / temp
+    Th = temp * (Phys.p0 / pres)^Phys.kappa
+    uS = FT(0)
+    vS = FT(0)
+    w = FT(0)
+    return (Rho,uS,vS,w,Th)
+  end
+  return local_profile
+end
