@@ -43,8 +43,8 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
       ind = CG.Glob[iQ,iF]
       if Global.Grid.Form == "Sphere"
         x = 0.5 * (X[iQ,1,1,1,iF] + X[iQ,2,1,1,iF])
-        y = 0.5 * (X[iQ,1,1,2,iF] + X[iQ,2,1,2,iF])
-        z = 0.5 * (X[iQ,1,1,3,iF] + X[iQ,2,1,3,iF])
+        y = 0.5 * (X[iQ,1,2,1,iF] + X[iQ,2,2,1,iF])
+        z = 0.5 * (X[iQ,1,3,1,iF] + X[iQ,2,3,1,iF])
         r = sqrt(x^2 + y^2 + z^2)
         lat[ind] = asin(z / r)
       end  

@@ -1265,7 +1265,12 @@ end
   NG = @uniform @ndrange()[2]
 
   if IG <= NG
-    @inbounds @views F[Iz,IG,:] += Force(U[Iz,IG,:],p[Iz,IG],lat[IG])
+    @inbounds (FRho,Fu,Fv,Fw,FRhoTh) = Force(U[Iz,IG,:],p[Iz,IG],lat[IG])
+    @inbounds F[Iz,IG,1] += FRho
+    @inbounds F[Iz,IG,2] += Fu
+    @inbounds F[Iz,IG,3] += Fv
+    @inbounds F[Iz,IG,4] += Fw
+    @inbounds F[Iz,IG,5] += FRhoTh
   end
 
 end  
@@ -1333,7 +1338,7 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   Nz = size(U,1)
   NumG = size(U,2)
 
-  NG = div(512,Nz)
+  NG = min(div(512,Nz),NumG)
   group = (Nz, NG)
   ndrange = (Nz, NumG)
   @views p = Cache.AuxG[:,:,1]
@@ -1484,6 +1489,12 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
+  ExchangeData3DSendGPU(CacheF,Exchange)
+  KernelAbstractions.synchronize(backend)
+
+  ExchangeData3DRecvGPU!(CacheF,Exchange)
+  KernelAbstractions.synchronize(backend)
+
   @. F = 0
   KHyperViscKernelKoeff!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
@@ -1498,6 +1509,12 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
   KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
+  ExchangeData3DSendGPU(F,Exchange)
+  KernelAbstractions.synchronize(backend)
+
+  ExchangeData3DRecvGPU!(F,Exchange)
+  KernelAbstractions.synchronize(backend)
+
   if Global.Model.Force
     lat = Metric.lat  
     NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
@@ -1507,11 +1524,5 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
     KForceKernel!(F,U,p,lat,Force,ndrange=ndrangeG)  
     KernelAbstractions.synchronize(backend)
   end  
-
-  ExchangeData3DSendGPU(U,Exchange)
-  KernelAbstractions.synchronize(backend)
-
-  ExchangeData3DRecvGPU!(U,Exchange)
-  KernelAbstractions.synchronize(backend)
 end
 

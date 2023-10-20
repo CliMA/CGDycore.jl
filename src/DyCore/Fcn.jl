@@ -745,7 +745,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
   end
   if Global.Model.Source
     @inbounds for iG=1:CG.NumG
-      @views Source!(F[:,iG,:],U[:,iG,:],PresG[:,iG],CG,Global,Param,iG)
+      @views Source!(F[:,iG,:],U[:,iG,:],PresG[:,iG],CG,Metric,Cache,Phys,Global,Param,iG)
     end
   end
   if Global.Model.Microphysics

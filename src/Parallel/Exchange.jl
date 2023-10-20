@@ -773,6 +773,7 @@ function ExchangeData3DSend(U,Exchange)
     @views MPI.Isend(SendBuffer3[iP][1:nz,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
   end
 end
+
 function ExchangeData3DSendGPU(U,Exchange)
   backend = get_backend(U)
   FT = eltype(U)
@@ -860,7 +861,6 @@ function ExchangeData3DRecv!(U,Exchange)
   MPI.Barrier(MPI.COMM_WORLD)
   #Receive
   @inbounds for iP in NeiProc
-#   @views @. U[:,IndRecvBuffer[iP],:] += RecvBuffer3[iP][:,:,1:nT]
     i = 0
     @inbounds for Ind in IndRecvBuffer[iP]
       i += 1
@@ -900,7 +900,7 @@ end
 
   Iz,I,IT = @index(Global, NTuple)
   NumInd = @uniform @ndrange()[2]
-  NT = @uniform @ndrange()[2]
+  NT = @uniform @ndrange()[3]
   if I <= NumInd && IT <= NT
     @inbounds Ind = IndRecvBuffer[I]    
     @inbounds @atomic U[Iz,Ind,IT] += RecvBuffer[Iz,I,IT]

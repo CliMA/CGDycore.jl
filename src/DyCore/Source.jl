@@ -1,5 +1,5 @@
 using NLsolve
-function Source!(F,U,Pres,CG,Global,Param,iG)
+function Source!(F,U,Pres,CG,Metric,Cache,Phys,Global,Param,iG)
   Model = Global.Model
   RhoPos = Model.RhoPos
   uPos = Model.uPos
@@ -19,18 +19,17 @@ function Source!(F,U,Pres,CG,Global,Param,iG)
     @views SourceHeldSuarez!(F[:,ThPos],F[:,uPos:vPos],Rho,Th,U[:,uPos:vPos],Tr,Pres,
       Param.sigma_b,Param.k_s,Param.k_a,Param.k_f,Param.T_min,Param.T_equator,
       Param.DeltaT_y,Param.DeltaTh_z,
-      Global.latN[iG],Global)
+      Metric.lat[iG],Cache,Phys)
 # end
 end
 
 function SourceHeldSuarez!(FTh,FV,Rho,Th,V,Tr,Pres,
-  sigma_b,k_s,k_a,k_f,T_min,T_equator,DeltaT_y,DeltaTh_z,latN,Global)
-  Phys = Global.Phys
-  @views Sigma = Global.Cache.Cache1[:,1]
-  @views height_factor = Global.Cache.Cache2[:,1]
-  @views Teq = Global.Cache.Cache2[:,1]
-  @views ΔρT = Global.Cache.Cache3[:,1]
-  @views kT = Global.Cache.Cache3[:,1]
+  sigma_b,k_s,k_a,k_f,T_min,T_equator,DeltaT_y,DeltaTh_z,latN,Cache,Phys)
+  @views Sigma = Cache.Cache1[:,1]
+  @views height_factor = Cache.Cache2[:,1]
+  @views Teq = Cache.Cache2[:,1]
+  @views ΔρT = Cache.Cache3[:,1]
+  @views kT = Cache.Cache3[:,1]
   @. Sigma = Pres
   @. Sigma = Sigma / Phys.p0
   @. height_factor = max(0.0, (Sigma - sigma_b) / (1.0 - sigma_b))
