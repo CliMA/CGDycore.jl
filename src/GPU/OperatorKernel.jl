@@ -1217,7 +1217,7 @@ end
   end
 end
 
-@kernel function ThFunCKernel!(Profile,Th,time,@Const(Glob),@Const(X),Param,Phys)
+@kernel function ThFunCKernel!(Profile,Th,time,@Const(Glob),@Const(X))
 
   I, iz   = @index(Local, NTuple)
   _,Iz,IF = @index(Global, NTuple)
@@ -1265,7 +1265,7 @@ end
   NG = @uniform @ndrange()[2]
 
   if IG <= NG
-    @inbounds (FRho,Fu,Fv,Fw,FRhoTh) = Force(U[Iz,IG,:],p[Iz,IG],lat[IG])
+    @views @inbounds FRho,Fu,Fv,Fw,FRhoTh = Force(U[Iz,IG,:],p[Iz,IG],lat[IG])
     @inbounds F[Iz,IG,1] += FRho
     @inbounds F[Iz,IG,2] += Fu
     @inbounds F[Iz,IG,3] += Fv
@@ -1361,6 +1361,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   dXdxI = Metric.dXdxI
   X = Metric.X
   J = Metric.J
+  lat = Metric.lat  
   DoF = FE.DoF
   N = size(FE.DS,1)
   Nz = size(F,1)
@@ -1421,7 +1422,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   KernelAbstractions.synchronize(backend)
 
   if Global.Model.Force
-    lat = Metric.lat  
     NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
     groupG = (Nz, NDoFG)  
     ndrangeG = (Nz, NDoF)  

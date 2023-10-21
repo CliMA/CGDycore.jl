@@ -225,8 +225,8 @@ function (profile::HeldSuarezExample)(Param,Phys)
     FT = eltype(x)
     (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
     z=max(R-Phys.RadEarth,FT(0));
-    temp = Param.T_Init + Param.LapseRate * z + rand() * FT(0.1) * (z < FT(5000))
-    pres = Phys.p0 * (1 + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
+    temp = Param.T_Init + Param.LapseRate * z #+ rand(FT) * FT(0.1) * (z < FT(5000))
+    pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
     Rho = pres / Phys.Rd / temp
     Th = temp * (Phys.p0 / pres)^Phys.kappa
     uS = FT(0)

@@ -95,7 +95,6 @@ elseif Device == "GPU" || Device == "GPU_P"
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
-    Metal.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   end
 else
   backend = CPU()
@@ -218,7 +217,6 @@ end
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
 Global.Output.vtk = 0
-@show Flat
 Global.Output.Flat = Flat
 Global.Output.nPanel = nPanel
 Global.Output.RadPrint = H
@@ -296,6 +294,7 @@ end
 if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
+  @show "vor Timestepper"
   CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
     CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
 elseif Device == "CPU_P"  || Device == "GPU_P"

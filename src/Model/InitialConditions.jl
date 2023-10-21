@@ -29,7 +29,7 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-  KThFunCKernel!(Profile,Th,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KThFunCKernel!(Profile,Th,time,Glob,X,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
 #=
