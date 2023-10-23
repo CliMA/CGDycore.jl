@@ -27,6 +27,7 @@ end
 struct NoForcing <: AbstractForcing end
 function (::NoForcing)(Param,Phys)
   function local_force(U,p,lat)
+    return FT(0),FT(0),FT(0),FT(0),FT(0)
   end
   return local_force
 end

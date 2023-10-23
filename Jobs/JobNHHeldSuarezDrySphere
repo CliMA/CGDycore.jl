@@ -1,8 +1,8 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 8 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezDrySphere" \
-  --Device="GPU" \
+  --Device="CPU" \
   --GPUType="Metal" \
-  --NumberThreadGPU=256 \
+  --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \

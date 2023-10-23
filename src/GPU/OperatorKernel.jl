@@ -482,7 +482,54 @@ end
   end
 end
 
-@kernel function HyperViscKernelKoeff!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
+@kernel function HyperViscTracerKernel!(FTr,@Const(Tr),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob)) 
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  if Iz <= Nz && IF <= NF
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds TrCol[I,J,iz] = Tr[Iz,ind] / Rho[Iz,ind]
+  end
+  @synchronize
+
+  if Iz <= Nz && IF <= NF
+    ID = I + (J - 1) * N  
+    @inbounds Dxc = D[I,1] * TrCol[1,J,iz]
+    @inbounds Dyc = D[J,1] * TrCol[I,1,iz]
+    for k = 2 : N
+      @inbounds Dxc += D[I,k] * TrCol[k,J,iz]
+      @inbounds Dyc += D[J,k] * TrCol[I,k,iz] 
+    end
+    @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
+    @views @inbounds (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds TrCxCol[I,J,iz] = tempx
+    @inbounds TrCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+  if Iz <= Nz && IF <= NF
+    @inbounds DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
+    for k = 2 : N
+      @inbounds DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+    end
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds @atomic FTr[Iz,ind] += DivTr / M[Iz,ind]
+  end
+end
+
+@kernel function HyperViscKoeffKernel!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),KoeffCurl,KoeffGrad,KoeffDiv) 
 
 # gi, gj, gz, gF = @index(Group, NTuple)
@@ -558,6 +605,54 @@ end
     @inbounds @atomic F[Iz,ind,2] += -(KoeffCurl * FuC + KoeffGrad * FuD) / M[Iz,ind]
     @inbounds @atomic F[Iz,ind,3] += -(KoeffCurl * FvC + KoeffGrad * FvD) / M[Iz,ind]
     @inbounds @atomic F[Iz,ind,5] += -KoeffDiv * DivTh / M[Iz,ind]
+  end
+end
+
+@kernel function HyperViscTracerKoeffKernel!(FTr,@Const(Cache),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob),KoeffDiv) 
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  if Iz <= Nz && IF <= NF
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds TrCol[I,J,iz] = Cache[Iz,ind] 
+  end
+  @synchronize
+
+  if Iz <= Nz && IF <= NF
+    ID = I + (J - 1) * N  
+    @inbounds Dxc = D[I,1] * TrCol[1,J,iz]
+    @inbounds Dyc = D[J,1] * TrCol[I,1,iz]
+    for k = 2 : N
+      @inbounds Dxc += D[I,k] * TrCol[k,J,iz]
+      @inbounds Dyc += D[J,k] * TrCol[I,k,iz] 
+    end
+    @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
+    @inbounds ind = Glob[ID,IF]
+    @views @inbounds (tempx, tempy) = Contra12(Rho[Iz,ind],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds TrCxCol[I,J,iz] = tempx
+    @inbounds TrCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+  if Iz <= Nz && IF <= NF
+    @inbounds DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
+    for k = 2 : N
+      @inbounds DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+    end
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds @atomic FTr[Iz,ind] += -KoeffDiv * DivTr / M[Iz,ind]
   end
 end
 
@@ -1217,7 +1312,7 @@ end
   end
 end
 
-@kernel function ThFunCKernel!(Profile,Th,time,@Const(Glob),@Const(X))
+@kernel function RhoThFunCKernel!(Profile,RhoTh,time,@Const(Glob),@Const(X))
 
   I, iz   = @index(Local, NTuple)
   _,Iz,IF = @index(Global, NTuple)
@@ -1234,10 +1329,51 @@ end
     @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,ThP = Profile(xS,time)
-    @inbounds Th[Iz,ind] = RhoP * ThP
+    @inbounds RhoTh[Iz,ind] = RhoP * ThP
   end
 end
 
+@kernel function RhoVFunCKernel!(Profile,RhoV,time,@Const(Glob),@Const(X))
+
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz
+    @inbounds ind = Glob[I,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    xS = SVector{3}(x1, x2 ,x3)
+    RhoP,_,_,_,_,QvP = Profile(xS,time)
+    @inbounds RhoV[Iz,ind] = RhoP * QvP
+  end
+end
+
+@kernel function RhoCFunCKernel!(Profile,RhoC,time,@Const(Glob),@Const(X))
+
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz
+    @inbounds ind = Glob[I,IF]
+    @inbounds x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    @inbounds x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    @inbounds x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    xS = SVector{3}(x1, x2 ,x3)
+    RhoP,_,_,_,_,_,QcP = Profile(xS,time)
+    @inbounds RhoC[Iz,ind] = RhoP * QcP
+  end
+end
 
 @kernel function ComputeFunFKernel!(Profile,w,time,@Const(Glob),@Const(X),Param)
 
@@ -1265,7 +1401,7 @@ end
   NG = @uniform @ndrange()[2]
 
   if IG <= NG
-    @views @inbounds FRho,Fu,Fv,Fw,FRhoTh = Force(U[Iz,IG,:],p[Iz,IG],lat[IG])
+    @inbounds FRho,Fu,Fv,Fw,FRhoTh = Force(view(U,Iz,IG,1:5),p[Iz,IG],lat[IG])
     @inbounds F[Iz,IG,1] += FRho
     @inbounds F[Iz,IG,2] += Fu
     @inbounds F[Iz,IG,3] += Fv
@@ -1367,6 +1503,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   Nz = size(F,1)
   NDoF = size(F,2)
   NF = size(Glob,2)
+  NumV  = Global.Model.NumV 
+  NumTr  = Global.Model.NumTr 
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
@@ -1392,12 +1530,16 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
+  groupTr = group
+  ndrangeTr = ndrange
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
   KGradKernel! = GradKernel!(backend,group)
   KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
-  KHyperViscKernelKoeff! = HyperViscKernelKoeff!(backend, group)
+  KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
+  KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
+  KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, group)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
   KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
 # KMomentumKernel! = MomentumKernel!(backend, group)
@@ -1405,11 +1547,21 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   @. CacheF = 0
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]  
+    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeTr)
+  end  
   KernelAbstractions.synchronize(backend)
 
   @. F = 0
-  KHyperViscKernelKoeff!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
+  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]  
+    @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
+      KoeffDiv,ndrange=ndrangeTr)
+  end  
   KernelAbstractions.synchronize(backend)
+
 
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)

@@ -20,17 +20,29 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   @views u = U[:,:,Model.uPos]
   @views v = U[:,:,Model.vPos]
   @views w = U[:,:,Model.wPos]
-  @views Th = U[:,:,Model.ThPos]
+  @views RhoTh = U[:,:,Model.ThPos]
   KRhoFunCKernel! = RhoFunCKernel!(backend, group)
-  KThFunCKernel! = ThFunCKernel!(backend, group)
+  KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
   KuvwFunCKernel! = uvwFunCKernel!(backend, group)
 
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-  KThFunCKernel!(Profile,Th,time,Glob,X,ndrange=ndrange)
+  KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
+  if Model.RhoVPos > 0
+    @views RhoV = U[:,:,NumV+Model.RhoVPos]
+    KRhoVFunCKernel! = RhoVFunCKernel!(backend, group)
+    KRhoVFunCKernel!(Profile,RhoV,time,Glob,X,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+  end  
+  if Model.RhoCPos > 0
+    @views RhoC = U[:,:,NumV+Model.RhoCPos]
+    KRhoCFunCKernel! = RhoCFunCKernel!(backend, group)
+    KRhoCFunCKernel!(Profile,RhoC,time,Glob,X,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+  end  
 
 #=
   if Global.Model.Profile

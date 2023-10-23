@@ -201,14 +201,16 @@ if Problem == "Galewski"
 elseif Problem == "BaroWaveDrySphere"
   Profile = CGDycore.BaroWaveExample()(Param,Phys)
 elseif Problem == "HeldSuarezDrySphere"
-  Profile = CGDycore.HeldSuarezExample()(Param,Phys)
+  Profile = CGDycore.HeldSuarezDryExample()(Param,Phys)
+elseif Problem == "HeldSuarezMoistSphere"
+  Profile = CGDycore.HeldSuarezMoistExample()(Param,Phys)
 end  
 
 @show "InitialConditions"
 U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 # Forcing
-if Problem == "HeldSuarezDrySphere"
+if Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezMoistSphere"
   Force = CGDycore.HeldSuarezForcing()(Param,Phys)
 else
   Force =  CGDycore.NoForcing()(Param,Phys) 
