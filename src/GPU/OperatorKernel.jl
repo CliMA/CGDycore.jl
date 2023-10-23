@@ -930,7 +930,7 @@ end
   end
 end
 
-@kernel function DivRhoTrUpwind3Kernel!(F,@Const(U),@Const(D),@Const(dXdxI),
+@kernel function DivRhoThUpwind3Kernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 
 # gi, gj, gz, gF = @index(Group, NTuple)
@@ -1006,6 +1006,77 @@ end
     ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,1] += DivRho / M[Iz,ind]
     @inbounds @atomic F[Iz,ind,5] += DivRhoTr / M[Iz,ind]
+  end
+end
+
+@kernel function DivRhoTrUpwind3Kernel!(FTr,@Const(Tr),@Const(U),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob))
+
+# gi, gj, gz, gF = @index(Group, NTuple)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  cCol = @localmem eltype(FTr) (N,N, ColumnTilesDim+3)
+  uConCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  vConCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  if Iz <= Nz
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds cCol[I,J,iz+1] = Tr[Iz,ind] / U[Iz,ind,1]
+    @views @inbounds (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds uConCol[I,J,iz] = uCon
+    @inbounds vConCol[I,J,iz] = vCon
+  end
+  if iz == 1
+    Izm1 = max(Iz - 1,1)
+    cCol[I,J,iz] = Tr[Izm1,ind] / U[Izm1,ind,1]
+  end
+  if iz == ColumnTilesDim || Iz == Nz
+    Izp1 = min(Iz + 1,Nz)
+    cCol[I,J,iz+2] = Tr[Izp1,ind] / U[Izp1,ind,1]
+    Izp2 = min(Iz + 2,Nz)
+    cCol[I,J,iz+3] = Tr[Izp2,ind] / U[Izp2,ind,1]
+  end
+  @synchronize
+
+  if Iz < Nz 
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @inbounds cLL = cCol[I,J,iz]
+    @inbounds cL = cCol[I,J,iz+1]
+    @inbounds cR = cCol[I,J,iz+2]
+    @inbounds cRR = cCol[I,J,iz+3]
+
+    @views @inbounds wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
+      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+
+    Izm1 = max(Iz - 1,1)
+    Izp2 = min(Iz + 2, Nz)
+    @inbounds JLL = JJ[ID,1,Izm1,IF] + JJ[ID,2,Izm1,IF]
+    @inbounds JL = JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]
+    @inbounds JR = JJ[ID,1,Iz+1,IF] + JJ[ID,2,Iz+1,IF]
+    @inbounds JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
+    cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
+    Flux = eltype(FTr)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
+    @inbounds @atomic FTr[Iz,ind] += -Flux / M[Iz,ind]
+    @inbounds @atomic FTr[Iz+1,ind] += Flux / M[Iz+1,ind]
+  end 
+
+  if Iz <= Nz
+    ID = I + (J - 1) * N  
+    @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
+    @inbounds DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz+1]
+    for k = 2 : N
+      @inbounds DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
+      @inbounds DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
+    end
+    ind = Glob[ID,IF]
+    @inbounds @atomic FTr[Iz,ind] += DivRhoTr / M[Iz,ind]
   end
 end
 
@@ -1537,11 +1608,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   KGradKernel! = GradKernel!(backend,group)
   KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
-  KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
-  KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, group)
-  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
+  KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
   KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+  KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
+  KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
+  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
 # KMomentumKernel! = MomentumKernel!(backend, group)
 
   @. CacheF = 0
@@ -1570,7 +1642,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
 # KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
-  KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+
+  for iT = 1 : NumTr
+    @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
+      dXdxI,J,M,Glob,ndrange=ndrangeTr)
+  end  
   KernelAbstractions.synchronize(backend)
 
   if Global.Model.Force
@@ -1601,6 +1678,8 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
   Nz = size(F,1)
   NF = size(Glob,2)
   NDoF = size(F,2)
+  NumV  = Global.Model.NumV 
+  NumTr  = Global.Model.NumTr 
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
@@ -1618,7 +1697,7 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
   @views w = U[:,:,4]
   @views RhoTr = U[:,:,5]
 # Cache
-  @views CacheF = Temp1[:,:,1:6]
+  @views CacheF = Temp1[:,:,1:6+NumTr]
   @views FRho = F[:,:,1]
   @views FRhoTr = F[:,:,5]
   @views p = Cache.AuxG[:,:,1]
@@ -1626,44 +1705,52 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
+  groupTr = group
+  ndrangeTr = ndrange
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
   KGradKernel! = GradKernel!(backend,group)
   KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
-  KHyperViscKernelKoeff! = HyperViscKernelKoeff!(backend, group)
-  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
+  KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
+  KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
   KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
 # KMomentumKernel! = MomentumKernel!(backend, group)
+  KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
+  KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
+  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
 
   @. CacheF = 0
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]
+    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeTr)
+  end
   KernelAbstractions.synchronize(backend)
 
   ExchangeData3DSendGPU(CacheF,Exchange)
-  KernelAbstractions.synchronize(backend)
 
   ExchangeData3DRecvGPU!(CacheF,Exchange)
-  KernelAbstractions.synchronize(backend)
 
   @. F = 0
-  KHyperViscKernelKoeff!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
+  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]  
+    @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
+      KoeffDiv,ndrange=ndrangeTr)
+  end  
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
-# KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
+  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  for iT = 1 : NumTr
+    @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
+      dXdxI,J,M,Glob,ndrange=ndrangeTr)
+  end  
 
-  KDivRhoTrUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
   ExchangeData3DSendGPU(F,Exchange)
-  KernelAbstractions.synchronize(backend)
-
   ExchangeData3DRecvGPU!(F,Exchange)
   KernelAbstractions.synchronize(backend)
 
