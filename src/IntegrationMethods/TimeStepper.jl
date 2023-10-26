@@ -10,7 +10,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
   Table = TimeStepper.Table
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP"
-    TimeStepper.ROS=RosenbrockStruct{FT}(backend,Table)  
+    TimeStepper.ROS=RosenbrockStruct{FT}(Table)  
   elseif IntMethod == "RungeKutta"  
     TimeStepper.RK=RungeKuttaMethod(Table)
   elseif IntMethod == "IMEX"   

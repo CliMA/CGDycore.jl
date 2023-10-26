@@ -1,20 +1,18 @@
 mutable struct RosenbrockStruct{FT<:AbstractFloat}
   nStage::Int
-  a::AT2
-  c::AT2
+  a::Array{FT, 2}
+  c::Array{FT, 2}
   gamma::FT
-  m::AT1
+  m::Array{FT, 1}
 end
 
 function RosenbrockStruct{FT}(backend) where FT<:AbstractFloat
   nStage = 0
-  a = KernelAbstractions.zeros(backend,FT,0,0)
-  c = KernelAbstractions.zeros(backend,FT,0,0)
+  a = zeros(FT,0,0)
+  c = zeros(FT,0,0)
   gamma = FT(0)
-  m = KernelAbstractions.zeros(backend,FT,0)
-  return RosenbrockStruct{FT,
-                          typeof(m),
-                          typeof(a)}(
+  m = zeros(FT,0)
+  return RosenbrockStruct{FT}(
     nStage,
     a,
     c,
