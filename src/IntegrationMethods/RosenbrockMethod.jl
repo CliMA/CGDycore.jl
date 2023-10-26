@@ -1,6 +1,4 @@
-mutable struct RosenbrockStruct{FT<:AbstractFloat,
-                               AT1<:AbstractArray,
-                               AT2<:AbstractArray}
+mutable struct RosenbrockStruct{FT<:AbstractFloat}
   nStage::Int
   a::AT2
   c::AT2
@@ -25,7 +23,7 @@ function RosenbrockStruct{FT}(backend) where FT<:AbstractFloat
   )
 end
 
-function RosenbrockStruct{FT}(backend,Method) where FT<:AbstractFloat
+function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
   str = Method
   if str == "SSP-Knoth"
     nStage = 3
@@ -49,12 +47,6 @@ function RosenbrockStruct{FT}(backend,Method) where FT<:AbstractFloat
     mCPU = Gamma'\b
     aCPU=[aCPU
        mCPU']
-    a = KernelAbstractions.zeros(backend,FT,nStage+1,nStage)
-    c = KernelAbstractions.zeros(backend,FT,nStage,nStage)
-    m = KernelAbstractions.zeros(backend,FT,nStage)
-    copyto!(a,aCPU)
-    copyto!(m,mCPU)
-    copyto!(c,cCPU)
 
   elseif str == "ROSRK3"
     nStage = 3
@@ -106,13 +98,11 @@ function RosenbrockStruct{FT}(backend,Method) where FT<:AbstractFloat
     c = -inv(Gamma)
     m = a[end,:]
   end
-return RosenbrockStruct{FT,
-                        typeof(m),
-                        typeof(a)}(
+return RosenbrockStruct{FT}(
   nStage,
-  a,
-  c,
+  aCPU,
+  cCPU,
   gamma,
-  m,
+  mCPU,
   )
 end
