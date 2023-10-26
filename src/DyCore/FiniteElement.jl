@@ -133,15 +133,15 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     end
   end
 
-  (DW,DS)=DerivativeMatrixSingle(OrdPoly)
+  (DWCPU,DSCPU)=DerivativeMatrixSingle(OrdPoly)
   DS = KernelAbstractions.zeros(backend,FT,size(DS))
-  copyto!(DS,DS)
+  copyto!(DS,DSCPU)
   DW = KernelAbstractions.zeros(backend,FT,size(DW))
-  copyto!(DW,DW)
+  copyto!(DW,DWCPU)
   DST=DS'
   DWT=DW'
 
-  Q = diagm(w) * DS
+  Q = diagm(w) * DSCPU
   S = Q - Q'
   (DWZ,DSZ)=DerivativeMatrixSingle(OrdPolyZ)
   (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU) =
