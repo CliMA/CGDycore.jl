@@ -13,6 +13,7 @@ function RT0Struct{FT}(backend) where FT<:AbstractFloat
   )
 end
 mutable struct CGStruct{FT<:AbstractFloat,
+                        AT1<:AbstractArray,
                         AT2<:AbstractArray,
                         IT1<:AbstractArray,
                         IT2<:AbstractArray}
@@ -23,7 +24,7 @@ mutable struct CGStruct{FT<:AbstractFloat,
     Stencil::IT2
     NumG::Int
     NumI::Int
-    w::Array{FT, 1}
+    w::AT1
     xw::Array{FT, 1}
     xe::Array{FT, 1}
     IntXE2F::Array{FT, 2}
@@ -50,7 +51,7 @@ function CGStruct{FT}(backend) where FT<:AbstractFloat
   Stencil = KernelAbstractions.zeros(backend,Int,0,0)
   NumG = 0
   NumI = 0
-  w = zeros(FT,0)
+  w = KernelAbstractions.zeros(backend,FT,0)
   xw = zeros(FT,0)
   xe = zeros(FT,0)
   IntXE2F = zeros(FT,0,0)
@@ -68,6 +69,7 @@ function CGStruct{FT}(backend) where FT<:AbstractFloat
   Boundary = zeros(Int,0)
   MasterSlave = KernelAbstractions.zeros(backend,Int,0)
  return CGStruct{FT,
+                 typeof(w),
                  typeof(DW),
                  typeof(MasterSlave),
                  typeof(Stencil)}( 
@@ -110,7 +112,10 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   OrdPolyZ=OrdPolyZ
   DoF = OP * OP
 
-  (w,xw)=GaussLobattoQuad(OrdPoly)
+  (wCPU,xw)=GaussLobattoQuad(OrdPoly)
+  w = KernelAbstractions.zeros(backend,FT,size(wCPU))
+  copyto!(w,wCPU)
+  
   (wZ,xwZ)=GaussLobattoQuad(OrdPolyZ)
   xe = zeros(OrdPoly+1)
   xe[1] = -1.0
@@ -134,14 +139,14 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   end
 
   (DWCPU,DSCPU)=DerivativeMatrixSingle(OrdPoly)
-  DS = KernelAbstractions.zeros(backend,FT,size(DS))
+  DS = KernelAbstractions.zeros(backend,FT,size(DSCPU))
   copyto!(DS,DSCPU)
-  DW = KernelAbstractions.zeros(backend,FT,size(DW))
+  DW = KernelAbstractions.zeros(backend,FT,size(DWCPU))
   copyto!(DW,DWCPU)
   DST=DS'
   DWT=DW'
 
-  Q = diagm(w) * DSCPU
+  Q = diagm(wCPU) * DSCPU
   S = Q - Q'
   (DWZ,DSZ)=DerivativeMatrixSingle(OrdPolyZ)
   (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU) =
@@ -187,6 +192,7 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
   MW = KernelAbstractions.zeros(backend,FT,nz-1,NumG)
   return CGStruct{FT,
+                 typeof(w),
                  typeof(DW),
                  typeof(MasterSlave),
                  typeof(Stencil)}(

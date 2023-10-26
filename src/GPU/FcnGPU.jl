@@ -72,8 +72,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   KoeffCurl = Global.Model.HyperDCurl
   KoeffGrad = Global.Model.HyperDGrad
   KoeffDiv = Global.Model.HyperDDiv
-  @show "FcnGPU"
-
 
 # State vector
   @views Rho = U[:,:,1]

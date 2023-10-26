@@ -48,8 +48,9 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   if Global.Grid.Form == "Sphere"
     Metric.lat = KernelAbstractions.zeros(backend,FT,CG.NumG)
     KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
+    Rad = Global.Grid.Rad
     KGridSizeSphereKernel!(Metric.lat,Metric.zP,Metric.dz,Metric.X,CG.Glob,
-      Global.Grid.Rad,ndrange=ndrange)
+      Rad,ndrange=ndrange)
   else
     Metric.lat = KernelAbstractions.zeros(backend,FT,0)
     KGridSizeCartKernel! = GridSizeCartKernel!(backend,group)
@@ -71,17 +72,26 @@ end
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
 
+
   if Iz <= Nz && IF <= NF
-    ind = Glob[ID,IF]
-    @inbounds @views r = norm(0.5 .* (X[ID,1,:,Iz,IF] .+ X[ID,2,:,Iz,IF]))
+    @inbounds ind = Glob[ID,IF]
+    @inbounds x = eltype(X)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
+    @inbounds y = eltype(X)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
+    @inbounds z = eltype(X)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
+    r = sqrt(x * x + y * y + z * z)
     if Iz == 1
-      z = 0.5 * (X[ID,1,3,1,IF] + X[ID,2,3,1,IF])
-      @inbounds @atomic lat[ind] = asin(z / r)
+      @inbounds lat[ind] = asin(z / r)
     end  
-    @inbounds @atomic zP[Iz,ind] = max(r-Rad, 0)
-    @inbounds @views r2 = norm(X[ID,2,:,Iz,IF])
-    @inbounds @views r1 = norm(X[ID,1,:,Iz,IF])
-    @inbounds @atomic dz[Iz,ind] =  r2-r1
+    @inbounds zP[Iz,ind] = max(r-Rad, eltype(X)(0))
+    @inbounds x = X[ID,1,1,Iz,IF]
+    @inbounds y = X[ID,1,2,Iz,IF]
+    @inbounds z = X[ID,1,3,Iz,IF]
+    r1 = sqrt(x * x + y * y + z * z)
+    @inbounds x = X[ID,2,1,Iz,IF]
+    @inbounds y = X[ID,2,2,Iz,IF]
+    @inbounds z = X[ID,2,3,Iz,IF]
+    r2 = sqrt(x * x + y * y + z * z)
+    @inbounds dz[Iz,ind] =  r2 - r1
   end
 end
 
@@ -94,7 +104,7 @@ end
   
   if Iz <= Nz && IF <= NF
     ind = Glob[ID,IF]  
-    @atomic zP[Iz,ind] = 0.5 * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF]) 
+    @atomic zP[Iz,ind] = eltype(X)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF]) 
     @atomic dz[Iz,ind] = X[ID,2,3,Iz,IF] - X[ID,1,3,Iz,IF] 
   end
 end  
