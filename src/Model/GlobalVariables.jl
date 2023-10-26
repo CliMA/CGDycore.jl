@@ -1,5 +1,7 @@
 using KernelAbstractions
 mutable struct CacheStruct{FT<:AbstractFloat,
+                           AT1<:AbstractArray,
+                           AT2<:AbstractArray,
                            AT3<:AbstractArray,
                            AT4<:AbstractArray}
 CacheE1::Array{FT, 1}
@@ -27,8 +29,8 @@ PresCG::Array{FT, 2}
 AuxG::AT3
 Aux2DG::Array{FT, 3}
 Temp::Array{FT, 3}
-KE::Array{FT, 2}
-uStar::Array{FT, 2}
+KE::AT2
+uStar::AT1
 cTrS::Array{FT, 3}
 TSurf::Array{FT, 3}
 FCG::Array{FT, 4}
@@ -104,8 +106,8 @@ PresCG=zeros(FT,0,0)
 AuxG=KernelAbstractions.zeros(backend,FT,0,0,0)
 Aux2DG=zeros(FT,0,0,0)
 Temp=zeros(FT,0,0,0)
-KE=zeros(FT,0,0)
-uStar=zeros(FT,0,0)
+KE=KernelAbstractions.zeros(backend,FT,0,0)
+uStar=KernelAbstractions.zeros(backend,FT,0,0)
 cTrS=zeros(FT,0,0,0)
 TSurf=zeros(FT,0,0,0)
 FCG=zeros(FT,0,0,0,0)
@@ -154,6 +156,8 @@ f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 qMin=zeros(FT,0,0,0)
 qMax=zeros(FT,0,0,0)
 return CacheStruct{FT,
+                   typeof(uStar),
+                   typeof(KE),
                    typeof(RhoS),
                    typeof(VS)}(
   CacheE1,
@@ -259,8 +263,8 @@ PresCG=zeros(FT,DoF,nz)
 AuxG=KernelAbstractions.zeros(backend,FT,nz,NumG,4)
 Aux2DG=zeros(FT,1,NumG,NumTr+1)
 Temp=zeros(FT,DoF,nz,NF)
-KE=zeros(FT,DoF,nz)
-uStar=zeros(FT,DoF,NF)
+KE=KernelAbstractions.zeros(backend,FT,DoF,nz)
+uStar=KernelAbstractions.zeros(backend,FT,DoF,NF)
 cTrS=zeros(FT,DoF,NF,NumTr)
 TSurf=zeros(FT,0,0,0)
 FCG=zeros(FT,DoF,nz,NF,NumV+NumTr)
@@ -305,10 +309,12 @@ fS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
-f=zeros(FT,0,0,0,0)
+f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 qMin=zeros(FT,nz,NF+NGF,NumTr+1)
 qMax=zeros(FT,nz,NF+NGF,NumTr+1)
 return CacheStruct{FT,
+                   typeof(uStar),
+                   typeof(KE),
                    typeof(RhoS),
                    typeof(VS)}(
   CacheE1,

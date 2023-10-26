@@ -907,7 +907,7 @@ end
   end  
 end  
 
-function ExchangeData!(U::AbstractArray{Float64,2},Exchange)
+function ExchangeData!(U::AbstractArray{FT,2},Exchange) where FT<:AbstractFloat
 
   nz = size(U,1)
 
@@ -943,7 +943,8 @@ function ExchangeData!(U::AbstractArray{Float64,2},Exchange)
     U[:,IndRecvBuffer[NeiProc[iP]]] .+= RecvBuffer[NeiProc[iP]]
   end
 end
-function ExchangeData!(U::Array{Float64,1},Exchange)
+
+function ExchangeData!(U::AbstractArray{FT,1},Exchange) where FT<:AbstractFloat
 
   IndSendBuffer = Exchange.IndSendBuffer
   IndRecvBuffer = Exchange.IndRecvBuffer

@@ -12,7 +12,6 @@ function RT0Struct{FT}(backend) where FT<:AbstractFloat
     Stencil,
   )
 end
-
 mutable struct CGStruct{FT<:AbstractFloat,
                         AT2<:AbstractArray,
                         IT1<:AbstractArray,
@@ -42,6 +41,7 @@ mutable struct CGStruct{FT<:AbstractFloat,
     Boundary::Array{Int, 1}
     MasterSlave::IT1
 end
+#=
 function CGStruct{FT}(backend) where FT<:AbstractFloat
   OrdPoly = 0
   OrdPolyZ = 0
@@ -97,63 +97,66 @@ function CGStruct{FT}(backend) where FT<:AbstractFloat
     MasterSlave,
  )
 end 
+=#
 
-function CGStruct(backend,FT,OrdPoly,OrdPolyZ,Grid) 
+function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
 # Discretization
   OP=OrdPoly+1
   OPZ=OrdPolyZ+1
+  nz = Grid.nz
 
-  CG = CGStruct{FT}(backend)
-  CG.OrdPoly=OrdPoly
-  CG.OrdPolyZ=OrdPolyZ
-  CG.DoF = OP * OP
+# CG = CGStruct{FT}(backend)
+  OrdPoly=OrdPoly
+  OrdPolyZ=OrdPolyZ
+  DoF = OP * OP
 
-  (CG.w,CG.xw)=GaussLobattoQuad(CG.OrdPoly)
-  (wZ,CG.xwZ)=GaussLobattoQuad(CG.OrdPolyZ)
-  CG.xe = zeros(OrdPoly+1)
-  CG.xe[1] = -1.0
+  (w,xw)=GaussLobattoQuad(OrdPoly)
+  (wZ,xwZ)=GaussLobattoQuad(OrdPolyZ)
+  xe = zeros(OrdPoly+1)
+  xe[1] = -1.0
   for i = 2 : OrdPoly
-    CG.xe[i] = CG.xe[i-1] + 2.0/OrdPoly
+    xe[i] = xe[i-1] + 2.0/OrdPoly
   end
-  CG.xe[OrdPoly+1] = 1.0
+  xe[OrdPoly+1] = 1.0
 
-  CG.IntXE2F = zeros(OrdPoly+1,OrdPoly+1)
+  IntXE2F = zeros(OrdPoly+1,OrdPoly+1)
   for j = 1 : OrdPoly + 1
     for i = 1 : OrdPoly +1
-      CG.IntXE2F[i,j] = Lagrange(CG.xw[i],CG.xe,j)
+      IntXE2F[i,j] = Lagrange(xw[i],xe,j)
     end
   end
 
-  CG.IntZE2F = zeros(OrdPolyZ+1,OrdPolyZ+1)
+  IntZE2F = zeros(OrdPolyZ+1,OrdPolyZ+1)
   for j = 1 : OrdPolyZ + 1
     for i = 1 : OrdPolyZ +1
-      CG.IntZE2F[i,j] = Lagrange(CG.xwZ[i],CG.xwZ,j)
+      IntZE2F[i,j] = Lagrange(xwZ[i],xwZ,j)
     end
   end
 
-  (DW,DS)=DerivativeMatrixSingle(CG.OrdPoly)
-  CG.DS = KernelAbstractions.zeros(backend,FT,size(DS))
-  copyto!(CG.DS,DS)
-  CG.DW = KernelAbstractions.zeros(backend,FT,size(DW))
-  copyto!(CG.DW,DW)
-  CG.DST=DS'
-  CG.DWT=DW'
+  (DW,DS)=DerivativeMatrixSingle(OrdPoly)
+  DS = KernelAbstractions.zeros(backend,FT,size(DS))
+  copyto!(DS,DS)
+  DW = KernelAbstractions.zeros(backend,FT,size(DW))
+  copyto!(DW,DW)
+  DST=DS'
+  DWT=DW'
 
-  Q = diagm(CG.w) * DS
-  CG.S = Q - Q'
-  (DWZ,CG.DSZ)=DerivativeMatrixSingle(CG.OrdPolyZ)
-  (Glob,CG.NumG,CG.NumI,Stencil,MasterSlave) =
+  Q = diagm(w) * DS
+  S = Q - Q'
+  (DWZ,DSZ)=DerivativeMatrixSingle(OrdPolyZ)
+  (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU) =
     NumberingFemCG(Grid,OrdPoly)  
 
-  CG.Glob = KernelAbstractions.zeros(backend,Int,size(Glob))
-  copyto!(CG.Glob,Glob)
-  CG.Stencil = KernelAbstractions.zeros(backend,Int,size(Stencil))
-  copyto!(CG.Stencil,Stencil)
-  CG.MasterSlave = KernelAbstractions.zeros(backend,Int,size(MasterSlave))
-  copyto!(CG.MasterSlave,MasterSlave)
+  Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
+  copyto!(Glob,GlobCPU)
+  Stencil = KernelAbstractions.zeros(backend,Int,size(StencilCPU))
+  copyto!(Stencil,StencilCPU)
+  MasterSlave = KernelAbstractions.zeros(backend,Int,size(MasterSlaveCPU))
+  copyto!(MasterSlave,MasterSlaveCPU)
 
 
 # Boundary nodes
+  Boundary = zeros(Int,0)
   for iF = 1 : Grid.NumFaces
     Side = 0
     for iE in Grid.Faces[iF].E
@@ -162,23 +165,54 @@ function CGStruct(backend,FT,OrdPoly,OrdPolyZ,Grid)
           @views GlobLoc = reshape(Glob[:,iF],OP,OP) 
          if Side == 1
            for i in GlobLoc[1:OP-1,1]   
-             push!(CG.Boundary,i)
+             push!(Boundary,i)
            end
          elseif Side == 2  
            for i in GlobLoc[OP,1:OP-1]
-             push!(CG.Boundary,i)
+             push!(Boundary,i)
            end
          elseif Side == 3  
            for i in GlobLoc[2:OP,OP]
-             push!(CG.Boundary,i)
+             push!(Boundary,i)
            end
          elseif Side == 4  
            for i in GlobLoc[1,2:OP]
-             push!(CG.Boundary,i)
+             push!(Boundary,i)
            end
          end  
        end  
     end
   end  
-  return CG
+  M = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  MW = KernelAbstractions.zeros(backend,FT,nz-1,NumG)
+  return CGStruct{FT,
+                 typeof(DW),
+                 typeof(MasterSlave),
+                 typeof(Stencil)}(
+    OrdPoly,
+    OrdPolyZ,
+    DoF,
+    Glob,
+    Stencil,
+    NumG,
+    NumI,
+    w,
+    xw,
+    xe,
+    IntXE2F,
+    xwZ,
+    IntZE2F,
+    DW,
+    DWT,
+    DS,
+    DST,
+    DSZ,
+    S,
+    M,
+    MMass,
+    MW,
+    Boundary,
+    MasterSlave,
+ )
 end

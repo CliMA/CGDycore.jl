@@ -27,7 +27,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
-  --Stretch=false \
+  --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \

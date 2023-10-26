@@ -79,6 +79,8 @@ include("DyCore/parse_commandline.jl")
 
 include("GPU/OperatorKernel.jl")
 include("GPU/vtkOutputKernel.jl")
+include("GPU/FcnGPU.jl")
+include("GPU/DiagnosticKernel.jl")
 
 include("IntegrationMethods/JacStruc.jl")
 include("IntegrationMethods/LinIMEXMethod.jl")

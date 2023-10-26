@@ -11,11 +11,8 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   dXdxI = zeros(3,3,OPZ,nQuad,nz,NF)
   nS = zeros(nQuad,3,NF)
   FS = zeros(nQuad,NF)
-  dz = zeros(nz,CG.NumG)
-  zP = zeros(nz,CG.NumG)
   J = zeros(nQuad,OPZ,nz,NF)
   X = zeros(nQuad,OPZ,3,nz,NF)
-  lat = zeros(CG.NumG)
 
   for iF = 1 : NF
     for iz = 1 : nz
@@ -34,58 +31,31 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
       end
     end
   end
-
-  (M,MW,MMass) = MassCG(CG,J,CG.Glob,Exchange)
-  Global.latN = zeros(CG.NumG)
-  latN = Global.latN
-  @inbounds for iF = 1 : NF
-    @inbounds for iQ = 1 : nQuad
-      ind = CG.Glob[iQ,iF]
-      if Global.Grid.Form == "Sphere"
-        x = 0.5 * (X[iQ,1,1,1,iF] + X[iQ,2,1,1,iF])
-        y = 0.5 * (X[iQ,1,2,1,iF] + X[iQ,2,2,1,iF])
-        z = 0.5 * (X[iQ,1,3,1,iF] + X[iQ,2,3,1,iF])
-        r = sqrt(x^2 + y^2 + z^2)
-        lat[ind] = asin(z / r)
-      end  
-      @inbounds for iz=1:nz
-        dz[iz,ind] +=  2.0*(J[iQ,1,iz,iF] + J[iQ,2,iz,iF])^2 / 
-        (dXdxI[3,3,1,iQ,iz,iF] + dXdxI[3,3,2,iQ,iz,iF])  / M[iz,ind]
-      end
-      @inbounds for iz=1:nz
-        if Global.Grid.Form == "Sphere"
-          r = norm(0.5 .* (X[iQ,1,:,iz,iF] .+ X[iQ,2,:,iz,iF]))
-          zP[iz,ind] += max(r-Global.Grid.Rad, 0.0) * 
-            (J[iQ,1,1,iF] + J[iQ,2,1,iF]) / M[iz,ind]
-        else
-          zP[iz,ind] += 0.5 * (X[iQ,1,3,iz,iF] + X[iQ,2,3,iz,iF]) * 
-            (J[iQ,1,1,iF] + J[iQ,2,1,iF]) / M[iz,ind]
-        end
-      end
-    end
-  end
-  ExchangeData!(dz,Exchange)
-  ExchangeData!(zP,Exchange)
-
+  copyto!(Metric.J,J)
+  copyto!(Metric.X,X)
   copyto!(Metric.dXdxI,dXdxI)
   copyto!(Metric.nS,nS)
   copyto!(Metric.FS,FS)
-  Metric.dz = KernelAbstractions.zeros(backend,FT,size(dz))
-  copyto!(Metric.dz,dz)
-  Metric.zP = KernelAbstractions.zeros(backend,FT,size(zP))
-  copyto!(Metric.zP,zP)
-  copyto!(Metric.J,J)
-  copyto!(Metric.X,X)
+
+  MassCGGPU!(backend,FT,CG,Metric.J,CG.Glob,Exchange,Global)
+
+  Metric.dz = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
+  Metric.zP = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU  
+  NzG = min(div(NumberThreadGPU,OP*OP),nz)  
+  group = (OP*OP,NzG,1)  
+  ndrange = (OP*OP,nz,NF)
   if Global.Grid.Form == "Sphere"
-    Metric.lat = KernelAbstractions.zeros(backend,FT,size(lat))
-    copyto!(Metric.lat,lat)
-  end  
-  CG.M = KernelAbstractions.zeros(backend,FT,size(M))
-  copyto!(CG.M,M)
-  CG.MMass = KernelAbstractions.zeros(backend,FT,size(MMass))
-  copyto!(CG.MMass,MMass)
-  CG.MW = KernelAbstractions.zeros(backend,FT,size(MW))
-  copyto!(CG.MW,MW)
+    Metric.lat = KernelAbstractions.zeros(backend,FT,CG.NumG)
+    KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
+    KGridSizeSphereKernel!(Metric.lat,Metric.zP,Metric.dz,Metric.X,CG.Glob,
+      Global.Grid.Rad,ndrange=ndrange)
+  else
+    Metric.lat = KernelAbstractions.zeros(backend,FT,0)
+    KGridSizeCartKernel! = GridSizeCartKernel!(backend,group)
+    KGridSizeCartKernel!(Metric.zP,Metric.dz,Metric.X,CG.Glob,ndrange=ndrange)
+  end    
+
   return (CG,Metric)
 end
 
@@ -93,3 +63,39 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global)
   DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,
   zeros(CG.OrdPoly+1,CG.OrdPoly+1,Global.Grid.NumFaces))
 end  
+
+@kernel function GridSizeSphereKernel!(lat,zP,dz,@Const(X),@Const(Glob),Rad)
+
+  ID,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz && IF <= NF
+    ind = Glob[ID,IF]
+    @inbounds @views r = norm(0.5 .* (X[ID,1,:,Iz,IF] .+ X[ID,2,:,Iz,IF]))
+    if Iz == 1
+      z = 0.5 * (X[ID,1,3,1,IF] + X[ID,2,3,1,IF])
+      @inbounds @atomic lat[ind] = asin(z / r)
+    end  
+    @inbounds @atomic zP[Iz,ind] = max(r-Rad, 0)
+    @inbounds @views r2 = norm(X[ID,2,:,Iz,IF])
+    @inbounds @views r1 = norm(X[ID,1,:,Iz,IF])
+    @inbounds @atomic dz[Iz,ind] =  r2-r1
+  end
+end
+
+@kernel function GridSizeCartKernel!(zP,dz,@Const(X),@Const(Glob))
+
+  ID,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+  
+  if Iz <= Nz && IF <= NF
+    ind = Glob[ID,IF]  
+    @atomic zP[Iz,ind] = 0.5 * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF]) 
+    @atomic dz[Iz,ind] = X[ID,2,3,Iz,IF] - X[ID,1,3,Iz,IF] 
+  end
+end  
+

@@ -62,7 +62,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
-  CG = CGStruct(backend,FT,OrdPoly,OrdPolyZ,Global.Grid)
+  CG = CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
   (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Exchange,Global)
 
   # Output partition

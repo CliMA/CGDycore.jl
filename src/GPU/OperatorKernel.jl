@@ -1083,7 +1083,6 @@ end
 @kernel function DivRhoTrUpwind3Kernel!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),Koeff)
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -1188,24 +1187,6 @@ end
   end
 end
 
-# we may be hitting a slow path:
-# https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
-fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
-
-
-@inline function Derivative(I,J,N,c,D)
-  @inbounds DXc = D[I,1] * c[1,J]
-  @inbounds DYc = D[J,1] * c[I,1]
-  for k = 2 : N
-    @inbounds DXc += D[I,k] * c[k,J]
-    @inbounds DYc += D[J,k] * c[I,k]
-  end
-  return DXc, DYc
-end  
-
-@inline function PressureGPU(RhoTh,Phys)
-  Phys.p0 * fast_powGPU(Phys.Rd * RhoTh / Phys.p0, 1 / (1 - Phys.kappa))
-end  
 
 @inline function Contra12(Rho,u,v,dXdxI)
   @inbounds uCon = Rho * ((dXdxI[1,1,1] + dXdxI[1,1,2]) * u +
@@ -1482,286 +1463,35 @@ end
 
 end  
 
-function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
+function VerticalDiffusionScalarKernel!(FTr,Tr,Rho,K,CG,dXdxI33,J)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
-  backend = get_backend(F)
-  FT = eltype(F)
-  Glob = FE.Glob
-  DS = FE.DS
-  DW = FE.DW
-  M = FE.M
-  dXdxI = Metric.dXdxI
-  X = Metric.X
-  J = Metric.J
-  N = FE.OrdPoly+1
-  Nz = size(F,1)
-  NF = size(Glob,3)
-  Koeff = Global.Model.HyperDDiv
-  Temp1 = Cache.Temp1
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
 
+  cCol = @localmem eltype(FTr) (N,N,ColumnTilesDim+1)
 
-# State vector
-  @views Rho = U[:,:,1]
-  @views u = U[:,:,2]
-  @views v = U[:,:,3]
-  @views w = U[:,:,4]
-# Cache
-  @views CacheF = Temp1[:,:,1:5]
-# Ranges
-  NzG = min(div(1024,N*N),Nz)
-  group = (N, N, NzG, 1)
-  ndrange = (N, N, Nz, NF)
-
-  KuvwFunCKernel! = uvwFunCKernel!(backend, group)
-  KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
-  KHyperViscKernel! = HyperViscKernel!(backend, group)
-  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
-
-  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
-  @. CacheF = 0
-  KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-  @. F = 0
-  KDivRhoTrUpwind3Kernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,Koeff,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-end
-
-@kernel function PressureKernel!(p,@Const(U),Phys)
-  Iz,IC = @index(Global, NTuple)
-
-  NumG = @uniform @ndrange()[2]
-
-  if IC <= NumG
-    p[Iz,IC] = PressureGPU(U[Iz,IC,5],Phys)  
-  end  
-end
-
-function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
-  backend = get_backend(U)
-  FT = eltype(U)
-
-  Nz = size(U,1)
-  NumG = size(U,2)
-
-  NG = min(div(512,Nz),NumG)
-  group = (Nz, NG)
-  ndrange = (Nz, NumG)
-  @views p = Cache.AuxG[:,:,1]
-
-  KPressureKernel! = PressureKernel!(backend,group)
-
-  KPressureKernel!(p,U,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-end
-
-function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
-
-  backend = get_backend(F)
-  FT = eltype(F)
-  @. F = 0
-  Glob = FE.Glob
-  DS = FE.DS
-  DW = FE.DW
-  M = FE.M
-  dXdxI = Metric.dXdxI
-  X = Metric.X
-  J = Metric.J
-  lat = Metric.lat  
-  DoF = FE.DoF
-  N = size(FE.DS,1)
-  Nz = size(F,1)
-  NDoF = size(F,2)
-  NF = size(Glob,2)
-  NumV  = Global.Model.NumV 
-  NumTr  = Global.Model.NumTr 
-  Koeff = Global.Model.HyperDDiv
-  Temp1 = Cache.Temp1
-  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-
-
-  KoeffCurl = Global.Model.HyperDCurl
-  KoeffGrad = Global.Model.HyperDGrad
-  KoeffDiv = Global.Model.HyperDDiv
-
-
-# State vector
-  @views Rho = U[:,:,1]
-  @views u = U[:,:,2]
-  @views v = U[:,:,3]
-  @views w = U[:,:,4]
-  @views RhoTr = U[:,:,5]
-# Cache
-  @views CacheF = Temp1[:,:,1:6]
-  @views FRho = F[:,:,1]
-  @views FRhoTr = F[:,:,5]
-  @views p = Cache.AuxG[:,:,1]
-# Ranges
-  NzG = min(div(NumberThreadGPU,N*N),Nz)
-  group = (N, N, NzG, 1)
-  ndrange = (N, N, Nz, NF)
-  groupTr = group
-  ndrangeTr = ndrange
-
-  KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
-  KGradKernel! = GradKernel!(backend,group)
-  KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
-  KHyperViscKernel! = HyperViscKernel!(backend, group)
-  KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
-  KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-  KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
-  KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
-  KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
-  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
-# KMomentumKernel! = MomentumKernel!(backend, group)
-
-  @. CacheF = 0
-  @views MRho = CacheF[:,:,6]
-  KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
-  for iT = 1 : NumTr
-    @views CacheTr = Temp1[:,:,iT + 6]  
-    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeTr)
-  end  
-  KernelAbstractions.synchronize(backend)
-
-  @. F = 0
-  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
-  for iT = 1 : NumTr
-    @views CacheTr = Temp1[:,:,iT + 6]  
-    @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
-      KoeffDiv,ndrange=ndrangeTr)
-  end  
-  KernelAbstractions.synchronize(backend)
-
-
-  KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
-# KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
-  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-
-  for iT = 1 : NumTr
-    @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
-      dXdxI,J,M,Glob,ndrange=ndrangeTr)
-  end  
-  KernelAbstractions.synchronize(backend)
-
-  if Global.Model.Force
-    NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
-    groupG = (Nz, NDoFG)  
-    ndrangeG = (Nz, NDoF)  
-    KForceKernel! = ForceKernel!(backend, groupG)
-    KForceKernel!(F,U,p,lat,Force,ndrange=ndrangeG)  
-    KernelAbstractions.synchronize(backend)
-  end  
-
-end
-
-function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
-
-  backend = get_backend(F)
-  FT = eltype(F)
-  @. F = 0
-  Glob = FE.Glob
-  DS = FE.DS
-  DW = FE.DW
-  M = FE.M
-  dXdxI = Metric.dXdxI
-  X = Metric.X
-  J = Metric.J
-  DoF = FE.DoF
-  N = size(FE.DS,1)
-  Nz = size(F,1)
-  NF = size(Glob,2)
-  NDoF = size(F,2)
-  NumV  = Global.Model.NumV 
-  NumTr  = Global.Model.NumTr 
-  Koeff = Global.Model.HyperDDiv
-  Temp1 = Cache.Temp1
-  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-
-
-  KoeffCurl = Global.Model.HyperDCurl
-  KoeffGrad = Global.Model.HyperDGrad
-  KoeffDiv = Global.Model.HyperDDiv
-
-
-# State vector
-  @views Rho = U[:,:,1]
-  @views u = U[:,:,2]
-  @views v = U[:,:,3]
-  @views w = U[:,:,4]
-  @views RhoTr = U[:,:,5]
-# Cache
-  @views CacheF = Temp1[:,:,1:6+NumTr]
-  @views FRho = F[:,:,1]
-  @views FRhoTr = F[:,:,5]
-  @views p = Cache.AuxG[:,:,1]
-# Ranges
-  NzG = min(div(NumberThreadGPU,N*N),Nz)
-  group = (N, N, NzG, 1)
-  ndrange = (N, N, Nz, NF)
-  groupTr = group
-  ndrangeTr = ndrange
-
-  KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
-  KGradKernel! = GradKernel!(backend,group)
-  KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
-  KHyperViscKernel! = HyperViscKernel!(backend, group)
-  KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
-  KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-  KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
-# KMomentumKernel! = MomentumKernel!(backend, group)
-  KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
-  KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
-  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
-
-  @. CacheF = 0
-  @views MRho = CacheF[:,:,6]
-  KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
-  for iT = 1 : NumTr
-    @views CacheTr = Temp1[:,:,iT + 6]
-    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeTr)
+  if Iz <= Nz
+    ID = I + (J - 1) * N
+    @inbounds ind = Glob[ID,IF]
+    @inbounds cCol[I,J,iz] = Tr[Iz,ind] / Rho[Iz,ind]
   end
-  KernelAbstractions.synchronize(backend)
+  if iz == ColumnTilesDim || Iz == Nz
+    Izp1 = min(Iz + 1,Nz)
+    @inbounds cCol[I,J,iz+1] = Tr[Izp1,ind] / Rho[Izp1,ind]
+  end
+  @synchronize
 
-  ExchangeData3DSendGPU(CacheF,Exchange)
-
-  ExchangeData3DRecvGPU!(CacheF,Exchange)
-
-  @. F = 0
-  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
-  for iT = 1 : NumTr
-    @views CacheTr = Temp1[:,:,iT + 6]  
-    @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
-      KoeffDiv,ndrange=ndrangeTr)
+  if Iz < Nz
+    ID = I + (J - 1) * N
+    @inbounds ind = Glob[ID,IF]
+    @inbounds grad = (K[I,J,Iz,IF] + K[I,J,Iz+1,IF]) * (cCol[iz+1] - cCol[iz]) *
+       (dXdxI33[2,ID,Iz,IF] + dXdxI33[1,ID,Iz+1,IF]) / ( J[ID,2,Iz,IF] + J[ID,1,Iz+1,IF])
+    @inbounds @atomic FTr[Iz,ind] +=  dXdxI33[2,ID,Iz] * grad / M[Iz,ind]  
+    @inbounds @atomic FTr[Iz+1,ind] += - dXdxI33[1,ID,Iz+1] * grad / M[Iz+1,ind]     
   end  
-  KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
-  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-  for iT = 1 : NumTr
-    @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
-      dXdxI,J,M,Glob,ndrange=ndrangeTr)
-  end  
-
-  KernelAbstractions.synchronize(backend)
-
-  ExchangeData3DSendGPU(F,Exchange)
-  ExchangeData3DRecvGPU!(F,Exchange)
-  KernelAbstractions.synchronize(backend)
-
-  if Global.Model.Force
-    lat = Metric.lat  
-    NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
-    groupG = (Nz, NDoFG)  
-    ndrangeG = (Nz, NDoF)  
-    KForceKernel! = ForceKernel!(backend, groupG)
-    KForceKernel!(F,U,p,lat,Force,ndrange=ndrangeG)  
-    KernelAbstractions.synchronize(backend)
-  end  
-end
+end  
 

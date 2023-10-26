@@ -92,6 +92,9 @@ elseif Device == "GPU" || Device == "GPU_P"
     backend = CUDABackend()
     CUDA.allowscalar(true)
     CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+  elseif GPUType == "AMD"
+    backend = AMDGPUBackend()
+    AMDGPU.allowscalar(true)
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
