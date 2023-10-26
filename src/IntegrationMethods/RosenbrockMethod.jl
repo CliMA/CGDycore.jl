@@ -6,7 +6,7 @@ mutable struct RosenbrockStruct{FT<:AbstractFloat}
   m::Array{FT, 1}
 end
 
-function RosenbrockStruct{FT}(backend) where FT<:AbstractFloat
+function RosenbrockStruct{FT}() where FT<:AbstractFloat
   nStage = 0
   a = zeros(FT,0,0)
   c = zeros(FT,0,0)

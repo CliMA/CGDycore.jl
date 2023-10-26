@@ -420,7 +420,7 @@ function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
   SimMinutes = 0
   SimSeconds = 0
   SimTime = 0.0
-  ROS=RosenbrockStruct{FT}(backend)
+  ROS=RosenbrockStruct{FT}()
   LinIMEX=LinIMEXMethod()
   IMEX=IMEXMethod()
   MIS=MISMethod()
