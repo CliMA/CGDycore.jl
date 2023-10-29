@@ -226,7 +226,7 @@ function DecomposeEqualArea(Grid,NumProc)
   @inbounds for iP=1:Rest
     LocalNumfaces[iP]+=1
   end
-  (n_regions,s_cap) = eq_caps(NumProc)
+  (n_regions,s_cap) = Parallels.eq_caps(NumProc)
   n_collars = size(n_regions,1) - 2
   CellToProc = zeros(Int,NumFaces)
   Faces=Grid.Faces
@@ -236,7 +236,7 @@ function DecomposeEqualArea(Grid,NumProc)
     coord[iF,3]=iF
     (coord[iF,1],coord[iF,2],r) = cart2sphere(P.x,P.y,P.z)  
   end  
-  p=sortslices(coord, dims=1, lt=compare_NS_WE)
+  p=sortslices(coord, dims=1, lt=Parallels.compare_NS_WE)
   NumNodeA = 1
   NumNodeE = LocalNumfaces[1]
   iP = zeros(Int,NumNodeE-NumNodeA+1)

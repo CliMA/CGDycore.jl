@@ -56,7 +56,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
       end
     end
 #   Pressure
-    @views Pressure!(PresCG,ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
+    @views Models.Pressure!(PresCG,ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
 #     uStar
       @views uStarCoefficient!(uStar[:,iF],v1CG[:,1],v2CG[:,1],wCG[:,2],CG,
@@ -85,7 +85,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
       end    
     end
   end  
-  ExchangeData3DSend(AuxG,Exchange)
+  Parallels.ExchangeData3DSend(AuxG,Exchange)
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
@@ -102,7 +102,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
       end
     end
 #   Pressure
-    @views Pressure!(PresCG,ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
+    @views Models.Pressure!(PresCG,ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
 #     uStar
       @views uStarCoefficient!(uStar[:,iF],v1CG[:,1],v2CG[:,1],wCG[:,2],CG,
@@ -131,7 +131,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
       end
     end
   end
-  ExchangeData3DRecv!(AuxG,Exchange)
+  Parallels.ExchangeData3DRecv!(AuxG,Exchange)
 
   @. CdThG = 0.0
   @. CdTrG = 0.0
@@ -147,7 +147,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
         (J[iD,1,1,iF] + J[iD,2,1,iF])  / CG.M[1,ind]
     end
   end
-  ExchangeData3DSend(Aux2DG,Exchange)
+  Parallels.ExchangeData3DSend(Aux2DG,Exchange)
   @inbounds for iF in Global.Grid.InteriorFaces
     if Global.Model.SurfaceFlux
       Cd_coefficient!(CdThCG,CdTrCG,CG,Global,Param,iF)
@@ -161,7 +161,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
         (J[iD,1,1,iF] + J[iD,2,1,iF])  / CG.M[1,ind] / Metric.dz[1,ind]
     end
   end
-  ExchangeData3DRecv!(Aux2DG,Exchange)
+  Parallels.ExchangeData3DRecv!(Aux2DG,Exchange)
 end
 
 function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
@@ -284,7 +284,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
     end
   end
 
-  ExchangeData3DSend(Temp1,Exchange)
+  Parallels.ExchangeData3DSend(Temp1,Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for iD = 1 : DoF
@@ -339,7 +339,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
     end
   end
 
-  ExchangeData3DRecv!(Temp1,Exchange)
+  Parallels.ExchangeData3DRecv!(Temp1,Exchange)
 # for i = 1 : 6
 #   @views @. Temp1[:,:,i] /= CG.M[:,:]
 # end
@@ -535,7 +535,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
     end
   end  
 
-  ExchangeData3DSend(F,Exchange)
+  Parallels.ExchangeData3DSend(F,Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for iD = 1 : DoF
@@ -721,7 +721,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
       end
     end
   end  
-  ExchangeData3DRecv!(F,Exchange)
+  Parallels.ExchangeData3DRecv!(F,Exchange)
   @views @. F[:,:,RhoPos] /= CG.M
   @views @. F[:,:,ThPos] /= CG.M
   @inbounds for iT = 1:NumTr
@@ -894,7 +894,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end
 
-  ExchangeData3DSend(Temp1,Global.Exchange)
+  Parallels.ExchangeData3DSend(Temp1,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -962,7 +962,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end
 
-  ExchangeData3DRecv!(Temp1,Global.Exchange)
+  Parallels.ExchangeData3DRecv!(Temp1,Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP = 1 : OP
@@ -1160,7 +1160,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
     end
   end  
 
-  ExchangeData3DSend(F,Global.Exchange)
+  Parallels.ExchangeData3DSend(F,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -1355,7 +1355,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
       end  
     end
   end  
-  ExchangeData3DRecv!(F,Global.Exchange)
+  Parallels.ExchangeData3DRecv!(F,Global.Exchange)
   @views @. F[:,:,RhoPos] /= CG.M
   @views @. F[:,:,ThPos] /= CG.M
   @inbounds for iT = 1:NumTr
@@ -1509,7 +1509,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
     end
   end
 
-  ExchangeData3DSend(Temp1,PresG,Global.Exchange)
+  Parallels.ExchangeData3DSend(Temp1,PresG,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -1567,7 +1567,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
     end
   end
 
-  ExchangeData3DRecv!(Temp1,PresG,Global.Exchange)
+  Parallels.ExchangeData3DRecv!(Temp1,PresG,Global.Exchange)
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for jP=1:OP
@@ -1613,7 +1613,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       Metric.J,Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
+    @views Models.Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
 #   Temperature
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
@@ -1753,7 +1753,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
     end
   end  
 
-  ExchangeData3DSend(F,PresG,Global.Exchange)
+  Parallels.ExchangeData3DSend(F,PresG,Global.Exchange)
 
   @inbounds for iF in Global.Grid.InteriorFaces
     @inbounds for jP=1:OP
@@ -1799,7 +1799,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       Metric.J,Metric.dXdxI[:,:,:,1,:,:,iF])
     @views @. wCCG = 0.5*(wCG[:,:,1:nz] + wCG[:,:,2:nz+1])
 #   Pressure
-    @views Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
+    @views Models.Pressure!(Pres[:,:,:,iF],ThCG,RhoCG,TrCG,KE,zPG,Phys,Global)
 #   Temperature
 
     if Global.Model.VerticalDiffusion || Global.Model.SurfaceFlux
@@ -1938,7 +1938,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
       end  
     end
   end  
-  ExchangeData3DRecv!(F,PresG,Global.Exchange)
+  Parallels.ExchangeData3DRecv!(F,PresG,Global.Exchange)
   @views @. F[:,:,RhoPos] /= JJ
   @views @. F[:,:,ThPos] /= JJ
   @inbounds for iT = 1:NumTr

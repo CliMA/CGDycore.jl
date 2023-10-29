@@ -112,11 +112,11 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   OrdPolyZ=OrdPolyZ
   DoF = OP * OP
 
-  (wCPU,xw)=GaussLobattoQuad(OrdPoly)
+  (wCPU,xw)=DG.GaussLobattoQuad(OrdPoly)
   w = KernelAbstractions.zeros(backend,FT,size(wCPU))
   copyto!(w,wCPU)
   
-  (wZ,xwZ)=GaussLobattoQuad(OrdPolyZ)
+  (wZ,xwZ)=DG.GaussLobattoQuad(OrdPolyZ)
   xe = zeros(OrdPoly+1)
   xe[1] = -1.0
   for i = 2 : OrdPoly
@@ -127,18 +127,18 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   IntXE2F = zeros(OrdPoly+1,OrdPoly+1)
   for j = 1 : OrdPoly + 1
     for i = 1 : OrdPoly +1
-      IntXE2F[i,j] = Lagrange(xw[i],xe,j)
+      IntXE2F[i,j] = DG.Lagrange(xw[i],xe,j)
     end
   end
 
   IntZE2F = zeros(OrdPolyZ+1,OrdPolyZ+1)
   for j = 1 : OrdPolyZ + 1
     for i = 1 : OrdPolyZ +1
-      IntZE2F[i,j] = Lagrange(xwZ[i],xwZ,j)
+      IntZE2F[i,j] = DG.Lagrange(xwZ[i],xwZ,j)
     end
   end
 
-  (DWCPU,DSCPU)=DerivativeMatrixSingle(OrdPoly)
+  (DWCPU,DSCPU)=DG.DerivativeMatrixSingle(OrdPoly)
   DS = KernelAbstractions.zeros(backend,FT,size(DSCPU))
   copyto!(DS,DSCPU)
   DW = KernelAbstractions.zeros(backend,FT,size(DWCPU))
@@ -148,7 +148,7 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
-  (DWZ,DSZ)=DerivativeMatrixSingle(OrdPolyZ)
+  (DWZ,DSZ)=DG.DerivativeMatrixSingle(OrdPolyZ)
   (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU) =
     NumberingFemCG(Grid,OrdPoly)  
 

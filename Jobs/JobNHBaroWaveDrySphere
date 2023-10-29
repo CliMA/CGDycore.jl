@@ -30,8 +30,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
-  --nz=64 \
-  --nPanel=30 \
+  --nz=10 \
+  --nPanel=10 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \

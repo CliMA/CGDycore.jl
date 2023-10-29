@@ -88,15 +88,23 @@ PrintStartTime = parsed_args["PrintStartTime"]
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
-Param = CGDycore.Parameters(Problem)
+NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
+MPI.Init()
 
-if Device == "CPU"
+if Device == "CPU" || Device == "CPU_P"
   backend = CPU()
-elseif Device == "GPU"
+elseif Device == "GPU" || Device == "GPU_P"
   if GPUType == "CUDA"
     backend = CUDABackend()
-    CUDA.allowscalar(true)
+    CUDA.allowscalar(false)
+    CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+  elseif GPUType == "AMD"
+    backend = ROCBackend()
+    AMDGPU.allowscalar(false)
+  elseif GPUType == "Metal"
+    backend = MetalBackend()
+    Metal.allowscalar(true)
   end
 else
   backend = CPU()

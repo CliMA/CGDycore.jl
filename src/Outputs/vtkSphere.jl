@@ -78,7 +78,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:A
           @views Trans(x[8,:],ksi0,eta1, 1.0,X,CG,Global)
           if Global.Grid.Form == "Sphere" && Global.Output.Flat
             for i=1:8
-              (lam[i],theta[i],z[i]) = cart2sphere(x[i,1],x[i,2],x[i,3])
+              (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
             end 
             lammin = minimum(lam)
             lammax = maximum(lam)
@@ -128,8 +128,8 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:A
       ksi1=ksi0+dd;
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
-          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
-                Lagrange(0.5*(eta0+eta1),CG.xw,j)
+          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
+                DG.Lagrange(0.5*(eta0+eta1),CG.xw,j)
         end
       end
       ksi0 = ksi1
@@ -174,7 +174,7 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
         X[4,:] = Trans(ksi0,eta1, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
         if Global.Grid.Form == "Sphere" && Global.Output.Flat
           for i=1:4
-            (lam[i],theta[i],z[i]) = cart2sphere(X[i,1],X[i,2],X[i,3])
+            (lam[i],theta[i],z[i]) = Grids.cart2sphere(X[i,1],X[i,2],X[i,3])
           end 
 #=
           lammin = minimum(lam)
@@ -231,8 +231,8 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
       ksi1=ksi0+dd;
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
-          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
-                Lagrange(0.5*(eta0+eta1),CG.xw,j)
+          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
+                DG.Lagrange(0.5*(eta0+eta1),CG.xw,j)
         end
       end
       ksi0 = ksi1

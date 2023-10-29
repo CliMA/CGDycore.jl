@@ -1,18 +1,18 @@
-function JacobiSphere3(DG,F,z,Topo,Topography,zs)
-ksi=DG.xw
-eta=DG.xw
-zeta=DG.xwZ
-n=DG.OrdPoly+1
-n3=DG.OrdPolyZ+1
+function JacobiSphere3(CG,F,z,Topo,Topography,zs)
+ksi=CG.xw
+eta=CG.xw
+zeta=CG.xwZ
+n=CG.OrdPoly+1
+n3=CG.OrdPolyZ+1
 X=zeros(n,n,n3,3)
 dXdx=zeros(n,n,n3,3,3)
 dXdxI=zeros(3,3,n3,n,n)
 J=zeros(n,n,n3)
 hR=zeros(n,n,n3)
 theta=zeros(n,n)
-(_,DS)=DerivativeMatrixSingle(DG.OrdPoly)
+(_,DS)=DG.DerivativeMatrixSingle(CG.OrdPoly)
 DST = DS'
-(_,DSZ)=DerivativeMatrixSingle(DG.OrdPolyZ)
+(_,DSZ)=DG.DerivativeMatrixSingle(CG.OrdPolyZ)
 @inbounds for j=1:n
   @inbounds for i=1:n
     @inbounds for k=1:n3

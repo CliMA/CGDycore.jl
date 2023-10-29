@@ -83,7 +83,7 @@ Base.@kwdef struct DCMIPAdvectionExample <: Example end
 function (profile::DCMIPAdvectionExample)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R) = cart2sphere(x[1],x[2],x[3])
+    (Lon,Lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
     Z=max(R-Phys.RadEarth,0.0)
     pZ = Phys.p0 * exp(-Z / Param.ScaleHeight)
     LonP = Lon - 2* pi * time / Param.tau
@@ -124,7 +124,7 @@ function (profile::GalewskiExample)(Param,Phys)
     FT = eltype(x)
     Grav=Phys.Grav 
     Omega=Phys.Omega
-    (lon,lat,r)=cart2sphere(x[1],x[2],x[3])
+    (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
     r=Phys.RadEarth
     Rho=(Grav*Param.H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG,Param)))/Grav +
       Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2.0)*exp(-((pi/4.0-lat)/Param.betaG)^2.0)
@@ -147,7 +147,7 @@ Base.@kwdef struct BaroWaveExample <: Example end
 function (profile::BaroWaveExample)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R - Phys.RadEarth, FT(0))
     T0 = FT(0.5) * (Param.T0E + Param.T0P)
     ConstA = FT(1.0) / Param.LapseRate
@@ -223,7 +223,7 @@ Base.@kwdef struct HeldSuarezDryExample <: Example end
 function (profile::HeldSuarezDryExample)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z=max(R-Phys.RadEarth,FT(0));
     temp = Param.T_Init + Param.LapseRate * z #+ rand(FT) * FT(0.1) * (z < FT(5000))
     pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
@@ -242,7 +242,7 @@ Base.@kwdef struct HeldSuarezMoistExample <: Example end
 function (profile::HeldSuarezMoistExample)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)=cart2sphere(x[1],x[2],x[3])
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z=max(R-Phys.RadEarth,FT(0));
     temp = Param.T_Init + Param.LapseRate * z #+ rand(FT) * FT(0.1) * (z < FT(5000))
     pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)

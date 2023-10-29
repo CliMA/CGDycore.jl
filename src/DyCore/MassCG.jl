@@ -23,9 +23,9 @@ function MassCG(CG,J,Glob,Exchange)
       end
     end
   end
-  ExchangeData!(M,Exchange)
-  ExchangeData!(MMass,Exchange)
-  ExchangeData!(MW,Exchange)
+  Parallels.ExchangeData!(M,Exchange)
+  Parallels.ExchangeData!(MMass,Exchange)
+  Parallels.ExchangeData!(MW,Exchange)
   return (M,MW,MMass)
 end
 
@@ -48,9 +48,9 @@ function MassCGGPU!(backend,FT,CG,J,Glob,Exchange,Global)
   KMassCGKernel! = MassCGKernel!(backend,group)
   KMassCGKernel!(M,MMass,MW,J,w,Glob,ndrange=ndrange)
 
-  ExchangeData!(M,Exchange)
-  ExchangeData!(MMass,Exchange)
-  ExchangeData!(MW,Exchange)
+  Parallels.ExchangeData!(M,Exchange)
+  Parallels.ExchangeData!(MMass,Exchange)
+  Parallels.ExchangeData!(MW,Exchange)
 end
 
 @kernel function MassCGKernel!(M,MMass,MW,@Const(JJ),@Const(w),@Const(Glob))

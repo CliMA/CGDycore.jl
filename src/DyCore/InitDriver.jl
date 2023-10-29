@@ -8,85 +8,85 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   ParallelCom.ProcNumber  = ProcNumber
 
   TimeStepper = TimeStepperStruct{FT}(backend)
-  Grid = GridStruct(nz,Topography)
+  Grid = Grids.GridStruct(nz,Topography)
 
   if GridType == "HealPix"
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
   # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-    Grid=InputGridH("Grid/mesh_H24_no_pp.nc", OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid=Grids.InputGridH("Grid/mesh_H24_no_pp.nc", OrientFaceSphere,Phys.RadEarth,Grid)
   elseif GridType == "SQuadGen"
-    Grid = InputGrid("Grid/baroclinic_wave_2deg_x4.g",OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid = Grids.InputGrid("Grid/baroclinic_wave_2deg_x4.g",OrientFaceSphere,Phys.RadEarth,Grid)
   elseif GridType == "Msh"
-    Grid = InputGridMsh("Grid/Quad.msh",OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid = Grids.InputGridMsh("Grid/Quad.msh",OrientFaceSphere,Phys.RadEarth,Grid)
   elseif GridType == "CubedSphere"
-    Grid = CubedGrid(nPanel,OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid = Grids.CubedGrid(nPanel,Grids.OrientFaceSphere,Phys.RadEarth,Grid)
   elseif GridType == "TriangularSphere"
-    IcosahedronGrid = CGDycore.CreateIcosahedronGrid()
+    IcosahedronGrid = Grids.CreateIcosahedronGrid()
     RefineLevel =  0
     for iRef = 1 : RefineLevel
-      CGDycore.RefineEdgeTriangularGrid!(IcosahedronGrid)
-      CGDycore.RefineFaceTriangularGrid!(IcosahedronGrid)
+      Grids.RefineEdgeTriangularGrid!(IcosahedronGrid)
+      Grids.RefineFaceTriangularGrid!(IcosahedronGrid)
     end
-    CGDycore.NumberingTriangularGrid!(IcosahedronGrid)
-    Grid = CGDycore.TriangularGridToGrid(IcosahedronGrid,Rad,Grid)
+    Grids.NumberingTriangularGrid!(IcosahedronGrid)
+    Grid = Grids.TriangularGridToGrid(IcosahedronGrid,Rad,Grid)
   end
 
   if Decomp == "Hilbert"
-    HilbertFaceSphere!(Grid)
-    CellToProc = Decompose(Grid,ProcNumber)
+    Parallels.HilbertFaceSphere!(Grid)
+    CellToProc = Grids.Decompose(Grid,ProcNumber)
   elseif Decomp == "EqualArea"
-    CellToProc = DecomposeEqualArea(Grid,ProcNumber)
+    CellToProc = Grids.DecomposeEqualArea(Grid,ProcNumber)
   else
     CellToProc = ones(Int,Grid.NumFaces)
     println(" False Decomp method ")
   end
 
-  SubGrid = ConstructSubGrid(Grid,CellToProc,Proc)
+  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
 
   if Model.Stretch
     if Model.StretchType == "ICON"  
       sigma = 1.0
       lambda = 3.16
-      AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+      Grids.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"  
-      AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
+      Grids.AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
     else
-      AddVerticalGrid!(SubGrid,nz,H)
+      Grids.AddVerticalGrid!(SubGrid,nz,H)
     end
   else  
-    AddVerticalGrid!(SubGrid,nz,H)
+    Grids.AddVerticalGrid!(SubGrid,nz,H)
   end
 
-  Exchange = ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
+  Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
   CG = CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
-  (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Exchange,Global)
+  (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = vtkStruct{FT}(backend,1,TransSphereX!,CG,Metric,Global)
-  unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,CG,Metric,Global)
+  Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
   if Topography.TopoS == "EarthOrography"
-    zS = Orography(CG,Global)
+    zS = Grids.Orography(CG,Global)
     Output.RadPrint = H
     Output.Flat=false
     nzTemp = Global.Grid.nz
     Global.Grid.nz = 1
-    vtkCacheOrography = vtkStruct(OrdPoly,TransSphereX,CG,Global)
-    unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
+    vtkCacheOrography = Outputs.vtkStruct(OrdPoly,Grids.TransSphereX,CG,Global)
+    Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
     Global.Grid.nz = nzTemp
   end
 
   if Topography.TopoS == "EarthOrography"
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Exchange,Global,zS)
+    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
   else
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiSphere3,CG,Exchange,Global)
+    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global)
   end
   return CG,Metric,Exchange,Global
 end  
@@ -102,40 +102,40 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   ParallelCom.ProcNumber  = ProcNumber
 
   TimeStepper = TimeStepperStruct{FT}(backend)
-  Grid = GridStruct(nz,Topography)
+  Grid = Grids.GridStruct(nz,Topography)
 
-  Grid = CartGrid(nx,ny,Lx,Ly,x0,y0,OrientFaceCart,Boundary,Grid)
+  Grid = Grids.CartGrid(nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,Grid)
 
-  CellToProc = Decompose(Grid,ProcNumber)
-  SubGrid = ConstructSubGrid(Grid,CellToProc,Proc)
+  CellToProc = Grids.Decompose(Grid,ProcNumber)
+  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
 
   if Model.Stretch
     if Model.StretchType == "ICON"  
       sigma = 1.0
       lambda = 3.16
-      AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
+      Grids.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"  
-      AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
+      Grids.AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
     else
-      AddVerticalGrid!(SubGrid,nz,H)
+      Grids.AddVerticalGrid!(SubGrid,nz,H)
     end
   else  
-    AddVerticalGrid!(SubGrid,nz,H)
+    Grids.AddVerticalGrid!(SubGrid,nz,H)
   end
 
-  Exchange = ExchangeStruct(SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
+  Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct(Topography)
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
-  CG = CGStruct(backend,FT,OrdPoly,OrdPolyZ,Global.Grid)
-  (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Exchange,Global)
+  CG = CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+  (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global)
 
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = vtkStruct{FT}(backend,1,TransCartX!,CG,Metric,Global)
-  unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransCartX!,CG,Metric,Global)
+  Outputs.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
   if Topography.TopoS == "EarthOrography"
@@ -144,12 +144,12 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
     Output.Flat=false
     nzTemp = Global.Grid.nz
     Global.Grid.nz = 1
-    vtkCacheOrography = vtkStruct{FT}(backend,OrdPoly,TransCartX!,CG,Metric,Global)
-    unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
+    vtkCacheOrography = Outputs.vtkStruct{FT}(backend,OrdPoly,Grids.TransCartX!,CG,Metric,Global)
+    Outputs.unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
     Global.Grid.nz = nzTemp
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,CG,Exchange,Global,zS)
+    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
   else
-    (CG,Metric) = DiscretizationCG(backend,FT,JacobiDG3,Exchange,CG,Global)
+    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global)
   end
 
 

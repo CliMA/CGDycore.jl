@@ -103,7 +103,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
 
 
 # Print initial conditions
-  unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
 
   if IntMethod == "Rosenbrock"
     @time begin
@@ -112,10 +112,10 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,Force,DiscType);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
           end
           if time[1] >= StartAverageTime && StartAverageTime >= 0.0
-            AverageInTime!(UAver,U,iAv)
+            Statistics.AverageInTime!(UAver,U,iAv)
             iAv += 1
           end  
         end
@@ -132,7 +132,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           RosenbrockDSchur!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -146,7 +146,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           RosenbrockSchurSSP!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -160,7 +160,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           LinIMEXSchur!(U,dtau,FcnNHCurlVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -174,7 +174,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           IMEXSchur!(U,dtau,FcnNHCurlExp1DVecI!,FcnNHCurlImp1DGlobalVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -188,7 +188,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           MISSchur!(U,dtau,dtauFast,FcnNHCurlExp3DVecI!,FcnNHCurlImp3DVecI!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -202,7 +202,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           @time RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -213,7 +213,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     error("Bad IntMethod")
   end
   if StartAverageTime >= 0 && StartAverageTime < SimTime
-    unstructured_vtkSphere(UAver,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+    Outputs.unstructured_vtkSphere(UAver,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
   end  
 end  
 

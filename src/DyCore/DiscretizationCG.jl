@@ -17,7 +17,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   for iF = 1 : NF
     for iz = 1 : nz
       zI = [Grid.z[iz],Grid.z[iz+1]]
-      @views (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz) = Jacobi(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF])
+      @views (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz) = Jacobi(CG,Grid.Faces[iF],zI,Grids.Topo,Grid.Topography,zs[:,:,iF])
       @views @. X[:,:,:,iz,iF] = X_Fz
       @views @. J[:,:,iz,iF] = J_Fz
       @views @. dXdxI[:,:,:,:,iz,iF] = dXdxI_Fz

@@ -1,0 +1,101 @@
+mutable struct JStruct{FT<:AbstractFloat,
+                           AT1<:AbstractArray,
+                           AT3<:AbstractArray,
+                           AT4<:AbstractArray}
+    JRhoW::AT3
+    JWRhoTh::AT3
+    JWRho::AT3
+    JWRhoV::AT3
+    JRhoThW::AT3
+    JTrW::AT4
+    JWW::AT3
+    tri::AT3
+    JDiff::AT3
+    JAdvC::AT3
+    JAdvF::AT3
+    CompTri::Bool
+    CompJac::Bool
+    CacheCol1::AT1
+    CacheCol2::AT1
+    CacheCol3::AT1
+end
+
+function JStruct{FT}(backend) where FT<:AbstractFloat
+  JRhoW=KernelAbstractions.zeros(backend,0,0,0)
+  JWRhoTh=KernelAbstractions.zeros(backend,0,0,0)
+  JWRho=KernelAbstractions.zeros(backend,0,0,0)
+  JWRhoV=KernelAbstractions.zeros(backend,0,0,0)
+  JRhoThW=KernelAbstractions.zeros(backend,0,0,0)
+  JTrW=KernelAbstractions.zeros(backend,0,0,0,0)
+  JWW=KernelAbstractions.zeros(backend,0,0,0)
+  tri=KernelAbstractions.zeros(backend,0,0,0)
+  JDiff=KernelAbstractions.zeros(backend,0,0,0)
+  JAdvC=KernelAbstractions.zeros(backend,0,0,0)
+  JAdvF=KernelAbstractions.zeros(backend,0,0,0)
+  CompTri=false
+  CompJac=false
+  CacheCol1=KernelAbstractions.zeros(backend,0)
+  CacheCol2=KernelAbstractions.zeros(backend,0)
+  CacheCol3=KernelAbstractions.zeros(backend,0)
+  return JStruct{FT,
+                 typeof(CacheCol1),
+                 typeof(JRhoW),
+                 typeof(JTrW)}(
+    JRhoW,
+    JWRhoTh,
+    JWRho,
+    JWRhoV,
+    JRhoThW,
+    JTrW,
+    JWW,
+    tri,
+    JDiff,
+    JAdvC,
+    JAdvF,
+    CompTri,
+    CompJac,
+    CacheCol1,
+    CacheCol2,
+    CacheCol3,
+  )
+end  
+
+function JStruct{FT}(backend,NumG,nz,NumTr) where FT<:AbstractFloat
+  JRhoW=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JWRhoTh=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JWRho=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JWRhoV=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JRhoThW=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG)
+  JTrW=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG,NumTr)
+  JWW=KernelAbstractions.zeros(backend,FT,1,nz-1,NumG)
+  tri=KernelAbstractions.zeros(backend,FT,3,nz-1,NumG)
+  JDiff=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
+  JAdvC=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
+  JAdvF=KernelAbstractions.zeros(backend,FT,3,nz-1,NumG)
+  CompTri=false
+  CompJac=false
+  CacheCol1=KernelAbstractions.zeros(backend,FT,nz)
+  CacheCol2=KernelAbstractions.zeros(backend,FT,nz)
+  CacheCol3=KernelAbstractions.zeros(backend,FT,nz)
+  return JStruct{FT,
+                 typeof(CacheCol1),
+                 typeof(JRhoW),
+                 typeof(JTrW)}(
+    JRhoW,
+    JWRhoTh,
+    JWRho,
+    JWRhoV,
+    JRhoThW,
+    JTrW,
+    JWW,
+    tri,
+    JDiff,
+    JAdvC,
+    JAdvF,
+    CompTri,
+    CompJac,
+    CacheCol1,
+    CacheCol2,
+    CacheCol3,
+  )
+end

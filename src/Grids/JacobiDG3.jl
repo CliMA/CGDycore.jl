@@ -1,19 +1,19 @@
-function JacobiDG3(DG,F,z,Topo,Topography,zs)
-ksi=DG.xe
-eta=DG.xe
-zeta=DG.xwZ
+function JacobiDG3(CG,F,z,Topo,Topography,zs)
+ksi=CG.xe
+eta=CG.xe
+zeta=CG.xwZ
 z1=z[1]
 z2=z[2]
-n=DG.OrdPoly+1
-nz=DG.OrdPolyZ+1
+n=CG.OrdPoly+1
+nz=CG.OrdPolyZ+1
 XE=zeros(n,n,nz,3)
 X=zeros(n,n,nz,3)
 dXdx=zeros(n,n,nz,3,3)
 dXdxI=zeros(3,3,nz,n,n)
 J=zeros(n,n,nz)
 theta=zeros(n,n)
-(_,DS)=DerivativeMatrixSingle(DG.OrdPoly)
-(_,DSZ)=DerivativeMatrixSingle(DG.OrdPolyZ)
+(_,DS) = DG.DerivativeMatrixSingle(CG.OrdPoly)
+(_,DSZ) = DG.DerivativeMatrixSingle(CG.OrdPolyZ)
 @inbounds for j=1:n
   @inbounds for i=1:n
     @inbounds for k=1:nz
@@ -33,7 +33,7 @@ theta=zeros(n,n)
   end
 end
 
-  ChangeBasis!(X,XE,DG)
+  ChangeBasis!(X,XE,CG)
   @inbounds for k = 1 : nz
     @inbounds for j = 1 : n
       @inbounds for i = 1 : n
@@ -79,7 +79,7 @@ return X,J,dXdx,dXdxI
 end
 
 
-function ChangeBasis!(XOut,XIn,DG)
+function ChangeBasis!(XOut,XIn,CG)
 
   nxOut = size(XOut,1)
   nyOut = size(XOut,2)
@@ -96,7 +96,7 @@ function ChangeBasis!(XOut,XIn,DG)
       @inbounds for iIn = 1 : nxIn
         @inbounds for iOut = 1 : nxOut
           @views @.  Buf1[iOut,jIn,kIn,:] = Buf1[iOut,jIn,kIn,:] + 
-            DG.IntXE2F[iOut,iIn] * XIn[iIn,jIn,kIn,:]
+            CG.IntXE2F[iOut,iIn] * XIn[iIn,jIn,kIn,:]
         end
       end
     end
@@ -106,7 +106,7 @@ function ChangeBasis!(XOut,XIn,DG)
       @inbounds for jOut = 1 : nyOut
         @inbounds for iOut = 1 : nxOut
           @views @.  Buf2[iOut,jOut,kIn,:] = Buf2[iOut,jOut,kIn,:] + 
-            DG.IntXE2F[jOut,jIn] * Buf1[iOut,jIn,kIn,:]
+            CG.IntXE2F[jOut,jIn] * Buf1[iOut,jIn,kIn,:]
         end
       end
     end
@@ -116,7 +116,7 @@ function ChangeBasis!(XOut,XIn,DG)
       @inbounds for jOut = 1 : nyOut
         @inbounds for iOut = 1 : nxOut
           @views @. XOut[iOut,jOut,kOut,:] = XOut[iOut,jOut,kOut,:] + 
-            DG.IntZE2F[kOut,kIn] * Buf2[iOut,jOut,kIn,:]
+            CG.IntZE2F[kOut,kIn] * Buf2[iOut,jOut,kIn,:]
         end
       end
     end

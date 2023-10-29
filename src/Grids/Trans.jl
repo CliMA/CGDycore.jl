@@ -44,8 +44,8 @@ function TransSphereX(ksi,eta,zeta,X,CG,Global)
   @inbounds for j=1:OrdPoly+1
     @inbounds for i=1:OrdPoly+1
       @inbounds for k=1:OrdPolyZ+1
-        XP[:]=XP[:]+Lagrange(ksi,CG.xw,i)*
-          Lagrange(eta,CG.xw,j)*Lagrange(zeta,CG.xwZ,k)*X[i,j,k,:]
+        XP[:]=XP[:]+DG.Lagrange(ksi,CG.xw,i)*
+          DG.Lagrange(eta,CG.xw,j)*DG.Lagrange(zeta,CG.xwZ,k)*X[i,j,k,:]
       end
     end
   end
@@ -61,11 +61,11 @@ function TransSphereX!(XP,ksi,eta,zeta,X,CG,Global)
   OrdPolyZ=CG.OrdPolyZ
   @. XP = 0
   @inbounds for j = 1 : OrdPoly + 1 
-    Lj = Lagrange(eta,CG.xw,j)
+    Lj = DG.Lagrange(eta,CG.xw,j)
     @inbounds for i = 1 : OrdPoly + 1 
-      Li = Lagrange(ksi,CG.xw,i) * Lj
+      Li = DG.Lagrange(ksi,CG.xw,i) * Lj
       @inbounds for k = 1 : OrdPolyZ + 1 
-        Fac = Li * Lagrange(zeta,CG.xwZ,k)
+        Fac = Li * DG.Lagrange(zeta,CG.xwZ,k)
         @inbounds for l = 1 : 3 
            XP[l] += Fac * X[i,j,k,l]
         end 
@@ -98,11 +98,11 @@ function TransCartX(ksi,eta,zeta,X,CG,Global)
   OrdPolyZ=CG.OrdPolyZ
   XP = zeros(3)
   @inbounds for j=1:OrdPoly+1
-    Lj = Lagrange(eta,CG.xw,j)
+    Lj = DG.Lagrange(eta,CG.xw,j)
     @inbounds for i=1:OrdPoly+1
-      Li = Lagrange(ksi,CG.xw,i) * Lj
+      Li = DG.Lagrange(ksi,CG.xw,i) * Lj
       @inbounds for k=1:OrdPolyZ+1
-        Fac = Li * Lagrange(zeta,CG.xwZ,k)
+        Fac = Li * DG.Lagrange(zeta,CG.xwZ,k)
         @inbounds for l = 1 : 3
            XP[l] += Fac * X[i,j,k,l]
         end
@@ -126,11 +126,11 @@ function TransCartX!(XP,ksi,eta,zeta,X,CG,Global)
   OrdPolyZ=CG.OrdPolyZ
   @. XP = 0
   @inbounds for j = 1 : OrdPoly + 1
-    Lj = Lagrange(eta,CG.xw,j)
+    Lj = DG.Lagrange(eta,CG.xw,j)
     @inbounds for i = 1 : OrdPoly + 1
-      Li = Lagrange(ksi,CG.xw,i) * Lj
+      Li = DG.Lagrange(ksi,CG.xw,i) * Lj
       @inbounds for k = 1 : OrdPolyZ + 1
-        Fac = Li * Lagrange(zeta,CG.xwZ,k)
+        Fac = Li * DG.Lagrange(zeta,CG.xwZ,k)
         @inbounds for l = 1 : 3
            XP[l] += Fac * X[i,j,k,l]
         end

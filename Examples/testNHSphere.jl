@@ -1,13 +1,17 @@
-using CGDycore
+import CGDycore:
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
 using MPI
 using Base
 using CUDA
+using AMDGPU
 using Metal
 using KernelAbstractions
 using StaticArrays
+using ArgParse
+using MPI
 
 # Model
-parsed_args = CGDycore.parse_commandline()
+parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -90,11 +94,11 @@ if Device == "CPU" || Device == "CPU_P"
 elseif Device == "GPU" || Device == "GPU_P"
   if GPUType == "CUDA"
     backend = CUDABackend()
-    CUDA.allowscalar(true)
+    CUDA.allowscalar(false)
     CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
-    backend = AMDGPUBackend()
-    AMDGPU.allowscalar(true)
+    backend = ROCBackend()
+    AMDGPU.allowscalar(false)
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
@@ -111,17 +115,17 @@ else
   @show "False FloatTypeBackend"
   stop
 end
-Param = CGDycore.Parameters(FTB,Problem)
+Param = Examples.Parameters(FTB,Problem)
 
 KernelAbstractions.synchronize(backend)
 
 
 
 # Physical parameters
-Phys=CGDycore.PhysParameters{FTB}()
+Phys = DyCore.PhysParameters{FTB}()
 
 #ModelParameters
-Model = CGDycore.ModelStruct{FTB}()
+Model = DyCore.ModelStruct{FTB}()
 
 # Initial conditions
 Model.Equation=Equation
@@ -196,27 +200,27 @@ OrdPolyZ = 1
 Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
 @show "InitSphere"
-(CG, Metric, Exchange, Global) = CGDycore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
+(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
 
 # Initial values
 if Problem == "Galewski"
-  Profile = CGDycore.GalewskiExample()(Param,Phys)
+  Profile = Examples.GalewskiExample()(Param,Phys)
 elseif Problem == "BaroWaveDrySphere"
-  Profile = CGDycore.BaroWaveExample()(Param,Phys)
+  Profile = Examples.BaroWaveExample()(Param,Phys)
 elseif Problem == "HeldSuarezDrySphere"
-  Profile = CGDycore.HeldSuarezDryExample()(Param,Phys)
+  Profile = Examples.HeldSuarezDryExample()(Param,Phys)
 elseif Problem == "HeldSuarezMoistSphere"
-  Profile = CGDycore.HeldSuarezMoistExample()(Param,Phys)
+  Profile = Examples.HeldSuarezMoistExample()(Param,Phys)
 end  
 
 @show "InitialConditions"
-U = CGDycore.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 # Forcing
 if Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezMoistSphere"
-  Force = CGDycore.HeldSuarezForcing()(Param,Phys)
+  Force = Examples.HeldSuarezForcing()(Param,Phys)
 else
-  Force =  CGDycore.NoForcing()(Param,Phys) 
+  Force =  Examples.NoForcing()(Param,Phys) 
 end
 
 # Output
@@ -279,7 +283,7 @@ Global.Output.StartAverageDays = StartAverageDays
 Global.Output.PrintStartTime = PrintStartTime
 Global.Output.OrdPrint = CG.OrdPoly
 
-Global.vtkCache = CGDycore.vtkStruct{FTB}(backend,Global.Output.OrdPrint,CGDycore.TransSphereX!,CG,Metric,Global)
+Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Grids.TransSphereX!,CG,Metric,Global)
 
 # TimeStepper
 time=[0.0]
@@ -300,17 +304,17 @@ if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
   @show "vor Timestepper"
-  CGDycore.TimeStepper!(U,CGDycore.FcnGPU!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+  Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
 elseif Device == "CPU_P"  || Device == "GPU_P"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
-  CGDycore.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  CGDycore.TimeStepper!(U,CGDycore.FcnGPU_P!,CGDycore.FcnPrepareGPU!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+  Integration.TimeStepper!(U,GPU.FcnGPU_P!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
 else
   nT = max(7 + NumTr, NumV + NumTr)
-  CGDycore.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  CGDycore.TimeStepper!(U,CGDycore.Fcn!,CGDycore.FcnPrepare!,CGDycore.JacSchurGPU!,
-    CGDycore.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+  Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
 end
