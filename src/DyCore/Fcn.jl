@@ -9,6 +9,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
     NumV,
     NumTr) = Global.Model
 
+  @show "FcnPrepare"
   Grav=Phys.Grav
   OP=CG.OrdPoly+1;
   DoF = CG.DoF

@@ -26,9 +26,11 @@ mutable struct CGStruct{FT<:AbstractFloat,
     NumI::Int
     w::AT1
     xw::AT1
+    xwCPU::Array{FT, 1}
     xe::Array{FT, 1}
     IntXE2F::Array{FT, 2}
     xwZ::AT1
+    xwZCPU::Array{FT, 1}
     IntZE2F::Array{FT, 2}
     DW::AT2
     DWT::Array{FT, 2}
@@ -42,64 +44,6 @@ mutable struct CGStruct{FT<:AbstractFloat,
     Boundary::Array{Int, 1}
     MasterSlave::IT1
 end
-#=
-function CGStruct{FT}(backend) where FT<:AbstractFloat
-  OrdPoly = 0
-  OrdPolyZ = 0
-  DoF = 0
-  Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  Stencil = KernelAbstractions.zeros(backend,Int,0,0)
-  NumG = 0
-  NumI = 0
-  w = KernelAbstractions.zeros(backend,FT,0)
-  xw = zeros(FT,0)
-  xe = zeros(FT,0)
-  IntXE2F = zeros(FT,0,0)
-  xwZ = zeros(FT,0)
-  IntZE2F = zeros(FT,0,0)
-  DW = KernelAbstractions.zeros(backend,FT,0,0)
-  DWT = zeros(FT,0,0)
-  DS = KernelAbstractions.zeros(backend,FT,0,0)
-  DST = zeros(FT,0,0)
-  DSZ = zeros(FT,0,0)
-  S = zeros(FT,0,0)
-  M = KernelAbstractions.zeros(backend,FT,0,0)
-  MMass = KernelAbstractions.zeros(backend,FT,0,0)
-  MW = KernelAbstractions.zeros(backend,FT,0,0)
-  Boundary = zeros(Int,0)
-  MasterSlave = KernelAbstractions.zeros(backend,Int,0)
- return CGStruct{FT,
-                 typeof(w),
-                 typeof(DW),
-                 typeof(MasterSlave),
-                 typeof(Stencil)}( 
-    OrdPoly,
-    OrdPolyZ,
-    DoF,
-    Glob,
-    Stencil,
-    NumG,
-    NumI,
-    w,
-    xw,
-    xe,
-    IntXE2F,
-    xwZ,
-    IntZE2F,
-    DW,
-    DWT,
-    DS,
-    DST,
-    DSZ,
-    S,
-    M,
-    MMass,
-    MW,
-    Boundary,
-    MasterSlave,
- )
-end 
-=#
 
 function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
 # Discretization
@@ -131,14 +75,14 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   IntXE2F = zeros(OrdPoly+1,OrdPoly+1)
   for j = 1 : OrdPoly + 1
     for i = 1 : OrdPoly +1
-      IntXE2F[i,j] = DG.Lagrange(xw[i],xe,j)
+      IntXE2F[i,j] = DG.Lagrange(xwCPU[i],xe,j)
     end
   end
 
   IntZE2F = zeros(OrdPolyZ+1,OrdPolyZ+1)
   for j = 1 : OrdPolyZ + 1
     for i = 1 : OrdPolyZ +1
-      IntZE2F[i,j] = DG.Lagrange(xwZ[i],xwZ,j)
+      IntZE2F[i,j] = DG.Lagrange(xwZCPU[i],xwZCPU,j)
     end
   end
 
@@ -209,9 +153,11 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     NumI,
     w,
     xw,
+    xwCPU,
     xe,
     IntXE2F,
     xwZ,
+    xwZCPU,
     IntZE2F,
     DW,
     DWT,

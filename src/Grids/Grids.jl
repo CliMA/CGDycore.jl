@@ -10,6 +10,8 @@ using NCDatasets
 using PairedLinkedLists
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using CUDA
+using StaticArrays
 
 
 include("Geometry.jl")

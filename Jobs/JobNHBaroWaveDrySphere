@@ -8,6 +8,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=false \
+  --Force=false \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --Coriolis=true \
@@ -17,9 +18,9 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Decomp="EqualArea" \
   --SimDays=10 \
   --SimSeconds=0 \
-  --PrintSeconds=0 \
+  --PrintSeconds=3000 \
   --PrintMinutes=0 \
-  --PrintHours=12 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \

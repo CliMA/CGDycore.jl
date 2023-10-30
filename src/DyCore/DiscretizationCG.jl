@@ -32,31 +32,6 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   copyto!(FGPU,F)
   Grids.JacobiSphere3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs,Grid.Rad)
 
-#=
-  for iF = 1 : NF
-    for iz = 1 : nz
-      zI = [Grid.z[iz],Grid.z[iz+1]]
-      @views (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz) = Jacobi(CG,Grid.Faces[iF],zI,Grids.Topo,Grid.Topography,zs[:,:,iF])
-      @views @. X[:,:,:,iz,iF] = X_Fz
-      @views @. J[:,:,iz,iF] = J_Fz
-      @views @. dXdxI[:,:,:,:,iz,iF] = dXdxI_Fz
-      if iz == 1
-        #   Surface normal
-        @views @. FS[:,iF] = sqrt(dXdxI_Fz[3,1,1,:] * dXdxI_Fz[3,1,1,:] +
-          dXdxI_Fz[3,2,1,:] * dXdxI_Fz[3,2,1,:] + dXdxI_Fz[3,3,1,:] * dXdxI_Fz[3,3,1,:])
-        @views @. nS[:,1,iF] = dXdxI_Fz[3,1,1,:] / FS[:,iF]
-        @views @. nS[:,2,iF] = dXdxI_Fz[3,2,1,:] / FS[:,iF]
-        @views @. nS[:,3,iF] = dXdxI_Fz[3,3,1,:] / FS[:,iF]
-      end
-    end
-  end
-  copyto!(Metric.J,J)
-  copyto!(Metric.X,X)
-  copyto!(Metric.dXdxI,dXdxI)
-  copyto!(Metric.nS,nS)
-  copyto!(Metric.FS,FS)
-=# 
-
   MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)
 
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
@@ -76,6 +51,11 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
     KGridSizeCartKernel! = GridSizeCartKernel!(backend,group)
     KGridSizeCartKernel!(Metric.zP,Metric.dz,Metric.X,CG.Glob,ndrange=ndrange)
   end    
+  NFG = min(div(NumberThreadGPU,OP*OP),NF)  
+  group = (OP*OP, NFG)
+  ndrange = (OP*OP, NF)
+  KSurfaceNormalKernel! = SurfaceNormalKernel!(backend,group)
+  @views KSurfaceNormalKernel!(Metric.FS,Metric.nS,Metric.dXdxI[3,:,1,:,1,:],ndrange=ndrange)
 
   return (CG,Metric)
 end
@@ -84,6 +64,22 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global)
   DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,
   KernelAbstractions.zeros(backend,FT,CG.OrdPoly+1,CG.OrdPoly+1,Global.Grid.NumFaces))
 end  
+
+@kernel function SurfaceNormalKernel!(FS,nS,@Const(dXdxI))
+
+  ID,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[2]
+
+
+  if IF <= NF
+    @inbounds FS[ID,IF] = sqrt(dXdxI[1,ID,IF] * dXdxI[1,ID,IF] +
+          dXdxI[2,ID,IF] * dXdxI[2,ID,IF] + dXdxI[3,ID,IF] * dXdxI[3,ID,IF])
+    @inbounds nS[ID,1,IF] = dXdxI[1,ID,IF] / FS[ID,IF]
+    @inbounds nS[ID,2,IF] = dXdxI[2,ID,IF] / FS[ID,IF]
+    @inbounds nS[ID,3,IF] = dXdxI[3,ID,IF] / FS[ID,IF]
+  end
+end
 
 @kernel function GridSizeSphereKernel!(lat,zP,dz,@Const(X),@Const(Glob),Rad)
 
