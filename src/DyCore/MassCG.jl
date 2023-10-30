@@ -29,7 +29,9 @@ function MassCG(CG,J,Glob,Exchange)
   return (M,MW,MMass)
 end
 
-function MassCGGPU!(backend,FT,CG,J,Glob,Exchange,Global)
+function MassCGGPU!(CG,J,Glob,Exchange,Global)
+  backend = get_backend(J)
+  FT = eltype(J)
   N = CG.OrdPoly + 1
   DoF = CG.DoF
   w = CG.w

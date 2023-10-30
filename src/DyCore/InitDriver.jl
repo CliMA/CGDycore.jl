@@ -8,7 +8,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   ParallelCom.ProcNumber  = ProcNumber
 
   TimeStepper = TimeStepperStruct{FT}(backend)
-  Grid = Grids.GridStruct(nz,Topography)
+  Grid = Grids.GridStruct{FT}(backend,nz,Topography)
 
   if GridType == "HealPix"
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
@@ -102,7 +102,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   ParallelCom.ProcNumber  = ProcNumber
 
   TimeStepper = TimeStepperStruct{FT}(backend)
-  Grid = Grids.GridStruct(nz,Topography)
+  Grid = Grids.GridStruct{FT}(backend,nz,Topography)
 
   Grid = Grids.CartGrid(nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,Grid)
 

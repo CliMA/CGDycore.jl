@@ -13,7 +13,26 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   FS = zeros(nQuad,NF)
   J = zeros(nQuad,OPZ,nz,NF)
   X = zeros(nQuad,OPZ,3,nz,NF)
+  F = zeros(4,3,NF)
+  FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
+  for iF = 1 : NF
+    F[1,1,iF] = Grid.Faces[iF].P[1].x  
+    F[1,2,iF] = Grid.Faces[iF].P[1].y  
+    F[1,3,iF] = Grid.Faces[iF].P[1].z  
+    F[2,1,iF] = Grid.Faces[iF].P[2].x  
+    F[2,2,iF] = Grid.Faces[iF].P[2].y  
+    F[2,3,iF] = Grid.Faces[iF].P[2].z  
+    F[3,1,iF] = Grid.Faces[iF].P[3].x  
+    F[3,2,iF] = Grid.Faces[iF].P[3].y  
+    F[3,3,iF] = Grid.Faces[iF].P[3].z  
+    F[4,1,iF] = Grid.Faces[iF].P[4].x  
+    F[4,2,iF] = Grid.Faces[iF].P[4].y  
+    F[4,3,iF] = Grid.Faces[iF].P[4].z  
+  end  
+  copyto!(FGPU,F)
+  Grids.JacobiSphere3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs,Grid.Rad)
 
+#=
   for iF = 1 : NF
     for iz = 1 : nz
       zI = [Grid.z[iz],Grid.z[iz+1]]
@@ -36,8 +55,9 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   copyto!(Metric.dXdxI,dXdxI)
   copyto!(Metric.nS,nS)
   copyto!(Metric.FS,FS)
+=# 
 
-  MassCGGPU!(backend,FT,CG,Metric.J,CG.Glob,Exchange,Global)
+  MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)
 
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
@@ -62,7 +82,7 @@ end
 
 function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global)
   DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,
-  zeros(CG.OrdPoly+1,CG.OrdPoly+1,Global.Grid.NumFaces))
+  KernelAbstractions.zeros(backend,FT,CG.OrdPoly+1,CG.OrdPoly+1,Global.Grid.NumFaces))
 end  
 
 @kernel function GridSizeSphereKernel!(lat,zP,dz,@Const(X),@Const(Glob),Rad)

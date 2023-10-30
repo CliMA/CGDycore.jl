@@ -1,17 +1,18 @@
 function AddVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64)
-Grid.zP=zeros(nz);
-Grid.z=zeros(nz+1);
-Grid.dzeta = zeros(nz)
-Grid.H = H
-@. Grid.dzeta = H/nz;
-Grid.H=H
-for i=2:nz+1
-  Grid.z[i] = Grid.z[i-1] + Grid.dzeta[i-1]
-end
-for i=1:nz
-  Grid.dzeta[i] = Grid.z[i+1] - Grid.z[i]  
-  Grid.zP[i] = 0.5 * (Grid.z[i] + Grid.z[i+1])
-end
+  Grid.zP=zeros(nz);
+  z=zeros(nz+1);
+  Grid.dzeta = zeros(nz)
+  Grid.H = H
+  @. Grid.dzeta = H/nz;
+  Grid.H=H
+  for i=2:nz+1
+    z[i] = z[i-1] + Grid.dzeta[i-1]
+  end
+  for i=1:nz
+    Grid.dzeta[i] = z[i+1] - z[i]  
+    Grid.zP[i] = 0.5 * (z[i] + z[i+1])
+  end
+  copyto!(Grid.z,z)
 end
 
 function AddStretchICONVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,sigma::Float64,lambda::Float64)
@@ -55,7 +56,7 @@ function AddExpStretchVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,
   dz_bottom::Float64,dz_top::Float64)
 
   Grid.zP=zeros(nz);
-  Grid.z=zeros(nz+1);
+  z=zeros(nz+1);
   Grid.dzeta = zeros(nz)
   Grid.H = H
 
@@ -118,10 +119,11 @@ function AddExpStretchVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,
   # add the bottom level
   faces = [z_bottom; faces...]
   for iz = 1 : nz + 1
-    Grid.z[iz] = faces[iz]
+    z[iz] = faces[iz]
   end
   for i = 1 : nz
-    Grid.dzeta[i] = Grid.z[i+1] - Grid.z[i]
-    Grid.zP[i] = 0.5 * (Grid.z[i] + Grid.z[i+1])
+    Grid.dzeta[i] = z[i+1] - z[i]
+    Grid.zP[i] = 0.5 * (z[i] + z[i+1])
   end
+  copyto!(Grid.z,z)
 end

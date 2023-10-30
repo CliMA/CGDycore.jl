@@ -25,10 +25,10 @@ mutable struct CGStruct{FT<:AbstractFloat,
     NumG::Int
     NumI::Int
     w::AT1
-    xw::Array{FT, 1}
+    xw::AT1
     xe::Array{FT, 1}
     IntXE2F::Array{FT, 2}
-    xwZ::Array{FT, 1}
+    xwZ::AT1
     IntZE2F::Array{FT, 2}
     DW::AT2
     DWT::Array{FT, 2}
@@ -112,11 +112,15 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   OrdPolyZ=OrdPolyZ
   DoF = OP * OP
 
-  (wCPU,xw)=DG.GaussLobattoQuad(OrdPoly)
+  (wCPU,xwCPU)=DG.GaussLobattoQuad(OrdPoly)
   w = KernelAbstractions.zeros(backend,FT,size(wCPU))
+  xw = KernelAbstractions.zeros(backend,FT,size(xwCPU))
   copyto!(w,wCPU)
+  copyto!(xw,xwCPU)
   
-  (wZ,xwZ)=DG.GaussLobattoQuad(OrdPolyZ)
+  (wZ,xwZCPU)=DG.GaussLobattoQuad(OrdPolyZ)
+  xwZ = KernelAbstractions.zeros(backend,FT,size(xwZCPU))
+  copyto!(xwZ,xwZCPU)
   xe = zeros(OrdPoly+1)
   xe[1] = -1.0
   for i = 2 : OrdPoly

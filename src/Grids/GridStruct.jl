@@ -14,36 +14,37 @@ function Boundary()
   )
 end  
 
-mutable struct GridStruct
-    nz::Int
-    zP::Array{Float64, 1}
-    z::Array{Float64, 1}
-    dzeta::Array{Float64, 1}
-    H::Float64
-    NumFaces::Int
-    NumGhostFaces::Int
-    Faces::Array{Face, 1}
-    NumEdges::Int
-    Edges::Array{Edge, 1}
-    NumNodes::Int
-    Nodes::Array{Node, 1}
-    Form::String
-    Type ::String
-    Dim::Int
-    Rad::Float64
-    NumEdgesI::Int
-    NumEdgesB::Int
-    nBar3::Array{Float64, 2}
-    nBar::Array{Float64, 2}
-    Topography::NamedTuple
-    colors::Array{Array{Int, 1}, 1}
-    Spline_2d::Dierckx.Spline2D
-    BoundaryFaces::Array{Int,1}
-    InteriorFaces::Array{Int,1}
+mutable struct GridStruct{FT<:AbstractFloat,
+                           AT1<:AbstractArray}
+  nz::Int
+  zP::Array{FT, 1}
+  z::AT1
+  dzeta::Array{FT, 1}
+  H::FT
+  NumFaces::Int
+  NumGhostFaces::Int
+  Faces::Array{Face, 1}
+  NumEdges::Int
+  Edges::Array{Edge, 1}
+  NumNodes::Int
+  Nodes::Array{Node, 1}
+  Form::String
+  Type ::String
+  Dim::Int
+  Rad::FT
+  NumEdgesI::Int
+  NumEdgesB::Int
+  nBar3::Array{FT, 2}
+  nBar::Array{FT, 2}
+  Topography::NamedTuple
+  colors::Array{Array{Int, 1}, 1}
+  Spline_2d::Dierckx.Spline2D
+  BoundaryFaces::Array{Int,1}
+  InteriorFaces::Array{Int,1}
 end
-function GridStruct(nz,Topography)
+function GridStruct{FT}(backend,nz,Topography) where FT <: AbstractFloat
   zP=zeros(nz)
-  z=zeros(nz+1)
+  z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
   NumFaces=0
@@ -65,7 +66,8 @@ function GridStruct(nz,Topography)
   Spline_2d = Spline2D(zeros(0),zeros(0),zeros(0),0,0,0.0)
   BoundaryFaces = zeros(Int,0)
   InteriorFaces = zeros(Int,0)
-   return GridStruct(
+   return GridStruct{FT,
+                     typeof(z)}(
     nz,
     zP,
     z,

@@ -1,79 +1,97 @@
-function JacobiSphere3GPU!(X,dXdx,dXdxI,J,FE,F,z,zs)
+function JacobiSphere3GPU!(X,dXdxI,J,FE,F,z,zs,Rad)
 
-  NF = size(X,4)
-  N = size(FE.xw,1))
-  Nz = size(X,2)
+  backend = get_backend(X)
+  FT = eltype(X)
+
+  NF = size(X,5)
+  N = size(FE.xw,1)
+  Nz = size(X,4)
  
-  NzG = min(div(512,N*N),Nz)
-  group = (N, N, NzG, 1)
-  ndrange = (N, N, Nz, NF)
+  NzG = min(div(512,N*N*2),Nz)
+  group = (N, N, 2, NzG, 1)
+  ndrange = (N, N, 2, Nz, NF)
 
   KJacobiSphere3Kernel! = JacobiSphere3Kernel!(backend,group)
 
-  KJacobiSphere3Kernel!(X,dXdx,dXdxI,J,FE.xw,FE.DS,
+  H = z[end]
+  KJacobiSphere3Kernel!(X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,H,zs,ndrange=ndrange)
 end
 
-@kernel function JacobiSphere3Kernel!(X,dXdx,dXdxI,J,ksi,zeta,DS,F,z,H,zs)
+@kernel function JacobiSphere3Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
+  @Const(F),@Const(z),Rad,H,@Const(zs))
 
-  gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  gi, gj, gk, gz, gF = @index(Group, NTuple)
+  I, J, K, iz   = @index(Local, NTuple)
+  _,_,_,Iz,IF = @index(Global, NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
+  ColumnTilesDim = @uniform @groupsize()[4]
   N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  L = @uniform @groupsize()[3]
+  Nz = @uniform @ndrange()[4]
+  NF = @uniform @ndrange()[5]
+
+  hR = @localmem eltype(X) (N,N,L,ColumnTilesDim)
+  dXdx = @localmem eltype(X) (N,N,L,3,3,ColumnTilesDim)
 
   eta = ksi
-  n3 = 2
-  ID = I + (J - 1) * N
-  @inbounds for k = 1 : n3
-    JacobiSphere3Loc!(X[ID,k,:],dXdx[ID,k,:,:],ksi[I],eta[J],zeta[k],F,z,Topography.Rad,Topography,zs[I,J])
-  end
+  if Iz <= Nz
+    ID = I + (J - 1) * N
+    @inbounds z1 = z[Iz]
+    @inbounds z2 = z[Iz+1]
+    hRLoc = eltype(X)(0) 
+    @views @inbounds JacobiSphere3Loc!(X[ID,K,:,Iz,IF],dXdx[I,J,K,:,:,iz],hRLoc,ksi[I],eta[J],zeta[K],F[:,:,IF],z1,z2,Rad,H,zs[I,J,IF])
+    @inbounds hR[I,J,K,iz] = hRLoc
+  end  
 
-  @inbounds for k=1:n3
-    dXdx[I,:,k,3,1]=DS*hR[I,:,k]
-    dXdx[I,:,k,3,2]=reshape(hR[I,:,k],N,N)*DS'
-  end
-  @inbounds for k=1:n3
-    J[i,j,k]=det(reshape(dXdx[i,j,k,:,:],3,3))
-    dXdxI[:,:,k,i,j]=inv(reshape(dXdx[i,j,k,:,:],3,3))*J[i,j,k]
-  end
+  @synchronize 
 
-  X = reshape(X,n*n,n3,3)
-  J = reshape(J,n*n,n3)
-  dXdx = reshape(dXdx,n*n,n3,3,3)
-  dXdxI = reshape(dXdxI,3,3,n3,n*n)
+  if Iz <= Nz
+    ID = I + (J - 1) * N
+    @inbounds DxhR = D[I,1] * hR[1,J,K,iz]
+    @inbounds DyhR = D[J,1] * hR[I,1,K,iz]
+    for k = 2 : N
+      @inbounds DxhR += D[I,k] * hR[k,J,K,iz]
+      @inbounds DyhR += D[J,k] * hR[I,k,K,iz]
+    end    
+
+    @inbounds dXdx[I,J,K,3,1,iz] = DxhR
+    @inbounds dXdx[I,J,K,3,2,iz] = DyhR
+    @inbounds JJ[ID,K,Iz,IF] = det(reshape(dXdx[I,J,K,:,:,iz],3,3))
+    @inbounds dXdxI[:,:,K,ID,Iz,IF] = inv(reshape(dXdx[I,J,K,:,:,iz],3,3))*JJ[ID,K,Iz,IF]
+  end
 end
 
-function JacobiSphere3Loc(X,dXdx,ksi1,ksi2,ksi3,F,z,Rad,H,zs)
-
-  X1 = 0.25 * (F.P[1].x .* (1-ksi1)*(1-ksi2)+
-    F.P[2].x .* (1+ksi1)* (1-ksi2)+
-    F.P[3].x .* (1+ksi1)* (1+ksi2)+
-    F.P[4].x .* (1-ksi1)* (1+ksi2))
-  X2 = 0.25 * (F.P[1].y .*(1-ksi1)*(1-ksi2)+
-    F.P[2].y .*(1+ksi1)*(1-ksi2)+
-    F.P[3].y .*(1+ksi1)*(1+ksi2)+
-    F.P[4].y .*(1-ksi1)*(1+ksi2))
-  X3 = 0.25 * (F.P[1].z .*(1-ksi1)*(1-ksi2)+
-    F.P[2].z .*(1+ksi1)*(1-ksi2)+
-    F.P[3].z .*(1+ksi1)*(1+ksi2)+
-    F.P[4].z .*(1-ksi1)*(1+ksi2))
-  zLoc = 0.5 * ((1-ksi3) * z[1] + (1+ksi3) * z[2])
+@inline function JacobiSphere3Loc!(X,dXdx,hR,ksi1,ksi2,ksi3,F,z1,z2,Rad,H,zs)
+  zero = eltype(X)(0)
+  one = eltype(X)(1)
+  half = eltype(X)(1/2)
+  quarter = eltype(X)(1/4)
+  X1 = quarter * (F[1,1] * (one-ksi1)*(one-ksi2) +
+   F[2,1] * (one+ksi1)*(one-ksi2) +
+   F[3,1] * (one+ksi1)*(one+ksi2) +
+   F[4,1] * (one-ksi1)*(one+ksi2))
+  X2 = quarter * (F[1,2] * (one-ksi1)*(one-ksi2) +
+   F[2,2] * (one+ksi1)*(one-ksi2) +
+   F[3,2] * (one+ksi1)*(one+ksi2) +
+   F[4,2] * (one-ksi1)*(one+ksi2))
+  X3 = quarter * (F[1,3] * (one-ksi1)*(one-ksi2) +
+   F[2,3] * (one+ksi1)*(one-ksi2) +
+   F[3,3] * (one+ksi1)*(one+ksi2) +
+   F[4,3] * (one-ksi1)*(one+ksi2))
+  zLoc = half * ((one-ksi3) * z1 + (one+ksi3) * z2)
   hR = zLoc + (H - zLoc) * zs / H
-  D33  = 1 - zs / Topography.H;
-  D33 = 0.5 * D33*(z[2]-z[1])
+  D33  = one - zs / H;
+  D33 = half * D33*(z2-z1)
 
-  r = sqrt(X1^2 + X2^2 + X3^2)
+  r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
   f = Rad / r
   X1 = X1 / r
   X2 = X2 / r
   X3 = X3 / r
   (lam,theta)=cart2sphere(X1,X2,X3)
 
-  DD=[-sin(lam) cos(lam) 0
-      0          0       1]
+  DD=[-sin(lam) cos(lam) zero
+      zero       zero     one]
 
   sinlam = sin(lam)
   coslam = cos(lam)
@@ -92,18 +110,20 @@ function JacobiSphere3Loc(X,dXdx,ksi1,ksi2,ksi3,F,z,Rad,H,zs)
       a21 a22 a23
       a31 a32 a33]
 
-  B = [F.P[1].x F.P[2].x F.P[3].x F.P[4].x
-      F.P[1].y F.P[2].y F.P[3].y F.P[4].y
-      F.P[1].z F.P[2].z F.P[3].z F.P[4].z]
+  B = [F[1,1] F[2,1] F[3,1] F[4,1]
+       F[1,2] F[2,2] F[3,2] F[4,2]
+       F[1,3] F[2,3] F[3,3] F[4,3]]
 
-  C =0.25 * [-1+ksi2  -1+ksi1
-              1-ksi2  -1-ksi1
-              1+ksi2   1+ksi1
-             -1-ksi2   1-ksi1]
+  C = quarter * [-one+ksi2  -one+ksi1
+              one-ksi2  -one-ksi1
+              one+ksi2   one+ksi1
+             -one-ksi2   one-ksi1]
   D = f * DD * A * B * C
-  dXdx .= [D [0; 0]
-           0 0 D33]
-  X .= [X1 X2 X3]*(Rad+hR)
+  dXdx .= [D [zero; zero]
+           zero zero D33]
+  X[1] = X1 * (Rad + hR)
+  X[2] = X2 * (Rad + hR)
+  X[3] = X3 * (Rad + hR)
 
 end
 

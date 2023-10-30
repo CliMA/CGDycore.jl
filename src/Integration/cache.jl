@@ -1,4 +1,3 @@
-using KernelAbstractions
 mutable struct CacheStruct{FT<:AbstractFloat,
                            AT1<:AbstractArray,
                            AT2<:AbstractArray,

@@ -8,6 +8,9 @@ using RootSolvers
 using Dierckx
 using NCDatasets
 using PairedLinkedLists
+using KernelAbstractions
+using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+
 
 include("Geometry.jl")
 include("Node.jl")
@@ -20,6 +23,7 @@ include("CubedGrid.jl")
 include("FacesInNodes.jl")
 include("JacobiDG3.jl")
 include("JacobiSphere3.jl")
+include("JacobiSphere3GPU.jl")
 include("OrientFaceCart.jl")
 include("OrientFaceSphere.jl")
 include("Orientation.jl")

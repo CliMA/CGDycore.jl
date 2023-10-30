@@ -1,5 +1,7 @@
 function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
-  SubGrid = GridStruct(GlobalGrid.nz,GlobalGrid.Topography)
+  backend = get_backend(GlobalGrid.z)
+  FT = eltype(GlobalGrid.z)
+  SubGrid = GridStruct{FT}(backend,GlobalGrid.nz,GlobalGrid.Topography)
 
 # Number of faces
   DictF = Dict()
