@@ -9,7 +9,6 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
     NumV,
     NumTr) = Global.Model
 
-  @show "FcnPrepare"
   Grav=Phys.Grav
   OP=CG.OrdPoly+1;
   DoF = CG.DoF
@@ -341,12 +340,6 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,
   end
 
   Parallels.ExchangeData3DRecv!(Temp1,Exchange)
-# for i = 1 : 6
-#   @views @. Temp1[:,:,i] /= CG.M[:,:]
-# end
-# @show sum(abs.(U))
-# @show sum(abs.(Temp1[:,:,1:6]))
-# stop
 
   @inbounds for iF in Global.Grid.BoundaryFaces
     @inbounds for iD = 1 : DoF

@@ -1,8 +1,9 @@
 mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphere" \
-  --Device="CPU" \
+  --Device="CPU_P" \
   --GPUType="Metal" \
   --FloatTypeBackend="Float32" \
+  --NumberThreadGPU=512 \
   --NumV=5 \
   --NumTr=0 \
   --ProfpBGrd="" \
@@ -31,8 +32,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
-  --nz=64 \
-  --nPanel=30 \
+  --nz=30 \
+  --nPanel=16 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \

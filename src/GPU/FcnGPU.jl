@@ -210,15 +210,18 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
   @. CacheF = 0
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
   for iT = 1 : NumTr
     @views CacheTr = Temp1[:,:,iT + 6]
     KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeTr)
   end
   KernelAbstractions.synchronize(backend)
 
-  ExchangeData3DSendGPU(CacheF,Exchange)
-
-  ExchangeData3DRecvGPU!(CacheF,Exchange)
+# Parallels.ExchangeData3DSendGPU(CacheF,Exchange)
+# Parallels.ExchangeData3DRecvGPU!(CacheF,Exchange)
+  Parallels.ExchangeData3DSend(CacheF,Exchange)
+  Parallels.ExchangeData3DRecv!(CacheF,Exchange)
+  KernelAbstractions.synchronize(backend)
 
   @. F = 0
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
@@ -227,6 +230,7 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
     @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrangeTr)
   end  
+  @show " 1 ",sum(abs.(F))
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
@@ -237,8 +241,10 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
 
   KernelAbstractions.synchronize(backend)
 
-  ExchangeData3DSendGPU(F,Exchange)
-  ExchangeData3DRecvGPU!(F,Exchange)
+# Parallels.ExchangeData3DSendGPU(F,Exchange)
+# Parallels.ExchangeData3DRecvGPU!(F,Exchange)
+  Parallels.ExchangeData3DSend(F,Exchange)
+  Parallels.ExchangeData3DRecv!(F,Exchange)
   KernelAbstractions.synchronize(backend)
 
   if Global.Model.Force

@@ -1,5 +1,6 @@
 module GPU
 
+import ..Parallels
 using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace

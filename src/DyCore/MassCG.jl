@@ -41,6 +41,10 @@ function MassCGGPU!(CG,J,Glob,Exchange,Global)
   MMass = CG.MMass
   MW = CG.MW
 
+  @. M = FT(0)
+  @. MMass = FT(0)
+  @. MW = FT(0)
+
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
 
   NzG = min(div(NumberThreadGPU,N*N),Nz)

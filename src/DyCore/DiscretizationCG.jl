@@ -8,11 +8,11 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
 
   nQuad = OP * OP
   Metric = MetricStruct{FT}(backend,nQuad,OPZ,Global.Grid.NumFaces,nz)
-  dXdxI = zeros(3,3,OPZ,nQuad,nz,NF)
-  nS = zeros(nQuad,3,NF)
-  FS = zeros(nQuad,NF)
-  J = zeros(nQuad,OPZ,nz,NF)
-  X = zeros(nQuad,OPZ,3,nz,NF)
+# dXdxI = zeros(3,3,OPZ,nQuad,nz,NF)
+# nS = zeros(nQuad,3,NF)
+# FS = zeros(nQuad,NF)
+# J = zeros(nQuad,OPZ,nz,NF)
+# X = zeros(nQuad,OPZ,3,nz,NF)
   F = zeros(4,3,NF)
   FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
   for iF = 1 : NF
@@ -31,6 +31,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   end  
   copyto!(FGPU,F)
   Grids.JacobiSphere3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs,Grid.Rad)
+# Grids.JacobiSphere3CPU!(Metric.X,Metric.dXdxI,Metric.J,CG,Grid,zs,Grids.Topo)
 
   MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)
 
@@ -55,7 +56,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   group = (OP*OP, NFG)
   ndrange = (OP*OP, NF)
   KSurfaceNormalKernel! = SurfaceNormalKernel!(backend,group)
-  @views KSurfaceNormalKernel!(Metric.FS,Metric.nS,Metric.dXdxI[3,:,1,:,1,:],ndrange=ndrange)
+  KSurfaceNormalKernel!(Metric.FS,Metric.nS,Metric.dXdxI,ndrange=ndrange)
 
   return (CG,Metric)
 end
@@ -71,13 +72,13 @@ end
 
   NF = @uniform @ndrange()[2]
 
-
   if IF <= NF
-    @inbounds FS[ID,IF] = sqrt(dXdxI[1,ID,IF] * dXdxI[1,ID,IF] +
-          dXdxI[2,ID,IF] * dXdxI[2,ID,IF] + dXdxI[3,ID,IF] * dXdxI[3,ID,IF])
-    @inbounds nS[ID,1,IF] = dXdxI[1,ID,IF] / FS[ID,IF]
-    @inbounds nS[ID,2,IF] = dXdxI[2,ID,IF] / FS[ID,IF]
-    @inbounds nS[ID,3,IF] = dXdxI[3,ID,IF] / FS[ID,IF]
+    @inbounds FS[ID,IF] = sqrt(dXdxI[3,1,1,ID,1,IF] * dXdxI[3,1,1,ID,1,IF] +
+      dXdxI[3,2,1,ID,1,IF] * dXdxI[3,2,1,ID,1,IF] + 
+      dXdxI[3,3,1,ID,1,IF] * dXdxI[3,3,1,ID,1,IF])
+    @inbounds nS[ID,1,IF] = dXdxI[3,1,1,ID,1,IF] / FS[ID,IF]
+    @inbounds nS[ID,2,IF] = dXdxI[3,2,1,ID,1,IF] / FS[ID,IF]
+    @inbounds nS[ID,3,IF] = dXdxI[3,3,1,ID,1,IF] / FS[ID,IF]
   end
 end
 

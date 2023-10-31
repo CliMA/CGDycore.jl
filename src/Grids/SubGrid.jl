@@ -254,7 +254,7 @@ function DecomposeEqualArea(Grid,NumProc)
         NumNodeECol += LocalNumfaces[region_nCol]  
         region_nCol += 1
       end
-      pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=compare_WE_NS)
+      pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=Parallels.compare_WE_NS)
       NumNodeE = 0
       @inbounds for region_ew = 1 : n_regions[collar_n + 1]
         NumNodeA = NumNodeE + 1  

@@ -1,7 +1,35 @@
+function JacobiSphere3CPU!(X,dXdxI,J,CG,Grid,zs,Topo)
+  FT = eltype(X)
+
+  NF = size(X,5)
+  N = size(CG.xw,1)
+  nz = size(X,4)
+  XCPU = zeros(FT,size(X))
+  JCPU = zeros(FT,size(J))
+  dXdxICPU = zeros(FT,size(dXdxI))
+  zCPU = zeros(FT,size(Grid.z))
+  zsCPU = zeros(FT,size(zs))
+  copyto!(zCPU,Grid.z)
+  copyto!(zsCPU,zs)
+
+  for iF = 1 : NF
+    for iz = 1 : nz
+      zI = [zCPU[iz],zCPU[iz+1]]
+      @views (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz) = JacobiSphere3(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zsCPU[:,:,iF])
+      @views @. XCPU[:,:,:,iz,iF] = X_Fz
+      @views @. JCPU[:,:,iz,iF] = J_Fz
+      @views @. dXdxICPU[:,:,:,:,iz,iF] = dXdxI_Fz
+    end
+  end
+  copyto!(X,XCPU)
+  copyto!(J,JCPU)
+  copyto!(dXdxI,dXdxICPU)
+end
+
 function JacobiSphere3(CG,F,z,Topo,Topography,zs)
-ksi=CG.xw
-eta=CG.xw
-zeta=CG.xwZ
+ksi=CG.xwCPU
+eta=CG.xwCPU
+zeta=CG.xwZCPU
 n=CG.OrdPoly+1
 n3=CG.OrdPolyZ+1
 X=zeros(n,n,n3,3)
