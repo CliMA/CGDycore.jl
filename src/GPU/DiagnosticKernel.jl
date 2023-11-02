@@ -1,20 +1,17 @@
-@kernel function PressureKernel!(p,@Const(U),Phys)
+@kernel function PressureKernel!(Pressure,p,@Const(U))
   Iz,IC = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    @inbounds p[Iz,IC] = PressureGPU(view(U,Iz,IC,:),Phys)
+    @inbounds p[Iz,IC] = Pressure(view(U,Iz,IC,:))
   end
 end
 
-@inline function PressureGPU(U,Phys)
-  @inbounds Phys.p0 * fast_powGPU(Phys.Rd * U[5] / Phys.p0, 1 / (1 - Phys.kappa))
-end
+#@inline function PressureGPU(U,Phys)
+#  @inbounds Phys.p0 * fast_powGPU(Phys.Rd * U[5] / Phys.p0, 1 / (1 - Phys.kappa))
+#end
 
-# we may be hitting a slow path:
-# https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
-fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
 
 @kernel function uStarCoefficientKernel!(uStar,@Const(U),@Const(dXdxI),@Const(nS),@Const(Glob))
   ID,IF = @index(Global, NTuple)
@@ -23,7 +20,7 @@ fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
 
   if IF <= NumF
     ind = Glob[ID,IF]
-    @inbounds @views uStar[ID,IF] = uStarCoefficientGPU(U[ind,2],U[ind,3],U[ind,4],dXdxI[:,ID,IF],nS[:,ID,IF])
+    @inbounds uStar[ID,IF] = uStarCoefficientGPU(U[1,ind,2],U[1,ind,3],U[1,ind,4],view(dXdxI,3,:,1,ID,1,IF),view(nS,:,ID,IF))
   end
 end
 
@@ -84,15 +81,15 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KV = Cache.KV
   dz = Metric.dz
   Eddy = Global.Model.Eddy
+  Pressure = Global.Model.Pressure
 
   KPressureKernel! = PressureKernel!(backend,group)
-  KPressureKernel!(p,U,Phys,ndrange=ndrange)
+  KPressureKernel!(Pressure,p,U,ndrange=ndrange)
 
   if Global.Model.VerticalDiffusion
-    @show "uStar Eddy"  
     KuStarCoefficientKernel! = uStarCoefficientKernel!(backend,groupS)
     KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
-    @views KuStarCoefficientKernel!(uStar,U[1,:,:],dXdxI[3,:,1,:,1,:],nS,Glob,ndrange=ndrangeS)
+    KuStarCoefficientKernel!(uStar,U,dXdxI,nS,Glob,ndrange=ndrangeS)
     KEddyCoefficientKernel!(Eddy,KV,uStar,p,dz,Glob,ndrange=ndrangeK)
   end   
 

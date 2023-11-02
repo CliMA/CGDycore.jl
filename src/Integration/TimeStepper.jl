@@ -1,5 +1,5 @@
 using KernelAbstractions
-function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)  
+function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,DiscType)  
   backend = get_backend(U)
   FT = eltype(U)
   TimeStepper = Global.TimeStepper
@@ -109,7 +109,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,Force,DiscType);
+          RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
@@ -199,7 +199,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
+          @time RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)

@@ -3,6 +3,7 @@ module Models
 using KernelAbstractions
 
 include("Thermodynamics.jl")
+include("Equation.jl")
 include("Pressure.jl")
 include("fRho.jl")
 include("fQv.jl")

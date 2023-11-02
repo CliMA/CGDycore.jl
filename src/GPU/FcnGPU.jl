@@ -44,7 +44,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
   KernelAbstractions.synchronize(backend)
 end
 
-function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
+function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -67,6 +67,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  Force = Global.Model.Force
 
 
   KoeffCurl = Global.Model.HyperDCurl
@@ -148,18 +149,18 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   end    
       
 
-  if Global.Model.Force
+  if Global.Model.Forcing
     NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
     groupG = (Nz, NDoFG)  
     ndrangeG = (Nz, NDoF)  
     KForceKernel! = ForceKernel!(backend, groupG)
-    KForceKernel!(F,U,p,lat,Force,ndrange=ndrangeG)  
+    KForceKernel!(Force,F,U,p,lat,ndrange=ndrangeG)  
     KernelAbstractions.synchronize(backend)
   end  
 
 end
 
-function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
+function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -258,13 +259,13 @@ function FcnGPU_P!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType
   Parallels.ExchangeData3DRecv!(F,Exchange)
   KernelAbstractions.synchronize(backend)
 
-  if Global.Model.Force
+  if Global.Model.Forcingc
     lat = Metric.lat  
     NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
     groupG = (Nz, NDoFG)  
     ndrangeG = (Nz, NDoF)  
     KForceKernel! = ForceKernel!(backend, groupG)
-    KForceKernel!(F,U,p,lat,Force,ndrange=ndrangeG)  
+    KForceKernel!(Force,F,U,p,lat,ndrange=ndrangeG)  
     KernelAbstractions.synchronize(backend)
   end  
 end

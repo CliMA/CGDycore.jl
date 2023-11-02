@@ -39,7 +39,7 @@ Microphysics = parsed_args["Microphysics"]
 RelCloud = parsed_args["RelCloud"]
 Rain = parsed_args["Rain"]
 Source = parsed_args["Source"]
-Force = parsed_args["Force"]
+Forcing = parsed_args["Forcing"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
 JacVerticalAdvection = parsed_args["JacVerticalAdvection"]
@@ -182,7 +182,7 @@ Model.VerticalDiffusion = VerticalDiffusion
 Model.JacVerticalDiffusion = JacVerticalDiffusion
 Model.JacVerticalAdvection = JacVerticalAdvection
 Model.Source = Source
-Model.Force = Force
+Model.Forcing = Forcing
 Model.Microphysics = Microphysics
 Model.RelCloud = RelCloud
 Model.Rain = Rain
@@ -212,22 +212,27 @@ if Problem == "Galewski"
 elseif Problem == "BaroWaveDrySphere"
   Profile = Examples.BaroWaveExample()(Param,Phys)
 elseif Problem == "HeldSuarezDrySphere"
-  Profile = Examples.HeldSuarezDryExample()(Param,Phys)
+  Model.InitialProfile, Model.Force = Examples.HeldSuarezDryExample()(Param,Phys)
 elseif Problem == "HeldSuarezMoistSphere"
-  Profile, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
+  Profile, Force, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
   Model.InitialProfile = Profile
+  Model.Force = Force
   Model.Eddy = Eddy
 end  
 
 @show "InitialConditions"
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
-# Forcing
-if Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezMoistSphere"
-  Force = Examples.HeldSuarezForcing()(Param,Phys)
-else
-  Force =  Examples.NoForcing()(Param,Phys) 
-end
+# Pressure
+if Equation == "Compressible"
+  Pressure = Models.Compressible()(Phys)
+  Model.Pressure = Pressure
+elseif Equation == "CompressibleMoist"
+  Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoVPos+NumV,Model.RhoCPos+NumV)
+  Model.Pressure = Pressure
+end  
+
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -311,16 +316,16 @@ if Device == "CPU"  || Device == "GPU"
   nT = max(7 + NumTr, NumV + NumTr)
   @show "vor Timestepper"
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 elseif Device == "CPU_P"  || Device == "GPU_P"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   Integration.TimeStepper!(U,GPU.FcnGPU_P!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 else
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 end

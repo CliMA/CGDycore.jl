@@ -167,8 +167,8 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
-    "--Force"
-    help = "Force"
+    "--Forcing"
+    help = "Forcing"
     arg_type = Bool
     default = false
 

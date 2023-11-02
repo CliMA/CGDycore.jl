@@ -220,8 +220,8 @@ end
 
 Base.@kwdef struct HeldSuarezDryExample <: Example end
 
-function (profile::HeldSuarezDryExample)(Param,Phys)
-  function local_profile(x,time)
+function (::HeldSuarezDryExample)(Param,Phys)
+  function profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z=max(R-Phys.RadEarth,FT(0));
@@ -234,7 +234,25 @@ function (profile::HeldSuarezDryExample)(Param,Phys)
     w = FT(0)
     return (Rho,uS,vS,w,Th)
   end
-  return local_profile
+  function Force(U,p,lat)
+    FT = eltype(U)
+    Sigma = p / Phys.p0
+    height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
+    Fu = -(Param.k_f * height_factor) * U[2]
+    Fv = -(Param.k_f * height_factor) * U[3]
+    if Sigma < FT(0.7)
+      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * cos(lat) * cos(lat) * cos(lat) * cos(lat)
+    else
+      kT = FT(0)
+    end
+    Teq = (Param.T_equator - Param.DeltaT_y * sin(lat) * sin(lat) -
+      Param.DeltaTh_z * log(Sigma) * cos(lat) * cos(lat)) * Sigma^Phys.kappa
+    Teq = max(Param.T_min, Teq)
+    DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
+    FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
+    return FT(0),Fu,Fv,FT(0),FRhoTh
+  end
+  return profile,Force
 end
 
 Base.@kwdef struct HeldSuarezMoistExample <: Example end
@@ -255,6 +273,24 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     qc = FT(0)
     return (Rho,uS,vS,w,Th,qv,qc)
   end
+  function Force(U,p,lat)
+    FT = eltype(U)
+    Sigma = p / Phys.p0
+    height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
+    Fu = -(Param.k_f * height_factor) * U[2]
+    Fv = -(Param.k_f * height_factor) * U[3]
+    if Sigma < FT(0.7)
+      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * cos(lat) * cos(lat) * cos(lat) * cos(lat)
+    else
+      kT = FT(0)
+    end
+    Teq = (Param.T_equator - Param.DeltaT_y * sin(lat) * sin(lat) -
+      Param.DeltaTh_z * log(Sigma) * cos(lat) * cos(lat)) * Sigma^Phys.kappa
+    Teq = max(Param.T_min, Teq)
+    DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
+    FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
+    return FT(0),Fu,Fv,FT(0),FRhoTh
+  end
   function Eddy(uStar,p,dz)
     K = Param.CE * uStar * dz / 2
     if p < Param.p_pbl
@@ -263,5 +299,5 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     end
     return K
   end
-  return local_profile,Eddy
+  return local_profile,Force,Eddy
 end

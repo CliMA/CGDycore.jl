@@ -283,7 +283,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Thermo::String
   ModelType::String
   Source::Bool
-  Force::Bool
+  Forcing::Bool
   Damping::Bool
   Geos::Bool
   Relax::FT
@@ -314,6 +314,8 @@ Base.@kwdef mutable struct ModelStruct{FT}
   StretchType::String
   InitialProfile::Any
   Eddy::Any
+  Force::Any
+  Pressure::Any
 end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
@@ -344,7 +346,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Thermo = ""
   ModelType = "VectorInvariant"
   Source = false
-  Force = false
+  Forcing = false
   Damping = false
   Geos = false
   Relax = 0.0
@@ -375,6 +377,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   StretchType = ""
   InitialProfile = ""
   Eddy = ""
+  Force = ""
+  Pressure = ""
   return ModelStruct{FT}(
    Problem,
    Profile,
@@ -403,7 +407,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Thermo,
    ModelType,
    Source,
-   Force,
+   Forcing,
    Damping,
    Geos,
    Relax,
@@ -434,6 +438,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    StretchType,
    InitialProfile,
    Eddy,
+   Force,
+   Pressure,
    )
 end  
 

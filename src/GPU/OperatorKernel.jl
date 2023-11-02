@@ -1269,7 +1269,7 @@ end
 end
 
 
-@kernel function ForceKernel!(F,U,p,lat,Force)
+@kernel function ForceKernel!(Force,F,U,p,lat)
   Iz,IG = @index(Global, NTuple)
   NG = @uniform @ndrange()[2]
 

@@ -11,13 +11,14 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=true \
-  --Force=true \
+  --Forcing=true \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --VerticalDiffusion=true \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
+  --Equation=CompressibleMoist \
   --Buoyancy=true \
   --Decomp="EqualArea" \
   --SimDays=300 \
