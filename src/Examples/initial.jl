@@ -255,5 +255,13 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     qc = FT(0)
     return (Rho,uS,vS,w,Th,qv,qc)
   end
-  return local_profile
+  function Eddy(uStar,p,dz)
+    K = Param.CE * uStar * dz / 2
+    if p < Param.p_pbl
+      dpR = (Param.p_pbl - p) / Param.p_strato
+      K = K * exp(-dpR * dpR)
+    end
+    return K
+  end
+  return local_profile,Eddy
 end

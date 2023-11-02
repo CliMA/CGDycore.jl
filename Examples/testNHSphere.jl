@@ -18,6 +18,10 @@ ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfVelGeo = parsed_args["ProfVelGeo"]
+RhoVPos = parsed_args["RhoVPos"]
+RhoCPos = parsed_args["RhoCPos"]
+RhoIPos = parsed_args["RhoIPos"]
+RhoRPos = parsed_args["RhoRPos"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -161,10 +165,10 @@ Model.uPos = 2
 Model.vPos = 3
 Model.wPos = 4
 Model.ThPos = 5
-if Model.Equation == "CompressibleMoist"
-  Model.RhoVPos = 1
-  Model.RhoCPos = 2
-end  
+Model.RhoVPos  = RhoVPos
+Model.RhoCPos  = RhoCPos
+Model.RhoIPos  = RhoIPos
+Model.RhoRPos  = RhoRPos
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping
@@ -210,7 +214,9 @@ elseif Problem == "BaroWaveDrySphere"
 elseif Problem == "HeldSuarezDrySphere"
   Profile = Examples.HeldSuarezDryExample()(Param,Phys)
 elseif Problem == "HeldSuarezMoistSphere"
-  Profile = Examples.HeldSuarezMoistExample()(Param,Phys)
+  Profile, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
+  Model.InitialProfile = Profile
+  Model.Eddy = Eddy
 end  
 
 @show "InitialConditions"

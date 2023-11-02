@@ -84,6 +84,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   @views FRho = F[:,:,1]
   @views FRhoTr = F[:,:,5]
   @views p = Cache.AuxG[:,:,1]
+  KV = Cache.KV
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
@@ -101,6 +102,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
+  KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend, groupTr)
 # KMomentumKernel! = MomentumKernel!(backend, group)
 
   @. CacheF = 0
@@ -136,6 +138,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Force,DiscType)
       dXdxI,J,M,Glob,ndrange=ndrangeTr)
   end  
   KernelAbstractions.synchronize(backend)
+
+  if Global.Model.VerticalDiffusion
+    for iT = 1 : NumTr
+      @views KVerticalDiffusionScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
+        dXdxI[3,3,:,:,:,:],J,M,Glob,ndrange=ndrangeTr)
+    end  
+    KernelAbstractions.synchronize(backend)
+  end    
+      
 
   if Global.Model.Force
     NDoFG = min(div(NumberThreadGPU,Nz),NDoF)

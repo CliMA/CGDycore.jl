@@ -26,6 +26,7 @@ Cache3::Array{FT, 2}
 Cache4::Array{FT, 2}
 PresCG::Array{FT, 2}
 AuxG::AT3
+KV::AT3
 Aux2DG::Array{FT, 3}
 Temp::Array{FT, 3}
 KE::AT2
@@ -103,6 +104,7 @@ Cache3=zeros(FT,0,0)
 Cache4=zeros(FT,0,0)
 PresCG=zeros(FT,0,0)
 AuxG=KernelAbstractions.zeros(backend,FT,0,0,0)
+KV=KernelAbstractions.zeros(backend,FT,0,0,0)
 Aux2DG=zeros(FT,0,0,0)
 Temp=zeros(FT,0,0,0)
 KE=KernelAbstractions.zeros(backend,FT,0,0)
@@ -182,6 +184,7 @@ return CacheStruct{FT,
   Cache4,
   PresCG,
   AuxG,
+  KV,
   Aux2DG,
   Temp,
   KE,
@@ -260,6 +263,7 @@ Cache3=zeros(FT,nz,NumG)
 Cache4=zeros(FT,nz,NumG)
 PresCG=zeros(FT,DoF,nz)
 AuxG=KernelAbstractions.zeros(backend,FT,nz,NumG,4)
+KV=KernelAbstractions.zeros(backend,FT,DoF,nz,NF)
 Aux2DG=zeros(FT,1,NumG,NumTr+1)
 Temp=zeros(FT,DoF,nz,NF)
 KE=KernelAbstractions.zeros(backend,FT,DoF,nz)
@@ -339,6 +343,7 @@ return CacheStruct{FT,
   Cache4,
   PresCG,
   AuxG,
+  KV,
   Aux2DG,
   Temp,
   KE,

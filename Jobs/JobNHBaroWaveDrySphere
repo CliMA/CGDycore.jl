@@ -1,6 +1,6 @@
 mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphere" \
-  --Device="CPU_P" \
+  --Device="CPU" \
   --GPUType="Metal" \
   --FloatTypeBackend="Float32" \
   --NumberThreadGPU=512 \
@@ -13,6 +13,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --Coriolis=true \
+  --VerticalDiffusion=true \
   --Upwind=true \
   --HorLimit=false \
   --Buoyancy=true \

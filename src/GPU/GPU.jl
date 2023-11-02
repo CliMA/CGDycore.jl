@@ -9,5 +9,6 @@ include("OperatorKernel.jl")
 include("FcnGPU.jl")
 include("DiagnosticKernel.jl")
 include("InitialConditions.jl")
+include("InitialKernel.jl")
 
 end

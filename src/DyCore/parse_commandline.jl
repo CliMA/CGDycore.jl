@@ -72,6 +72,26 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--RhoVPos"
+    help = "Position of water vapor in the tracer list"
+    arg_type = Int
+    default = 0
+
+    "--RhoCPos"
+    help = "Position of cloud water in the tracer list"
+    arg_type = Int
+    default = 0
+
+    "--RhoIPos"
+    help = "Position of cloud ice in the tracer list"
+    arg_type = Int
+    default = 0
+
+    "--RhoRPos"
+    help = "Position of rain water in the tracer list"
+    arg_type = Int
+    default = 0
+
     "--HorLimit"
     help = "Horizontal limiter"
     arg_type = Bool

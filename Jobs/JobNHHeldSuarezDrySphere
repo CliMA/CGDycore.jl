@@ -1,4 +1,4 @@
-mpirun -n 8 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezDrySphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -32,8 +32,8 @@ mpirun -n 8 julia --project Examples/testNHSphere.jl \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
-  --nz=64 \
-  --nPanel=30 \
+  --nz=30 \
+  --nPanel=16 \
   --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \

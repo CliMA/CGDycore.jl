@@ -38,14 +38,15 @@ end
     (w - nS[3] * nU) * (w - nS[3] * nU))
 end
 
-@kernel function EddyCoefficientKernel!(K,@Const(uStar),@Const(p),@Const(dz),@Const(Glob),Param)
+@kernel function EddyCoefficientKernel!(Eddy,K,@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
   ID,Iz,IF = @index(Global, NTuple)
 
-  NumF = @uniform @ndrange()[2]
+  Nz = @uniform @ndrange()[2]
+  NumF = @uniform @ndrange()[3]
 
   if Iz <= Nz && IF <= NumF
-    ind = Glob[ID,IF]
-    @inbounds @views K[ID,iZ,IF] = EddyCoefficientGPU(uStar[ID,IF],p[Iz,ind],dz,Param)
+    @inbounds ind = Glob[ID,IF]
+    @inbounds @views K[ID,Iz,IF] = Eddy(uStar[ID,IF],p[Iz,ind],dz[1,ind])
   end
 end
 
@@ -67,26 +68,34 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   NumG = size(U,2)
   Glob = FE.Glob
   NumF = size(Glob,2)
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
 
-  NG = min(div(512,Nz),NumG)
+  NG = min(div(NumberThreadGPU,Nz),NumG)
   group = (Nz, NG)
   ndrange = (Nz, NumG)
-  NF = min(div(512,N*N),NumF)
+  NF = min(div(NumberThreadGPU,N*N),NumF)
   groupS = (N * N, NF)
   ndrangeS = (N * N, NumF)
-  groupK = (N * N, NF)
-  ndrangeK = (N * N, NumF)
+  NzG = min(div(NumberThreadGPU,N*N),Nz)
+  groupK = (N * N, NzG, 1)
+  ndrangeK = (N * N, Nz, NumF)
   @views p = Cache.AuxG[:,:,1]
   uStar = Cache.uStar
+  KV = Cache.KV
+  dz = Metric.dz
+  Eddy = Global.Model.Eddy
 
   KPressureKernel! = PressureKernel!(backend,group)
   KPressureKernel!(p,U,Phys,ndrange=ndrange)
 
   if Global.Model.VerticalDiffusion
+    @show "uStar Eddy"  
     KuStarCoefficientKernel! = uStarCoefficientKernel!(backend,groupS)
     KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
     @views KuStarCoefficientKernel!(uStar,U[1,:,:],dXdxI[3,:,1,:,1,:],nS,Glob,ndrange=ndrangeS)
+    KEddyCoefficientKernel!(Eddy,KV,uStar,p,dz,Glob,ndrange=ndrangeK)
   end   
 
   KernelAbstractions.synchronize(backend)
 end
+

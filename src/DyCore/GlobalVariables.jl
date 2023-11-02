@@ -275,6 +275,8 @@ Base.@kwdef mutable struct ModelStruct{FT}
   PertTh::Bool
   RhoVPos::Int
   RhoCPos::Int
+  RhoIPos::Int
+  RhoRPos::Int
   NumV::Int
   NumTr::Int
   Equation::String
@@ -310,6 +312,8 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Curl::Bool
   Stretch::Bool
   StretchType::String
+  InitialProfile::Any
+  Eddy::Any
 end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
@@ -332,6 +336,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   PertTh = false
   RhoVPos = 0
   RhoCPos = 0
+  RhoIPos = 0
+  RhoRPos = 0
   NumV = 0
   NumTr = 0
   Equation = "Compressible"
@@ -367,6 +373,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Curl = true
   Stretch = false
   StretchType = ""
+  InitialProfile = ""
+  Eddy = ""
   return ModelStruct{FT}(
    Problem,
    Profile,
@@ -387,6 +395,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    PertTh,
    RhoVPos,
    RhoCPos,
+   RhoIPos,
+   RhoRPos,
    NumV,
    NumTr,
    Equation,
@@ -422,6 +432,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Curl,
    Stretch,
    StretchType,
+   InitialProfile,
+   Eddy,
    )
 end  
 
