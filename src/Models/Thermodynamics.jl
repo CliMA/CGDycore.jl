@@ -27,12 +27,13 @@ end
   (Phys.Rd * RhoD + Phys.Rv * RhoV) * T 
 end
 
-@inline function fpvs(T,Phys)
+@inline function fpvs(T,T0)
+  FT = eltype(T)
   # ClaudiusClapperon
   # Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
   #   exp((Phys.L00 / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
-  T_C = T - Phys.T0
-  611.2 * exp(17.62 * T_C / (243.12 + T_C))
+  T_C = T - T0
+  FT(611.2) * exp(FT(17.62) * T_C / (FT(243.12) + T_C))
 end
 
 @inline function fpv(RhoV,T,Phys)
@@ -53,8 +54,8 @@ end
   (Phys.Rd * RhoThetaV / Phys.p0^Kappa)^(1.0 / (1.0 - Kappa)) / Rm
 end
 
-@inline function LatHeat(T,Phys)
-  L = Phys.L00 - (Phys.Cpl - Phys.Cpv) * (T - Phys.T0)
+@inline function LatHeat(T,L00,Cpl,Cpv,T0)
+  L = L00 - (Cpl - Cpv) * (T - T0)
 end
 
 function SaturationAdjustment!(RhoThetaV,Rho,RhoV,RhoC,Phys)

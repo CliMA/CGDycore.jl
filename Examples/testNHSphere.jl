@@ -36,6 +36,7 @@ RefProfile = parsed_args["RefProfile"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
 Microphysics = parsed_args["Microphysics"]
+TypeMicrophysics = parsed_args["TypeMicrophysics"]
 RelCloud = parsed_args["RelCloud"]
 Rain = parsed_args["Rain"]
 Source = parsed_args["Source"]
@@ -93,9 +94,9 @@ NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 MPI.Init()
 
-if Device == "CPU" || Device == "CPU_P"
+if Device == "CPU" 
   backend = CPU()
-elseif Device == "GPU" || Device == "GPU_P"
+elseif Device == "GPU" 
   if GPUType == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(false)
@@ -184,6 +185,7 @@ Model.JacVerticalAdvection = JacVerticalAdvection
 Model.Source = Source
 Model.Forcing = Forcing
 Model.Microphysics = Microphysics
+Model.TypeMicrophysics = TypeMicrophysics
 Model.RelCloud = RelCloud
 Model.Rain = Rain
 Model.SurfaceFlux = SurfaceFlux
@@ -220,7 +222,6 @@ elseif Problem == "HeldSuarezMoistSphere"
   Model.Eddy = Eddy
 end  
 
-@show "InitialConditions"
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 # Pressure
@@ -232,7 +233,18 @@ elseif Equation == "CompressibleMoist"
     Model.RhoVPos+NumV,Model.RhoCPos+NumV)
   Model.Pressure = Pressure
 end  
+# Microphysics
+if Microphysics
+  if TypeMicrophysics == "SimpleMicrophysics"
+    @show "SimpleMicrophysics"  
+    MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
+      Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
+    Model.MicrophysicsSource = MicrophysicsSource
+  end
+else
+  @show "False Type Microphysics"  
 
+end  
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -314,14 +326,9 @@ end
 if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
+  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   @show "vor Timestepper"
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
-elseif Device == "CPU_P"  || Device == "GPU_P"
-  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  Integration.TimeStepper!(U,GPU.FcnGPU_P!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
     Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 else
   nT = max(7 + NumTr, NumV + NumTr)

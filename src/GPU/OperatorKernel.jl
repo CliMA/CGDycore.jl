@@ -1281,7 +1281,19 @@ end
     @inbounds F[Iz,IG,4] += Fw
     @inbounds F[Iz,IG,5] += FRhoTh
   end
+end  
 
+@kernel function MicrophysicsKernel!(Source,F,U,p)
+  Iz,IG = @index(Global, NTuple)
+  NG = @uniform @ndrange()[2]
+
+  if IG <= NG
+    @inbounds FRho,FRhoTh,FRhoV,FRhoC = Source(view(U,Iz,IG,:),p[Iz,IG])
+    @inbounds F[Iz,IG,1] += FRho
+    @inbounds F[Iz,IG,5] += FRhoTh
+    @inbounds F[Iz,IG,6] += FRhoV
+    @inbounds F[Iz,IG,7] += FRhoC
+  end
 end  
 
 @kernel function VerticalDiffusionScalarKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),

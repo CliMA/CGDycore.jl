@@ -300,6 +300,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Upwind::Bool
   HorLimit::Bool
   Microphysics::Bool
+  TypeMicrophysics::String
   RelCloud::FT
   Rain::FT
   VerticalDiffusion::Bool
@@ -316,6 +317,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Eddy::Any
   Force::Any
   Pressure::Any
+  MicrophysicsSource::Any
 end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
@@ -363,6 +365,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Upwind = false
   HorLimit = false
   Microphysics = false
+  TypeMicrophysics = ""
   RelCloud = 0.0
   Rain = 0.0
   VerticalDiffusion = false
@@ -379,6 +382,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Eddy = ""
   Force = ""
   Pressure = ""
+  MicrophysicsSource = ""
   return ModelStruct{FT}(
    Problem,
    Profile,
@@ -424,6 +428,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Upwind,
    HorLimit,
    Microphysics,
+   TypeMicrophysics,
    RelCloud,
    Rain,
    VerticalDiffusion,
@@ -440,6 +445,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Eddy,
    Force,
    Pressure,
+   MicrophysicsSource,
    )
 end  
 

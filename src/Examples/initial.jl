@@ -269,7 +269,11 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     uS = FT(0)
     vS = FT(0)
     w = FT(0)
-    qv = FT(0)
+    if z <= FT(1000)
+      qv = FT(1.e-2)
+    else
+      qv = FT(1.e-8)
+    end  
     qc = FT(0)
     return (Rho,uS,vS,w,Th,qv,qc)
   end

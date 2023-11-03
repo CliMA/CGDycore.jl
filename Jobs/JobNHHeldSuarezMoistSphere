@@ -19,6 +19,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=false \
   --Equation=CompressibleMoist \
+  --Microphysics=true \
+  --TypeMicrophysics="SimpleMicrophysics" \
   --Buoyancy=true \
   --Decomp="EqualArea" \
   --SimDays=300 \

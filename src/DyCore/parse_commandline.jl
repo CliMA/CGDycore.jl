@@ -152,6 +152,11 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--TypeMicrophysics"
+    help = "TypeMicrophysics"
+    arg_type = String
+    default = ""
+
     "--RelCloud"
     help = "Relaxation parameter [1/s] for cloud microphysics"
     arg_type = Float64
