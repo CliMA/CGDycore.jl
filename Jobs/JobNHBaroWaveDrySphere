@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 2 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -9,11 +9,11 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=false \
-  --Force=false \
+  --Forcing=false \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --Coriolis=true \
-  --VerticalDiffusion=true \
+  --VerticalDiffusion=false \
   --Upwind=true \
   --HorLimit=false \
   --Buoyancy=true \
@@ -33,8 +33,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
-  --nz=30 \
-  --nPanel=16 \
+  --nz=64 \
+  --nPanel=30 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \

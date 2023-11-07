@@ -1297,7 +1297,7 @@ end
 end  
 
 @kernel function VerticalDiffusionScalarKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),
-  @Const(dXdxI33),@Const(JJ),@Const(M),@Const(Glob))
+  @Const(dXdxI),@Const(JJ),@Const(M),@Const(Glob))
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
@@ -1323,9 +1323,54 @@ end
     ID = I + (J - 1) * N
     @inbounds ind = Glob[ID,IF]
     @inbounds grad = (K[ID,Iz,IF] + K[ID,Iz+1,IF]) * (cCol[I,J,iz+1] - cCol[I,J,iz]) *
-       (dXdxI33[2,ID,Iz,IF] + dXdxI33[1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
-    @inbounds @atomic FTr[Iz,ind] +=  dXdxI33[2,ID,Iz] * grad / M[Iz,ind]  
-    @inbounds @atomic FTr[Iz+1,ind] += - dXdxI33[1,ID,Iz+1] * grad / M[Iz+1,ind]     
+       (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    @inbounds @atomic FTr[Iz,ind] +=  dXdxI[3,3,2,ID,Iz,IF] * grad / M[Iz,ind]  
+    @inbounds @atomic FTr[Iz+1,ind] += - dXdxI[3,3,1,ID,Iz+1,IF] * grad / M[Iz+1,ind]     
   end  
 end  
+
+
+# Surface Flux F = nS * grad (c - cS) * FS
+
+@kernel function VerticalDiffusionCScalarKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),@Const(dz))
+  Iz,IG = @index(Global, NTuple)
+  NG = @uniform @ndrange()[2]
+  NZ = @uniform @ndrange()[1]
+
+  if Iz < Nz && IG <= NG
+    @inbounds Grad = (K[Iz,IG] + K[Iz+1,IG]) * (Tr[Iz+1,IG] / Rho[Iz+1,IG]  - Tr[Iz,IG] / Rho[Iz,IG]) /
+      (dz[Iz+1,IG] + dz[Iz,IG])
+    @inbounds @atomic FTr[Iz,IG] += Grad / dz[Iz,IG]   
+    @inbounds @atomic FTr[Iz+1,IG] += -Grad / dz[Iz+1,IG]  
+  end
+end
+
+@kernel function SurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,M,Phys)
+  ID,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[2]
+
+  if IF <= NF
+    @inbounds ind = Glob[ID,IF]  
+    @inbounds Rho = U[1,ind,1]
+    @inbounds RhoTh = U[1,ind,5]
+    @inbounds RhoV = U[1,ind,6]
+    RhoD = Rho - RhoV
+    Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
+    Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
+    @inbounds T = p[1,ind] / Rm
+    @inbounds LatFlux = - 2.0 * CT[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
+      (RhoV[1,ind] - RhoVSurf[ID,IF]) / M[1,ind]
+    @inbounds SensFlux = - 2.0 * CH[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
+      (T - TSurf[ID,IF]) / M[1,ind]
+    FRho = LatFlux
+    FRhoV = LatFlux
+    PrePi=(p[1,ind] / Phys.p0)^(Rm / Cpml)
+    FRhoTh = RhoTh * (SensFlux / T + ((Phys.Rv / Rm) - 1.0 / Rho - 
+      log(PrePi)*(Phys.Rv / Rm - Phys.Cpv / Cpml)) *  LatFlux)
+    @inbounds @atomic F[1,ind,1] += FRho 
+    @inbounds @atomic F[1,ind,5] += FRhoTh 
+    @inbounds @atomic F[1,ind,6] += FRhoV 
+  end  
+end
 

@@ -57,6 +57,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   X = Metric.X
   J = Metric.J
   lat = Metric.lat  
+  dz = Metric.dz  
   DoF = FE.DoF
   N = size(FE.DS,1)
   Nz = size(F,1)
@@ -80,18 +81,28 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   @views v = U[:,:,3]
   @views w = U[:,:,4]
   @views RhoTr = U[:,:,5]
-# Cache
-  @views CacheF = Temp1[:,:,1:6]
+# Tendency
   @views FRho = F[:,:,1]
   @views FRhoTr = F[:,:,5]
+# Cache
+  @views CacheF = Temp1[:,:,1:6]
+  @views CacheFF = Temp1[:,:,1:6+NumTr]
   @views p = Cache.AuxG[:,:,1]
   KV = Cache.KV
+  TSurf = Cache.TSurf
+  RhoVSurf = Cache.RhoVSurf
+  uStar = Cache.uStar
+  CT = Cache.CT
+  CH = Cache.CH
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
   groupTr = group
   ndrangeTr = ndrange
+  NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
+  groupG = (Nz, NDoFG)  
+  ndrangeG = (Nz, NDoF)  
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
   KGradKernel! = GradKernel!(backend,group)
@@ -103,20 +114,20 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
-  KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend, groupTr)
 # KMomentumKernel! = MomentumKernel!(backend, group)
 
-  @. CacheF = 0
+  @. Temp1 = FT(0)
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
   for iT = 1 : NumTr
     @views CacheTr = Temp1[:,:,iT + 6]  
     KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeTr)
+    KernelAbstractions.synchronize(backend)
   end  
-  KernelAbstractions.synchronize(backend)
 
-  Parallels.ExchangeData3DSendGPU(CacheF,Exchange)
-  Parallels.ExchangeData3DRecvGPU!(CacheF,Exchange)
+  Parallels.ExchangeData3DSendGPU(CacheFF,Exchange)
+  Parallels.ExchangeData3DRecvGPU!(CacheFF,Exchange)
   KernelAbstractions.synchronize(backend)
 
   @. F = 0
@@ -125,8 +136,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     @views CacheTr = Temp1[:,:,iT + 6]  
     @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrangeTr)
+    KernelAbstractions.synchronize(backend)
   end  
-  KernelAbstractions.synchronize(backend)
 
 
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
@@ -137,42 +148,63 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KernelAbstractions.synchronize(backend)
 
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
 
   for iT = 1 : NumTr
     @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
       dXdxI,J,M,Glob,ndrange=ndrangeTr)
+    KernelAbstractions.synchronize(backend)
   end  
-  KernelAbstractions.synchronize(backend)
 
   if Global.Model.VerticalDiffusion
+    KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend,groupTr)  
+    @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
+      dXdxI,J,M,Glob,ndrange=ndrangeTr)
+    KernelAbstractions.synchronize(backend)
     for iT = 1 : NumTr
       @views KVerticalDiffusionScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
-        dXdxI[3,3,:,:,:,:],J,M,Glob,ndrange=ndrangeTr)
+        dXdxI,J,M,Glob,ndrange=ndrangeTr)
+      KernelAbstractions.synchronize(backend)
     end  
-    KernelAbstractions.synchronize(backend)
   end    
+
+  if Global.Model.SurfaceFlux
+    NFG = min(div(NumberThreadGPU,N*N),NF)
+    groupS = (N * N, NFG)
+    ndrangeS = (N * N, NF)  
+    KSurfaceFluxScalarsKernel = SurfaceFluxScalarsKernel(backend,groupS)  
+    KSurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,M,Phys,ndrange=ndrangeS)
+    KernelAbstractions.synchronize(backend)
+  end  
       
   Parallels.ExchangeData3DSendGPU(F,Exchange)
   Parallels.ExchangeData3DRecvGPU!(F,Exchange)
   KernelAbstractions.synchronize(backend)
 
+# if Global.Model.VerticalDiffusion
+#   KVerticalDiffusionCScalarKernel! = VerticalDiffusionScalarKernel!(backend, groupG)
+#   @views KVerticalDiffusionCScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
+#     dz,ndrange=ndrangeG)
+#   for iT = 1 : NumTr
+#     @views KVerticalDiffusionCScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
+#       dz,ndrange=ndrangeG)
+#   end  
+#   KernelAbstractions.synchronize(backend)
+# end    
+
+
   if Global.Model.Forcing
-    NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
-    groupG = (Nz, NDoFG)  
-    ndrangeG = (Nz, NDoF)  
     KForceKernel! = ForceKernel!(backend, groupG)
     KForceKernel!(Force,F,U,p,lat,ndrange=ndrangeG)  
     KernelAbstractions.synchronize(backend)
   end  
 
   if Global.Model.Microphysics
-    NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
-    groupG = (Nz, NDoFG)
-    ndrangeG = (Nz, NDoF)
     KMicrophysicsKernel! = MicrophysicsKernel!(backend, groupG)
     KMicrophysicsKernel!(MicrophysicsSource,F,U,p,ndrange=ndrangeG)
     KernelAbstractions.synchronize(backend)
   end
 
 end
+
 

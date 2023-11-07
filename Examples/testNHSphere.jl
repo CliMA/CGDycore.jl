@@ -243,8 +243,17 @@ if Microphysics
   end
 else
   @show "False Type Microphysics"  
-
 end  
+
+# Surface flux
+@show Model.SurfaceFlux
+if Model.SurfaceFlux || Model.VerticalDiffusion
+  if Problem == "HeldSuarezMoistSphere"
+    SurfaceValues, SurfaceData = GPU.HeldSuarezMoistSurface()(Phys,Param,Model)
+    Model.SurfaceValues = SurfaceValues
+    Model.SurfaceData = SurfaceData
+  end  
+end
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -267,14 +276,14 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
   elseif Model.Equation == "CompressibleMoist"  
     Global.Output.cNames = [
       "Rho",
-#     "u",
+      "u",
       "v",
       "wB",
       "Th",
 #     "Vort",
 #     "Pres",
-#     "Tr1",
-#     "Tr2",
+      "Tr1",
+      "Tr2",
       ]
   elseif Model.Equation == "Shallow"  
     Global.Output.cNames = [

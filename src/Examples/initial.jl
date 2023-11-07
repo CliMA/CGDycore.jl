@@ -274,6 +274,7 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     else
       qv = FT(1.e-8)
     end  
+    qv = FT(0)
     qc = FT(0)
     return (Rho,uS,vS,w,Th,qv,qc)
   end
@@ -303,5 +304,10 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     end
     return K
   end
-  return local_profile,Force,Eddy
+  function TSurf(x)
+    FT = eltype(x)
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    TS = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
+  end
+  return local_profile,Force,Eddy,TSurf
 end

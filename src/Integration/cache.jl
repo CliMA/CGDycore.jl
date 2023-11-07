@@ -1,5 +1,4 @@
 mutable struct CacheStruct{FT<:AbstractFloat,
-                           AT1<:AbstractArray,
                            AT2<:AbstractArray,
                            AT3<:AbstractArray,
                            AT4<:AbstractArray}
@@ -30,9 +29,12 @@ KV::AT3
 Aux2DG::Array{FT, 3}
 Temp::Array{FT, 3}
 KE::AT2
-uStar::AT1
+uStar::AT2
 cTrS::Array{FT, 3}
-TSurf::Array{FT, 3}
+TSurf::AT2
+RhoVSurf::AT2
+CT::AT2
+CH::AT2
 FCG::Array{FT, 4}
 FCC::Array{FT, 3}
 FwCC::Array{FT, 2}
@@ -110,7 +112,10 @@ Temp=zeros(FT,0,0,0)
 KE=KernelAbstractions.zeros(backend,FT,0,0)
 uStar=KernelAbstractions.zeros(backend,FT,0,0)
 cTrS=zeros(FT,0,0,0)
-TSurf=zeros(FT,0,0,0)
+TSurf=KernelAbstractions.zeros(backend,FT,0,0)
+RhoVSurf=KernelAbstractions.zeros(backend,FT,0,0)
+CT=KernelAbstractions.zeros(backend,FT,0,0)
+CH=KernelAbstractions.zeros(backend,FT,0,0)
 FCG=zeros(FT,0,0,0,0)
 FCC=zeros(FT,0,0,0)
 FwCC=zeros(FT,0,0)
@@ -157,7 +162,6 @@ f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 qMin=zeros(FT,0,0,0)
 qMax=zeros(FT,0,0,0)
 return CacheStruct{FT,
-                   typeof(uStar),
                    typeof(KE),
                    typeof(RhoS),
                    typeof(VS)}(
@@ -191,6 +195,9 @@ return CacheStruct{FT,
   uStar,
   cTrS,
   TSurf,
+  RhoVSurf,
+  CT,
+  CT,
   FCG,
   FCC,
   FwCC,
@@ -269,7 +276,10 @@ Temp=zeros(FT,DoF,nz,NF)
 KE=KernelAbstractions.zeros(backend,FT,DoF,nz)
 uStar=KernelAbstractions.zeros(backend,FT,DoF,NF)
 cTrS=zeros(FT,DoF,NF,NumTr)
-TSurf=zeros(FT,0,0,0)
+TSurf=KernelAbstractions.zeros(backend,FT,DoF,NF)
+RhoVSurf=KernelAbstractions.zeros(backend,FT,DoF,NF)
+CT=KernelAbstractions.zeros(backend,FT,DoF,NF)
+CH=KernelAbstractions.zeros(backend,FT,DoF,NF)
 FCG=zeros(FT,DoF,nz,NF,NumV+NumTr)
 FCC=zeros(FT,DoF,nz,NumV+NumTr)
 FwCC=zeros(FT,DoF,nz+1)
@@ -316,7 +326,6 @@ f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 qMin=zeros(FT,nz,NF+NGF,NumTr+1)
 qMax=zeros(FT,nz,NF+NGF,NumTr+1)
 return CacheStruct{FT,
-                   typeof(uStar),
                    typeof(KE),
                    typeof(RhoS),
                    typeof(VS)}(
@@ -350,6 +359,9 @@ return CacheStruct{FT,
   uStar,
   cTrS,
   TSurf,
+  RhoVSurf,
+  CT,
+  CH,
   FCG,
   FCC,
   FwCC,

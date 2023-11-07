@@ -96,11 +96,6 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     Cache.Vn=zeros(size(U))  
   end
 
- # Boundary values
-  if Global.Model.SurfaceFlux
-    Cache.TSurf=ProjectSurf(fTSurf,0.0,CG,Global,Param)
-  end
-
 
 # Print initial conditions
   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)

@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -15,19 +15,20 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --VerticalDiffusion=true \
+  --SurfaceFlux=false \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
   --Equation=CompressibleMoist \
-  --Microphysics=true \
+  --Microphysics=false \
   --TypeMicrophysics="SimpleMicrophysics" \
   --Buoyancy=true \
   --Decomp="EqualArea" \
-  --SimDays=300 \
   --SimSeconds=0 \
+  --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
@@ -38,8 +39,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
-  --nz=30 \
-  --nPanel=16 \
+  --nz=64 \
+  --nPanel=30 \
   --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \

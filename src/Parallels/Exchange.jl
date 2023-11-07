@@ -909,6 +909,7 @@ end
 
 function ExchangeData!(U::AbstractArray{FT,2},Exchange) where FT<:AbstractFloat
 
+  backend = get_backend(U)
   nz = size(U,1)
 
   IndSendBuffer = Exchange.IndSendBuffer
@@ -924,7 +925,7 @@ function ExchangeData!(U::AbstractArray{FT,2},Exchange) where FT<:AbstractFloat
   RecvBuffer = Dict()
   rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
   @inbounds for iP in eachindex(NeiProc)
-    RecvBuffer[NeiProc[iP]] = zeros(nz,length(IndRecvBuffer[NeiProc[iP]]))
+    RecvBuffer[NeiProc[iP]] = KernelAbstractions.zeros(backend,FT,nz,length(IndRecvBuffer[NeiProc[iP]]))
     tag = Proc + ProcNumber*NeiProc[iP]
     rreq[iP] = MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
   end  
@@ -980,7 +981,7 @@ function ExchangeData!(U::AbstractArray{FT,1},Exchange) where FT<:AbstractFloat
 end
 
 function GlobalSum2D(U,CG)
-  SumLoc = 0.0
+  SumLoc = eltype(U)(0)
   @inbounds for iG = 1 : CG.NumG
     SumLoc += sum(abs.(U[:,iG] .* CG.MasterSlave[iG]))
   end  

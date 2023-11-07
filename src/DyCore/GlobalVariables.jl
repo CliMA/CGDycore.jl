@@ -318,6 +318,9 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Force::Any
   Pressure::Any
   MicrophysicsSource::Any
+  SurfaceFluxRhs::Any
+  SurfaceValues::Any
+  SurfaceData::Any
 end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
@@ -383,6 +386,9 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Force = ""
   Pressure = ""
   MicrophysicsSource = ""
+  SurfaceFluxRhs = ""
+  SurfaceValues = ""
+  SurfaceData = ""
   return ModelStruct{FT}(
    Problem,
    Profile,
@@ -446,6 +452,9 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Force,
    Pressure,
    MicrophysicsSource,
+   SurfaceFluxRhs,
+   SurfaceValues,
+   SurfaceData,
    )
 end  
 
