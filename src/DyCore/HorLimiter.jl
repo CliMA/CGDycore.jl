@@ -82,3 +82,31 @@ function HorLimiter!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax,ThreadCache)
   @. dcRho = (q * RhoSS - cRho) * JC / dt
 end 
 
+#=
+@kernel HorLimiterKernel!(dcRho,cRho,RhoS,RhoSS,dt,J,w,qMin,qMax)
+
+I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  WM = TCacheC1[Threads.threadid()]
+  q = TCacheC2[Threads.threadid()]
+  JC = TCacheC3[Threads.threadid()]
+  cRhoS = TCacheC4[Threads.threadid()]
+
+  WM = @localmem eltype(F) (N,N,ColumnTilesDim)
+  q = @localmem eltype(F) (N,N,ColumnTilesDim)
+  JC = @localmem eltype(F) (N,N,ColumnTilesDim)
+  cRhoS = @localmem eltype(F) (N,N,ColumnTilesDim)
+
+  if Iz <= Nz
+    ID = I + (J - 1) * N
+    JC[I,J,iz] = (J[ID,1,Iz,IF] + J[ID,2,Iz,IF])  
+    WM[I,J,iz] = JC[I,J,iz] * w[I] * w[J] / SumJ
+  end
+end
+=#

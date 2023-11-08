@@ -15,12 +15,12 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --VerticalDiffusion=true \
-  --SurfaceFlux=false \
+  --SurfaceFlux=true \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
   --Equation=CompressibleMoist \
-  --Microphysics=false \
+  --Microphysics=true \
   --TypeMicrophysics="SimpleMicrophysics" \
   --Buoyancy=true \
   --Decomp="EqualArea" \

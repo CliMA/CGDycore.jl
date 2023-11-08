@@ -100,7 +100,7 @@ elseif Device == "GPU"
   if GPUType == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(false)
-    CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+#   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
     backend = ROCBackend()
     AMDGPU.allowscalar(false)
@@ -236,20 +236,18 @@ end
 # Microphysics
 if Microphysics
   if TypeMicrophysics == "SimpleMicrophysics"
-    @show "SimpleMicrophysics"  
     MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
       Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
+  else
+    @show "False Type Microphysics"  
   end
-else
-  @show "False Type Microphysics"  
 end  
 
 # Surface flux
-@show Model.SurfaceFlux
 if Model.SurfaceFlux || Model.VerticalDiffusion
   if Problem == "HeldSuarezMoistSphere"
-    SurfaceValues, SurfaceData = GPU.HeldSuarezMoistSurface()(Phys,Param,Model)
+    SurfaceValues, SurfaceData = GPU.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
     Model.SurfaceValues = SurfaceValues
     Model.SurfaceData = SurfaceData
   end  

@@ -172,8 +172,12 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       groupS = (N * N, NFG)
       ndrangeS = (N * N, NumF)
       KSurfaceKernel! = SurfaceKernel!(backend,groupS) 
-      KSurfaceKernel!(TSurf,RhoVSurf,uStar,CT,CH,U,p,X,dXdxI,nS,Glob,Global.Model.SurfaceValues,
-        Global.Model.SurfaceData,ndrange=ndrangeS)
+      SurfaceValues = Global.Model.SurfaceValues
+      SurfaceData = Global.Model.SurfaceData
+      @show "vor KSurfaceKernel"
+      KSurfaceKernel!(TSurf,RhoVSurf,uStar,CT,CH,U,p,X,dXdxI,nS,Glob,SurfaceValues,
+        SurfaceData,ndrange=ndrangeS)
+      @show "nack KSurfaceKernel"
       KernelAbstractions.synchronize(backend)
       KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
       KEddyCoefficientKernel!(Eddy,KV,Rho,uStar,p,dz,Glob,ndrange=ndrangeK)
