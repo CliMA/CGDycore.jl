@@ -130,8 +130,6 @@ mutable struct MetricStruct{FT<:AbstractFloat,
   dz::AT2
   zP::AT2
   lat::AT1
-  JC::AT4
-  WM::AT4
 end
 function MetricStruct{FT}(backend) where FT<:AbstractFloat
   J      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
@@ -142,8 +140,6 @@ function MetricStruct{FT}(backend) where FT<:AbstractFloat
   dz = KernelAbstractions.zeros(backend,FT,0,0)
   zP = KernelAbstractions.zeros(backend,FT,0,0)
   lat = KernelAbstractions.zeros(backend,FT,0)
-  JC     = KernelAbstractions.zeros(backend,FT,0,0,0,0)
-  WM     = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     return MetricStruct{FT,
                         typeof(lat),
                         typeof(zP),
@@ -160,8 +156,6 @@ function MetricStruct{FT}(backend) where FT<:AbstractFloat
         dz,
         zP,
         lat,
-        JC,
-        WM,
     )
 end
 function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
@@ -173,8 +167,6 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
     dz = KernelAbstractions.zeros(backend,FT,0,0)
     zP = KernelAbstractions.zeros(backend,FT,0,0)
     lat = KernelAbstractions.zeros(backend,FT,0)
-    JC     = KernelAbstractions.zeros(backend,FT,0,0,0,0)
-    WM     = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     return MetricStruct{FT,
                         typeof(lat),
                         typeof(zP),
@@ -191,8 +183,6 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
         dz,
         zP,
         lat,
-        JC,
-        WM,
     )
 end
 

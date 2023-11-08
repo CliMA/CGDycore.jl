@@ -274,6 +274,7 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     else
       qv = FT(1.e-8)
     end  
+    qv = FT(0)
     qc = FT(0)
     return (Rho,uS,vS,w,Th,qv,qc)
   end
