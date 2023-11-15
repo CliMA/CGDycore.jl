@@ -11,7 +11,7 @@ mpirun -n 1 julia --project Examples/testAdvectionCartGPU.jl \
   --vtkFileName="AdvectionCubeRotCart" \
   --SimTime=1000.0 \
   --PrintTime=100.0 \
-  --dtau=.25\
+  --dtau=0.25\
   --IntMethod="SSPRungeKutta" \
   --Table="SSP32" \
   --Lx=1000.0 \

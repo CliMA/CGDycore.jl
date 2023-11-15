@@ -202,11 +202,15 @@ Model.HyperDRhoDiv = HyperDRhoDiv
 Model.HyperDDiv = HyperDDiv
 
 OrdPolyZ = 1
+if RadEarth == 0.0
+  RadEarth = Phys.RadEarth
+end
 
 Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
 
 @show "InitSphere"
-(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)
+(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,
+  GridType,Topography,Decomp,Model,Phys,RadEarth)
 
 # Initial values
 if Problem == "Galewski"

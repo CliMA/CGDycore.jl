@@ -7,6 +7,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   DS = FE.DS
   DW = FE.DW
   M = FE.M
+  DoF = FE.DoF
   Stencil = FE.Stencil
   dXdxI = Metric.dXdxI
   X = Metric.X
@@ -54,7 +55,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   KDivRhoTrViscUpwind3LimKernel! = DivRhoTrViscUpwind3LimKernel!(backend, group)
 
   if Global.Model.HorLimit
-    @views KLimitKernel!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
+    @views KLimitKernel!(DoF,qMin,qMax,U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
       KernelAbstractions.synchronize(backend)
   end
 
@@ -81,15 +82,12 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   KernelAbstractions.synchronize(backend)  
 
   if Global.Model.HorLimit
-#   @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
-#     dXdxI,J,M,Glob,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
-#   KernelAbstractions.synchronize(backend)  
-    @views KDivRhoTrViscUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,CacheTr,DS,DW,
-      dXdxI,J,M,Glob,KoeffDiv,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
+    @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
+      dXdxI,J,M,Glob,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)  
-#   for i = 1 : size(F[:,:,1+NumV],2)
-#     @show i,F[1,i,1+NumV]  
-#   end  
+#   @views KDivRhoTrViscUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,CacheTr,DS,DW,
+#     dXdxI,J,M,Glob,KoeffDiv,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
+#   KernelAbstractions.synchronize(backend)  
   else
     @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrange)

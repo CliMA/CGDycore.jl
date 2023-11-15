@@ -6,7 +6,6 @@ import ..Grids
 using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
-using Statistics: median
 
 include("OperatorKernel.jl")
 include("FcnGPU.jl")

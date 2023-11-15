@@ -126,11 +126,11 @@ function TransCartX!(XP,ksi,eta,zeta,X,CG,Global)
   OrdPolyZ=CG.OrdPolyZ
   @. XP = 0
   @inbounds for j = 1 : OrdPoly + 1
-    Lj = DG.Lagrange(eta,CG.xw,j)
+    Lj = DG.Lagrange(eta,CG.xwCPU,j)
     @inbounds for i = 1 : OrdPoly + 1
-      Li = DG.Lagrange(ksi,CG.xw,i) * Lj
+      Li = DG.Lagrange(ksi,CG.xwCPU,i) * Lj
       @inbounds for k = 1 : OrdPolyZ + 1
-        Fac = Li * DG.Lagrange(zeta,CG.xwZ,k)
+        Fac = Li * DG.Lagrange(zeta,CG.xwZCPU,k)
         @inbounds for l = 1 : 3
            XP[l] += Fac * X[i,j,k,l]
         end

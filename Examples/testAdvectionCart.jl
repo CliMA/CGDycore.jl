@@ -1,9 +1,16 @@
-using CGDycore
+import CGDycore:
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
 using MPI
 using Base
-
+using CUDA
+using AMDGPU
+using Metal
+using KernelAbstractions
+using StaticArrays
+using ArgParse
+using MPI
 # Model
-parsed_args = CGDycore.parse_commandline()
+parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -76,8 +83,41 @@ PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
+# Device
+Device = parsed_args["Device"]
+GPUType = parsed_args["GPUType"]
+FloatTypeBackend = parsed_args["FloatTypeBackend"]
 
-Param = CGDycore.Parameters(Problem)
+if Device == "CPU"
+  backend = CPU()
+elseif Device == "GPU"
+  if GPUType == "CUDA"
+    backend = CUDABackend()
+    CUDA.allowscalar(false)
+#   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+  elseif GPUType == "AMD"
+    backend = ROCBackend()
+    AMDGPU.allowscalar(false)
+  elseif GPUType == "Metal"
+    backend = MetalBackend()
+    Metal.allowscalar(true)
+  end 
+else
+  backend = CPU()
+end
+
+if FloatTypeBackend == "Float64"
+  FTB = Float64
+elseif FloatTypeBackend == "Float32"
+  FTB = Float32
+else
+  @show "False FloatTypeBackend"
+  stop
+end
+
+Param = Examples.Parameters(FTB,Problem)
+
+KernelAbstractions.synchronize(backend)
 
 MPI.Init()
 
@@ -85,10 +125,10 @@ OrdPolyZ=1
 Parallel = true
 
 # Physical parameters
-Phys=CGDycore.PhysParameters()
+Phys=DyCore.PhysParameters{FTB}()
 
 #ModelParameters
-Model = CGDycore.Model()
+Model = DyCore.ModelStruct{FTB}()
 # Initial conditions
 Model.Equation="Compressible"
 Model.NumV=NumV
@@ -151,7 +191,7 @@ Model.HyperDDiv = HyperDDiv # =7.e15
 
 
 
-Boundary = CGDycore.Boundary()
+Boundary = Grids.Boundary()
 Boundary.WE = BoundaryWE
 Boundary.SN = BoundarySN
 Boundary.BT = BoundaryBT
@@ -161,20 +201,17 @@ Topography=(TopoS=TopoS,
             P2=P2,
             P3=P3,
             P4=P4,
-            )
+           )
 
-Global = CGDycore.InitCart(OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
+  @show "vor InitCart"
+  (CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
   Boundary,GridType,Topography,Decomp,Model,Phys)
 
-if TopoS == "EarthOrography"
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global,zS)
-else
-  (CG,Global)=CGDycore.DiscretizationCG(OrdPoly,OrdPolyZ,CGDycore.JacobiDG3Neu,Global)
-end
+  Profile = Examples.RotationalCartExample()(Param,Phys)
 
 
+  U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
-  U = CGDycore.InitialConditionsAdvection(CG,Global,Param)
 
 # Output
   Global.Output.vtkFileName=string(Problem*"_")
@@ -190,7 +227,8 @@ end
   Global.Output.PrintTime = PrintTime
   Global.Output.PrintStartTime = 0
   Global.Output.OrdPrint=CG.OrdPoly
-  Global.vtkCache = CGDycore.vtkStruct(Global.Output.OrdPrint,CGDycore.TransCartX,CG,Global)
+  @show "vor Global.vtkCache"
+  Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Grids.TransCartX!,CG,Metric,Global)
 
 
   # TimeStepper
@@ -205,5 +243,10 @@ end
   Global.TimeStepper.SimTime = SimTime
 
   nT = NumV + NumTr
-  CGDycore.InitExchangeData3D(nz,nT,Global.Exchange)
-  CGDycore.TimeStepperAdvection!(U,CGDycore.TransCartX,CG,Global,Param)
+  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)  
+  @show "vor TimeStepperGPUAdvection!"
+  if Device == "CPU" || Device == "GPU" 
+    Integration.TimeStepperGPUAdvection!(U,GPU.FcnAdvectionGPU!,Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Profile)
+  else
+    Integration.TimeStepperAdvection!(U,DyCore.FcnTracer!,Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Profile)
+  end

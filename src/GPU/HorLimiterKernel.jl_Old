@@ -133,9 +133,12 @@ end
     @inbounds RhoColS[I,J,iz] = U[Iz,ind,1] + dt * DivRho[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     #   Finite difference step
     @inbounds q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +
-      l0,  qMaxS[iz])
+      l0 * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz],  qMaxS[iz])
     @inbounds @atomic resp[iz] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz] * 
       (q[I,J,iz] * RhoColS[I,J,iz] - RhoTrColS[I,J,iz])
+    if IF == 6 && I == 5
+      @show "S", I,J,q[I,J,iz]  
+    end  
   end
   @synchronize
   if Iz <= Nz
@@ -146,7 +149,7 @@ end
       end  
     else
       @inbounds qLoc = medianGPU(qMinS[iz],  RhoTrColS[I,J,iz] / RhoColS[I,J,iz] + 
-        (l0 + dlFD),  qMaxS[iz])
+        (l0 + dlFD) * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz], qMaxS[iz])
       @inbounds @atomic resc[iz] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz] * 
         (qLoc * RhoColS[I,J,iz]  - RhoTrColS[I,J,iz])  
     end
@@ -169,9 +172,13 @@ end
     if Iz <= Nz && conv[iz]
       ID = I + (J - 1) * N  
       @inbounds q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +
-        lc[iz],  qMaxS[iz])
+        lc[iz] * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz],  qMaxS[iz])
       @inbounds @atomic resc[iz] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz] *
         (q[I,J,iz] * RhoColS[I,J,iz] - RhoTrColS[I,J,iz])
+    if IF == 6 && I == 5
+      ff = lc[iz] * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz]  
+      @show "Iter", I,J,q[I,J,iz],ff
+    end  
     end  
     @synchronize
     if Iz <= Nz && I == 1 && J == 1 && conv[iz]
@@ -192,6 +199,9 @@ end
     @inbounds ind = Glob[ID,IF]
     @inbounds @atomic FTr[Iz,ind] += (q[I,J,iz] * RhoColS[I,J,iz] - Tr[Iz,ind]) *
       (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / dt / M[Iz,ind]
+    if IF == 6 && I == 5
+      @show "E", I,J,q[I,J,iz]  
+    end  
   end  
 end
 
@@ -323,7 +333,7 @@ end
     @inbounds RhoColS[I,J,iz] = U[Iz,ind,1] + dt * DivRho[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     #   Finite difference step
     @inbounds q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +
-      l0,  qMaxS[iz])
+      l0 * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz],  qMaxS[iz])
     @inbounds @atomic resp[iz] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz] * 
       (q[I,J,iz] * RhoColS[I,J,iz] - RhoTrColS[I,J,iz])
   end
@@ -336,7 +346,7 @@ end
       end  
     else
       @inbounds qLoc = medianGPU(qMinS[iz],  RhoTrColS[I,J,iz] / RhoColS[I,J,iz] + 
-        (l0 + dlFD), qMaxS[iz])
+        (l0 + dlFD) * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz], qMaxS[iz])
       @inbounds @atomic resc[iz] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz] * 
         (qLoc * RhoColS[I,J,iz]  - RhoTrColS[I,J,iz])  
     end
@@ -359,7 +369,7 @@ end
     if Iz <= Nz && conv[iz]
       ID = I + (J - 1) * N  
       @inbounds q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +
-        lc[iz],  qMaxS[iz])
+        lc[iz] * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz],  qMaxS[iz])
       @inbounds @atomic resc[iz] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J] / sumJ[iz] *
         (q[I,J,iz] * RhoColS[I,J,iz] - RhoTrColS[I,J,iz])
     end  

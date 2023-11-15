@@ -1,6 +1,8 @@
-mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
+mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
   --Problem="AdvectionSphereSlottedCylinder" \
-  --NumV=1 \
+  --Device="CPU" \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
   --NumTr=1 \
   --ProfRho="" \
   --ProfTheta="" \
@@ -20,6 +22,7 @@ mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
   --TopoS="" \
   --GridType="CubedSphere" \
   --nz=1 \
+  --RadEarth=1.0 \
   --nPanel=32 \
   --RadEarth=1 \
   --H=1.0 \

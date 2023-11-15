@@ -36,7 +36,7 @@ mutable struct CGStruct{FT<:AbstractFloat,
     DWT::Array{FT, 2}
     DS::AT2
     DST::Array{FT, 2}
-    DSZ::Array{FT, 2}
+    DSZ::AT2
     S::Array{FT, 2}
     M::AT2
     MMass::AT2
@@ -96,7 +96,9 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
-  (DWZ,DSZ)=DG.DerivativeMatrixSingle(OrdPolyZ)
+  (DWZ,DSZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
+  DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
+  copyto!(DSZ,DSZCPU)
   (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU) =
     NumberingFemCG(Grid,OrdPoly)  
 

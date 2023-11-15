@@ -1,4 +1,4 @@
-function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys)    
+function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys,RadEarth)    
 
   comm = MPI.COMM_WORLD
   Proc = MPI.Comm_rank(comm) + 1 
@@ -13,13 +13,13 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   if GridType == "HealPix"
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
   # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-    Grid=Grids.InputGridH("Grid/mesh_H24_no_pp.nc", OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid=Grids.InputGridH("Grid/mesh_H24_no_pp.nc", OrientFaceSphere,RadEarth,Grid)
   elseif GridType == "SQuadGen"
-    Grid = Grids.InputGrid("Grid/baroclinic_wave_2deg_x4.g",OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid = Grids.InputGrid("Grid/baroclinic_wave_2deg_x4.g",OrientFaceSphere,RadEarth,Grid)
   elseif GridType == "Msh"
-    Grid = Grids.InputGridMsh("Grid/Quad.msh",OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid = Grids.InputGridMsh("Grid/Quad.msh",OrientFaceSphere,RadEarth,Grid)
   elseif GridType == "CubedSphere"
-    Grid = Grids.CubedGrid(nPanel,Grids.OrientFaceSphere,Phys.RadEarth,Grid)
+    Grid = Grids.CubedGrid(nPanel,Grids.OrientFaceSphere,RadEarth,Grid)
   elseif GridType == "TriangularSphere"
     IcosahedronGrid = Grids.CreateIcosahedronGrid()
     RefineLevel =  0
@@ -28,7 +28,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
       Grids.RefineFaceTriangularGrid!(IcosahedronGrid)
     end
     Grids.NumberingTriangularGrid!(IcosahedronGrid)
-    Grid = Grids.TriangularGridToGrid(IcosahedronGrid,Rad,Grid)
+    Grid = Grids.TriangularGridToGrid(IcosahedronGrid,RadEarth,Grid)
   end
 
   if Decomp == "Hilbert"

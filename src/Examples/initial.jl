@@ -1,7 +1,42 @@
 abstract type Example end
 
-Base.@kwdef struct RotationalCartExample <: Example end
+Base.@kwdef struct DivergentSphereExample <: Example end
 
+function (profile::DivergentSphereExample)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    Rho = FT(1)
+    Lon,Lat,R = Grids.cart2sphere(x[1],x[2],x[3])
+    lonP = Lon - FT(2) * pi * time / Param.EndTime
+    uS = FT(10) / Param.EndTime * sin(lonP) * sin(lonP) *
+      sin(FT(2) * Lat) * cos(pi * time / Param.EndTime) + FT(2) * pi / Param.EndTime * cos(Lat)
+    vS = FT(10) / Param.EndTime * sin(FT(2) * lonP) * cos(Lat) * cos(pi * time / Param.EndTime)
+    w = FT(0)
+    lon1 = Param.lon1
+    lat1 = Param.lat1
+    lon2 = Param.lon2
+    lat2 = Param.lat2
+    R = FT(1)
+    r = FT(0.5) * R
+    r1 = R * Grids.GreatCircle(Lon,Lat,lon1,lat1)
+    r2 = R * Grids.GreatCircle(Lon,Lat,lon2,lat2)
+    if r1 <= r && abs(Lon - lon1) >= r / (FT(6.0) * R)
+      Tr = FT(1.0)
+    elseif r2 <= r && abs(Lon - lon2) >= r / (FT(6.0) * R)
+      Tr = FT(1.0)
+    elseif r1 <= r && abs(Lon - lon1) < r / (FT(6.0) * R) && Lat - lat1 < FT(-5.0 / 12.0) * r / R
+      Tr = FT(1.0)
+    elseif r2 <= r && abs(Lon - lon2) < r / (FT(6.0) * R) && Lat - lat2 > FT(5.0 / 12.0) * r / R
+      Tr = FT(1.0)
+    else
+      Tr = FT(.1)
+    end
+    return (Rho,uS,vS,w,Tr)
+  end
+  return local_profile
+end
+
+Base.@kwdef struct RotationalCartExample <: Example end
 
 function (profile::RotationalCartExample)(Param,Phys)
     function local_profile(x,time)
@@ -11,7 +46,9 @@ function (profile::RotationalCartExample)(Param,Phys)
       v = Param.vMax
       w = sinpi(x[3] / Param.H) * cospi(time / Param.EndTime)
       w = FT(0)
-      if x[1] >= Param.x1 && x[1] <= Param.x2 && x[3] >= Param.z1 && x[3] <= Param.z2
+      if x[1] >= Param.x1 && x[1] <= Param.x2 && 
+         x[2] >= Param.y1 && x[2] <= Param.y2 && 
+         x[3] >= Param.z1 && x[3] <= Param.z2
         Tr = FT(1)
       else
         Tr = FT(0)
@@ -20,7 +57,6 @@ function (profile::RotationalCartExample)(Param,Phys)
     end
     return local_profile
 end
-
 Base.@kwdef struct WarmBubbleCartExample <: Example end
 
 function (profile::WarmBubbleCartExample)(Param,Phys)
