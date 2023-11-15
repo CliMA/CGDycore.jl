@@ -120,43 +120,17 @@ mutable struct MetricStruct{FT<:AbstractFloat,
                             AT3<:AbstractArray,
                             AT4<:AbstractArray,
                             AT5<:AbstractArray,
-                            AT6<:AbstractArray,
-                            AT7<:AbstractArray}
-  J::AT5
-  X::AT6
-  dXdxI::AT7
-  nS::AT4
-  FS::AT3
+                            AT6<:AbstractArray}
+  J::AT4
+  X::AT5
+  dXdxI::AT6
+  nS::AT3
+  FS::AT2
   dz::AT2
   zP::AT2
   lat::AT1
-end
-function MetricStruct{FT}(backend) where FT<:AbstractFloat
-  J      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
-  X      = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
-  dXdxI  = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0,0)
-  nS = KernelAbstractions.zeros(backend,FT,0,0,0,0)
-  FS = KernelAbstractions.zeros(backend,FT,0,0,0)
-  dz = KernelAbstractions.zeros(backend,FT,0,0)
-  zP = KernelAbstractions.zeros(backend,FT,0,0)
-  lat = KernelAbstractions.zeros(backend,FT,0)
-    return MetricStruct{FT,
-                        typeof(lat),
-                        typeof(zP),
-                        typeof(FS),
-                        typeof(nS),
-                        typeof(J),
-                        typeof(X),
-                        typeof(dXdxI)}(
-        J,
-        X,
-        dXdxI,
-        nS,
-        FS,
-        dz,
-        zP,
-        lat,
-    )
+  JC::AT3
+  JCW::AT3
 end
 function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
@@ -167,10 +141,11 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
     dz = KernelAbstractions.zeros(backend,FT,0,0)
     zP = KernelAbstractions.zeros(backend,FT,0,0)
     lat = KernelAbstractions.zeros(backend,FT,0)
+    JC     = KernelAbstractions.zeros(backend,FT,0,0,0)
+    JCW    = KernelAbstractions.zeros(backend,FT,0,0,0)
     return MetricStruct{FT,
                         typeof(lat),
                         typeof(zP),
-                        typeof(FS),
                         typeof(nS),
                         typeof(J),
                         typeof(X),
@@ -183,6 +158,8 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
         dz,
         zP,
         lat,
+        JC,
+        JCW,
     )
 end
 

@@ -212,7 +212,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
   end  
 end  
 
-function TimeStepperAdvection!(U,Trans,CG,Metric,Phys,Global,Param)  
+function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,Profile)  
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -252,7 +252,7 @@ function TimeStepperAdvection!(U,Trans,CG,Metric,Phys,Global,Param)
   NumG = CG.NumG
   FT = eltype(U)
   backend = get_backend(U)
-  Cache=CacheStruct{FT}(backend,CG.OrdPoly+1,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
+  Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
     NumV,NumTr)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
@@ -272,7 +272,7 @@ function TimeStepperAdvection!(U,Trans,CG,Metric,Phys,Global,Param)
 
 
 # Print initial conditions
-# unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
 
   if IntMethod == "Rosenbrock"
     @time begin
@@ -306,10 +306,10 @@ function TimeStepperAdvection!(U,Trans,CG,Metric,Phys,Global,Param)
     @time begin
       for i = 1 : nIter
         Δt = @elapsed begin
-          SSPRungeKutta!(time[1],U,dtau,FcnTracer!,CG,Metric,Cache,Global,Param)
+          SSPRungeKutta!(time[1],U,dtau,Fcn,CG,Metric,Phys,Cache,Exchange,Global,Param,Profile)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Metric,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
           end
         end
         percent = i/nIter*100
@@ -427,7 +427,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Metric,Global,Param)
   end
 end  
 
-function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Phys,Global,Param,Profile)  
+function TimeStepperGPUAdvection!(U,Fcn!,Trans,CG,Metric,Phys,Exchange,Global,Param,Profile)  
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -476,16 +476,16 @@ function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Phys,Global,Param,Profile)
 
 
 # Print initial conditions
-  unstructured_vtkSphere(U,TransSphereX,CG,Metric,Cache,Global,Proc,ProcNumber)
+  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
 
   if IntMethod == "SSPRungeKutta"
     @time begin
       for i = 1 : nIter
         Δt = @elapsed begin
-          SSPRungeKutta!(time[1],U,dtau,FcnAdvectionGPU!,CG,Metric,Phys,Cache,Global,Param,Profile)
+          SSPRungeKutta!(time[1],U,dtau,Fcn!,CG,Metric,Phys,Cache,Exchange,Global,Param,Profile)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
           end
         end 
         percent = i/nIter*100
@@ -495,5 +495,5 @@ function TimeStepperGPUAdvection!(U,Trans,CG,Metric,Phys,Global,Param,Profile)
   else
     error("Bad IntMethod")
   end
-  unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
 end  

@@ -78,8 +78,8 @@ fRhoS::AT3
 VS::AT4
 RhoS::AT3
 f::AT4
-qMin::Array{FT, 3}
-qMax::Array{FT, 3}
+qMin::AT3
+qMax::AT3
 end
 
 function CacheStruct{FT}(backend) where FT<:AbstractFloat
@@ -159,8 +159,8 @@ fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
-qMin=zeros(FT,0,0,0)
-qMax=zeros(FT,0,0,0)
+qMin=KernelAbstractions.zeros(backend,FT,0,0,0)
+qMax=KernelAbstractions.zeros(backend,FT,0,0,0)
 return CacheStruct{FT,
                    typeof(KE),
                    typeof(RhoS),
@@ -323,8 +323,8 @@ fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
-qMin=zeros(FT,nz,NF+NGF,NumTr+1)
-qMax=zeros(FT,nz,NF+NGF,NumTr+1)
+qMin=KernelAbstractions.zeros(backend,FT,nz,NF+NGF,NumTr+1)
+qMax=KernelAbstractions.zeros(backend,FT,nz,NF+NGF,NumTr+1)
 return CacheStruct{FT,
                    typeof(KE),
                    typeof(RhoS),

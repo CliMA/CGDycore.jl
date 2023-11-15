@@ -1,19 +1,29 @@
-function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
+function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Profile)
 
   backend = get_backend(F)
   FT = eltype(F)
+  dtau = Global.TimeStepper.dtauStage
   Glob = FE.Glob
   DS = FE.DS
   DW = FE.DW
   M = FE.M
+  Stencil = FE.Stencil
   dXdxI = Metric.dXdxI
   X = Metric.X
   J = Metric.J
+  JC = Metric.JC
+  JCW = Metric.JCW
   N = FE.OrdPoly+1
+  ww = FE.w
   Nz = size(F,1)
-  NF = size(Glob,3)
-  Koeff = Global.Model.HyperDDiv
+  NF = size(Glob,2)
+  NDoF = size(Glob,1)
+  KoeffDiv = Global.Model.HyperDDiv
+  NumV  = Global.Model.NumV
+  NumTr  = Global.Model.NumTr
   Temp1 = Cache.Temp1
+  @views qMin = Cache.qMin[:,:,1:NumTr]
+  @views qMax = Cache.qMax[:,:,1:NumTr]
 
 
 # State vector
@@ -23,25 +33,80 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Global,Param,Profile)
   @views w = U[:,:,4]
 # Cache
   @views CacheF = Temp1[:,:,1:5]
+  @views CacheTr = Temp1[:,:,1]
 # Ranges
   NzG = min(div(1024,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
+  groupLim = (10, 1)
+  ndrangeLim = (Nz, NF)
+  NFG = min(div(512,Nz),NF)
+  groupL = (Nz, NFG, 1)
+  ndrangeL = (Nz, NF, NumTr)
 
+  KLimitKernel! = LimitKernel!(backend, groupL)
   KuvwFunCKernel! = uvwFunCKernel!(backend, group)
-  KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
-  KHyperViscKernel! = HyperViscKernel!(backend, group)
+  KDivRhoKernel! = DivRhoKernel!(backend, group)
+  KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, group)
+  KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, group)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
+  KDivRhoTrUpwind3LimKernel! = DivRhoTrUpwind3LimKernel!(backend, group)
+  KDivRhoTrViscUpwind3LimKernel! = DivRhoTrViscUpwind3LimKernel!(backend, group)
 
+  if Global.Model.HorLimit
+    @views KLimitKernel!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
+      KernelAbstractions.synchronize(backend)
+  end
+
+
+# Velocity 
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
-  @. CacheF = 0
-  KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+# Hyperviscosity Part 1
+  KHyperViscTracerKernel!(CacheTr,U[:,:,1+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
+
+# Data exchange  
+  Parallels.ExchangeData3DSendGPU(CacheTr,Exchange)
+  Parallels.ExchangeData3DRecvGPU!(CacheTr,Exchange)
+
   @. F = 0
-  KDivRhoTrUpwind3Kernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,Koeff,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
+# @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
+#   KoeffDiv,ndrange=ndrange)
+# KernelAbstractions.synchronize(backend)
+
+
+  KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)  
+
+  if Global.Model.HorLimit
+#   @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
+#     dXdxI,J,M,Glob,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
+#   KernelAbstractions.synchronize(backend)  
+    @views KDivRhoTrViscUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,CacheTr,DS,DW,
+      dXdxI,J,M,Glob,KoeffDiv,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)  
+#   for i = 1 : size(F[:,:,1+NumV],2)
+#     @show i,F[1,i,1+NumV]  
+#   end  
+  else
+    @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
+      KoeffDiv,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+
+    @views KDivRhoTrUpwind3Kernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
+      dXdxI,J,M,Glob,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)  
+
+    KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)  
+  end
+
+# Data exchange  
+  Parallels.ExchangeData3DSendGPU(F[:,:,1+NumV],Exchange)
+  Parallels.ExchangeData3DRecvGPU!(F[:,:,1+NumV],Exchange)
+
 end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
@@ -106,7 +171,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
   KGradKernel! = GradKernel!(backend,group)
-  KDivRhoGradKernel! = DivRhoGradKernel!(backend, group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)

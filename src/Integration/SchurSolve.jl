@@ -42,7 +42,7 @@ end
   u[n+1] = u[n+1] + biL[2,n]*v[n]
 end
 
-@kernel function SchurSolveFacKernel!(Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
+@kernel function SchurSolveFacKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
@@ -72,11 +72,14 @@ end
       @inbounds k[iz,IC,2] = fac * v[iz,IC,2]
       @inbounds k[iz,IC,3] = fac * v[iz,IC,3]
       @inbounds k[iz,IC,5] = fac * v[iz,IC,5]
+      for iT = 6 : NumVTr
+        @inbounds k[iz,IC,iT] = fac * v[iz,IC,iT]
+      end
     end 
   end    
 end
 
-@kernel function SchurSolveKernel!(Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
+@kernel function SchurSolveKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
@@ -101,6 +104,9 @@ end
       @inbounds k[iz,IC,2] = fac * v[iz,IC,2]
       @inbounds k[iz,IC,3] = fac * v[iz,IC,3]
       @inbounds k[iz,IC,5] = fac * v[iz,IC,5]
+      for iT = 6 : NumVTr
+        @inbounds k[iz,IC,iT] = fac * v[iz,IC,iT]
+      end
     end 
   end    
 end
@@ -111,6 +117,7 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
 
   Nz = size(k,1)
   NumG = size(k,2)
+  NumVTr = size(k,3) 
 
 # group = (1024)
   group = (12)
@@ -118,11 +125,11 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
 
   if J.CompTri
     KSchurSolveFacKernel! = SchurSolveFacKernel!(backend,group)
-    KSchurSolveFacKernel!(Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
+    KSchurSolveFacKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   else
     KSchurSolveKernel! = SchurSolveKernel!(backend,group)
-    KSchurSolveKernel!(Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
+    KSchurSolveKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   end
   J.CompTri = false

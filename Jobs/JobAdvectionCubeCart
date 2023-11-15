@@ -1,23 +1,27 @@
-mpirun -n 6 julia --project --check-bounds=yes Examples/testAdvectionCart.jl \
-  --Problem="AdvectionCubeCart" \
-  --NumV=1 \
+mpirun -n 1 julia --project Examples/testAdvectionCartGPU.jl \
+  --Problem="AdvectionCubeRotCart" \
+  --Device="" \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
   --NumTr=1 \
-  --ProfTr="AdvectionCubeCart" \
+  --ProfTr="AdvectionCubeRotCart" \
   --ProfVel="Const" \
-  --HorLimit=false \
-  --vtkFileName="AdvectionCubeCart" \
+  --HorLimit=true \
+  --Upwind=false \
+  --vtkFileName="AdvectionCubeRotCart" \
   --SimTime=1000.0 \
-  --PrintTime=10.0 \
-  --dtau=0.25\
+  --PrintTime=100.0 \
+  --dtau=1\
   --IntMethod="SSPRungeKutta" \
   --Table="SSP32" \
   --Lx=1000.0 \
   --Ly=1000.0 \
-  --H=1.0 \
+  --H=1000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nx=40 \
-  --ny=40 \
+  --nx=20 \
+  --ny=20 \
+  --nz=1 \
   --OrdPoly=4 \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
@@ -25,7 +29,4 @@ mpirun -n 6 julia --project --check-bounds=yes Examples/testAdvectionCart.jl \
   --HyperVisc=true \
   --HyperDCurl=1.e4 \
   --HyperDGrad=1.e4 \
-  --HyperDDiv=1.e4
-
-
-
+  --HyperDDiv=0.e0

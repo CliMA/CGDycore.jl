@@ -1009,6 +1009,54 @@ end
   end
 end
 
+@kernel function DivRhoKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob))
+
+# gi, gj, gz, gF = @index(Group, NTuple)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  uConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  vConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  if Iz <= Nz
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+    @views @inbounds (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds uConCol[I,J,iz] = uCon
+    @inbounds vConCol[I,J,iz] = vCon
+  end
+  @synchronize
+
+  if Iz < Nz 
+    ID = I + (J - 1) * N  
+    @inbounds ind = Glob[ID,IF]
+
+    @views @inbounds wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
+      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+
+    Flux = eltype(F)(0.5) * wCon
+    @inbounds @atomic F[Iz,ind,1] += -Flux / M[Iz,ind]
+    @inbounds @atomic F[Iz+1,ind,1] += Flux / M[Iz+1,ind]
+  end 
+
+  if Iz <= Nz
+    ID = I + (J - 1) * N  
+    @inbounds DivRho = D[I,1] * uConCol[1,J,iz] 
+    @inbounds DivRho += D[J,1] * vConCol[I,1,iz] 
+    for k = 2 : N
+      @inbounds DivRho += D[I,k] * uConCol[k,J,iz] 
+      @inbounds DivRho += D[J,k] * vConCol[I,k,iz] 
+    end
+    ind = Glob[ID,IF]
+    @inbounds @atomic F[Iz,ind,1] += DivRho / M[Iz,ind]
+  end
+end
+
 @kernel function DivRhoTrUpwind3Kernel!(FTr,@Const(Tr),@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 

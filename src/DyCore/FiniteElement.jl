@@ -115,7 +115,7 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     for iE in Grid.Faces[iF].E
        Side += 1 
        if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-          @views GlobLoc = reshape(Glob[:,iF],OP,OP) 
+         @views GlobLoc = reshape(Glob[:,iF],OP,OP) 
          if Side == 1
            for i in GlobLoc[1:OP-1,1]   
              push!(Boundary,i)

@@ -1,4 +1,4 @@
-function SSPRungeKutta!(time,V,dt,Fcn,CG,Metric,Phys,Cache,Global,Param,Profile)
+function SSPRungeKutta!(time,V,dt,Fcn,CG,Metric,Phys,Cache,Exchange,Global,Param,Profile)
   SSP=Global.TimeStepper.SSP
   nStage=SSP.nStage
   fV=Cache.fV
@@ -16,7 +16,7 @@ function SSPRungeKutta!(time,V,dt,Fcn,CG,Metric,Phys,Cache,Global,Param,Profile)
   end  
   @inbounds for iStage = 1:nStage
     Global.TimeStepper.dtauStage = dt * SSP.ms[iStage]
-    Fcn(fV,V,time + SSP.c[iStage] * dt,CG,Metric,Phys,Cache,Global,Param,Profile)
+    Fcn(fV,V,time + SSP.c[iStage] * dt,CG,Metric,Phys,Cache,Exchange,Global,Param,Profile)
     @views @. fRhoS[:,:,iStage] = fV[:,:,RhoPos]
     if NumTr > 0
       @views @. fS[:,:,:,iStage] = fV[:,:,NumV+1:end]

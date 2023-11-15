@@ -1,6 +1,5 @@
-function fVelW(x,time::Float64,Global,Param)
+function fVelW(x,time::Float64,Phys,Global,Param)
   Model=Global.Model
-  Phys=Global.Phys
   ProfVelW = Model.ProfVelW
   if ProfVelW == "Linear"
     w=x[1];
@@ -23,6 +22,7 @@ function fVelW(x,time::Float64,Global,Param)
   elseif ProfVelW == "RotationalCart"
     w = sinpi(x[3] / Param.H) * cospi(time / Param.EndTime)
 #   w = (x[1] - Param.xC) / 1000.0
+    w = 0.0
   else
     w=0.0
   end

@@ -13,6 +13,8 @@ using LinearAlgebra
 using SparseArrays
 using ArgParse
 using UnPack
+using StaticArrays
+using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace

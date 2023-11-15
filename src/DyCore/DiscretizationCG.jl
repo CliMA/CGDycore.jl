@@ -30,8 +30,11 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
     F[4,3,iF] = Grid.Faces[iF].P[4].z  
   end  
   copyto!(FGPU,F)
-  Grids.JacobiSphere3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs,Grid.Rad)
-# Grids.JacobiSphere3CPU!(Metric.X,Metric.dXdxI,Metric.J,CG,Grid,zs,Grids.Topo)
+  if Global.Grid.Form == "Sphere"
+    Grids.JacobiSphere3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs,Grid.Rad)
+  else
+    Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
+  end  
 
   MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)
 
@@ -58,6 +61,16 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs)
   KSurfaceNormalKernel! = SurfaceNormalKernel!(backend,group)
   KSurfaceNormalKernel!(Metric.FS,Metric.nS,Metric.dXdxI,ndrange=ndrange)
 
+  if Global.Model.HorLimit
+    Metric.JC = KernelAbstractions.zeros(backend,FT,size(Metric.J,1),size(Metric.J,3),size(Metric.J,4))  
+    Metric.JCW = KernelAbstractions.zeros(backend,FT,size(Metric.J,1),size(Metric.J,3),size(Metric.J,4))  
+#   NFG = min(div(NumberThreadGPU,),NF)  
+    group = (nz, 1)
+    ndrange = (nz, NF)
+    KCenterJacobiansKernel! = CenterJacobiansKernel!(backend,group)
+    KCenterJacobiansKernel!(CG.OrdPoly+1,Metric.JC,Metric.JCW,Metric.J,CG.w,ndrange=ndrange)
+  end    
+
   return (CG,Metric)
 end
 
@@ -80,6 +93,23 @@ end
     @inbounds nS[ID,2,IF] = dXdxI[3,2,1,ID,1,IF] / FS[ID,IF]
     @inbounds nS[ID,3,IF] = dXdxI[3,3,1,ID,1,IF] / FS[ID,IF]
   end
+end
+
+@kernel function CenterJacobiansKernel!(N,JC,JCW,@Const(J),@Const(w))
+  Iz,IF = @index(Global, NTuple)
+
+  FT = eltype(JC)
+  Nz = @uniform @ndrange()[1]
+  if Iz <= Nz
+    @inbounds @views sumJ = sum(J[:,:,Iz,IF])
+    for j = 1 : N
+      for i = 1 : N
+        ID = i + (j - 1) * N  
+        @inbounds JC[ID,Iz,IF] = J[ID,1,Iz,IF] + J[ID,2,Iz,IF] 
+        @inbounds JCW[ID,Iz,IF] = JC[ID,Iz,IF] * w[i] * w[j] / sumJ
+      end
+    end  
+  end  
 end
 
 @kernel function GridSizeSphereKernel!(lat,zP,dz,@Const(X),@Const(Glob),Rad)

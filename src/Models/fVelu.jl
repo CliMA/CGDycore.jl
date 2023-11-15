@@ -1,6 +1,5 @@
-function fVelu(x,time::Float64,Global,Param)
+function fVelu(x,time::Float64,Phys,Global,Param)
   Model = Global.Model
-  Phys = Global.Phys
   ProfVel = Model.ProfVel
   if ProfVel == "Const"
     uS=Param.uMax

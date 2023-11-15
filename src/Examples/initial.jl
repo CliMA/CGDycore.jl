@@ -10,10 +10,11 @@ function (profile::RotationalCartExample)(Param,Phys)
       u = Param.uMax
       v = Param.vMax
       w = sinpi(x[3] / Param.H) * cospi(time / Param.EndTime)
+      w = FT(0)
       if x[1] >= Param.x1 && x[1] <= Param.x2 && x[3] >= Param.z1 && x[3] <= Param.z2
-        Tr = 1
+        Tr = FT(1)
       else
-        Tr = 0
+        Tr = FT(0)
       end
       return (Rho,u,v,w,Tr)
     end

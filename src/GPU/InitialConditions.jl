@@ -114,19 +114,22 @@ function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Pa
   time = 0
 
   # Ranges
-  NzG = min(div(1024,N*N),Nz)
-  group = (N, N, NzG, 1)
-  ndrange = (N, N, Nz, NF)
+  NzG = min(div(256,N*N),Nz)
+  group = (N * N, NzG, 1)
+  ndrange = (N * N, Nz, NF)
 
   U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,NumV+NumTr)
   @views Rho = U[:,:,Model.RhoPos]
-  @views Th = U[:,:,Model.NumV+1]
-  #Profile = Example(RotationalCartExample())
+  @views u = U[:,:,Model.uPos]
+  @views v = U[:,:,Model.vPos]
+  @views w = U[:,:,Model.wPos]
+  @views Tr = U[:,:,Model.NumV+1]
   KRhoFunCKernel! = RhoFunCKernel!(backend, group)
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-  @. U[:,:,Model.uPos] = 1
-  @. U[:,:,Model.vPos] = 1
+  KuvwFunCKernel! = uvwFunCKernel!(backend, group)
+  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
   KTrFunCKernel! = TrFunCKernel!(backend, group)
   KTrFunCKernel!(Profile,Tr,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
