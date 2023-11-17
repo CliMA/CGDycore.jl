@@ -39,6 +39,8 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   NzG = min(div(1024,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
+  groupC = (N* N, NzG, 1)
+  ndrangeC = (N* N, Nz, NF)
   groupLim = (10, 1)
   ndrangeLim = (Nz, NF)
   NFG = min(div(512,Nz),NF)
@@ -46,7 +48,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   ndrangeL = (Nz, NF, NumTr)
 
   KLimitKernel! = LimitKernel!(backend, groupL)
-  KuvwFunCKernel! = uvwFunCKernel!(backend, group)
+  KuvwFunCKernel! = uvwFunCKernel!(backend, groupC)
   KDivRhoKernel! = DivRhoKernel!(backend, group)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, group)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, group)
@@ -61,7 +63,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
 
 
 # Velocity 
-  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrangeC)
   KernelAbstractions.synchronize(backend)
 
 # Hyperviscosity Part 1

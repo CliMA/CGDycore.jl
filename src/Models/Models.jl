@@ -1,5 +1,7 @@
 module Models
 
+import ..Grids
+
 using KernelAbstractions
 
 include("Thermodynamics.jl")

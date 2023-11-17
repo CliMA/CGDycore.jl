@@ -83,6 +83,7 @@ PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
+Flat = parsed_args["Flat"]
 # Device
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
@@ -225,11 +226,13 @@ U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Par
 # Output
   Global.Output.vtkFileName=string(Problem*"_")
   Global.Output.vtk=0
-  Global.Output.Flat=true
+  Global.Output.Flat = Flat
   Global.Output.nPanel = nPanel
   Global.Output.H=H
   Global.Output.cNames = [
       "Rho",
+      "u",
+      "v",
       "Tr1",
       ]
   Global.Output.PrintDays = PrintDays

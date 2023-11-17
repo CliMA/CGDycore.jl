@@ -1,6 +1,6 @@
 mpirun -n 1 julia --project Examples/testAdvectionSphere.jl \
   --Problem="AdvectionSphereSlottedCylinder" \
-  --Device="" \
+  --Device="CPU" \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumTr=1 \

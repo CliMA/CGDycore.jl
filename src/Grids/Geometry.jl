@@ -56,6 +56,10 @@ function cart2sphere(x,y,z)
   FT = eltype(x)
   r = sqrt(x^2 + y^2 + z^2)
   phi = asin(z / r)
+  lam = atan(y,x) 
+  if y < FT(0)
+    lam = lam + FT(2*pi)
+  end  
 
 # ϕ = atan(z, hypot(y, x))
 # if abs(ϕ) == 90
@@ -64,13 +68,13 @@ function cart2sphere(x,y,z)
 #     λ = atan(y, x)
 # end
 
-  lam = FT(0)
-  if abs(abs(phi) - FT(pi/2))>FT(1.e-14)
-    lam = atan(y,x) # TODO: check translation with Oswald
-    if lam < FT(0.0)
-      lam = lam + FT(2*pi)
-    end
-  end
+# lam = FT(0)
+# if abs(abs(phi) - FT(pi/2))>FT(1.e-14)
+#   lam = atan(y,x) # TODO: check translation with Oswald
+#   if lam < FT(0.0)
+#     lam = lam + FT(2*pi)
+#   end
+# end
   return lam,phi,r
 end
 
