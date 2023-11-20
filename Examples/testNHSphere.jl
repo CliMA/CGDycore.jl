@@ -70,6 +70,7 @@ Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
 TopoS = parsed_args["TopoS"]
 GridType = parsed_args["GridType"]
+RadEarth = parsed_args["RadEarth"]
 # CG Element
 OrdPoly = parsed_args["OrdPoly"]
 # Viscosity
@@ -206,7 +207,7 @@ if RadEarth == 0.0
   RadEarth = Phys.RadEarth
 end
 
-Topography = (TopoS=TopoS,H=H,Rad=Phys.RadEarth)
+Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
 
 @show "InitSphere"
 (CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,

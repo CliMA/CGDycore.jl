@@ -63,7 +63,7 @@
     Dzu1 = eltype(F)(0.5) * (uCol[I,J,iz] - U[Izm,ind,2])
     Dzv1 = eltype(F)(0.5) * (vCol[I,J,iz] - U[Izm,ind,3])
     Dzw = eltype(F)(0.5) * (wCol[I,J,iz+1] - wCol[I,J,iz]) 
-    for k = 2 : N
+    @unroll @unroll for k = 2 : N
       @inbounds Dxu += D[I,k] * uCol[k,J,iz]
       @inbounds Dyu += D[J,k] * uCol[I,k,iz]
       @inbounds Dxv += D[I,k] * vCol[k,J,iz]
@@ -161,7 +161,7 @@ end
     Dzu1 = 1/2 * (uCol[I,J,iz] - U[Izm,ind,2])
     Dzv1 = 1/2 * (vCol[I,J,iz] - U[Izm,ind,3])
     Dzw = 1/2 * (wCol[I,J,iz+1] - wCol[I,J,iz]) 
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds Dxu += D[I,k] * uCol[k,J,iz]
       @inbounds Dyu += D[J,k] * uCol[I,k,iz]
       @inbounds Dxv += D[I,k] * vCol[k,J,iz]
@@ -214,7 +214,7 @@ end
     ID = I + (J - 1) * N  
     @inbounds DXPres = D[I,1] * Pres[1,J,iz]
     @inbounds DYPres = D[J,1] * Pres[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds DXPres += D[I,k] * Pres[k,J,iz]
       @inbounds DYPres += D[J,k] * Pres[I,k,iz]
     end
@@ -293,7 +293,7 @@ end
   DYKinF2 = 0
   I = mod(ID-1,N) + 1
   J = div(ID-I,N) + 1
-  for k = 1 : N
+  @unroll for k = 1 : N
     @inbounds DXKinF1 += D[I,k] * KinF[k,J,1,iz]
     @inbounds DYKinF1 += D[J,k] * KinF[I,k,1,iz]
     @inbounds DXKinF2 += D[I,k] * KinF[k,J,2,iz]
@@ -377,13 +377,13 @@ end
   if Iz <= Nz
     Dxc = D[I,1] * cCol[1,J,iz]
     Dyc = D[J,1] * cCol[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds Dxc = Dxc + D[I,k] * cCol[k,J,iz]
       @inbounds Dyc = Dyc + D[J,k] * cCol[I,k,iz] 
     end
     @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
     @views @inbounds (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
-    for k = 1 : N
+    @unroll for k = 1 : N
       @inbounds @atomic FCol[k,J,iz] += DW[k,I] * tempx
       @inbounds @atomic FCol[I,k,iz] += DW[k,J] * tempy
     end
@@ -436,7 +436,7 @@ end
     @inbounds Dyc = D[J,1] * ThCol[I,1,iz]
     @inbounds Curl[I,J,iz] = D[I,1] * uCCol[1,J,iz] + D[J,1] * vCCol[I,1,iz] 
     @inbounds Div[I,J,iz] = D[I,1] * uDCol[1,J,iz] + D[J,1] * vDCol[I,1,iz] 
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds Dxc += D[I,k] * ThCol[k,J,iz]
       @inbounds Dyc += D[J,k] * ThCol[I,k,iz] 
       @inbounds Curl[I,J,iz] += D[I,k] * uCCol[k,J,iz] + D[J,k] * vCCol[I,k,iz] 
@@ -457,7 +457,7 @@ end
     @inbounds DxDiv = DW[I,1] * Div[1,J,iz]
     @inbounds DyDiv = DW[J,1] * Div[I,1,iz]
     @inbounds DivTh = DW[I,1] * ThCxCol[1,J,iz] + DW[J,1] * ThCyCol[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds DxCurl += DW[I,k] * Curl[k,J,iz]
       @inbounds DyCurl += DW[J,k] * Curl[I,k,iz]
       @inbounds DxDiv += DW[I,k] * Div[k,J,iz]
@@ -507,7 +507,7 @@ end
     ID = I + (J - 1) * N  
     @inbounds Dxc = D[I,1] * TrCol[1,J,iz]
     @inbounds Dyc = D[J,1] * TrCol[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds Dxc += D[I,k] * TrCol[k,J,iz]
       @inbounds Dyc += D[J,k] * TrCol[I,k,iz] 
     end
@@ -520,7 +520,7 @@ end
   @synchronize 
   if Iz <= Nz && IF <= NF
     @inbounds DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
     ID = I + (J - 1) * N  
@@ -569,7 +569,7 @@ end
     @inbounds Dyc = D[J,1] * ThCol[I,1,iz]
     @inbounds Curl[I,J,iz] = D[I,1] * uCCol[1,J,iz] + D[J,1] * vCCol[I,1,iz] 
     @inbounds Div[I,J,iz] = D[I,1] * uDCol[1,J,iz] + D[J,1] * vDCol[I,1,iz] 
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds Dxc += D[I,k] * ThCol[k,J,iz]
       @inbounds Dyc += D[J,k] * ThCol[I,k,iz] 
       @inbounds Curl[I,J,iz] += D[I,k] * uCCol[k,J,iz] + D[J,k] * vCCol[I,k,iz] 
@@ -591,7 +591,7 @@ end
     @inbounds DxDiv = DW[I,1] * Div[1,J,iz]
     @inbounds DyDiv = DW[J,1] * Div[I,1,iz]
     @inbounds DivTh = DW[I,1] * ThCxCol[1,J,iz] + DW[J,1] * ThCyCol[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds DxCurl += DW[I,k] * Curl[k,J,iz]
       @inbounds DyCurl += DW[J,k] * Curl[I,k,iz]
       @inbounds DxDiv += DW[I,k] * Div[k,J,iz]
@@ -633,7 +633,7 @@ end
     ID = I + (J - 1) * N  
     @inbounds Dxc = D[I,1] * TrCol[1,J,iz]
     @inbounds Dyc = D[J,1] * TrCol[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds Dxc += D[I,k] * TrCol[k,J,iz]
       @inbounds Dyc += D[J,k] * TrCol[I,k,iz] 
     end
@@ -647,7 +647,7 @@ end
   @synchronize 
   if Iz <= Nz && IF <= NF
     @inbounds DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
     ID = I + (J - 1) * N  
@@ -696,7 +696,7 @@ end
     ID = I + (J - 1) * N  
     Dxc = 0
     Dyc = 0
-    for k = 1 : N
+    @unroll for k = 1 : N
       @inbounds Dxc = Dxc + D[I,k] * ThCol[k,J,iz]
       @inbounds Dyc = Dyc + D[J,k] * ThCol[I,k,iz] 
     end
@@ -708,7 +708,7 @@ end
       (dXdxI[I,J,1,Iz,1,2,IF] + dXdxI[I,J,2,Iz,1,2,IF]) * GradDy
     @inbounds tempy = (dXdxI[I,J,1,Iz,2,1,IF] + dXdxI[I,J,2,Iz,2,1,IF]) * GradDx +
       (dXdxI[I,J,1,Iz,2,2,IF] + dXdxI[I,J,2,Iz,2,2,IF]) * GradDy
-    for k = 1 : N
+    @unroll for k = 1 : N
       @inbounds @atomic FThCol[k,J,iz] += DW[k,I] * tempx
       @inbounds @atomic FThCol[I,k,iz] += DW[k,J] * tempy
     end
@@ -717,7 +717,7 @@ end
       (dXdxI[I,J,1,iz,1,2,IF] + dXdxI[I,J,2,iz,1,2,IF]) * uC[I,J,iz]
     @views @. tempy = (dXdxI[I,J,1,iz,2,1,IF] + dXdxI[I,J,2,iz,2,1,IF]) * vC[I,J,iz] -
       (dXdxI[I,J,1,iz,2,2,IF] + dXdxI[I,J,2,iz,2,2,IF]) * uC[I,J,iz]
-    for k = 1 : N
+    @unroll for k = 1 : N
       @inbounds @atomic CurlCol[k,J,iz] += D[k,I] * tempx + D[k,J] * tempy
     end
   end
@@ -730,7 +730,7 @@ end
     CurlCol[I,J,iz] /= (J[I,J,1,iz] + J[I,J,2,iz])
     DxCurl = eltype(F)(0)
     DyCurl = eltype(F)(0)
-    for k = 1 : N
+    @unroll for k = 1 : N
       @inbounds DxCurl += DW[I,k] * CurlCol[k,J,iz]
       @inbounds DyCurl += DW[J,k] * CurlCol[I,k,iz] 
     end
@@ -818,7 +818,7 @@ end
     @inbounds tempy = -cCol[I,J,iz+1] * ((dXdxI[I,J,1,Iz,2,1,IF] + dXdxI[I,J,2,Iz,2,1,IF]) * uCol[I,J,iz+1] +
       (dXdxI[I,J,1,Iz,2,2,IF] + dXdxI[I,J,2,Iz,2,2,IF]) * vCol[I,J,iz+1] +
       dXdxI[I,J,1,Iz,2,3,IF] * wCol[I,J,iz] + dXdxI[I,J,2,Iz,2,3,IF] * wCol[I,J,iz+1])
-    for k = 1 : N
+    @unroll for k = 1 : N
       @inbounds @atomic FCol[k,J,iz+1] += D[k,I] * tempx
       @inbounds @atomic FCol[I,k,iz+1] += D[k,J] * tempy
     end
@@ -911,7 +911,7 @@ end
     @inbounds tempy = -RhoCol[I,J,iz+1] * cCol[I,J,iz+1] * ((dXdxI[I,J,1,Iz,2,1,IF] + dXdxI[I,J,2,Iz,2,1,IF]) * uCol[I,J,iz+1] +
       (dXdxI[I,J,1,Iz,2,2,IF] + dXdxI[I,J,2,Iz,2,2,IF]) * vCol[I,J,iz+1] +
       dXdxI[I,J,1,Iz,2,3,IF] * wCol[I,J,iz] + dXdxI[I,J,2,Iz,2,3,IF] * wCol[I,J,iz+1])
-    for k = 1 : N
+    @unroll for k = 1 : N
       @inbounds @atomic FCol[k,J,iz+1] += D[k,I] * tempx
       @inbounds @atomic FCol[I,k,iz+1] += D[k,J] * tempy
     end
@@ -997,7 +997,7 @@ end
     @inbounds DivRho += D[J,1] * vConCol[I,1,iz] 
     @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
     @inbounds DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz+1]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds DivRho += D[I,k] * uConCol[k,J,iz] 
       @inbounds DivRho += D[J,k] * vConCol[I,k,iz] 
       @inbounds DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
@@ -1119,7 +1119,7 @@ end
     ID = I + (J - 1) * N  
     @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
     @inbounds DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz+1]
-    for k = 2 : N
+    @unroll for k = 2 : N
       @inbounds DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
       @inbounds DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
     end
