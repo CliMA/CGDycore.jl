@@ -130,6 +130,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   NF = size(Glob,2)
   NumV  = Global.Model.NumV 
   NumTr  = Global.Model.NumTr 
+  InteriorFaces = Global.Grid.InteriorFaces
+  BoundaryFaces = Global.Grid.BoundaryFaces
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
@@ -163,6 +165,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
   ndrange = (N, N, Nz, NF)
+  ndrangeB = (N, N, Nz, length(BoundaryFaces))
+  ndrangeI = (N, N, Nz, length(InteriorFaces))
   groupTr = group
   ndrangeTr = ndrange
   NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
@@ -178,84 +182,105 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
-# KMomentumKernel! = MomentumKernel!(backend, group)
-
-  @. Temp1 = FT(0)
-  @views MRho = CacheF[:,:,6]
-  KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-  for iT = 1 : NumTr
-    @views CacheTr = Temp1[:,:,iT + 6]  
-    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeTr)
-    KernelAbstractions.synchronize(backend)
-  end  
-
-  Parallels.ExchangeData3DSendGPU(CacheFF,Exchange)
-  Parallels.ExchangeData3DRecvGPU!(CacheFF,Exchange)
-  KernelAbstractions.synchronize(backend)
-
-  @. F = 0
-  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
-  for iT = 1 : NumTr
-    @views CacheTr = Temp1[:,:,iT + 6]  
-    @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
-      KoeffDiv,ndrange=ndrangeTr)
-    KernelAbstractions.synchronize(backend)
-  end  
-
-
-  KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
-# KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
-  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-
-  for iT = 1 : NumTr
-    @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
-      dXdxI,J,M,Glob,ndrange=ndrangeTr)
-    KernelAbstractions.synchronize(backend)
-  end  
-
-  if Global.Model.VerticalDiffusion
-    KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend,groupTr)  
-    @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
-      dXdxI,J,M,Glob,ndrange=ndrangeTr)
-    KernelAbstractions.synchronize(backend)
-    for iT = 1 : NumTr
-      @views KVerticalDiffusionScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
-        dXdxI,J,M,Glob,ndrange=ndrangeTr)
-      KernelAbstractions.synchronize(backend)
-    end  
-  end    
-
   if Global.Model.SurfaceFlux
     NFG = min(div(NumberThreadGPU,N*N),NF)
     groupS = (N * N, NFG)
-    ndrangeS = (N * N, NF)  
     KSurfaceFluxScalarsKernel = SurfaceFluxScalarsKernel(backend,groupS)  
-    KSurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,M,Phys,ndrange=ndrangeS)
-    KernelAbstractions.synchronize(backend)
   end  
-      
-  Parallels.ExchangeData3DSendGPU(F,Exchange)
-  Parallels.ExchangeData3DRecvGPU!(F,Exchange)
+  if Global.Model.VerticalDiffusion
+    KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend,groupTr)  
+  end  
+
+
+####
+# First phase  
+####
+  @. Temp1 = FT(0)
+  @views MRho = CacheF[:,:,6]
+  KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,BoundaryFaces,ndrange=ndrangeB)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]  
+    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,BoundaryFaces,ndrange=ndrangeB)
+  end  
+  Parallels.ExchangeData3DSendGPU(CacheFF,Exchange)
+
+
+  KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,InteriorFaces,ndrange=ndrangeI)
+  KernelAbstractions.synchronize(backend)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]  
+    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,InteriorFaces,ndrange=ndrangeI)
+  end  
+
+  Parallels.ExchangeData3DRecvGPU!(CacheFF,Exchange)
   KernelAbstractions.synchronize(backend)
 
-# if Global.Model.VerticalDiffusion
-#   KVerticalDiffusionCScalarKernel! = VerticalDiffusionScalarKernel!(backend, groupG)
-#   @views KVerticalDiffusionCScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
-#     dz,ndrange=ndrangeG)
-#   for iT = 1 : NumTr
-#     @views KVerticalDiffusionCScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
-#       dz,ndrange=ndrangeG)
-#   end  
-#   KernelAbstractions.synchronize(backend)
-# end    
+####
+# Second phase  
+####
 
+  @. F = 0
+  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,BoundaryFaces,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]  
+    @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,BoundaryFaces,
+      KoeffDiv,ndrange=ndrangeB)
+  end  
+  KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,BoundaryFaces,Phys,ndrange=ndrangeB)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,BoundaryFaces,Phys,ndrange=ndrangeB)
+  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,BoundaryFaces,ndrange=ndrangeB)
+  for iT = 1 : NumTr
+    @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
+      dXdxI,J,M,Glob,BoundaryFaces,ndrange=ndrangeB)
+  end  
+  if Global.Model.VerticalDiffusion
+    @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
+      dXdxI,J,M,Glob,BoundaryFaces,ndrange=ndrangeB)
+    for iT = 1 : NumTr
+      @views KVerticalDiffusionScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
+        dXdxI,J,M,Glob,BoundaryFaces,ndrange=ndrangeB)
+    end  
+  end    
+  if Global.Model.SurfaceFlux
+    ndrangeSB = (N * N,length(BoundaryFaces))  
+    ndrangeSI = (N * N,length(InteriorFaces))  
+    KSurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,BoundaryFaces,M,Phys,ndrange=ndrangeSB)
+  end  
+  KernelAbstractions.synchronize(backend)
+
+  Parallels.ExchangeData3DSendGPU(F,Exchange)
+
+
+  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,InteriorFaces,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)
+  for iT = 1 : NumTr
+    @views CacheTr = Temp1[:,:,iT + 6]  
+    @views KHyperViscTracerKoeffKernel!(F[:,:,iT+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,InteriorFaces,
+      KoeffDiv,ndrange=ndrangeI)
+  end  
+  KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,InteriorFaces,Phys,ndrange=ndrangeI)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,InteriorFaces,Phys,ndrange=ndrangeI)
+  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,InteriorFaces,ndrange=ndrangeI)
+  for iT = 1 : NumTr
+    @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
+      dXdxI,J,M,Glob,InteriorFaces,ndrange=ndrangeI)
+  end  
+  if Global.Model.VerticalDiffusion
+    @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
+      dXdxI,J,M,Glob,InteriorFaces,ndrange=ndrangeI)
+    for iT = 1 : NumTr
+      @views KVerticalDiffusionScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
+        dXdxI,J,M,Glob,InteriorFaces,ndrange=ndrangeI)
+    end  
+  end    
+  if Global.Model.SurfaceFlux
+    ndrangeSB = (N * N,length(BoundaryFaces))  
+    ndrangeSI = (N * N,length(InteriorFaces))  
+    KSurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,InteriorFaces,M,Phys,ndrange=ndrangeSI)
+  end  
+  KernelAbstractions.synchronize(backend)
+      
+  Parallels.ExchangeData3DRecvGPU!(F,Exchange)
+  KernelAbstractions.synchronize(backend)
 
   if Global.Model.Forcing
     KForceKernel! = ForceKernel!(backend, groupG)

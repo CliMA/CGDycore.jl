@@ -1,3 +1,17 @@
 zS on equally spaced points, 
 Transformation to nodal points.
 
+gives the llvm code of the kernel
+# @device_code_llvm dump_module=true KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
+# exit(0)
+
+
+gives a profile text vor Nsight
+CUDA.@profile external=true RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType)
+
+
+put a kernel in a block and output for the profile
+NVTX.@range "KHyperViscKernel!" let
+    KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+end

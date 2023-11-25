@@ -5,6 +5,7 @@ import ..Grids
 using KernelAbstractions
 
 include("Thermodynamics.jl")
+include("SaturationAdjustment.jl")
 include("Equation.jl")
 include("Pressure.jl")
 include("Microphysics.jl")

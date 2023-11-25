@@ -75,14 +75,14 @@ function SourceHeldSuarez1!(FTh,FV,Rho,Th,V,Tr,latN,Global)
 end  
 
 
-function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
+function SourceMicroPhysics(F,U,Pres,CG,Phys,Global,iG)
   (; Rd,
      Cpd,
      Rv,
      Cpv,
      Cpl,
      p0,
-     kappa) = Global.Phys
+     kappa) = Phys
    ThPos=Global.Model.ThPos
    RhoPos=Global.Model.RhoPos
    RhoVPos=Global.Model.RhoVPos
@@ -101,11 +101,11 @@ function SourceMicroPhysics(F,U,Pres,CG,Global,iG)
      kappaM = Rm / Cpml
      p = Pres[i]
      T = p / Rm
-     p_vs = fpvs(T,Global.Phys)
+     p_vs = Models.fpvs(T,Phys.T0)
      a = p_vs / (Rv * T) - RhoV
      b = RhoC
      FPh = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))
-     L = LatHeat(T,Global.Phys)
+     L = Models.LatHeat(T,Phys)
      FR = -FPh * Global.Model.Rain
      if Global.Model.Thermo == "InternalEnergy"
      else    

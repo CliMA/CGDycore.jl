@@ -64,7 +64,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Global,Param,iF)
+        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Metric,Cache,Global,Param,iF)
       end   
     end  
     @views wContraFace!(wConFCG,v1CG,v2CG,wCG,RhoCG,
@@ -110,7 +110,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
 
 #     Vertical Diffusion coefficient    
       if Global.Model.VerticalDiffusion
-        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Global,Param,iF)
+        eddy_diffusivity_coefficient!(KVCG,v1CG,v2CG,wCG,RhoCG,PresCG,CG,Metric,Cache,Global,Param,iF)
       end   
     end  
     @views wContraFace!(wConFCG,v1CG,v2CG,wCG,RhoCG,
@@ -137,7 +137,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
   @. CdTrG = 0.0
   @inbounds for iF in Global.Grid.BoundaryFaces
     if Global.Model.SurfaceFlux
-      Cd_coefficient!(CdThCG,CdTrCG,CG,Global,Param,iF)
+      Cd_coefficient!(CdThCG,CdTrCG,CG,Cache,Global,Param,iF)
     end   
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
@@ -150,7 +150,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
   Parallels.ExchangeData3DSend(Aux2DG,Exchange)
   @inbounds for iF in Global.Grid.InteriorFaces
     if Global.Model.SurfaceFlux
-      Cd_coefficient!(CdThCG,CdTrCG,CG,Global,Param,iF)
+      Cd_coefficient!(CdThCG,CdTrCG,CG,Cache,Global,Param,iF)
     end   
 
     @inbounds for iD = 1 : DoF
@@ -482,12 +482,10 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
     end  
 #   Tracer transport
     @inbounds for iT = 1:NumTr
-      @inbounds for jP=1:OP
-        @inbounds for iP=1:OP
-          ind = CG.Glob[iP,jP,iF]
-          @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / CG.M[iz,ind]
-          end
+      @inbounds for iD = 1 : DoF
+        ind = CG.Glob[iD,iF]
+        @inbounds for iz=1:nz
+          DivTrCG[iD,iz] = DivTr[iz,ind,iT] / CG.M[iz,ind]
         end
       end
 #     Hyperdiffusion, second Laplacian
@@ -509,7 +507,8 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,1,:],ThCG[:,1],RhoCG[:,1],TrCG[:,1,:],PresCG[:,1],CG,Global,Param,iF)
+      @views BoundaryFluxScalar!(FCG[:,1,:],ThCG[:,1],RhoCG[:,1],TrCG[:,1,:],PresCG[:,1],CG,Metric,Cache,
+        Global,Param,Phys,iF)
     end  
 
     @inbounds for iD = 1 : DoF
@@ -662,19 +661,17 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
           Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalar!(FCG[:,:,:,ThPos],ThCG,RhoCG,KVCG,CG,
-          Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
+        @views VerticalDiffusionScalar!(FCG[:,:,ThPos],ThCG,RhoCG,KVCG,CG,
+          Metric.dXdxI[3,3,:,:,:,iF],Metric.J[:,:,:,iF],
           Global.ThreadCache)
       end  
     end  
 #   Tracer transport
     @inbounds for iT = 1:NumTr
-      @inbounds for jP=1:OP
-        @inbounds for iP=1:OP
-          ind = CG.Glob[iP,jP,iF]
-          @inbounds for iz=1:nz
-            DivTrCG[iP,jP,iz] = DivTr[iz,ind,iT] / CG.M[iz,ind]
-          end
+      @inbounds for iD = 1 : DoF
+        ind = CG.Glob[iD,iF]
+        @inbounds for iz=1:nz
+          DivTrCG[iD,iz] = DivTr[iz,ind,iT] / CG.M[iz,ind]
         end
       end
 #     Hyperdiffusion, second Laplacian
@@ -690,13 +687,14 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
           Metric.dXdxI[:,:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
       end
       if Global.Model.VerticalDiffusion
-        @views VerticalDiffusionScalarRho!(FCG[:,:,:,iT+NumV],FCG[:,:,:,RhoPos],TrCG[:,:,:,iT],RhoCG,KVCG,CG,
-          Metric.dXdxI[3,3,:,:,:,:,iF],Metric.J[:,:,:,:,iF],
+        @views VerticalDiffusionScalarRho!(FCG[:,:,iT+NumV],FCG[:,:,RhoPos],TrCG[:,:,iT],RhoCG,KVCG,CG,
+          Metric.dXdxI[3,3,:,:,:,iF],Metric.J[:,:,:,iF],
           Global.ThreadCache)
       end  
     end
     if Global.Model.SurfaceFlux
-      @views BoundaryFluxScalar!(FCG[:,:,1,:],ThCG[:,:,1],RhoCG[:,:,1],TrCG[:,:,1,:],PresCG[:,:,1],CG,Global,Param,iF)
+      @views BoundaryFluxScalar!(FCG[:,1,:],ThCG[:,1],RhoCG[:,1],TrCG[:,1,:],PresCG[:,1],CG,Metric,Cache,
+        Global,Param,Phys,iF)
     end
 
     @inbounds for iD = 1 : DoF
@@ -744,7 +742,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
   end
   if Global.Model.Microphysics
     @inbounds for iG=1:CG.NumG
-      @views SourceMicroPhysics(F[:,iG,:],U[:,iG,:],PresG[:,iG],CG,Global,iG)
+      @views SourceMicroPhysics(F[:,iG,:],U[:,iG,:],PresG[:,iG],CG,Phys,Global,iG)
     end  
   end
 end

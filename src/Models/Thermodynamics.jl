@@ -36,6 +36,26 @@ end
   FT(611.2) * exp(FT(17.62) * T_C / (FT(243.12) + T_C))
 end
 
+@inline function fpvs1(T,Phys)
+  FT = eltype(T)
+  # ClaudiusClapperon
+  # Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
+  #   exp((Phys.L00 / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
+  T_C = T - Phys.T0
+  FT(611.2) * exp(FT(17.62) * T_C / (FT(243.12) + T_C))
+end
+
+@inline function dfpvs1dT(T,Phys)
+  FT = eltype(T)
+  # ClaudiusClapperon
+  # Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
+  #   exp((Phys.L00 / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
+  T_C = T - Phys.T0
+  fpvs = FT(611.2) * exp(FT(17.62) * T_C / (FT(243.12) + T_C))
+  dfpvsdT = fpvs * FT(17.62) * ((FT(243.12) + T_C) - T_C) / (FT(243.12) + T_C) / (FT(243.12) + T_C)
+end
+
+
 @inline function fpv(RhoV,T,Phys)
   RhoD = Rho - RhoV - RhoL 
   Phys.Rv * RhoV * T 
@@ -58,27 +78,13 @@ end
   L = L00 - (Cpl - Cpv) * (T - T0)
 end
 
-function SaturationAdjustment!(RhoThetaV,Rho,RhoV,RhoC,Phys)
+@inline function LatHeat(T,Phys)
+  L = Phys.L00 - (Phys.Cpl - Phys.Cpv) * (T - Phys.T0)
+end
 
-  # Compute T
-  T = fTemp(Rho,RhoV,RhoC,RhoThetaV,Phys)
-
-  # Determine DeltaRhoV
-  # where RhoVStar = RhoV - DeltaRhoV
-  # where RhoCStar = RhoV + DeltaRhoV
-  # where TStar = T + Lv * DeltaRhoV
-  # with
-  # A := pvs(TStar) - pV(RhoVStar,TStar) >= 0 
-  # and
-  # B := RhoCStar >= 0
-  # and
-  # A * B = 0
-  # (a + b - sqrt(a * a + b * b))
-  A = fpvs(T) - fpv(RhoV,T)
-  B = RhoC
-  F = A + B - sqrt(A * A + B * B)
-
-
+@inline function dLatHeatdT(T,Phys)
+# L = Phys.L00 - (Phys.Cpl - Phys.Cpv) * (T - Phys.T0)
+  dLdT = -(Phys.Cpl - Phys.Cpv)
 end
 
 @inline function fThE(Rho,RhoV,RhoL,RhoThetaV,Phys)
@@ -116,3 +122,21 @@ end
   b = RhoC
   0.5 * (a + b - sqrt(a * a + b * b))
 end  
+
+@inline function InternalEnergy(Rho,RhoV,RhoC,T,Phys)
+  Lv = LatHeat(T,Phys)
+  e = (Phys.Cvd * (Rho - RhoV -RhoC) + Phys.Cvv * RhoV + Phys.Cpl * RhoC) * T - RhoC * Lv
+end
+
+@inline function dInternalEnergydT(Rho,RhoV,RhoC,T,Phys)
+  Lv = LatHeat(T,Phys)
+  dLvdT = dLatHeatdT(T,Phys)
+  pVS = fpvs1(T,Phys)
+  dpVSdT = dfpvs1dT(T,Phys)
+# RhoVS = pVS / (Phys.Rv *  T)
+  dRhoVSdT = (dpVSdT * T - pVS) / (T * T * Phys.Rv)
+# e = (Phys.Cvd * (Rho - RhoV -RhoC) + Phys.Cvv * RhoV + Phys.Cpl * RhoC) * T - RhoC * Lv
+  dedT = (Phys.Cvd * (Rho - RhoV -RhoC) + Phys.Cvv * RhoV + Phys.Cpl * RhoC)  - RhoV * dLvdT +
+    ((Phys.Cvv - Phys.Cpl) * T + Lv) * dRhoVSdT
+end
+

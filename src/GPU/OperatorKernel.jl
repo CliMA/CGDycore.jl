@@ -1,8 +1,8 @@
 @kernel function MomentumCoriolisKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),Phys)
+  @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),@Const(ListFace),Phys)
 
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
@@ -14,9 +14,11 @@
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF] 
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds RhoCol[I,J,iz] = U[Iz,ind,1]
     @inbounds uCol[I,J,iz] = U[Iz,ind,2]
     @inbounds vCol[I,J,iz] = U[Iz,ind,3]
@@ -30,10 +32,12 @@
   end  
 
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF] 
     
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds uCon1 = -RhoCol[I,J,iz] * (dXdxI[1,1,1,ID,Iz,IF] * uCol[I,J,iz] +
       dXdxI[1,2,1,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[1,3,1,ID,Iz,IF] * wCol[I,J,iz])
     @inbounds uCon2 = -RhoCol[I,J,iz] * (dXdxI[1,1,2,ID,Iz,IF] * uCol[I,J,iz] +
@@ -57,7 +61,6 @@
     @inbounds Dyw2 = D[J,1] * wCol[I,1,iz+1]
     Izp = min(Iz+1,Nz)
     Izm = max(Iz-1,1)
-    ind = Glob[ID,IF]
     Dzu2 = eltype(F)(0.5) * (U[Izp,ind,2] - uCol[I,J,iz])
     Dzv2 = eltype(F)(0.5) * (U[Izp,ind,3] - vCol[I,J,iz])
     Dzu1 = eltype(F)(0.5) * (uCol[I,J,iz] - U[Izm,ind,2])
@@ -98,14 +101,17 @@ end
 @kernel function MomentumKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(MRho),@Const(M),@Const(Glob),Phys)
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
   RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
@@ -113,8 +119,6 @@ end
   wCol = @localmem eltype(F) (N,N,ColumnTilesDim)
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds RhoCol[I,J,iz] = U[Iz,ind,1]
     @inbounds uCol[I,J,iz] = U[Iz,ind,2]
     @inbounds vCol[I,J,iz] = U[Iz,ind,3]
@@ -128,9 +132,12 @@ end
   end  
 
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
     
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]
     @inbounds uCon1 = -RhoCol[I,J,iz] * (dXdxI[1,1,1,ID,Iz,IF] * uCol[I,J,iz] +
       dXdxI[1,2,1,ID,Iz,IF] * vCol[I,J,iz] + dXdxI[1,3,1,ID,Iz,IF] * wCol[I,J,iz])
@@ -186,11 +193,11 @@ end
 end  
 
 @kernel function GradKernel!(F,@Const(U),@Const(p),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(MRho),@Const(Glob),Phys,::Val{BANK}=Val(1)) where BANK
+  @Const(JJ),@Const(M),@Const(MRho),@Const(Glob),@Const(ListFace),Phys,::Val{BANK}=Val(1)) where BANK
 
 # gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
@@ -199,9 +206,11 @@ end
 
   Pres = @localmem eltype(F) (N,N,ColumnTilesDim+1)
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds Pres[I,J,iz] = p[Iz,ind]
   end
   if iz == ColumnTilesDim && Iz < Nz
@@ -210,8 +219,11 @@ end
 
   @synchronize
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds DXPres = D[I,1] * Pres[1,J,iz]
     @inbounds DYPres = D[J,1] * Pres[I,1,iz]
     for k = 2 : N
@@ -221,7 +233,6 @@ end
     @views @inbounds Gradu, Gradv = Grad12(DXPres,DYPres,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
     @views @inbounds Gradw1, Gradw2 = Grad3(DXPres,DYPres,dXdxI[1:3,1:3,:,ID,Iz,IF]) 
 
-    @inbounds ind = Glob[ID,IF]
     @inbounds GradZ = -Phys.Grav * U[Iz,ind,1] *
         (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / (dXdxI[3,3,1,ID,Iz,IF] + dXdxI[3,3,2,ID,Iz,IF])
     @inbounds Gradu += GradZ * (dXdxI[3,1,1,ID,Iz,IF] + dXdxI[3,1,2,ID,Iz,IF])
@@ -244,16 +255,20 @@ end
 end
 
 @kernel function RhoGradKinKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob))
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace))
 
 # gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
   RhoCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
@@ -265,8 +280,6 @@ end
   KinF = @localmem eltype(F) (N,N,2,ColumnTilesDim)
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds RhoCol[I,J,iz] = U[Iz,ind,1]
     @inbounds uCol[I,J,iz] = U[Iz,ind,2]
     @inbounds vCol[I,J,iz] = U[Iz,ind,3]
@@ -278,14 +291,21 @@ end
 
   @synchronize
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     KinF[I,J,1,iz] = 1/2 * (uCol[I,J,iz] * uCol[I,J,iz] + vCol[I,J,iz] * vCol[I,J,iz])  
     KinF[I,J,2,iz] = KinF[I,J,1,iz] + 1/2 * wCol[I,J,iz+1] * wCol[I,J,iz+1]
     KinF[I,J,1,iz] +=  1/2 * wCol[I,J,iz] * wCol[I,J,iz]
   end  
 
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
   DXKinF1 = 0
   DYKinF1 = 0
@@ -300,17 +320,17 @@ end
     @inbounds DYKinF2 += D[J,k] * KinF[I,k,2,iz]
   end
   @inbounds GraduF[I,J,1,iz] +=
-      -RhoCol[I,J,iz] * (dXdxI[1,1,1,ID,Iz,IF]  * DXKinF1 + dXdxI[2,1,1,ID,Iz,IF]  * DYKinF1)
+    -RhoCol[I,J,iz] * (dXdxI[1,1,1,ID,Iz,IF]  * DXKinF1 + dXdxI[2,1,1,ID,Iz,IF]  * DYKinF1)
   @inbounds GradvF[I,J,1,iz] +=
-      -RhoCol[I,J,iz] * (dXdxI[1,2,1,ID,Iz,IF]  * DXKinF1 + dXdxI[2,2,1,ID,Iz,IF]  * DYKinF1)
+    -RhoCol[I,J,iz] * (dXdxI[1,2,1,ID,Iz,IF]  * DXKinF1 + dXdxI[2,2,1,ID,Iz,IF]  * DYKinF1)
   @inbounds GradwF[I,J,1,iz] +=
-      -RhoCol[I,J,iz] * (dXdxI[1,3,1,ID,Iz,IF]  * DXKinF1 + dXdxI[2,3,1,ID,Iz,IF]  * DYKinF1)
+    -RhoCol[I,J,iz] * (dXdxI[1,3,1,ID,Iz,IF]  * DXKinF1 + dXdxI[2,3,1,ID,Iz,IF]  * DYKinF1)
   @inbounds GraduF[I,J,2,iz] +=
-      -RhoCol[I,J,iz] * (dXdxI[1,1,2,ID,Iz,IF]  * DXKinF2 + dXdxI[2,1,2,ID,Iz,IF]  * DYKinF2)
+    -RhoCol[I,J,iz] * (dXdxI[1,1,2,ID,Iz,IF]  * DXKinF2 + dXdxI[2,1,2,ID,Iz,IF]  * DYKinF2)
   @inbounds GradvF[I,J,2,iz] +=
-      -RhoCol[I,J,iz] * (dXdxI[1,2,2,ID,Iz,IF]  * DXKinF2 + dXdxI[2,2,2,ID,Iz,IF]  * DYKinF2)
+    -RhoCol[I,J,iz] * (dXdxI[1,2,2,ID,Iz,IF]  * DXKinF2 + dXdxI[2,2,2,ID,Iz,IF]  * DYKinF2)
   @inbounds GradwF[I,J,2,iz] +=
-      -RhoCol[I,J,iz] * (dXdxI[1,3,2,ID,Iz,IF]  * DXKinF2 + dXdxI[2,3,1,ID,Iz,IF]  * DYKinF2)
+    -RhoCol[I,J,iz] * (dXdxI[1,3,2,ID,Iz,IF]  * DXKinF2 + dXdxI[2,3,1,ID,Iz,IF]  * DYKinF2)
   if iz > 1    
     @inbounds GraduZ11 = 1/2 * KinF[I,J,1,iz] * dXdxI[3,1,2,ID,Iz-1,IF]
     @inbounds GradvZ11 = 1/2 * KinF[I,J,1,iz] * dXdxI[3,2,2,ID,Iz-1,IF]
@@ -341,9 +361,11 @@ end
   @inbounds GradwF[I,J,1,iz] += -GradZ * dXdxI[3,3,1,ID,Iz,IF]
 
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,2] += (GraduF[I,J,1,iz] + GraduF[I,J,2,iz]) / M[Iz,ind] / U[Iz,ind,1]
     @inbounds @atomic F[Iz,ind,3] += (GraduF[I,J,1,iz] + GraduF[I,J,2,iz]) / M[Iz,ind] / U[Iz,ind,1]
     if iz > 1
@@ -354,26 +376,33 @@ end
 end
 
 @kernel function DivRhoGradKernel!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace),::Val{BANK}=Val(1)) where BANK
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
+  ID = I + (J - 1) * N
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim)
   FCol = @localmem eltype(F) (N,N, ColumnTilesDim)
 
   if Iz <= Nz
-    @inbounds ind = Glob[ID,IF]
     @inbounds cCol[I,J,iz] = U[Iz,ind,5] / U[Iz,ind,1]
     @inbounds FCol[I,J,iz] = 0.0
   end
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
     Dxc = D[I,1] * cCol[1,J,iz]
     Dyc = D[J,1] * cCol[I,1,iz]
@@ -390,23 +419,29 @@ end
   end
 
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
   if Iz <= Nz
-    @inbounds ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,5] += FCol[I,J,iz] / M[Iz,ind]
   end
 end
 
 @kernel function HyperViscKernel!(F,MRho,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob)) 
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace)) 
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
   ThCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   uCCol = @localmem eltype(F) (N,N, ColumnTilesDim)
@@ -417,9 +452,8 @@ end
   Div = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCxCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCyCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @views @inbounds uC, vC = Curl12(U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds uCCol[I,J,iz] = uC
     @inbounds vCCol[I,J,iz] = vC
@@ -430,8 +464,11 @@ end
   end
   @synchronize
 
+  ID = I + (J - 1) * N
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds Dxc = D[I,1] * ThCol[1,J,iz]
     @inbounds Dyc = D[J,1] * ThCol[I,1,iz]
     @inbounds Curl[I,J,iz] = D[I,1] * uCCol[1,J,iz] + D[J,1] * vCCol[I,1,iz] 
@@ -451,6 +488,11 @@ end
   end
 
   @synchronize 
+
+  ID = I + (J - 1) * N
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
     @inbounds DxCurl = DW[I,1] * Curl[1,J,iz]
     @inbounds DyCurl = DW[J,1] * Curl[I,1,iz]
@@ -464,8 +506,6 @@ end
       @inbounds DyDiv += DW[J,k] * Div[I,k,iz]
       @inbounds DivTh += DW[I,k] * ThCxCol[k,J,iz] + DW[J,k] * ThCyCol[I,k,iz]
     end
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @views @inbounds FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views @inbounds FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
     @inbounds @atomic F[Iz,ind,1] += FuC / M[Iz,ind]
@@ -483,28 +523,33 @@ end
 end
 
 @kernel function HyperViscTracerKernel!(FTr,@Const(Tr),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob)) 
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace)) 
 
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
-  if Iz <= Nz && IF <= NF
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
+  if Iz <= Nz && IFL <= NF
     @inbounds TrCol[I,J,iz] = Tr[Iz,ind] / Rho[Iz,ind]
   end
   @synchronize
 
-  if Iz <= Nz && IF <= NF
-    ID = I + (J - 1) * N  
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
+  if Iz <= Nz && IFL <= NF
     @inbounds Dxc = D[I,1] * TrCol[1,J,iz]
     @inbounds Dyc = D[J,1] * TrCol[I,1,iz]
     for k = 2 : N
@@ -518,23 +563,25 @@ end
   end
 
   @synchronize 
-  if Iz <= Nz && IF <= NF
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+  if Iz <= Nz && IFL <= NF
     @inbounds DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
     for k = 2 : N
       @inbounds DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds @atomic FTr[Iz,ind] += DivTr / M[Iz,ind]
   end
 end
 
 @kernel function HyperViscKoeffKernel!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob),KoeffCurl,KoeffGrad,KoeffDiv) 
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace),KoeffCurl,KoeffGrad,KoeffDiv) 
 
 # gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
@@ -550,9 +597,12 @@ end
   Div = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCxCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   ThCyCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @views @inbounds uC, vC = Curl12(Cache[Iz,ind,1],Cache[Iz,ind,2],dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds uCCol[I,J,iz] = uC
     @inbounds vCCol[I,J,iz] = vC
@@ -563,8 +613,11 @@ end
   end
   @synchronize
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds Dxc = D[I,1] * ThCol[1,J,iz]
     @inbounds Dyc = D[J,1] * ThCol[I,1,iz]
     @inbounds Curl[I,J,iz] = D[I,1] * uCCol[1,J,iz] + D[J,1] * vCCol[I,1,iz] 
@@ -578,13 +631,16 @@ end
     @inbounds Curl[I,J,iz] /= (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     @inbounds Div[I,J,iz] /= (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @inbounds ind = Glob[ID,IF]
     @views @inbounds (tempx, tempy) = Contra12(U[Iz,ind,1],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds ThCxCol[I,J,iz] = tempx
     @inbounds ThCyCol[I,J,iz] = tempy
   end
 
   @synchronize 
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
   if Iz <= Nz
     @inbounds DxCurl = DW[I,1] * Curl[1,J,iz]
     @inbounds DyCurl = DW[J,1] * Curl[I,1,iz]
@@ -598,8 +654,6 @@ end
       @inbounds DyDiv += DW[J,k] * Div[I,k,iz]
       @inbounds DivTh += DW[I,k] * ThCxCol[k,J,iz] + DW[J,k] * ThCyCol[I,k,iz]
     end
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @views @inbounds FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views @inbounds FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
     @inbounds @atomic F[Iz,ind,2] += -(KoeffCurl * FuC + KoeffGrad * FuD) / M[Iz,ind]
@@ -609,10 +663,10 @@ end
 end
 
 @kernel function HyperViscTracerKoeffKernel!(FTr,@Const(Cache),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob),KoeffDiv) 
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace),KoeffDiv) 
 
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
@@ -622,15 +676,21 @@ end
   TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
-  if Iz <= Nz && IF <= NF
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
+  if Iz <= Nz && IFL <= NF
     @inbounds TrCol[I,J,iz] = Cache[Iz,ind] 
   end
   @synchronize
 
-  if Iz <= Nz && IF <= NF
-    ID = I + (J - 1) * N  
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
+  if Iz <= Nz && IFL <= NF
     @inbounds Dxc = D[I,1] * TrCol[1,J,iz]
     @inbounds Dyc = D[J,1] * TrCol[I,1,iz]
     for k = 2 : N
@@ -638,129 +698,40 @@ end
       @inbounds Dyc += D[J,k] * TrCol[I,k,iz] 
     end
     @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @inbounds ind = Glob[ID,IF]
     @views @inbounds (tempx, tempy) = Contra12(Rho[Iz,ind],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds TrCxCol[I,J,iz] = tempx
     @inbounds TrCyCol[I,J,iz] = tempy
   end
 
   @synchronize 
-  if Iz <= Nz && IF <= NF
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+  if Iz <= Nz && IFL <= NF
     @inbounds DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
     for k = 2 : N
       @inbounds DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds @atomic FTr[Iz,ind] += -KoeffDiv * DivTr / M[Iz,ind]
-  end
-end
-
-@kernel function DivRhoGradKernel1!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob))
-
-# gi, gj, gz, gF = @index(Group, NTuple)
-  I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
-
-  ColumnTilesDim = @uniform @groupsize()[3]
-  N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
-
-  RhoCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  uCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  vCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  wCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  ThCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  FRhoCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  FuCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  FvCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  FThCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  CurlCol = @localmem eltype(F) (N,N, ColumnTilesDim)
-  if Iz <= Nz
-    I = mod(ID-1,N) + 1
-    J = div(ID-I,N) + 1
-    @inbounds ind = Glob[ID,IF]
-    @inbounds RhoCol[I,J,iz+1] = U[Iz,ind,1]
-    @inbounds uCol[I,J,iz+1] = U[Iz,ind,2]
-    @inbounds vCol[I,J,iz+1] = U[Iz,ind,3]
-    @inbounds wCol[I,J,iz+1] = U[Iz,ind,4]
-    @inbounds ThCol[I,J,iz+1] = U[Iz,ind,5] / RhoCol[I,J,iz+1]
-    @inbounds FRhoCol[I,J,iz+1] = 0
-    @inbounds FThCol[I,J,iz+1] = 0
-  end
-  @synchronize
-  if Iz <= Nz
-#   DivGrad Th
-    ID = I + (J - 1) * N  
-    Dxc = 0
-    Dyc = 0
-    for k = 1 : N
-      @inbounds Dxc = Dxc + D[I,k] * ThCol[k,J,iz]
-      @inbounds Dyc = Dyc + D[J,k] * ThCol[I,k,iz] 
-    end
-    @inbounds GradDx = ((dXdxI[I,J,1,Iz,1,1,IF] + dXdxI[I,J,2,Iz,1,1,IF]) * Dxc +
-      (dXdxI[I,J,1,Iz,2,1,IF] + dXdxI[I,J,2,Iz,2,1,IF]) * Dyc) / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    @inbounds GradDy = ((dXdxI[I,J,1,Iz,1,2,IF] + dXdxI[I,J,2,Iz,1,2,IF]) * Dxc +
-      (dXdxI[I,J,1,Iz,2,2,IF] + dXdxI[I,J,2,Iz,2,2,IF]) * Dyc) / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    @inbounds tempx = (dXdxI[I,J,1,Iz,1,1,IF] + dXdxI[I,J,2,Iz,1,1,IF]) * GradDx +
-      (dXdxI[I,J,1,Iz,1,2,IF] + dXdxI[I,J,2,Iz,1,2,IF]) * GradDy
-    @inbounds tempy = (dXdxI[I,J,1,Iz,2,1,IF] + dXdxI[I,J,2,Iz,2,1,IF]) * GradDx +
-      (dXdxI[I,J,1,Iz,2,2,IF] + dXdxI[I,J,2,Iz,2,2,IF]) * GradDy
-    for k = 1 : N
-      @inbounds @atomic FThCol[k,J,iz] += DW[k,I] * tempx
-      @inbounds @atomic FThCol[I,k,iz] += DW[k,J] * tempy
-    end
-#   Curl (u,v)
-    @inbounds tempx = (dXdxI[I,J,1,iz,1,1,IF] + dXdxI[I,J,2,iz,1,1],IF) * vC[I,J,iz] -
-      (dXdxI[I,J,1,iz,1,2,IF] + dXdxI[I,J,2,iz,1,2,IF]) * uC[I,J,iz]
-    @views @. tempy = (dXdxI[I,J,1,iz,2,1,IF] + dXdxI[I,J,2,iz,2,1,IF]) * vC[I,J,iz] -
-      (dXdxI[I,J,1,iz,2,2,IF] + dXdxI[I,J,2,iz,2,2,IF]) * uC[I,J,iz]
-    for k = 1 : N
-      @inbounds @atomic CurlCol[k,J,iz] += D[k,I] * tempx + D[k,J] * tempy
-    end
-  end
-
-  @synchronize
-  if Iz <= Nz
-#   CurlCurl (u,v)
-    I = mod(ID-1,N) + 1
-    J = div(ID-I,N) + 1
-    CurlCol[I,J,iz] /= (J[I,J,1,iz] + J[I,J,2,iz])
-    DxCurl = eltype(F)(0)
-    DyCurl = eltype(F)(0)
-    for k = 1 : N
-      @inbounds DxCurl += DW[I,k] * CurlCol[k,J,iz]
-      @inbounds DyCurl += DW[J,k] * CurlCol[I,k,iz] 
-    end
-
-    @inbounds FvCol[I,J,iz] = (-(dXdxI[I,J,1,iz,1,1,IF] + dXdxI[I,J,2,iz,1,1,IF]) * DxCurl -
-      (dXdxI[I,J,1,iz,2,1,IF] + dXdxI[I,J,2,iz,2,1,IF]) * DyCurl)
-    @inbounds FuCol[I,J,iz] = ((dXdxI[I,J,1,iz,1,2,IF] + dXdxI[I,J,2,iz,1,2,IF]) * DxCurl +
-      (dXdxI[I,J,1,iz,2,2,IF] + dXdxI[I,J,2,iz,2,2,IF]) * DyCurl)
-  end
-
-  @synchronize
-  if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
-    @inbounds @atomic F[Iz,ind,5] += FThCol[I,J,iz] / M[Iz,ind]
   end
 end
 
 @kernel function DivRhoTrCentralKernel!(F,@Const(c),@Const(uC),@Const(vC),@Const(w),
   @Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace),::Val{BANK}=Val(1)) where BANK
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
   cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   uCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
@@ -768,8 +739,6 @@ end
   wCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+1)
   FCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds wCol[I,J,iz+1] = w[Iz,ind]
     @inbounds cCol[I,J,iz+1] = c[Iz,ind]
     @inbounds uCol[I,J,iz+1] = uC[Iz,ind]
@@ -797,6 +766,11 @@ end
     end
   end
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz < Nz 
     @inbounds wCon = dXdxI[I,J,2,Iz,3,1,IF] * uCol[I,J,iz+1] + 
       dXdxI[I,J,2,Iz,3,2,IF] * vCol[I,J,iz+1] + 
@@ -811,7 +785,6 @@ end
   end 
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds tempx = -cCol[I,J,iz+1] * ((dXdxI[I,J,1,Iz,1,1,IF] + dXdxI[I,J,2,Iz,1,1,IF]) * uCol[I,J,iz+1] +
       (dXdxI[I,J,1,Iz,1,2,IF] + dXdxI[I,J,2,Iz,1,2,IF]) * vCol[I,J,iz+1] +
       dXdxI[I,J,1,Iz,1,3,IF] * wCol[I,J,iz] + dXdxI[I,J,2,Iz,1,3,IF] * wCol[I,J,iz+1])
@@ -824,9 +797,12 @@ end
     end
   end
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz 
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind] += FCol[I,J,iz+1] / M[Iz,ind]
     if iz == 1 && Iz >  1
       @inbounds @atomic F[Iz-1,ind] += FCol[I,J,iz] / M[Iz-1,ind]
@@ -839,16 +815,19 @@ end
 
 @kernel function DivRhoTrUpwindKernel!(F,@Const(c),@Const(Rho),@Const(uC),@Const(vC),@Const(w),
   @Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob),::Val{BANK}=Val(1)) where BANK
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace),::Val{BANK}=Val(1)) where BANK
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
   cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   uCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
@@ -857,8 +836,6 @@ end
   wCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+1)
   FCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds wCol[I,J,iz+1] = w[Iz,ind]
     @inbounds RhoCol[I,J,iz+1] = Rho[Iz,ind]
     @inbounds cCol[I,J,iz+1] = c[Iz,ind] / RhoCol[I,J,iz+1]
@@ -891,6 +868,11 @@ end
     end
   end
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz < Nz 
     @inbounds wCon = RhoCol[I,J,iz+1] * (dXdxI[I,J,2,Iz,3,1,IF] * uCol[I,J,iz+1] + 
       dXdxI[I,J,2,Iz,3,2,IF] * vCol[I,J,iz+1] + dXdxI[I,J,2,Iz,3,3,IF] * wCol[I,J,iz+1]) +
@@ -904,7 +886,6 @@ end
   end 
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds tempx = -RhoCol[I,J,iz+1] * cCol[I,J,iz+1] * ((dXdxI[I,J,1,Iz,1,1,IF] + dXdxI[I,J,2,Iz,1,1,IF]) * uCol[I,J,iz+1] +
       (dXdxI[I,J,1,Iz,1,2,IF] + dXdxI[I,J,2,Iz,1,2,IF]) * vCol[I,J,iz+1] +
       dXdxI[I,J,1,Iz,1,3,IF] * wCol[I,J,iz] + dXdxI[I,J,2,Iz,1,3,IF] * wCol[I,J,iz+1])
@@ -917,9 +898,11 @@ end
     end
   end
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
   if Iz <= Nz 
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind] += FCol[I,J,iz+1] / M[Iz,ind]
     if iz == 1 && Iz >  1
       @inbounds @atomic F[Iz-1,ind] += FCol[I,J,iz] / M[Iz-1,ind]
@@ -931,23 +914,24 @@ end
 end
 
 @kernel function DivRhoThUpwind3Kernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob))
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace))
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   cCol = @localmem eltype(F) (N,N, ColumnTilesDim+3)
   uConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   vConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds cCol[I,J,iz+1] = U[Iz,ind,5] / U[Iz,ind,1]
     @views @inbounds (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds uConCol[I,J,iz] = uCon
@@ -965,9 +949,11 @@ end
   end
   @synchronize
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz < Nz 
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds cLL = cCol[I,J,iz]
     @inbounds cL = cCol[I,J,iz+1]
     @inbounds cR = cCol[I,J,iz+2]
@@ -992,7 +978,6 @@ end
   end 
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds DivRho = D[I,1] * uConCol[1,J,iz] 
     @inbounds DivRho += D[J,1] * vConCol[I,1,iz] 
     @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
@@ -1003,38 +988,40 @@ end
       @inbounds DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
       @inbounds DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
     end
-    ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,1] += DivRho / M[Iz,ind]
     @inbounds @atomic F[Iz,ind,5] += DivRhoTr / M[Iz,ind]
   end
 end
 
 @kernel function DivRhoKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob))
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace))
 
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   uConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   vConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @views @inbounds (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds uConCol[I,J,iz] = uCon
     @inbounds vConCol[I,J,iz] = vCon
   end
   @synchronize
 
-  if Iz < Nz 
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
+  if Iz < Nz 
     @views @inbounds wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
       U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
 
@@ -1044,37 +1031,35 @@ end
   end 
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-#   @inbounds DivRho = D[I,1] * uConCol[1,J,iz] 
-#   @inbounds DivRho += D[J,1] * vConCol[I,1,iz] 
-    DivRho = eltype(F)(0)
-    @unroll for k = 1 : N
+    @inbounds DivRho = D[I,1] * uConCol[1,J,iz] 
+    @inbounds DivRho += D[J,1] * vConCol[I,1,iz] 
+    for k = 2 : N
       @inbounds DivRho += D[I,k] * uConCol[k,J,iz] 
       @inbounds DivRho += D[J,k] * vConCol[I,k,iz] 
     end
-    ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,1] += DivRho / M[Iz,ind]
   end
 end
 
 @kernel function DivRhoTrUpwind3Kernel!(FTr,@Const(Tr),@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob))
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace))
 
-# gi, gj, gz, gF = @index(Group, NTuple)
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   cCol = @localmem eltype(FTr) (N,N, ColumnTilesDim+3)
   uConCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   vConCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds cCol[I,J,iz+1] = Tr[Iz,ind] / U[Iz,ind,1]
     @views @inbounds (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     @inbounds uConCol[I,J,iz] = uCon
@@ -1092,9 +1077,11 @@ end
   end
   @synchronize
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz < Nz 
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds cLL = cCol[I,J,iz]
     @inbounds cL = cCol[I,J,iz+1]
     @inbounds cR = cCol[I,J,iz+2]
@@ -1116,28 +1103,30 @@ end
   end 
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
     @inbounds DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
     @inbounds DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz+1]
     for k = 2 : N
       @inbounds DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
       @inbounds DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
     end
-    ind = Glob[ID,IF]
     @inbounds @atomic FTr[Iz,ind] += DivRhoTr / M[Iz,ind]
   end
 end
 
 @kernel function DivRhoTrUpwind3Kernel!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(M),@Const(Glob),Koeff)
+  @Const(JJ),@Const(M),@Const(Glob),@Const(ListFace),Koeff)
 
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
 
   cCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   CacheCol = @localmem eltype(F) (N,N, ColumnTilesDim)
@@ -1147,9 +1136,8 @@ end
   wCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   FTrCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   FRhoCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
     @inbounds CacheCol[I,J,iz] = Cache[Iz,ind]
     @inbounds wCol[I,J,iz] = U[Iz,ind,4]
     @inbounds RhoCol[I,J,iz] = U[Iz,ind,1]
@@ -1160,10 +1148,12 @@ end
     @inbounds FTrCol[I,J,iz] = 0
   end
   @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz < Nz 
-    ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]
-    @inbounds ind = Glob[ID,IF]
     @inbounds cL = cCol[I,J,iz]
     @inbounds cR = cCol[I,J,iz+1]
     if iz > 1
@@ -1198,12 +1188,11 @@ end
   end 
 
   if Iz <= Nz
-    ID = I + (J - 1) * N  
-    Dxc = 0
-    Dyc = 0
-    for k = 1 : N
-      @inbounds Dxc = Dxc + D[I,k] * CacheCol[k,J,iz]
-      @inbounds Dyc = Dyc + D[J,k] * CacheCol[I,k,iz]
+    Dxc = D[I,1] * CacheCol[1,J,iz]
+    Dyc = D[J,1] * CacheCol[I,1,iz]
+    for k = 2 : N
+      @inbounds Dxc += D[I,k] * CacheCol[k,J,iz]
+      @inbounds Dyc += D[J,k] * CacheCol[I,k,iz]
     end
     
     @views @inbounds (GradDx, GradDy) = Grad12(RhoCol[I,J,iz],Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
@@ -1227,9 +1216,11 @@ end
   end
   @synchronize
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz <= Nz 
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]
     @inbounds @atomic F[Iz,ind,1] += FRhoCol[I,J,iz] / M[Iz,ind]
     @inbounds @atomic F[Iz,ind,5] += FTrCol[I,J,iz] / M[Iz,ind]
   end
@@ -1345,20 +1336,22 @@ end
 end  
 
 @kernel function VerticalDiffusionScalarKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),
-  @Const(dXdxI),@Const(JJ),@Const(M),@Const(Glob))
+  @Const(dXdxI),@Const(JJ),@Const(M),@Const(Glob),@Const(ListFace))
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IFL = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
+  ID = I + (J - 1) * N
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   cCol = @localmem eltype(FTr) (N,N,ColumnTilesDim+1)
 
   if Iz <= Nz
-    ID = I + (J - 1) * N
-    @inbounds ind = Glob[ID,IF]
     @inbounds cCol[I,J,iz] = Tr[Iz,ind] / Rho[Iz,ind]
   end
   if iz == ColumnTilesDim || Iz == Nz
@@ -1367,9 +1360,11 @@ end
   end
   @synchronize
 
+  ID = I + (J - 1) * N  
+  @inbounds IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]
+
   if Iz < Nz
-    ID = I + (J - 1) * N
-    @inbounds ind = Glob[ID,IF]
     @inbounds grad = (K[ID,Iz,IF] + K[ID,Iz+1,IF]) * (cCol[I,J,iz+1] - cCol[I,J,iz]) *
        (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
     @inbounds @atomic FTr[Iz,ind] +=  dXdxI[3,3,2,ID,Iz,IF] * grad / M[Iz,ind]  
@@ -1378,28 +1373,15 @@ end
 end  
 
 
-# Surface Flux F = nS * grad (c - cS) * FS
-
-@kernel function VerticalDiffusionCScalarKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),@Const(dz))
-  Iz,IG = @index(Global, NTuple)
-  NG = @uniform @ndrange()[2]
-  NZ = @uniform @ndrange()[1]
-
-  if Iz < Nz && IG <= NG
-    @inbounds Grad = (K[Iz,IG] + K[Iz+1,IG]) * (Tr[Iz+1,IG] / Rho[Iz+1,IG]  - Tr[Iz,IG] / Rho[Iz,IG]) /
-      (dz[Iz+1,IG] + dz[Iz,IG])
-    @inbounds @atomic FTr[Iz,IG] += Grad / dz[Iz,IG]   
-    @inbounds @atomic FTr[Iz+1,IG] += -Grad / dz[Iz+1,IG]  
-  end
-end
-
-@kernel function SurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,M,Phys)
-  ID,IF = @index(Global, NTuple)
+@kernel function SurfaceFluxScalarsKernel(F,@Const(U),@Const(p),@Const(TSurf),@Const(RhoVSurf),@Const(uStar),
+  @Const(CT),@Const(CH),@Const(dXdxI),@Const(Glob),@Const(ListFace),@Const(M),@Const(Phys))
+  ID,IFL = @index(Global, NTuple)
 
   NF = @uniform @ndrange()[2]
 
-  if IF <= NF
-    @inbounds ind = Glob[ID,IF]  
+  IF = ListFace[IFL]
+  @inbounds ind = Glob[ID,IF]  
+  if IFL <= NF
     @inbounds Rho = U[1,ind,1]
     @inbounds RhoTh = U[1,ind,5]
     @inbounds RhoV = U[1,ind,6]
