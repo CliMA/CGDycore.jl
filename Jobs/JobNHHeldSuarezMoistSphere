@@ -1,4 +1,4 @@
-mpirun -n 2 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \

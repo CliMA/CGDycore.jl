@@ -138,10 +138,39 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     end
   end  
   BoundaryFacesLoc = unique(BoundaryFacesLoc)
-  BoundaryFaces = KernelAbstractions.zeros(backend,Int,size(BoundaryFacesLoc))
-  copyto!(BoundaryFaces,BoundaryFacesLoc)
   InteriorFacesLoc = setdiff(collect(UnitRange(1,NumFaces)),BoundaryFacesLoc)
-  InteriorFaces = KernelAbstractions.zeros(backend,Int,size(InteriorFacesLoc))
+  FaceOrder = zeros(Int,NumFaces)
+  NumBoundaryFaces = size(BoundaryFacesLoc,1)
+  NumInteriorFaces = size(InteriorFacesLoc,1)
+  for i = 1 : NumBoundaryFaces
+    FaceOrder[BoundaryFacesLoc[i]] = i  
+    BoundaryFacesLoc[i] = i
+  end  
+  for i = 1 : NumInteriorFaces
+    FaceOrder[InteriorFacesLoc[i]] = i + NumBoundaryFaces
+    InteriorFacesLoc[i] = i + NumBoundaryFaces
+  end
+  permute!(Faces,FaceOrder)
+  for iF = 1 : NumFaces
+    Faces[iF].F = iF
+  end
+  for iE = 1 : NumEdges
+     if Edges[iE].F[1] > 0
+       Edges[iE].F[1] = FaceOrder[Edges[iE].F[1]]
+     end
+     if Edges[iE].F[2] > 0
+       Edges[iE].F[2] = FaceOrder[Edges[iE].F[2]]
+     end
+  end
+  for iN = 1 : NumNodes
+    for i in eachindex(Nodes[iN].F)
+      Nodes[iN].F[i] = FaceOrder[Nodes[iN].F[i]]
+    end
+  end
+
+  BoundaryFaces = KernelAbstractions.zeros(backend,Int,NumBoundaryFaces)
+  copyto!(BoundaryFaces,BoundaryFacesLoc)
+  InteriorFaces = KernelAbstractions.zeros(backend,Int,NumInteriorFaces)
   copyto!(InteriorFaces,InteriorFacesLoc)
 
   Rad = GlobalGrid.Rad
@@ -219,6 +248,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     Spline_2d,
     BoundaryFaces,
     InteriorFaces,
+    NumBoundaryFaces,
     )
 end
 

@@ -357,6 +357,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz,Topography)
   NumGhostFaces = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
+  NumBoundaryFaces = 0
   return GridStruct{FT,
                     typeof(z),
                     typeof(BoundaryFaces)}(
@@ -385,6 +386,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz,Topography)
     Spline_2d,
     BoundaryFaces,
     InteriorFaces,
+    NumBoundaryFaces,
     )
 end
 

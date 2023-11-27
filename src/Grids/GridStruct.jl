@@ -42,6 +42,7 @@ mutable struct GridStruct{FT<:AbstractFloat,
   Spline_2d::Dierckx.Spline2D
   BoundaryFaces::IT1
   InteriorFaces::IT1
+  NumBoundaryFaces::Int
 end
 function GridStruct{FT}(backend,nz,Topography) where FT <: AbstractFloat
   zP=zeros(nz)
@@ -67,6 +68,7 @@ function GridStruct{FT}(backend,nz,Topography) where FT <: AbstractFloat
   Spline_2d = Spline2D(zeros(0),zeros(0),zeros(0),0,0,0.0)
   BoundaryFaces = KernelAbstractions.zeros(backend,Int,0)
   InteriorFaces = KernelAbstractions.zeros(backend,Int,0)
+  NumBoundaryFaces = 0
    return GridStruct{FT,
                      typeof(z),
                      typeof(BoundaryFaces)}(
@@ -95,6 +97,7 @@ function GridStruct{FT}(backend,nz,Topography) where FT <: AbstractFloat
     Spline_2d,
     BoundaryFaces,
     InteriorFaces,
+    NumBoundaryFaces,
     )
 end   
     
