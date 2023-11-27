@@ -51,7 +51,7 @@ function Edge()
   )
 end  
 
-function Edge(Nodes,Grid,PosG,PosI,Type,PosT=nothing)
+function Edge(NodesE,Nodes,PosG,PosI,Type,PosT=nothing)
   E = Edge()
   E.E=PosG;
   E.EI=PosI;
@@ -60,11 +60,11 @@ function Edge(Nodes,Grid,PosG,PosI,Type,PosT=nothing)
   else
     E.ET=0;
   end
-  E.N=Nodes;
-  E.t=Grid.Nodes[E.N[2]].P-Grid.Nodes[E.N[1]].P;
+  E.N=NodesE;
+  E.t=Nodes[E.N[2]].P-Nodes[E.N[1]].P;
   E.a=norm(E.t);
   E.t=E.t/E.a;
-  E.Mid=0.5*(Grid.Nodes[E.N[1]].P+Grid.Nodes[E.N[2]].P);
+  E.Mid=0.5*(Nodes[E.N[1]].P+Nodes[E.N[2]].P);
   E.Type=Type;
   return E
 end

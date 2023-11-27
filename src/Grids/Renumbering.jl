@@ -6,23 +6,23 @@ function Reordering!(Grid)
   NodeOrderNew=zeros(Int,Grid.NumNodes)
 
 end
-function Renumbering(Grid)
-for iF=1:Grid.NumFaces
-  Grid.Faces[iF]=RenumberingFace4(Grid.Faces[iF],Grid);
-end
-for iE=1:Grid.NumEdges
-  Grid.Edges[iE]=PosEdgeInFace(Grid.Edges[iE],Grid);
-end
-return Grid
+
+function Renumbering!(Edges,Faces)
+  for iF = 1 : size(Faces,1)
+    RenumberingFace4!(Faces[iF],Edges);
+  end
+  for iE = 1 : size(Edges,1)
+    PosEdgeInFace!(Edges[iE],Edges,Faces);
+  end
 end
 
-function PosEdgeInFace(Edge,Grid)
+function PosEdgeInFace!(Edge,Edges,Faces)
 Edge.FE=zeros(2)
 for i=1:size(Edge.F,1)
   iF=Edge.F[i];
   if iF > 0
     for iE=1:4
-      if Edge.EI==Grid.Edges[Grid.Faces[iF].E[iE]].EI
+      if Edge.EI==Edges[Faces[iF].E[iE]].EI
         Edge.FE[i]=iE;
         break
       end
@@ -44,14 +44,15 @@ if size(Edge.F,1)>1
 end
 return Edge
 end
-function RenumberingFace4(Face,Grid)
+
+function RenumberingFace4!(Face,Edges)
 local iN
 for iN_in=1:length(Face.N)
   iN = iN_in
   N=Face.N[iN];
   num=0;
   for iE=1:length(Face.E)
-    if N==Grid.Edges[Face.E[iE]].N[1]
+    if N==Edges[Face.E[iE]].N[1]
       num=num+1;
     end
     if num==2
@@ -80,13 +81,12 @@ if length(Face.N) == 4
   OrientL[4]=-1;
   Face.OrientE = Vector{Int}(undef, 0)
   for i=1:4
-    if Grid.Edges[Face.E[i]].N[1]==Face.N[i]
+    if Edges[Face.E[i]].N[1]==Face.N[i]
       push!(Face.OrientE, 1*OrientL[i]);
     else
       push!(Face.OrientE, -1*OrientL[i]);
     end
   end
 end
-return Face
 end
 

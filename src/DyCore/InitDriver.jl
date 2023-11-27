@@ -8,7 +8,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   ParallelCom.ProcNumber  = ProcNumber
 
   TimeStepper = TimeStepperStruct{FT}(backend)
-  Grid = Grids.GridStruct{FT}(backend,nz,Topography)
+# Grid = Grids.GridStruct{FT}(backend,nz,Topography)
 
   if GridType == "HealPix"
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
@@ -19,7 +19,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   elseif GridType == "Msh"
     Grid = Grids.InputGridMsh("Grid/Quad.msh",OrientFaceSphere,RadEarth,Grid)
   elseif GridType == "CubedSphere"
-    Grid = Grids.CubedGrid(nPanel,Grids.OrientFaceSphere,RadEarth,Grid)
+    Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz,Topography)
   elseif GridType == "TriangularSphere"
     IcosahedronGrid = Grids.CreateIcosahedronGrid()
     RefineLevel =  0

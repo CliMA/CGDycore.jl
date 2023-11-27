@@ -120,7 +120,7 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   NumVTr = size(k,3) 
 
 # group = (1024)
-  group = (12)
+  group = (64)
   ndrange = (NumG)
 
   if J.CompTri

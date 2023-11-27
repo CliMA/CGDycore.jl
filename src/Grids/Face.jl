@@ -39,55 +39,55 @@ function Face()
   )
 end  
 
-function Face(Edges::Array{Int, 1},Grid,Pos,Type,OrientFace;P::Array{Float64,2}=[])
+function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Float64,2}=[])
   F = Face()
-  if Edges[1]==0
-    return (F,Grid)
+  if EdgesF[1]==0
+    return (F,Edges)
   end
 
-  nE=size(Edges,1);
+  nE=size(EdgesF,1);
   F.F=Pos;
   F.Type=Type
   # TODO: check translation
   @inbounds for iE=1:nE
-    Grid.Edges[Edges[iE]].NumF +=1  
-    Grid.Edges[Edges[iE]].F[Grid.Edges[Edges[iE]].NumF]=Pos;
+    Edges[EdgesF[iE]].NumF +=1  
+    Edges[EdgesF[iE]].F[Edges[EdgesF[iE]].NumF]=Pos;
   end
   #Sort edges
   F.E=zeros(Int,nE);
-  F.E[1]=Edges[1];
-  N2=Grid.Edges[F.E[1]].N[2];
+  F.E[1]=EdgesF[1];
+  N2=Edges[F.E[1]].N[2];
   @inbounds for iE=2:nE
     @inbounds for iE1=iE:nE
-      if N2==Grid.Edges[Edges[iE1]].N[1]
-        F.E[iE]=Edges[iE1];
-        N2=Grid.Edges[Edges[iE1]].N[2];
-        Edges[iE1]=Edges[iE];
-        Edges[iE]=F.E[iE];
+      if N2==Edges[EdgesF[iE1]].N[1]
+        F.E[iE]=EdgesF[iE1];
+        N2=Edges[EdgesF[iE1]].N[2];
+        EdgesF[iE1]=EdgesF[iE];
+        EdgesF[iE]=F.E[iE];
         break
-      elseif N2==Grid.Edges[Edges[iE1]].N[2]
-        F.E[iE]=Edges[iE1];
-        N2=Grid.Edges[Edges[iE1]].N[1];
-        Edges[iE1]=Edges[iE];
-        Edges[iE]=F.E[iE];
+      elseif N2==Edges[EdgesF[iE1]].N[2]
+        F.E[iE]=EdgesF[iE1];
+        N2=Edges[EdgesF[iE1]].N[1];
+        EdgesF[iE1]=EdgesF[iE];
+        EdgesF[iE]=F.E[iE];
         break
       end
     end
   end
   F.a=0;
   F.N=zeros(Int,nE);
-  F.N[1:2]=Grid.Edges[F.E[1]].N;
+  F.N[1:2]=Edges[F.E[1]].N;
   @inbounds for iE=2:nE-1
-    if F.N[iE]==Grid.Edges[F.E[iE]].N[1]
-      F.N[iE+1]=Grid.Edges[F.E[iE]].N[2];
+    if F.N[iE]==Edges[F.E[iE]].N[1]
+      F.N[iE+1]=Edges[F.E[iE]].N[2];
     else
-      F.N[iE+1]=Grid.Edges[F.E[iE]].N[1];
+      F.N[iE+1]=Edges[F.E[iE]].N[1];
     end
   end
   if P == zeros(Float64,0,0)
     F.P=Array{Point}(undef, size(F.N,1))  
     @inbounds for i=1:size(F.N,1)
-      F.P[i]=Grid.Nodes[F.N[i]].P;
+      F.P[i]=Nodes[F.N[i]].P;
     end
   else
     F.P=Array{Point}(undef, size(F.N,1))  
@@ -106,7 +106,7 @@ function Face(Edges::Array{Int, 1},Grid,Pos,Type,OrientFace;P::Array{Float64,2}=
   end
   F.Mid=F.Mid/Float64(nE);
 
-  NumE=size(Edges,1);
+  NumE=size(EdgesF,1);
   F.n=cross(F.P[NumE],F.P[1]);
   @inbounds for i=1:NumE-1
     F.n=F.n+cross(F.P[i],F.P[i+1]);
@@ -126,5 +126,5 @@ function Face(Edges::Array{Int, 1},Grid,Pos,Type,OrientFace;P::Array{Float64,2}=
     end
     F.n=-F.n;
   end
-  return (F,Grid)
+  return (F,Edges)
 end
