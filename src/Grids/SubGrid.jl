@@ -5,21 +5,41 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
 # Number of faces
   DictF = Dict()
   NumFaces = 0
-  FaceNumbers = zeros(Int,0)
+  FaceNumbersI = zeros(Int,0)
+  FaceNumbersB = zeros(Int,0)
   GhostFaceNumbers = zeros(Int,0)
   EdgeNumbers = zeros(Int,0)
   NodeNumbers = zeros(Int,0)
+  NumBoundaryFaces = 0
+  NumInteriorFaces = 0
   @inbounds for iF = 1 : GlobalGrid.NumFaces
     if Proc[iF] == ProcNumber
+      Inner = true  
       NumFaces += 1
-      DictF[iF] = NumFaces 
-      push!(FaceNumbers,iF)
       @inbounds for i = 1 : length(GlobalGrid.Faces[iF].N)
         push!(EdgeNumbers,GlobalGrid.Faces[iF].E[i])
         push!(NodeNumbers,GlobalGrid.Faces[iF].N[i])
+        N = GlobalGrid.Nodes[GlobalGrid.Faces[iF].N[i]]
+        for j = 1 : length(N.F)
+          if Proc[N.F[j]] != ProcNumber
+            Inner = false
+          end
+        end  
       end
+      if Inner 
+        NumInteriorFaces += 1  
+        push!(FaceNumbersI,iF)
+      else
+        NumBoundaryFaces += 1  
+        push!(FaceNumbersB,iF)
+      end  
     end
   end
+  FaceNumbers =[FaceNumbersB; FaceNumbersI]
+  for i = 1 : length(FaceNumbers)
+     iF = FaceNumbers[i]
+     DictF[iF] = i
+  end   
   EdgeNumbers = unique(EdgeNumbers)
   NodeNumbers = unique(NodeNumbers)
 
@@ -125,65 +145,6 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   FacesInNodes!(Nodes,Faces)
 
   Form = GlobalGrid.Form
-
-  #Boundary/Interior faces
-  BoundaryFacesLoc = zeros(Int,0)
-  @inbounds for iE = 1 : NumEdges
-    if Edges[iE].F[1] == 0 || Edges[iE].F[2] == 0
-      @inbounds for iN in Edges[iE].N
-        @inbounds for iF in Nodes[iN].F  
-          push!(BoundaryFacesLoc,iF)
-        end
-      end
-    end
-  end  
-  BoundaryFacesLoc = unique(BoundaryFacesLoc)
-  InteriorFacesLoc = setdiff(collect(UnitRange(1,NumFaces)),BoundaryFacesLoc)
-  FaceOrder = zeros(Int,NumFaces)
-  NumBoundaryFaces = size(BoundaryFacesLoc,1)
-  NumInteriorFaces = size(InteriorFacesLoc,1)
-  #=
-  if ProcNumber == 1
-    @show BoundaryFacesLoc
-    @show NumNodes
-    @show NumEdges
-    @show NumFaces
-    for iF = 1 : NumFaces
-       @show Faces[iF].N
-       @show Faces[iF].E
-    end
-    for iN = 1 : NumNodes
-       @show iN 
-       @show Nodes[iN].F
-       @show Nodes[iN].FG
-       @show Nodes[iN].FP
-    end
-  end  
-  =#
-  for i = 1 : NumBoundaryFaces
-    FaceOrder[BoundaryFacesLoc[i]] = i  
-  end  
-  for i = 1 : NumInteriorFaces
-    FaceOrder[InteriorFacesLoc[i]] = i + NumBoundaryFaces
-  end
-  permute!(Faces,FaceOrder)
-  for iF = 1 : NumFaces
-    Faces[iF].F = iF
-  end
-  for iE = 1 : NumEdges
-     if Edges[iE].F[1] > 0
-       Edges[iE].F[1] = FaceOrder[Edges[iE].F[1]]
-     end
-     if Edges[iE].F[2] > 0
-       Edges[iE].F[2] = FaceOrder[Edges[iE].F[2]]
-     end
-  end
-# for iN = 1 : NumNodes
-#   for i in eachindex(Nodes[iN].F)
-#     Nodes[iN].F[i] = FaceOrder[Nodes[iN].F[i]]
-#   end
-# end
-
   Rad = GlobalGrid.Rad
 # Stencil  
   @inbounds for iF=1:NumFaces
@@ -208,18 +169,14 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
       end
     end
     Faces[iF].Stencil = zeros(Int,iS)
-    Faces[iF].Stencil .= FaceOrder[StencilLoc[1:iS]]
+    Faces[iF].Stencil .= StencilLoc[1:iS]
   end
 
 # Add Ghost Faces
   @inbounds for i = 1:NumNodes
     Nodes[i].F = zeros(Int,0)
     @inbounds for j in eachindex(Nodes[i].FG)
-      if Nodes[i].FP[j] == ProcNumber
-        push!(Nodes[i].F,FaceOrder[DictF[Nodes[i].FG[j]]])  
-      else  
-        push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  
-      end  
+      push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  
     end  
   end  
   nz = GlobalGrid.nz
