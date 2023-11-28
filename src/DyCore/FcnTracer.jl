@@ -35,6 +35,8 @@ function FcnTracer!(F,U,time,CG,Metric,Phys,Cache,Exchange,Global,Param,Profile)
 
   if HorLimit
     @views Limit!(qMin,qMax,U[:,:,NumV+1:NumV+NumTr],U[:,:,RhoPos],CG,Global)
+    ExchangeDataFSend(qMin,qMax,Exchange)
+    ExchangeDataFRecv!(qMin,qMax,Exchange)
   end  
 
   # Hyperdiffusion 

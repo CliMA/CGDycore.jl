@@ -19,7 +19,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   elseif GridType == "Msh"
     Grid = Grids.InputGridMsh("Grid/Quad.msh",OrientFaceSphere,RadEarth,Grid)
   elseif GridType == "CubedSphere"
-    Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz,Topography)
+    Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "TriangularSphere"
     IcosahedronGrid = Grids.CreateIcosahedronGrid()
     RefineLevel =  0

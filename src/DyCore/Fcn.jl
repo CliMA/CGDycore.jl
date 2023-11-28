@@ -13,6 +13,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
   OP=CG.OrdPoly+1;
   DoF = CG.DoF
   NF=Global.Grid.NumFaces;
+  NBF = Global.Grid.NumBoundaryFaces;
   nz=Global.Grid.nz;
   J = Metric.J
   RhoCG = Cache.RhoCG
@@ -40,7 +41,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
   zP = Metric.zP
   uStar = Cache.uStar
   @. AuxG = 0.0
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz=1:nz
@@ -86,7 +87,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
     end
   end  
   Parallels.ExchangeData3DSend(AuxG,Exchange)
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz=1:nz
@@ -135,7 +136,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
 
   @. CdThG = 0.0
   @. CdTrG = 0.0
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     if Global.Model.SurfaceFlux
       Cd_coefficient!(CdThCG,CdTrCG,CG,Cache,Global,Param,iF)
     end   
@@ -148,7 +149,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
     end
   end
   Parallels.ExchangeData3DSend(Aux2DG,Exchange)
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     if Global.Model.SurfaceFlux
       Cd_coefficient!(CdThCG,CdTrCG,CG,Cache,Global,Param,iF)
     end   
@@ -178,6 +179,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
   OP = CG.OrdPoly+1;
   DoF = CG.DoF
   NF = Global.Grid.NumFaces;
+  NBF = Global.Grid.NumBoundaryFaces;
   nz = Global.Grid.nz;
   J = Metric.J
   zP = Metric.zP
@@ -230,7 +232,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
   @. JRhoF = 0.0
 
   # Hyperdiffusion 
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     @inbounds for iD  = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz = 1 : nz
@@ -286,7 +288,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
 
   Parallels.ExchangeData3DSend(Temp1,Exchange)
 
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz=1:nz
@@ -341,7 +343,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
 
   Parallels.ExchangeData3DRecv!(Temp1,Exchange)
 
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz = 1 : nz
@@ -530,7 +532,7 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
 
   Parallels.ExchangeData3DSend(F,Exchange)
 
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     @inbounds for iD = 1 : DoF
       ind = CG.Glob[iD,iF]
       @inbounds for iz=1:nz
@@ -762,6 +764,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
   Grav=Global.Phys.Grav    
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
+  NBF = Global.Grid.NumBoundaryFaces;
   nz=Global.Grid.nz;
   J = Metric.J
   zP = Metric.zP
@@ -820,7 +823,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
 
   # Hyperdiffusion 
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     @inbounds for jP = 1 : OP
       @inbounds for iP = 1 : OP
         ind = CG.Glob[iP,jP,iF]
@@ -888,7 +891,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
   Parallels.ExchangeData3DSend(Temp1,Global.Exchange)
 
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -956,7 +959,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
   Parallels.ExchangeData3DRecv!(Temp1,Global.Exchange)
 
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     @inbounds for jP = 1 : OP
       @inbounds for iP = 1 : OP
         ind = CG.Glob[iP,jP,iF]
@@ -1154,7 +1157,7 @@ function FcnHDiffRho!(F,U,CG,Global,Param,DiscType::Val{:VectorInvariant})
 
   Parallels.ExchangeData3DSend(F,Global.Exchange)
 
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -1395,6 +1398,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
   Grav=Global.Phys.Grav    
   OP=CG.OrdPoly+1;
   NF=Global.Grid.NumFaces;
+  NBF = Global.Grid.NumBoundaryFaces;
   nz=Global.Grid.nz;
   J = Metric.J
   zP = Metric.zP
@@ -1445,7 +1449,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
 
   # Hyperdiffusion 
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -1503,7 +1507,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
   Parallels.ExchangeData3DSend(Temp1,PresG,Global.Exchange)
 
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -1561,7 +1565,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
   Parallels.ExchangeData3DRecv!(Temp1,PresG,Global.Exchange)
 
-  @inbounds for iF in Global.Grid.BoundaryFaces
+  @inbounds for iF = 1 : NBF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]
@@ -1747,7 +1751,7 @@ function Fcn!(F,U,CG,Global,Param,::Val{:Conservative})
 
   Parallels.ExchangeData3DSend(F,PresG,Global.Exchange)
 
-  @inbounds for iF in Global.Grid.InteriorFaces
+  @inbounds for iF = NBF + 1 : NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         ind = CG.Glob[iP,jP,iF]

@@ -1,4 +1,4 @@
-function CubedGrid(backend,FT,n,OrientFace,Rad,nz,Topography)
+function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   nBar=[ 0  1   0   1
         -1  0  -1   0];
   Dim=3;
@@ -330,37 +330,17 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz,Topography)
   Renumbering!(Edges,Faces);
   FacesInNodes!(Nodes,Faces)
 
-  #Boundary/Interior faces
-  BoundaryFacesLoc = zeros(Int,0)
-  @inbounds for iE = 1 : NumEdges
-    if Edges[iE].F[1] == 0 || Edges[iE].F[2] == 0
-      @inbounds for iN in Edges[iE].N
-        @inbounds for iF in Nodes[iN].F
-          push!(BoundaryFacesLoc,iF)
-        end
-      end
-    end
-  end
-  BoundaryFacesLoc = unique(BoundaryFacesLoc)
-  BoundaryFaces = KernelAbstractions.zeros(backend,Int,size(BoundaryFacesLoc))
-  copyto!(BoundaryFaces,BoundaryFacesLoc)
-  InteriorFacesLoc = setdiff(collect(UnitRange(1,NumFaces)),BoundaryFacesLoc)
-  InteriorFaces = KernelAbstractions.zeros(backend,Int,size(InteriorFacesLoc))
-  copyto!(InteriorFaces,InteriorFacesLoc)
-
   zP=zeros(nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
   colors=[[]]
-  Spline_2d = Spline2D(zeros(0),zeros(0),zeros(0),0,0,0.0)
   NumGhostFaces = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   NumBoundaryFaces = 0
   return GridStruct{FT,
-                    typeof(z),
-                    typeof(BoundaryFaces)}(
+                    typeof(z)}(
     nz,
     zP,
     z,
@@ -381,11 +361,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz,Topography)
     NumEdgesB,
     nBar3,
     nBar,
-    Topography,
     colors,
-    Spline_2d,
-    BoundaryFaces,
-    InteriorFaces,
     NumBoundaryFaces,
     )
 end

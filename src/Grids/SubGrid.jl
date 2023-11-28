@@ -142,13 +142,29 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   FaceOrder = zeros(Int,NumFaces)
   NumBoundaryFaces = size(BoundaryFacesLoc,1)
   NumInteriorFaces = size(InteriorFacesLoc,1)
+  #=
+  if ProcNumber == 1
+    @show BoundaryFacesLoc
+    @show NumNodes
+    @show NumEdges
+    @show NumFaces
+    for iF = 1 : NumFaces
+       @show Faces[iF].N
+       @show Faces[iF].E
+    end
+    for iN = 1 : NumNodes
+       @show iN 
+       @show Nodes[iN].F
+       @show Nodes[iN].FG
+       @show Nodes[iN].FP
+    end
+  end  
+  =#
   for i = 1 : NumBoundaryFaces
     FaceOrder[BoundaryFacesLoc[i]] = i  
-    BoundaryFacesLoc[i] = i
   end  
   for i = 1 : NumInteriorFaces
     FaceOrder[InteriorFacesLoc[i]] = i + NumBoundaryFaces
-    InteriorFacesLoc[i] = i + NumBoundaryFaces
   end
   permute!(Faces,FaceOrder)
   for iF = 1 : NumFaces
@@ -162,16 +178,11 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
        Edges[iE].F[2] = FaceOrder[Edges[iE].F[2]]
      end
   end
-  for iN = 1 : NumNodes
-    for i in eachindex(Nodes[iN].F)
-      Nodes[iN].F[i] = FaceOrder[Nodes[iN].F[i]]
-    end
-  end
-
-  BoundaryFaces = KernelAbstractions.zeros(backend,Int,NumBoundaryFaces)
-  copyto!(BoundaryFaces,BoundaryFacesLoc)
-  InteriorFaces = KernelAbstractions.zeros(backend,Int,NumInteriorFaces)
-  copyto!(InteriorFaces,InteriorFacesLoc)
+# for iN = 1 : NumNodes
+#   for i in eachindex(Nodes[iN].F)
+#     Nodes[iN].F[i] = FaceOrder[Nodes[iN].F[i]]
+#   end
+# end
 
   Rad = GlobalGrid.Rad
 # Stencil  
@@ -197,14 +208,18 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
       end
     end
     Faces[iF].Stencil = zeros(Int,iS)
-    Faces[iF].Stencil .= StencilLoc[1:iS]
+    Faces[iF].Stencil .= FaceOrder[StencilLoc[1:iS]]
   end
 
 # Add Ghost Faces
   @inbounds for i = 1:NumNodes
     Nodes[i].F = zeros(Int,0)
     @inbounds for j in eachindex(Nodes[i].FG)
-      push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  
+      if Nodes[i].FP[j] == ProcNumber
+        push!(Nodes[i].F,FaceOrder[DictF[Nodes[i].FG[j]]])  
+      else  
+        push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  
+      end  
     end  
   end  
   nz = GlobalGrid.nz
@@ -214,15 +229,12 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   H = GlobalGrid.H
   NumEdgesI=size(Edges,1);
   NumEdgesB=0;
-  Topography = GlobalGrid.Topography
   colors=[[]]
-  Spline_2d = Spline2D(zeros(0),zeros(0),zeros(0),0,0,0.0)
   nBar3=zeros(0,0)
   nBar=zeros(0,0)
   Type = GlobalGrid.Type
   return GridStruct{FT,
-                    typeof(z),
-                    typeof(BoundaryFaces)}(
+                    typeof(z)}(
     nz,
     zP,
     z,
@@ -243,11 +255,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
     NumEdgesB,
     nBar3,
     nBar,
-    Topography,
     colors,
-    Spline_2d,
-    BoundaryFaces,
-    InteriorFaces,
     NumBoundaryFaces,
     )
 end

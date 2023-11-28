@@ -15,8 +15,7 @@ function Boundary()
 end  
 
 mutable struct GridStruct{FT<:AbstractFloat,
-                          AT1<:AbstractArray,
-                          IT1<:AbstractArray}
+                          AT1<:AbstractArray}
   nz::Int
   zP::Array{FT, 1}
   z::AT1
@@ -37,14 +36,10 @@ mutable struct GridStruct{FT<:AbstractFloat,
   NumEdgesB::Int
   nBar3::Array{FT, 2}
   nBar::Array{FT, 2}
-  Topography::NamedTuple
   colors::Array{Array{Int, 1}, 1}
-  Spline_2d::Dierckx.Spline2D
-  BoundaryFaces::IT1
-  InteriorFaces::IT1
   NumBoundaryFaces::Int
 end
-function GridStruct{FT}(backend,nz,Topography) where FT <: AbstractFloat
+function GridStruct{FT}(backend,nz) where FT <: AbstractFloat
   zP=zeros(nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
@@ -65,13 +60,9 @@ function GridStruct{FT}(backend,nz,Topography) where FT <: AbstractFloat
   nBar3=zeros(0,0)
   nBar=zeros(0,0)
   colors=[[]]
-  Spline_2d = Spline2D(zeros(0),zeros(0),zeros(0),0,0,0.0)
-  BoundaryFaces = KernelAbstractions.zeros(backend,Int,0)
-  InteriorFaces = KernelAbstractions.zeros(backend,Int,0)
   NumBoundaryFaces = 0
    return GridStruct{FT,
-                     typeof(z),
-                     typeof(BoundaryFaces)}(
+                     typeof(z)}(
     nz,
     zP,
     z,
@@ -92,11 +83,7 @@ function GridStruct{FT}(backend,nz,Topography) where FT <: AbstractFloat
     NumEdgesB,
     nBar3,
     nBar,
-    Topography,
     colors,
-    Spline_2d,
-    BoundaryFaces,
-    InteriorFaces,
     NumBoundaryFaces,
     )
 end   

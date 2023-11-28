@@ -209,16 +209,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   for iT = 1 : NumTr
     @views CacheTr = Temp1[:,:,iT + 6]  
-    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    @views KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
+  KernelAbstractions.synchronize(backend)
   Parallels.ExchangeData3DSendGPU(CacheFF,Exchange)
 
-
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-  KernelAbstractions.synchronize(backend)
   for iT = 1 : NumTr
     @views CacheTr = Temp1[:,:,iT + 6]  
-    KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    @views KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
 
   Parallels.ExchangeData3DRecvGPU!(CacheFF,Exchange)
@@ -286,7 +285,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     ndrangeSI = (N * N,NF-NBF)  
     KSurfaceFluxScalarsKernel(F,U,p,TSurf_I,RhoVSurf_I,uStar_I,CT_I,CH_I,dXdxI_I,Glob_I,M,Phys,ndrange=ndrangeSI)
   end  
-  KernelAbstractions.synchronize(backend)
       
   Parallels.ExchangeData3DRecvGPU!(F,Exchange)
   KernelAbstractions.synchronize(backend)

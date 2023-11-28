@@ -120,6 +120,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
         end  
       end
     end
+    Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
   elseif IntMethod == "RosenbrockD"
     @time begin
       for i=1:nIter

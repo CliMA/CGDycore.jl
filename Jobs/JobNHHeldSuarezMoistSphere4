@@ -1,8 +1,9 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+export UCX_ERROR_SIGNALS=""
+srun -n 4 gpu_wrapper.sh -n 4 -e "julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
-  --Device="" \
-  --GPUType="Metal" \
-  --NumberThreadGPU=512 \
+  --Device="GPU" \
+  --GPUType="CUDA" \
+  --NumberThreadGPU=1024 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
@@ -17,7 +18,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --VerticalDiffusion=true \
   --SurfaceFlux=true \
   --Coriolis=true \
-  --Upwind=false \
+  --Upwind=true \
   --HorLimit=true \
   --Equation=CompressibleMoist \
   --Microphysics=true \
@@ -28,7 +29,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=12 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
@@ -46,4 +47,4 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \
   --HyperDGrad=5.e14 \
-  --HyperDDiv=5.e14
+  --HyperDDiv=5.e14"
