@@ -1,6 +1,6 @@
 mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphere" \
-  --Device="" \
+  --Device="CPU" \
   --GPUType="Metal" \
   --FloatTypeBackend="Float32" \
   --NumberThreadGPU=512 \

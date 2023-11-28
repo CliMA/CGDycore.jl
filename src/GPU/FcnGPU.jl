@@ -251,7 +251,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   end    
   if Global.Model.SurfaceFlux
     ndrangeSB = (N * N,NBF)
-    ndrangeSI = (N * N,NF-NBF)
     KSurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,M,Phys,ndrange=ndrangeSB)
   end  
   KernelAbstractions.synchronize(backend)
