@@ -165,7 +165,7 @@ end
     end
   end  
   @synchronize
-  for iTer = 1 : 5
+  for iTer = 1 : 8
     if Iz <= Nz && conv[iz]
       ID = I + (J - 1) * N  
       @inbounds q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +

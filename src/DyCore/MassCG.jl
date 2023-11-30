@@ -41,9 +41,9 @@ function MassCGGPU!(CG,J,Glob,Exchange,Global)
   MMass = CG.MMass
   MW = CG.MW
 
-  @. M = FT(0)
-  @. MMass = FT(0)
-  @. MW = FT(0)
+  M .= FT(0)
+  MMass .= FT(0)
+  MW .= FT(0)
 
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
 
@@ -71,7 +71,7 @@ end
     ID = I + (J - 1) * N  
     @inbounds ind = Glob[ID,IF]  
     @inbounds @atomic M[Iz,ind] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    @inbounds @atomic MMass[Iz,ind] += 0.5 * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J]
+    @inbounds @atomic MMass[Iz,ind] += eltype(M)(0.5) * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J]
   end  
   if Iz < Nz && IF <= NF
     ID = I + (J - 1) * N  

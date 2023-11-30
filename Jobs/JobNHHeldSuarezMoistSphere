@@ -1,6 +1,6 @@
 mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
-  --Device="" \
+  --Device="CPU" \
   --GPUType="Metal" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \

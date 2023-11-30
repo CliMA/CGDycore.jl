@@ -59,6 +59,8 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   if Global.Model.HorLimit
     @views KLimitKernel!(DoF,qMin,qMax,U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
       KernelAbstractions.synchronize(backend)
+    Parallels.ExchangeDataFSend(qMin,qMax,Exchange)
+    Parallels.ExchangeDataFRecv!(qMin,qMax,Exchange)  
   end
 
 
@@ -74,7 +76,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   Parallels.ExchangeData3DSendGPU(CacheTr,Exchange)
   Parallels.ExchangeData3DRecvGPU!(CacheTr,Exchange)
 
-  @. F = 0
+  F .= FT(0)
 # @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
 #   KoeffDiv,ndrange=ndrange)
 # KernelAbstractions.synchronize(backend)
@@ -98,22 +100,17 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
     @views KDivRhoTrUpwind3Kernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
       dXdxI,J,M,Glob,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)  
-
-    KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-    KernelAbstractions.synchronize(backend)  
   end
 
 # Data exchange  
-  Parallels.ExchangeData3DSendGPU(F[:,:,1+NumV],Exchange)
-  Parallels.ExchangeData3DRecvGPU!(F[:,:,1+NumV],Exchange)
-
+  @views Parallels.ExchangeData3DSendGPU(F[:,:,1:1+NumV],Exchange)
+  @views Parallels.ExchangeData3DRecvGPU!(F[:,:,1:1+NumV],Exchange)
 end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   backend = get_backend(F)
   FT = eltype(F)
-  @. F = 0
   Glob = FE.Glob
   DS = FE.DS
   DW = FE.DW
@@ -204,7 +201,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 ####
 # First phase  
 ####
-  @. Temp1 = FT(0)
+  Temp1 .= FT(0)
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   for iT = 1 : NumTr
@@ -227,7 +224,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 # Second phase  
 ####
 
-  @. F = 0
+  F .= FT(0)
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
   for iT = 1 : NumTr
     @views CacheTr = Temp1[:,:,iT + 6]  

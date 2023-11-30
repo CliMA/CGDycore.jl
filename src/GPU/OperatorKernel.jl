@@ -1346,14 +1346,14 @@ end
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
     @inbounds T = p[1,ind] / Rm
-    @inbounds LatFlux = - 2.0 * CT[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
+    @inbounds LatFlux = - eltype(F)(2) * CT[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
       (RhoV[1,ind] - RhoVSurf[ID,IF]) / M[1,ind]
-    @inbounds SensFlux = - 2.0 * CH[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
+    @inbounds SensFlux = - eltype(F)(2) * CH[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
       (T - TSurf[ID,IF]) / M[1,ind]
     FRho = LatFlux
     FRhoV = LatFlux
     PrePi=(p[1,ind] / Phys.p0)^(Rm / Cpml)
-    FRhoTh = RhoTh * (SensFlux / T + ((Phys.Rv / Rm) - 1.0 / Rho - 
+    FRhoTh = RhoTh * (SensFlux / T + ((Phys.Rv / Rm) - eltype(F)(1) / Rho - 
       log(PrePi)*(Phys.Rv / Rm - Phys.Cpv / Cpml)) *  LatFlux)
     @inbounds @atomic F[1,ind,1] += FRho 
     @inbounds @atomic F[1,ind,5] += FRhoTh 

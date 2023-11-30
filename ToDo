@@ -15,3 +15,11 @@ NVTX.@range "KHyperViscKernel!" let
     KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
 end
+
+
+4 A100
+Simulation time 10 days
+110 km Resolution Timestep  150s  163s
+ 55 km Resolution Timestep   75s  759s
+
+Test parallel Advection with horizontal limiter
