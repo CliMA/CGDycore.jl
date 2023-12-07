@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphereAMD.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -33,7 +33,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \
-  --IntMethod="Rosenbrock" \
+  --IntMethod="RosenbrockAMD" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=true \

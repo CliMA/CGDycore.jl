@@ -58,7 +58,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   end
 
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
-  Output = OutputStruct(Topography)
+  Output = OutputStruct()
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
@@ -92,7 +92,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
 end  
 
 
-function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,GridType,Topography,Decomp,Model,Phys)    
+function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,GridType,Decomp,Model,Phys,TopoProfile)
 
   comm = MPI.COMM_WORLD
   Proc = MPI.Comm_rank(comm) + 1 
@@ -102,9 +102,8 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   ParallelCom.ProcNumber  = ProcNumber
 
   TimeStepper = TimeStepperStruct{FT}(backend)
-  Grid = Grids.GridStruct{FT}(backend,nz,Topography)
 
-  Grid = Grids.CartGrid(nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,Grid)
+  Grid = Grids.CartGrid(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz)
 
   CellToProc = Grids.Decompose(Grid,ProcNumber)
   SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
@@ -124,7 +123,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   end
 
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
-  Output = OutputStruct(Topography)
+  Output = OutputStruct()
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
@@ -138,21 +137,9 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   Outputs.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
-  if Topography.TopoS == "EarthOrography"
-    zS = Orography(CG,Global)
-    Output.RadPrint = H
-    Output.Flat=false
-    nzTemp = Global.Grid.nz
-    Global.Grid.nz = 1
-    vtkCacheOrography = Outputs.vtkStruct{FT}(backend,OrdPoly,Grids.TransCartX!,CG,Metric,Global)
-    Outputs.unstructured_vtkOrography(zS,vtkCacheOrography, Global.Grid.NumFaces, CG,  Proc, ProcNumber)
-    Global.Grid.nz = nzTemp
-    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
-  else
-    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global)
-  end
-
-
+  zS = Grids.Orography(backend,FT,CG,Global,TopoProfile)
+  @show minimum(zS),maximum(zS)
+  (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
 
   return CG, Metric, Exchange, Global
 end  

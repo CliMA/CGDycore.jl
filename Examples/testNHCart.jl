@@ -214,18 +214,36 @@ Topography=(TopoS=TopoS,
             P4=P4,
             )
 
-(CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
-  Boundary,GridType,Topography,Decomp,Model,Phys)
+#Topography
+if TopoS == "AgnesiHill"
+  TopoProfile = Examples.AgnesiHill()()
+else
+  TopoProfile = Examples.Flat()()  
+end  
 
-Profile = Examples.WarmBubbleCartExample()(Param,Phys)
+(CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
+  Boundary,GridType,Decomp,Model,Phys,TopoProfile)
+
 # Initial values
 if Problem == "Stratified" || Problem == "HillAgnesiXCart"
   Profile = Examples.StratifiedExample()(Param,Phys)
-elseif Problem == "WarmBubble"
+elseif Problem == "WarmBubble2DXCart"
   Profile = Examples.WarmBubbleCartExample()(Param,Phys)
 end
 
+
+
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+
+# Pressure
+if Equation == "Compressible"
+  Pressure = Models.Compressible()(Phys)
+  Model.Pressure = Pressure
+elseif Equation == "CompressibleMoist"
+  Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoVPos+NumV,Model.RhoCPos+NumV)
+  Model.Pressure = Pressure
+end
 
 # Forcing
 Force =  Examples.NoForcing()(Param,Phys)
@@ -293,22 +311,17 @@ Global.Output.vtk=0
   elseif ModelType == "Conservative"
     DiscType = Val(:Conservative)
   end
+
 if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
   nT = max(7 + NumTr, NumV + NumTr)
+  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   @show "vor Timestepper"
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransCart,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
-elseif Device == "CPU_P"  || Device == "GPU_P"
-  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  Integration.TimeStepper!(U,GPU.FcnGPU_P!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 else
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
-    Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Force,DiscType)
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
 end
-

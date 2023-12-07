@@ -58,7 +58,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
 
   if Global.Model.HorLimit
     @views KLimitKernel!(DoF,qMin,qMax,U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
-      KernelAbstractions.synchronize(backend)
+    KernelAbstractions.synchronize(backend)
     Parallels.ExchangeDataFSend(qMin,qMax,Exchange)
     Parallels.ExchangeDataFRecv!(qMin,qMax,Exchange)  
   end
@@ -77,10 +77,6 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   Parallels.ExchangeData3DRecvGPU!(CacheTr,Exchange)
 
   F .= FT(0)
-# @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
-#   KoeffDiv,ndrange=ndrange)
-# KernelAbstractions.synchronize(backend)
-
 
   KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)  
@@ -89,9 +85,6 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
     @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
       dXdxI,J,M,Glob,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)  
-#   @views KDivRhoTrViscUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,CacheTr,DS,DW,
-#     dXdxI,J,M,Glob,KoeffDiv,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
-#   KernelAbstractions.synchronize(backend)  
   else
     @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrange)
@@ -184,7 +177,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-  KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+  if Global.Model.Coriolis
+    KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+  else
+    KMomentumKernel! = MomentumKernel!(backend, group)
+  end  
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
@@ -232,7 +229,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       KoeffDiv,ndrange=ndrangeB)
   end  
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrangeB)
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrangeB)
+  if Global.Model.Coriolis
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrangeB)
+  else
+    KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
+  end  
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   for iT = 1 : NumTr
     @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
@@ -262,7 +263,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       KoeffDiv,ndrange=ndrangeI)
   end  
   KGradKernel!(F,U,p,DS,dXdxI_I,J_I,M,MRho,Glob_I,Phys,ndrange=ndrangeI)
-  @views KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,Phys,ndrange=ndrangeI)
+  if Global.Model.Coriolis
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,Phys,ndrange=ndrangeI)
+  else
+    KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
+  end  
+
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   for iT = 1 : NumTr
     @views KDivRhoTrUpwind3Kernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],U,DS,
@@ -296,6 +302,112 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     KMicrophysicsKernel!(MicrophysicsSource,F,U,p,ndrange=ndrangeG)
     KernelAbstractions.synchronize(backend)
   end
+
+end
+
+
+function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+
+  backend = get_backend(F)
+  FT = eltype(F)
+  Glob = FE.Glob
+  DS = FE.DS
+  DW = FE.DW
+  M = FE.M
+  dXdxI = Metric.dXdxI
+  X = Metric.X
+  J = Metric.J
+  NF = Global.Grid.NumFaces
+  NBF = Global.Grid.NumBoundaryFaces
+  @views dXdxI_I = dXdxI[:,:,:,:,:,NBF+1:NF]
+  @views J_I = J[:,:,:,NBF+1:NF]
+  @views X_I = X[:,:,:,:,NBF+1:NF]
+  @views Glob_I = Glob[:,NBF+1:NF]
+  lat = Metric.lat  
+  dz = Metric.dz  
+  DoF = FE.DoF
+  N = size(FE.DS,1)
+  Nz = size(F,1)
+  NDoF = size(F,2)
+  NumV  = Global.Model.NumV 
+  NumTr  = Global.Model.NumTr 
+  Koeff = Global.Model.HyperDDiv
+  Temp1 = Cache.Temp1
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  Force = Global.Model.Force
+  MicrophysicsSource = Global.Model.MicrophysicsSource
+
+  KoeffCurl = Global.Model.HyperDCurl
+  KoeffGrad = Global.Model.HyperDGrad
+  KoeffDiv = Global.Model.HyperDDiv
+
+# State vector
+  @views Rho = U[:,:,1]
+  @views u = U[:,:,2]
+  @views v = U[:,:,3]
+  @views w = U[:,:,4]
+  @views RhoTr = U[:,:,5]
+# Tendency
+  @views FRho = F[:,:,1]
+  @views FRhoTr = F[:,:,5]
+# Cache
+  @views CacheF = Temp1[:,:,1:6]
+  @views CacheFF = Temp1[:,:,1:6+NumTr]
+  @views p = Cache.AuxG[:,:,1]
+  KV = Cache.KV
+  TSurf = Cache.TSurf
+  RhoVSurf = Cache.RhoVSurf
+  uStar = Cache.uStar
+  CT = Cache.CT
+  CH = Cache.CH
+  @views KV_I = Cache.KV[:,:,NBF+1:NF]
+  @views TSurf_I = Cache.TSurf[:,NBF+1:NF]
+  @views RhoVSurf_I = Cache.RhoVSurf[:,NBF+1:NF]
+  @views uStar_I = Cache.uStar[:,NBF+1:NF]
+  @views CT_I = Cache.CT[:,NBF+1:NF]
+  @views CH_I = Cache.CH[:,NBF+1:NF]
+  @views MRho = CacheF[:,:,6]
+  @. MRho = FT(1)
+# Ranges
+  NzG = min(div(NumberThreadGPU,N*N),Nz)
+  group = (N, N, NzG, 1)
+  ndrange = (N, N, Nz, NF)
+  ndrangeB = (N, N, Nz, NBF)
+  ndrangeI = (N, N, Nz, NF-NBF)
+  groupTr = group
+  ndrangeTr = ndrange
+  NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
+  groupG = (Nz, NDoFG)  
+  ndrangeG = (Nz, NDoF)  
+
+  if Global.Model.Coriolis
+    KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+  else
+    KMomentumKernel! = MomentumKernel!(backend, group)
+  end  
+
+####
+# Second phase  
+####
+
+  @show "FcnGPUAMD"
+  for i = 1 : 100
+  F .= FT(0)
+  if Global.Model.Coriolis
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrangeB)
+  else
+    KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
+  end  
+  KernelAbstractions.synchronize(backend)
+
+
+  if Global.Model.Coriolis
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,Phys,ndrange=ndrangeI)
+  else
+    KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
+  end  
+  end
+
 
 end
 

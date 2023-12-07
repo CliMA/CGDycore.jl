@@ -97,7 +97,7 @@
 end  
 
 @kernel function MomentumKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(MRho),@Const(M),@Const(Glob),Phys)
+  @Const(MRho),@Const(M),@Const(Glob))
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
@@ -113,7 +113,7 @@ end
   RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
-  wCol = @localmem eltype(F) (N,N,ColumnTilesDim)
+  wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
 
   if Iz <= Nz
     @inbounds RhoCol[I,J,iz] = U[Iz,ind,1]
@@ -159,11 +159,11 @@ end
     Izp = min(Iz+1,Nz)
     Izm = max(Iz-1,1)
     ind = Glob[ID,IF]
-    Dzu2 = 1/2 * (U[Izp,ind,2] - uCol[I,J,iz])
-    Dzv2 = 1/2 * (U[Izp,ind,3] - vCol[I,J,iz])
-    Dzu1 = 1/2 * (uCol[I,J,iz] - U[Izm,ind,2])
-    Dzv1 = 1/2 * (vCol[I,J,iz] - U[Izm,ind,3])
-    Dzw = 1/2 * (wCol[I,J,iz+1] - wCol[I,J,iz]) 
+    Dzu2 = eltype(F)(0.5) * (U[Izp,ind,2] - uCol[I,J,iz])
+    Dzv2 = eltype(F)(0.5) * (U[Izp,ind,3] - vCol[I,J,iz])
+    Dzu1 = eltype(F)(0.5) * (uCol[I,J,iz] - U[Izm,ind,2])
+    Dzv1 = eltype(F)(0.5) * (vCol[I,J,iz] - U[Izm,ind,3])
+    Dzw = eltype(F)(0.5) * (wCol[I,J,iz+1] - wCol[I,J,iz]) 
     for k = 2 : N
       @inbounds Dxu += D[I,k] * uCol[k,J,iz]
       @inbounds Dyu += D[J,k] * uCol[I,k,iz]

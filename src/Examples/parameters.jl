@@ -232,6 +232,26 @@ Base.@kwdef struct ParamAdvectionCubeCart
   y2::Float64 = 601.0
 end  
 
+Base.@kwdef struct LimAdvectionCart{FT}
+  xmin::FT = -2π              # domain x lower bound
+  xmax::FT = 2π               # domain x upper bound
+  ymin::FT = -2π              # domain y lower bound
+  ymax::FT = 2π               # domain y upper bound
+  zmin::FT = 0                # domain z lower bound
+  zmax::FT = 4π               # domain z upper bound
+  ρ₀::FT = 1.0                # air density
+  D₄::FT = 0.0                # hyperdiffusion coefficient
+  u0::FT = π / 2              # angular velocity
+  r0::FT = (xmax - xmin) / 6  # bells radius
+  end_time::FT = 2π           # simulation period in seconds
+  centers1xC = xmin + (xmax - xmin) / 4
+  centers1yC = ymin + (ymax - ymin) / 2
+  centers1zC = zmin + (zmax - zmin) / 2
+  centers2xC = xmin + 3 * (xmax - xmin) / 4
+  centers2yC = ymin + (ymax - ymin) / 2
+  centers2zC = zmin + (zmax - zmin) / 2
+end
+
 Base.@kwdef struct ParamAdvectionCubeRotCart{FT}
   StreamFun::Bool = false
   uMax::FT = 1.0
@@ -296,6 +316,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "AdvectionCubeRotCart"
     @show Problem
     Param = ParamAdvectionCubeRotCart{FT}()
+  elseif Problem == "LimAdvectionCart"
+    @show Problem
+    Param = LimAdvectionCart{FT}()
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()

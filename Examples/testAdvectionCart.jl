@@ -188,9 +188,6 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
-
-
-
 Boundary = Grids.Boundary()
 Boundary.WE = BoundaryWE
 Boundary.SN = BoundarySN
@@ -203,15 +200,29 @@ Topography=(TopoS=TopoS,
             P4=P4,
            )
 
-  @show "vor InitCart"
-  (CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
-  Boundary,GridType,Topography,Decomp,Model,Phys)
+TopoProfile = Examples.Flat()()
+#Overwrite input data for special problems
+if Problem == "LimAdvectionCart"
+  Lx = 4 * pi 
+  Ly = 4 * pi 
+  H = 4 * pi 
+  x0 = -2 * pi 
+  y0 = -2 * pi 
+  SimTime = Param.end_time
+  @show SimTime
+end
 
+(CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
+Boundary,GridType,Decomp,Model,Phys,TopoProfile)
+
+  
+if Problem == "RotationalCart"
   Profile = Examples.RotationalCartExample()(Param,Phys)
+elseif Problem == "LimAdvectionCart"
+  Profile = Examples.LimAdvectionCartExample()(Param,Phys)
+end  
 
-
-  U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
-
+U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
 
 # Output
   Global.Output.vtkFileName=string(Problem*"_")

@@ -1,7 +1,8 @@
-mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
+mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Problem="HillAgnesiXCart" \
   --Device="CPU" \
   --GPUType="CUDA" \
+  --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
@@ -23,22 +24,23 @@ mpirun -n 1 julia --project Examples/testNHCartGPU.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --Thermo="" \
-  --SimMinutes=300 \
-  --PrintSeconds=300 \
-  --dtau=3 \
+  --SimMinutes=30 \
+  --PrintSeconds=30 \
+  --PrintTime=0 \
+  --dtau=.3 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  --TopoS="AgnesiCartX" \
+  --TopoS="AgnesiHill" \
   `#Topography `        \
   --P1=0.0\
   --P2=10000.0\
   --P3=400.0\
-  --Stretch=true \
+  --Stretch=false \
   --StretchType="ICON" \
   --H=19600.0 \
-  --Lx=400000.0 \
-  --Ly=40000.0 \
-  --x0=-200000.0 \
+  --Lx=40000.0 \
+  --Ly=4000.0 \
+  --x0=-20000.0 \
   --y0=0.0 \
   --nz=80 \
   --nx=40 \

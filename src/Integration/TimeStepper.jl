@@ -9,7 +9,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
   IntMethod = TimeStepper.IntMethod
   Table = TimeStepper.Table
 
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
     TimeStepper.ROS=RosenbrockStruct{FT}(Table)  
   elseif IntMethod == "RungeKutta"  
     TimeStepper.RK=RungeKuttaMethod(Table)
@@ -55,7 +55,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
   Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
     NumV,NumTr)
 
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockAMD"
     JCache = JStruct{FT}(backend,NumG,nz,NumTr)
     Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
     Cache.fV = KernelAbstractions.zeros(backend,FT,size(U))
@@ -121,6 +121,19 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
       end
     end
     Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+  elseif IntMethod == "RosenbrockAMD"
+    @time begin
+      for i=1:nIter
+        @show "RosenbrockAMD"  
+        Δt = @elapsed begin
+          RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
+        end
+        percent = i/nIter*100
+        if Proc == 1
+          @info "Iteration: $i took $Δt, $percent% complete"
+        end  
+      end
+    end
   elseif IntMethod == "RosenbrockD"
     @time begin
       for i=1:nIter

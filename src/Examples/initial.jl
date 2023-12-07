@@ -57,6 +57,44 @@ function (profile::RotationalCartExample)(Param,Phys)
     end
     return local_profile
 end
+
+Base.@kwdef struct LimAdvectionCartExample <: Example end
+
+function (profile::LimAdvectionCartExample)(Param,Phys)
+    function local_profile(x,time)
+      FT = eltype(x)
+      Rho = FT(1)
+      rd1 = sqrt((x[1] - Param.centers1xC)^2 +
+        (x[2] - Param.centers1yC)^2 +
+        (x[3] - Param.centers1zC)^2)
+      rd2 = sqrt((x[1] - Param.centers2xC)^2 +
+        (x[2] - Param.centers2yC)^2 +
+        (x[3] - Param.centers2zC)^2)
+      if rd1 <= Param.r0 && abs(x[1] - Param.centers1xC) >= Param.r0 / FT(6)
+        Tr = FT(1.0)
+      elseif rd2 <= Param.r0 && abs(x[1] - Param.centers2xC) >= Param.r0 / FT(6)
+        Tr = FT(1.0)
+      elseif rd1 <= Param.r0 &&
+        abs(x[1] - Param.centers1xC) < Param.r0 / FT(6) &&
+        (x[2] - Param.centers1yC) < -FT(5) * Param.r0 / FT(12)
+        Tr = FT(1.0)
+      elseif rd2 <= Param.r0 &&
+        abs(x[1] - Param.centers2xC) < Param.r0 / FT(6) &&
+        (x[2] - Param.centers2yC) > FT(5) * Param.r0 / FT(12)
+        Tr = FT(1.0)
+      else
+        Tr = FT(0.1)
+      end
+
+      u = -Param.u0 * x[2]  * cospi(time / Param.end_time)
+      v = Param.u0 * x[1] * cospi(time / Param.end_time)
+      w = Param.u0 * sinpi(x[3] / Param.zmax) * cospi(time / Param.end_time)
+
+      return (Rho,u,v,w,Tr)
+    end
+    return local_profile
+end
+
 Base.@kwdef struct WarmBubbleCartExample <: Example end
 
 function (profile::WarmBubbleCartExample)(Param,Phys)
@@ -76,11 +114,11 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     rC0 = Param.rC0
     x3 = x[3]
     x1 = x[1]
-    pLoc = p0 * (1 - Grav * x3 * kappa / (Rd * Th0))^(1 / kappa)
+    pLoc = p0 * (FT(1) - Grav * x3 * kappa / (Rd * Th0))^(FT(1) / kappa)
     rr = sqrt((x1 - xC0)^2 + (x3 - zC0)^2)
     Th = Th0
     if rr < rC0
-      Th = Th + DeltaTh * cos(0.5 * pi * rr /rC0)^2
+      Th = Th + DeltaTh * cos(FT(0.5) * pi * rr /rC0)^2
     end
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     return (Rho,u,v,w,Th)

@@ -16,10 +16,20 @@ NVTX.@range "KHyperViscKernel!" let
     KernelAbstractions.synchronize(backend)
 end
 
+DKRZ
+module load nvhpc
+
 
 4 A100
 Simulation time 10 days
+BaroWave Old
 110 km Resolution Timestep  150s  163s
  55 km Resolution Timestep   75s  759s
 
 Test parallel Advection with horizontal limiter
+
+HeldSuarezMoist 110 km, 150 s, 10 days
+GPU  Time
+  1  308 
+  2  166
+  4  102

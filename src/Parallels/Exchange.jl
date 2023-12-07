@@ -658,15 +658,24 @@ function ExchangeDataFSend(cFMin,cFMax,Exchange)
     end
   end
   i = 0
+# @show size(rreq),size(sreq)
   @inbounds for iP in NeiProc
     tag = Proc + ProcNumber*iP
     i += 1
+    @show "Recv",Proc,iP,tag,size(RecvBufferF[iP])
+    if Proc == 3 && iP == 4
+      @show IndRecvBufferF[iP]  
+    end  
     @views MPI.Irecv!(RecvBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
   end
   i = 0
   @inbounds for iP in NeiProc
     tag = iP + ProcNumber*Proc
     i += 1
+    @show "Send",Proc,iP,tag,size(SendBufferF[iP])
+    if Proc == 4 && iP == 3
+      @show IndSendBufferF[iP]  
+    end  
     @views MPI.Isend(SendBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
   end
 end
@@ -685,6 +694,7 @@ function ExchangeDataFRecv!(cFMin,cFMax,Exchange)
   #Receive
   @inbounds for iP in NeiProc
     i = 0
+#   @show iP,IndRecvBufferF[iP]
     @inbounds for Ind in IndRecvBufferF[iP]
       i += 1
       @views @. cFMin[:,Ind,:] = RecvBufferF[iP][:,i,:,1]
@@ -801,13 +811,13 @@ function ExchangeData3DSendGPU(U,Exchange)
   @inbounds for iP in NeiProc
     tag = Proc + ProcNumber*iP
     i += 1
-    @views MPI.Irecv!(RecvBuffer3[iP][1:Nz,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
+    @views MPI.Irecv!(RecvBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
   end  
   i = 0
   @inbounds for iP in NeiProc
     tag = iP + ProcNumber*Proc
     i += 1
-    @views MPI.Isend(SendBuffer3[iP][1:Nz,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
+    @views MPI.Isend(SendBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
   end
 end
 

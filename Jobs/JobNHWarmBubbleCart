@@ -1,12 +1,10 @@
 mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Problem="WarmBubble2DXCart" \
   --Device="CPU" \
-  --GPUType="Metal" \
+  --GPUType="CUDA" \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
-  --Device="" \
-  --FloatTypeBackend="Float64" \
   --ProfRho="WarmBubble2DX" \
   --ProfTheta="WarmBubble2DX" \
   --ProfVel="Const" \
@@ -17,11 +15,11 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --BoundaryBT="" \
   --SimTime=1000 \
   --PrintTime=100 \
-  --Curl=true \
+  --Curl=false \
   --ModelType="VectorInvariant" \
   --dtau=.2 \
-  --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --IntMethod="RungeKutta" \
+  --Table="RK4" \
   --TopoS="" \
   `#Topography `        \
   --H=10000.0 \
@@ -29,8 +27,8 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=40 \
-  --nx=20 \
+  --nz=80 \
+  --nx=40 \
   --ny=2 \
   --OrdPoly=4 \
   --HyperVisc=true \

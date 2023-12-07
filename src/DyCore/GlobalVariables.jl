@@ -70,9 +70,8 @@ mutable struct OutputStruct
   RadPrint::Float64
   H::Float64
   OrdPrint::Int
-  Topography::NamedTuple
 end
-function OutputStruct(Topography::NamedTuple)
+function OutputStruct()
   vtk=0
   vtkFileName=""
   Flat=false
@@ -110,7 +109,6 @@ function OutputStruct(Topography::NamedTuple)
   RadPrint,
   H,
   OrdPrint,
-  Topography,
   )
 end  
 
