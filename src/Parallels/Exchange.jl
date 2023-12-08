@@ -80,17 +80,21 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
   InBoundEdgesP = zeros(Int,NumInBoundEdges)
   NumInBoundEdges = 0
   @inbounds for i = 1:SubGrid.NumEdges
-    if CellToProc[SubGrid.Edges[i].FG[1]] == Proc  
-    else
-      NumInBoundEdges += 1
-      push!(InBoundEdges, i)
-      push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[1]])
-    end  
-    if CellToProc[SubGrid.Edges[i].FG[2]] == Proc  
-    else
-      NumInBoundEdges += 1
-      push!(InBoundEdges, i)
-      push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[1]])
+    if SubGrid.Edges[i].FG[1] > 0
+      if CellToProc[SubGrid.Edges[i].FG[1]] == Proc  
+      else
+        NumInBoundEdges += 1
+        push!(InBoundEdges, i)
+        push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[1]])
+      end  
+    end
+    if SubGrid.Edges[i].FG[2] > 0
+      if CellToProc[SubGrid.Edges[i].FG[2]] == Proc  
+      else
+        NumInBoundEdges += 1
+        push!(InBoundEdges, i)
+        push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[1]])
+      end  
     end  
   end
 
@@ -633,8 +637,8 @@ function ExchangeDataFSend(cFMin,cFMax,Exchange)
   nT = size(cFMin,3)
   if Exchange.InitRecvBufferF
     @inbounds for iP in NeiProc
-      Exchange.RecvBufferF[iP] = zeros(nz,length(IndRecvBufferF[iP]),nT,2)
-      Exchange.SendBufferF[iP] = zeros(nz,length(IndRecvBufferF[iP]),nT,2)
+      Exchange.RecvBufferF[iP] = zeros(nz,length(IndRecvBufferF[iP]),2,nT)
+      Exchange.SendBufferF[iP] = zeros(nz,length(IndSendBufferF[iP]),2,nT)
     end
     RecvBufferF = Exchange.RecvBufferF
     SendBufferF = Exchange.SendBufferF
@@ -653,29 +657,20 @@ function ExchangeDataFSend(cFMin,cFMax,Exchange)
     i = 0
     @views @inbounds for Ind in IndSendBufferF[iP]
       i += 1
-      @views @. SendBufferF[iP][:,i,:,1] = cFMin[:,Ind,:]
-      @views @. SendBufferF[iP][:,i,:,2] = cFMax[:,Ind,:]
+      @views @. SendBufferF[iP][:,i,1,:] = cFMin[:,Ind,:]
+      @views @. SendBufferF[iP][:,i,2,:] = cFMax[:,Ind,:]
     end
   end
   i = 0
-# @show size(rreq),size(sreq)
   @inbounds for iP in NeiProc
     tag = Proc + ProcNumber*iP
     i += 1
-    @show "Recv",Proc,iP,tag,size(RecvBufferF[iP])
-    if Proc == 3 && iP == 4
-      @show IndRecvBufferF[iP]  
-    end  
     @views MPI.Irecv!(RecvBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
   end
   i = 0
   @inbounds for iP in NeiProc
     tag = iP + ProcNumber*Proc
     i += 1
-    @show "Send",Proc,iP,tag,size(SendBufferF[iP])
-    if Proc == 4 && iP == 3
-      @show IndSendBufferF[iP]  
-    end  
     @views MPI.Isend(SendBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
   end
 end
@@ -694,11 +689,10 @@ function ExchangeDataFRecv!(cFMin,cFMax,Exchange)
   #Receive
   @inbounds for iP in NeiProc
     i = 0
-#   @show iP,IndRecvBufferF[iP]
     @inbounds for Ind in IndRecvBufferF[iP]
       i += 1
-      @views @. cFMin[:,Ind,:] = RecvBufferF[iP][:,i,:,1]
-      @views @. cFMax[:,Ind,:] = RecvBufferF[iP][:,i,:,2]
+      @views @. cFMin[:,Ind,:] = RecvBufferF[iP][:,i,1,:]
+      @views @. cFMax[:,Ind,:] = RecvBufferF[iP][:,i,2,:]
     end
   end
 end

@@ -1,0 +1,15 @@
+CUDA
+DKRZ Hamburg, A100
+julia> include("Examples/TestHistogram.jl")
+  0.013298 seconds (13.80 k allocations: 623.438 KiB)
+
+
+AMD
+https://lumi-supercomputer.eu/
+2978 nodes with 4 AMD MI250x GPUs and a single 64 cores AMD EPYC "Trento" 
+include("Examples/TestHistogram.jl")
+  0.508759 seconds (332.16 k allocations: 6.289 MiB)
+
+CPU
+julia> include("Examples/TestHistogram.jl")
+  3.429507 seconds (1.18 M allocations: 2.306 GiB, 18.29% gc time)

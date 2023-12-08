@@ -69,17 +69,19 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   KernelAbstractions.synchronize(backend)
 
 # Hyperviscosity Part 1
-  KHyperViscTracerKernel!(CacheTr,U[:,:,1+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
+  if ~Global.Model.HorLimit
+     KHyperViscTracerKernel!(CacheTr,U[:,:,1+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
+     KernelAbstractions.synchronize(backend)
 
-# Data exchange  
-  Parallels.ExchangeData3DSendGPU(CacheTr,Exchange)
-  Parallels.ExchangeData3DRecvGPU!(CacheTr,Exchange)
+#   Data exchange  
+    Parallels.ExchangeData3DSendGPU(CacheTr,Exchange)
+    Parallels.ExchangeData3DRecvGPU!(CacheTr,Exchange)
+  end  
 
   F .= FT(0)
 
-  KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)  
+  #KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  #KernelAbstractions.synchronize(backend)  
 
   if Global.Model.HorLimit
     @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
@@ -368,6 +370,9 @@ function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   @views CH_I = Cache.CH[:,NBF+1:NF]
   @views MRho = CacheF[:,:,6]
   @. MRho = FT(1)
+  @show size(U)
+  @show NF
+  stop
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)

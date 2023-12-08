@@ -143,7 +143,6 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   Dim=3;
   Renumbering!(Edges,Faces);
   FacesInNodes!(Nodes,Faces)
-
   Form = GlobalGrid.Form
   Rad = GlobalGrid.Rad
 # Stencil  

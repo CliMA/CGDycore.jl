@@ -223,6 +223,8 @@ elseif Problem == "LimAdvectionCart"
 end  
 
 U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+@show maximum(abs.(U[:,:,2]))
+@show maximum(abs.(U[:,:,3]))
 
 # Output
   Global.Output.vtkFileName=string(Problem*"_")
@@ -230,6 +232,8 @@ U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Par
   Global.Output.Flat=true
   Global.Output.H=H
   Global.Output.cNames = [
+      "u",
+      "v",
       "Rho",
       "Tr1",
       ]

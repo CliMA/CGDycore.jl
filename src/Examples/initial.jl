@@ -89,6 +89,7 @@ function (profile::LimAdvectionCartExample)(Param,Phys)
       u = -Param.u0 * x[2]  * cospi(time / Param.end_time)
       v = Param.u0 * x[1] * cospi(time / Param.end_time)
       w = Param.u0 * sinpi(x[3] / Param.zmax) * cospi(time / Param.end_time)
+      w = FT(0)
 
       return (Rho,u,v,w,Tr)
     end
