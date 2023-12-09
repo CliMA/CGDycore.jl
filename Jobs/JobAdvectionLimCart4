@@ -1,6 +1,9 @@
-mpirun -n 2 julia --project Examples/testAdvectionCart.jl \
+export UCX_ERROR_SIGNALS=""
+srun -n 4 gpu_wrapper.sh -n 4 -e "julia --project Examples/testAdvectionCart.jl \
   --Problem="LimAdvectionCart" \
-  --Device="CPU" \
+  --Device="GPU" \
+  --GPUType="CUDA" \
+  --NumberThreadGPU=1024 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumTr=1 \
@@ -25,4 +28,4 @@ mpirun -n 2 julia --project Examples/testAdvectionCart.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --HyperVisc=true \
-  --HyperDDiv=1.e-4
+  --HyperDDiv=1.e-4"

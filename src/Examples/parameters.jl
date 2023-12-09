@@ -244,28 +244,26 @@ Base.@kwdef struct LimAdvectionCart{FT}
   u0::FT = π / 2              # angular velocity
   r0::FT = (xmax - xmin) / 6  # bells radius
   end_time::FT = 2π           # simulation period in seconds
-  centers1xC = xmin + (xmax - xmin) / 4
-  centers1yC = ymin + (ymax - ymin) / 2
-  centers1zC = zmin + (zmax - zmin) / 2
-  centers2xC = xmin + 3 * (xmax - xmin) / 4
-  centers2yC = ymin + (ymax - ymin) / 2
-  centers2zC = zmin + (zmax - zmin) / 2
+  centers1xC::FT = xmin + (xmax - xmin) / 4
+  centers1yC::FT = ymin + (ymax - ymin) / 2
+  centers1zC::FT = zmin + (zmax - zmin) / 2
+  centers2xC::FT = xmin + 3 * (xmax - xmin) / 4
+  centers2yC::FT = ymin + (ymax - ymin) / 2
+  centers2zC::FT = zmin + (zmax - zmin) / 2
 end
 
-Base.@kwdef struct ParamAdvectionCubeRotCart{FT}
+Base.@kwdef struct ParamAdvectionCubeRotCart
   StreamFun::Bool = false
-  uMax::FT = 1.0
-  vMax::FT = 1.0
-  xC::FT = 500.0
-  zC::FT = 500.0
-  x1::FT = 299.0
-  x2::FT = 501.0
-  y1::FT = 299.0
-  y2::FT = 501.0
-  z1::FT = 299.0
-  z2::FT = 501.0
-  EndTime::FT = 1000.0
-  H::FT = 1000.0
+  uMax::Float64 = 1.0
+  vMax::Float64 = 0.0
+  xC::Float64 = 500.0
+  zC::Float64 = 500.0
+  x1::Float64 = 299.0
+  x2::Float64 = 501.0
+  z1::Float64 = 299.0
+  z2::Float64 = 501.0
+  EndTime::Float64 = 1000.0
+  H::Float64 = 1000.0
 end
 
 Base.@kwdef struct ParamAdvectionCart
@@ -315,10 +313,10 @@ function Parameters(FT,Problem::String)
     Param = ParamAdvectionCubeCart()
   elseif Problem == "AdvectionCubeRotCart"
     @show Problem
-    Param = ParamAdvectionCubeRotCart{FT}()
+    Param = ParamAdvectionCubeRotCart()
   elseif Problem == "LimAdvectionCart"
     @show Problem
-    Param = LimAdvectionCart{FT}()
+    Param = LimAdvectionCart{FT}()  
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()

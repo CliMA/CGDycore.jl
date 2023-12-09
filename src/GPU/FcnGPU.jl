@@ -59,8 +59,8 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   if Global.Model.HorLimit
     @views KLimitKernel!(DoF,qMin,qMax,U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
     KernelAbstractions.synchronize(backend)
-    Parallels.ExchangeDataFSend(qMin,qMax,Exchange)
-    Parallels.ExchangeDataFRecv!(qMin,qMax,Exchange)  
+    Parallels.ExchangeDataFSendGPU(qMin,qMax,Exchange)
+    Parallels.ExchangeDataFRecvGPU!(qMin,qMax,Exchange)  
   end
 
 
