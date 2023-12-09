@@ -19,10 +19,10 @@ mpirun -n 6 julia --project Examples/testAdvectionCart.jl \
   --y0=0 \
   --nx=40 \
   --ny=40 \
-  --nz=1 \
+  --nz=40 \
   --OrdPoly=4 \
-  --BoundaryWE="" \
-  --BoundarySN="" \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
   --BoundaryBT="" \
   --HyperVisc=true \
   --HyperDDiv=1.e-4

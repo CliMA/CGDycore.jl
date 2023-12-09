@@ -80,8 +80,8 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
 
   F .= FT(0)
 
-  #KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
-  #KernelAbstractions.synchronize(backend)  
+  KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)  
 
   if Global.Model.HorLimit
     @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
