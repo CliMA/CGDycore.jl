@@ -1,3 +1,9 @@
+#function JacobiSphere3GPU!(X,dXdxI,J,FE::CGTri,F,z,zs,Rad)
+#
+#  backend = get_backend(X)
+#  FT = eltype(X)
+#
+#end
 function JacobiSphere3GPU!(X,dXdxI,J,FE,F,z,zs,Rad)
 
   backend = get_backend(X)

@@ -6,6 +6,7 @@ import ..Parallels
 using LinearAlgebra
 using RootSolvers
 using Dierckx
+using NetCDF
 using NCDatasets
 using PairedLinkedLists
 using KernelAbstractions

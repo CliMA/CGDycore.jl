@@ -204,21 +204,21 @@ Base.@kwdef struct ParamAdvectionSphereSlottedCylinder
   FacVel::Float64 = 10.0
   StreamFun::Bool = false
 end  
-Base.@kwdef struct ParamAdvectionSphereDCMIP
-  xC::Float64 = 0.0
-  H::Float64 = H
-  R_t::Float64 = RadEarth / 2.0
-  Z_t::Float64 = 1000.0
-  z_c::Float64 = 5.0e3
-  p_top::Float64 = p_top
-  T_0::Float64 = T_0
-  ScaleHeight::Float64 = ScaleHeight
-  b::Float64 = 0.2
-  Lon_c1::Float64 = 150.0/360.0 * 2 * pi
-  Lon_c2::Float64 = 210.0/360.0 * 2 * pi
-  Lat_c::Float64 = 0.0
-  tau::Float64 = tau
-  omega_0::Float64 = omega_0
+Base.@kwdef struct ParamAdvectionSphereDCMIP{FT}
+  xC::FT = 0.0
+  H::FT = H
+  R_t::FT = RadEarth / 2.0
+  Z_t::FT = 1000.0
+  z_c::FT = 5.0e3
+  p_top::FT = p_top
+  T_0::FT = T_0
+  ScaleHeight::FT = ScaleHeight
+  b::FT = 0.2
+  Lon_c1::FT = 150.0/360.0 * 2 * pi
+  Lon_c2::FT = 210.0/360.0 * 2 * pi
+  Lat_c::FT = 0.0
+  tau::FT = tau
+  omega_0::FT = omega_0
   TimeDependent::Bool = true
 end
 
@@ -296,9 +296,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "HillGaussCart"
     @show Problem
     Param = ParamHillGaussCart()
-  elseif Problem == "AdvectionSphereDCMIP"
+  elseif Problem == "AdvectionDCMIP"
     @show Problem
-    Param = ParamAdvectionSphereDCMIP()
+    Param = ParamAdvectionSphereDCMIP{FT}()
   elseif Problem == "AdvectionSphereGaussian"
     @show Problem
     Param = ParamAdvectionSphereGaussian()

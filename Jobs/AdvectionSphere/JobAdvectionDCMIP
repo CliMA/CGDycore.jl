@@ -1,0 +1,29 @@
+mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
+  --Problem="AdvectionDCMIP" \
+  --Device="CPU" \
+  --GPUType="Metal" \
+  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float32" \
+  --NumV=5 \
+  --NumTr=2 \
+  --Upwind=true \
+  --HorLimit=true \
+  --Decomp="EqualArea" \
+  --SimDays=1 \
+  --PrintSeconds=3600 \
+  --dtau=300 \
+  --IntMethod="SSPRungeKutta" \
+  --Table="SSP32" \
+  --TopoS="" \
+  --Stretch=false \
+  --GridType="CubedSphere" \
+  --nz=24 \
+  --nPanel=8 \
+  --H=1.2e4 \
+  --OrdPoly=4 \
+  --HyperVisc=true \
+  --HyperDCurl=7.e15 \
+  --HyperDGrad=7.e15 \
+  --HyperDDiv=7.e15
+
+

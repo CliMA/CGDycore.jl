@@ -1,4 +1,25 @@
-function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global,zs) 
+function DiscretizationCG(backend,FT,Jacobi,CG::CGTri,Exchange,Global,zs) 
+# Discretization
+  Grid = Global.Grid
+  DoF = CG.DoF
+  Metric = MetricStruct{FT}(backend,nQuad,OPZ,Global.Grid.NumFaces,nz)
+  F = zeros(3,3,NF)
+  FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
+  for iF = 1 : NF
+    F[1,1,iF] = Grid.Faces[iF].P[1].x  
+    F[1,2,iF] = Grid.Faces[iF].P[1].y  
+    F[1,3,iF] = Grid.Faces[iF].P[1].z  
+    F[2,1,iF] = Grid.Faces[iF].P[2].x  
+    F[2,2,iF] = Grid.Faces[iF].P[2].y  
+    F[2,3,iF] = Grid.Faces[iF].P[2].z  
+    F[3,1,iF] = Grid.Faces[iF].P[3].x  
+    F[3,2,iF] = Grid.Faces[iF].P[3].y  
+    F[3,3,iF] = Grid.Faces[iF].P[3].z  
+  end  
+  copyto!(FGPU,F)
+end
+
+function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs) 
 # Discretization
   Grid = Global.Grid
   OP=CG.OrdPoly+1

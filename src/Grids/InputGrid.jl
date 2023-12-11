@@ -152,7 +152,7 @@ function InputGrid(filename,OrientFace,Rad,Grid)
   return Grid
 end
 
-function InputGridH(filename,OrientFace,Rad,Grid)
+function InputGridH(backend,FT,filename,OrientFace,Rad,nz)
 
   Vertices = ncread(filename, "Vertices")
   NumNodes = size(Vertices,2)
@@ -161,33 +161,32 @@ function InputGridH(filename,OrientFace,Rad,Grid)
   ListFaces = ncread(filename, "Cells")
   NumFaces = size(ListFaces,2)
 
-  Grid.nBar=[ 0  1   0   1
+  nBar=[ 0  1   0   1
              -1  0  -1   0]
-  Grid.Dim = 3
-  Grid.Type = "Quad"
-  Grid.Rad = Rad
-  Grid.Form = "Sphere"
+  Dim = 3
+  Type = "Quad"
+  Rad = Rad
+  Form = "Sphere"
 
   Nodes = map(1:NumNodes) do i
     Node()
   end
   NodeNumber = 1
   for i = 1 : NumNodes
-    N = sphereDeg2cart(Vertices[1,i],Vertices[2,i],Rad)
+    N = Grids.sphereDeg2cart(Vertices[1,i],Vertices[2,i],Rad)
     Nodes[NodeNumber] = Node(Point(N),NodeNumber)
     NodeNumber = NodeNumber+1
   end
-  Grid.Nodes = Nodes
+  Nodes = Nodes
 
   Edges = map(1:NumEdges) do i
     Edge()
   end
   EdgeNumber = 1
   for i = 1 : NumEdges
-    Edges[EdgeNumber] = Edge(ListEdges[:,i],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber)  
+    Edges[EdgeNumber] = Edge(ListEdges[:,i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)  
     EdgeNumber = EdgeNumber+1
   end
-  Grid.Edges = Edges
 
   Faces = map(1:NumFaces) do i
     Face()
@@ -199,44 +198,63 @@ function InputGridH(filename,OrientFace,Rad,Grid)
     e2=Int(ListFaces[2,i])
     e3=Int(ListFaces[3,i])
     e4=Int(ListFaces[4,i])
-    (Faces[FaceNumber],Grid)=Face([e1,e2,e3,e4],Grid,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
+    (Faces[FaceNumber],Edges)=Face([e1,e2,e3,e4],Nodes,Edges,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
   end
-  Grid.Faces = Faces
 
-  Grid.NumNodes=size(Grid.Nodes,1);
-  Grid.NumEdges=size(Grid.Edges,1);
-  Grid.NumEdgesI=size(Grid.Edges,1);
-  Grid.NumEdgesB=0;
-  Grid.NumFaces=size(Grid.Faces,1);
-  Grid.Dim=3;
-  Grid=Orientation(Grid);
-  Grid=Renumbering(Grid);
-  Grid=FacesInNodes(Grid);
+  NumNodes=size(Nodes,1);
+  NumEdges=size(Edges,1);
+  NumEdgesI=size(Edges,1);
+  NumEdgesB=0;
+  NumFaces=size(Faces,1);
+  Dim=3;
+  Orientation!(Edges,Faces);
+  Renumbering!(Edges,Faces);
+  FacesInNodes!(Nodes,Faces)
 
-  #Boundary/Interior faces
-  BoundaryFaces = zeros(Int,0)
-  for iE = 1 : Grid.NumEdges
-    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-      for iN in Grid.Edges[iE].N
-        for iF in Grid.Nodes[iN].F
-          push!(BoundaryFaces,iF)
-        end
-      end
-    end
-  end
-  BoundaryFaces = unique(BoundaryFaces)
-  Grid.BoundaryFaces = BoundaryFaces
-  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
-  return Grid
+  zP=zeros(nz)
+  z=KernelAbstractions.zeros(backend,FT,nz+1)
+  dzeta=zeros(nz)
+  H=0.0
+  colors=[[]]
+  NumGhostFaces = 0
+  nBar3 = zeros(0,0)
+  nBar = zeros(0,0)
+  NumBoundaryFaces = 0
+
+  return GridStruct{FT,
+                    typeof(z)}(
+    nz,
+    zP,
+    z,
+    dzeta,
+    H,
+    NumFaces,
+    NumGhostFaces,
+    Faces,
+    NumEdges,
+    Edges,
+    NumNodes,
+    Nodes,
+    Form,
+    Type,
+    Dim,
+    Rad,
+    NumEdgesI,
+    NumEdgesB,
+    nBar3,
+    nBar,
+    colors,
+    NumBoundaryFaces,
+    )
 end
 
-function InputGridMsh(filename,OrientFace,Rad,Grid)
-  Grid.nBar=[ 0  1   0   1
+function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
+  nBar=[ 0  1   0   1
              -1  0  -1   0]
-  Grid.Dim = 3
-  Grid.Type = "Quad"
-  Grid.Rad = Rad
-  Grid.Form = "Sphere"
+  Dim = 3
+  Type = "Quad"
+  Rad = Rad
+  Form = "Sphere"
   f = open(filename)
   lines = readlines(f)
   close(f)
@@ -256,7 +274,6 @@ function InputGridMsh(filename,OrientFace,Rad,Grid)
     Nodes[NodeNumber] = Node(Point(N),NodeNumber)
     NodeNumber = NodeNumber+1
   end
-  Grid.Nodes = Nodes
   s1,s2,s3,s4 = split(lines[34 + 2*NumNodes]," ")
   NumFaces = parse(Int,s4)
   NodesF = zeros(Int,NumFaces,4)
@@ -307,10 +324,9 @@ function InputGridMsh(filename,OrientFace,Rad,Grid)
   end
   EdgeNumber = 1
   for i = 1 : NumEdges
-    Edges[EdgeNumber] = Edge(EdgeList[i],Grid,EdgeNumber,EdgeNumber,"",EdgeNumber)
+    Edges[EdgeNumber] = Edge(EdgeList[i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
     EdgeNumber += 1
   end
-  Grid.Edges = Edges
 
   Faces = map(1:NumFaces) do i
     Face()
@@ -341,36 +357,55 @@ function InputGridMsh(filename,OrientFace,Rad,Grid)
       e = [NodesF[iF,1],NodesF[iF,4]]
     end
     e4 = EdgeDict[e]
-    (Faces[FaceNumber],Grid)=Face([e1,e2,e3,e4],Grid,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
+    (Faces[FaceNumber],Edges)=Face([e1,e2,e3,e4],Nodes,Edges,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
     FaceNumber += 1
   end 
 
-  Grid.Faces = Faces
+  NumNodes=size(Nodes,1);
+  NumEdges=size(Edges,1);
+  NumEdgesI=size(Edges,1);
+  NumEdgesB=0;
+  NumFaces=size(Faces,1);
+  Dim=3;
+  Orientation!(Edges,Faces);
+  Renumbering!(Edges,Faces);
+  FacesInNodes!(Nodes,Faces)
 
-  Grid.NumNodes=size(Grid.Nodes,1);
-  Grid.NumEdges=size(Grid.Edges,1);
-  Grid.NumEdgesI=size(Grid.Edges,1);
-  Grid.NumEdgesB=0;
-  Grid.NumFaces=size(Grid.Faces,1);
-  Grid.Dim=3;
-  Grid=Orientation(Grid);
-  Grid=Renumbering(Grid);
-  Grid=FacesInNodes(Grid);
+  zP=zeros(nz)
+  z=KernelAbstractions.zeros(backend,FT,nz+1)
+  dzeta=zeros(nz)
+  H=0.0
+  colors=[[]]
+  NumGhostFaces = 0
+  nBar3 = zeros(0,0)
+  nBar = zeros(0,0)
+  NumBoundaryFaces = 0
 
-  #Boundary/Interior faces
-  BoundaryFaces = zeros(Int,0)
-  for iE = 1 : Grid.NumEdges
-    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-      for iN in Grid.Edges[iE].N
-        for iF in Grid.Nodes[iN].F
-          push!(BoundaryFaces,iF)
-        end
-      end
-    end
-  end
-  BoundaryFaces = unique(BoundaryFaces)
-  Grid.BoundaryFaces = BoundaryFaces
-  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
-  return Grid
+  return GridStruct{FT,
+                    typeof(z)}(
+    nz,
+    zP,
+    z,
+    dzeta,
+    H,
+    NumFaces,
+    NumGhostFaces,
+    Faces,
+    NumEdges,
+    Edges,
+    NumNodes,
+    Nodes,
+    Form,
+    Type,
+    Dim,
+    Rad,
+    NumEdgesI,
+    NumEdgesB,
+    nBar3,
+    nBar,
+    colors,
+    NumBoundaryFaces,
+    )
+
 
 end

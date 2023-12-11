@@ -13,11 +13,11 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   if GridType == "HealPix"
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
   # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-    Grid=Grids.InputGridH("Grid/mesh_H24_no_pp.nc", OrientFaceSphere,RadEarth,Grid)
+    Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "SQuadGen"
-    Grid = Grids.InputGrid("Grid/baroclinic_wave_2deg_x4.g",OrientFaceSphere,RadEarth,Grid)
+    Grid = Grids.InputGrid("Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "Msh"
-    Grid = Grids.InputGridMsh("Grid/Quad.msh",OrientFaceSphere,RadEarth,Grid)
+    Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "CubedSphere"
     Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "TriangularSphere"
@@ -29,6 +29,8 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
     end
     Grids.NumberingTriangularGrid!(IcosahedronGrid)
     Grid = Grids.TriangularGridToGrid(IcosahedronGrid,RadEarth,Grid)
+  else
+    @show "False GridType"
   end
 
   if Decomp == "Hilbert"
@@ -62,7 +64,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
-  CG = CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+  CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
   (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global)
 
   # Output partition
@@ -127,7 +129,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
-  CG = CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+  CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
   (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global)
 
   # Output partition

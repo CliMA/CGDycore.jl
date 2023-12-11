@@ -1,18 +1,56 @@
+abstract type FiniteElement end
+
 mutable struct RT0Struct{FT<:AbstractFloat,
-                        IT2<:AbstractArray}
+                        IT2<:AbstractArray} <: FiniteElement
   Glob::IT2                        
   Stencil::IT2
 end
 function RT0Struct{FT}(backend) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Stencil = KernelAbstractions.zeros(backend,Int,0,0)
- return CGStruct{FT,
+ return RT0Struct{FT,
                  typeof(Glob)}( 
     Glob,
     Stencil,
   )
 end
-mutable struct CGStruct{FT<:AbstractFloat,
+
+mutable struct CGTri{FT<:AbstractFloat,
+                     AT1<:AbstractArray,
+                     AT2<:AbstractArray} <: FiniteElement
+  OrdPoly::Int
+  OrdPolyZ::Int
+  DoF::Int
+  QuadPoint::AT2
+  QuadWeights::AT1
+end
+
+function CGTri{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
+
+  QuadPoint = KernelAbstractions.zeros(backend,FT,3,2)
+  QuadPoint[1,1] = -1
+  QuadPoint[1,2] = 1 
+  QuadPoint[2,1] = -1
+  QuadPoint[2,2] = -1
+  QuadPoint[3,1] = 1
+  QuadPoint[3,2] = -1
+  QuadWeights = KernelAbstractions.zeros(backend,FT,3)
+  QuadWeights[1] = 1/6
+  QuadWeights[2] = 2/3
+  QuadWeights[3] = 1/6
+  
+  return CGTRi{FT,
+               typeof(QuadWeights),
+               typeof(QuadPoint)}(
+  OrdPoly,
+  OrdPolyZ,
+  DoF,
+  QuadPoint,
+  QuadWeights,
+  )
+end               
+
+mutable struct CGQuad{FT<:AbstractFloat,
                         AT1<:AbstractArray,
                         AT2<:AbstractArray,
                         IT1<:AbstractArray,
@@ -45,7 +83,7 @@ mutable struct CGStruct{FT<:AbstractFloat,
     MasterSlave::IT1
 end
 
-function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
+function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
 # Discretization
   OP=OrdPoly+1
   OPZ=OrdPolyZ+1
@@ -100,7 +138,7 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
   copyto!(DSZ,DSZCPU)
   (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU) =
-    NumberingFemCG(Grid,OrdPoly)  
+    NumberingFemCGQuad(Grid,OrdPoly)  
 
   Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
   copyto!(Glob,GlobCPU)
@@ -141,7 +179,7 @@ function CGStruct{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   M = KernelAbstractions.zeros(backend,FT,nz,NumG)
   MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
   MW = KernelAbstractions.zeros(backend,FT,nz-1,NumG)
-  return CGStruct{FT,
+  return CGQuad{FT,
                  typeof(w),
                  typeof(DW),
                  typeof(MasterSlave),

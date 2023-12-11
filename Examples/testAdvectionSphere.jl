@@ -215,8 +215,8 @@ OrdPolyZ = 1
 (CG,Metric,Exchange,Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,
   Topography,Decomp,Model,Phys,RadEarth)
 
-if Problem == "DCMIPAdvection"
-  Profile = Examples.DCMIPAdvectionExample()(Param,Phys)
+if Problem == "AdvectionDCMIP"
+  Profile = Examples.AdvectionSphereDCMIP()(Param,Phys)
 elseif Problem == "AdvectionSphereSlottedCylinder"
   Profile = Examples.DivergentSphereExample()(Param,Phys)
 end  

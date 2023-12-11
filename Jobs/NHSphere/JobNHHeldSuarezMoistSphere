@@ -17,7 +17,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --VerticalDiffusion=true \
   --SurfaceFlux=true \
   --Coriolis=true \
-  --Upwind=false \
+  --Upwind=true \
   --HorLimit=true \
   --Equation=CompressibleMoist \
   --Microphysics=true \
