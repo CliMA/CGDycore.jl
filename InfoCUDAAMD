@@ -2,3 +2,8 @@ LUMI AMD
 10.798862 seconds (6.38 M allocations: 110.010 MiB, 0.20% gc time)
   0.135200 seconds (91.82 k allocations: 2.006 MiB)
 
+DKRZ CUDA  
+julia> include("TestAMD/testAMD.jl")
+  0.103126 seconds (7.10 k allocations: 485.938 KiB)
+  0.145442 seconds (7.10 k allocations: 485.938 KiB)
+

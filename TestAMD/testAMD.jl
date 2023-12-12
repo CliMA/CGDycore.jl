@@ -200,7 +200,7 @@ NumTr = 2
 Nz = 64
 NumberThreadGPU = 1024
 GlobCPU = zeros(Int,DoF,NF)
-read!("GlobInd",GlobCPU)
+read!("TestAMD/GlobInd",GlobCPU)
 
 
 
