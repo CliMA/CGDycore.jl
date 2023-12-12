@@ -13,3 +13,13 @@ include("Examples/TestHistogram.jl")
 CPU
 julia> include("Examples/TestHistogram.jl")
   3.429507 seconds (1.18 M allocations: 2.306 GiB, 18.29% gc time)
+
+
+NEU:
+DKRZ Hamburg
+julia> include("Examples/testAMD.jl")
+  0.000805 seconds (5.90 k allocations: 376.562 KiB)
+
+include("Examples/testAMD.jl")
+  0.001861 seconds (10.80 k allocations: 533.594 KiB)  
+

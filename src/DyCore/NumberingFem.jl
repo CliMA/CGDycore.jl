@@ -153,6 +153,8 @@ function NumberingFemCGQuad(Grid,PolyOrd)
       end  
     end
   end  
+  @show size(Glob),NumG
+  write("GlobInd",Glob)
     
   return (Glob,NumG,NumI,Stencil,MasterSlave)
 end
