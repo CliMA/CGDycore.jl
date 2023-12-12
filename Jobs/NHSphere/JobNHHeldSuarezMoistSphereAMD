@@ -16,7 +16,7 @@ mpirun -n 1 julia --project Examples/testNHSphereAMD.jl \
   --ModelType="VectorInvariant" \
   --VerticalDiffusion=true \
   --SurfaceFlux=true \
-  --Coriolis=true \
+  --Coriolis=false \
   --Upwind=false \
   --HorLimit=true \
   --Equation=CompressibleMoist \
