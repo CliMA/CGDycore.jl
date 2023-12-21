@@ -800,12 +800,12 @@ end
   ID = I + (J - 1) * N  
   @inbounds ind = Glob[ID,IF]
 
-  cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
-  uCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
-  vCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
-  RhoCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
-  wCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+1)
-  FCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
+  cCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+  uCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+  vCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+  RhoCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+  wCol = @localmem eltype(F) (N,N, ColumnTilesDim+1)
+  FCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
   if Iz <= Nz
     @inbounds wCol[I,J,iz+1] = w[Iz,ind]
     @inbounds RhoCol[I,J,iz+1] = Rho[Iz,ind]

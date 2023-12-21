@@ -4,12 +4,13 @@ mutable struct Face
   F::Int
   FG::Int
   n::Point
-  a::Float64
   Mid::Point
   OrientE::Array{Int, 1}
   Type::String
   P::Array{Point, 1}
   Stencil::Array{Int, 1}
+  Area::Float64
+  Radius::Float64
 end
 
 function Face()
@@ -18,24 +19,26 @@ function Face()
   F=0
   FG=0
   n=Point()
-  a=0.0
   Mid=Point()
   OrientE=zeros(Int,0)
   Type=""
   P=Array{Point}(undef, 0)
   Stencil=zeros(Int,0)
+  Area::Float64 = 0
+  Radius::Float64 = 0
   return Face(
     N,
     E,
     F,
     FG,
     n,
-    a,
     Mid,
     OrientE,
     Type,
     P,
     Stencil,
+    Area,
+    Radius,
   )
 end  
 
@@ -74,7 +77,6 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Flo
       end
     end
   end
-  F.a=0;
   F.N=zeros(Int,nE);
   F.N[1:2]=Edges[F.E[1]].N;
   @inbounds for iE=2:nE-1
@@ -95,16 +97,27 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Flo
       F.P[i]=Point(P[:,i])
     end
   end
-  PT=Point([0.0, 0.0, 0.0]);
-  @inbounds for i=1:nE-1
-    PT=PT+cross(F.P[i],F.P[i+1]);
+  if Type == "Sphere"
+    F.Area = AreaFace(F,Nodes)
+  else  
+    PT=Point([0.0, 0.0, 0.0]);
+    @inbounds for i=1:nE-1
+      PT=PT+cross(F.P[i],F.P[i+1]);
+    end
+    PT=PT+cross(F.P[nE],F.P[1]);
+    F.Area = 0.5*norm(PT);
   end
-  PT=PT+cross(F.P[nE],F.P[1]);
-  F.a=0.5*norm(PT);
   @inbounds for i=1:nE
     F.Mid=F.Mid+F.P[i];
   end
   F.Mid=F.Mid/Float64(nE);
+  if Type == "Sphere"
+    F.Mid = F.Mid / norm(F.Mid) * norm(F.P[1])  
+  end  
+  if Type == "Sphere"
+    F.Radius = RadiusFace(F,Nodes)  
+  else
+  end    
 
   NumE=size(EdgesF,1);
   F.n=cross(F.P[NumE],F.P[1]);

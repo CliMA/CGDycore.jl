@@ -382,13 +382,12 @@ function MidPoint(Face)
   M = Div(P, Norm(P) / (3.0 * Rad))
 end
 
-function TriangularGridToGrid(TriangularGrid,Rad,Grid)
-  Grid.nBar=[ 0  1   0   1
+function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
+  nBar=[ 0  1   0   1
              -1  0  -1   0]
-  Grid.Dim = 3
-  Grid.Type = "Tri"
-  Grid.Rad = Rad
-  Grid.Form = "Sphere"
+  Dim = 3
+  Type = "Tri"
+  Form = "Sphere"
 
   NumNodes = TriangularGrid.NumNodes
 
@@ -403,7 +402,6 @@ function TriangularGridToGrid(TriangularGrid,Rad,Grid)
     Nodes[NumNodes] = Node(NodeL.data.P,NumNodes)
     NodeL = NodeL.next
   end
-  Grid.Nodes = Nodes
 
   NumEdges = TriangularGrid.NumEdges
 
@@ -417,10 +415,9 @@ function TriangularGridToGrid(TriangularGrid,Rad,Grid)
     NumEdges += 1
     n1 = EdgeL.data.Node1.data.Number
     n2 = EdgeL.data.Node2.data.Number
-    Edges[NumEdges] = Edge([n1,n2],Grid,NumEdges,NumEdges,"",NumEdges)
+    Edges[NumEdges] = Edge([n1,n2],Nodes,NumEdges,NumEdges,"",NumEdges)
     EdgeL = EdgeL.next
   end
-  Grid.Edges = Edges
 
   NumFaces = TriangularGrid.NumFaces
 
@@ -435,34 +432,52 @@ function TriangularGridToGrid(TriangularGrid,Rad,Grid)
     e1 = FaceL.data.Edge1.data.Number
     e2 = FaceL.data.Edge2.data.Number
     e3 = FaceL.data.Edge3.data.Number
-    (Faces[NumFaces], Grid) = Face([e1,e2,e3],Grid,NumFaces,"",OrientFaceSphere;P=zeros(Float64,0,0))
+    (Faces[NumFaces], Edges) = Face([e1,e2,e3],Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
     FaceL = FaceL.next
   end
-  Grid.Faces = Faces
-  Grid.NumNodes = size(Grid.Nodes,1)
-  Grid.NumEdges = size(Grid.Edges,1)
-  Grid.NumFaces = size(Grid.Faces,1)
+  NumNodes = size(Nodes,1)
+  NumEdges = size(Edges,1)
+  NumFaces = size(Faces,1)
+  NumEdgesI = size(Edges,1)
+  NumEdgesB = 0
 
-  Grid=Renumbering(Grid)
-  @show "Triangular, vor FacesInNodes"
-  Grid=FacesInNodes(Grid)
+  Renumbering!(Edges,Faces)
+  FacesInNodes!(Nodes,Faces)
 
-  #Boundary/Interior faces
-  BoundaryFaces = zeros(Int,0)
-  @inbounds for iE = 1 : Grid.NumEdges
-    if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-      @inbounds for iN in Grid.Edges[iE].N
-        @inbounds for iF in Grid.Nodes[iN].F
-          push!(BoundaryFaces,iF)
-        end
-      end
-    end
-  end
-  BoundaryFaces = unique(BoundaryFaces)
-  Grid.BoundaryFaces = BoundaryFaces
-  Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
-
-  return Grid
+  zP=zeros(nz)
+  z=KernelAbstractions.zeros(backend,FT,nz+1)
+  dzeta=zeros(nz)
+  H=0.0
+  colors=[[]]
+  NumGhostFaces = 0
+  nBar3 = zeros(0,0)
+  nBar = zeros(0,0)
+  NumBoundaryFaces = 0
+  return GridStruct{FT,
+                    typeof(z)}(
+    nz,
+    zP,
+    z,
+    dzeta,
+    H,
+    NumFaces,
+    NumGhostFaces,
+    Faces,
+    NumEdges,
+    Edges,
+    NumNodes,
+    Nodes,
+    Form,
+    Type,
+    Dim,
+    Rad,
+    NumEdgesI,
+    NumEdgesB,
+    nBar3,
+    nBar,
+    colors,
+    NumBoundaryFaces,
+    )
 end
 
 function DelaunayGridToPolyGrid(TriangularGrid,Rad,Grid)
@@ -516,7 +531,7 @@ function DelaunayGridToPolyGrid(TriangularGrid,Rad,Grid)
   while ~attail(NodeL)
     NumFaces += 1
     e = NodeL.data.Edge
-    (Faces[NumFaces], Grid) = Face(e,Grid,NumFaces,"",OrientFaceSphere;P=zeros(Float64,0,0))
+    (Faces[NumFaces], Grid) = Face(e,Grid,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
     NodeL = NodeL.next
   end
   Grid.Faces = Faces
@@ -525,7 +540,6 @@ function DelaunayGridToPolyGrid(TriangularGrid,Rad,Grid)
   Grid.NumFaces = size(Grid.Faces,1)
 
   Grid=Renumbering(Grid)
-  @show "Triangular, vor FacesInNodes"
   Grid=FacesInNodes(Grid)
 
   #Boundary/Interior faces

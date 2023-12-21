@@ -18,8 +18,8 @@ function (profile::DivergentSphereExample)(Param,Phys)
     lat2 = Param.lat2
     R = FT(1)
     r = FT(0.5) * R
-    r1 = R * Grids.GreatCircle(Lon,Lat,lon1,lat1)
-    r2 = R * Grids.GreatCircle(Lon,Lat,lon2,lat2)
+    r1 = R * Grids.SizeGreatCircle(Lon,Lat,lon1,lat1)
+    r2 = R * Grids.SizeGreatCircle(Lon,Lat,lon2,lat2)
     if r1 <= r && abs(Lon - lon1) >= r / (FT(6.0) * R)
       Tr = FT(1.0)
     elseif r2 <= r && abs(Lon - lon2) >= r / (FT(6.0) * R)
@@ -85,8 +85,8 @@ function (profile::AdvectionSphereDCMIP)(Param,Phys)
     w = -omega / RhoZ / Phys.Grav
     zd = Z - Param.z_c
     # great circle distances
-    rd1 = Phys.RadEarth * Grids.GreatCircle(Param.Lon_c1,Param.Lat_c,Lon,Lat)
-    rd2 = Phys.RadEarth * Grids.GreatCircle(Param.Lon_c2,Param.Lat_c,Lon,Lat)
+    rd1 = Phys.RadEarth * Grids.SizeGreatCircle(Param.Lon_c1,Param.Lat_c,Lon,Lat)
+    rd2 = Phys.RadEarth * Grids.SizeGreatCircle(Param.Lon_c2,Param.Lat_c,Lon,Lat)
     d1 = min(FT(1), (rd1 / Param.R_t)^2 + (zd / Param.Z_t)^2)
     d2 = min(FT(1), (rd2 / Param.R_t)^2 + (zd / Param.Z_t)^2)
     Tr1 = FT(0.5) * (FT(1) + cos(FT(pi) * d1)) + FT(0.5) * (FT(1) + cos(FT(pi) * d2))

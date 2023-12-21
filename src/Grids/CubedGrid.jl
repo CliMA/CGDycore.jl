@@ -2,7 +2,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   nBar=[ 0  1   0   1
         -1  0  -1   0];
   Dim=3;
-  Type="Quad";
+  Type="Sphere";
   Rad=Rad;
   Form="Sphere";
   dd=2.0e0/n;

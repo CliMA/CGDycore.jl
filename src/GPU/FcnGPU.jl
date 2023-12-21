@@ -115,6 +115,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   J = Metric.J
   NF = Global.Grid.NumFaces
   NBF = Global.Grid.NumBoundaryFaces
+  @views dXdxI_B = dXdxI[:,:,:,:,:,1:NBF]
+  @views J_B = J[:,:,:,1:NBF]
+  @views X_B = X[:,:,:,:,1:NBF]
+  @views Glob_B = Glob[:,1:NBF]
+
   @views dXdxI_I = dXdxI[:,:,:,:,:,NBF+1:NF]
   @views J_I = J[:,:,:,NBF+1:NF]
   @views X_I = X[:,:,:,:,NBF+1:NF]

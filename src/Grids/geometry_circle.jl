@@ -1,51 +1,7 @@
-import Base: -
-import Base: /
-import Base: +
-import Base: *
-import LinearAlgebra: norm
-import LinearAlgebra: dot
-
-struct Point
-  x::Float64
-  y::Float64
-  z::Float64
-end
-
 mutable struct GreatCircle
   P1::Point
   P2::Point
 end
-
-
-function Point()
-  return Point(
-    0.0,
-    0.0,
-    0.0,
-  )
-end
-
-function Point(P::Array{Float64, 1})
-  return Point(
-    P[1],
-    P[2],
-    P[3],
-  )
-end
--(P::Point)=Point([-P.x,-P.y,-P.z])
--(P1::Point,P2::Point)=Point([P1.x-P2.x,P1.y-P2.y,P1.z-P2.z])
-+(P1::Point,P2::Point)=Point([P1.x+P2.x,P1.y+P2.y,P1.z+P2.z])
-/(P::Point,s::Float64)=Point([P.x/s,P.y/s,P.z/s])
-*(s::Float64,P::Point)=Point([s*P.x,s*P.y,s*P.z])
-*(P::Point,s::Float64)=Point([s*P.x,s*P.y,s*P.z])
-norm(P::Point)=sqrt(P.x*P.x + P.y*P.y + P.z*P.z)
-dot(P1::Point,P2::Point)=P1.x*P2.x + P1.y*P2.y + P1.z*P2.z
-cross(P1::Point,P2::Point)=Point([P1.y*P2.z-P1.z*P2.y,P1.z*P2.x-P1.x*P2.z,P1.x*P2.y-P1.y*P2.x])
-
-function normalize(P)
-  P = P / norm(P)
-end  
-
 
 function sphere2cart(lam,phi,r)
 x=cos(lam)*cos(phi)*r
@@ -106,11 +62,11 @@ end
 return (float(lam),float(phi),r)
 end
 
-function SizeGreatCircle(C) 
-  return acos(dot(C.P1,C.P2)/(norm(P1)*norm(P2)))
+function SizeGreatCircle(C::GreatCircle) 
+  return acos(dot(C.P1,C.P2)/(norm(C.P1)*norm(C.P2)))
 end  
 
-function GreatCircle(Lon1,Lat1,Lon2,Lat2) 
+function SizeGreatCircle(Lon1,Lat1,Lon2,Lat2) 
   return acos(sin(Lat1) * sin(Lat2) +
         cos(Lat1) * cos(Lat2) * cos(Lon2-Lon1))
 end  
@@ -131,12 +87,15 @@ function AreaFace(Face,Nodes)
   end  
   return Area
 end
+
 function RadiusFace(Face,Nodes)
   Radius = 0
   for N in Face.N
-    Radius = max(Radius, GreatCircle(Face.Mid,Nodes[N].P))
+    Radius = max(Radius, SizeGreatCircle(GreatCircle(Face.Mid,Nodes[N].P)))
   end
   return Radius
 end  
 
-
+function inLeftHemisphere(P,C,offset)
+  dot(cross(C.P1,C.P2),P) >= offset
+end  

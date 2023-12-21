@@ -246,7 +246,7 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
   )  
 end
 
-function vtkSkeleton(vtkCache,filename, part::Int, nparts::Int)
+function vtkSkeleton(vtkCache,filename, part::Int, nparts::Int, c)
   cells = vtkCache.cells
   pts = vtkCache.pts
 
@@ -254,6 +254,7 @@ function vtkSkeleton(vtkCache,filename, part::Int, nparts::Int)
   stepS="$step"
   vtk_filename_noext = filename * stepS;
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  vtk["c", VTKCellData()] = c
   outfiles=vtk_save(vtk);
   return outfiles::Vector{String}
 end  

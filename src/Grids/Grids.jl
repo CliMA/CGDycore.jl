@@ -14,8 +14,13 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using CUDA
 using StaticArrays
 
+EPS::Float64 = eps(Float64)
+EPS2 = EPS * EPS
+MAXSIZE::Int = 10
 
-include("Geometry.jl")
+
+include("point.jl")
+include("geometry_circle.jl")
 include("Node.jl")
 include("Edge.jl")
 include("Face.jl")
@@ -41,5 +46,7 @@ include("Connectivity.jl")
 include("SubGrid.jl")
 include("Triangular.jl")
 include("InputGrid.jl")
+include("polygon.jl")
+include("intersect.jl")
 
 end

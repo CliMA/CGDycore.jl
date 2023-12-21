@@ -33,3 +33,17 @@ GPU  Time
   1  308 
   2  166
   4  102
+
+
+LUMI
+[ Info: Iteration: 209.0 took 0.158415134, 3.6284722222222223% complete
+  0.014235 seconds (8.78 k allocations: 177.258 KiB)
+  0.019856 seconds (15.16 k allocations: 415.656 KiB)
+  0.000303 seconds (294 allocations: 11.555 KiB)
+  0.024612 seconds (14.60 k allocations: 260.508 KiB)
+  0.005107 seconds (3.41 k allocations: 82.898 KiB)
+  0.019861 seconds (15.12 k allocations: 414.953 KiB)
+  0.022027 seconds (13.08 k allocations: 233.789 KiB)
+  0.007595 seconds (4.87 k allocations: 108.492 KiB)  Prepare
+  0.019825 seconds (15.11 k allocations: 414.672 KiB) Fcn
+  0.024533 seconds (14.57 k allocations: 259.945 KiB) Solve
