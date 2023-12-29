@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
+  Thermodynamics, Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
 using MPI
 using Base
 using CUDA
@@ -37,6 +37,7 @@ Curl = parsed_args["Curl"]
 ModelType = parsed_args["ModelType"]
 Equation = parsed_args["Equation"]
 Microphysics = parsed_args["Microphysics"]
+TypeMicrophysics = parsed_args["TypeMicrophysics"]
 RelCloud = parsed_args["RelCloud"]
 Rain = parsed_args["Rain"]
 #Orography
@@ -229,6 +230,9 @@ if Problem == "Stratified" || Problem == "HillAgnesiXCart"
   Profile = Examples.StratifiedExample()(Param,Phys)
 elseif Problem == "WarmBubble2DXCart"
   Profile = Examples.WarmBubbleCartExample()(Param,Phys)
+elseif Problem == "BryanFritschCart"
+  ProfileBF = Models.TestRes(Phys)
+  Profile = Examples.BryanFritsch(ProfileBF)(Param,Phys)
 end
 
 
@@ -243,6 +247,26 @@ elseif Equation == "CompressibleMoist"
   Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos+NumV,Model.RhoCPos+NumV)
   Model.Pressure = Pressure
+end
+
+# Pressure
+if Equation == "Compressible"
+  Pressure = Models.Compressible()(Phys)
+  Model.Pressure = Pressure
+elseif Equation == "CompressibleMoist"
+  Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoVPos+NumV,Model.RhoCPos+NumV)
+  Model.Pressure = Pressure
+end
+# Microphysics
+if Microphysics
+  if TypeMicrophysics == "SimpleMicrophysics"
+    MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
+      Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
+    Model.MicrophysicsSource = MicrophysicsSource
+  else
+    @show "False Type Microphysics"
+  end
 end
 
 # Forcing

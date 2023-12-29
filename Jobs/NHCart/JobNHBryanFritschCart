@@ -1,5 +1,8 @@
-mpirun -n 6 julia --project Examples/testNHCart.jl \
+mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Problem="BryanFritschCart" \
+  --Device="CPU" \
+  --GPUType="CUDA" \
+  --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
   --ProfRho="BryanFritsch" \
@@ -17,6 +20,7 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --ModelType="VectorInvariant" \
   --Equation="CompressibleMoist" \
   --Microphysics=true \
+  --TypeMicrophysics="SimpleMicrophysics" \
   --Rain=0.0 \
   --RelCloud=1.e0 \
   --dtau=.2 \

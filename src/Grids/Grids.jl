@@ -12,7 +12,11 @@ using PairedLinkedLists
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using CUDA
-using StaticArrays
+using StaticArrays    
+using NearestNeighbors
+using Distances
+using LinearAlgebra
+using SparseArrays
 
 EPS::Float64 = eps(Float64)
 EPS2 = EPS * EPS
@@ -48,5 +52,6 @@ include("Triangular.jl")
 include("InputGrid.jl")
 include("polygon.jl")
 include("intersect.jl")
+include("interpolate.jl")
 
 end

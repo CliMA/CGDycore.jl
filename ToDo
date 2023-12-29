@@ -47,3 +47,19 @@ LUMI
   0.007595 seconds (4.87 k allocations: 108.492 KiB)  Prepare
   0.019825 seconds (15.11 k allocations: 414.672 KiB) Fcn
   0.024533 seconds (14.57 k allocations: 259.945 KiB) Solve
+
+
+TestKernels
+CUDA
+julia> include("TestAMD/testKernels.jl")
+  0.110832 seconds (8.10 k allocations: 668.750 KiB)
+  0.061212 seconds (8.10 k allocations: 648.438 KiB)
+  0.091087 seconds (7.10 k allocations: 503.125 KiB)
+  0.073409 seconds (9.30 k allocations: 601.562 KiB)
+
+AMD
+WARNING: using KernelAbstractions.GPU in module Main conflicts with an existing identifier.
+  0.159801 seconds (106.89 k allocations: 2.409 MiB)
+  0.151442 seconds (101.26 k allocations: 2.296 MiB)
+  0.183926 seconds (120.29 k allocations: 2.497 MiB)
+  0.164235 seconds (109.90 k allocations: 2.370 MiB)

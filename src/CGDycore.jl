@@ -20,6 +20,7 @@ using PairedLinkedLists
 include("DG/DG.jl")
 include("Parallels/Parallels.jl")
 include("Grids/Grids.jl")
+include("Thermodynamics/Thermodynamics.jl")
 include("Examples/Examples.jl")
 include("Models/Models.jl")
 include("Statistics/Statistics.jl")

@@ -177,6 +177,7 @@ struct PhysParameters{FT<:AbstractFloat}
   kappa::FT
   Omega::FT
   T0::FT
+  T00::FT
 end
 function PhysParameters{FT}() where FT<:AbstractFloat
   RadEarth = 6.37122e+6
@@ -195,6 +196,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   kappa = Rd / Cpd
   Omega = 2 * pi / 24.0 / 3600.0
   T0 = 273.15
+  T00 = 273.15 -35.0
  return PhysParameters{FT}(
   RadEarth,
   Grav,
@@ -211,6 +213,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   kappa,
   Omega,
   T0,
+  T00,
   )
 end 
 

@@ -134,6 +134,47 @@ function (profile::LimAdvectionCartExample)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct BryanFritsch <: Example 
+  ProfileBF::Array{Float32,2}
+end
+
+function (profile::BryanFritsch)(Param,Phys)
+  (; ProfileBF) = profile
+  function local_profile(x,time)
+    FT = eltype(x)
+    z = x[3]
+    @views zP = ProfileBF[:,1]
+    iz = 1000
+    for i = 2:size(zP,1)
+      if z <= zP[i]
+        iz = i - 1
+        break
+      end
+    end
+    z_l = zP[iz]
+    Rho_l = ProfileBF[iz,2]
+    Theta_l = ProfileBF[iz,3]
+    RhoV_l = ProfileBF[iz,4]
+    RhoC_l = ProfileBF[iz,5]
+    z_r = zP[iz+1]
+    Rho_r = ProfileBF[iz+1,2]
+    Theta_r = ProfileBF[iz+1,3]
+    RhoV_r = ProfileBF[iz+1,4]
+    RhoC_r = ProfileBF[iz+1,5]
+    Rho = (Rho_r * (z - z_l) + Rho_l * (z_r - z)) / (z_r - z_l)
+    Theta = (Theta_r * (z - z_l) + Theta_l * (z_r - z)) / (z_r - z_l)
+    RhoV = (RhoV_r * (z - z_l) + RhoV_l * (z_r - z)) / (z_r - z_l)
+    RhoC = (RhoC_r * (z - z_l) + RhoC_l * (z_r - z)) / (z_r - z_l)
+
+    Rho, Th, qV, qC = PerturbMoistProfile(x, Rho, Rho*Theta, RhoV, RhoC, Phys, Param)
+    u = FT(0)
+    v = FT(0)
+    w = FT(0)
+    return (Rho,u,v,w,Th,qV,qC)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct WarmBubbleCartExample <: Example end
 
 function (profile::WarmBubbleCartExample)(Param,Phys)

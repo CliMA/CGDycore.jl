@@ -26,7 +26,7 @@ function ResMoisture(z::FT,y::Array{FT,1},yPrime::Array{FT,1},Phys) where {FT<:R
   rho_d=rho / (1 + r_t)
   p_d=Phys.Rd*rho_d*T
   Δcp=Phys.Cpv-Phys.Cpl
-  p_vs=fpvs(T,Phys)
+  p_vs=Thermodynamics.fpvs(T,Phys.T0)
   L=LLv(T,Phys)
   F[1]=pPrime+Phys.Grav*rho
   F[2]=p-(Phys.Rd*rho_d+Phys.Rv*rho_v)*T
@@ -97,7 +97,7 @@ function TestRes(Phys)
   RhoD = Rho / (1.0 + r_t)
   RhoV = RhoD * r_v
   RhoC = RhoD * r_c
-  ThetaV = fThetaV(Rho,RhoV,RhoC,T,Phys)
+  ThetaV = Thermodynamics.fThetaV(Rho,RhoV,RhoC,T,Phys)
   Prof[1,1] = z
   Prof[1,2] = Rho
   Prof[1,3] = ThetaV
@@ -121,7 +121,7 @@ function TestRes(Phys)
     RhoD = Rho / (1.0 + r_t)
     RhoV = RhoD * r_v
     RhoC = RhoD * r_c
-    ThetaV = fThetaV(Rho,RhoV,RhoC,T,Phys)
+    ThetaV = Thermodynamics.fThetaV(Rho,RhoV,RhoC,T,Phys)
     Prof[i+1,1] = z
     Prof[i+1,2] = Rho
     Prof[i+1,3] = ThetaV

@@ -100,7 +100,7 @@ if Device == "CPU"
 elseif Device == "GPU" 
   if GPUType == "CUDA"
     backend = CUDABackend()
-    CUDA.allowscalar(false)
+    CUDA.allowscalar(true)
 #   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
     backend = ROCBackend()

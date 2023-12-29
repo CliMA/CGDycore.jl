@@ -259,7 +259,7 @@ function vtkSkeleton(vtkCache,filename, part::Int, nparts::Int, c)
   return outfiles::Vector{String}
 end  
 
-function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, nparts::Int)
+function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global, part::Int, nparts::Int)
 
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
@@ -355,8 +355,11 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, npart
         ThPos = Global.Model.ThPos
         RhoVPos = Global.Model.RhoVPos
         RhoCPos = Global.Model.RhoCPos
-        @views InterpolateThE!(ThECell,U[:,:,ThPos],U[:,:,RhoPos],U[:,:,NumV+RhoVPos],U[:,:,NumV+RhoCPos],
-          vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+#       @views InterpolateThE!(ThECell,U[:,:,ThPos],U[:,:,RhoPos],U[:,:,NumV+RhoVPos],U[:,:,NumV+RhoCPos],
+#         vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+        @views InterpolateThEGPU!(cCell,U[:,:,ThPos],U[:,:,RhoPos],U[:,:,NumV+RhoVPos],U[:,:,NumV+RhoCPos],
+          vtkInter,CG.Glob,Phys)
+        copyto!(ThECell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
         vtk["ThE", VTKCellData()] = ThECell 
       end    
     elseif str == "ThDiff"  

@@ -136,6 +136,31 @@ end
     end
   end
 end
+@kernel function InterpolateThEKernel!(cCell,@Const(RhoTh),@Const(Rho),@Const(RhoV),@Const(RhoC),@Const(Inter),@Const(Glob),@Const(Phys))
+  I, J, iz   = @index(Local,  NTuple)
+  _,_,Iz,IF = @index(Global,  NTuple)
+
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
+  @uniform N = size(Inter,3)
+
+  if Iz <= Nz
+    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    iD = 0
+    for jP = 1 : N
+      for iP = 1 : N
+        iD += 1
+        @inbounds ind = Glob[iD,IF]
+        cLoc = Thermodynamics.fThE(Rho[Iz,ind],RhoV[Iz,ind],RhoC[Iz,ind],RhoTh[Iz,ind],Phys)
+        @inbounds  cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * cLoc
+      end
+    end
+  end    
+end     
 
 function InterpolateVortGPU!(Vort,U,Inter,FE,Metric)
 
@@ -224,3 +249,21 @@ function InterpolateWBGPU!(cCell,u,v,w,Inter,dXdxI,Glob)
   KInterpolateWBKernel!(cCell,u,v,w,Inter,dXdxI,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end
+
+function InterpolateThEGPU!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys)
+
+  backend = get_backend(cCell)
+  FT = eltype(cCell)
+
+  OrdPrint = size(Inter,1)
+  NF = size(Glob,2)
+  Nz = size(RhoTh,1)
+  # Ranges
+  NzG = min(div(256,OrdPrint*OrdPrint),Nz)
+  group = (OrdPrint, OrdPrint, NzG, 1)
+  ndrange = (OrdPrint, OrdPrint, Nz, NF)
+
+  KInterpolateThEKernel! = InterpolateThEKernel!(backend,group)
+  KInterpolateThEKernel!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end  
