@@ -127,6 +127,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   @views Glob_I = Glob[:,NBF+1:NF]
   lat = Metric.lat  
   dz = Metric.dz  
+  zP = Metric.zP  
+  @show size(zP)
   DoF = FE.DoF
   N = size(FE.DS,1)
   Nz = size(F,1)
@@ -137,6 +139,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   Temp1 = Cache.Temp1
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Force = Global.Model.Force
+  Damp = Global.Model.Damp
   MicrophysicsSource = Global.Model.MicrophysicsSource
 
   KoeffCurl = Global.Model.HyperDCurl
@@ -330,6 +333,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     KMicrophysicsKernel!(MicrophysicsSource,F,U,p,ndrange=ndrangeG)
     KernelAbstractions.synchronize(backend)
   end
+
+  if Global.Model.Damping
+    KDampKernel! = DampKernel!(backend, groupG)
+    KDampKernel!(Damp,F,U,zP,ndrange=ndrangeG)
+    KernelAbstractions.synchronize(backend)
+  end  
 
 end
 

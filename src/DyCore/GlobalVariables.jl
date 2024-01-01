@@ -294,6 +294,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   InitialProfile::Any
   Eddy::Any
   Force::Any
+  Damp::Any
   Pressure::Any
   MicrophysicsSource::Any
   SurfaceFluxRhs::Any
@@ -362,6 +363,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   InitialProfile = ""
   Eddy = ""
   Force = ""
+  Damp = ""
   Pressure = ""
   MicrophysicsSource = ""
   SurfaceFluxRhs = ""
@@ -428,6 +430,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    InitialProfile,
    Eddy,
    Force,
+   Damp,
    Pressure,
    MicrophysicsSource,
    SurfaceFluxRhs,

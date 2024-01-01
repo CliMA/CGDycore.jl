@@ -713,6 +713,7 @@ function ExchangeDataFSendGPU(cFMin,cFMax,Exchange)
   @inbounds for iP in NeiProc
     ndrange = (nz,length(IndSendBufferF[iP]),nT)
     KExchangeDataFSendKernel!(cFMin,cFMax,SendBufferF[iP],IndSendBufferF[iP],ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
   end
 #  @inbounds for iP in NeiProc
 #    i = 0
@@ -793,6 +794,7 @@ function ExchangeDataFRecvGPU!(cFMin,cFMax,Exchange)
   @inbounds for iP in NeiProc
     ndrange = (Nz,length(IndRecvBufferF[iP]),nT)
     KExchangeDataFRecvKernel!(cFMin,cFMax,RecvBufferF[iP],IndRecvBufferF[iP],ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
   end
 # #Receive
 # @inbounds for iP in NeiProc
@@ -919,6 +921,7 @@ function ExchangeData3DSendGPU(U,Exchange)
   @inbounds for iP in NeiProc
     ndrange = (Nz,length(IndSendBuffer[iP]),nT)
     KExchangeData3DSendKernel!(U,SendBuffer3[iP],IndSendBuffer[iP],ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
   end
 
   i = 0
@@ -1017,6 +1020,7 @@ function ExchangeData3DRecvGPU!(U,Exchange)
   @inbounds for iP in NeiProc
     ndrange = (Nz,length(IndRecvBuffer[iP]),nT)
     KExchangeData3DRecvKernel!(U,RecvBuffer3[iP],IndRecvBuffer[iP],ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
   end
 end  
 

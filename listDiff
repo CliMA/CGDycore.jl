@@ -1,0 +1,712 @@
+diff -r src/CGDycore.jl /Users/knoth/src/CGDycore.jl
+23d22
+< include("Thermodynamics/Thermodynamics.jl")
+diff -r src/DyCore/GlobalVariables.jl /Users/knoth/src/DyCore/GlobalVariables.jl
+180d179
+<   T00::FT
+199d197
+<   T00 = 273.15 -35.0
+216d213
+<   T00,
+Only in src/Examples: AA
+diff -r src/Examples/Examples.jl /Users/knoth/src/Examples/Examples.jl
+4d3
+< import ..Thermodynamics
+10d8
+< include("PerturbProfile.jl")
+Only in src/Examples: PerturbProfile.jl
+diff -r src/Examples/initial.jl /Users/knoth/src/Examples/initial.jl
+21,22c21,22
+<     r1 = R * Grids.SizeGreatCircle(Lon,Lat,lon1,lat1)
+<     r2 = R * Grids.SizeGreatCircle(Lon,Lat,lon2,lat2)
+---
+>     r1 = R * Grids.GreatCircle(Lon,Lat,lon1,lat1)
+>     r2 = R * Grids.GreatCircle(Lon,Lat,lon2,lat2)
+88,89c88,89
+<     rd1 = Phys.RadEarth * Grids.SizeGreatCircle(Param.Lon_c1,Param.Lat_c,Lon,Lat)
+<     rd2 = Phys.RadEarth * Grids.SizeGreatCircle(Param.Lon_c2,Param.Lat_c,Lon,Lat)
+---
+>     rd1 = Phys.RadEarth * Grids.GreatCircle(Param.Lon_c1,Param.Lat_c,Lon,Lat)
+>     rd2 = Phys.RadEarth * Grids.GreatCircle(Param.Lon_c2,Param.Lat_c,Lon,Lat)
+137,177d136
+< Base.@kwdef struct BryanFritsch <: Example 
+<   ProfileBF::Array{Float32,2}
+< end
+< 
+< function (profile::BryanFritsch)(Param,Phys)
+<   (; ProfileBF) = profile
+<   function local_profile(x,time)
+<     FT = eltype(x)
+<     z = x[3]
+<     @views zP = ProfileBF[:,1]
+<     iz = 1000
+<     for i = 2:size(zP,1)
+<       if z <= zP[i]
+<         iz = i - 1
+<         break
+<       end
+<     end
+<     z_l = zP[iz]
+<     Rho_l = ProfileBF[iz,2]
+<     Theta_l = ProfileBF[iz,3]
+<     RhoV_l = ProfileBF[iz,4]
+<     RhoC_l = ProfileBF[iz,5]
+<     z_r = zP[iz+1]
+<     Rho_r = ProfileBF[iz+1,2]
+<     Theta_r = ProfileBF[iz+1,3]
+<     RhoV_r = ProfileBF[iz+1,4]
+<     RhoC_r = ProfileBF[iz+1,5]
+<     Rho = (Rho_r * (z - z_l) + Rho_l * (z_r - z)) / (z_r - z_l)
+<     Theta = (Theta_r * (z - z_l) + Theta_l * (z_r - z)) / (z_r - z_l)
+<     RhoV = (RhoV_r * (z - z_l) + RhoV_l * (z_r - z)) / (z_r - z_l)
+<     RhoC = (RhoC_r * (z - z_l) + RhoC_l * (z_r - z)) / (z_r - z_l)
+< 
+<     Rho, Th, qV, qC = PerturbMoistProfile(x, Rho, Rho*Theta, RhoV, RhoC, Phys, Param)
+<     u = FT(0)
+<     v = FT(0)
+<     w = FT(0)
+<     return (Rho,u,v,w,Th,qV,qC)
+<   end
+<   return local_profile
+< end
+< 
+379c338
+<     temp = Param.T_Init + Param.LapseRate * z + rand(FT) * FT(0.01) * (z < FT(5000))
+---
+>     temp = Param.T_Init + Param.LapseRate * z #+ rand(FT) * FT(0.1) * (z < FT(5000))
+diff -r src/GPU/FcnGPU.jl /Users/knoth/src/GPU/FcnGPU.jl
+107d106
+<   @show sum(abs.(U))
+119,123d117
+<   @views dXdxI_B = dXdxI[:,:,:,:,:,1:NBF]
+<   @views J_B = J[:,:,:,1:NBF]
+<   @views X_B = X[:,:,:,:,1:NBF]
+<   @views Glob_B = Glob[:,1:NBF]
+< 
+diff -r src/GPU/OperatorKernel.jl /Users/knoth/src/GPU/OperatorKernel.jl
+803,808c803,808
+<   cCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+<   uCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+<   vCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+<   RhoCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+<   wCol = @localmem eltype(F) (N,N, ColumnTilesDim+1)
+<   FCol = @localmem eltype(F) (N,N, ColumnTilesDim+2)
+---
+>   cCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
+>   uCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
+>   vCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
+>   RhoCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
+>   wCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+1)
+>   FCol = @localmem eltype(F) (N+BANK,N, ColumnTilesDim+2)
+diff -r src/Grids/CubedGrid.jl /Users/knoth/src/Grids/CubedGrid.jl
+5c5
+<   Type="Sphere";
+---
+>   Type="Quad";
+diff -r src/Grids/Face.jl /Users/knoth/src/Grids/Face.jl
+6a7
+>   a::Float64
+12,13d12
+<   Area::Float64
+<   Radius::Float64
+21a21
+>   a=0.0
+27,28d26
+<   Area::Float64 = 0
+<   Radius::Float64 = 0
+34a33
+>     a,
+40,41d38
+<     Area,
+<     Radius,
+79a77
+>   F.a=0;
+100,108c98,100
+<   if Type == "Sphere"
+<     F.Area = AreaFace(F,Nodes)
+<   else  
+<     PT=Point([0.0, 0.0, 0.0]);
+<     @inbounds for i=1:nE-1
+<       PT=PT+cross(F.P[i],F.P[i+1]);
+<     end
+<     PT=PT+cross(F.P[nE],F.P[1]);
+<     F.Area = 0.5*norm(PT);
+---
+>   PT=Point([0.0, 0.0, 0.0]);
+>   @inbounds for i=1:nE-1
+>     PT=PT+cross(F.P[i],F.P[i+1]);
+109a102,103
+>   PT=PT+cross(F.P[nE],F.P[1]);
+>   F.a=0.5*norm(PT);
+114,120d107
+<   if Type == "Sphere"
+<     F.Mid = F.Mid / norm(F.Mid) * norm(F.P[1])  
+<   end  
+<   if Type == "Sphere"
+<     F.Radius = RadiusFace(F,Nodes)  
+<   else
+<   end    
+diff -r src/Grids/Geometry.jl /Users/knoth/src/Grids/Geometry.jl
+14,19d13
+< mutable struct GreatCircle
+<   P1::Point
+<   P2::Point
+< end
+< 
+< 
+45,47d38
+< function normalize(P)
+<   P = P / norm(P)
+< end  
+49d39
+< 
+109,111d98
+< function SizeGreatCircle(C) 
+<   return acos(dot(C.P1,C.P2)/(norm(P1)*norm(P2)))
+< end  
+117,141d103
+< 
+< function AreaSphericalTriangle(P1,P2,P3)
+<   P1P2P3 = dot(P1,P2) + dot(P2,P3) + dot(P3,P1)
+<   P1_P2P3 = dot(P1,cross(P2,P3))
+<   area = 2.0 * atan(abs(P1_P2P3)  / (1.0 + P1P2P3))
+< end  
+< 
+< function AreaFace(Face,Nodes)
+<   P1 = Nodes[Face.N[1]].P
+<   Area = 0.0
+<   for i = 2 : length(Face.N) -1
+<     P2 = Nodes[Face.N[i]].P  
+<     P3 = Nodes[Face.N[i+1]].P  
+<     Area += AreaSphericalTriangle(P1,P2,P3)
+<   end  
+<   return Area
+< end
+< function RadiusFace(Face,Nodes)
+<   Radius = 0
+<   for N in Face.N
+<     Radius = max(Radius, GreatCircle(Face.Mid,Nodes[N].P))
+<   end
+<   return Radius
+< end  
+< 
+diff -r src/Grids/Grids.jl /Users/knoth/src/Grids/Grids.jl
+15,19c15
+< using StaticArrays    
+< using NearestNeighbors
+< using Distances
+< using LinearAlgebra
+< using SparseArrays
+---
+> using StaticArrays
+21,23d16
+< EPS::Float64 = eps(Float64)
+< EPS2 = EPS * EPS
+< MAXSIZE::Int = 10
+25,27c18
+< 
+< include("point.jl")
+< include("geometry_circle.jl")
+---
+> include("Geometry.jl")
+53,55d43
+< include("polygon.jl")
+< include("intersect.jl")
+< include("interpolate.jl")
+diff -r src/Grids/Triangular.jl /Users/knoth/src/Grids/Triangular.jl
+382c382
+<   M = Div(P, Norm(P) / (Rad))
+---
+>   M = Div(P, Norm(P) / (3.0 * Rad))
+385,386c385,386
+< function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
+<   nBar=[ 0  1   0   1
+---
+> function TriangularGridToGrid(TriangularGrid,Rad,Grid)
+>   Grid.nBar=[ 0  1   0   1
+388,390c388,391
+<   Dim = 3
+<   Type = "Tri"
+<   Form = "Sphere"
+---
+>   Grid.Dim = 3
+>   Grid.Type = "Tri"
+>   Grid.Rad = Rad
+>   Grid.Form = "Sphere"
+404a406
+>   Grid.Nodes = Nodes
+418c420
+<     Edges[NumEdges] = Edge([n1,n2],Nodes,NumEdges,NumEdges,"",NumEdges)
+---
+>     Edges[NumEdges] = Edge([n1,n2],Grid,NumEdges,NumEdges,"",NumEdges)
+420a423
+>   Grid.Edges = Edges
+435c438
+<     (Faces[NumFaces], Edges) = Face([e1,e2,e3],Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
+---
+>     (Faces[NumFaces], Grid) = Face([e1,e2,e3],Grid,NumFaces,"",OrientFaceSphere;P=zeros(Float64,0,0))
+438,442c441,444
+<   NumNodes = size(Nodes,1)
+<   NumEdges = size(Edges,1)
+<   NumFaces = size(Faces,1)
+<   NumEdgesI = size(Edges,1)
+<   NumEdgesB = 0
+---
+>   Grid.Faces = Faces
+>   Grid.NumNodes = size(Grid.Nodes,1)
+>   Grid.NumEdges = size(Grid.Edges,1)
+>   Grid.NumFaces = size(Grid.Faces,1)
+444,445c446,448
+<   Renumbering!(Edges,Faces)
+<   FacesInNodes!(Nodes,Faces)
+---
+>   Grid=Renumbering(Grid)
+>   @show "Triangular, vor FacesInNodes"
+>   Grid=FacesInNodes(Grid)
+447,480c450,465
+<   zP=zeros(nz)
+<   z=KernelAbstractions.zeros(backend,FT,nz+1)
+<   dzeta=zeros(nz)
+<   H=0.0
+<   colors=[[]]
+<   NumGhostFaces = 0
+<   nBar3 = zeros(0,0)
+<   nBar = zeros(0,0)
+<   NumBoundaryFaces = 0
+<   return GridStruct{FT,
+<                     typeof(z)}(
+<     nz,
+<     zP,
+<     z,
+<     dzeta,
+<     H,
+<     NumFaces,
+<     NumGhostFaces,
+<     Faces,
+<     NumEdges,
+<     Edges,
+<     NumNodes,
+<     Nodes,
+<     Form,
+<     Type,
+<     Dim,
+<     Rad,
+<     NumEdgesI,
+<     NumEdgesB,
+<     nBar3,
+<     nBar,
+<     colors,
+<     NumBoundaryFaces,
+<     )
+---
+>   #Boundary/Interior faces
+>   BoundaryFaces = zeros(Int,0)
+>   @inbounds for iE = 1 : Grid.NumEdges
+>     if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+>       @inbounds for iN in Grid.Edges[iE].N
+>         @inbounds for iF in Grid.Nodes[iN].F
+>           push!(BoundaryFaces,iF)
+>         end
+>       end
+>     end
+>   end
+>   BoundaryFaces = unique(BoundaryFaces)
+>   Grid.BoundaryFaces = BoundaryFaces
+>   Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
+> 
+>   return Grid
+483,484c468,469
+< function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
+<   nBar=[ 0  1   0   1
+---
+> function DelaunayGridToPolyGrid(TriangularGrid,Rad,Grid)
+>   Grid.nBar=[ 0  1   0   1
+486,489c471,474
+<   Dim = 3
+<   Type = "Tri"
+<   Rad = Rad
+<   Form = "Sphere"
+---
+>   Grid.Dim = 3
+>   Grid.Type = "Tri"
+>   Grid.Rad = Rad
+>   Grid.Form = "Sphere"
+503a489
+>   Grid.Nodes = Nodes
+517c503
+<     Edges[NumEdges] = Edge([n1,n2],Nodes,NumEdges,NumEdges,"",NumEdges)
+---
+>     Edges[NumEdges] = Edge([n1,n2],Grid,NumEdges,NumEdges,"",NumEdges)
+519a506
+>   Grid.Edges = Edges
+532c519
+<     (Faces[NumFaces], Edges) = Face(e,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
+---
+>     (Faces[NumFaces], Grid) = Face(e,Grid,NumFaces,"",OrientFaceSphere;P=zeros(Float64,0,0))
+535,538c522,525
+<   NumNodes = size(Nodes,1)
+<   NumEdges = size(Edges,1)
+<   NumFaces = size(Faces,1)
+<   NumEdgesI = size(Edges,1)
+---
+>   Grid.Faces = Faces
+>   Grid.NumNodes = size(Grid.Nodes,1)
+>   Grid.NumEdges = size(Grid.Edges,1)
+>   Grid.NumFaces = size(Grid.Faces,1)
+540c527,529
+<   NumEdgesB = 0
+---
+>   Grid=Renumbering(Grid)
+>   @show "Triangular, vor FacesInNodes"
+>   Grid=FacesInNodes(Grid)
+542,588c531,540
+<   Renumbering!(Edges,Faces)
+<   FacesInNodes!(Nodes,Faces)
+< 
+<   zP=zeros(nz)
+<   z=KernelAbstractions.zeros(backend,FT,nz+1)
+<   dzeta=zeros(nz)
+<   H=0.0
+<   colors=[[]]
+<   NumGhostFaces = 0
+<   nBar3 = zeros(0,0)
+<   nBar = zeros(0,0)
+<   NumBoundaryFaces = 0
+< 
+<   return GridStruct{FT,
+<                     typeof(z)}(
+<     nz,
+<     zP,
+<     z,
+<     dzeta,
+<     H,
+<     NumFaces,
+<     NumGhostFaces,
+<     Faces,
+<     NumEdges,
+<     Edges,
+<     NumNodes,
+<     Nodes,
+<     Form,
+<     Type,
+<     Dim,
+<     Rad,
+<     NumEdgesI,
+<     NumEdgesB,
+<     nBar3,
+<     nBar,
+<     colors,
+<     NumBoundaryFaces,
+<     )
+< 
+< end
+< 
+< function TriangularGrid(backend,FT,RefineLevel,RadEarth,nz)
+< 
+<   IcosahedronGrid = Grids.CreateIcosahedronGrid()
+<   for iRef = 1 : RefineLevel
+<     Grids.RefineEdgeTriangularGrid!(IcosahedronGrid)
+<     Grids.RefineFaceTriangularGrid!(IcosahedronGrid)
+---
+>   #Boundary/Interior faces
+>   BoundaryFaces = zeros(Int,0)
+>   @inbounds for iE = 1 : Grid.NumEdges
+>     if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
+>       @inbounds for iN in Grid.Edges[iE].N
+>         @inbounds for iF in Grid.Nodes[iN].F
+>           push!(BoundaryFaces,iF)
+>         end
+>       end
+>     end
+590,592c542,544
+<   Grids.NumberingTriangularGrid!(IcosahedronGrid)
+<   Grids.TriangularGridToGrid(backend,FT,IcosahedronGrid,RadEarth,nz)
+< end  
+---
+>   BoundaryFaces = unique(BoundaryFaces)
+>   Grid.BoundaryFaces = BoundaryFaces
+>   Grid.InteriorFaces = setdiff(collect(UnitRange(1,Grid.NumFaces)),Grid.BoundaryFaces)
+594,603c546,547
+< function DelaunayGrid(backend,FT,RefineLevel,RadEarth,nz)
+< 
+<   IcosahedronGrid = Grids.CreateIcosahedronGrid()
+<   for iRef = 1 : RefineLevel
+<     Grids.RefineEdgeTriangularGrid!(IcosahedronGrid)
+<     Grids.RefineFaceTriangularGrid!(IcosahedronGrid)
+<   end
+<   Grids.NumberingTriangularGrid!(IcosahedronGrid)
+<   Grids.DelaunayGridToPolyGrid(backend,FT,IcosahedronGrid,RadEarth,nz)
+< end  
+---
+>   return Grid
+> end
+Only in src/Grids: geometry_circle.jl
+Only in src/Grids: interpolate.jl
+Only in src/Grids: intersect.jl
+Only in src/Grids: point.jl
+Only in src/Grids: polygon.jl
+diff -r src/Integration/RosenbrockMethod.jl /Users/knoth/src/Integration/RosenbrockMethod.jl
+51c51
+<     alpha = zeros(FT,nStage,nStage)
+---
+>     alpha = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+54c54
+<     b = zeros(FT,nStage)
+---
+>     b = KernelAbstractions.zeros(backend,FT,nStage)
+57c57
+<     Gamma = zeros(FT,nStage,nStage)
+---
+>     Gamma = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+64,68c64,68
+<     aCPU = alpha / Gamma
+<     cCPU = -inv(Gamma)
+<     mCPU = Gamma'\b
+<     aCPU=[aCPU
+<        mCPU']
+---
+>     a = alpha / Gamma
+>     c = -inv(Gamma)
+>     m = Gamma'\b
+>     a=[a
+>        m']
+diff -r src/Integration/TimeStepper.jl /Users/knoth/src/Integration/TimeStepper.jl
+101c101
+<   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+110c110
+<             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+123c123
+<     Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>     Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+144c144
+<             Outputs.unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+158c158
+<             Outputs.unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+172c172
+<             Outputs.unstructured_vtkSphere(U,TransSphereX,CG,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+186c186
+<             Outputs.unstructured_vtkSphere(U,TransSphereX,CG,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+200c200
+<             Outputs.unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+214c214
+<             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+225c225
+<     Outputs.unstructured_vtkSphere(UAver,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>     Outputs.unstructured_vtkSphere(UAver,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+289c289
+<   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+298c298
+<             unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+312c312
+<             unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+326c326
+<             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+395c395
+<   unstructured_vtkSphere(U,TransSphereX,CG,Phys,Global,Proc,ProcNumber)
+---
+>   unstructured_vtkSphere(U,TransSphereX,CG,Global,Proc,ProcNumber)
+404c404
+<             unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+418c418
+<             unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+432c432
+<             unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
+---
+>             unstructured_vtkSphere(U,Trans,CG,Global,Proc,ProcNumber)
+493c493
+<   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+502c502
+<             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+512c512
+<   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+---
+>   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global,Proc,ProcNumber)
+diff -r src/Models/InitProfileBryanFritsch.jl /Users/knoth/src/Models/InitProfileBryanFritsch.jl
+29c29
+<   p_vs=Thermodynamics.fpvs(T,Phys.T0)
+---
+>   p_vs=fpvs(T,Phys)
+100c100
+<   ThetaV = Thermodynamics.fThetaV(Rho,RhoV,RhoC,T,Phys)
+---
+>   ThetaV = fThetaV(Rho,RhoV,RhoC,T,Phys)
+124c124
+<     ThetaV = Thermodynamics.fThetaV(Rho,RhoV,RhoC,T,Phys)
+---
+>     ThetaV = fThetaV(Rho,RhoV,RhoC,T,Phys)
+diff -r src/Models/Microphysics.jl /Users/knoth/src/Models/Microphysics.jl
+18c18
+<     p_vs = Thermodynamics.fpvs(T,Phys.T0)
+---
+>     p_vs = fpvs(T,Phys.T0)
+22c22
+<     L = Thermodynamics.LatHeat(T,Phys.L00,Phys.Cpl,Phys.Cpv,Phys.T0)
+---
+>     L = LatHeat(T,Phys.L00,Phys.Cpl,Phys.Cpv,Phys.T0)
+diff -r src/Models/Models.jl /Users/knoth/src/Models/Models.jl
+4d3
+< import ..Thermodynamics
+7d5
+< using NLsolve
+8a7
+> include("Thermodynamics.jl")
+13,34c12,33
+< #include("fRho.jl")
+< #include("fQv.jl")
+< #include("fQc.jl")
+< #include("fTSurf.jl")
+< #include("fRhoBGrd.jl")
+< #include("fT.jl")
+< #include("fTBGrd.jl")
+< #include("fTheta.jl")
+< #include("fIntEn.jl")
+< #include("fTotEn.jl")
+< #include("fThetaBGrd.jl")
+< #include("fTr.jl")
+< #include("fVel.jl")
+< #include("fVelu.jl")
+< #include("fVelv.jl")
+< #include("fVelGeo.jl")
+< #include("fPsi.jl")
+< #include("fVelW.jl")
+< #include("fpBGrd.jl")
+< #include("fTest.jl")
+< #include("KineticEnergy.jl")
+< #include("Fun.jl")
+---
+> include("fRho.jl")
+> include("fQv.jl")
+> include("fQc.jl")
+> include("fTSurf.jl")
+> include("fRhoBGrd.jl")
+> include("fT.jl")
+> include("fTBGrd.jl")
+> include("fTheta.jl")
+> include("fIntEn.jl")
+> include("fTotEn.jl")
+> include("fThetaBGrd.jl")
+> include("fTr.jl")
+> include("fVel.jl")
+> include("fVelu.jl")
+> include("fVelv.jl")
+> include("fVelGeo.jl")
+> include("fPsi.jl")
+> include("fVelW.jl")
+> include("fpBGrd.jl")
+> include("fTest.jl")
+> include("KineticEnergy.jl")
+> include("Fun.jl")
+diff -r src/Outputs/Outputs.jl /Users/knoth/src/Outputs/Outputs.jl
+5d4
+< import ..Thermodynamics
+diff -r src/Outputs/vtkOutputKernel.jl /Users/knoth/src/Outputs/vtkOutputKernel.jl
+139,141d138
+< @kernel function InterpolateThEKernel!(cCell,@Const(RhoTh),@Const(Rho),@Const(RhoV),@Const(RhoC),@Const(Inter),@Const(Glob),@Const(Phys))
+<   I, J, iz   = @index(Local,  NTuple)
+<   _,_,Iz,IF = @index(Global,  NTuple)
+143,164d139
+< 
+<   ColumnTilesDim = @uniform @groupsize()[3]
+<   Nz = @uniform @ndrange()[3]
+<   NF = @uniform @ndrange()[4]
+< 
+<   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
+<   @uniform N = size(Inter,3)
+< 
+<   if Iz <= Nz
+<     @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
+<     iD = 0
+<     for jP = 1 : N
+<       for iP = 1 : N
+<         iD += 1
+<         @inbounds ind = Glob[iD,IF]
+<         cLoc = Thermodynamics.fThE(Rho[Iz,ind],RhoV[Iz,ind],RhoC[Iz,ind],RhoTh[Iz,ind],Phys)
+<         @inbounds  cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * cLoc
+<       end
+<     end
+<   end    
+< end     
+< 
+252,269d226
+< 
+< function InterpolateThEGPU!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys)
+< 
+<   backend = get_backend(cCell)
+<   FT = eltype(cCell)
+< 
+<   OrdPrint = size(Inter,1)
+<   NF = size(Glob,2)
+<   Nz = size(RhoTh,1)
+<   # Ranges
+<   NzG = min(div(256,OrdPrint*OrdPrint),Nz)
+<   group = (OrdPrint, OrdPrint, NzG, 1)
+<   ndrange = (OrdPrint, OrdPrint, Nz, NF)
+< 
+<   KInterpolateThEKernel! = InterpolateThEKernel!(backend,group)
+<   KInterpolateThEKernel!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys,ndrange=ndrange)
+<   KernelAbstractions.synchronize(backend)
+< end  
+diff -r src/Outputs/vtkSphere.jl /Users/knoth/src/Outputs/vtkSphere.jl
+249c249
+< function vtkSkeleton(vtkCache,filename, part::Int, nparts::Int, c)
+---
+> function vtkSkeleton(vtkCache,filename, part::Int, nparts::Int)
+257d256
+<   vtk["c", VTKCellData()] = c
+262c261
+< function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global, part::Int, nparts::Int)
+---
+> function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Global, part::Int, nparts::Int)
+358,362c357,358
+< #       @views InterpolateThE!(ThECell,U[:,:,ThPos],U[:,:,RhoPos],U[:,:,NumV+RhoVPos],U[:,:,NumV+RhoCPos],
+< #         vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+<         @views InterpolateThEGPU!(cCell,U[:,:,ThPos],U[:,:,RhoPos],U[:,:,NumV+RhoVPos],U[:,:,NumV+RhoCPos],
+<           vtkInter,CG.Glob,Phys)
+<         copyto!(ThECell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+---
+>         @views InterpolateThE!(ThECell,U[:,:,ThPos],U[:,:,RhoPos],U[:,:,NumV+RhoVPos],U[:,:,NumV+RhoCPos],
+>           vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
+diff -r src/Parallels/Exchange.jl /Users/knoth/src/Parallels/Exchange.jl
+716d715
+<     KernelAbstractions.synchronize(backend)
+797d795
+<     KernelAbstractions.synchronize(backend)
+924d921
+<     KernelAbstractions.synchronize(backend)
+1023d1019
+<     KernelAbstractions.synchronize(backend)
+Only in src: Thermodynamics

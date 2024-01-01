@@ -3,6 +3,7 @@ module GPU
 import ..Parallels
 import ..Models
 import ..Grids
+import ..Thermodynamics
 using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
@@ -15,5 +16,6 @@ include("InitialConditions.jl")
 include("InitialKernel.jl")
 include("surface.jl")
 include("HorLimiterKernel.jl")
+include("dampingGPU.jl")
 
 end

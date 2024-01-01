@@ -8,7 +8,7 @@ function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
-    p_vs = Models.fpvs(TSurf,Phys.T0)
+    p_vs = Thermodynamics.fpvs(TSurf,Phys.T0)
     RhoVSurf = p_vs / (Phys.Rv * TSurf)
     return TSurf, RhoVSurf
   end  

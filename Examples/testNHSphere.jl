@@ -25,9 +25,9 @@ RhoRPos = parsed_args["RhoRPos"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
-Geos = parsed_args["Geos"]
 Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
+Geos = parsed_args["Geos"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
@@ -248,6 +248,11 @@ if Microphysics
     @show "False Type Microphysics"  
   end
 end  
+# Damping
+if Damping
+  Damp = GPU.DampingW()(H,StrideDamp,Relax,Model.wPos)
+  Model.Damp = Damp
+end
 
 # Surface flux
 if Model.SurfaceFlux || Model.VerticalDiffusion

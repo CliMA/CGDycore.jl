@@ -1267,6 +1267,17 @@ end
   return (cFL,cFR)
 end
 
+@kernel function DampKernel!(Damp,F,U,zP)
+  Iz,IG = @index(Global, NTuple)
+  NG = @uniform @ndrange()[2]
+
+  if IG <= NG
+    @inbounds Fu,Fv,Fw = Damp(zP[Iz,IG],view(U,Iz,IG,1:5))
+    @inbounds F[Iz,IG,2] += Fu
+    @inbounds F[Iz,IG,3] += Fv
+    @inbounds F[Iz,IG,4] += Fw
+  end
+end  
 
 @kernel function ForceKernel!(Force,F,U,p,lat)
   Iz,IG = @index(Global, NTuple)

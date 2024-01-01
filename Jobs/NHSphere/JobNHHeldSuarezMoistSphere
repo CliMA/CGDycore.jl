@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -23,6 +23,9 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Microphysics=true \
   --TypeMicrophysics="SimpleMicrophysics" \
   --Buoyancy=true \
+  --Damping=true \
+  --StrideDamp=10000 \
+  --Relax=1.0e-3 \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
   --SimDays=10 \

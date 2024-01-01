@@ -48,24 +48,24 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
 
   elseif str == "ROSRK3"
     nStage = 3
-    alpha = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    alpha = zeros(FT,nStage,nStage)
     alpha[2,1] = 1/3
     alpha[3,2] = 1/2
-    b = KernelAbstractions.zeros(backend,FT,nStage)
+    b = zeros(FT,nStage)
     b[3] = 1
     gamma = 1
-    Gamma = KernelAbstractions.zeros(backend,FT,nStage,nStage)
+    Gamma = zeros(FT,nStage,nStage)
     Gamma[1,1] = gamma
     Gamma[2,1] = (1-12*gamma^2) /(-9+36*gamma)
     Gamma[2,2] = gamma
     Gamma[3,1] = -1/4+2*gamma
     Gamma[3,2] = 1/4-3*gamma
     Gamma[3,3] = gamma
-    a = alpha / Gamma
-    c = -inv(Gamma)
-    m = Gamma'\b
-    a=[a
-       m']
+    aCPU = alpha / Gamma
+    cCPU = -inv(Gamma)
+    mCPU = Gamma'\b
+    aCPU=[aCPU
+       mCPU']
   elseif str == "M1HOMME"
     nStage = 5
     AHat = [  0   0   0   0   0   0
