@@ -79,6 +79,7 @@ HyperDCurl = parsed_args["HyperDCurl"]
 HyperDGrad = parsed_args["HyperDGrad"]
 HyperDRhoDiv = parsed_args["HyperDRhoDiv"]
 HyperDDiv = parsed_args["HyperDDiv"]
+HyperDDivW = parsed_args["HyperDDivW"]
 # Output
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
@@ -201,6 +202,7 @@ Model.HyperDCurl = HyperDCurl
 Model.HyperDGrad = HyperDGrad
 Model.HyperDRhoDiv = HyperDRhoDiv
 Model.HyperDDiv = HyperDDiv
+Model.HyperDDivW = HyperDDivW
 
 OrdPolyZ = 1
 if RadEarth == 0.0

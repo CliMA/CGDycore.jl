@@ -275,6 +275,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   HyperDGrad::FT
   HyperDRhoDiv::FT
   HyperDDiv::FT
+  HyperDDivW::FT
   Upwind::Bool
   HorLimit::Bool
   Microphysics::Bool
@@ -344,6 +345,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   HyperDGrad = 0.0
   HyperDRhoDiv = 0.0
   HyperDDiv = 0.0
+  HyperDDivW = 0.0
   Upwind = false
   HorLimit = false
   Microphysics = false
@@ -411,6 +413,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    HyperDGrad,
    HyperDRhoDiv,
    HyperDDiv,
+   HyperDDivW,
    Upwind,
    HorLimit,
    Microphysics,

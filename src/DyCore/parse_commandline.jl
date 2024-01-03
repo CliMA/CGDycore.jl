@@ -387,6 +387,11 @@ function parse_commandline()
     arg_type = Float64
     default = 0.0
 
+    "--HyperDDivW"
+    help = "HyperDDivW"
+    arg_type = Float64
+    default = 0.0
+
     "--P1"
     help = "P1"
     arg_type = Float64

@@ -144,6 +144,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KoeffCurl = Global.Model.HyperDCurl
   KoeffGrad = Global.Model.HyperDGrad
   KoeffDiv = Global.Model.HyperDDiv
+  KoeffDivW = Global.Model.HyperDDiv
 
 # State vector
   @views Rho = U[:,:,1]
@@ -254,7 +255,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       KoeffDiv,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
   end  
-  @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI,J,MW,Glob,KoeffDiv,ndrange=ndrangeB)
+  @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI,J,MW,Glob,KoeffDivW,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
@@ -298,7 +299,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       KoeffDiv,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
   end  
-  @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI_I,J_I,MW,Glob,KoeffDiv,ndrange=ndrangeI)
+  @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI_I,J_I,MW,Glob,KoeffDivW,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
   KGradKernel!(F,U,p,DS,dXdxI_I,J_I,M,MRho,Glob_I,Phys,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
