@@ -104,6 +104,8 @@ end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
+  @show sum(abs.(U[:,:,2:Nz-1]))
+
   backend = get_backend(F)
   FT = eltype(F)
   Glob = FE.Glob
