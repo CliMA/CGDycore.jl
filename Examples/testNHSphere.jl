@@ -219,7 +219,9 @@ if Problem == "Galewski"
 elseif Problem == "BaroWaveDrySphere"
   Profile = Examples.BaroWaveExample()(Param,Phys)
 elseif Problem == "HeldSuarezDrySphere"
-  Model.InitialProfile, Model.Force = Examples.HeldSuarezDryExample()(Param,Phys)
+  Profile, Force = Examples.HeldSuarezDryExample()(Param,Phys)
+  Model.InitialProfile = Profile
+  Model.Force = Force
 elseif Problem == "HeldSuarezMoistSphere"
   Profile, Force, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
   Model.InitialProfile = Profile
