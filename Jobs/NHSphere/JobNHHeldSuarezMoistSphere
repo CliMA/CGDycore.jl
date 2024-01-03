@@ -1,4 +1,4 @@
-mpirun -n 4 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -47,6 +47,7 @@ mpirun -n 4 julia --project Examples/testNHSphere.jl \
   --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=5.e14 \
-  --HyperDGrad=5.e14 \
-  --HyperDDiv=5.e14
+  --HyperDCurl=2.e15 \
+  --HyperDGrad=2.e15 \
+  --HyperDDiv=2.e15 \
+  --HyperDDivW=2.e15

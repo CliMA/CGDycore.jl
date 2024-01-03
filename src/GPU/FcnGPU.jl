@@ -145,7 +145,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KoeffCurl = Global.Model.HyperDCurl
   KoeffGrad = Global.Model.HyperDGrad
   KoeffDiv = Global.Model.HyperDDiv
-  KoeffDivW = Global.Model.HyperDDiv
+  KoeffDivW = Global.Model.HyperDDivW
 
 # State vector
   @views Rho = U[:,:,1]
@@ -217,7 +217,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 ####
 # First phase  
 ####
-  @show sum(abs.(U[2:Nz-1,:,4]))
+  @show sum(abs.(U[1:Nz-1,:,4]))
   Temp1 .= FT(0)
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
@@ -238,7 +238,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     @views KHyperViscTracerKernel!(CacheTr,U[:,:,iT+NumV],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
   end  
-  @views KHyperViscWKernel!(Cachew,U[:,:,4],DS,DW,dXdxI_I,J_I,MW,Glob_I,ndrange=ndrangeB)
+  @views KHyperViscWKernel!(Cachew,U[:,:,4],DS,DW,dXdxI_I,J_I,MW,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
 
   Parallels.ExchangeData3DRecvGPU!(CacheFF,Exchange)

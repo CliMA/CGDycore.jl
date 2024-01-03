@@ -574,7 +574,7 @@ end
   wCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
   wCxCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
   wCyCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
-  if Iz <= Nz && IF <= NF
+  if Iz < Nz && IF <= NF
     @inbounds wCol[I,J,iz] = w[Iz,ind] 
   end
   @synchronize
@@ -582,15 +582,21 @@ end
   ID = I + (J - 1) * N  
   @inbounds ind = Glob[ID,IF]
 
-  if Iz <= Nz && IF <= NF
-    @inbounds Dxc = D[I,1] * wCol[1,J,iz]
-    @inbounds Dyc = D[J,1] * wCol[I,1,iz]
+  if Iz < Nz && IF <= NF
+    @inbounds DxcF = D[I,1] * wCol[1,J,iz]
+    @inbounds DycF = D[J,1] * wCol[I,1,iz]
     for k = 2 : N
-      @inbounds Dxc += D[I,k] * wCol[k,J,iz]
-      @inbounds Dyc += D[J,k] * wCol[I,k,iz] 
+      @inbounds DxcF += D[I,k] * wCol[k,J,iz]
+      @inbounds DycF += D[J,k] * wCol[I,k,iz] 
     end
-    @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @views @inbounds (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds GradDx = ((dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    @inbounds GradDy = ((dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    @inbounds tempx = (dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * GradDy
+    @inbounds tempy = (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * GradDy
     @inbounds wCxCol[I,J,iz] = tempx
     @inbounds wCyCol[I,J,iz] = tempy
   end
@@ -599,14 +605,12 @@ end
 
   ID = I + (J - 1) * N  
   @inbounds ind = Glob[ID,IF]
-  if Iz <= Nz && IF <= NF
+  if Iz < Nz && IF <= NF
     @inbounds Divw = DW[I,1] * wCxCol[1,J,iz] + DW[J,1] * wCyCol[I,1,iz]
     for k = 2 : N
       @inbounds Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
     end
-    if Iz < Nz 
-      @inbounds @atomic Fw[Iz+1,ind] += Divw / MW[Iz,ind]
-    end  
+    @inbounds @atomic Fw[Iz,ind] += Divw / MW[Iz,ind]
   end
 end
 
@@ -762,7 +766,7 @@ end
   wCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
   wCxCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
   wCyCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
-  if Iz <= Nz && IF <= NF
+  if Iz < Nz && IF <= NF
     @inbounds wCol[I,J,iz] = w[Iz,ind] 
   end
   @synchronize
@@ -770,15 +774,21 @@ end
   ID = I + (J - 1) * N  
   @inbounds ind = Glob[ID,IF]
 
-  if Iz <= Nz && IF <= NF
-    @inbounds Dxc = D[I,1] * wCol[1,J,iz]
-    @inbounds Dyc = D[J,1] * wCol[I,1,iz]
+  if Iz < Nz && IF <= NF
+    @inbounds DxcF = D[I,1] * wCol[1,J,iz]
+    @inbounds DycF = D[J,1] * wCol[I,1,iz]
     for k = 2 : N
-      @inbounds Dxc += D[I,k] * wCol[k,J,iz]
-      @inbounds Dyc += D[J,k] * wCol[I,k,iz] 
+      @inbounds DxcF += D[I,k] * wCol[k,J,iz]
+      @inbounds DycF += D[J,k] * wCol[I,k,iz] 
     end
-    @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @views @inbounds (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds GradDx = ((dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    @inbounds GradDy = ((dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    @inbounds tempx = (dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * GradDy
+    @inbounds tempy = (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * GradDy
     @inbounds wCxCol[I,J,iz] = tempx
     @inbounds wCyCol[I,J,iz] = tempy
   end
@@ -787,14 +797,12 @@ end
 
   ID = I + (J - 1) * N  
   @inbounds ind = Glob[ID,IF]
-  if Iz <= Nz && IF <= NF
+  if Iz < Nz && IF <= NF
     @inbounds Divw = DW[I,1] * wCxCol[1,J,iz] + DW[J,1] * wCyCol[I,1,iz]
     for k = 2 : N
       @inbounds Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
     end
-    if Iz < Nz 
-      @inbounds @atomic Fw[Iz,ind] += -KoeffDivW * Divw / MW[Iz,ind]
-    end  
+    @inbounds @atomic Fw[Iz,ind] += -KoeffDivW * Divw / MW[Iz,ind]
   end
 end
 
