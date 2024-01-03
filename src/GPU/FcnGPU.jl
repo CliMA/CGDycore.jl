@@ -217,7 +217,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 ####
 # First phase  
 ####
-  @show sum(abs.(U[:,:,2:Nz-1]))
+  @show sum(abs.(U[2:Nz-1,:,4]))
   Temp1 .= FT(0)
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
