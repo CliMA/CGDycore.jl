@@ -557,6 +557,59 @@ end
   end
 end
 
+@kernel function HyperViscWKernel!(Fw,@Const(w),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(MW),@Const(Glob)) 
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  @inbounds ind = Glob[ID,IF]
+
+  wCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCxCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCyCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  if Iz <= Nz && IF <= NF
+    @inbounds wCol[I,J,iz] = w[Iz,ind] 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds ind = Glob[ID,IF]
+
+  if Iz <= Nz && IF <= NF
+    @inbounds Dxc = D[I,1] * wCol[1,J,iz]
+    @inbounds Dyc = D[J,1] * wCol[I,1,iz]
+    for k = 2 : N
+      @inbounds Dxc += D[I,k] * wCol[k,J,iz]
+      @inbounds Dyc += D[J,k] * wCol[I,k,iz] 
+    end
+    @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
+    @views @inbounds (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds wCxCol[I,J,iz] = tempx
+    @inbounds wCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+
+  ID = I + (J - 1) * N  
+  @inbounds ind = Glob[ID,IF]
+  if Iz <= Nz && IF <= NF
+    @inbounds Divw = DW[I,1] * wCxCol[1,J,iz] + DW[J,1] * wCyCol[I,1,iz]
+    for k = 2 : N
+      @inbounds Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
+    end
+    if Iz < Nz 
+      @inbounds @atomic Fw[Iz+1,ind] += Divw / MW[Iz,ind]
+    end  
+  end
+end
+
 @kernel function HyperViscKoeffKernel!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),KoeffCurl,KoeffGrad,KoeffDiv) 
 
@@ -689,6 +742,59 @@ end
       @inbounds DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
     @inbounds @atomic FTr[Iz,ind] += -KoeffDiv * DivTr / M[Iz,ind]
+  end
+end
+
+@kernel function HyperViscWKoeffKernel!(Fw,@Const(w),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(MW),@Const(Glob),KoeffDivW) 
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  @inbounds ind = Glob[ID,IF]
+
+  wCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCxCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCyCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  if Iz <= Nz && IF <= NF
+    @inbounds wCol[I,J,iz] = w[Iz,ind] 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds ind = Glob[ID,IF]
+
+  if Iz <= Nz && IF <= NF
+    @inbounds Dxc = D[I,1] * wCol[1,J,iz]
+    @inbounds Dyc = D[J,1] * wCol[I,1,iz]
+    for k = 2 : N
+      @inbounds Dxc += D[I,k] * wCol[k,J,iz]
+      @inbounds Dyc += D[J,k] * wCol[I,k,iz] 
+    end
+    @views @inbounds (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
+    @views @inbounds (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @inbounds wCxCol[I,J,iz] = tempx
+    @inbounds wCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+
+  ID = I + (J - 1) * N  
+  @inbounds ind = Glob[ID,IF]
+  if Iz <= Nz && IF <= NF
+    @inbounds Divw = DW[I,1] * wCxCol[1,J,iz] + DW[J,1] * wCyCol[I,1,iz]
+    for k = 2 : N
+      @inbounds Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
+    end
+    if Iz < Nz 
+      @inbounds @atomic Fw[Iz,ind] += -KoeffDivW * Divw / MW[Iz,ind]
+    end  
   end
 end
 
