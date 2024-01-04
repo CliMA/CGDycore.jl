@@ -8,7 +8,6 @@ using Metal
 using KernelAbstractions
 using StaticArrays
 using ArgParse
-using MPI
 
 # Model
 parsed_args = DyCore.parse_commandline()
