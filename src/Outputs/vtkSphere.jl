@@ -51,10 +51,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:A
   lam=zeros(8,1)
   theta=zeros(8,1)
   z=zeros(8,1)
-  if Global.Grid.Form == "Sphere" && Global.Output.Flat
-    dTol=2*pi/max(Global.Output.nPanel-1,1)
-  end
-
+  dTol = Global.Output.dTol
   
   FTX = eltype(Metric.X)
   X = zeros(FTX,OrdPoly+1,OrdPoly+1,2,3)
@@ -93,7 +90,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:A
               end
             end
             for i = 1 : 8
-              pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Output.RadPrint,0.0)/Global.Output.H*3]
+              pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Grid.Rad,0.0)/Global.Grid.H*3]
               ipts = ipts + 1
             end
           else
@@ -146,21 +143,22 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG,Metric,Global) where FT<:A
   )  
 end
 
-function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
+function vtkInit2D(OrdPrint::Int,Trans,CG,Metric,Global)
   OrdPoly = CG.OrdPoly
   NF = Global.Grid.NumFaces
   Npts = 4 * NF * OrdPrint * OrdPrint
   pts = Array{Float64,2}(undef,3,Npts)
   ipts = 1
-  X = zeros(4,3)
+  x = zeros(4,3)
   lam=zeros(4,1)
   theta=zeros(4,1)
   z=zeros(4,1)
-  if Global.Grid.Form == "Sphere" && Global.Output.Flat
-    dTol=2*pi/max(Global.Output.nPanel,1)/4
-  end
-
+  dTol = Global.Output.dTol
+  FT = eltype(Metric.X)
+  backend = get_backend(Metric.X)
+  X = zeros(FT,OrdPoly+1,OrdPoly+1,2,3)
   for iF = 1 : NF
+    @views copyto!(X,reshape(Metric.X[:,:,:,1,iF],OrdPoly+1,OrdPoly+1,2,3))
     dd = 2 / OrdPrint
     eta0 = -1
     for jRef = 1 : OrdPrint
@@ -168,41 +166,33 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
       eta1 = eta0 + dd
       for iRef = 1 : OrdPrint
         ksi1 = ksi0 + dd
-        X[1,:] = Trans(ksi0,eta0, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
-        X[2,:] = Trans(ksi1,eta0, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
-        X[3,:] = Trans(ksi1,eta1, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
-        X[4,:] = Trans(ksi0,eta1, -1.0,Metric.X[:,:,:,:,1,iF],CG,Global)
+        @views Trans(x[1,:],ksi0,eta0, -1.0,X,CG,Global)
+        @views Trans(x[2,:],ksi1,eta0, -1.0,X,CG,Global)
+        @views Trans(x[3,:],ksi1,eta1, -1.0,X,CG,Global)
+        @views Trans(x[4,:],ksi0,eta1, -1.0,X,CG,Global)
         if Global.Grid.Form == "Sphere" && Global.Output.Flat
           for i=1:4
-            (lam[i],theta[i],z[i]) = Grids.cart2sphere(X[i,1],X[i,2],X[i,3])
+            (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
           end 
-#=
           lammin = minimum(lam)
           lammax = maximum(lam)
-          if lammin < 0.0 || lammax > 2*pi
-#           @show lammin,lammax  
-#           stop
-          end  
           if abs(lammin - lammax) > 2*pi-dTol
-#           @show "vor",lam
             for i = 1 : 4
-              if lam[i] < pi
-                lam[i] = lam[i] + 2*pi
+              if lam[i] > pi
+                lam[i] = lam[i] - 2*pi
                 if lam[i] > 3*pi
                   lam[i] = lam[i]  - 2*pi
                 end
               end
             end
-#           @show "nac",lam
           end
-          =#
           for i = 1 : 4
             pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Output.RadPrint,0.0)/Global.Output.H/5.0]
             ipts = ipts + 1
           end
         else
           for i=1:4
-            pts[:,ipts] = [X[i,1],X[i,2],X[i,3]]
+            pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
             ipts = ipts + 1
           end
         end
@@ -239,8 +229,11 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Global)
     end
     eta0 = eta1
   end
-  return vtkStruct(
-    vtkInter,
+  dvtkInter = KernelAbstractions.zeros(backend,FT,size(vtkInter))
+  copyto!(dvtkInter,vtkInter)
+  return vtkStruct{FT,
+                   typeof(dvtkInter)}(
+    dvtkInter,
     cells,
     pts,
   )  

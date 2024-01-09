@@ -53,5 +53,6 @@ include("InputGrid.jl")
 include("polygon.jl")
 include("intersect.jl")
 include("interpolate.jl")
+include("TopographySmoothing.jl")
 
 end

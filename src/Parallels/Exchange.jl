@@ -1075,6 +1075,7 @@ end
 
 function ExchangeData!(U::AbstractArray{FT,1},Exchange) where FT<:AbstractFloat
 
+  backend = get_backend(U)
   IndSendBuffer = Exchange.IndSendBuffer
   IndRecvBuffer = Exchange.IndRecvBuffer
   NeiProc = Exchange.NeiProc
@@ -1088,7 +1089,7 @@ function ExchangeData!(U::AbstractArray{FT,1},Exchange) where FT<:AbstractFloat
   RecvBuffer = Dict()
   rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
   @inbounds for iP in eachindex(NeiProc)
-    RecvBuffer[NeiProc[iP]] = zeros(length(IndRecvBuffer[NeiProc[iP]]))
+    RecvBuffer[NeiProc[iP]] = KernelAbstractions.zeros(backend,FT,length(IndRecvBuffer[NeiProc[iP]]))
     tag = Proc + ProcNumber*NeiProc[iP]
     rreq[iP] = MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
   end  

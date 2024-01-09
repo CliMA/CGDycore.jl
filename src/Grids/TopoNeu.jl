@@ -75,8 +75,10 @@ end
 function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   # Load ETOPO1 ice-sheet surface data
   # Ocean values are considered 0
-  ds = NCDataset("ETOPO1_Ice_g_gdal.grd")
+# ds = NCDataset("ETOPO1_Ice_g_gdal.grd")
+  ds = NCDataset("ETOPO_2022_v1_60s_N90W180_surface.nc")
   # Unpack information
+  #=
   x_range = ds["x_range"][:]
   y_range = ds["y_range"][:]
   z_range = ds["z_range"][:]
@@ -87,6 +89,13 @@ function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   lat = collect(y_range[1]:spacing[2]:y_range[2])
   nlon = dimension[1]
   nlat = dimension[2]
+  =#
+  lon = ds["lon"][:]
+  @show minimum(lon),maximum(lon)
+  lat = ds["lat"][:]
+  elevation = ds["z"][:]
+  nlon = size(lon,1)
+  nlat = size(lat,1)
   dLon = 360.0 / nlon
   dLat = 180.0 / nlat
   ilonLS = max(floor(Int,(MinLonL+180.)/dLon),1)
@@ -103,7 +112,8 @@ function TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   temp = max.(reshape(elevation, (nlon, nlat)), 0.0)
   zlevels = zeros(Float64,nlon,nlat)
   @inbounds for i = 1 : nlat
-     @.  zlevels[:,i] = temp[:,nlat+1-i]
+#    @. zlevels[:,i] = temp[:,nlat+1-i]
+     @. zlevels[:,i] = temp[:,i]
   end   
   return (lon[ilonLS:ilonLE], lon[ilonRS:ilonRE], lat[ilatS:ilatE], 
     zlevels[ilonLS:ilonLE,ilatS:ilatE], zlevels[ilonRS:ilonRE,ilatS:ilatE])
@@ -204,7 +214,7 @@ function TopoDataGLOBE()
   end  
 end
 
-function Orography(backend,FT,CG,Global,TopoProfile)
+function Orography(backend,FT,CG,Exchange,Global,TopoProfile)
   Grid = Global.Grid
   Faces = Grid.Faces
   Proc = Global.ParallelCom.Proc
@@ -246,39 +256,23 @@ function Orography(backend,FT,CG,Global,TopoProfile)
   return HeightCG
 end
 
-function Orography(CG,Global)
+function Orography(backend,FT,CG,Exchange,Global)
   Grid = Global.Grid
   Proc = Global.ParallelCom.Proc
   OrdPoly = CG.OrdPoly
+  Glob = CG.Glob
+  NumG = CG.NumG
   (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
   RadEarth = Grid.Rad
   NF = Grid.NumFaces
   OP = OrdPoly + 1
   HeightCG = zeros(Float64,OP,OP,NF)
   (lonL, lonR, lat, zLevelL, zLevelR) = TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
-# (lon, lat, zLevel) = CGDycore.TopoData()
   start_Face = 1
-  (Glob,NumG) = NumberingFemCG(Grid,OrdPoly);
   Height = zeros(Float64,NumG)
+  HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
   NumHeight = zeros(Float64,NumG)
-# (w,xw) = GaussLobattoQuad(OrdPoly)
-  xe = zeros(OrdPoly+1)
-  xe[1] = -1.0
-  @inbounds for i = 2 : OrdPoly
-    xe[i] = CG.xe[i-1] + 2.0/OrdPoly
-  end
-  xe[OrdPoly+1] = 1.0
-
-# LenLat = length(lat)
-# LenLon = length(lon)
-# dLon = 360.0 / LenLon
-# dLat = 180.0 / LenLat
-# ilonLS = max(floor(Int,(MinLonL+180.)/dLon),1)
-# ilonLE = min(ceil(Int,(MaxLonL+180.)/dLon),LenLon)
-# ilonRS = max(floor(Int,(MinLonR+180.)/dLon),1)
-# ilonRE = min(ceil(Int,(MaxLonR+180.)/dLon),LenLon)
-# ilatS = max(floor(Int,(MinLat+90.)/dLat),1)
-# ilatE = min(ceil(Int,(MaxLat+90.)/dLat),LenLat)
+  xe = CG.xe
   @inbounds for ilat = 1 : length(lat)
     @inbounds for ilon = 1 : length(lonL)
       P = Point(sphereDeg2cart(lonL[ilon],lat[ilat],RadEarth))
@@ -286,8 +280,9 @@ function Orography(CG,Global)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
       if Inside
-        iG = Glob[iPosFace_id,jPosFace_id,Face_id]
-        Height[iG] += zLevelL[ilon,ilat]
+        iD = iPosFace_id + (jPosFace_id - 1) * (OrdPoly + 1)  
+        iG = Glob[iD,Face_id]
+        Height[iG] += max(zLevelL[ilon,ilat],0)
         NumHeight[iG] += 1
       end  
     end
@@ -297,19 +292,21 @@ function Orography(CG,Global)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
       if Inside
-        iG = Glob[iPosFace_id,jPosFace_id,Face_id]
-        Height[iG] += zLevelR[ilon,ilat]
+        iD = iPosFace_id + (jPosFace_id - 1) * (OrdPoly + 1)  
+        iG = Glob[iD,Face_id]
+        Height[iG] += max(zLevelR[ilon,ilat],0)
         NumHeight[iG] += 1
       end  
     end
   end
-  ExchangeData!(Height,Global.Exchange)
-  ExchangeData!(NumHeight,Global.Exchange)
+  Parallels.ExchangeData!(Height,Exchange)
+  Parallels.ExchangeData!(NumHeight,Exchange)
   @. Height /= (NumHeight + 1.e-14)
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
-        ind = Glob[iP,jP,iF]
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
         HeightCG[iP,jP,iF] = Height[ind]
       end
     end
@@ -317,13 +314,31 @@ function Orography(CG,Global)
   @inbounds for iF = 1:NF
     @views ChangeBasisHeight!(HeightCG[:,:,iF],HeightCG[:,:,iF],CG)
   end
-  SmoothFac=1.e9
-# SmoothFac=1.e15
-  FHeightCG = similar(HeightCG)
-  @inbounds for i=1:30
-    TopographySmoothing1!(FHeightCG,HeightCG,CG,Global,SmoothFac)
-    @. HeightCG += FHeightCG
-    @. HeightCG = max(HeightCG,0.0)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        Height[ind] = HeightCG[iP,jP,iF] 
+      end
+    end
+  end
+  
+  copyto!(HeightGPU,Height)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  copyto!(Height,HeightGPU)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
   end
   @show maximum(HeightCG)
   @show minimum(HeightCG)

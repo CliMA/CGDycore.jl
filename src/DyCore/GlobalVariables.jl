@@ -70,6 +70,7 @@ mutable struct OutputStruct
   RadPrint::Float64
   H::Float64
   OrdPrint::Int
+  dTol::Float64
 end
 function OutputStruct()
   vtk=0
@@ -90,6 +91,7 @@ function OutputStruct()
   RadPrint=1000.0
   H=1000.0
   OrdPrint=1
+  dTol=1.e-8
   return OutputStruct(
   vtk,
   vtkFileName,
@@ -109,6 +111,7 @@ function OutputStruct()
   RadPrint,
   H,
   OrdPrint,
+  dTol,
   )
 end  
 

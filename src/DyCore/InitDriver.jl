@@ -65,24 +65,9 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
   CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
-  (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global)
-
-  # Output partition
-  nzTemp = Global.Grid.nz
-  Global.Grid.nz = 1
-  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,CG,Metric,Global)
-  Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
-  Global.Grid.nz = nzTemp
 
   if Topography.TopoS == "EarthOrography"
-    zS = Grids.Orography(CG,Global)
-    Output.RadPrint = H
-    Output.Flat=false
-    nzTemp = Global.Grid.nz
-    Global.Grid.nz = 1
-    vtkCacheOrography = Outputs.vtkStruct(OrdPoly,Grids.TransSphereX,CG,Global)
-    Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
-    Global.Grid.nz = nzTemp
+    zS = Grids.Orography(backend,FT,CG,Exchange,Global)
   end
 
   if Topography.TopoS == "EarthOrography"
@@ -90,6 +75,22 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   else
     (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global)
   end
+  Global.Output.dTol = 2*pi / nPanel
+  # Output Orography
+  if Topography.TopoS == "EarthOrography"
+    Output.Flat=true
+    nzTemp = Global.Grid.nz
+    Global.Grid.nz = 1
+    vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Grids.TransSphereX!,CG,Metric,Global)
+    Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
+    Global.Grid.nz = nzTemp
+  end
+  # Output partition
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,CG,Metric,Global)
+  Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
+  Global.Grid.nz = nzTemp
   return CG,Metric,Exchange,Global
 end  
 

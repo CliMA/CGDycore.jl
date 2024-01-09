@@ -4,6 +4,23 @@
 #  FT = eltype(X)
 #
 #end
+function JacobiSphere2GPU!(X,dXdxI,J,FE,F,Rad)
+
+  backend = get_backend(X)
+  FT = eltype(X)
+
+  NF = size(X,3)
+  N = size(FE.xw,1)
+
+  NFG = min(div(512,N*N),NF)
+  group = (N, N, NFG)
+  ndrange = (N, N, NF)
+
+  KJacobiSphere2Kernel! = JacobiSphere2Kernel!(backend,group)
+
+  KJacobiSphere2Kernel!(X,dXdxI,J,FE.xw,FE.DS,F,Rad,ndrange=ndrange)
+end
+
 function JacobiSphere3GPU!(X,dXdxI,J,FE,F,z,zs,Rad)
 
   backend = get_backend(X)
@@ -20,6 +37,27 @@ function JacobiSphere3GPU!(X,dXdxI,J,FE,F,z,zs,Rad)
   KJacobiSphere3Kernel! = JacobiSphere3Kernel!(backend,group)
 
   KJacobiSphere3Kernel!(X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
+end
+
+@kernel function JacobiSphere2Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(D),@Const(F),Rad)
+
+  gi, gj, gF = @index(Group, NTuple)
+  I, J,  iF   = @index(Local, NTuple)
+  _,_,IF = @index(Global, NTuple)
+
+  FaceTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  NF = @uniform @ndrange()[3]
+
+  dXdx = @localmem eltype(X) (N,N,2,2,FaceTilesDim)
+
+  eta = ksi
+  if IF <= NF
+    ID = I + (J - 1) * N
+    @views @inbounds JacobiSphere2Loc!(X[ID,:,IF],dXdx[I,J,:,:,iF],ksi[I],eta[J],F[:,:,IF],Rad)
+    @views @inbounds JJ[ID,IF] = Det2(dXdx[I,J,:,:,iF])
+    @views @inbounds Adjunct2!(dXdxI[:,:,ID,IF],dXdx[I,J,:,:,iF])
+  end
 end
 
 @kernel function JacobiSphere3Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
@@ -67,6 +105,87 @@ end
   end
 end
 
+@inline function JacobiSphere2Loc!(X,dXdx,ksi1,ksi2,F,Rad)
+  zero = eltype(X)(0)
+  one = eltype(X)(1)
+  half = eltype(X)(1/2)
+  quarter = eltype(X)(1/4)
+  X1 = quarter * (F[1,1] * (one-ksi1)*(one-ksi2) +
+   F[2,1] * (one+ksi1)*(one-ksi2) +
+   F[3,1] * (one+ksi1)*(one+ksi2) +
+   F[4,1] * (one-ksi1)*(one+ksi2))
+  X2 = quarter * (F[1,2] * (one-ksi1)*(one-ksi2) +
+   F[2,2] * (one+ksi1)*(one-ksi2) +
+   F[3,2] * (one+ksi1)*(one+ksi2) +
+   F[4,2] * (one-ksi1)*(one+ksi2))
+  X3 = quarter * (F[1,3] * (one-ksi1)*(one-ksi2) +
+   F[2,3] * (one+ksi1)*(one-ksi2) +
+   F[3,3] * (one+ksi1)*(one+ksi2) +
+   F[4,3] * (one-ksi1)*(one+ksi2))
+
+  r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
+  f = Rad / r
+  X1 = X1 / r
+  X2 = X2 / r
+  X3 = X3 / r
+  (lam,theta)=cart2sphere(X1,X2,X3)
+
+  DD=@SArray([-sin(lam) cos(lam) zero;
+      zero       zero     one])
+
+  sinlam = sin(lam)
+  coslam = cos(lam)
+  sinth = sin(theta)
+  costh = cos(theta)
+  a11 = sinlam * sinlam * costh * costh + sinth * sinth
+  a12 = -sinlam * coslam * costh * costh
+  a13 = -coslam * sinth * costh
+  a21 = a12
+  a22 = coslam * coslam * costh * costh + sinth * sinth
+  a23 = -sinlam * sinth * costh
+  a31 = -coslam * sinth
+  a32 = -sinlam * sinth
+  a33 = costh
+  A = @SArray([a11 a12 a13;
+      a21 a22 a23;
+      a31 a32 a33])
+
+  B = @SArray([F[1,1] F[2,1] F[3,1] F[4,1];
+       F[1,2] F[2,2] F[3,2] F[4,2];
+       F[1,3] F[2,3] F[3,3] F[4,3]])
+
+  C = @SArray([-one+ksi2  -one+ksi1;
+              one-ksi2  -one-ksi1;
+              one+ksi2   one+ksi1;
+             -one-ksi2   one-ksi1])
+  D = quarter * f * DD * A * B * C
+  dXdx[1,1] = D[1,1]	    
+  dXdx[1,2] = D[1,2]	    
+  dXdx[2,1] = D[2,1]	    
+  dXdx[2,2] = D[2,2]	    
+  X[1] = X1 * Rad 
+  X[2] = X2 * Rad 
+  X[3] = X3 * Rad
+
+end
+
+@inline function Det2(A)
+  A[1,1] * A[2,2]  - A[1,2] * A[2,1] 
+end  
+
+@inline function Adjunct2!(Ad,A)
+#   A[1,1] A[1,2] A[1,3]
+#   A[2,1] A[2,2] A[2,3]
+#   A[3,1] A[3,2] A[3,3]
+
+  Ad[1,1] = A[2,2] 
+  Ad[2,1] = -A[2,1]
+  
+  Ad[1,2] = -A[1,2] 
+  Ad[2,2] = A[1,1] 
+
+end  
+
 @inline function JacobiSphere3Loc!(X,dXdx,hR,ksi1,ksi2,ksi3,F,z1,z2,Rad,H,zs)
   zero = eltype(X)(0)
   one = eltype(X)(1)
@@ -85,8 +204,9 @@ end
    F[3,3] * (one+ksi1)*(one+ksi2) +
    F[4,3] * (one-ksi1)*(one+ksi2))
   zLoc = half * ((one-ksi3) * z1 + (one+ksi3) * z2)
-  hR = zLoc + (H - zLoc) * zs / H
-  D33  = one - zs / H;
+# hR = zLoc + (H - zLoc) * zs / H
+# D33  = one - zs / H;
+  hR, D33 = GalChen(zLoc,H,zs)
   D33 = half * D33*(z2-z1)
 
   r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
@@ -164,3 +284,22 @@ end
   Ad[3,3] = A[1,1] * A[2,2] - A[1,2] * A[2,1]
 end  
 
+@inline function GalChen(zRef,H,zs)
+  z = zRef + (H - zRef) * zs / H
+  DzDzRef  = eltype(zRef)(1) - zs / H
+  return z, DzDzRef
+end
+
+@inline function Sleve(zRef,H,zs)
+  etaH = eltype(zRef)(.7)
+  s = eltype(zRef)(8/10)
+  eta = zRef / H
+  if eta <= etaH
+    z = eta * H + zs * sinh((etaH - eta) / s / etaH) / sinh(1 / s) 
+    DzDzRef  = eltype(zRef)(1) - zs / H / s / etaH * cosh((etaH - eta) / s / etaH) / sinh(1 / s) 
+  else
+    z = eta * H
+    DzDzRef  = eltype(zRef)(1) 
+  end  
+  return z, DzDzRef
+end

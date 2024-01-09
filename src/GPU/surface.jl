@@ -33,3 +33,15 @@ end
     (v2 - nS[2] * nU) * (v2 - nS[2] * nU) +
     (wC - nS[3] * nU) * (wC - nS[3] * nU))
 end
+
+Base.@kwdef struct MOSurface <: SurfaceValues end
+function (::MOSurface)(Phys,Param,uPos,vPos,wPos)
+  function SurfaceData(U,p,dXdxI,nS)
+    FT = eltype(U)
+    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
+    CT = FT(Param.CE)
+    CH = FT(Param.CH)
+    return uStar, CT, CH
+  end
+  return SurfaceData
+end  
