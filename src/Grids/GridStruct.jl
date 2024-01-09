@@ -29,7 +29,7 @@ mutable struct GridStruct{FT<:AbstractFloat,
   NumNodes::Int
   Nodes::Array{Node, 1}
   Form::String
-  Type ::String
+  Type ::ElementType
   Dim::Int
   Rad::FT
   NumEdgesI::Int
@@ -52,7 +52,7 @@ function GridStruct{FT}(backend,nz) where FT <: AbstractFloat
   NumNodes=0
   Nodes=Array{Node}(undef, 0)
   Form=""
-  Type=""
+  Type=nothing
   Dim=0
   Rad=0.0
   NumEdgesI=0

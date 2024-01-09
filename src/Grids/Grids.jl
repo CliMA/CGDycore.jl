@@ -22,6 +22,10 @@ EPS::Float64 = eps(Float64)
 EPS2 = EPS * EPS
 MAXSIZE::Int = 10
 
+abstract type ElementType end
+struct Tri <: ElementType end
+struct Quad <: ElementType end
+
 
 include("point.jl")
 include("geometry_circle.jl")

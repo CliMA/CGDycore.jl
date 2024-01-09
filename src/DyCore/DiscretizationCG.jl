@@ -1,3 +1,4 @@
+#=
 function DiscretizationCG(backend,FT,Jacobi,CG::CGTri,Exchange,Global,zs) 
 # Discretization
   Grid = Global.Grid
@@ -18,6 +19,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGTri,Exchange,Global,zs)
   end  
   copyto!(FGPU,F)
 end
+=#
 
 function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs) 
 # Discretization

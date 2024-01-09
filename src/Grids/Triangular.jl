@@ -386,7 +386,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
   nBar=[ 0  1   0   1
              -1  0  -1   0]
   Dim = 3
-  Type = "Tri"
+  Type = Tri()
   Form = "Sphere"
 
   NumNodes = TriangularGrid.NumNodes

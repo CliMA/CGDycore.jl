@@ -18,10 +18,13 @@ using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using Polynomials
+using SpecialPolynomials
 
 export parse_commandline 
 
 include("FiniteElement.jl")
+include("FiniteElementTri.jl")
 include("Average.jl")
 include("AverageFB.jl")
 include("Damping.jl")
