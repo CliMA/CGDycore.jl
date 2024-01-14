@@ -53,7 +53,7 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
       @. Height = max(Height,0)
     end
   elseif SmoothType == "Hyper"
-    SmoothFac=1.e18
+    SmoothFac=5.e17
     FHeight1 = similar(Height)
     @inbounds for i=1:10
       @. FHeight1 = 0
@@ -75,6 +75,7 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
       KernelAbstractions.synchronize(backend)
       Parallels.ExchangeData!(FHeight,Exchange)
       @. Height -= SmoothFac * FHeight
+      @show minimum(Height),maximum(Height)
       @. Height = max(Height,0)
     end
   end    

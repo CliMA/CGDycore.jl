@@ -1,4 +1,4 @@
-function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys,RadEarth)    
+function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)    
 
   comm = MPI.COMM_WORLD
   Proc = MPI.Comm_rank(comm) + 1 
@@ -68,29 +68,28 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
 
   if Topography.TopoS == "EarthOrography"
     zS = Grids.Orography(backend,FT,CG,Exchange,Global)
+  else
+    zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile)
   end
 
-  if Topography.TopoS == "EarthOrography"
-    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
-  else
-    (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global)
-  end
-  Global.Output.dTol = 2*pi / nPanel
+  (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
+
   # Output Orography
-  if Topography.TopoS == "EarthOrography"
-    Output.Flat=true
-    nzTemp = Global.Grid.nz
-    Global.Grid.nz = 1
-    vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Grids.TransSphereX!,CG,Metric,Global)
-    Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
-    Global.Grid.nz = nzTemp
-  end
+  Global.Output.dTol = 2*pi / nPanel
+  Output.Flat=true
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Grids.TransSphereX!,CG,Metric,Global)
+  Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
+  Global.Grid.nz = nzTemp
+
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
   vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,CG,Metric,Global)
   Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
+
   return CG,Metric,Exchange,Global
 end  
 
@@ -140,8 +139,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,Boundary,Gr
   Outputs.unstructured_vtkPartition(vtkCachePart, Global.Grid.NumFaces, Proc, ProcNumber)
   Global.Grid.nz = nzTemp
 
-  zS = Grids.Orography(backend,FT,CG,Global,TopoProfile)
-  @show minimum(zS),maximum(zS)
+  zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile)
   (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
 
   return CG, Metric, Exchange, Global

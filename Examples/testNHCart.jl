@@ -271,6 +271,11 @@ end
 
 # Forcing
 Force =  Examples.NoForcing()(Param,Phys)
+# Damping
+if Damping
+  Damp = GPU.DampingW()(H,StrideDamp,Relax,Model.wPos)
+  Model.Damp = Damp
+end
 
 # Output
 Global.Output.vtkFileName=string(Problem*"_")

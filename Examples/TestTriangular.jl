@@ -1,40 +1,28 @@
-#import src/Grid/Triangular.jl
-#include("../src/Grid/Triangular.jl")
-include("../src/CGDycore.jl")
-using PairedLinkedLists
+import CGDycore:
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
+using MPI
+using Base
+using CUDA
+using AMDGPU
+using Metal
 using KernelAbstractions
+using StaticArrays
+using ArgParse
 
 backend = CPU()
-
-parsed_args = CGDycore.parse_commandline()
-TopoS = parsed_args["TopoS"]
-
-IcosahedronGrid = CGDycore.CreateIcosahedronGrid()
-RefineLevel =  3
-for iRef = 1 : RefineLevel
-  CGDycore.RefineEdgeTriangularGrid!(IcosahedronGrid)  
-  CGDycore.RefineFaceTriangularGrid!(IcosahedronGrid)
-end
-CGDycore.NumberingTriangularGrid!(IcosahedronGrid)
+FT = Float32
 nz = 1
 Rad = 1.0
-Topography = (TopoS=TopoS,H=1)
+RefineLevel = 3
 
-GridTri = CGDycore.GridStruct(nz,Topography)
-GridTri = CGDycore.TriangularGridToGrid(IcosahedronGrid,Rad,GridTri)
-vtkSkeletonMeshTri = CGDycore.vtkStruct{Float64}(backend,GridTri)
-CGDycore.vtkSkeleton(vtkSkeletonMeshTri,"IcosahedronTri", 1, 1)
+GridTri = Grids.TriangularGrid(backend,FT,RefineLevel,Rad,nz)
+vtkSkeletonMeshTri = Outputs.vtkStruct{Float64}(backend,GridTri)
+c = ones(FT,GridTri.NumFaces)
+Outputs.vtkSkeleton(vtkSkeletonMeshTri,"IcosahedronTri", 1, 1,c)
 
-GridDel = CGDycore.GridStruct(nz,Topography)
-GridDel = CGDycore.DelaunayGridToPolyGrid(IcosahedronGrid,Rad,GridDel)
-vtkSkeletonMeshDel = CGDycore.vtkStruct{Float64}(backend,GridDel)
-CGDycore.vtkSkeleton(vtkSkeletonMeshDel,"IcosahedronDel", 1, 1)
+GridDel = Grids.DelaunayGrid(backend,FT,RefineLevel,Rad,nz)
+vtkSkeletonMeshDel = Outputs.vtkStruct{Float64}(backend,GridDel)
+c = ones(FT,GridDel.NumFaces)
+Outputs.vtkSkeleton(vtkSkeletonMeshDel,"IcosahedronDel", 1, 1,c)
 
-
-# RefineCellTriangularGrid(IcosahedronGrid)
-
-# CALL NumberingTriangularGrid(Square)
-# CALL TriangularGridToPolyGrid(nz,Square,PolyGrid)
-
-a = 4
 

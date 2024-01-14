@@ -1,4 +1,4 @@
-function JacobiSphere3CPU!(X,dXdxI,J,CG,Grid,zs,Topo)
+function JacobiSphere3CPU!(X,dXdxI,J,CG,Grid,zs)
   FT = eltype(X)
 
   NF = size(X,5)
@@ -11,11 +11,13 @@ function JacobiSphere3CPU!(X,dXdxI,J,CG,Grid,zs,Topo)
   zsCPU = zeros(FT,size(zs))
   copyto!(zCPU,Grid.z)
   copyto!(zsCPU,zs)
+  H = zCPU[end]
+  Rad = Grid.Rad
 
   for iF = 1 : NF
     for iz = 1 : nz
       zI = [zCPU[iz],zCPU[iz+1]]
-      @views (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz) = JacobiSphere3(CG,Grid.Faces[iF],zI,Topo,Grid.Topography,zsCPU[:,:,iF])
+      @views (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz) = JacobiSphere3(CG,Grid.Faces[iF],zI,Rad,H,zsCPU[:,:,iF],iz,iF)
       @views @. XCPU[:,:,:,iz,iF] = X_Fz
       @views @. JCPU[:,:,iz,iF] = J_Fz
       @views @. dXdxICPU[:,:,:,:,iz,iF] = dXdxI_Fz
@@ -26,7 +28,7 @@ function JacobiSphere3CPU!(X,dXdxI,J,CG,Grid,zs,Topo)
   copyto!(dXdxI,dXdxICPU)
 end
 
-function JacobiSphere3(CG,F,z,Topo,Topography,zs)
+function JacobiSphere3(CG,F,z,Rad,H,zs,iz,iF)
 ksi=CG.xwCPU
 eta=CG.xwCPU
 zeta=CG.xwZCPU
@@ -45,7 +47,7 @@ DST = DS'
   @inbounds for i=1:n
     @inbounds for k=1:n3
       (X[i,j,k,:],dXdx[i,j,k,:,:],hR[i,j,k]) =
-        JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Topography.Rad,Topography,zs[i,j])
+        JacobiSphere3Loc(ksi[i],eta[j],zeta[k],F,z,Rad,H,zs[i,j])
     end
   end
 end
@@ -69,7 +71,7 @@ dXdxI = reshape(dXdxI,3,3,n3,n*n)
 return (X,J,dXdx,dXdxI)
 end
 
-function JacobiSphere3Loc(ksi1,ksi2,ksi3,F,z,Rad,Topography,zs)
+function JacobiSphere3Loc(ksi1,ksi2,ksi3,F,z,Rad,H,zs)
 
 X1=0.25*(F.P[1].x .*(1-ksi1)*(1-ksi2)+
   F.P[2].x .*(1+ksi1)*(1-ksi2)+
@@ -84,7 +86,7 @@ X3=0.25*(F.P[1].z .*(1-ksi1)*(1-ksi2)+
   F.P[3].z .*(1+ksi1)*(1+ksi2)+
   F.P[4].z .*(1-ksi1)*(1+ksi2))
 zLoc=0.5*((1-ksi3)*z[1]+(1+ksi3)*z[2])
-(hR,D33)=Topo(X1,X2,X3,zLoc,Topography,zs)
+(hR,D33)=Topo1(X1,X2,X3,zLoc,H,zs)
 D33=0.5*D33*(z[2]-z[1])
 
 r=sqrt(X1^2+X2^2+X3^2)
@@ -136,3 +138,9 @@ return (X,D,hR)
 
 end
 
+function Topo1(x,y,z,zeta,H,zs)
+  h = zs
+  Z=zeta+(H-zeta)*h/H;
+  dZ=1-h/H;
+ return (Z,dZ)
+end

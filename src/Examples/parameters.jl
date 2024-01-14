@@ -47,6 +47,43 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   CMom::FT = 1.e-3
 end
 
+Base.@kwdef struct ParamBaroWaveHillDrySphere{FT}
+  T0E::FT = 310.0
+  T0P::FT = 240.0
+  B::FT = 2.0
+  K::FT = 3.0
+  LapseRate::FT = 0.005
+  U0::FT = -0.5
+  PertR::FT = 1.0/6.0
+  Up::FT = 0.0
+  PertExpR::FT = 0.1
+  PertLon::FT = pi/9.0
+  PertLat::FT = 2.0 * pi / 9.0
+  PertZ::FT = 15000.0
+  NBr::FT = 1.e-2
+  DeltaT::FT = 1
+  ExpDist::FT = 5
+  T0::FT = 300
+  TEq::FT = 300
+  T_init::FT  = 315
+  lapse_rate::FT  = -0.008
+  Deep::Bool = false
+  pert::FT = 0.1
+  uMax::FT = 1.0
+  vMax::FT = 0.0
+  DeltaT_y::FT = 0
+  DeltaTh_z::FT = -5
+  T_equator::FT = 315
+  T_min::FT = 200
+  sigma_b::FT = 7/10
+  z_D::FT = 20.0e3
+  #      Moist
+  q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
+  q_t::FT = 1.0e-12
+  # Surface flux
+  CMom::FT = 1.e-3
+end
+
 Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
   day::FT = 3600.0 * 24.0
   k_a::FT= 1.0 / (40.0 * day)
@@ -271,12 +308,24 @@ Base.@kwdef struct ParamAdvectionCart
   H = H
 end  
 
+Base.@kwdef struct ParamSchaerSphericalSphere{FT}
+  TEq::FT  = 300.0
+  X::FT = 166.7
+  H::FT = 20000
+  uEq::FT = 20
+end  
 
 
 function Parameters(FT,Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro" || Problem == "BaroWaveMoistSphere"
     @show Problem
     Param = ParamBaroWaveDrySphere{FT}()
+  elseif Problem == "BaroWaveHillDrySphere" || Problem == "BaroWaveHillMoistSphere"
+    @show Problem
+    Param = ParamBaroWaveHillDrySphere{FT}()
+  elseif Problem == "SchaerSphericalSphere"
+    @show Problem
+    Param = ParamSchaerSphericalSphere{FT}()
   elseif Problem == "GalewskiSphere"
     @show Problem
     Param = ParamGalewskiSphere()

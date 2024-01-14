@@ -425,3 +425,22 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
   end
   return local_profile,Force,Eddy,TSurf
 end
+
+Base.@kwdef struct SchaerSphereExample <: Example end
+
+function (profile::SchaerSphereExample)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    z = max(FT(0), R - Phys.RadEarth / Param.X)
+    uS = Param.uEq * cos(Lat)
+    vS = FT(0.0)
+    w = FT(0.0)
+    pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(Lat)^2 -
+      Phys.Grav * z / (Phys.Rd * Param.TEq))
+    Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
+    Rho = pLoc / (Phys.Rd * Param.TEq)
+    return (Rho,uS,vS,w,Th)
+  end
+  return local_profile
+end

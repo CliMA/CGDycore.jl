@@ -5,7 +5,7 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
              -1  0  -1   0
              0   0  0    0]
   Dim=3
-  Type="Quad"
+  Type = Quad()
   Form="Planar"
   Pert=0.0
   PertX=0.2
@@ -153,18 +153,18 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   E2=2
   E4=1
   FaceNumber=1
-  Type="o"
+  TypeF="o"
   @inbounds for iy=1:ny
     if iy==ny && Boundary.SN == "Period"
       @inbounds for ix=1:nx
         if ix==nx && Boundary.WE == "Period"
-          (Faces[FaceNumber],Edges)=Face([E1,1+(iy-1)*nx,NumEdgesX+1+(ix-1),E4],Nodes,Edges,FaceNumber,Type,OrientFace,
+          (Faces[FaceNumber],Edges)=Face([E1,1+(iy-1)*nx,NumEdgesX+1+(ix-1),E4],Nodes,Edges,FaceNumber,TypeF,OrientFace,
             P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
           FaceNumber=FaceNumber+1
           E1=E1+1
           E4=E4+1
         else
-          (Faces[FaceNumber],Edges)=Face([E1,E2,NumEdgesX+1+(ix-1),E4],Nodes,Edges,FaceNumber,Type,OrientFace,
+          (Faces[FaceNumber],Edges)=Face([E1,E2,NumEdgesX+1+(ix-1),E4],Nodes,Edges,FaceNumber,TypeF,OrientFace,
             P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
           FaceNumber=FaceNumber+1
           E1=E1+1
@@ -175,13 +175,13 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
     else
       @inbounds for ix=1:nx
         if ix==nx && Boundary.WE == "Period"
-          (Faces[FaceNumber],Edges)=Face([E1,1+(iy-1)*nx,E3,E4],Nodes,Edges,FaceNumber,Type,OrientFace,
+          (Faces[FaceNumber],Edges)=Face([E1,1+(iy-1)*nx,E3,E4],Nodes,Edges,FaceNumber,TypeF,OrientFace,
             P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
           FaceNumber=FaceNumber+1
           E1=E1+1
           E3=E3+1
         else
-          (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,Type,OrientFace,
+          (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,TypeF,OrientFace,
             P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]])
           FaceNumber=FaceNumber+1
           E1=E1+1

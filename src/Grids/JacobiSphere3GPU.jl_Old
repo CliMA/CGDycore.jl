@@ -12,7 +12,7 @@ function JacobiSphere2GPU!(X,dXdxI,J,FE,F,Rad)
   NF = size(X,3)
   N = size(FE.xw,1)
 
-  NFG = min(div(256,N*N),NF)
+  NFG = min(div(512,N*N),NF)
   group = (N, N, NFG)
   ndrange = (N, N, NF)
 
@@ -30,14 +30,13 @@ function JacobiSphere3GPU!(X,dXdxI,J,FE,F,z,zs,Rad)
   N = size(FE.xw,1)
   Nz = size(X,4)
  
-  NzG = min(div(256,N*N*2),Nz)
+  NzG = min(div(512,N*N*2),Nz)
   group = (N, N, 2, NzG, 1)
   ndrange = (N, N, 2, Nz, NF)
 
   KJacobiSphere3Kernel! = JacobiSphere3Kernel!(backend,group)
 
   KJacobiSphere3Kernel!(X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
 end
 
 @kernel function JacobiSphere2Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(D),@Const(F),Rad)
@@ -82,66 +81,8 @@ end
     ID = I + (J - 1) * N
     @inbounds z1 = z[Iz]
     @inbounds z2 = z[Iz+1]
-    ksi1 = ksi[I]
-    ksi2 = ksi[J]
-    ksi3 = zeta[K]
-    X1 = eltype(X)(1/4) * (F[1,1,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)-ksi2) +
-     F[2,1,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)-ksi2) +
-     F[3,1,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
-     F[4,1,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
-    X2 = eltype(X)(1/4) * (F[1,2,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)-ksi2) +
-     F[2,2,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)-ksi2) +
-     F[3,2,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
-     F[4,2,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
-    X3 = eltype(X)(1/4) * (F[1,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)-ksi2) +
-     F[2,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)-ksi2) +
-     F[3,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
-     F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
-    zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-    hR[I,J,K,iz], D33 = GalChen(zLoc,H,zs[I,J,IF])
-#   hR, D33 = Sleve(zLoc,H,zs)
-    D33 = eltype(X)(1/2) * D33*(z2-z1)
-    r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
-    f = Rad / r
-    X[ID,K,1,Iz,IF] = X1 / r * (Rad + hR[I,J,K,iz])
-    X[ID,K,2,Iz,IF] = X2 / r * (Rad + hR[I,J,K,iz])
-    X[ID,K,3,Iz,IF] = X3 / r * (Rad + hR[I,J,K,iz])
-    (lam,theta)=cart2sphere(X1,X2,X3)
-
-    DD=@SArray([-sin(lam) cos(lam) eltype(X)(0);
-      eltype(X)(0)       eltype(X)(0)     eltype(X)(1)])
-    sinlam = sin(lam)
-    coslam = cos(lam)
-    sinth = sin(theta)
-    costh = cos(theta)
-    a11 = sinlam * sinlam * costh * costh + sinth * sinth
-    a12 = -sinlam * coslam * costh * costh
-    a13 = -coslam * sinth * costh
-    a21 = a12
-    a22 = coslam * coslam * costh * costh + sinth * sinth
-    a23 = -sinlam * sinth * costh
-    a31 = -coslam * sinth
-    a32 = -sinlam * sinth
-    a33 = costh
-    A = @SArray([a11 a12 a13;
-      a21 a22 a23;
-      a31 a32 a33])
-    B = @SArray([F[1,1,IF] F[2,1,IF] F[3,1,IF] F[4,1,IF];
-       F[1,2,IF] F[2,2,IF] F[3,2,IF] F[4,2,IF];
-       F[1,3,IF] F[2,3,IF] F[3,3,IF] F[4,3,IF]])
-
-    C = @SArray([-eltype(X)(1)+ksi2  -eltype(X)(1)+ksi1;
-              eltype(X)(1)-ksi2  -eltype(X)(1)-ksi1;
-              eltype(X)(1)+ksi2   eltype(X)(1)+ksi1;
-             -eltype(X)(1)-ksi2   eltype(X)(1)-ksi1])
-    @views dXdx[I,J,K,1:2,1:2,iz] .= eltype(X)(1/4) * f * DD * A * B * C
-#   dXdx[I,J,K,1,1,iz] = D[1,1]
-#   dXdx[I,J,K,1,2,iz] = D[1,2]
-    dXdx[I,J,K,1,3,iz] = eltype(X)(0)
-#   dXdx[I,J,K,2,1,iz] = D[2,1]
-#   dXdx[I,J,K,2,2,iz] = D[2,2]
-    dXdx[I,J,K,2,3,iz] = eltype(X)(0)
-    dXdx[I,J,K,3,3,iz] = D33
+    @views @inbounds hR[I,J,K,iz] = JacobiSphere3Loc!(X[ID,K,:,Iz,IF],dXdx[I,J,K,:,:,iz],
+      ksi[I],ksi[J],zeta[K],F[:,:,IF],z1,z2,Rad,H,zs[I,J,IF])
   end  
 
   @synchronize 
@@ -158,26 +99,7 @@ end
     @inbounds dXdx[I,J,K,3,1,iz] = DxhR
     @inbounds dXdx[I,J,K,3,2,iz] = DyhR
     @views @inbounds JJ[ID,K,Iz,IF] = Det3(dXdx[I,J,K,:,:,iz])
-    @inbounds dXdxI[1,1,K,ID,Iz,IF] = dXdx[I,J,K,2,2,iz] * dXdx[I,J,K,3,3,iz] - 
-      dXdx[I,J,K,2,3,iz] * dXdx[I,J,K,3,2,iz]
-    @inbounds dXdxI[2,1,K,ID,Iz,IF] = -(dXdx[I,J,K,2,1,iz] * dXdx[I,J,K,3,3,iz] - 
-      dXdx[I,J,K,2,3,iz] * dXdx[I,J,K,3,1,iz])
-    @inbounds dXdxI[3,1,K,ID,Iz,IF] = dXdx[I,J,K,2,1,iz] * dXdx[I,J,K,3,2,iz] - 
-      dXdx[I,J,K,2,2,iz] * dXdx[I,J,K,3,1,iz]
-
-    @inbounds dXdxI[1,2,K,ID,Iz,IF] = -(dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,3,3,iz] - 
-      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,3,2,iz])
-    @inbounds dXdxI[2,2,K,ID,Iz,IF] = dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,3,3,iz] - 
-      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,3,1,iz]
-    @inbounds dXdxI[3,2,K,ID,Iz,IF] = -(dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,3,2,iz] - 
-      dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,3,1,iz])
-
-    @inbounds dXdxI[1,3,K,ID,Iz,IF] = dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,2,3,iz] - 
-      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,2,2,iz]
-    @inbounds dXdxI[2,3,K,ID,Iz,IF] = -(dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,2,3,iz] - 
-      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,2,1,iz])
-    @inbounds dXdxI[3,3,K,ID,Iz,IF] = dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,2,2,iz] - 
-      dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,2,1,iz]
+    @views @inbounds Adjunct3!(dXdxI[:,:,K,ID,Iz,IF],dXdx[I,J,K,:,:,iz])
   end
 end
 
@@ -262,10 +184,101 @@ end
 
 end  
 
+@inline function JacobiSphere3Loc!(X,dXdx,ksi1,ksi2,ksi3,F,z1,z2,Rad,H,zs)
+  zero = eltype(X)(0)
+  one = eltype(X)(1)
+  half = eltype(X)(1/2)
+  quarter = eltype(X)(1/4)
+  X1 = quarter * (F[1,1] * (one-ksi1)*(one-ksi2) +
+   F[2,1] * (one+ksi1)*(one-ksi2) +
+   F[3,1] * (one+ksi1)*(one+ksi2) +
+   F[4,1] * (one-ksi1)*(one+ksi2))
+  X2 = quarter * (F[1,2] * (one-ksi1)*(one-ksi2) +
+   F[2,2] * (one+ksi1)*(one-ksi2) +
+   F[3,2] * (one+ksi1)*(one+ksi2) +
+   F[4,2] * (one-ksi1)*(one+ksi2))
+  X3 = quarter * (F[1,3] * (one-ksi1)*(one-ksi2) +
+   F[2,3] * (one+ksi1)*(one-ksi2) +
+   F[3,3] * (one+ksi1)*(one+ksi2) +
+   F[4,3] * (one-ksi1)*(one+ksi2))
+  zLoc = half * ((one-ksi3) * z1 + (one+ksi3) * z2)
+  hR, D33 = GalChen(zLoc,H,zs)
+# hR, D33 = Sleve(zLoc,H,zs)
+  D33 = half * D33*(z2-z1)
+
+  r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
+  f = Rad / r
+  X1 = X1 / r
+  X2 = X2 / r
+  X3 = X3 / r
+  (lam,theta)=cart2sphere(X1,X2,X3)
+
+  DD=@SArray([-sin(lam) cos(lam) zero;
+      zero       zero     one])
+
+  sinlam = sin(lam)
+  coslam = cos(lam)
+  sinth = sin(theta)
+  costh = cos(theta)
+  a11 = sinlam * sinlam * costh * costh + sinth * sinth
+  a12 = -sinlam * coslam * costh * costh
+  a13 = -coslam * sinth * costh
+  a21 = a12
+  a22 = coslam * coslam * costh * costh + sinth * sinth
+  a23 = -sinlam * sinth * costh
+  a31 = -coslam * sinth
+  a32 = -sinlam * sinth
+  a33 = costh
+  A = @SArray([a11 a12 a13;
+      a21 a22 a23;
+      a31 a32 a33])
+
+  B = @SArray([F[1,1] F[2,1] F[3,1] F[4,1];
+       F[1,2] F[2,2] F[3,2] F[4,2];
+       F[1,3] F[2,3] F[3,3] F[4,3]])
+
+  C = @SArray([-one+ksi2  -one+ksi1;
+              one-ksi2  -one-ksi1;
+              one+ksi2   one+ksi1;
+             -one-ksi2   one-ksi1])
+  D = quarter * f * DD * A * B * C
+  dXdx[1,1] = D[1,1]	    
+  dXdx[1,2] = D[1,2]	    
+  dXdx[1,3] = zero
+  dXdx[2,1] = D[2,1]	    
+  dXdx[2,2] = D[2,2]	    
+  dXdx[2,3] = zero
+  dXdx[3,1] = zero
+  dXdx[3,2] = zero
+  dXdx[3,3] = D33
+  X[1] = X1 * (Rad + hR)
+  X[2] = X2 * (Rad + hR)
+  X[3] = X3 * (Rad + hR)
+  return hR  
+end
+
 @inline function Det3(A)
   A[1,1] * (A[2,2] * A[3,3] - A[2,3] * A[3,2]) -
   A[1,2] * (A[2,1] * A[3,3] - A[2,3] * A[3,1]) +
   A[1,3] * (A[2,1] * A[3,2] - A[2,2] * A[3,1]) 
+end  
+
+@inline function Adjunct3!(Ad,A)
+#   A[1,1] A[1,2] A[1,3]
+#   A[2,1] A[2,2] A[2,3]
+#   A[3,1] A[3,2] A[3,3]
+
+  Ad[1,1] = A[2,2] * A[3,3] - A[2,3] * A[3,2]
+  Ad[2,1] = -(A[2,1] * A[3,3] - A[2,3] * A[3,1])
+  Ad[3,1] = A[2,1] * A[3,2] - A[2,2] * A[3,1]
+  
+  Ad[1,2] = -(A[1,2] * A[3,3] - A[1,3] * A[3,2])
+  Ad[2,2] = A[1,1] * A[3,3] - A[1,3] * A[3,1]
+  Ad[3,2] = -(A[1,2] * A[3,2] - A[1,2] * A[3,1])
+
+  Ad[1,3] = A[1,2] * A[2,3] - A[1,3] * A[2,2]
+  Ad[2,3] = -(A[1,1] * A[2,3] - A[1,3] * A[2,1])
+  Ad[3,3] = A[1,1] * A[2,2] - A[1,2] * A[2,1]
 end  
 
 @inline function GalChen(zRef,H,zs)

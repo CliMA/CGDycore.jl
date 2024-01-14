@@ -70,6 +70,7 @@ StretchType = parsed_args["StretchType"]
 TopoS = parsed_args["TopoS"]
 GridType = parsed_args["GridType"]
 RadEarth = parsed_args["RadEarth"]
+ScaleFactor = parsed_args["ScaleFactor"]
 # CG Element
 OrdPoly = parsed_args["OrdPoly"]
 # Viscosity
@@ -197,7 +198,7 @@ Model.ModelType = ModelType
 Model.Stretch = Stretch
 Model.StretchType = StretchType
 Model.HyperVisc = HyperVisc
-Model.HyperDCurl = HyperDCurl
+Model.HyperDCurl = HyperDCurl 
 Model.HyperDGrad = HyperDGrad
 Model.HyperDRhoDiv = HyperDRhoDiv
 Model.HyperDDiv = HyperDDiv
@@ -206,31 +207,28 @@ Model.HyperDDivW = HyperDDivW
 OrdPolyZ = 1
 if RadEarth == 0.0
   RadEarth = Phys.RadEarth
+  if ScaleFactor != 0.0
+    RadEarth = RadEarth / ScaleFactor  
+  end  
 end
 
 Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
+#Topography
+if TopoS == "BaroWaveHill"
+  TopoProfile = Examples.BaroWaveHill()()
+elseif TopoS == "SchaerSphereCircle"
+  TopoProfile = Examples.SchaerSphereCircle()(Param,Phys)
+else
+  TopoProfile = Examples.Flat()()
+end
 
 @show "InitSphere"
 (CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,
-  GridType,Topography,Decomp,Model,Phys,RadEarth)
+  GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)
 
 # Initial values
-if Problem == "Galewski"
-  Profile = Examples.GalewskiExample()(Param,Phys)
-elseif Problem == "BaroWaveDrySphere"
-  Profile = Examples.BaroWaveExample()(Param,Phys)
-elseif Problem == "HeldSuarezDrySphere"
-  Profile, Force = Examples.HeldSuarezDryExample()(Param,Phys)
-  Model.InitialProfile = Profile
-  Model.Force = Force
-elseif Problem == "HeldSuarezMoistSphere"
-  Profile, Force, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
-  Model.InitialProfile = Profile
-  Model.Force = Force
-  Model.Eddy = Eddy
-end  
-
-U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+Examples.InitialProfile!(Model,Problem,Param,Phys)
+U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 # Pressure
 if Equation == "Compressible"
@@ -248,7 +246,6 @@ if Microphysics
       Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
   else
-    @show "False Type Microphysics"  
   end
 end  
 # Damping
@@ -334,6 +331,7 @@ Global.TimeStepper.IntMethod = IntMethod
 Global.TimeStepper.Table = Table
 Global.TimeStepper.dtau = dtau
 Global.TimeStepper.SimDays = SimDays
+Global.TimeStepper.SimHours = SimHours
 Global.TimeStepper.SimMinutes = SimMinutes
 Global.TimeStepper.SimSeconds = SimSeconds
 if ModelType == "VectorInvariant" || ModelType == "Advection"

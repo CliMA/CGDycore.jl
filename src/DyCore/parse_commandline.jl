@@ -297,6 +297,11 @@ function parse_commandline()
     arg_type = Float64
     default = 0.0 
 
+    "--ScaleFactor"
+    help = "ScaleFactor for EarthRadius"
+    arg_type = Float64
+    default = 0.0 
+
     "--GridType"
     help = "Grid"
     arg_type = String

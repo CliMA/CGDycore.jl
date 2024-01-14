@@ -1,41 +1,14 @@
-#=
-function DiscretizationCG(backend,FT,Jacobi,CG::CGTri,Exchange,Global,zs) 
-# Discretization
-  Grid = Global.Grid
-  DoF = CG.DoF
-  Metric = MetricStruct{FT}(backend,nQuad,OPZ,Global.Grid.NumFaces,nz)
-  F = zeros(3,3,NF)
-  FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
-  for iF = 1 : NF
-    F[1,1,iF] = Grid.Faces[iF].P[1].x  
-    F[1,2,iF] = Grid.Faces[iF].P[1].y  
-    F[1,3,iF] = Grid.Faces[iF].P[1].z  
-    F[2,1,iF] = Grid.Faces[iF].P[2].x  
-    F[2,2,iF] = Grid.Faces[iF].P[2].y  
-    F[2,3,iF] = Grid.Faces[iF].P[2].z  
-    F[3,1,iF] = Grid.Faces[iF].P[3].x  
-    F[3,2,iF] = Grid.Faces[iF].P[3].y  
-    F[3,3,iF] = Grid.Faces[iF].P[3].z  
-  end  
-  copyto!(FGPU,F)
-end
-=#
-
 function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs) 
 # Discretization
   Grid = Global.Grid
-  OP=CG.OrdPoly+1
-  OPZ=CG.OrdPolyZ+1
-  nz=Grid.nz
-  NF=Grid.NumFaces
+  OP = CG.OrdPoly+1
+  DoF = CG.DoF
+  OPZ = CG.OrdPolyZ+1
+  nz = Grid.nz
+  NF = Grid.NumFaces
 
   nQuad = OP * OP
-  Metric = MetricStruct{FT}(backend,nQuad,OPZ,Global.Grid.NumFaces,nz)
-# dXdxI = zeros(3,3,OPZ,nQuad,nz,NF)
-# nS = zeros(nQuad,3,NF)
-# FS = zeros(nQuad,NF)
-# J = zeros(nQuad,OPZ,nz,NF)
-# X = zeros(nQuad,OPZ,3,nz,NF)
+  Metric = MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz)
   F = zeros(4,3,NF)
   FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
   for iF = 1 : NF
@@ -64,9 +37,9 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU  
-  NzG = min(div(NumberThreadGPU,OP*OP),nz)  
-  group = (OP*OP,NzG,1)  
-  ndrange = (OP*OP,nz,NF)
+  NzG = min(div(NumberThreadGPU,DoF),nz)  
+  group = (DoF,NzG,1)  
+  ndrange = (DoF,nz,NF)
   if Global.Grid.Form == "Sphere"
     Metric.lat = KernelAbstractions.zeros(backend,FT,CG.NumG)
     KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
@@ -78,9 +51,9 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
     KGridSizeCartKernel! = GridSizeCartKernel!(backend,group)
     KGridSizeCartKernel!(Metric.zP,Metric.dz,Metric.X,CG.Glob,ndrange=ndrange)
   end    
-  NFG = min(div(NumberThreadGPU,OP*OP),NF)  
-  group = (OP*OP, NFG)
-  ndrange = (OP*OP, NF)
+  NFG = min(div(NumberThreadGPU,DoF),NF)  
+  group = (DoF, NFG)
+  ndrange = (DoF, NF)
   KSurfaceNormalKernel! = SurfaceNormalKernel!(backend,group)
   KSurfaceNormalKernel!(Metric.FS,Metric.nS,Metric.dXdxI,ndrange=ndrange)
 
