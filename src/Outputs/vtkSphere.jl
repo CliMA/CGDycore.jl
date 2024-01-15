@@ -684,7 +684,12 @@ function unstructured_vtkOrography(Height,vtkGrid, NF, CG,  part::Int, nparts::I
   vtk_filename_noext = filename
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
   HeightCell = zeros(OrdPrint*OrdPrint*NF) 
-  @views InterpolateCG!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+  backend = get_backend(Height)
+  FTB = eltype(Height)
+  cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,NF)
+  #@views InterpolateCG!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+  InterpolateCGDim2GPU!(cCell,Height,vtkInter,CG.Glob)
+  copyto!(HeightCell,cCell)
   vtk["Height", VTKCellData()] = HeightCell
   outfiles=vtk_save(vtk);
   return outfiles::Vector{String}
