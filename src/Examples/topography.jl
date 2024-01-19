@@ -27,9 +27,9 @@ function (profile::Flat)()
 end
 
 Base.@kwdef struct BaroWaveHill{T} <: Topography 
-  h0::T = 0.25 * 2.e3
-  lon1::T = 72 * pi / 180
-  lon2::T = 140 * pi / 180
+  h0::T = 2.e3
+  lon1::T = (72 + 10) * pi / 180
+  lon2::T = (140 + 10) * pi / 180
   lonBar::T = 7 * pi / 180
   c::T = 0.5 * lonBar*(-log(0.1))^(-1/2)
   lat1::T = pi / 4 

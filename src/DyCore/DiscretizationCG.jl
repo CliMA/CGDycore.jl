@@ -27,7 +27,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
   end  
   copyto!(FGPU,F)
   if Global.Grid.Form == "Sphere"
-    Grids.JacobiSphere3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs,Grid.Rad)
+    Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs,Grid.Rad)
   else
     Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
   end  

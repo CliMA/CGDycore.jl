@@ -38,6 +38,7 @@ mutable struct GridStruct{FT<:AbstractFloat,
   nBar::Array{FT, 2}
   colors::Array{Array{Int, 1}, 1}
   NumBoundaryFaces::Int
+  AdaptGrid::Any
 end
 function GridStruct{FT}(backend,nz) where FT <: AbstractFloat
   zP=zeros(nz)
@@ -61,6 +62,7 @@ function GridStruct{FT}(backend,nz) where FT <: AbstractFloat
   nBar=zeros(0,0)
   colors=[[]]
   NumBoundaryFaces = 0
+  AdaptGrid = ""
    return GridStruct{FT,
                      typeof(z)}(
     nz,
@@ -85,6 +87,7 @@ function GridStruct{FT}(backend,nz) where FT <: AbstractFloat
     nBar,
     colors,
     NumBoundaryFaces,
+    AdaptGrid,
     )
 end   
     

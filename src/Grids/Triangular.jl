@@ -453,6 +453,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   NumBoundaryFaces = 0
+  AdaptGrid = ""
   return GridStruct{FT,
                     typeof(z)}(
     nz,
@@ -477,6 +478,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
     nBar,
     colors,
     NumBoundaryFaces,
+    AdaptGrid,
     )
 end
 
@@ -551,6 +553,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   NumBoundaryFaces = 0
+  AdaptGrid = ""
 
   return GridStruct{FT,
                     typeof(z)}(
@@ -576,6 +579,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
     nBar,
     colors,
     NumBoundaryFaces,
+    AdaptGrid,
     )
 
 end

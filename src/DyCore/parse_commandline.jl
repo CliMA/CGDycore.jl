@@ -317,6 +317,11 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--AdaptGridType"
+    help = "Type of boundary following coordinate"
+    arg_type = String
+    default = "Sleve"
+
     "--nx"
     help = "Number of horizontal grid cell in x-direction"
     arg_type = Int

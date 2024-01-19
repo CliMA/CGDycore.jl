@@ -1,70 +1,29 @@
-function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)    
-
-  comm = MPI.COMM_WORLD
-  Proc = MPI.Comm_rank(comm) + 1 
-  ProcNumber = MPI.Comm_size(comm)
-  ParallelCom = ParallelComStruct()
-  ParallelCom.Proc = Proc
-  ParallelCom.ProcNumber  = ProcNumber
+function InitSphere(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfile,Exchange,Grid,ParallelCom)    
+  nz = Grid.nz 
+  Proc = ParallelCom.Proc
+  ProcNumber = ParallelCom.ProcNumber
 
   TimeStepper = TimeStepperStruct{FT}(backend)
-# Grid = Grids.GridStruct{FT}(backend,nz,Topography)
 
-  if GridType == "HealPix"
-  # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
-  # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-    Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "SQuadGen"
-    Grid = Grids.InputGrid("Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "Msh"
-    Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "CubedSphere"
-    Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "TriangularSphere"
-    IcosahedronGrid = Grids.CreateIcosahedronGrid()
-    RefineLevel =  0
-    for iRef = 1 : RefineLevel
-      Grids.RefineEdgeTriangularGrid!(IcosahedronGrid)
-      Grids.RefineFaceTriangularGrid!(IcosahedronGrid)
-    end
-    Grids.NumberingTriangularGrid!(IcosahedronGrid)
-    Grid = Grids.TriangularGridToGrid(IcosahedronGrid,RadEarth,Grid)
-  else
-    @show "False GridType"
-  end
-
-  if Decomp == "Hilbert"
-    Parallels.HilbertFaceSphere!(Grid)
-    CellToProc = Grids.Decompose(Grid,ProcNumber)
-  elseif Decomp == "EqualArea"
-    CellToProc = Grids.DecomposeEqualArea(Grid,ProcNumber)
-  else
-    CellToProc = ones(Int,Grid.NumFaces)
-    println(" False Decomp method ")
-  end
-
-  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
-
-  if Model.Stretch
-    if Model.StretchType == "ICON"  
-      sigma = 1.0
-      lambda = 3.16
-      Grids.AddStretchICONVerticalGrid!(SubGrid,nz,H,sigma,lambda)
-    elseif Model.StretchType == "Exp"  
-      Grids.AddExpStretchVerticalGrid!(SubGrid,nz,H,30.0,1500.0)
-    else
-      Grids.AddVerticalGrid!(SubGrid,nz,H)
-    end
-  else  
-    Grids.AddVerticalGrid!(SubGrid,nz,H)
-  end
-
-  Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   Output = OutputStruct()
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
-  Global = GlobalStruct{FT}(backend,SubGrid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
+  Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr,())
   CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+
+  if Model.Stretch
+    if Model.StretchType == "ICON"
+      sigma = 1.0
+      lambda = 3.16
+      Grids.AddStretchICONVerticalGrid!(Global.Grid,nz,H,sigma,lambda)
+    elseif Model.StretchType == "Exp"
+      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,30.0,1500.0)
+    else
+      Grids.AddVerticalGrid!(Global.Grid,nz,H)
+    end
+  else
+    Grids.AddVerticalGrid!(Global.Grid,nz,H)
+  end
 
   if Topography.TopoS == "EarthOrography"
     zS = Grids.Orography(backend,FT,CG,Exchange,Global)
@@ -72,10 +31,12 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile)
   end
 
+
   (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
 
   # Output Orography
-  Global.Output.dTol = 2*pi / nPanel
+  Global.Output.dTol = 2*pi / 30
+# Global.Output.dTol = 1.e-8
   Output.Flat=true
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
@@ -90,7 +51,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,Topography,
   Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
-  return CG,Metric,Exchange,Global
+  return CG, Metric, Global
 end  
 
 

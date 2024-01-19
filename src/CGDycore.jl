@@ -29,6 +29,7 @@ include("Integration/Integration.jl")
 include("DyCore/DyCore.jl")
 include("GPU/GPU.jl")
 include("FiniteElements/FiniteElements.jl")
+include("Surfaces/Surfaces.jl")
 
 OOP = 5
 

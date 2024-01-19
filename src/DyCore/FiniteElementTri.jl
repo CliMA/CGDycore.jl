@@ -71,12 +71,12 @@ function RT0Struct{FT}(backend,::Grids.Tri,Grid) where FT<:AbstractFloat
   if Type == Grid.Type
     DoF = 3  
     Fun = Array{Polynomial,2}(undef,3,2)
-    Fun[1,1] = Polynomial([0,1])
-    Fun[1,2] = Polynomial([-1,1])
-    Fun[2,1] = Polynomial([0,0,0])
-    Fun[2,2] = Polynomial([0,0,0])
-    Fun[3,1] = Polynomial([0,0,0])
-    Fun[3,2] = Polynomial([0,0,0])
+    Fun[1,1] = Polynomial([sqrt(2)/2,sqrt(2)/2])
+    Fun[1,2] = Polynomial([sqrt(2)/2,sqrt(2)/2])
+    Fun[2,1] = Polynomial([1/2,-1/2])
+    Fun[2,2] = Polynomial([1/2,+1/2])
+    Fun[3,1] = Polynomial([1/2,+1/2])
+    Fun[3,2] = Polynomial([1/2,-1/2])
     Glob = KernelAbstractions.zeros(backend,Int,3,Grid.NumFaces)
     GlobCPU = zeros(Int,3,Grid.NumFaces)
     NumG = Grid.NumEdgesI + Grid.NumEdgesB

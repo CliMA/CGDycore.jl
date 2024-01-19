@@ -58,5 +58,7 @@ include("polygon.jl")
 include("intersect.jl")
 include("interpolate.jl")
 include("TopographySmoothing.jl")
+include("InitGrid.jl")
+include("SphericalGrid.jl")
 
 end

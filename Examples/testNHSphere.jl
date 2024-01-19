@@ -69,6 +69,7 @@ Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
 TopoS = parsed_args["TopoS"]
 GridType = parsed_args["GridType"]
+AdaptGridType = parsed_args["AdaptGridType"]
 RadEarth = parsed_args["RadEarth"]
 ScaleFactor = parsed_args["ScaleFactor"]
 # CG Element
@@ -95,6 +96,12 @@ FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+ParallelCom = DyCore.ParallelComStruct()
+ParallelCom.Proc = Proc
+ParallelCom.ProcNumber  = ProcNumber
 
 if Device == "CPU" 
   backend = CPU()
@@ -122,6 +129,7 @@ else
   @show "False FloatTypeBackend"
   stop
 end
+
 Param = Examples.Parameters(FTB,Problem)
 
 KernelAbstractions.synchronize(backend)
@@ -212,6 +220,9 @@ if RadEarth == 0.0
   end  
 end
 
+Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,GridType,Decomp,RadEarth,Model,ParallelCom)
+
+
 Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
 #Topography
 if TopoS == "BaroWaveHill"
@@ -222,9 +233,13 @@ else
   TopoProfile = Examples.Flat()()
 end
 
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
+
 @show "InitSphere"
-(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,
-  GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)
+(CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+  Phys,TopoProfile,Exchange,Grid,ParallelCom)
+#(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,
+# GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)
 
 # Initial values
 Examples.InitialProfile!(Model,Problem,Param,Phys)

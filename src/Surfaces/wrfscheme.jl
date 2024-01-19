@@ -1,15 +1,18 @@
 function RiBulk(z,z0M,z0h,Chi,RiB,LandClass)
   FT = eltype(z)
-  PsiHeat = log((z+z0)/z0h) -
-    PsiH(Chi*(FT(1)+z0/z),z,z0M,z0h,RiB,LandClass) +
+  PsiHeat = log((z+z0M)/z0h) -
+    PsiH(Chi*(FT(1)+z0M/z),z,z0M,z0h,RiB,LandClass) +
     PsiH(Chi*z0h/z,z,z0M,z0h,RiB,LandClass)
-  PsiMom = log((z+z0M)/z0) -
+  @show PsiH  
+  PsiMom = log((z+z0M)/z0M) -
     PsiM(Chi*(FT(1)+z0M/z),z,z0M,z0h,RiB,LandClass) +
     PsiM(Chi*z0M/z,z,z0M,z0h,RiB,LandClass)
+  @show PsiM  
   return Chi * PsiHeat / (PsiMom * PsiMom)
 end
 
 function PsiH(Chi,z,z0M,z0h,RiB,LandClass)
+  FT = eltype(z)
   if LandClass <= 8
     a = FT(-5.3)
     b = FT(1.1)
@@ -31,7 +34,7 @@ function PsiM(Chi,z,z0M,z0h,RiB,LandClass)
     a = FT(-6.1)
     b =  FT(2.5)
     if RiB >= FT(0) 
-      PsiM  = a*log(Chi+(FT(1)+Chi**b)**(One/b))
+      PsiM  = a*log(Chi+(FT(1)+Chi^b)^(FT(1)/b))
     else
       PsiM  = (PsiMK(Chi)+Chi*Chi*PsiM_C(Chi))/(FT(1)+Chi*Chi)
     end
@@ -60,17 +63,17 @@ end
 
 function PsiH_C(Chi)
   FT = eltype(Chi)
-  beta = 34.d0
-  Var2 = (FT(1)-beta*Chi)**(FT(1)/FT(3))
-  PsiH_C = FT(3)/FT(2)*log((Var2**FT(2)+Var2+FT(1))/FT(3)) -
+  beta = FT(34)
+  Var2 = (FT(1)-beta*Chi)^(FT(1)/FT(3))
+  PsiH_C = FT(3)/FT(2)*log((Var2^FT(2)+Var2+FT(1))/FT(3)) -
     sqrt(FT(3))*atan((FT(2)*Var2+FT(1))/sqrt(FT(3))) +
     Pi/sqrt(FT(3))
 end
 
 function PsiM_C(Chi)
-  beta = 10.d0
-  Var2 = (FT(1)-beta*Chi)**(FT(1)/FT(3))
-  PsiM_C = FT(3)/FT(2)*log((Var2**FT(2)+Var2+FT(1))/FT(3)) -
+  beta = FT(10)
+  Var2 = (FT(1)-beta*Chi)^(FT(1)/FT(3))
+  PsiM_C = FT(3)/FT(2)*log((Var2^FT(2)+Var2+FT(1))/FT(3)) -
     sqrt(FT(3))*atan((FT(2)*Var2+FT(1))/sqrt(FT(3))) +
     pi/sqrt(FT(3))
 end
@@ -80,11 +83,12 @@ end
 function PsiH_SHEBA(Chi)
   FT = eltype(Chi)
 
-  ah = 5.d0
-  bh = 5.d0
-  ch = 3.d0
+  ah = FT(5)
+  bh = FT(5)
+  ch = FT(3)
   grbh = sqrt(ch^FT(2)-FT(4))
 
+  @show "PsiH_SHEBA",Chi
   PsiH_SHEBA = - bh/FT(2) * log(FT(1)+ch*Chi+Chi) +
     (-ah/grbh + bh*ch/(FT(2)*grbh)) *
     (log((FT(2)*Chi+ch-grbh)/(FT(2)*Chi+ch+grbh)) -
@@ -95,8 +99,8 @@ end
 function PsiM_SHEBA(Chi)
   FT = eltype(Chi)
 
-  am = 5.d0
-  bm = am/6.5d0
+  am = FT(5)
+  bm = am/FT(6.5)
   grbm = ((FT(1)-bm)/bm)^(FT(1)/FT(3))
   Var3 = (FT(1)+Chi)^(FT(1)/FT(3))
 

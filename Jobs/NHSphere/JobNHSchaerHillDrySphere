@@ -39,6 +39,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Stretch=false \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
+  --AdaptGridType="Sleve" \
   --ScaleFactor=166.7 \
   --nz=64 \
   --nPanel=30 \

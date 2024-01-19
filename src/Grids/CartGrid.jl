@@ -211,6 +211,7 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   NumBoundaryFaces = 0
   NumEdgesI = 0
   NumEdgesB = 0
+  AdaptGrid = ""
   return GridStruct{FT,
                     typeof(z)}(
     nz,
@@ -235,6 +236,7 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
     nBar,
     colors,
     NumBoundaryFaces,
+    AdaptGrid,
     )
 
 end

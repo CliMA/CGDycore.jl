@@ -21,7 +21,7 @@ function JacobiSphere2GPU!(X,dXdxI,J,FE,F,Rad)
   KJacobiSphere2Kernel!(X,dXdxI,J,FE.xw,FE.DS,F,Rad,ndrange=ndrange)
 end
 
-function JacobiSphere3GPU!(X,dXdxI,J,FE,F,z,zs,Rad)
+function JacobiSphere3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs,Rad)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -36,7 +36,7 @@ function JacobiSphere3GPU!(X,dXdxI,J,FE,F,z,zs,Rad)
 
   KJacobiSphere3Kernel! = JacobiSphere3Kernel!(backend,group)
 
-  KJacobiSphere3Kernel!(X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
+  KJacobiSphere3Kernel!(AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end
 
@@ -61,7 +61,7 @@ end
   end
 end
 
-@kernel function JacobiSphere3Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
+@kernel function JacobiSphere3Kernel!(AdaptGrid,X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
   @Const(F),@Const(z),Rad,@Const(zs))
 
   gi, gj, gk, gz, gF = @index(Group, NTuple)
@@ -98,8 +98,8 @@ end
      F[3,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
      F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-    hR[I,J,K,iz], D33 = GalChen(zLoc,H,zs[I,J,IF])
-#   hR, D33 = Sleve(zLoc,H,zs)
+#   hR[I,J,K,iz], D33 = GalChen(zLoc,H,zs[I,J,IF])
+    hR[I,J,K,iz], D33 = AdaptGrid(zLoc,zs[I,J,IF])
     D33 = eltype(X)(1/2) * D33*(z2-z1)
     r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
     f = Rad / r
@@ -268,22 +268,47 @@ end
   A[1,3] * (A[2,1] * A[3,2] - A[2,2] * A[3,1]) 
 end  
 
-@inline function GalChen(zRef,H,zs)
-  z = zRef + (H - zRef) * zs / H
-  DzDzRef  = eltype(zRef)(1) - zs / H
-  return z, DzDzRef
+
+abstract type AdaptGrid end
+
+Base.@kwdef struct GalChen <: AdaptGrid end
+
+function (::GalChen)(H)
+  function AdaptHeight(zRef,zs)
+    z = zRef + (H - zRef) * zs / H
+    DzDzRef  = eltype(zRef)(1) - zs / H
+    return z, DzDzRef
+  end
+  return AdaptHeight
 end
 
-@inline function Sleve(zRef,H,zs)
-  etaH = eltype(zRef)(.7)
-  s = eltype(zRef)(8/10)
-  eta = zRef / H
-  if eta <= etaH
-    z = eta * H + zs * sinh((etaH - eta) / s / etaH) / sinh(1 / s) 
-    DzDzRef  = eltype(zRef)(1) - zs / H / s / etaH * cosh((etaH - eta) / s / etaH) / sinh(1 / s) 
-  else
-    z = eta * H
-    DzDzRef  = eltype(zRef)(1) 
-  end  
-  return z, DzDzRef
+Base.@kwdef struct Sleve{T} <: AdaptGrid 
+  etaH::T = .7
+  s::T = 8/10
+
+end
+
+function (F::Sleve)(H)
+  (;s,etaH) = F
+  function AdaptHeight(zRef,zs)
+    eta = zRef / H
+    if eta <= etaH
+      z = eta * H + zs * sinh((etaH - eta) / s / etaH) / sinh(1 / s) 
+      DzDzRef  = eltype(zRef)(1) - zs / H / s / etaH * cosh((etaH - eta) / s / etaH) / sinh(1 / s) 
+    else
+      z = eta * H
+      DzDzRef  = eltype(zRef)(1) 
+    end  
+    return z, DzDzRef
+  end
+  return AdaptHeight
+end
+
+function AdaptGrid(FT,Type,H)
+
+  if Type == "GalChen"
+    AdaptGridFunction = Grids.GalChen()(H)
+  elseif Type == "Sleve"
+    AdaptGridFunction = Grids.Sleve{FT}()(H)
+  end
 end
