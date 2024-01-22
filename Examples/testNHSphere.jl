@@ -64,6 +64,7 @@ Table = parsed_args["Table"]
 # Grid
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+RefineLevel = parsed_args["RefineLevel"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
@@ -220,7 +221,7 @@ if RadEarth == 0.0
   end  
 end
 
-Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 
 
 Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
@@ -272,7 +273,7 @@ end
 # Surface flux
 if Model.SurfaceFlux || Model.VerticalDiffusion
   if Problem == "HeldSuarezMoistSphere"
-    SurfaceValues, SurfaceData = GPU.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+    SurfaceValues, SurfaceData = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
     Model.SurfaceValues = SurfaceValues
     Model.SurfaceData = SurfaceData
   end  

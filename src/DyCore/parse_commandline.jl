@@ -347,6 +347,11 @@ function parse_commandline()
     arg_type = Int
     default = 4
 
+    "--RefineLevel"
+    help = "Number of refinement levels for a triangular grid"
+    arg_type = Int
+    default = 0
+
     "--Lx"
     help = "Length in [m] in x-direction"
     arg_type = Float64

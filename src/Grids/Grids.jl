@@ -60,5 +60,6 @@ include("interpolate.jl")
 include("TopographySmoothing.jl")
 include("InitGrid.jl")
 include("SphericalGrid.jl")
+include("JacobiSphereDG3GPU.jl")
 
 end

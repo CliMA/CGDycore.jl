@@ -38,7 +38,7 @@ end
     ID = I + (J - 1) * N
     @inbounds z1 = z[Iz]
     @inbounds z2 = z[Iz+1]
-    @views @inbounds JacobiDG3Loc!(XLoc[I,J,K,:,iz],
+    @views @inbounds XCartDG3Loc!(XLoc[I,J,K,:,iz],
       ksi[I],eta[J],zeta[K],F[:,:,IF],z1,z2,H,zs[I,J,IF])
     X[ID,K,1,Iz,IF] = XLoc[I,J,K,1,iz]
     X[ID,K,2,Iz,IF] = XLoc[I,J,K,2,iz]
@@ -75,7 +75,7 @@ end
   end
 end  
 
-@inline function JacobiDG3Loc!(X,ksi1,ksi2,ksi3,F,z1,z2,H,zs)
+@inline function XCartDG3Loc!(X,ksi1,ksi2,ksi3,F,z1,z2,H,zs)
   zero = eltype(X)(0)
   one = eltype(X)(1)
   half = eltype(X)(1/2)

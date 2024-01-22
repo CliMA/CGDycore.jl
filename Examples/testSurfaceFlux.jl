@@ -129,7 +129,7 @@ end
 Phys = DyCore.PhysParameters{FTB}()
 
 z0M = 0.05
-z0h = 0.05
+z0H = 0.05
 dz = 30.0
 RiB = 0.4
 LandClass = 1
@@ -139,7 +139,29 @@ VT = 2.0
 uf = Surfaces.Businger{FTB}()
 theta = FTB(300)
 thetaS = FTB(299.0)
+RhoPos = 1
+uPos = 2
+vPos = 3
+wPos = 4
+ThPos = 5
+U = zeros(FTB,5)
+U[1] = 1.0
+U[2] = 2.0
+U[3] = 2.0
+U[5] = theta
+dXdxI = zeros(FTB,3)
+dXdxI[3] = 1
+nS = zeros(FTB,3)
+nS[3] = 1
+p::FTB = 1
 #thetaS = FTB(295)
+landuse = Surfaces.LandUse{FTB}(thetaS, 0.0, z0M, z0H, LandClass)
+
+SurfaceData = Surfaces.MOSurface()(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
+uStar, CT, CH = SurfaceData(dz,U,p,dXdxI,nS,landuse)
+@show uStar, CT, CH
+stop    
+
 Surfaces.MOSTIteration(uf,z0M,z0h,dz,VT,theta,thetaS,LandClass,Phys)
 stop
 
@@ -150,10 +172,8 @@ Cm, Ch = Surfaces.RichardIteration(z0M,z0h,dz,RiB,LandClass)
 @show Cm, Ch
 
 
-LandClass = 10
-TSurf = 265.0
-T1 = 262.0
-VT = 2.0
+
+
 RiB  = Phys.Grav/TSurf*((T1-TSurf)*(dz-z0M))/(VT*VT)
 Cm, Ch = Surfaces.RichardIteration(z0M,z0h,dz,RiB,LandClass)
 @show Cm, Ch

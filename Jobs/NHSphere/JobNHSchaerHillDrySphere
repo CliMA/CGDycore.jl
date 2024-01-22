@@ -31,7 +31,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --PrintDays=0 \
   --PrintTime=0.0 \
   --StartAverageDays=100 \
-  --Flat=true \
+  --Flat=false \
   --dtau=.5 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

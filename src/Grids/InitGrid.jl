@@ -1,4 +1,4 @@
-function InitGrid(backend,FT,OrdPoly,nz,nPanel,GridType,Decomp,RadEarth,Model,ParallelCom)    
+function InitGrid(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)    
 
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc
@@ -8,7 +8,7 @@ function InitGrid(backend,FT,OrdPoly,nz,nPanel,GridType,Decomp,RadEarth,Model,Pa
   # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
     Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "SQuadGen"
-    Grid = Grids.InputGrid("Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
+    Grid = Grids.InputGrid(backend,FT,"Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "Msh"
     Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "CubedSphere"

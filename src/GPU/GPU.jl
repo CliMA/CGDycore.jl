@@ -14,7 +14,6 @@ include("FcnGPU.jl")
 include("DiagnosticKernel.jl")
 include("InitialConditions.jl")
 include("InitialKernel.jl")
-include("surface.jl")
 include("HorLimiterKernel.jl")
 include("dampingGPU.jl")
 

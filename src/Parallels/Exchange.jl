@@ -96,7 +96,7 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
       else
         NumInBoundEdges += 1
         push!(InBoundEdges, i)
-        push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[1]])
+        push!(InBoundEdgesP, CellToProc[SubGrid.Edges[i].FG[2]])
       end  
     end  
   end

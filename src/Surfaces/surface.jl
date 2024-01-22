@@ -36,12 +36,16 @@ end
 
 Base.@kwdef struct MOSurface <: SurfaceValues end
 
-function (::MOSurface)(Phys,Param,uPos,vPos,wPos)
-  function SurfaceData(U,p,dXdxI,nS)
+function (::MOSurface)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
+  function SurfaceData(z,U,p,dXdxI,nS,Surface)
     FT = eltype(U)
     uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
-    CT = FT(Param.CE)
-    CH = FT(Param.CH)
+    theta = U[ThPos] / U[RhoPos]
+    thetaS = Surface.thetaS
+    z0M = Surface.z0M
+    z0H = Surface.z0H
+    LandClass = Surface.LandClass
+    CT, CH = Surfaces.MOSTIteration(uf,z0M,z0H,z,uStar,theta,thetaS,LandClass,Phys)
     return uStar, CT, CH
   end
   return SurfaceData
