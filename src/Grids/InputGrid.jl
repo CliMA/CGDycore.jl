@@ -399,6 +399,7 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   NumBoundaryFaces = 0
+  AdaptGrid = ""
 
   return GridStruct{FT,
                     typeof(z)}(
@@ -424,6 +425,7 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
     nBar,
     colors,
     NumBoundaryFaces,
+    AdaptGrid,
     )
 
 

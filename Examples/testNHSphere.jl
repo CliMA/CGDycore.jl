@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, Surfaces
 using MPI
 using Base
 using CUDA
