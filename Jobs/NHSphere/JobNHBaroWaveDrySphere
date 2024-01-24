@@ -10,6 +10,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfRhoBGrd="" \
   --Source=false \
   --Forcing=false \
+  --Equation="CompressibleDeep" \
+  --State="Dry" \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --Coriolis=true \
@@ -22,8 +24,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
-  --PrintDays=1 \
+  --PrintHours=12 \
+  --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \

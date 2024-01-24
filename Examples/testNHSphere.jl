@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, Surfaces
+  Examples, Parallels, Grids, Models, Outputs, Integration,  GPU, DyCore, Surfaces
 using MPI
 using Base
 using CUDA
@@ -31,6 +31,8 @@ Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
 Equation = parsed_args["Equation"]
+Thermo = parsed_args["Thermo"]
+State = parsed_args["State"]
 RefProfile = parsed_args["RefProfile"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
@@ -144,7 +146,6 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 # Initial conditions
-Model.Equation=Equation
 Model.NumV=NumV
 Model.NumTr=NumTr
 Model.Problem=Problem
@@ -195,13 +196,13 @@ Model.JacVerticalDiffusion = JacVerticalDiffusion
 Model.JacVerticalAdvection = JacVerticalAdvection
 Model.Source = Source
 Model.Forcing = Forcing
+Model.Thermo = Thermo
 Model.Microphysics = Microphysics
 Model.TypeMicrophysics = TypeMicrophysics
 Model.RelCloud = RelCloud
 Model.Rain = Rain
 Model.SurfaceFlux = SurfaceFlux
 Model.SurfaceFluxMom = SurfaceFluxMom
-Model.Thermo = Thermo
 Model.Curl = Curl
 Model.ModelType = ModelType
 Model.Stretch = Stretch
@@ -220,6 +221,13 @@ if RadEarth == 0.0
     RadEarth = RadEarth / ScaleFactor  
   end  
 end
+
+# Equation
+if Equation == "CompressibleShallow"
+  Model.Equation = Models.CompressibleShallow()  
+elseif Equation == "CompressibleDeep"
+  Model.Equation = Models.CompressibleDeep()  
+end  
 
 Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 
@@ -246,12 +254,13 @@ Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
 
+
 # Pressure
-if Equation == "Compressible"
-  Pressure = Models.Compressible()(Phys)
+if State == "Dry"
+  Pressure = Models.Dry()(Phys)
   Model.Pressure = Pressure
-elseif Equation == "CompressibleMoist"
-  Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
+elseif State == "Moist"
+  Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos+NumV,Model.RhoCPos+NumV)
   Model.Pressure = Pressure
 end  
@@ -287,7 +296,7 @@ Global.Output.nPanel = nPanel
 Global.Output.RadPrint = H
 Global.Output.H = H
 if ModelType == "VectorInvariant" || ModelType == "Advection"
-  if Model.Equation == "Compressible"  
+  if State == "Dry"  
     Global.Output.cNames = [
       "Rho",
       "u",
@@ -297,7 +306,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
 #     "Vort",
 #     "Pres",
       ]
-  elseif Model.Equation == "CompressibleMoist"  
+  elseif State == "Moist"  
     Global.Output.cNames = [
       "Rho",
       "u",
@@ -357,13 +366,14 @@ elseif ModelType == "Conservative"
 end  
 
 
+
 if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   @show "vor Timestepper"
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 else
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)

@@ -143,9 +143,19 @@ function parse_commandline()
     default = false
 
     "--Equation"
-    help = "Equation Type, Shallow, Compressible, CompressibleMoist"
+    help = "Equation Type, Shallow, Deep"
     arg_type = String
-    default = "Compressible"
+    default = "Shallow"
+
+    "--State"
+    help = "Equation Type, ShallowWater, Dry, Moist"
+    arg_type = String
+    default = "Dry"
+
+    "--Thermo"
+    help = "Thermodynamic variable"
+    arg_type = String
+    default = "PotTemp"
 
     "--Microphysics"
     help = "Microphysics"
@@ -219,11 +229,6 @@ function parse_commandline()
 
     "--BoundaryBT"
     help = "Boundary type in vertical direction"
-    arg_type = String
-    default = ""
-
-    "--Thermo"
-    help = "Type of thermodynmic variable, total energy, internal energy, potential temperature"
     arg_type = String
     default = ""
 

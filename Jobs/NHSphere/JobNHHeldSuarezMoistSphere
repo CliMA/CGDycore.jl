@@ -19,7 +19,8 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
-  --Equation=CompressibleMoist \
+  --Equation="CompressibleDeep" \
+  --State="Moist" \
   --Microphysics=false \
   --TypeMicrophysics="SimpleMicrophysics" \
   --Buoyancy=true \

@@ -1,4 +1,3 @@
-using KernelAbstractions
 mutable struct TimeStepperStruct{FT<:AbstractFloat}
   IntMethod::String
   Table::String
@@ -260,7 +259,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   RhoRPos::Int
   NumV::Int
   NumTr::Int
-  Equation::String
+  Equation::Models.EquationType
   Thermo::String
   ModelType::String
   Source::Bool
@@ -330,7 +329,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   RhoRPos = 0
   NumV = 0
   NumTr = 0
-  Equation = "Compressible"
+  Equation = Models.CompressibleShallow()
   Thermo = ""
   ModelType = "VectorInvariant"
   Source = false

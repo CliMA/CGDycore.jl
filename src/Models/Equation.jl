@@ -1,8 +1,16 @@
-abstract type Equation end
+abstract type EquationType end
     
-struct Compressible  <: Equation end
+struct Advection  <: EquationType end
+struct ShallowWater  <: EquationType end
+struct CompressibleShallow  <: EquationType end
+struct CompressibleDeep  <: EquationType  end
+
+abstract type State end
+struct StateShallow  <: State  end
+struct Dry  <: State  end
+struct Moist  <: State end
   
-function (::Compressible)(Phys)
+function (::Dry)(Phys)
   function Pressure(U)
     FT = eltype(U)
     p = Phys.p0 * fast_powGPU(Phys.Rd * U[5] / Phys.p0, FT(1) / (FT(1) - Phys.kappa))
@@ -11,9 +19,7 @@ function (::Compressible)(Phys)
   return Pressure
 end 
 
-struct CompressibleMoist  <: Equation end
-
-function (::CompressibleMoist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
+function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
   function Pressure(U)
     FT = eltype(U)
     RhoV = U[RhoVPos]

@@ -1,5 +1,8 @@
 module Surfaces
 
+import ..Thermodynamics
+import ..Grids
+
 include("solver.jl")
 include("wrfscheme.jl")
 include("functions.jl")

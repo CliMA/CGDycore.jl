@@ -1,5 +1,5 @@
 using KernelAbstractions
-function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvariant})
+function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
   (;  RhoPos,
       uPos,
       vPos,
@@ -127,7 +127,7 @@ function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvariant}
   end
 end
 
-function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,::Val{:VectorInvariant})
+function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
 
   backend = get_backend(U)
   FT = eltype(U)

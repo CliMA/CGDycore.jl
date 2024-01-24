@@ -2,6 +2,7 @@ module Grids
 
 import ..DG
 import ..Parallels
+import ..Models
 
 using LinearAlgebra
 using RootSolvers
