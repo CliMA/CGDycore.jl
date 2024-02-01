@@ -302,6 +302,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Force::Any
   Damp::Any
   Pressure::Any
+  CoriolisFun::Any
   MicrophysicsSource::Any
   SurfaceFluxRhs::Any
   SurfaceValues::Any
@@ -372,6 +373,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Force = ""
   Damp = ""
   Pressure = ""
+  CoriolisFun = ""
   MicrophysicsSource = ""
   SurfaceFluxRhs = ""
   SurfaceValues = ""
@@ -440,6 +442,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Force,
    Damp,
    Pressure,
+   CoriolisFun,
    MicrophysicsSource,
    SurfaceFluxRhs,
    SurfaceValues,

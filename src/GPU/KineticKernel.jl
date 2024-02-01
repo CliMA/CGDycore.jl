@@ -16,22 +16,22 @@
   @inbounds ind = Glob[ID,IF]
 
   if Iz <= Nz
-    @inbounds KinF[I,J,1,iz+1] = 1/2 * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
+    @inbounds KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
     @inbounds KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + 1/2 * U[Iz,ind,4]^2
     if iz == 1 && Iz == 1
       @inbounds wCol = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
         dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
-      @inbounds KinF[I,J,1,iz+1] +=  1/2 * wCol^2
+      @inbounds KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * wCol^2
       @inbounds KinF[I,J,2,iz] = KinF[I,J,1,iz+1]
     elseif iz == 1
-      @inbounds KinF[I,J,1,iz+1] +=  1/2 * U[Iz-1,ind,4]^2
-      @inbounds KinF[I,J,2,iz] =  1/2 * (U[Iz-1,ind,4]^2 + U[Iz-1,ind,2]^2 + U[Iz-1,ind,3]^2)
+      @inbounds KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
+      @inbounds KinF[I,J,2,iz] =  eltype(F)(0.5) * (U[Iz-1,ind,4]^2 + U[Iz-1,ind,2]^2 + U[Iz-1,ind,3]^2)
     else
-      @inbounds KinF[I,J,1,iz+1] +=  1/2 * U[Iz-1,ind,4]^2  
+      @inbounds KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2  
     end
     if iz == ColumnTilesDim && Iz < Nz
-      @inbounds KinF[I,J,1,iz+2] = 1/2 * (U[Iz+1,ind,2]^2 + U[Iz+1,ind,3]^2)
-      @inbounds KinF[I,J,1,iz+2] +=  1/2 * U[Iz+1,ind,4]^2
+      @inbounds KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[Iz+1,ind,2]^2 + U[Iz+1,ind,3]^2)
+      @inbounds KinF[I,J,1,iz+2] +=  eltype(F)(0.5) * U[Iz,ind,4]^2
     end  
   end
 
@@ -65,25 +65,24 @@
     GradwF2 = eltype(F)(0)
     RhoCol = U[Iz,ind,1]
     if Iz > 1 
-      @inbounds GradZ = eltype(F)(1/2) * (KinF[I,J,1,iz+1] - KinF[I,J,2,iz] )  
+      @inbounds GradZ = eltype(F)(0.5) * (KinF[I,J,1,iz+1] - KinF[I,J,2,iz] )  
       @inbounds GraduF1 += -GradZ * dXdxI[3,1,1,ID,Iz,IF]
       @inbounds GradvF1 += -GradZ * dXdxI[3,2,1,ID,Iz,IF]
       @inbounds GradwF1 += -RhoCol * GradZ * dXdxI[3,3,1,ID,Iz,IF]
     end  
     if Iz < Nz
-      @inbounds GradZ = eltype(F)(1/2) * (KinF[I,J,1,iz+2] - KinF[I,J,2,iz+1] )  
+      @inbounds GradZ = eltype(F)(0.5) * (KinF[I,J,1,iz+2] - KinF[I,J,2,iz+1] )  
       @inbounds GraduF2 += -GradZ * dXdxI[3,1,2,ID,Iz,IF]
       @inbounds GradvF2 += -GradZ * dXdxI[3,2,2,ID,Iz,IF]
       @inbounds GradwF2 += -RhoCol * GradZ * dXdxI[3,3,2,ID,Iz,IF]
     end  
-    @inbounds GradZ = eltype(F)(1/2) * (KinF[I,J,2,iz+1] - KinF[I,J,1,iz+1])
+    @inbounds GradZ = eltype(F)(0.5) * (KinF[I,J,2,iz+1] - KinF[I,J,1,iz+1])
     @inbounds GraduF2 += -GradZ * dXdxI[3,1,2,ID,Iz,IF]
     @inbounds GraduF1 += -GradZ * dXdxI[3,1,1,ID,Iz,IF]
     @inbounds GradvF2 += -GradZ * dXdxI[3,2,2,ID,Iz,IF]
     @inbounds GradvF1 += -GradZ * dXdxI[3,2,1,ID,Iz,IF]
     @inbounds GradwF2 += -RhoCol * GradZ * dXdxI[3,3,2,ID,Iz,IF]
     @inbounds GradwF1 += -RhoCol * GradZ * dXdxI[3,3,1,ID,Iz,IF]
-
 
     @inbounds @atomic F[Iz,ind,2] += (GraduF1 + GraduF2) / M[Iz,ind]
     @inbounds @atomic F[Iz,ind,3] += (GradvF1 + GradvF2) / M[Iz,ind]

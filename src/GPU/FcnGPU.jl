@@ -140,6 +140,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   Force = Global.Model.Force
   Damp = Global.Model.Damp
   MicrophysicsSource = Global.Model.MicrophysicsSource
+  CoriolisFun = Global.Model.CoriolisFun
 
   KoeffCurl = Global.Model.HyperDCurl
   KoeffGrad = Global.Model.HyperDGrad
@@ -261,7 +262,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KGradKernel!(F,U,p,DS,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
   if Global.Model.Coriolis
-    KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrangeB)
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,CoriolisFun,ndrange=ndrangeB)
   else
     KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
   end  
@@ -307,14 +308,13 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KGradKernel!(F,U,p,DS,dXdxI_I,J_I,M,MRho,Glob_I,Phys,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
   if Global.Model.Coriolis
-    KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,Phys,ndrange=ndrangeI)
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
   else
     KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
   end  
   KernelAbstractions.synchronize(backend)
   KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,MRho,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
-
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
   for iT = 1 : NumTr

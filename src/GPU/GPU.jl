@@ -19,5 +19,6 @@ include("dampingGPU.jl")
 include("MomentumKernel.jl")
 include("ViscKernel.jl")
 include("KineticKernel.jl")
+include("Coriolis.jl")
 
 end

@@ -254,6 +254,22 @@ Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
 
+#Coriolis
+if Coriolis
+  if Equation == "CompressibleShallow"
+    CoriolisFun = GPU.CoriolisShallow()(Phys)
+    Model.CoriolisFun = CoriolisFun  
+  elseif Equation == "CompressibleDeep"
+    CoriolisFun = GPU.CoriolisDeep()(Phys)
+    Model.CoriolisFun = CoriolisFun  
+  else  
+    CoriolisFun = GPU.CoriolisNo()
+    Model.CoriolisFun = CoriolisFun
+  end  
+else
+  CoriolisFun = GPU.CoriolisNo()
+  Model.CoriolisFun = CoriolisFun
+end
 
 # Pressure
 if State == "Dry"

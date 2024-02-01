@@ -1,5 +1,5 @@
 @kernel function MomentumVectorInvariantCoriolisKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),Phys)
+  @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),CoriolisFun)
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
@@ -53,9 +53,9 @@
     if iz == 1 && Iz > 1
       um1 = U[Iz-1,ind,2]  
       vm1 = U[Iz-1,ind,3]  
-      @inbounds tempuZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1] * vm1 - dXdxI[3,2,2,ID,Iz-1] * wCol[I,J,1]
-      @inbounds tempvZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1] * um1 - dXdxI[3,1,2,ID,Iz-1] * wCol[I,J,1]
-      @inbounds tempwZ[I,J,2,1] = dXdxI[3,2,2,ID,Iz-1] * um1 - dXdxI[3,1,2,ID,Iz-1] * vm1 
+      @inbounds tempuZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1,IF] * vm1 - dXdxI[3,2,2,ID,Iz-1,IF] * wCol[I,J,1]
+      @inbounds tempvZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1,IF] * um1 - dXdxI[3,1,2,ID,Iz-1,IF] * wCol[I,J,1]
+      @inbounds tempwZ[I,J,2,1] = dXdxI[3,2,2,ID,Iz-1,IF] * um1 - dXdxI[3,1,2,ID,Iz-1,IF] * vm1 
     end  
     if iz == ColumnTilesDim && Iz < Nz
       up1 = U[Iz+1,ind,2]  
@@ -146,21 +146,22 @@
       @inbounds W2 += D[I,k] * tempwZ1[k,J,2,iz] + D[J,k] * tempwZ2[I,k,2,iz]
     end  
 
+#   Coriolis
     x = eltype(F)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
     y = eltype(F)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
     z = eltype(F)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
-    r = sqrt(x^2 + y^2 + z^2)
-    sinlat = z / r
-    W = -eltype(F)(2) * Phys.Omega * sinlat * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    FU += -vCol[I,J,iz] * W
-    FV += uCol[I,J,iz] * W
+    FuCor, FvCor, FwCor = CoriolisFun(x,y,z,uCol[I,J,iz],vCol[I,J,iz],wCol[I,J,iz],wCol[I,J,iz+1])
+    FU += FuCor * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    FV += FvCor * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    FW1 += FwCor * JJ[ID,1,Iz,IF]
+    FW2 += FwCor * JJ[ID,2,Iz,IF]
 
     @inbounds @atomic F[Iz,ind,2] += (-vCol[I,J,iz] * W1 - wCol[I,J,iz] * V1 -
       vCol[I,J,iz] * W2 - wCol[I,J,iz+1] * V2 + FU) / M[Iz,ind]
     @inbounds @atomic F[Iz,ind,3] += (uCol[I,J,iz] * W1 - wCol[I,J,iz] * U1 +
       uCol[I,J,iz] * W2 - wCol[I,J,iz+1] * U2 + FV) / M[Iz,ind]
     RhoCol = U[Iz,ind,1]  
-    if iz > 1  
+    if Iz > 1  
       @inbounds @atomic F[Iz-1,ind,4] += RhoCol * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) / MRho[Iz-1,ind]
     end
     if Iz < Nz
