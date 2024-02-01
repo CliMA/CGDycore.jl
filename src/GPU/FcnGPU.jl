@@ -194,7 +194,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
   if Global.Model.Coriolis
-    KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+    KMomentumCoriolisKernel! = MomentumVectorInvariantCoriolisKernel!(backend, group)
   else
     KMomentumKernel! = MomentumKernel!(backend, group)
   end  
@@ -266,6 +266,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
   end  
   KernelAbstractions.synchronize(backend)
+  KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,MRho,Glob,ndrange=ndrangeB)
+  KernelAbstractions.synchronize(backend)
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
   for iT = 1 : NumTr
@@ -309,6 +311,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   else
     KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
   end  
+  KernelAbstractions.synchronize(backend)
+  KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,MRho,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
 
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -367,6 +371,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   DW = FE.DW
   M = FE.M
   MW = FE.MW
+  dXdx = Metric.dXdx
   dXdxI = Metric.dXdxI
   X = Metric.X
   J = Metric.J
@@ -377,6 +382,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views X_B = X[:,:,:,:,1:NBF]
   @views Glob_B = Glob[:,1:NBF]
 
+  @views dXdx_I = dXdx[:,:,:,:,:,NBF+1:NF]
   @views dXdxI_I = dXdxI[:,:,:,:,:,NBF+1:NF]
   @views J_I = J[:,:,:,NBF+1:NF]
   @views X_I = X[:,:,:,:,NBF+1:NF]
@@ -520,6 +526,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
   end  
   KernelAbstractions.synchronize(backend)
+  KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,MRho,Glob)
+  KernelAbstractions.synchronize(backend)
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
   for iT = 1 : NumTr
@@ -563,6 +571,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   else
     KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
   end  
+  KernelAbstractions.synchronize(backend)
+  KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,MRho,Glob)
   KernelAbstractions.synchronize(backend)
 
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)

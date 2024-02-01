@@ -63,3 +63,8 @@ WARNING: using KernelAbstractions.GPU in module Main conflicts with an existing 
   0.151442 seconds (101.26 k allocations: 2.296 MiB)
   0.183926 seconds (120.29 k allocations: 2.497 MiB)
   0.164235 seconds (109.90 k allocations: 2.370 MiB)
+
+
+HOMME
+vi theta-l/share/prim_advance_mod.F90
+vi share/derivative_mod_base.F90

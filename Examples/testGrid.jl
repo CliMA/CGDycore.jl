@@ -34,6 +34,12 @@ nPanel = 10
 RadEarth = 1.0
 Decomp = "EqualArea"
 
+GridType = "Msh"
+Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+c = ones(FTB,Grid.NumFaces) * Proc
+Outputs.vtkSkeleton(vtkSkeletonMesh, GridType, Proc, ProcNumber , c)
+
 GridType = "DelaunaySphere"
 Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
@@ -47,12 +53,6 @@ c = ones(FTB,Grid.NumFaces) * Proc
 Outputs.vtkSkeleton(vtkSkeletonMesh, GridType, Proc, ProcNumber , c)
 
 GridType = "SQuadGen"
-Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
-Outputs.vtkSkeleton(vtkSkeletonMesh, GridType, Proc, ProcNumber , c)
-
-GridType = "Msh"
 Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 c = ones(FTB,Grid.NumFaces) * Proc

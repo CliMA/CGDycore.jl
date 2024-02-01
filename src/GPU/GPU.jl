@@ -16,5 +16,8 @@ include("InitialConditions.jl")
 include("InitialKernel.jl")
 include("HorLimiterKernel.jl")
 include("dampingGPU.jl")
+include("MomentumKernel.jl")
+include("ViscKernel.jl")
+include("KineticKernel.jl")
 
 end

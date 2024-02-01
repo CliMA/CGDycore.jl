@@ -277,59 +277,196 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
   f = open(filename)
   lines = readlines(f)
   close(f)
-  s1,s2,s3,s4=split(lines[25]," ")
-  NumNodes = parse(Int,s4)
+  iLMeshFormat = 0  
+  iLNodes = 0
+  iLEntities = 0  
+  iLElements = 0  
+  iLPhysicalNames = 0  
+  for iline = 1 : size(lines,1)
+    lineLoc = lines[iline]  
+    if lineLoc[2:end] == "MeshFormat"
+      iLMeshFormat = iline  
+    elseif lineLoc[2:end] == "Entities"
+      iLEntities = iline  
+    elseif lineLoc[2:end] == "Elements"
+      iLElements = iline  
+    elseif lineLoc[2:end] == "Nodes"
+      iLNodes = iline  
+    elseif lineLoc[2:end] == "PhysicalNames"
+      iLPhysicalNames = iline  
+    end
+  end  
+  s1,s2,s3,s4 = split(lines[iLNodes+1]," ")
+  numEntityBlocks = parse(Int,s1)
+  NumNodes = parse(Int,s2)
+  minNodeTag = parse(Int,s3)
+  maxNodeTag = parse(Int,s4)
+  @show numEntityBlocks,NumNodes,minNodeTag,maxNodeTag
+  iline = iLNodes + 2
+  NumNodes = 0
+  NumNodesR = 0
+  for iEntBl = 1 : numEntityBlocks
+    s1,s2,s3,s4 = split(lines[iline]," ")
+    entityDim = parse(Int,s1)
+    entityTag = parse(Int,s2)
+    parametric = parse(Int,s3)
+    nodeTag = parse(Int,s4)
+    @show entityDim, entityTag, parametric, nodeTag
+    iline = iline + nodeTag + 1
+    for iNoTg = 1 : nodeTag
+      if entityDim > 1
+        NumNodes = NumNodes + 1  
+      else  
+        NumNodesR = NumNodesR + 1  
+      end  
+      iline = iline + 1
+    end
+  end
+
   Nodes = map(1:NumNodes) do i
     Node()
   end
+  iline = iLNodes + 2
   NodeNumber = 1
-  for i = 26 + NumNodes : 25 + 2 * NumNodes
-    s1,s2,s3 = split(lines[i]," ")
-    r1 = parse(Float64,s1)
-    r2 = parse(Float64,s2)
-    r3 = parse(Float64,s3)
-    N = [r1,r2,r3]
-    N = N / norm(N) * Rad
-    Nodes[NodeNumber] = Node(Point(N),NodeNumber)
-    NodeNumber = NodeNumber+1
-  end
-  s1,s2,s3,s4 = split(lines[34 + 2*NumNodes]," ")
-  NumFaces = parse(Int,s4)
+  for iEntBl = 1 : numEntityBlocks
+    s1,s2,s3,s4 = split(lines[iline]," ")
+    entityDim = parse(Int,s1)
+    entityTag = parse(Int,s2)
+    parametric = parse(Int,s3)
+    nodeTag = parse(Int,s4)
+    @show entityDim, entityTag, parametric, nodeTag
+    iline = iline + nodeTag + 1
+    for iNoTg = 1 : nodeTag
+      if entityDim > 1  
+        s1,s2,s3 = split(lines[iline]," ")
+        r1 = parse(Float64,s1)
+        r2 = parse(Float64,s2)
+        r3 = parse(Float64,s3)
+        N = [r1,r2,r3]
+        N = N / norm(N) * Rad
+        Nodes[NodeNumber] = Node(Point(N),NodeNumber)
+        NodeNumber = NodeNumber + 1
+      end
+      iline = iline + 1
+    end  
+  end    
+  s1,s2,s3,s4 = split(lines[iLElements+1]," ")
+  numEntityBlocks = parse(Int,s1)
+  numElements = parse(Int,s2)
+  minElementTag = parse(Int,s3)
+  minElementTag = parse(Int,s4)
+
+  iline = iLElements + 2
+  NumFaces = 0
+  for iEntBl = 1 : numEntityBlocks
+    s1,s2,s3,s4 = split(lines[iline]," ")
+    entityDim = parse(Int,s1)
+    entityTag = parse(Int,s2)
+    elementType = parse(Int,s3)
+    numElementsInBlock = parse(Int,s4)
+    iline = iline + 1
+    for iElemTag = 1 : numElementsInBlock
+      if elementType > 1
+        NumFaces = NumFaces + 1  
+      end
+      iline = iline + 1
+    end
+  end  
+  @show NumFaces
+
+  NumFacesL = 0
+  NumFacesT = 0
+  NumFacesQ = 0
   NodesF = zeros(Int,NumFaces,4)
+  TypeF = zeros(Int,NumFaces)
   iF = 1
   EdgeList = Any[]
-  for i = 35 + 2*NumNodes : 34 + 2*NumNodes + NumFaces
-    s1,s2,s3,s4,s5 = split(lines[i]," ")
-    NodesF[iF,1] = parse(Int,s2) - 2
-    NodesF[iF,2] = parse(Int,s3) - 2
-    NodesF[iF,3] = parse(Int,s4) - 2
-    NodesF[iF,4] = parse(Int,s5) - 2
-    if NodesF[iF,1] < NodesF[iF,2]
-      e = [NodesF[iF,1],NodesF[iF,2]]
-    else
-      e = [NodesF[iF,2],NodesF[iF,1]]
-    end    
-    push!(EdgeList,e)
-    if NodesF[iF,2] < NodesF[iF,3]
-      e = [NodesF[iF,2],NodesF[iF,3]]
-    else
-      e = [NodesF[iF,3],NodesF[iF,2]]
-    end    
-    push!(EdgeList,e)
-    if NodesF[iF,3] < NodesF[iF,4]
-      e = [NodesF[iF,3],NodesF[iF,4]]
-    else
-      e = [NodesF[iF,4],NodesF[iF,3]]
-    end    
-    push!(EdgeList,e)
-    if NodesF[iF,4] < NodesF[iF,1]
-      e = [NodesF[iF,4],NodesF[iF,1]]
-    else
-      e = [NodesF[iF,1],NodesF[iF,4]]
-    end    
-    push!(EdgeList,e)
-    iF += 1
-  end 
+  iline = iLElements + 2
+  for iEntBl = 1 : numEntityBlocks
+    s1,s2,s3,s4 = split(lines[iline]," ")
+    entityDim = parse(Int,s1)
+    entityTag = parse(Int,s2)
+    elementType = parse(Int,s3)
+    numElementsInBlock = parse(Int,s4)  
+    iline = iline + 1
+    @show entityDim, entityTag, elementType, numElementsInBlock
+    for iElemTag = 1 : numElementsInBlock
+      if elementType == -1
+        TypeF[iF] = 1  
+        NumFacesL += 1
+        s1,s2,s3 = split(lines[iline]," ")   
+        NodesF[iF,1] = parse(Int,s2) - NumNodesR
+        NodesF[iF,2] = parse(Int,s3) - NumNodesR
+        if NodesF[iF,1] < NodesF[iF,2]
+          e = [NodesF[iF,1],NodesF[iF,2]]
+        else
+          e = [NodesF[iF,2],NodesF[iF,1]]
+        end
+#       push!(EdgeList,e)
+        iF += 1
+      elseif elementType == 2
+        TypeF[iF] = 2  
+        NumFacesT += 1
+        s1,s2,s3,s4 = split(lines[iline]," ")   
+        NodesF[iF,1] = parse(Int,s2) - NumNodesR
+        NodesF[iF,2] = parse(Int,s3) - NumNodesR
+        NodesF[iF,3] = parse(Int,s4) - NumNodesR
+        if NodesF[iF,1] < NodesF[iF,2]
+          e = [NodesF[iF,1],NodesF[iF,2]]
+        else
+          e = [NodesF[iF,2],NodesF[iF,1]]
+        end
+        push!(EdgeList,e)
+        if NodesF[iF,2] < NodesF[iF,3]
+          e = [NodesF[iF,2],NodesF[iF,3]]
+        else
+          e = [NodesF[iF,3],NodesF[iF,2]]
+        end
+        push!(EdgeList,e)
+        if NodesF[iF,3] < NodesF[iF,1]
+          e = [NodesF[iF,3],NodesF[iF,1]]
+        else
+          e = [NodesF[iF,1],NodesF[iF,3]]
+        end
+        push!(EdgeList,e)
+        iF += 1
+      elseif elementType == 3
+        NumFacesQ += 1
+        TypeF[iF] = 3  
+        s1,s2,s3,s4,s5 = split(lines[iline]," ")   
+        NodesF[iF,1] = parse(Int,s2) - NumNodesR
+        NodesF[iF,2] = parse(Int,s3) - NumNodesR
+        NodesF[iF,3] = parse(Int,s4) - NumNodesR
+        NodesF[iF,4] = parse(Int,s5) - NumNodesR
+        if NodesF[iF,1] < NodesF[iF,2]
+          e = [NodesF[iF,1],NodesF[iF,2]]
+        else
+          e = [NodesF[iF,2],NodesF[iF,1]]
+        end
+        push!(EdgeList,e)
+        if NodesF[iF,2] < NodesF[iF,3]
+          e = [NodesF[iF,2],NodesF[iF,3]]
+        else
+          e = [NodesF[iF,3],NodesF[iF,2]]
+        end
+        push!(EdgeList,e)
+        if NodesF[iF,3] < NodesF[iF,4]
+          e = [NodesF[iF,3],NodesF[iF,4]]
+        else
+          e = [NodesF[iF,4],NodesF[iF,3]]
+        end
+        push!(EdgeList,e)
+        if NodesF[iF,4] < NodesF[iF,1]
+          e = [NodesF[iF,4],NodesF[iF,1]]
+        else
+          e = [NodesF[iF,1],NodesF[iF,4]]
+        end
+        push!(EdgeList,e)
+        iF += 1
+      end  
+      iline += 1
+    end
+  end  
   EdgeList = unique(EdgeList)
   NumEdges = length(EdgeList)
   EdgeDict = Dict()
@@ -337,48 +474,73 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
   for i in EdgeList
     EdgeDict[i] = iE
     iE += 1
-  end  
+  end
   Edges = map(1:NumEdges) do i
     Edge()
   end
   EdgeNumber = 1
+  @show NumEdges
   for i = 1 : NumEdges
     Edges[EdgeNumber] = Edge(EdgeList[i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
     EdgeNumber += 1
   end
 
+  NumFaces = NumFacesT + NumFacesQ
   Faces = map(1:NumFaces) do i
     Face()
   end
   FaceNumber = 1
   for iF = 1 : NumFaces
-    if NodesF[iF,1] < NodesF[iF,2]
-      e = [NodesF[iF,1],NodesF[iF,2]]
-    else
-      e = [NodesF[iF,2],NodesF[iF,1]]
+     if TypeF[iF] == 2
+      if NodesF[iF,1] < NodesF[iF,2]
+        e = [NodesF[iF,1],NodesF[iF,2]]
+      else
+        e = [NodesF[iF,2],NodesF[iF,1]]
+      end
+      e1 = EdgeDict[e]
+      if NodesF[iF,2] < NodesF[iF,3]
+        e = [NodesF[iF,2],NodesF[iF,3]]
+      else
+        e = [NodesF[iF,3],NodesF[iF,2]]
+      end
+      e2 = EdgeDict[e]
+      if NodesF[iF,3] < NodesF[iF,1]
+        e = [NodesF[iF,3],NodesF[iF,1]]
+      else
+        e = [NodesF[iF,1],NodesF[iF,3]]
+      end
+      e3 = EdgeDict[e]
+      (Faces[FaceNumber],Edges)=Face([e1,e2,e3],Nodes,Edges,FaceNumber,"Tri",OrientFace;P=zeros(Float64,0,0));
+      FaceNumber += 1
+    elseif TypeF[iF] == 3   
+      if NodesF[iF,1] < NodesF[iF,2]
+        e = [NodesF[iF,1],NodesF[iF,2]]
+      else
+        e = [NodesF[iF,2],NodesF[iF,1]]
+      end
+      e1 = EdgeDict[e]
+      if NodesF[iF,2] < NodesF[iF,3]
+        e = [NodesF[iF,2],NodesF[iF,3]]
+      else
+        e = [NodesF[iF,3],NodesF[iF,2]]
+      end
+      e2 = EdgeDict[e]
+      if NodesF[iF,3] < NodesF[iF,4]
+        e = [NodesF[iF,3],NodesF[iF,4]]
+      else
+        e = [NodesF[iF,4],NodesF[iF,3]]
+      end
+      e3 = EdgeDict[e]
+      if NodesF[iF,4] < NodesF[iF,1]
+        e = [NodesF[iF,4],NodesF[iF,1]]
+      else
+        e = [NodesF[iF,1],NodesF[iF,4]]
+      end
+      e4 = EdgeDict[e]
+      (Faces[FaceNumber],Edges)=Face([e1,e2,e3,e4],Nodes,Edges,FaceNumber,"Quad",OrientFace;P=zeros(Float64,0,0));
+      FaceNumber += 1
     end
-    e1 = EdgeDict[e]
-    if NodesF[iF,2] < NodesF[iF,3]
-      e = [NodesF[iF,2],NodesF[iF,3]]
-    else
-      e = [NodesF[iF,3],NodesF[iF,2]]
-    end
-    e2 = EdgeDict[e]
-    if NodesF[iF,3] < NodesF[iF,4]
-      e = [NodesF[iF,3],NodesF[iF,4]]
-    else
-      e = [NodesF[iF,4],NodesF[iF,3]]
-    end
-    e3 = EdgeDict[e]
-    if NodesF[iF,4] < NodesF[iF,1]
-      e = [NodesF[iF,4],NodesF[iF,1]]
-    else
-      e = [NodesF[iF,1],NodesF[iF,4]]
-    end
-    e4 = EdgeDict[e]
-    (Faces[FaceNumber],Edges)=Face([e1,e2,e3,e4],Nodes,Edges,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
-    FaceNumber += 1
-  end 
+  end
 
   NumNodes=size(Nodes,1);
   NumEdges=size(Edges,1);

@@ -21,6 +21,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Buoyancy=true \
   --Decomp="EqualArea" \
   --SimDays=10 \
+  --SimHours=0 \
   --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \

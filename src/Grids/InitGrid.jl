@@ -10,7 +10,8 @@ function InitGrid(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEa
   elseif GridType == "SQuadGen"
     Grid = Grids.InputGrid(backend,FT,"Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "Msh"
-    Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
+    Grid = Grids.InputGridMsh(backend,FT,"Grid/natural_earthNeu.msh",Grids.OrientFaceSphere,RadEarth,nz)
+#   Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "CubedSphere"
     Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "TriangularSphere"

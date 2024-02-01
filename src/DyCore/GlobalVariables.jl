@@ -123,6 +123,7 @@ mutable struct MetricStruct{FT<:AbstractFloat,
                             AT6<:AbstractArray}
   J::AT4
   X::AT5
+  dXdx::AT6
   dXdxI::AT6
   nS::AT3
   FS::AT2
@@ -135,6 +136,7 @@ end
 function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
     X      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,3,nz,NF)
+    dXdx   = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
     dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
     nS = KernelAbstractions.zeros(backend,FT,nQuad,3,NF)
     FS = KernelAbstractions.zeros(backend,FT,nQuad,NF)
@@ -152,6 +154,7 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
                         typeof(dXdxI)}(
         J,
         X,
+        dXdx,
         dXdxI,
         nS, 
         FS, 

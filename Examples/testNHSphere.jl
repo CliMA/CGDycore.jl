@@ -377,6 +377,7 @@ if Device == "CPU"  || Device == "GPU"
 else
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+  @show "vor CPU Timestepper"
   Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 end

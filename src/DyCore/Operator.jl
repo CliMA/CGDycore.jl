@@ -321,7 +321,7 @@ function MomentumColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Val{:Vec
   end 
 end
 
-function MomentumColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Val{:VectorInvariant})
+function MomentumColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Models.EquationType)
   @unpack TCacheC1, TCacheC2, TCacheC3, TCacheC4, TCacheCol1, TCacheCol2, 
     TCacheCol3, TCacheCCC1, TCacheCCC2, TCacheCCC3, TCacheCCC4 = ThreadCache
   Nz = size(FuC,2)
@@ -2539,7 +2539,8 @@ function FunCGradient!(Gradu,Gradv,Gradw,cC,fC,
     @views @. Gradw[:,:,iz] = GradwF[:,:,2,iz-1] + GradwF[:,:,1,iz]
   end  
 end
-function RhoGradKinColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Val{:VectorInvariant})
+
+function RhoGradKinColumn!(FuC,FvC,Fw,uC,vC,w,RhoC,Fe,dXdxI,ThreadCache,::Models.EquationType)
   @unpack TCacheC1, TCacheC2, TCacheCol1, TCacheCol2, TCacheCol3, TCacheCol4 = ThreadCache
   Nz = size(uC,2)
   D = Fe.DS

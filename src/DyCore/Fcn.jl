@@ -1,5 +1,5 @@
 function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
-  Param,DiscType::Val{:VectorInvariant})
+  Param,Equation::Models.EquationType)
 
 (;  RhoPos,
     uPos,
@@ -166,7 +166,7 @@ function FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,
 end
 
 function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
-  DiscType::Val{:VectorInvariant})
+  Equation::Models.EquationType)
 
 (;  RhoPos,
     uPos,
@@ -416,16 +416,16 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
     if Global.Model.Curl
 #     3-dim Curl and Grad of kinetic Energy
 #     Kinetic energy
-      @views RhoGradKinColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG[:,:,:],
+      @views RhoGradKinColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
-      @views MomentumColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG[:,:],
+        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Equation)
+      @views MomentumColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Equation)
     else
       @views MomentumColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
+        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Equation)
     end    
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
@@ -600,16 +600,16 @@ function Fcn!(F,U,CG,Metric,Phys,Cache,Exchange,Global,Param,
     if Global.Model.Curl
 #     3-dim Curl and Grad of kinetic Energy
 #     Kinetic energy
-      @views RhoGradKinColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG[:,:],
+      @views RhoGradKinColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
-      @views MomentumColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG[:,:],
+        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Equation)
+      @views MomentumColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG,
         v1CG,v2CG,wCG,RhoCG,CG,
-        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:VectorInvariant))
+        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Equation)
     else
       @views MomentumColumn!(FCG[:,:,uPos],FCG[:,:,vPos],FwCG[:,:],
         v1CG,v2CG,wCG,RhoCG,CG,
-        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Val(:Advection))
+        Metric.dXdxI[:,:,:,:,:,iF],Global.ThreadCache,Equation)
     end
     if Global.Model.Coriolis
       str = Global.Model.CoriolisType
