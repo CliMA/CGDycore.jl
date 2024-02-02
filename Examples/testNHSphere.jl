@@ -28,6 +28,7 @@ Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
 Geos = parsed_args["Geos"]
 Coriolis = parsed_args["Coriolis"]
+Gravitation = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
 Equation = parsed_args["Equation"]
@@ -229,7 +230,7 @@ elseif Equation == "CompressibleDeep"
   Model.Equation = Models.CompressibleDeep()  
 end  
 
-Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 
 
 Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
@@ -269,6 +270,23 @@ if Coriolis
 else
   CoriolisFun = GPU.CoriolisNo()
   Model.CoriolisFun = CoriolisFun
+end
+
+#Coriolis
+if Buoyancy
+  if Equation == "CompressibleShallow"
+    GravitationFun = GPU.GravitationShallow()(Phys)
+    Model.GravitationFun = GravitationFun
+  elseif Equation == "CompressibleDeep"
+    GravitationFun = GPU.GravitationDeep()(Phys)
+    Model.GravitationFun = GravitationFun
+  else
+    GravitationFun = GPU.GravitationNo()
+    Model.GravitationFun = GravitationFun
+  end
+else
+  GravitationFun = GPU.GravitationNo()
+  Model.GravitationFun = GravitationFun
 end
 
 # Pressure

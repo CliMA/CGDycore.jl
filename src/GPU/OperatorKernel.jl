@@ -1,3 +1,4 @@
+#=
 @kernel function GradKernel!(F,@Const(U),@Const(p),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(MRho),@Const(Glob),Phys)
 
@@ -10,13 +11,14 @@
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  Pres = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  Pres = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
 
   ID = I + (J - 1) * N  
   @inbounds ind = Glob[ID,IF]
 
   if Iz <= Nz
-    @inbounds Pres[I,J,iz] = p[Iz,ind]
+    @inbounds Pres[I,J,1,iz+1] = p[Iz,ind]
+    @inbounds Pres[I,J,2,iz+1] = p[Iz,ind]
   end
   if iz == ColumnTilesDim && Iz < Nz
     @inbounds Pres[I,J,iz+1] = p[Iz+1,ind]
@@ -35,7 +37,6 @@
       @inbounds DYPres += D[J,k] * Pres[I,k,iz]
     end
     @views @inbounds Gradu, Gradv = Grad12(DXPres,DYPres,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
-    @views @inbounds Gradw1, Gradw2 = Grad3(DXPres,DYPres,dXdxI[1:3,1:3,:,ID,Iz,IF]) 
 
     @inbounds GradZ = -Phys.Grav * U[Iz,ind,1] *
         (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / (dXdxI[3,3,1,ID,Iz,IF] + dXdxI[3,3,2,ID,Iz,IF])
@@ -43,15 +44,12 @@
     @inbounds Gradv += GradZ * (dXdxI[3,2,1,ID,Iz,IF] + dXdxI[3,2,2,ID,Iz,IF])
     @inbounds @atomic F[Iz,ind,2] += -Gradu / M[Iz,ind] / U[Iz,ind,1]
     @inbounds @atomic F[Iz,ind,3] += -Gradv / M[Iz,ind] / U[Iz,ind,1]
-    if Iz > 1
-      @inbounds @atomic F[Iz-1,ind,4] += -Gradw1 / MRho[Iz-1,ind]
-    end  
   end  
 
   if Iz < Nz
     @inbounds GradZ = eltype(F)(0.5) * (Pres[I,J,iz+1] - Pres[I,J,iz])  
     @inbounds Gradw =  GradZ* (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF])
-    @inbounds @atomic F[Iz,ind,4] += -(Gradw + Gradw2 +
+    @inbounds @atomic F[Iz,ind,4] += -(Gradw +
       Phys.Grav * (U[Iz,ind,1] * JJ[ID,2,Iz,IF] + U[Iz+1,ind,1] * JJ[ID,1,Iz+1,IF])) /
       MRho[Iz,ind]
   end      
@@ -95,7 +93,6 @@ end
       @inbounds DYPres += D[J,k] * Pres[I,k,iz]
     end
     @views @inbounds Gradu, Gradv = Grad12(DXPres,DYPres,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
-    @views @inbounds Gradw1, Gradw2 = Grad3(DXPres,DYPres,dXdxI[1:3,1:3,:,ID,Iz,IF]) 
 
     @inbounds GradZ = -Phys.Grav * U[Iz,ind,1] *
         (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / (dXdxI[3,3,1,ID,Iz,IF] + dXdxI[3,3,2,ID,Iz,IF])
@@ -103,9 +100,6 @@ end
     @inbounds Gradv += GradZ * (dXdxI[3,2,1,ID,Iz,IF] + dXdxI[3,2,2,ID,Iz,IF])
     @inbounds @atomic F[Iz,ind,2] += -Gradu / M[Iz,ind] / U[Iz,ind,1]
     @inbounds @atomic F[Iz,ind,3] += -Gradv / M[Iz,ind] / U[Iz,ind,1]
-    if Iz > 1
-      @inbounds @atomic F[Iz-1,ind,4] += -Gradw1 / MRho[Iz-1,ind]
-    end  
   end  
 
   if Iz < Nz
@@ -115,12 +109,13 @@ end
     y = X[ID,2,2,Iz,IF]
     z = X[ID,2,3,Iz,IF]
     r = sqrt(x^2 + y^2 + z^2)
-    @inbounds @atomic F[Iz,ind,4] += -(Gradw + Gradw2 +
+    @inbounds @atomic F[Iz,ind,4] += -(Gradw + 
       Phys.Grav * (Phys.RadEarth / r)^2 * (U[Iz,ind,1] * JJ[ID,2,Iz,IF] + U[Iz+1,ind,1] * JJ[ID,1,Iz+1,IF])) /
       MRho[Iz,ind]
   end      
    
 end
+=#
 
 @kernel function DivRhoGradKernel!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))

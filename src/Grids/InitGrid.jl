@@ -1,4 +1,4 @@
-function InitGrid(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)    
+function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)    
 
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc

@@ -40,3 +40,35 @@ function (CoriolisFun::CoriolisNo)
   end
 end  
 
+abstract type GravitationType end
+
+Base.@kwdef struct GravitationShallow <: GravitationType end
+
+function (GravitationFun::GravitationShallow)(Phys)
+  @inline function Gravitation(x,y,z)
+    FT = eltype(x)
+    r = sqrt(x^2 + y^2 + z^2)
+    return Phys.Grav
+  end
+  return Gravitation
+end
+
+Base.@kwdef struct GravitationDeep <: GravitationType end
+
+function (GravitationFun::GravitationDeep)(Phys)
+  @inline function Gravitation(x,y,z)
+    FT = eltype(x)
+    r = sqrt(x^2 + y^2 + z^2)
+    return Phys.Grav * (Phys.RadEarth / r)^2
+  end
+  return Gravitation
+end
+
+Base.@kwdef struct GravitationNo <: GravitationType end
+
+function (GravitationFun::GravitationNo)
+  @inline function Gravitation(x,y,z)
+    FT = eltype(x)
+    return FT(0)
+  end
+end
