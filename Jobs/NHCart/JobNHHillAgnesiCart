@@ -6,12 +6,10 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
-  --ProfRho="AgnesiCart" \
-  --ProfTheta="AgnesiCart" \
-  --ProfVel="Const" \
-  --ProfpBGrd="AgnesiCart" \
-  --ProfRhoBGrd="AgnesiCart" \
   --RefProfile=false \
+  --Equation="CompressibleShallow" \
+  --Buoyancy=true \
+  --Coriolis=false \
   --Curl=true \
   --ModelType="VectorInvariant" \
   --SurfaceFluxMom=false \

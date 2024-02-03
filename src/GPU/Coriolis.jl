@@ -33,11 +33,12 @@ end
 
 Base.@kwdef struct CoriolisNo <: CoriolisType end
 
-function (CoriolisFun::CoriolisNo)
+function (CoriolisFun::CoriolisNo)()
   @inline function Coriolis(x,y,z,u,v,w1,w2)
     FT = eltype(x)
     return FT(0),FT(0),FT(0)
   end
+  return Coriolis
 end  
 
 abstract type GravitationType end
@@ -66,9 +67,10 @@ end
 
 Base.@kwdef struct GravitationNo <: GravitationType end
 
-function (GravitationFun::GravitationNo)
+function (GravitationFun::GravitationNo)()
   @inline function Gravitation(x,y,z)
     FT = eltype(x)
     return FT(0)
   end
+  return Gravitation
 end

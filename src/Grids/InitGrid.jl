@@ -37,3 +37,17 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   return SubGrid, Exchange
 end  
+
+function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+
+  ProcNumber = ParallelCom.ProcNumber
+  Proc = ParallelCom.Proc
+
+  Grid = Grids.CartGrid(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz)
+  CellToProc = Grids.Decompose(Grid,ProcNumber)
+  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
+  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
+  Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
+
+  return SubGrid, Exchange
+end  

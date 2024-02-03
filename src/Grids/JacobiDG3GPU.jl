@@ -71,7 +71,27 @@ end
       @inbounds dXdx[I,J,K,3,3,iz] += DZ[K,k] * XLoc[I,J,k,3,iz]
     end  
     @views @inbounds JJ[ID,K,Iz,IF] = Det3(dXdx[I,J,K,:,:,iz])
-    @views @inbounds Adjunct3!(dXdxI[:,:,K,ID,Iz,IF],dXdx[I,J,K,:,:,iz])
+    @inbounds dXdxI[1,1,K,ID,Iz,IF] = dXdx[I,J,K,2,2,iz] * dXdx[I,J,K,3,3,iz] -
+      dXdx[I,J,K,2,3,iz] * dXdx[I,J,K,3,2,iz]
+    @inbounds dXdxI[2,1,K,ID,Iz,IF] = -(dXdx[I,J,K,2,1,iz] * dXdx[I,J,K,3,3,iz] -
+      dXdx[I,J,K,2,3,iz] * dXdx[I,J,K,3,1,iz])
+    @inbounds dXdxI[3,1,K,ID,Iz,IF] = dXdx[I,J,K,2,1,iz] * dXdx[I,J,K,3,2,iz] -
+      dXdx[I,J,K,2,2,iz] * dXdx[I,J,K,3,1,iz]
+
+    @inbounds dXdxI[1,2,K,ID,Iz,IF] = -(dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,3,3,iz] -
+      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,3,2,iz])
+    @inbounds dXdxI[2,2,K,ID,Iz,IF] = dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,3,3,iz] -
+      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,3,1,iz]
+    @inbounds dXdxI[3,2,K,ID,Iz,IF] = -(dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,3,2,iz] -
+      dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,3,1,iz])
+
+    @inbounds dXdxI[1,3,K,ID,Iz,IF] = dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,2,3,iz] -
+      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,2,2,iz]
+    @inbounds dXdxI[2,3,K,ID,Iz,IF] = -(dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,2,3,iz] -
+      dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,2,1,iz])
+    @inbounds dXdxI[3,3,K,ID,Iz,IF] = dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,2,2,iz] -
+      dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,2,1,iz]
+#   @views @inbounds Adjunct3!(dXdxI[:,:,K,ID,Iz,IF],dXdx[I,J,K,:,:,iz])
   end
 end  
 

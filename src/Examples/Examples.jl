@@ -24,6 +24,17 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
     Model.Eddy = Eddy
+  elseif Problem == "Stratified" || Problem == "HillAgnesiXCart"
+    Profile = Examples.StratifiedExample()(Param,Phys)
+    Model.InitialProfile = Profile
+    @show "Stratified"
+  elseif Problem == "WarmBubble2DXCart"
+    Profile = Examples.WarmBubbleCartExample()(Param,Phys)
+    Model.InitialProfile = Profile
+  elseif Problem == "BryanFritschCart"
+    ProfileBF = Models.TestRes(Phys)
+    Profile = Examples.BryanFritsch(ProfileBF)(Param,Phys)
+    Model.InitialProfile = Profile
   end
 end
 

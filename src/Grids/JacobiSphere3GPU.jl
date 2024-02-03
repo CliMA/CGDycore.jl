@@ -430,7 +430,7 @@ function (::GalChen)(H)
   function AdaptHeight(zRef,zs)
     z = zRef + (H - zRef) * zs / H
     DzDzRef  = eltype(zRef)(1) - zs / H
-    return z, DzDzRef
+    return (z, DzDzRef)
   end
   return AdaptHeight
 end
@@ -452,7 +452,7 @@ function (F::Sleve)(H)
       z = eta * H
       DzDzRef  = eltype(zRef)(1) 
     end  
-    return z, DzDzRef
+    return (z, DzDzRef)
   end
   return AdaptHeight
 end

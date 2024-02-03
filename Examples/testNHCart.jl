@@ -31,6 +31,7 @@ BoundaryWE = parsed_args["BoundaryWE"]
 BoundarySN = parsed_args["BoundarySN"]
 BoundaryBT = parsed_args["BoundaryBT"]
 Thermo = parsed_args["Thermo"]
+State = parsed_args["State"]
 RefProfile = parsed_args["RefProfile"]
 Profile = parsed_args["Profile"]
 Curl = parsed_args["Curl"]
@@ -58,8 +59,10 @@ dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
 GridType = parsed_args["GridType"]
+AdaptGridType = parsed_args["AdaptGridType"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
+Buoyancy = parsed_args["Buoyancy"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
@@ -98,6 +101,12 @@ FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+ParallelCom = DyCore.ParallelComStruct()
+ParallelCom.Proc = Proc
+ParallelCom.ProcNumber  = ProcNumber
 
 if Device == "CPU" || Device == "CPU_P"
   backend = CPU()
@@ -139,7 +148,6 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 # Initial conditions
-Model.Equation = Equation
 Model.NumV=NumV
 Model.NumTr=NumTr
 Model.Problem=Problem
@@ -215,6 +223,15 @@ Topography=(TopoS=TopoS,
             P4=P4,
             )
 
+# Equation
+if Equation == "CompressibleShallow"
+  Model.Equation = Models.CompressibleShallow()
+elseif Equation == "CompressibleDeep"
+  Model.Equation = Models.CompressibleDeep()
+end
+Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+
+
 #Topography
 if TopoS == "AgnesiHill"
   TopoProfile = Examples.AgnesiHill()()
@@ -222,43 +239,72 @@ else
   TopoProfile = Examples.Flat()()  
 end  
 
-(CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,nx,ny,Lx,Ly,x0,y0,nz,H,
-  Boundary,GridType,Decomp,Model,Phys,TopoProfile)
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
+
+@show "InitCart"
+(CG, Metric, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+  Phys,TopoProfile,Exchange,Grid,ParallelCom)
 
 # Initial values
-if Problem == "Stratified" || Problem == "HillAgnesiXCart"
-  Profile = Examples.StratifiedExample()(Param,Phys)
-elseif Problem == "WarmBubble2DXCart"
-  Profile = Examples.WarmBubbleCartExample()(Param,Phys)
-elseif Problem == "BryanFritschCart"
-  ProfileBF = Models.TestRes(Phys)
-  Profile = Examples.BryanFritsch(ProfileBF)(Param,Phys)
+#if Problem == "Stratified" || Problem == "HillAgnesiXCart"
+#  Profile = Examples.StratifiedExample()(Param,Phys)
+#elseif Problem == "WarmBubble2DXCart"
+#  Profile = Examples.WarmBubbleCartExample()(Param,Phys)
+#elseif Problem == "BryanFritschCart"
+#  ProfileBF = Models.TestRes(Phys)
+#  Profile = Examples.BryanFritsch(ProfileBF)(Param,Phys)
+#end
+
+
+# Initial values
+Examples.InitialProfile!(Model,Problem,Param,Phys)
+U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
+
+
+#Coriolis
+if Coriolis
+  if Equation == "CompressibleShallow"
+    CoriolisFun = GPU.CoriolisShallow()(Phys)
+    Model.CoriolisFun = CoriolisFun
+  elseif Equation == "CompressibleDeep"
+    CoriolisFun = GPU.CoriolisDeep()(Phys)
+    Model.CoriolisFun = CoriolisFun
+  else
+    CoriolisFun = GPU.CoriolisNo()()
+    Model.CoriolisFun = CoriolisFun
+  end
+else
+  CoriolisFun = GPU.CoriolisNo()()
+  Model.CoriolisFun = CoriolisFun
 end
 
-
-
-U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+#Buoyancy
+if Buoyancy
+  if Equation == "CompressibleShallow"
+    GravitationFun = GPU.GravitationShallow()(Phys)
+    Model.GravitationFun = GravitationFun
+  elseif Equation == "CompressibleDeep"
+    GravitationFun = GPU.GravitationDeep()(Phys)
+    Model.GravitationFun = GravitationFun
+  else
+    GravitationFun = GPU.GravitationNo()
+    Model.GravitationFun = GravitationFun
+  end
+else
+  GravitationFun = GPU.GravitationNo()
+  Model.GravitationFun = GravitationFun
+end
 
 # Pressure
-if Equation == "Compressible"
-  Pressure = Models.Compressible()(Phys)
+if State == "Dry"
+  Pressure = Models.Dry()(Phys)
   Model.Pressure = Pressure
-elseif Equation == "CompressibleMoist"
-  Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
+elseif State == "Moist"
+  Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos+NumV,Model.RhoCPos+NumV)
   Model.Pressure = Pressure
 end
 
-# Pressure
-if Equation == "Compressible"
-  Pressure = Models.Compressible()(Phys)
-  Model.Pressure = Pressure
-elseif Equation == "CompressibleMoist"
-  Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
-    Model.RhoVPos+NumV,Model.RhoCPos+NumV)
-  Model.Pressure = Pressure
-end
-# Microphysics
 if Microphysics
   if TypeMicrophysics == "SimpleMicrophysics"
     MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
@@ -283,7 +329,7 @@ Global.Output.vtk=0
   Global.Output.Flat=true
   Global.Output.H=H
   if ModelType == "VectorInvariant" || ModelType == "Advection"
-    if Model.Equation == "Compressible"
+    if State == "Dry"
       Global.Output.cNames = [
         "Rho",
         "u",
@@ -292,7 +338,7 @@ Global.Output.vtk=0
         "Th",
         "Pres",
         ]
-    elseif Model.Equation == "CompressibleMoist"
+    elseif State == "Moist"
       Global.Output.cNames = [
         "Rho",
         "u",
@@ -341,16 +387,18 @@ Global.Output.vtk=0
     DiscType = Val(:Conservative)
   end
 
-if Device == "CPU"  || Device == "GPU"
+  if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   @show "vor Timestepper"
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+    Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 else
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+  @show "vor CPU Timestepper"
   Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
+    Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 end
+

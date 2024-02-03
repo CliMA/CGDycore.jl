@@ -272,7 +272,7 @@ else
   Model.CoriolisFun = CoriolisFun
 end
 
-#Coriolis
+#Buoyancy
 if Buoyancy
   if Equation == "CompressibleShallow"
     GravitationFun = GPU.GravitationShallow()(Phys)

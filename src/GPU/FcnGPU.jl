@@ -195,11 +195,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-  if Global.Model.Coriolis
-    KMomentumCoriolisKernel! = MomentumVectorInvariantCoriolisKernel!(backend, group)
-  else
-    KMomentumKernel! = MomentumKernel!(backend, group)
-  end  
+  KMomentumCoriolisKernel! = MomentumVectorInvariantCoriolisKernel!(backend, group)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KHyperViscWKernel! = HyperViscWKernel!(backend, groupTr)
@@ -262,11 +258,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
   KGradKernel!(F,U,p,DS,dXdxI,J,X,M,MRho,Glob,GravitationFun,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  if Global.Model.Coriolis
-    KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,CoriolisFun,ndrange=ndrangeB)
-  else
-    KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
-  end  
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,CoriolisFun,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
   KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,MRho,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
@@ -308,11 +300,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
   KGradKernel!(F,U,p,DS,dXdxI_I,J_I,X_I,M,MRho,Glob_I,GravitationFun,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
-  if Global.Model.Coriolis
-    KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
-  else
-    KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
-  end  
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
   KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,MRho,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
@@ -455,11 +443,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-  if Global.Model.Coriolis
-    KMomentumDeepCoriolisKernel! = MomentumDeepCoriolisKernel!(backend, group)
-  else
-    KMomentumKernel! = MomentumKernel!(backend, group)
-  end  
+  KMomentumDeepCoriolisKernel! = MomentumDeepCoriolisKernel!(backend, group)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KHyperViscWKernel! = HyperViscWKernel!(backend, groupTr)
@@ -521,11 +505,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
   KGradDeepKernel!(F,U,p,DS,dXdxI,J,X,M,MRho,Glob,Phys,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  if Global.Model.Coriolis
-    KMomentumDeepCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrangeB)
-  else
-    KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
-  end  
+  KMomentumDeepCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
   KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,MRho,Glob)
   KernelAbstractions.synchronize(backend)
@@ -567,11 +547,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
   KGradDeepKernel!(F,U,p,DS,dXdxI_I,J_I,X_I,M,MRho,Glob_I,Phys,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
-  if Global.Model.Coriolis
-    KMomentumDeepCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,Phys,ndrange=ndrangeI)
-  else
-    KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
-  end  
+  KMomentumDeepCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,Phys,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
   KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,MRho,Glob)
   KernelAbstractions.synchronize(backend)
