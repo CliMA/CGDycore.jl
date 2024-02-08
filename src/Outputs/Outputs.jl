@@ -4,9 +4,11 @@ import ..DG
 import ..Grids
 import ..Thermodynamics
 
-using WriteVTK
+#using WriteVTK
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using WriteVTK
+
 
 include("vtkCG.jl")	
 include("vtkCGGrid.jl")	

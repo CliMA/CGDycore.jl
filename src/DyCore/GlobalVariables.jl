@@ -455,17 +455,13 @@ end
 
 mutable struct GlobalStruct{FT<:AbstractFloat,
                             TCache}
-# Metric::MetricStruct{FT}
   Grid::Grids.GridStruct
   Model::ModelStruct{FT}
   ParallelCom::ParallelComStruct
   TimeStepper::TimeStepperStruct
-# Phys::PhysParameters
   Output::OutputStruct
-# Exchange::ExchangeStruct
   vtkCache::Outputs.vtkStruct{FT}
-# Cache::CacheStruct{FT}
-# J::JStruct
+  SurfaceData::Array{Surfaces.SurfaceData, 2}
   latN::Array{Float64, 1}
   ThreadCache::TCache
   ThetaBGrd::Array{Float64, 2}
@@ -479,14 +475,9 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
                 Model::ModelStruct,
                 TimeStepper::TimeStepperStruct,
                 ParallelCom::ParallelComStruct,
-#               Phys::PhysParameters,
                 Output::OutputStruct,
-#               Exchange::ExchangeStruct,
                 DoF,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:AbstractFloat
-# Metric=MetricStruct{FT}(backend)
-# Cache=CacheStruct{FT}(backend)
   vtkCache = Outputs.vtkStruct{FT}(backend)
-# J=JStruct()
   latN=zeros(0)
   tcache=(;DyCore.CreateCache(FT,DoF,nz,NumV,NumTr)...,init_tcache)
   ThetaBGrd = zeros(0,0)
@@ -495,18 +486,16 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
   RhoBGrd = zeros(0,0)
   UGeo = zeros(0,0)
   VGeo = zeros(0,0)
+  @show "Hallo Surface"
+  SurfaceData = Array{Surfaces.SurfaceData}(undef, 0, 0)
   return GlobalStruct{FT,typeof(tcache)}(
-#   Metric,
     Grid,
     Model,
     ParallelCom,
     TimeStepper,
-#   Phys,
     Output,
-#   Exchange,
     vtkCache,
-#   Cache,
-#   J,
+    SurfaceData,
     latN,
     tcache,
     ThetaBGrd,

@@ -839,7 +839,7 @@ end
       (T - TSurf[ID,IF]) / M[1,ind]
     FRho = LatFlux
     FRhoV = LatFlux
-    PrePi=(p[1,ind] / Phys.p0)^(Rm / Cpml)
+    @inbounds PrePi=(p[1,ind] / Phys.p0)^(Rm / Cpml)
     FRhoTh = RhoTh * (SensFlux / T + ((Phys.Rv / Rm) - eltype(F)(1) / Rho - 
       log(PrePi)*(Phys.Rv / Rm - Phys.Cpv / Cpml)) *  LatFlux)
     @inbounds @atomic F[1,ind,1] += FRho 

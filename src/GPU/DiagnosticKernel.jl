@@ -61,7 +61,7 @@ end
 end
 =#
 
-@kernel function SurfaceKernel!(TSurf,RhoVSurf,uStar,CT,CH,@Const(U),@Const(p),@Const(X),
+@kernel function SurfaceKernel!(Surface,@Const(U),@Const(p),@Const(X),
   @Const(dXdxI),@Const(nS),@Const(Glob),SurfaceValues,SurfaceData)
 
   ID,IF = @index(Global, NTuple)
@@ -74,9 +74,9 @@ end
     @inbounds x2 = X[ID,1,2,1,IF]
     @inbounds x3 = X[ID,1,3,1,IF] 
     xS = SVector{3}(x1, x2 ,x3)
-    @inbounds TSurf[ID,IF], RhoVSurf[ID,IF]  = SurfaceValues(xS,view(U,1,ind,:),p[1,ind])
-    @inbounds uStar[ID,IF], CT[ID,IF], CH[ID,IF] = SurfaceData(view(U,1,ind,:),p[1,ind],
-     view(dXdxI,3,:,1,ID,1,IF),view(nS,ID,:,IF))
+    @inbounds SurfaceValues(xS,view(U,1,ind,:),p[1,ind],Surface[ID,IF])
+    @inbounds SurfaceData(view(U,1,ind,:),p[1,ind],
+     view(dXdxI,3,:,1,ID,1,IF),view(nS,ID,:,IF),Surface[ID,IF])
   end
 end
 
@@ -158,9 +158,10 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     groupS = (N * N, NFG)
     ndrangeS = (N * N, NumF)
     KSurfaceKernel! = SurfaceKernel!(backend,groupS) 
-    KSurfaceKernel!(TSurf,RhoVSurf,uStar,CT,CH,U,p,X,dXdxI,nS,Glob,Global.Model.SurfaceValues,
+    KSurfaceKernel!(Global.SurfaceData,U,p,X,dXdxI,nS,Glob,Global.Model.SurfaceValues,
       Global.Model.SurfaceData,ndrange=ndrangeS)
     KernelAbstractions.synchronize(backend)
+    stop
   end  
   if Global.Model.VerticalDiffusion 
     if Global.Model.SurfaceFlux  
@@ -174,7 +175,7 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       KSurfaceKernel! = SurfaceKernel!(backend,groupS) 
       SurfaceValues = Global.Model.SurfaceValues
       SurfaceData = Global.Model.SurfaceData
-      KSurfaceKernel!(TSurf,RhoVSurf,uStar,CT,CH,U,p,X,dXdxI,nS,Glob,SurfaceValues,
+      KSurfaceKernel!(U,p,X,dXdxI,nS,Glob,SurfaceValues,
         SurfaceData,ndrange=ndrangeS)
       KernelAbstractions.synchronize(backend)
       KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)

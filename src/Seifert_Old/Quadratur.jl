@@ -3,10 +3,10 @@ abstract type QuadType end
 
 mutable struct QuadRule{FT<:AbstractFloat,
                         IT1<:AbstractArray,
-                        IT2<:AbstractArray} <: FiniteElement
-NumQuad::Int
-Weights::IT1
-Points::IT2 
+                        IT2<:AbstractArray} <: QuadType
+    NumQuad::Int
+    Weights::IT1
+    Points::IT2 
 end
 
 function QuadRule{FT}(type::Grids.Quad,backend,n) where FT<:AbstractFloat
@@ -25,6 +25,33 @@ function QuadRule{FT}(type::Grids.Quad,backend,n) where FT<:AbstractFloat
             ii += 1
         end    
     end
+    copyto!(Weights,WeightsCPU)
+    copyto!(Points,PointsCPU)
+    return QuadRule{FT,
+                    typeof(Weights),
+                    typeof(Points)}( 
+    NumQuad,
+    Weights,
+    Points,
+      )
+end
+
+function QuadRule{FT}(type::Grids.Tri,backend,n) where FT<:AbstractFloat
+    w,x = DG.GaussLobattoQuad(n)
+    NumQuad = 3
+    WeightsCPU = zeros(Float64,NumQuad)
+    PointsCPU = zeros(Float64,NumQuad,2)
+    Weights = KernelAbstractions.zeros(backend,FT,NumQuad)
+    Points = KernelAbstractions.zeros(backend,FT,NumQuad,2)
+    WeightsCPU[1]=1/3
+    WeightsCPU[2]=1/3
+    WeightsCPU[3]=1/3
+    PointsCPU[1,1]=-1
+    PointsCPU[1,2]=-1
+    PointsCPU[2,1]=1
+    PointsCPU[2,2]=-1
+    PointsCPU[3,1]=-1
+    PointsCPU[3,2]=1
     copyto!(Weights,WeightsCPU)
     copyto!(Points,PointsCPU)
     return QuadRule{FT,

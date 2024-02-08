@@ -4,6 +4,7 @@ import ..DG: DerivativeX!, DerivativeY!
 import ..DG
 import ..Parallels
 import ..Models
+import ..Surfaces
 import ..Grids
 import ..Outputs
 import ..Integration

@@ -1,4 +1,4 @@
-module Seifert
+module FEMSei
 
 import ..DG
 import ..Parallels
@@ -17,13 +17,25 @@ using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
-using Polynomials
-using SpecialPolynomials
+using DynamicPolynomials
 
 export parse_commandline 
 
+abstract type FiniteElement end
+abstract type ScalarElement <: FiniteElement end
+abstract type VectorElement <: FiniteElement end
+abstract type HDivElement <: VectorElement end
+abstract type TensorElement <: VectorElement end
+
 include("Quadratur.jl")
-include("MassMatrixVec.jl")
 include("RT0.jl")
+include("DG0.jl")
+include("MassMatrix.jl")
+include("Jacobi.jl")
+include("StiffMatrix.jl")
+include("Project.jl")
+include("fp.jl")
+
+
 
 end

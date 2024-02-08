@@ -48,6 +48,7 @@ JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
 JacVerticalAdvection = parsed_args["JacVerticalAdvection"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
+SurfaceScheme = parsed_args["SurfaceScheme"]
 NumV = parsed_args["NumV"]
 NumTr = parsed_args["NumTr"]
 Curl = parsed_args["Curl"]
@@ -314,11 +315,26 @@ if Damping
 end
 
 # Surface flux
+Global.SurfaceData = Array{Surfaces.SurfaceData,2}(undef,CG.DoF,Grid.NumFaces)
+for iter in eachindex(Global.SurfaceData)
+  Global.SurfaceData[iter] = Surfaces.SurfaceData()
+  Global.SurfaceData[iter].z0M = 0.01
+  Global.SurfaceData[iter].z0H = 0.01
+  Global.SurfaceData[iter].LandClass = 5
+end  
+@show Global.SurfaceData[2,5]
+
 if Model.SurfaceFlux || Model.VerticalDiffusion
-  if Problem == "HeldSuarezMoistSphere"
-    SurfaceValues, SurfaceData = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+  if SurfaceScheme == ""
+    if Problem == "HeldSuarezMoistSphere"
+      SurfaceValues, SurfaceData = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+      Model.SurfaceValues = SurfaceValues
+      Model.SurfaceData = SurfaceData
+    end  
+  elseif SurfaceScheme == "MOST"
+    SurfaceValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
+      Model.vPos,Model.wPos,Model.ThPos)
     Model.SurfaceValues = SurfaceValues
-    Model.SurfaceData = SurfaceData
   end  
 end
 

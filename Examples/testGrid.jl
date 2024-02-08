@@ -28,32 +28,32 @@ Model = DyCore.ModelStruct{FTB}()
 backend = CPU()
 nz = 1
 Rad = 1.0
-RefineLevel = 5
+RefineLevel = 6
 OrdPoly = 3
 nPanel = 10
 RadEarth = 1.0
 Decomp = "EqualArea"
 
 GridType = "Msh"
-Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 c = ones(FTB,Grid.NumFaces) * Proc
 Outputs.vtkSkeleton(vtkSkeletonMesh, GridType, Proc, ProcNumber , c)
 
 GridType = "DelaunaySphere"
-Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 c = ones(FTB,Grid.NumFaces) * Proc
 Outputs.vtkSkeleton(vtkSkeletonMesh, GridType, Proc, ProcNumber , c)
 
 GridType = "TriangularSphere"
-Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 c = ones(FTB,Grid.NumFaces) * Proc
 Outputs.vtkSkeleton(vtkSkeletonMesh, GridType, Proc, ProcNumber , c)
 
 GridType = "SQuadGen"
-Grid, Exchange = Grids.InitGrid(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 c = ones(FTB,Grid.NumFaces) * Proc
 Outputs.vtkSkeleton(vtkSkeletonMesh, GridType, Proc, ProcNumber , c)

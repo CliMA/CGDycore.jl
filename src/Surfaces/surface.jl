@@ -4,20 +4,22 @@ Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
 
 function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
-  function SurfaceValues(x,U,p)
+  @inline function SurfaceValues(x,U,p,Surface)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     p_vs = Thermodynamics.fpvs(TSurf,Phys.T0)
     RhoVSurf = p_vs / (Phys.Rv * TSurf)
-    return TSurf, RhoVSurf
+    Surface.TS = TSurf
+    Surface.RhoVS = RhoVSurf
+    return nothing
   end  
-  function SurfaceData(U,p,dXdxI,nS)
+  @inline function SurfaceData(z,U,p,dXdxI,nS,Surface)
     FT = eltype(U)
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
-    CT = FT(Param.CE)
-    CH = FT(Param.CH)
-    return uStar, CT, CH
+    Surface.uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
+    Surface.CT = FT(Param.CE)
+    Surface.CH = FT(Param.CH)
+    return nothing
   end
   return SurfaceValues, SurfaceData
 end  
@@ -37,16 +39,16 @@ end
 Base.@kwdef struct MOSurface <: SurfaceValues end
 
 function (::MOSurface)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
-  function SurfaceData(z,U,p,dXdxI,nS,Surface)
+  @inline function SurfaceData(z,U,p,dXdxI,nS,Surface)
     FT = eltype(U)
     uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
+    Surface.uStar = uStar
     theta = U[ThPos] / U[RhoPos]
-    thetaS = Surface.thetaS
+    thetaS = Surface.TS
     z0M = Surface.z0M
     z0H = Surface.z0H
     LandClass = Surface.LandClass
-    CT, CH = Surfaces.MOSTIteration(uf,z0M,z0H,z,uStar,theta,thetaS,LandClass,Phys)
-    return uStar, CT, CH
+    Surface.CT, Surface.CH = Surfaces.MOSTIteration(uf,z0M,z0H,z,uStar,theta,thetaS,LandClass,Phys)
   end
   return SurfaceData
 end  

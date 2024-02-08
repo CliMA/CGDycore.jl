@@ -427,7 +427,7 @@ abstract type AdaptGrid end
 Base.@kwdef struct GalChen <: AdaptGrid end
 
 function (::GalChen)(H)
-  function AdaptHeight(zRef,zs)
+  @inline function AdaptHeight(zRef,zs)
     z = zRef + (H - zRef) * zs / H
     DzDzRef  = eltype(zRef)(1) - zs / H
     return (z, DzDzRef)
@@ -443,7 +443,7 @@ end
 
 function (F::Sleve)(H)
   (;s,etaH) = F
-  function AdaptHeight(zRef,zs)
+  @inline function AdaptHeight(zRef,zs)
     eta = zRef / H
     if eta <= etaH
       z = eta * H + zs * sinh((etaH - eta) / s / etaH) / sinh(1 / s) 

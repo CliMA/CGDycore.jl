@@ -217,6 +217,11 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--SurfaceScheme"
+    help = "Surface scheme"
+    arg_type = String
+    default = "MOST"
+
     "--BoundaryWE"
     help = "Boundary type in west east direction"
     arg_type = String
