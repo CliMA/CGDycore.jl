@@ -415,7 +415,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
     NumEdges += 1
     n1 = EdgeL.data.Node1.data.Number
     n2 = EdgeL.data.Node2.data.Number
-    Edges[NumEdges] = Edge([n1,n2],Nodes,NumEdges,NumEdges,"",NumEdges)
+    Edges[NumEdges] = Edge(sort([n1;n2]),Nodes,NumEdges,NumEdges,"",NumEdges)
     EdgeL = EdgeL.next
   end
 
@@ -432,7 +432,18 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
     e1 = FaceL.data.Edge1.data.Number
     e2 = FaceL.data.Edge2.data.Number
     e3 = FaceL.data.Edge3.data.Number
-    (Faces[NumFaces], Edges) = Face([e1,e2,e3],Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
+    s1 = sum(Edges[e1].N)
+    s2 = sum(Edges[e2].N)
+    s3 = sum(Edges[e3].N)
+    permu = sortperm([s1;s2;s3])
+    if permu[1] == 1
+      ee = [e1,e2,e3]
+    elseif permu[1] == 2
+      ee = [e2,e3,e1]
+    else  
+      ee = [e3,e1,e2]
+    end  
+    (Faces[NumFaces], Edges) = Face(ee,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
     FaceL = FaceL.next
   end
   NumNodes = size(Nodes,1)
@@ -441,7 +452,6 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
   NumEdgesI = size(Edges,1)
   NumEdgesB = 0
 
-  Renumbering!(Edges,Faces)
   FacesInNodes!(Nodes,Faces)
 
   zP=zeros(nz)

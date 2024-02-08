@@ -25,7 +25,7 @@ function StiffMatrixFD(backend,FTB,FeF::HDivElement,FeT::ScalarElement,Grid,Quad
       DivLoc = zeros(FeT.DoF,FeF.DoF)
         for i = 1 : length(Weights)
           DF, detJ = Jacobi(Grid.Type,QQ.Points[i,1],QQ.Points[i,2],Grid.Faces[iF], Grid)
-          DivLoc = DivLoc + Weights[i]*(fTRef[:,:,i]'*fFRef[:,:,i])
+          DivLoc = DivLoc + sign(detJ) * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
         end
         for j = 1 : size(DivLoc,2)
           for i = 1 : size(DivLoc,1)

@@ -144,6 +144,7 @@ RadEarth = 1.0
 nz = 1
 nPanel = 30
 nQuad = 2
+Decomp = ""
 Decomp = "EqualArea"
 
 #TRI
@@ -169,7 +170,7 @@ FileNumber = 0
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
 pNeu = zeros(FTB,DG0.NumG)
 
-nAdveVel = 100
+nAdveVel = 1000
 dtau = 0.001
 time = 0.0
 

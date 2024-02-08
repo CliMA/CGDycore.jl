@@ -141,7 +141,9 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   end
 
   Dim=3;
-  Renumbering!(Edges,Faces);
+  if GlobalGrid.Type == Quad()
+    Renumbering!(Edges,Faces);
+  end
   FacesInNodes!(Nodes,Faces)
   Form = GlobalGrid.Form
   Rad = GlobalGrid.Rad

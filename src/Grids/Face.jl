@@ -11,6 +11,7 @@ mutable struct Face
   Stencil::Array{Int, 1}
   Area::Float64
   Radius::Float64
+  Orientation::Int64
 end
 
 function Face()
@@ -26,6 +27,7 @@ function Face()
   Stencil=zeros(Int,0)
   Area::Float64 = 0
   Radius::Float64 = 0
+  Orientation::Int = 1
   return Face(
     N,
     E,
@@ -39,6 +41,7 @@ function Face()
     Stencil,
     Area,
     Radius,
+    Orientation,
   )
 end  
 
@@ -126,18 +129,21 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Flo
   end
   F.n=F.n/norm(F.n);
   if OrientFace(F.n,F.Mid) < 0 
-    #Change Orientation
-    NTemp=copy(F.N);
-    ETemp=copy(F.E);
-    PTemp=copy(F.P);
-    @inbounds for i=1:nE
-      F.N[i]=NTemp[nE-i+1];
-      F.P[i]=PTemp[nE-i+1];
-    end
-    @inbounds for i=1:nE-1
-      F.E[i]=ETemp[nE-i];
-    end
-    F.n=-F.n;
+    F.Orientation = -1  
+    if NumE > 3
+      #Change Orientation
+      NTemp=copy(F.N);
+      ETemp=copy(F.E);
+      PTemp=copy(F.P);
+      @inbounds for i=1:nE
+        F.N[i]=NTemp[nE-i+1];
+        F.P[i]=PTemp[nE-i+1];
+      end
+      @inbounds for i=1:nE-1
+        F.E[i]=ETemp[nE-i];
+      end
+      F.n=-F.n;
+    end  
   end
   return (F,Edges)
 end

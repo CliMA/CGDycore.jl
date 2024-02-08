@@ -31,8 +31,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
     CellToProc = ones(Int,Grid.NumFaces)
     println(" False Decomp method ")
   end
-
   SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
+
 
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   return SubGrid, Exchange

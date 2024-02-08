@@ -59,7 +59,7 @@ function MassMatrix(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi)
       for i = 1 : length(Weights)
         _,detJ = Jacobi(Grid.Type,QQ.Points[i,1],QQ.Points[i,2],Grid.Faces[iF], Grid)
         fLoc = fRef[:, :, i]
-        MLoc = MLoc+abs(detJ)*Weights[i]*(fLoc'*fLoc)
+        MLoc = MLoc + abs(detJ) * Weights[i] *(fLoc' * fLoc)
       end
       for j = 1 : size(MLoc,2)
         for i = 1 : size(MLoc,1)
