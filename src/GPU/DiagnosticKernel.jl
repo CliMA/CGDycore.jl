@@ -70,12 +70,11 @@ end
 
   if IF <= NumF
     @inbounds ind = Glob[ID,IF]
-    @inbounds x1 = X[ID,1,1,1,IF]
-    @inbounds x2 = X[ID,1,2,1,IF]
-    @inbounds x3 = X[ID,1,3,1,IF] 
-    xS = SVector{3}(x1, x2 ,x3)
+    @inbounds xS = SVector{3}(X[ID,1,1,1,IF], X[ID,1,2,1,IF], X[ID,1,3,1,IF])
+    @inbounds dz = sqrt(X[ID,2,1,1,IF]^2 + X[ID,2,2,1,IF]^2 + X[ID,2,3,1,IF]^2) -
+      sqrt(X[ID,1,1,1,IF]^2 + X[ID,1,2,1,IF]^2 + X[ID,1,3,1,IF]^2)
     @inbounds SurfaceValues(xS,view(U,1,ind,:),p[1,ind],Surface[ID,IF])
-    @inbounds SurfaceData(view(U,1,ind,:),p[1,ind],
+    @inbounds SurfaceData(dz,view(U,1,ind,:),p[1,ind],
      view(dXdxI,3,:,1,ID,1,IF),view(nS,ID,:,IF),Surface[ID,IF])
   end
 end
@@ -161,7 +160,6 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     KSurfaceKernel!(Global.SurfaceData,U,p,X,dXdxI,nS,Glob,Global.Model.SurfaceValues,
       Global.Model.SurfaceData,ndrange=ndrangeS)
     KernelAbstractions.synchronize(backend)
-    stop
   end  
   if Global.Model.VerticalDiffusion 
     if Global.Model.SurfaceFlux  
@@ -175,8 +173,8 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       KSurfaceKernel! = SurfaceKernel!(backend,groupS) 
       SurfaceValues = Global.Model.SurfaceValues
       SurfaceData = Global.Model.SurfaceData
-      KSurfaceKernel!(U,p,X,dXdxI,nS,Glob,SurfaceValues,
-        SurfaceData,ndrange=ndrangeS)
+      KSurfaceKernel!(Global.SurfaceData,U,p,X,dXdxI,nS,Glob,Global.Model.SurfaceValues,
+        Global.Model.SurfaceData,ndrange=ndrangeS)
       KernelAbstractions.synchronize(backend)
       KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
       KEddyCoefficientKernel!(Eddy,KV,Rho,uStar,p,dz,Glob,ndrange=ndrangeK)

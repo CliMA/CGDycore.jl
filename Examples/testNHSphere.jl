@@ -282,11 +282,11 @@ if Buoyancy
     GravitationFun = GPU.GravitationDeep()(Phys)
     Model.GravitationFun = GravitationFun
   else
-    GravitationFun = GPU.GravitationNo()
+    GravitationFun = GPU.GravitationNo()()
     Model.GravitationFun = GravitationFun
   end
 else
-  GravitationFun = GPU.GravitationNo()
+  GravitationFun = GPU.GravitationNo()()
   Model.GravitationFun = GravitationFun
 end
 
@@ -323,13 +323,18 @@ for iter in eachindex(Global.SurfaceData)
   Global.SurfaceData[iter].LandClass = 5
 end  
 @show Global.SurfaceData[2,5]
-
+@show Model.SurfaceFlux
+@show Model.VerticalDiffusion
+@show SurfaceScheme
+@show Problem
 if Model.SurfaceFlux || Model.VerticalDiffusion
   if SurfaceScheme == ""
     if Problem == "HeldSuarezMoistSphere"
       SurfaceValues, SurfaceData = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceData = SurfaceData
+      @show Model.SurfaceValues
+      @show Model.SurfaceData
     end  
   elseif SurfaceScheme == "MOST"
     SurfaceValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,

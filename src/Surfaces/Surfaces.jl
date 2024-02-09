@@ -9,8 +9,8 @@ include("functions.jl")
 include("surface.jl")
 
 mutable struct SurfaceData
-  thetaS::Float64
-  qvS::Float64
+  TS::Float64
+  RhoVS::Float64
   z0M::Float64
   z0H::Float64
   uStar::Float64
