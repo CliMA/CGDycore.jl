@@ -247,7 +247,9 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber)
   stepS = "$step"
   vtk_filename_noext = filename * stepS;
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
-  vtk["c", VTKCellData()] = c
+  for iC = 1 : size(c,2)
+    vtk["c"*"$iC", VTKCellData()] = c[:,iC]
+  end
   outfiles = vtk_save(vtk);
   return nothing
 end  

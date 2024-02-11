@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Grids, Models, Outputs, Integration,  GPU, DyCore, Surfaces
+  Examples, Parallels, Grids, Surfaces, Models, Outputs, Integration,  GPU, DyCore
 using MPI
 using Base
 using CUDA
@@ -124,6 +124,7 @@ elseif Device == "GPU"
   end
 else
   backend = CPU()
+  Device == "CPU"
 end
 
 if FloatTypeBackend == "Float64"
@@ -315,31 +316,23 @@ if Damping
 end
 
 # Surface flux
-Global.SurfaceData = Array{Surfaces.SurfaceData,2}(undef,CG.DoF,Grid.NumFaces)
-for iter in eachindex(Global.SurfaceData)
-  Global.SurfaceData[iter] = Surfaces.SurfaceData()
-  Global.SurfaceData[iter].z0M = 0.01
-  Global.SurfaceData[iter].z0H = 0.01
-  Global.SurfaceData[iter].LandClass = 5
-end  
-@show Global.SurfaceData[2,5]
-@show Model.SurfaceFlux
-@show Model.VerticalDiffusion
-@show SurfaceScheme
-@show Problem
+Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.DoF,Grid.NumFaces)
+Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.DoF,Grid.NumFaces)
+@. Global.LandUseData.z0M = 0.01
+@. Global.LandUseData.z0H = 0.01
+@. Global.LandUseData.LandClass = 5
 if Model.SurfaceFlux || Model.VerticalDiffusion
   if SurfaceScheme == ""
     if Problem == "HeldSuarezMoistSphere"
-      SurfaceValues, SurfaceData = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+      SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
-      Model.SurfaceData = SurfaceData
-      @show Model.SurfaceValues
-      @show Model.SurfaceData
+      Model.SurfaceFluxValues = SurfaceFluxValues
     end  
   elseif SurfaceScheme == "MOST"
-    SurfaceValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
+    SurfaceValues, SurfaceFluxValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
       Model.vPos,Model.wPos,Model.ThPos)
     Model.SurfaceValues = SurfaceValues
+    Model.SurfaceFluxValues = SurfaceFluxValues
   end  
 end
 
@@ -422,17 +415,9 @@ end
 
 
 
-if Device == "CPU"  || Device == "GPU"
-  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  @show "vor Timestepper"
-  Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
-else
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  @show "vor CPU Timestepper"
-  Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
-end
+Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
+nT = max(7 + NumTr, NumV + NumTr)
+Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+@show "vor Timestepper"
+Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
+  Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)

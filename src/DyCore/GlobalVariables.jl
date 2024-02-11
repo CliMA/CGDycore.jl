@@ -307,7 +307,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   MicrophysicsSource::Any
   SurfaceFluxRhs::Any
   SurfaceValues::Any
-  SurfaceData::Any
+  SurfaceFluxValues::Any
 end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
@@ -379,7 +379,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   MicrophysicsSource = ""
   SurfaceFluxRhs = ""
   SurfaceValues = ""
-  SurfaceData = ""
+  SurfaceFluxValues = ""
   return ModelStruct{FT}(
    Problem,
    Profile,
@@ -449,21 +449,20 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    MicrophysicsSource,
    SurfaceFluxRhs,
    SurfaceValues,
-   SurfaceData,
+   SurfaceFluxValues,
    )
 end  
 
-mutable struct GlobalStruct{FT<:AbstractFloat,
-                            TCache}
+mutable struct GlobalStruct{FT<:AbstractFloat}
   Grid::Grids.GridStruct
   Model::ModelStruct{FT}
   ParallelCom::ParallelComStruct
   TimeStepper::TimeStepperStruct
   Output::OutputStruct
   vtkCache::Outputs.vtkStruct{FT}
-  SurfaceData::Array{Surfaces.SurfaceData, 2}
+  SurfaceData::Surfaces.SurfaceData{FT}
+  LandUseData::Surfaces.LandUseData{FT}
   latN::Array{Float64, 1}
-  ThreadCache::TCache
   ThetaBGrd::Array{Float64, 2}
   TBGrd::Array{Float64, 2}
   pBGrd::Array{Float64, 2}
@@ -476,19 +475,18 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
                 TimeStepper::TimeStepperStruct,
                 ParallelCom::ParallelComStruct,
                 Output::OutputStruct,
-                DoF,nz,NumV,NumTr,init_tcache=NamedTuple()) where FT<:AbstractFloat
+                DoF,nz,NumV,NumTr) where FT<:AbstractFloat
   vtkCache = Outputs.vtkStruct{FT}(backend)
   latN=zeros(0)
-  tcache=(;DyCore.CreateCache(FT,DoF,nz,NumV,NumTr)...,init_tcache)
   ThetaBGrd = zeros(0,0)
   TBGrd = zeros(0,0)
   pBGrd = zeros(0,0)
   RhoBGrd = zeros(0,0)
   UGeo = zeros(0,0)
   VGeo = zeros(0,0)
-  @show "Hallo Surface"
-  SurfaceData = Array{Surfaces.SurfaceData}(undef, 0, 0)
-  return GlobalStruct{FT,typeof(tcache)}(
+  SurfaceData = Surfaces.SurfaceData{FT}(backend,0,0)
+  LandUseData = Surfaces.LandUseData{FT}(backend,0,0)
+  return GlobalStruct{FT}(
     Grid,
     Model,
     ParallelCom,
@@ -496,8 +494,8 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
     Output,
     vtkCache,
     SurfaceData,
+    LandUseData,
     latN,
-    tcache,
     ThetaBGrd,
     TBGrd,
     pBGrd,

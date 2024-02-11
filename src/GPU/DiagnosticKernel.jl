@@ -135,17 +135,16 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   groupK = (N * N, NzG, 1)
   ndrangeK = (N * N, Nz, NumF)
   @views p = Cache.AuxG[:,:,1]
-  TSurf = Cache.TSurf
-  RhoVSurf = Cache.RhoVSurf
-  uStar = Cache.uStar
-  KV = Cache.KV
-  CT = Cache.CT
-  CH = Cache.CH
+  @views KV = Cache.KV
   @views Rho = U[:,:,1]
 # LatFlux = Cache.LatFlux
 # SensFlux = Cache.SensFlux
   dz = Metric.dz
   Eddy = Global.Model.Eddy
+  SurfaceData = Global.SurfaceData
+  uStar = SurfaceData.uStar
+  LandUseData = Global.LandUseData
+  Model = Global.Model
   Pressure = Global.Model.Pressure
 
   KPressureKernel! = PressureKernel!(backend,group)
@@ -153,13 +152,8 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KernelAbstractions.synchronize(backend)
 
   if Global.Model.SurfaceFlux
-    NFG = min(div(NumberThreadGPU,N*N),NumF)
-    groupS = (N * N, NFG)
-    ndrangeS = (N * N, NumF)
-    KSurfaceKernel! = SurfaceKernel!(backend,groupS) 
-    KSurfaceKernel!(Global.SurfaceData,U,p,X,dXdxI,nS,Glob,Global.Model.SurfaceValues,
-      Global.Model.SurfaceData,ndrange=ndrangeS)
-    KernelAbstractions.synchronize(backend)
+    Surfaces.SurfaceData!(U,p,X,Glob,SurfaceData,Model,NumberThreadGPU)  
+    Surfaces.SurfaceFluxData!(U,p,X,dXdxI,nS,Glob,SurfaceData,LandUseData,Model,NumberThreadGPU)  
   end  
   if Global.Model.VerticalDiffusion 
     if Global.Model.SurfaceFlux  
@@ -170,12 +164,8 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
       NFG = min(div(NumberThreadGPU,N*N),NumF)
       groupS = (N * N, NFG)
       ndrangeS = (N * N, NumF)
-      KSurfaceKernel! = SurfaceKernel!(backend,groupS) 
-      SurfaceValues = Global.Model.SurfaceValues
-      SurfaceData = Global.Model.SurfaceData
-      KSurfaceKernel!(Global.SurfaceData,U,p,X,dXdxI,nS,Glob,Global.Model.SurfaceValues,
-        Global.Model.SurfaceData,ndrange=ndrangeS)
-      KernelAbstractions.synchronize(backend)
+      Surfaces.SurfaceData!(U,p,X,Glob,SurfaceData,Model,NumberThreadGPU)  
+      Surfaces.SurfaceFluxData!(U,p,X,dXdxI,nS,Glob,SurfaceData,LandUseData,Model,NumberThreadGPU)  
       KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
       KEddyCoefficientKernel!(Eddy,KV,Rho,uStar,p,dz,Glob,ndrange=ndrangeK)
       KernelAbstractions.synchronize(backend)

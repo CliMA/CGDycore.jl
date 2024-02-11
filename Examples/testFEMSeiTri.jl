@@ -167,10 +167,12 @@ uNeu = zeros(FTB,RT0.NumG)
 p = FEMSei.Project(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi,FEMSei.fp)
 p0 = deepcopy(p)
 FileNumber = 0
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
+VelCa = zeros(Grid.NumFaces,Grid.Dim)
+VelSp = zeros(Grid.NumFaces,2)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
 pNeu = zeros(FTB,DG0.NumG)
 
-nAdveVel = 1000
+nAdveVel = 100 #0
 dtau = 0.001
 time = 0.0
 
@@ -193,8 +195,13 @@ for i = 1 : nAdveVel
 
   #time = time + dtau
 end
+
+FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,u,RT0,Grid,FEMSei.Jacobi)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT0,Grid,FEMSei.Jacobi)
+
 FileNumber += 1
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
+
 
 #= ToDO
 Gleichungen testen mit @show

@@ -4,6 +4,8 @@ import ..Parallels
 import ..Models
 import ..Grids
 import ..Thermodynamics
+import ..Surfaces
+
 using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace

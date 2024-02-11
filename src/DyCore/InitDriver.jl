@@ -8,7 +8,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProf
   Output = OutputStruct()
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
-    Model.NumV,Model.NumTr,())
+    Model.NumV,Model.NumTr)
   CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
 
   if Model.Stretch
@@ -66,7 +66,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfil
   Output = OutputStruct()
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
-    Model.NumV,Model.NumTr,())
+    Model.NumV,Model.NumTr)
   CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
 
   if Model.Stretch
