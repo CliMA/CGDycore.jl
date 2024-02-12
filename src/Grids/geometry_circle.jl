@@ -71,6 +71,13 @@ function SizeGreatCircle(Lon1,Lat1,Lon2,Lat2)
         cos(Lat1) * cos(Lat2) * cos(Lon2-Lon1))
 end  
 
+function SizeGreatCircle(Edge,Nodes)
+  P1 = Nodes[Edge.N[1]].P
+  P2 = Nodes[Edge.N[2]].P
+  return acos(dot(P1,P2)/(norm(P1)*norm(P2)))
+end  
+
+
 function AreaSphericalTriangle(P1,P2,P3)
   P1P2P3 = dot(P1,P2) + dot(P2,P3) + dot(P3,P1)
   P1_P2P3 = dot(P1,cross(P2,P3))
@@ -99,3 +106,9 @@ end
 function inLeftHemisphere(P,C,offset)
   dot(cross(C.P1,C.P2),P) >= offset
 end  
+
+
+function CircumCenter(P1,P2,P3)
+  C = cross(P2 - P1,P3 - P1)
+  C = (1 / norm(C)) * C
+end

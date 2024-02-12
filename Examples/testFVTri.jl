@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -144,61 +144,54 @@ RadEarth = 1.0
 nz = 1
 nPanel = 30
 nQuad = 2
+Decomp = ""
 Decomp = "EqualArea"
 
-#Quad
-GridType = "CubedSphere"
+#TRI
+GridType = "TriangularSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 
-RT0 = FEMSei.RT0Struct{FTB}(Grid.Type,backend,Grid)
-DG0 = FEMSei.DG0Struct{FTB}(Grid.Type,backend,Grid)
-QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,nQuad)
+MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid,Grid.Type)
 
-RT0.M = FEMSei.MassMatrix(backend,FTB,RT0,Grid,nQuad,FEMSei.Jacobi) 
-DG0.M = FEMSei.MassMatrix(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi)
 
-Div = FEMSei.StiffMatrixFD(backend,FTB,RT0,DG0,Grid,nQuad,FEMSei.Jacobi)
+Div = FiniteVolumes.Divergence(backend,FTB,MetricFV,Grid)
 
-u = zeros(FTB,RT0.NumG)
-uNeu = zeros(FTB,RT0.NumG)
+u = zeros(FTB,Grid.NumEdges)
+uNeu = zeros(FTB,Grid.NumEdges)
 
-p = FEMSei.Project(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi,FEMSei.fp)
+p = FiniteVolumes.ProjectFace(backend,FTB,Grid,FEMSei.fp)
 p0 = deepcopy(p)
 FileNumber = 0
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
-pNeu = zeros(FTB,DG0.NumG)
+pNeu = zeros(FTB,Grid.NumFaces)
 
-nAdveVel = 100
+nAdveVel = 100 #0
 dtau = 0.001
 time = 0.0
 
 for i = 1 : nAdveVel
-  rp = Div*u
-  rp = DG0.M\rp
-  ru = -Div'*p
-  ru = RT0.M\ru
+  rp = (Div*u) ./ MetricFV.PrimalVolume
+  ru = -(Div'*p) ./ MetricFV.DualEdgeVolume
 
   @. uNeu = u + 0.5 * dtau * ru
   @. pNeu = p + 0.5 * dtau * rp
 
-  rp = Div*uNeu
-  rp = DG0.M\rp
-  ru = -Div'*pNeu
-  ru = RT0.M\ru
+  rp = (Div*uNeu) ./ MetricFV.PrimalVolume
+  ru = -(Div'*pNeu) ./ MetricFV.DualEdgeVolume
 
   @. u = u + dtau * ru
   @. p = p + dtau * rp
 
   #time = time + dtau
 end
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,u,RT0,Grid,FEMSei.Jacobi)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT0,Grid,FEMSei.Jacobi)
+
 
 FileNumber += 1
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
+
 
 #= ToDO
 Gleichungen testen mit @show

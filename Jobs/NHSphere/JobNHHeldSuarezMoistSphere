@@ -14,8 +14,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Forcing=true \
   --Curl=false \
   --ModelType="VectorInvariant" \
-  --VerticalDiffusion=true \
-  --SurfaceFlux=true \
+  --VerticalDiffusion=false \
+  --SurfaceFlux=false \
   --SurfaceScheme="MOST" \
   --Coriolis=true \
   --Upwind=true \

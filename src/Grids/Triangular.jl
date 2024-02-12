@@ -464,6 +464,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
   nBar = zeros(0,0)
   NumBoundaryFaces = 0
   AdaptGrid = ""
+
   return GridStruct{FT,
                     typeof(z)}(
     nz,

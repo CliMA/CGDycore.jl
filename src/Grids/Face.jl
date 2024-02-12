@@ -145,5 +145,14 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Flo
       F.n=-F.n;
     end  
   end
-  return (F,Edges)
+  F.OrientE = zeros(Int,NumE)
+  for i = 1 : NumE
+    iE = F.E[i]  
+    if Edges[iE].N[1] == F.N[i]
+      F.OrientE[i] = F.Orientation
+    else
+      F.OrientE[i] = -F.Orientation
+    end  
+  end  
+  return F, Edges
 end
