@@ -158,7 +158,7 @@ QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,nQuad)
 RT0.M = FEMSei.MassMatrix(backend,FTB,RT0,Grid,nQuad,FEMSei.Jacobi) 
 DG0.M = FEMSei.MassMatrix(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi)
 
-Div = FEMSei.StiffMatrixFD(backend,FTB,RT0,DG0,Grid,nQuad,FEMSei.Jacobi)
+Div = FEMSei.DivMatrix(backend,FTB,RT0,DG0,Grid,nQuad,FEMSei.Jacobi)
 
 u = zeros(FTB,RT0.NumG)
 uNeu = zeros(FTB,RT0.NumG)

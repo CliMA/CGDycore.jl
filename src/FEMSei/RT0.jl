@@ -31,10 +31,9 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   phi[4,1] = 0.5 - 0.5*x1 + 0.0*x2
   phi[4,2] = 0*x1 + 0.0*x2
 
-  Divphi[1,1] = differentiate(phi[1,1],x1) + differentiate(phi[1,2],x2)
-  Divphi[2,1] = differentiate(phi[2,1],x1) + differentiate(phi[2,2],x2)
-  Divphi[3,1] = differentiate(phi[3,1],x1) + differentiate(phi[3,2],x2)
-  Divphi[4,1] = differentiate(phi[4,1],x1) + differentiate(phi[4,2],x2)
+  for i = 1 : DoF
+    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+  end
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)

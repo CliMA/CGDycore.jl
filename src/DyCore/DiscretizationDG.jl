@@ -75,8 +75,8 @@ function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
   DG.OrdPoly=OrdPoly;
   DG.OrdPolyZ=OrdPolyZ;
 
-  (DG.w,DG.xw)=GaussLobattoQuad(DG.OrdPoly);
-  (wZ,DG.xwZ)=GaussLobattoQuad(DG.OrdPolyZ);
+  (DG.xw,DG.w)=gausslobatto(DG.OrdPoly+1)
+  (DG.xwZ,wZ)=gausslobatto(DG.OrdPolyZ+1)
   (DG.DW,DG.DS)=DerivativeMatrixSingle(DG.OrdPoly);
   DG.DST=DG.DS'
   DG.DWT=DG.DW'

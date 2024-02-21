@@ -16,9 +16,8 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HDivElement,Grid,Jacobi)
 
   VelLoc = zeros(Fe.DoF)
   for iF = 1 : Grid.NumFaces
-    VelLoc = Vel[Fe.Glob[:,iF]]  
     DF, detJ = Jacobi(Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
-    @views VelCa[iF,:]  .= (1 / detJ) * DF * (fRef[:, :] * VelLoc) 
+    @views VelCa[iF,:]  .= (1 / detJ) * DF * (fRef[:, :] * Vel[Fe.Glob[:,iF]])
   end  
 end
 
@@ -74,4 +73,18 @@ function VelCart2Sphere(VelCa,lon,lat)
     Rotate[3,2] * VelCa[2] +
     Rotate[3,3] * VelCa[3]
   return VelSp  
+end
+
+function VelSphere2Cart(VelSp,lon,lat)
+  rot=zeros(3,3);
+  rot[1,1]=-sin(lon);
+  rot[2,1]=-sin(lat)*cos(lon);
+  rot[3,1]= cos(lat)*cos(lon);
+  rot[1,2]=cos(lon);
+  rot[2,2]=-sin(lat)*sin(lon);
+  rot[3,2]=cos(lat)*sin(lon);
+  rot[1,3]=0.0;
+  rot[2,3]=cos(lat);
+  rot[3,3]=sin(lat);
+  VelCa = rot'*VelSp
 end

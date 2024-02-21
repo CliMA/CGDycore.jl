@@ -399,7 +399,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
   NumNodes = 0
   while ~attail(NodeL)
     NumNodes += 1
-    Nodes[NumNodes] = Node(NodeL.data.P,NumNodes)
+    Nodes[NumNodes] = Node(NodeL.data.P,NumNodes,'N')
     NodeL = NodeL.next
   end
 
@@ -511,7 +511,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   NumNodes = 0
   while ~attail(FaceL)
     NumNodes += 1
-    Nodes[NumNodes] = Node(MidPoint(FaceL),NumNodes)
+    Nodes[NumNodes] = Node(MidPoint(FaceL),NumNodes,'N')
     FaceL = FaceL.next
   end
 
@@ -552,7 +552,6 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
 
   NumEdgesB = 0
 
-  Renumbering!(Edges,Faces)
   FacesInNodes!(Nodes,Faces)
 
   zP=zeros(nz)

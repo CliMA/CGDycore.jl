@@ -26,6 +26,9 @@ MAXSIZE::Int = 10
 abstract type ElementType end
 struct Tri <: ElementType end
 struct Quad <: ElementType end
+struct QuadPrimal <: ElementType end
+struct QuadDual <: ElementType end
+struct Line <: ElementType end
 
 
 include("point.jl")
@@ -62,5 +65,6 @@ include("TopographySmoothing.jl")
 include("InitGrid.jl")
 include("SphericalGrid.jl")
 include("JacobiSphereDG3GPU.jl")
+include("Grid2KiteGrid.jl")
 
 end

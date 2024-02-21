@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -139,73 +139,79 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 5
+RefineLevel = 4
 RadEarth = 1.0
 nz = 1
 nPanel = 30
-nQuad = 2
+nQuad = 3
 Decomp = ""
 Decomp = "EqualArea"
 
 #TRI
-GridType = "TriangularSphere"
+GridType = "DelaunaySphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-
-RT0 = FEMSei.RT0Struct{FTB}(Grid.Type,backend,Grid)
-DG0 = FEMSei.DG0Struct{FTB}(Grid.Type,backend,Grid)
-QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,nQuad)
-
-RT0.M = FEMSei.MassMatrix(backend,FTB,RT0,Grid,nQuad,FEMSei.Jacobi) 
-DG0.M = FEMSei.MassMatrix(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi)
-
-Div = FEMSei.DivMatrix(backend,FTB,RT0,DG0,Grid,nQuad,FEMSei.Jacobi)
-
-u = zeros(FTB,RT0.NumG)
-uNeu = zeros(FTB,RT0.NumG)
-
-p = FEMSei.Project(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi,FEMSei.fp)
-p0 = deepcopy(p)
+p = ones(Grid.NumFaces,1)
+for i = 1 : Grid.NumFaces
+  p[i] = i
+end  
 FileNumber = 0
-VelCa = zeros(Grid.NumFaces,Grid.Dim)
-VelSp = zeros(Grid.NumFaces,2)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
-pNeu = zeros(FTB,DG0.NumG)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
 
-nAdveVel = 100 #0
+KiteGrid = Grids.Grid2KiteGrid(backend,FTB,Grid,Grids.OrientFaceSphere)
+vtkSkeletonKite = Outputs.vtkStruct{Float64}(backend,KiteGrid)
+pKite = ones(KiteGrid.NumFaces,1)
+FileNumber += 1
+Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, pKite, FileNumber)
+
+
+CG1KiteP = FEMSei.CG1KitePrimalStruct{FTB}(Grids.Quad(),backend,KiteGrid)
+CG1KiteP.M = FEMSei.MassMatrix(backend,FTB,CG1KiteP,KiteGrid,1,FEMSei.Jacobi)
+CG1KiteD = FEMSei.CG1KiteDualStruct{FTB}(Grids.Quad(),backend,KiteGrid)
+CG1KiteD.M = FEMSei.MassMatrix(backend,FTB,CG1KiteD,KiteGrid,1,FEMSei.Jacobi)
+Div = FEMSei.DivMatrix(backend,FTB,CG1KiteD,CG1KiteP,KiteGrid,3,FEMSei.Jacobi)
+Grad = FEMSei.GradMatrix(backend,FTB,CG1KiteP,CG1KiteD,KiteGrid,3,FEMSei.Jacobi)
+
+u = zeros(FTB,CG1KiteD.NumG)
+uNeu = zeros(FTB,CG1KiteD.NumG)
+
+p = FEMSei.Project(backend,FTB,CG1KiteP,KiteGrid,3,FEMSei.Jacobi,FEMSei.fp)
+p0 = deepcopy(p)
+FileNumber += 1
+pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,p)
+VelCa = zeros(KiteGrid.NumFaces,Grid.Dim)
+VelSp = zeros(KiteGrid.NumFaces,2)
+pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,p)
+Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
+pNeu = similar(p)
+
+nAdveVel = 1000
 dtau = 0.001
 time = 0.0
 
 for i = 1 : nAdveVel
   rp = Div*u
-  rp = DG0.M\rp
+  rp = CG1KiteP.M\rp
   ru = -Div'*p
-  ru = RT0.M\ru
+  ru = CG1KiteD.M\ru
 
   @. uNeu = u + 0.5 * dtau * ru
   @. pNeu = p + 0.5 * dtau * rp
 
   rp = Div*uNeu
-  rp = DG0.M\rp
+  rp = CG1KiteP.M\rp
   ru = -Div'*pNeu
-  ru = RT0.M\ru
+  ru = CG1KiteD.M\ru
 
   @. u = u + dtau * ru
   @. p = p + dtau * rp
 
-  #time = time + dtau
 end
-
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,u,RT0,Grid,FEMSei.Jacobi)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT0,Grid,FEMSei.Jacobi)
-
 FileNumber += 1
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
+pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,p)
+FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,u,CG1KiteD,KiteGrid,FEMSei.Jacobi)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,CG1KiteD,KiteGrid,FEMSei.Jacobi)
+Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
 
 
-#= ToDO
-Gleichungen testen mit @show
-mehr Quadraturregeln für Dreiecke höhere ordnungen
-RT1, DG1
-Wiki von github
-=#
+nothing

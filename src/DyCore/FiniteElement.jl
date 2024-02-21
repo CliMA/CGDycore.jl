@@ -42,13 +42,13 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   OrdPolyZ=OrdPolyZ
   DoF = OP * OP
 
-  (wCPU,xwCPU)=DG.GaussLobattoQuad(OrdPoly)
+  xwCPU, wCPU = gausslobatto(OrdPoly+1)
   w = KernelAbstractions.zeros(backend,FT,size(wCPU))
   xw = KernelAbstractions.zeros(backend,FT,size(xwCPU))
   copyto!(w,wCPU)
   copyto!(xw,xwCPU)
   
-  (wZ,xwZCPU)=DG.GaussLobattoQuad(OrdPolyZ)
+  xwZCPU, wZ = gausslobatto(OrdPolyZ+1)
   xwZ = KernelAbstractions.zeros(backend,FT,size(xwZCPU))
   copyto!(xwZ,xwZCPU)
   xe = zeros(OrdPoly+1)

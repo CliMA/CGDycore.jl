@@ -21,3 +21,41 @@ function FacesInNodes!(Nodes,Faces)
     Nodes[iN].F = FacesPerNode[iN,1:NumFacesPerNode[iN]]
   end
 end
+
+function SortFacesInNodes!(Nodes,Faces)
+  NumNodes = size(Nodes,1)
+
+  for iN = 1 : NumNodes
+    F = deepcopy(Nodes[iN].F)
+    NPr = zeros(Int,length(F))
+    NSu = zeros(Int,length(F))
+    for i = 1 : length(F)
+      iF = F[i]
+      for j = 1 : length(Faces[iF].N)
+        jN = Faces[iF].N[j]
+        if jN == iN
+          if j > 1
+            NPr[i] = Faces[iF].N[j-1]  
+          else
+            NPr[i] = Faces[iF].N[end]  
+          end
+          if j < length(Faces[iF].N)
+            NSu[i] = Faces[iF].N[j+1]  
+          else
+            NSu[i] = Faces[iF].N[1]  
+          end  
+        end
+      end
+    end   
+    NextSu = NPr[end]
+    for i = 1 : length(F)
+      for j = 1 : length(F)  
+        if NextSu == NSu[j]  
+          Nodes[iN].F[i] = F[j]  
+          NextSu = NPr[j]
+          break
+        end
+      end
+    end  
+  end
+end

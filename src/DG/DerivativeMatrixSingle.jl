@@ -1,5 +1,5 @@
 function DerivativeMatrixSingle(OrdPoly)
-(wmat,xw)=GaussLobattoQuad(OrdPoly);
+(xw,wmat)=gausslobatto(OrdPoly+1);
 DS=zeros(OrdPoly+1,OrdPoly+1);
 for i=1:OrdPoly+1
   for j=1:OrdPoly+1

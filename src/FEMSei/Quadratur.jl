@@ -9,8 +9,95 @@ mutable struct QuadRule{FT<:AbstractFloat,
     Points::IT2 
 end
 
+function QuadRule{FT}(type::Grids.QuadPrimal,backend,n) where FT<:AbstractFloat
+  if n == 1
+    NumQuad = 4
+    x, w = gaussradau(2)
+    WeightsCPU = zeros(NumQuad)
+    PointsCPU = zeros(NumQuad,2)
+    Weights = KernelAbstractions.zeros(backend,FT,NumQuad)
+    Points = KernelAbstractions.zeros(backend,FT,NumQuad,2)
+    ii = 1
+    for j = 1 : 2
+      for i = 1 : 2
+        WeightsCPU[ii] = w[i] * w[j]
+        PointsCPU[ii,1] = x[i]
+        PointsCPU[ii,2] = x[j]
+        ii += 1
+      end
+    end
+  end
+
+  copyto!(Weights,WeightsCPU)
+  copyto!(Points,PointsCPU)
+  return QuadRule{FT,
+                  typeof(Weights),
+                  typeof(Points)}(
+  NumQuad,
+  Weights,
+  Points,
+  )
+end
+
+
+function QuadRule{FT}(type::Grids.QuadDual,backend,n) where FT<:AbstractFloat
+  if n == 1
+    NumQuad = 4  
+    x, w = gaussradau(2)
+    x .= -x
+    WeightsCPU = zeros(NumQuad)
+    PointsCPU = zeros(NumQuad,2)
+    Weights = KernelAbstractions.zeros(backend,FT,NumQuad)
+    Points = KernelAbstractions.zeros(backend,FT,NumQuad,2)
+    ii = 1
+    for j = 1 : 2
+      for i = 1 : 2
+        WeightsCPU[ii] = w[i] * w[j]
+        PointsCPU[ii,1] = x[i]
+        PointsCPU[ii,2] = x[j]
+        ii += 1
+      end
+    end
+  end  
+
+  copyto!(Weights,WeightsCPU)
+  copyto!(Points,PointsCPU)
+  return QuadRule{FT,
+                  typeof(Weights),
+                  typeof(Points)}( 
+  NumQuad,
+  Weights,
+  Points,
+  )
+end
+
+function QuadRule{FT}(type::Grids.Line,backend,n) where FT<:AbstractFloat
+  x, w = gausslobatto(n+1)
+  NumQuad = (n+1)
+  WeightsCPU = zeros(Float64,NumQuad)
+  PointsCPU = zeros(Float64,NumQuad)
+  Weights = KernelAbstractions.zeros(backend,FT,NumQuad)
+  Points = KernelAbstractions.zeros(backend,FT,NumQuad,2)
+  ii = 1
+  for i = 1 : n+1
+    WeightsCPU[ii] = w[i]
+    PointsCPU[ii,1]=x[i]
+    ii += 1
+  end
+  copyto!(Weights,WeightsCPU)
+  copyto!(Points,PointsCPU)
+  return QuadRule{FT,
+                  typeof(Weights),
+                  typeof(Points)}(
+    NumQuad,
+    Weights,
+    Points,
+  )
+end
+
+
 function QuadRule{FT}(type::Grids.Quad,backend,n) where FT<:AbstractFloat
-    w,x = DG.GaussLobattoQuad(n)
+    x, w = gausslobatto(n+1)
     NumQuad = (n+1)*(n+1)
     WeightsCPU = zeros(Float64,NumQuad)
     PointsCPU = zeros(Float64,NumQuad,2)

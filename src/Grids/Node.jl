@@ -47,6 +47,7 @@ mutable struct Node
     FG::Array{Int, 1}
     FP::Array{Int, 1}
     MasterSlave::Int
+    Type::Char
 end
 
 function Node()
@@ -58,6 +59,7 @@ function Node()
   FG=zeros(Int,0)
   FP=zeros(Int,0)
   MasterSlave = 0
+  Type = ' '
   return Node(
     P,
     N,
@@ -67,12 +69,14 @@ function Node()
     FG,
     FP,
     MasterSlave,
+    Type,
   )
 end  
   
-function Node(Point::Point, Pos::Int)
+function Node(Point::Point, Pos::Int, Type::Char)
   N=Node()
   N.P=Point
   N.N=Pos
+  N.Type = Type
   return N
 end

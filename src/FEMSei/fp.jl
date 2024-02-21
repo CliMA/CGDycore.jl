@@ -9,4 +9,10 @@ function fp(x,y,z)
     h = 0.0 
   end
 end
-#Grosskreis, Bogenlaenge
+function up(x,y,z)
+  lon,lat,r = Grids.cart2sphere(x,y,z)
+  VelSp = zeros(3)
+  VelSp[1] = 40 * cos(lat)
+  VelCa = VelSphere2Cart(VelSp,lon,lat)
+  return VelCa
+end

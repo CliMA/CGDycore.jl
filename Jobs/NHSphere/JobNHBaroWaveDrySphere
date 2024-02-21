@@ -10,7 +10,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfRhoBGrd="" \
   --Source=false \
   --Forcing=false \
-  --Equation="CompressibleShallow" \
+  --Equation="CompressibleDeep" \
   --State="Dry" \
   --Buoyancy=true \
   --Curl=false \
