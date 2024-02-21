@@ -99,7 +99,7 @@ end
   if IF <= NumF
     @inbounds ind = Glob[ID,IF]
     @inbounds xS = SVector{3}(X[ID,1,1,1,IF], X[ID,1,2,1,IF], X[ID,1,3,1,IF])
-    @inbounds TS, RhoVS =  SurfaceValues(xS,view(U,1,ind,:),p[1,ind])
+    @inbounds TS[ID,IF], RhoVS[ID,IF] =  SurfaceValues(xS,view(U,1,ind,:),p[1,ind])
   end
 end
 
