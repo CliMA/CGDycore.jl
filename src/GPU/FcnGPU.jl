@@ -163,17 +163,17 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views Cachew = Temp1[:,:,6 + 1 + NumTr]  
   @views p = Cache.AuxG[:,:,1]
   KV = Cache.KV
-  TSurf = Cache.TSurf
-  RhoVSurf = Cache.RhoVSurf
-  uStar = Cache.uStar
-  CT = Cache.CT
-  CH = Cache.CH
+  CT = Global.SurfaceData.CT
+  CH = Global.SurfaceData.CH
+  uStar = Global.SurfaceData.uStar
+  TSurf = Global.SurfaceData.TS
+  RhoVSurf = Global.SurfaceData.RhoVS
   @views KV_I = Cache.KV[:,:,NBF+1:NF]
-  @views TSurf_I = Cache.TSurf[:,NBF+1:NF]
-  @views RhoVSurf_I = Cache.RhoVSurf[:,NBF+1:NF]
-  @views uStar_I = Cache.uStar[:,NBF+1:NF]
-  @views CT_I = Cache.CT[:,NBF+1:NF]
-  @views CH_I = Cache.CH[:,NBF+1:NF]
+  @views CT_I = Global.SurfaceData.CT[:,NBF+1:NF]
+  @views CH_I = Global.SurfaceData.CH[:,NBF+1:NF]
+  @views uStar_I = Global.SurfaceData.uStar[:,NBF+1:NF]
+  @views TSurf_I = Global.SurfaceData.TS[:,NBF+1:NF]
+  @views RhoVSurf_I = Global.SurfaceData.RhoVS[:,NBF+1:NF]
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
@@ -214,7 +214,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 ####
 # First phase  
 ####
-  #@show sum(abs.(U[1:Nz-1,:,4]))
   Temp1 .= FT(0)
   @views MRho = CacheF[:,:,6]
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)

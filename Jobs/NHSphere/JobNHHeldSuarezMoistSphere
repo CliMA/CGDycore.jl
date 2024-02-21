@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -14,9 +14,9 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Forcing=true \
   --Curl=false \
   --ModelType="VectorInvariant" \
-  --VerticalDiffusion=false \
-  --SurfaceFlux=false \
-  --SurfaceScheme="MOST" \
+  --VerticalDiffusion=true \
+  --SurfaceFlux=true \
+  --SurfaceScheme="" \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
