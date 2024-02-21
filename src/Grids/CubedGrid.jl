@@ -20,7 +20,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   z=0.0;
   @inbounds for k=1:n-1
     @inbounds for j=1:n-1
-      Nodes[NodeNumber]=Node(CubePoint(-1,j,k,n,x,y,z,Rad),NodeNumber);
+      Nodes[NodeNumber]=Node(CubePoint(-1,j,k,n,x,y,z,Rad),NodeNumber,' ');
       NodeNumber=NodeNumber+1;
     end
   end
@@ -31,7 +31,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   z=0.0;
   @inbounds for k=1:n-1
     @inbounds for j=1:n-1
-      Nodes[NodeNumber]=Node(CubePoint(-1,j,k,n,x,y,z,Rad),NodeNumber);
+      Nodes[NodeNumber]=Node(CubePoint(-1,j,k,n,x,y,z,Rad),NodeNumber,' ');
       NodeNumber=NodeNumber+1;
     end
   end
@@ -42,7 +42,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   z=0.0;
   @inbounds for k=1:n-1
     @inbounds for i=1:n-1
-      Nodes[NodeNumber]=Node(CubePoint(i,-1,k,n,x,y,z,Rad),NodeNumber);
+      Nodes[NodeNumber]=Node(CubePoint(i,-1,k,n,x,y,z,Rad),NodeNumber,' ');
       NodeNumber=NodeNumber+1;
     end
   end
@@ -53,7 +53,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   z=0.0;
   @inbounds for k=1:n-1
     @inbounds for i=1:n-1
-      Nodes[NodeNumber]=Node(CubePoint(i,-1,k,n,x,y,z,Rad),NodeNumber);
+      Nodes[NodeNumber]=Node(CubePoint(i,-1,k,n,x,y,z,Rad),NodeNumber,' ');
       NodeNumber=NodeNumber+1;
     end
   end
@@ -64,7 +64,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   z=-1.0;
   @inbounds for j=1:n-1
     @inbounds for i=1:n-1
-      Nodes[NodeNumber]=Node(CubePoint(i,j,-1,n,x,y,z,Rad),NodeNumber);
+      Nodes[NodeNumber]=Node(CubePoint(i,j,-1,n,x,y,z,Rad),NodeNumber,' ');
       NodeNumber=NodeNumber+1;
     end
   end
@@ -75,7 +75,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   z=1.0;
   @inbounds for j=1:n-1
     @inbounds for i=1:n-1
-      Nodes[NodeNumber]=Node(CubePoint(i,j,-1,n,x,y,z,Rad),NodeNumber);
+      Nodes[NodeNumber]=Node(CubePoint(i,j,-1,n,x,y,z,Rad),NodeNumber,' ');
       NodeNumber=NodeNumber+1;
     end
   end
@@ -86,7 +86,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=-1.0;
   z=-1.0;
   @inbounds for i=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   NodeNumberWEpm=NodeNumber;
@@ -94,7 +94,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=1.0;
   z=-1.0;
   @inbounds for i=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   NodeNumberWEmp=NodeNumber;
@@ -102,7 +102,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=-1.0;
   z=1.0;
   @inbounds for i=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   NodeNumberWEpp=NodeNumber;
@@ -110,7 +110,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=1.0;
   z=1.0;
   @inbounds for i=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(i,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   # South North
@@ -119,7 +119,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=0.0;
   z=-1.0;
   @inbounds for j=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   NodeNumberSNpm=NodeNumber;
@@ -127,7 +127,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=0.0;
   z=-1.0;
   @inbounds for j=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   NodeNumberSNmp=NodeNumber;
@@ -135,7 +135,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=0.0;
   z=1.0;
   @inbounds for j=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   NodeNumberSNpp=NodeNumber;
@@ -143,7 +143,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=0.0;
   z=1.0;
   @inbounds for j=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,j,-1,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   # Bottom Top
@@ -152,7 +152,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=-1.0;
   z=0.0;
   @inbounds for k=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
 
@@ -161,7 +161,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=-1.0;
   z=0.0;
   @inbounds for k=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
 
@@ -170,7 +170,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=1.0;
   z=0.0;
   @inbounds for k=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
 
@@ -179,7 +179,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   y=1.0;
   z=0.0;
   @inbounds for k=1:n-1
-    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber);
+    Nodes[NodeNumber]=Node(CubePoint(-1,-1,k,n,x,y,z,Rad),NodeNumber,' ');
     NodeNumber=NodeNumber+1;
   end
   # Nodes
@@ -187,50 +187,50 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   x=-1.0e0;
   y=-1.0e0;
   z=-1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
   NodeNumberpmm=NodeNumber;
   x=1.0e0;
   y=-1.0e0;
   z=-1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
   NodeNumbermpm=NodeNumber;
   x=-1.0e0;
   y=1.0e0;
   z=-1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
   NodeNumberppm=NodeNumber;
   x=1.0e0;
   y=1.0e0;
   z=-1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
   NodeNumbermmp=NodeNumber;
   x=-1.0e0;
   y=-1.0e0;
   z=1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
   NodeNumberpmp=NodeNumber;
   x=1.0e0;
   y=-1.0e0;
   z=1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
 
   NodeNumbermpp=NodeNumber;
   x=-1.0e0;
   y=1.0e0;
   z=1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
   NodeNumberppp=NodeNumber;
   x=1.0e0;
   y=1.0e0;
   z=1.0e0;
-  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber);
+  Nodes[NodeNumber]=Node(CubePoint(-1,-1,-1,n,x,y,z,Rad),NodeNumber,' ');
   NodeNumber=NodeNumber+1;
 
   NumEdges=12*(n-1)*n+12*n;
