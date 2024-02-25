@@ -23,6 +23,7 @@ mutable struct MetricFiniteVolume{FT<:AbstractFloat,
 end
 
 include("Divergence.jl")
+include("Gradient.jl")
 include("Project.jl")
 include("MetricFV.jl")
 

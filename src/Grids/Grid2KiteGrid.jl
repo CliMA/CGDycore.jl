@@ -1,7 +1,7 @@
 function Grid2KiteGrid(backend,FT,Grid,OrientFace)
 
   Type=Quad()
-  
+
   NumNodes = Grid.NumNodes + Grid.NumEdges + Grid.NumFaces
   Nodes = map(1:NumNodes) do i
     Node()
@@ -9,7 +9,11 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
   NodeNumber = 1
   for iN = 1 : Grid.NumNodes
      P = Grid.Nodes[iN].P 
-     Nodes[NodeNumber]=Node(P,NodeNumber,'N') 
+     if Grid.Nodes[iN].Type == 'B'
+       Nodes[NodeNumber]=Node(P,NodeNumber,'B') 
+     else  
+       Nodes[NodeNumber]=Node(P,NodeNumber,'N') 
+     end    
      NodeNumber += 1
   end
   for iE = 1 : Grid.NumEdges
@@ -27,6 +31,7 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
   for iF = 1 : Grid.NumFaces
     NumEdges += length(Grid.Faces[iF].E)
   end  
+  @show NumEdges
   Edges = map(1:NumEdges) do i
     Edge([1,2],Nodes,0,0,"",0);
   end
@@ -49,6 +54,7 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
       EdgeNumber += 1
     end
   end  
+  @show EdgeNumber
 
 
   NumFaces = 0
@@ -61,7 +67,7 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
   ie1 = 1
   FaceNumber = 1
   for iF = 1 : Grid.NumFaces
-    for i = 1 : length(Grid.Faces[iF].N)  
+    for i = 1 : length(Grid.Faces[iF].E)  
        E4 = ie1 + 2 * Grid.NumEdges 
        if i == 1
          E1 = ie1 + 2 * Grid.NumEdges + length(Grid.Faces[iF].N) - 1

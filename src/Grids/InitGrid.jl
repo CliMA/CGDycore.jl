@@ -1,4 +1,4 @@
-function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)    
+function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom;order=true)    
 
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc
@@ -13,11 +13,13 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
     Grid = Grids.InputGridMsh(backend,FT,"Grid/natural_earthNeu.msh",Grids.OrientFaceSphere,RadEarth,nz)
 #   Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "CubedSphere"
-    Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz)
+    Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz,order=order)
   elseif GridType == "TriangularSphere"
     Grid = TriangularGrid(backend,FT,RefineLevel,RadEarth,nz)
   elseif GridType == "DelaunaySphere"
     Grid = DelaunayGrid(backend,FT,RefineLevel,RadEarth,nz)
+  elseif GridType == "MPASO"
+    Grid=Grids.InputGridMPASO(backend,FT,"Grid/QU240.nc", Grids.OrientFaceSphere,RadEarth,nz)
   else
     @show "False GridType"
   end
@@ -31,7 +33,7 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
     CellToProc = ones(Int,Grid.NumFaces)
     println(" False Decomp method ")
   end
-  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc)
+  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc,order=order)
 
 
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)

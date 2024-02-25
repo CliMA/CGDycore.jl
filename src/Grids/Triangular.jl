@@ -554,6 +554,8 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
 
   FacesInNodes!(Nodes,Faces)
 
+  TestOrientation(Faces,Nodes)
+
   zP=zeros(nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)

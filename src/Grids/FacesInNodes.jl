@@ -27,9 +27,10 @@ function SortFacesInNodes!(Nodes,Faces)
 
   for iN = 1 : NumNodes
     F = deepcopy(Nodes[iN].F)
-    NPr = zeros(Int,length(F))
-    NSu = zeros(Int,length(F))
-    for i = 1 : length(F)
+    lenF = length(F)
+    NPr = zeros(Int,lenF)
+    NSu = zeros(Int,lenF)
+    for i = 1 : lenF
       iF = F[i]
       for j = 1 : length(Faces[iF].N)
         jN = Faces[iF].N[j]
@@ -47,15 +48,37 @@ function SortFacesInNodes!(Nodes,Faces)
         end
       end
     end   
-    NextSu = NPr[end]
-    for i = 1 : length(F)
-      for j = 1 : length(F)  
-        if NextSu == NSu[j]  
-          Nodes[iN].F[i] = F[j]  
-          NextSu = NPr[j]
-          break
+    if Nodes[iN].Type == 'B' || Nodes[iN].Type == 'P'  
+      NSuStart = setdiff(NSu,NPr)
+      for i = 1 : lenF
+        if NSu[i] in NSuStart  
+          NextSu = NPr[i]
+          Nodes[iN].F[1] = F[i]
+        end  
+      end  
+      for i = 1 : lenF
+        for j = 1 : lenF
+          if NextSu == NSu[j]  
+            Nodes[iN].F[i+1] = F[j]  
+            NextSu = NPr[j]
+            break
+          end
         end
-      end
+      end  
+    else    
+      NextSu = NPr[end]
+      for i = 1 : lenF
+        for j = 1 : lenF
+          if NextSu == NSu[j]  
+            Nodes[iN].F[i] = F[j]  
+            NextSu = NPr[j]
+            break
+          end
+        end
+      end  
+    end  
+    if Nodes[iN].Type == 'B' || Nodes[iN].Type == 'P'  
+      @show  Nodes[iN].F 
     end  
   end
 end

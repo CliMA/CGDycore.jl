@@ -1,4 +1,4 @@
-function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
+function CubedGrid(backend,FT,n,OrientFace,Rad,nz;order=true)
   nBar=[ 0  1   0   1
         -1  0  -1   0];
   Dim=3;
@@ -326,8 +326,11 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz)
   NumEdgesB=0;
   NumFaces=size(Faces,1);
   Dim=3;
-  Orientation!(Edges,Faces);
-  Renumbering!(Edges,Faces);
+  @show order
+  if order
+    Orientation!(Edges,Faces);
+    Renumbering!(Edges,Faces);
+  end  
   FacesInNodes!(Nodes,Faces)
 
   zP=zeros(nz)

@@ -143,6 +143,7 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Flo
         F.E[i]=ETemp[nE-i];
       end
       F.n=-F.n;
+      F.Orientation = 1  
     end  
   end
   F.OrientE = zeros(Int,NumE)

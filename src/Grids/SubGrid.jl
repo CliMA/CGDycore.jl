@@ -1,6 +1,7 @@
-function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
+function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
   backend = get_backend(GlobalGrid.z)
   FT = eltype(GlobalGrid.z)
+
 
 # Number of faces
   DictF = Dict()
@@ -142,7 +143,9 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
 
   Dim=3;
   if GlobalGrid.Type == Quad()
-    Renumbering!(Edges,Faces);
+    if order  
+      Renumbering!(Edges,Faces);
+    end  
   end
   FacesInNodes!(Nodes,Faces)
   Form = GlobalGrid.Form
@@ -185,8 +188,19 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H = GlobalGrid.H
-  NumEdgesI=size(Edges,1);
-  NumEdgesB=0;
+  NumEdgesI = 0
+  NumEdgesB = 0
+  for iE = 1 : NumEdges
+    if Edges[iE].F[2] == 0
+      if ProcNumber == 2 && Edges[iE].Type == "B" 
+        NumEdgesB += 1
+      elseif ProcNumber == 2 && Edges[iE].Type == ""
+        NumEdgesI += 1
+      end
+    else
+      NumEdgesI += 1  
+    end  
+  end    
   colors=[[]]
   nBar3=zeros(0,0)
   nBar=zeros(0,0)

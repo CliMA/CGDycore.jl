@@ -46,8 +46,8 @@ function Project(backend,FTB,Fe::HDivKiteDElement,Grid,QuadOrd,Jacobi,F)
     end
     @. p[Fe.Glob[:,iF]] += pLoc[:]
   end
-  p1 = Fe.M\p
-  return p,p1
+  p = Fe.M\p
+  return p
 end
 
 

@@ -1,3 +1,124 @@
+function TestOrientation(Faces,Nodes)
+  NumFaces = length(Faces)
+  for iF = 1 : NumFaces
+    lenN = length(Faces[iF].N)
+    Mid = Faces[iF].Mid
+    for iN = 1 : lenN - 1
+      P1 = Nodes[Faces[iF].N[iN]].P
+      P2 = Nodes[Faces[iF].N[iN+1]].P
+      O = dot(cross(P1 - Mid,P2 -Mid),Mid)
+      if O <= 0
+        @show iF,iN
+      end
+    end
+    P1 = Nodes[Faces[iF].N[lenN]].P
+    P2 = Nodes[Faces[iF].N[1]].P
+    O = dot(cross(P1 - Mid,P2 -Mid),Mid)
+    if O <= 0
+      @show iF,lenN
+    end
+  end
+  return nothing
+end
+
+function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
+  xVertex = ncread(filename, "xVertex")
+  yVertex = ncread(filename, "yVertex")
+  zVertex = ncread(filename, "zVertex")
+
+  verticesOnEdge = ncread(filename, "verticesOnEdge")
+  edgesOnCell = ncread(filename, "edgesOnCell")
+  nEdgesOnCell = ncread(filename, "nEdgesOnCell")
+  nBar=[ 0  1   0   1
+             -1  0  -1   0]
+  Dim = 3
+  Type = Polygonal()
+  Form = "Sphere"
+  NumNodes=size(xVertex,1)
+  Nodes = map(1:NumNodes) do i
+    Node()
+  end
+  NodeNumber = 1
+  for i = 1 : NumNodes
+    P = Point(xVertex[i],yVertex[i],zVertex[i]) 
+    P = P / norm(P) * Rad
+    Nodes[NodeNumber] = Node(P,NodeNumber,' ')
+    NodeNumber += 1
+  end
+  NumEdges = size(verticesOnEdge,2)
+  Edges = map(1:NumEdges) do i
+    Edge()
+  end
+  EdgeNumber = 1
+  for i = 1 : NumEdges
+    Edges[EdgeNumber] = Edge(verticesOnEdge[:,i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
+    EdgeNumber += 1
+  end
+  NumFaces = size(edgesOnCell,2)
+  Faces = map(1:NumFaces) do i
+    Face()
+  end
+  FaceNumber = 1
+  e = zeros(Int,size(edgesOnCell,1))
+  for i = 1 : NumFaces
+    e .= edgesOnCell[:,i]  
+   (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
+    FaceNumber += 1
+  end
+  NumEdgesI = size(Edges,1)
+
+  NumEdgesB = 0
+
+  FacesInNodes!(Nodes,Faces)
+
+  for iE = 1 : NumEdges
+    if Edges[iE].F[2] == 0
+      Edges[iE].Type = "B"
+      Nodes[Edges[iE].N[1]].Type = 'B'
+      Nodes[Edges[iE].N[2]].Type = 'B'
+    end
+  end  
+  TestOrientation(Faces,Nodes)
+
+  zP=zeros(nz)
+  z=KernelAbstractions.zeros(backend,FT,nz+1)
+  dzeta=zeros(nz)
+  H=0.0
+  colors=[[]]
+  NumGhostFaces = 0
+  nBar3 = zeros(0,0)
+  nBar = zeros(0,0)
+  NumBoundaryFaces = 0
+  AdaptGrid = ""
+
+  return GridStruct{FT,
+                    typeof(z)}(
+    nz,
+    zP,
+    z,
+    dzeta,
+    H,
+    NumFaces,
+    NumGhostFaces,
+    Faces,
+    NumEdges,
+    Edges,
+    NumNodes,
+    Nodes,
+    Form,
+    Type,
+    Dim,
+    Rad,
+    NumEdgesI,
+    NumEdgesB,
+    nBar3,
+    nBar,
+    colors,
+    NumBoundaryFaces,
+    AdaptGrid,
+    )                 
+end
+
 function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
 
   coord = ncread(filename, "coord")
@@ -18,7 +139,7 @@ function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
   for i = 1 : NumNodes
     N = coord[i,:]
     N = N / norm(N) * Rad
-    Nodes[NodeNumber] = Node(Point(N),NodeNumber)
+    Nodes[NodeNumber] = Node(Point(N),NodeNumber,' ')
     NodeNumber = NodeNumber+1
   end
 
@@ -192,8 +313,8 @@ function InputGridH(backend,FT,filename,OrientFace,Rad,nz)
   end
   NodeNumber = 1
   for i = 1 : NumNodes
-    N = Grids.sphereDeg2cart(Vertices[1,i],Vertices[2,i],Rad)
-    Nodes[NodeNumber] = Node(Point(N),NodeNumber)
+    N = sphereDeg2cart(Vertices[1,i],Vertices[2,i],Rad)
+    Nodes[NodeNumber] = Node(Point(N),NodeNumber,' ')
     NodeNumber = NodeNumber+1
   end
   Nodes = Nodes
@@ -301,7 +422,6 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
   NumNodes = parse(Int,s2)
   minNodeTag = parse(Int,s3)
   maxNodeTag = parse(Int,s4)
-  @show numEntityBlocks,NumNodes,minNodeTag,maxNodeTag
   iline = iLNodes + 2
   NumNodes = 0
   NumNodesR = 0
@@ -311,7 +431,6 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
     entityTag = parse(Int,s2)
     parametric = parse(Int,s3)
     nodeTag = parse(Int,s4)
-    @show entityDim, entityTag, parametric, nodeTag
     iline = iline + nodeTag + 1
     for iNoTg = 1 : nodeTag
       if entityDim > 1
@@ -334,7 +453,6 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
     entityTag = parse(Int,s2)
     parametric = parse(Int,s3)
     nodeTag = parse(Int,s4)
-    @show entityDim, entityTag, parametric, nodeTag
     iline = iline + nodeTag + 1
     for iNoTg = 1 : nodeTag
       if entityDim > 1  
@@ -344,7 +462,7 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
         r3 = parse(Float64,s3)
         N = [r1,r2,r3]
         N = N / norm(N) * Rad
-        Nodes[NodeNumber] = Node(Point(N),NodeNumber)
+        Nodes[NodeNumber] = Node(Point(N),NodeNumber,' ')
         NodeNumber = NodeNumber + 1
       end
       iline = iline + 1
@@ -372,7 +490,6 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
       iline = iline + 1
     end
   end  
-  @show NumFaces
 
   NumFacesL = 0
   NumFacesT = 0
@@ -389,7 +506,6 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
     elementType = parse(Int,s3)
     numElementsInBlock = parse(Int,s4)  
     iline = iline + 1
-    @show entityDim, entityTag, elementType, numElementsInBlock
     for iElemTag = 1 : numElementsInBlock
       if elementType == -1
         TypeF[iF] = 1  
@@ -479,7 +595,6 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
     Edge()
   end
   EdgeNumber = 1
-  @show NumEdges
   for i = 1 : NumEdges
     Edges[EdgeNumber] = Edge(EdgeList[i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
     EdgeNumber += 1

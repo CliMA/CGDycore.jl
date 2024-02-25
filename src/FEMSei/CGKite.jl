@@ -139,6 +139,7 @@ function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
 end
 
 mutable struct CG1KiteDualStruct{FT<:AbstractFloat,
+                        IT1<:AbstractArray,
                         IT2<:AbstractArray} <: HDivKiteDElement
   Glob::IT2
   DoF::Int
@@ -147,6 +148,7 @@ mutable struct CG1KiteDualStruct{FT<:AbstractFloat,
   Divphi::Array{Polynomial,2}                       
   NumG::Int
   NumI::Int
+  ListB::IT1
   Type::Grids.ElementType
   M::AbstractSparseMatrix
 end
@@ -225,6 +227,7 @@ function CG1KiteDualStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloa
   Glob = KernelAbstractions.zeros(backend,Int,DoF,NumFaces)
   GlobCPU = zeros(Int,DoF,NumFaces)
   iOff = 0
+  ListBCPU = Int64[]
   for iN = 1 : NumNodes
     if Nodes[iN].Type == 'N'  
       NumF = length(Nodes[iN].F)  
@@ -253,13 +256,47 @@ function CG1KiteDualStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloa
         GlobCPU[8,iKite] = iOff + OffsetE + 4 * i 
       end 
       iOff += 6 * NumF
+    elseif Nodes[iN].Type == 'B' || Nodes[iN].Type == 'P'
+      NumF = length(Nodes[iN].F)
+      OffsetE = 2 * (NumF + 1)
+      for i = 1 : NumF
+        iF = Nodes[iN].F[i]
+        N1 = Faces[iF].N[1]
+        N3 = Faces[iF].N[3]
+        iKite = KiteList[(N1,N3)]
+        #Edge e1
+        GlobCPU[1,iKite] = iOff + 2 * i -1
+        GlobCPU[2,iKite] = iOff + 2 * i
+        if i == 1 
+          push!(ListBCPU,iOff + 2 * i -1)
+          push!(ListBCPU,iOff + 2 * i)
+        end  
+        #Edge e2
+        GlobCPU[3,iKite] = iOff + 2 * (i + 1) - 1
+        GlobCPU[4,iKite] = iOff + 2 * (i + 1)
+        if i == NumF
+          push!(ListBCPU,iOff + 2 * (i + 1) - 1)
+          push!(ListBCPU,iOff + 2 * (i + 1))
+        end  
+            
+        # Interior e1
+        GlobCPU[5,iKite] = iOff + OffsetE + 4 * i - 3
+        GlobCPU[6,iKite] = iOff + OffsetE + 4 * i - 2
+        # Interior e2
+        GlobCPU[7,iKite] = iOff + OffsetE + 4 * i - 1
+        GlobCPU[8,iKite] = iOff + OffsetE + 4 * i
+      end
+      iOff += 4 * NumF + 2 * (NumF + 1)
     end 
   end
   NumG = iOff
   NumI = NumG
   copyto!(Glob,GlobCPU)
   M = spzeros(0,0)
+  ListB = KernelAbstractions.zeros(backend,Int,size(ListBCPU))
+  copyto!(ListB,ListBCPU)
   return CG1KiteDualStruct{FT,
+                  typeof(ListB),
                   typeof(Glob)}( 
     Glob,
     DoF,
@@ -268,6 +305,7 @@ function CG1KiteDualStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloa
     Divphi,                      
     NumG,
     NumI,
+    ListB,
     Type,
     M,
       )

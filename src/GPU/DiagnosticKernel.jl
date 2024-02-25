@@ -1,16 +1,3 @@
-#@kernel function SurfFlux()
-#  RhoD = Rho - RhoV
-#      Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
-#      Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
-#      T = p / Rm
-#      p_vs = fpvs(TSurf,Phys.  )
-#
-#      RhoVSurface = p_vs / (Phys.Rv * TSurf)
-#      LatFlux = -CE * uStar * (RhoV - RhoVSurface)
-#      SensFlux = -CH * uStar *  (T - TSurf)
-#
-#end
-
 @kernel function PressureKernel!(Pressure,p,@Const(U))
   Iz,IC = @index(Global, NTuple)
 
@@ -32,34 +19,6 @@ end
     @inbounds @atomic p[Iz,ind] += Pressure(view(U,Iz,ind,:)) * JJ[ID,Iz,IF] / M[Iz,ind]
   end
 end
-
-#@inline function PressureGPU(U,Phys)
-#  @inbounds Phys.p0 * fast_powGPU(Phys.Rd * U[5] / Phys.p0, 1 / (1 - Phys.kappa))
-#end
-
-#=
-@kernel function uStarCoefficientKernel!(uStar,@Const(U),@Const(dXdxI),@Const(nS),@Const(Glob))
-  ID,IF = @index(Global, NTuple)
-
-  NumF = @uniform @ndrange()[2]
-
-  if IF <= NumF
-    ind = Glob[ID,IF]
-    @inbounds uStar[ID,IF] = uStarCoefficientGPU(U[1,ind,2],U[1,ind,3],U[1,ind,4],view(dXdxI,3,:,1,ID,1,IF),view(nS,:,ID,IF))
-  end
-end
-
-@kernel function SurfaceKoeffKernel!(uStar,CT,CH,@Const(U),@Const(dXdxI),@Const(nS),@Const(Glob),Surface)
-  ID,IF = @index(Global, NTuple)
-
-  NumF = @uniform @ndrange()[2]
-
-  if IF <= NumF
-    ind = Glob[ID,IF]
-    @inbounds uStar[ID,IF], CT[ID,IF], CH[ID,IF] = Surface(view(U,1,ind,:),view(dXdxI,3,:,1,ID,1,IF),view(nS,:,ID,IF))
-  end
-end
-=#
 
 @kernel function SurfaceKernel!(Surface,@Const(U),@Const(p),@Const(X),
   @Const(dXdxI),@Const(nS),@Const(Glob),SurfaceValues,SurfaceData)
@@ -137,8 +96,6 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   @views p = Cache.AuxG[:,:,1]
   @views KV = Cache.KV
   @views Rho = U[:,:,1]
-# LatFlux = Cache.LatFlux
-# SensFlux = Cache.SensFlux
   dz = Metric.dz
   Eddy = Global.Model.Eddy
   SurfaceData = Global.SurfaceData

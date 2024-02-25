@@ -71,9 +71,13 @@ function SizeGreatCircle(Lon1,Lat1,Lon2,Lat2)
         cos(Lat1) * cos(Lat2) * cos(Lon2-Lon1))
 end  
 
-function SizeGreatCircle(Edge,Nodes)
+function SizeGreatCircle(Edge::Grids.Edge,Nodes)
   P1 = Nodes[Edge.N[1]].P
   P2 = Nodes[Edge.N[2]].P
+  return acos(dot(P1,P2)/(norm(P1)*norm(P2)))
+end  
+
+function SizeGreatCircle(P1::Point,P2::Point)
   return acos(dot(P1,P2)/(norm(P1)*norm(P2)))
 end  
 

@@ -29,13 +29,14 @@ struct Quad <: ElementType end
 struct QuadPrimal <: ElementType end
 struct QuadDual <: ElementType end
 struct Line <: ElementType end
+struct Polygonal <: ElementType end
 
 
 include("point.jl")
-include("geometry_circle.jl")
 include("Node.jl")
 include("Edge.jl")
 include("Face.jl")
+include("geometry_circle.jl")
 include("GridStruct.jl")
 include("CubedGrid.jl")
 include("AddVerticalGrid.jl")

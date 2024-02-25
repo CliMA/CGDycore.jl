@@ -8,11 +8,17 @@ function MetricFiniteVolume(backend,FT,Grid,type::Grids.Tri)
   DualVolume = KernelAbstractions.zeros(backend,FT,0)
   DualEdgeVolume = KernelAbstractions.zeros(backend,FT,NumEdges)
   PrimalEdge = KernelAbstractions.zeros(backend,FT,NumEdges)
-  DualEdge = KernelAbstractions.zeros(backend,FT,0)
+  DualEdge = KernelAbstractions.zeros(backend,FT,NumEdges)
 
   PrimalEdgeCPU = zeros(FT,NumEdges)
+  DualEdgeCPU = zeros(FT,NumEdges)
   for iE = 1 : NumEdges
     PrimalEdgeCPU[iE] = Grids.SizeGreatCircle(Edges[iE],Nodes) * Grids.Rad
+    iF1 = Edges[iE].F[1]
+    iF2 = Edges[iE].F[2]
+    Mid1 = Faces[iF1].Mid
+    Mid2 = Faces[iF2].Mid
+    DualEdgeCPU[iE] = Grids.SizeGreatCircle(Mid1,Mid2) * Grids.Rad
   end
   copyto!(PrimalEdge,PrimalEdgeCPU)
 
@@ -45,6 +51,7 @@ function MetricFiniteVolume(backend,FT,Grid,type::Grids.Tri)
       Grids.AreaSphericalTriangle(P1,P2,PC2)) * Grids.Rad^2
   end
   copyto!(DualEdgeVolume,DualEdgeVolumeCPU)
+  copyto!(DualEdge,DualEdgeCPU)
   return MetricFiniteVolume{FT,
                     typeof(PrimalVolume)}(
     PrimalVolume,
