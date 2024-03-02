@@ -1,5 +1,5 @@
 export UCX_ERROR_SIGNALS=""
-srun -n 1 gpu_wrapper.sh -n 1 -e "julia --project Examples/testNHSphere.jl \
+srun -n 1 gpu_wrapper.sh -n 1 -e "julia --project Examples/testNHSphereAMD.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="GPU" \
   --GPUType="CUDA" \
@@ -39,7 +39,7 @@ srun -n 1 gpu_wrapper.sh -n 1 -e "julia --project Examples/testNHSphere.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \
-  --IntMethod="Rosenbrock" \
+  --IntMethod="RosenbrockAMD" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=true \

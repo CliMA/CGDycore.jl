@@ -646,23 +646,8 @@ function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Mod
   @views CacheF = Temp1[:,:,1:6]
   @views CacheFF = Temp1[:,:,1:6+NumTr]
   @views p = Cache.AuxG[:,:,1]
-  KV = Cache.KV
-  TSurf = Cache.TSurf
-  RhoVSurf = Cache.RhoVSurf
-  uStar = Cache.uStar
-  CT = Cache.CT
-  CH = Cache.CH
-  @views KV_I = Cache.KV[:,:,NBF+1:NF]
-  @views TSurf_I = Cache.TSurf[:,NBF+1:NF]
-  @views RhoVSurf_I = Cache.RhoVSurf[:,NBF+1:NF]
-  @views uStar_I = Cache.uStar[:,NBF+1:NF]
-  @views CT_I = Cache.CT[:,NBF+1:NF]
-  @views CH_I = Cache.CH[:,NBF+1:NF]
   @views MRho = CacheF[:,:,6]
   @. MRho = FT(1)
-  @show size(U)
-  @show NF
-  stop
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
@@ -676,7 +661,7 @@ function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Mod
   ndrangeG = (Nz, NDoF)  
   CoriolisFun = Global.Model.CoriolisFun
 
-  KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
+  KMomentumCoriolisKernel! = MomentumVectorInvariantCoriolisKernel!(backend, group)
 
 ####
 # Second phase  
