@@ -117,7 +117,7 @@ elseif Device == "GPU"
 #   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
     backend = ROCBackend()
-    AMDGPU.allowscalar(false)
+    AMDGPU.allowscalar(true)
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
@@ -245,7 +245,7 @@ else
   TopoProfile = Examples.Flat()()
 end
 
-Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 
 @show "InitSphere"
 (CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
@@ -311,7 +311,7 @@ if Microphysics
 end  
 # Damping
 if Damping
-  Damp = GPU.DampingW()(H,StrideDamp,Relax,Model.wPos)
+  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
   Model.Damp = Damp
 end
 

@@ -104,7 +104,6 @@ end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
-  @show sum(abs.(U))
   backend = get_backend(F)
   FT = eltype(F)
   Glob = FE.Glob
@@ -598,7 +597,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
 end
 
-function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -675,12 +674,9 @@ function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
   groupG = (Nz, NDoFG)  
   ndrangeG = (Nz, NDoF)  
+  CoriolisFun = Global.Model.CoriolisFun
 
-  if Global.Model.Coriolis
-    KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
-  else
-    KMomentumKernel! = MomentumKernel!(backend, group)
-  end  
+  KMomentumCoriolisKernel! = MomentumCoriolisKernel!(backend, group)
 
 ####
 # Second phase  
@@ -688,22 +684,10 @@ function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   @show "FcnGPUAMD"
   for i = 1 : 100
-  F .= FT(0)
-  if Global.Model.Coriolis
-    KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrangeB)
-  else
-    KMomentumKernel!(F,U,DS,dXdxI,MRho,M,Glob,ndrange=ndrangeB)  
-  end  
-  KernelAbstractions.synchronize(backend)
-
-
-  if Global.Model.Coriolis
-    KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,Phys,ndrange=ndrangeI)
-  else
-    KMomentumKernel!(F,U,DS,dXdxI_I,MRho,M,Glob_I,ndrange=ndrangeI)
-  end  
+    F .= FT(0)
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,MRho,M,Glob,CoriolisFun,ndrange=ndrangeB)
+    KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
   end
-
 
 end
 

@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
+  Examples, Parallels, Grids, Surfaces, Models, Outputs, Integration,  GPU, DyCore
 using MPI
 using Base
 using CUDA
@@ -8,7 +8,6 @@ using Metal
 using KernelAbstractions
 using StaticArrays
 using ArgParse
-using MPI
 
 # Model
 parsed_args = DyCore.parse_commandline()
@@ -25,13 +24,16 @@ RhoRPos = parsed_args["RhoRPos"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
-Geos = parsed_args["Geos"]
 Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
+Geos = parsed_args["Geos"]
 Coriolis = parsed_args["Coriolis"]
+Gravitation = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
 Equation = parsed_args["Equation"]
+Thermo = parsed_args["Thermo"]
+State = parsed_args["State"]
 RefProfile = parsed_args["RefProfile"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
@@ -46,6 +48,7 @@ JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
 JacVerticalAdvection = parsed_args["JacVerticalAdvection"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
+SurfaceScheme = parsed_args["SurfaceScheme"]
 NumV = parsed_args["NumV"]
 NumTr = parsed_args["NumTr"]
 Curl = parsed_args["Curl"]
@@ -65,12 +68,15 @@ Table = parsed_args["Table"]
 # Grid
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+RefineLevel = parsed_args["RefineLevel"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
 TopoS = parsed_args["TopoS"]
 GridType = parsed_args["GridType"]
+AdaptGridType = parsed_args["AdaptGridType"]
 RadEarth = parsed_args["RadEarth"]
+ScaleFactor = parsed_args["ScaleFactor"]
 # CG Element
 OrdPoly = parsed_args["OrdPoly"]
 # Viscosity
@@ -79,6 +85,7 @@ HyperDCurl = parsed_args["HyperDCurl"]
 HyperDGrad = parsed_args["HyperDGrad"]
 HyperDRhoDiv = parsed_args["HyperDRhoDiv"]
 HyperDDiv = parsed_args["HyperDDiv"]
+HyperDDivW = parsed_args["HyperDDivW"]
 # Output
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
@@ -94,23 +101,30 @@ FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+ParallelCom = DyCore.ParallelComStruct()
+ParallelCom.Proc = Proc
+ParallelCom.ProcNumber  = ProcNumber
 
 if Device == "CPU" 
   backend = CPU()
 elseif Device == "GPU" 
   if GPUType == "CUDA"
     backend = CUDABackend()
-    CUDA.allowscalar(false)
+    CUDA.allowscalar(true)
 #   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
     backend = ROCBackend()
-    AMDGPU.allowscalar(false)
+    AMDGPU.allowscalar(true)
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
   end
 else
   backend = CPU()
+  Device == "CPU"
 end
 
 if FloatTypeBackend == "Float64"
@@ -121,6 +135,7 @@ else
   @show "False FloatTypeBackend"
   stop
 end
+
 Param = Examples.Parameters(FTB,Problem)
 
 KernelAbstractions.synchronize(backend)
@@ -134,7 +149,6 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 # Initial conditions
-Model.Equation=Equation
 Model.NumV=NumV
 Model.NumTr=NumTr
 Model.Problem=Problem
@@ -185,56 +199,104 @@ Model.JacVerticalDiffusion = JacVerticalDiffusion
 Model.JacVerticalAdvection = JacVerticalAdvection
 Model.Source = Source
 Model.Forcing = Forcing
+Model.Thermo = Thermo
 Model.Microphysics = Microphysics
 Model.TypeMicrophysics = TypeMicrophysics
 Model.RelCloud = RelCloud
 Model.Rain = Rain
 Model.SurfaceFlux = SurfaceFlux
 Model.SurfaceFluxMom = SurfaceFluxMom
-Model.Thermo = Thermo
 Model.Curl = Curl
 Model.ModelType = ModelType
 Model.Stretch = Stretch
 Model.StretchType = StretchType
 Model.HyperVisc = HyperVisc
-Model.HyperDCurl = HyperDCurl
+Model.HyperDCurl = HyperDCurl 
 Model.HyperDGrad = HyperDGrad
 Model.HyperDRhoDiv = HyperDRhoDiv
 Model.HyperDDiv = HyperDDiv
+Model.HyperDDivW = HyperDDivW
 
 OrdPolyZ = 1
 if RadEarth == 0.0
   RadEarth = Phys.RadEarth
+  if ScaleFactor != 0.0
+    RadEarth = RadEarth / ScaleFactor  
+  end  
 end
 
-Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
-
-@show "InitSphere"
-(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,
-  GridType,Topography,Decomp,Model,Phys,RadEarth)
-
-# Initial values
-if Problem == "Galewski"
-  Profile = Examples.GalewskiExample()(Param,Phys)
-elseif Problem == "BaroWaveDrySphere"
-  Profile = Examples.BaroWaveExample()(Param,Phys)
-elseif Problem == "HeldSuarezDrySphere"
-  Model.InitialProfile, Model.Force = Examples.HeldSuarezDryExample()(Param,Phys)
-elseif Problem == "HeldSuarezMoistSphere"
-  Profile, Force, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
-  Model.InitialProfile = Profile
-  Model.Force = Force
-  Model.Eddy = Eddy
+# Equation
+if Equation == "CompressibleShallow"
+  Model.Equation = Models.CompressibleShallow()  
+elseif Equation == "CompressibleDeep"
+  Model.Equation = Models.CompressibleDeep()  
 end  
 
-U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+
+
+Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
+#Topography
+if TopoS == "BaroWaveHill"
+  TopoProfile = Examples.BaroWaveHill()()
+elseif TopoS == "SchaerSphereCircle"
+  TopoProfile = Examples.SchaerSphereCircle()(Param,Phys)
+else
+  TopoProfile = Examples.Flat()()
+end
+
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
+
+@show "InitSphere"
+(CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+  Phys,TopoProfile,Exchange,Grid,ParallelCom)
+#(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,
+# GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)
+
+# Initial values
+Examples.InitialProfile!(Model,Problem,Param,Phys)
+U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
+
+#Coriolis
+if Coriolis
+  if Equation == "CompressibleShallow"
+    CoriolisFun = GPU.CoriolisShallow()(Phys)
+    Model.CoriolisFun = CoriolisFun  
+  elseif Equation == "CompressibleDeep"
+    CoriolisFun = GPU.CoriolisDeep()(Phys)
+    Model.CoriolisFun = CoriolisFun  
+  else  
+    CoriolisFun = GPU.CoriolisNo()
+    Model.CoriolisFun = CoriolisFun
+  end  
+else
+  CoriolisFun = GPU.CoriolisNo()
+  Model.CoriolisFun = CoriolisFun
+end
+
+#Buoyancy
+if Buoyancy
+  if Equation == "CompressibleShallow"
+    GravitationFun = GPU.GravitationShallow()(Phys)
+    Model.GravitationFun = GravitationFun
+  elseif Equation == "CompressibleDeep"
+    GravitationFun = GPU.GravitationDeep()(Phys)
+    Model.GravitationFun = GravitationFun
+  else
+    GravitationFun = GPU.GravitationNo()()
+    Model.GravitationFun = GravitationFun
+  end
+else
+  GravitationFun = GPU.GravitationNo()()
+  Model.GravitationFun = GravitationFun
+end
 
 # Pressure
-if Equation == "Compressible"
-  Pressure = Models.Compressible()(Phys)
+if State == "Dry"
+  Pressure = Models.Dry()(Phys)
   Model.Pressure = Pressure
-elseif Equation == "CompressibleMoist"
-  Pressure = Models.CompressibleMoist()(Phys,Model.RhoPos,Model.ThPos,
+elseif State == "Moist"
+  Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos+NumV,Model.RhoCPos+NumV)
   Model.Pressure = Pressure
 end  
@@ -245,16 +307,32 @@ if Microphysics
       Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
   else
-    @show "False Type Microphysics"  
   end
 end  
+# Damping
+if Damping
+  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
+  Model.Damp = Damp
+end
 
 # Surface flux
+Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.DoF,Grid.NumFaces)
+Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.DoF,Grid.NumFaces)
+@. Global.LandUseData.z0M = 0.01
+@. Global.LandUseData.z0H = 0.01
+@. Global.LandUseData.LandClass = 5
 if Model.SurfaceFlux || Model.VerticalDiffusion
-  if Problem == "HeldSuarezMoistSphere"
-    SurfaceValues, SurfaceData = GPU.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+  if SurfaceScheme == ""
+    if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
+      SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+      Model.SurfaceValues = SurfaceValues
+      Model.SurfaceFluxValues = SurfaceFluxValues
+    end  
+  elseif SurfaceScheme == "MOST"
+    SurfaceValues, SurfaceFluxValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
+      Model.vPos,Model.wPos,Model.ThPos)
     Model.SurfaceValues = SurfaceValues
-    Model.SurfaceData = SurfaceData
+    Model.SurfaceFluxValues = SurfaceFluxValues
   end  
 end
 
@@ -266,7 +344,7 @@ Global.Output.nPanel = nPanel
 Global.Output.RadPrint = H
 Global.Output.H = H
 if ModelType == "VectorInvariant" || ModelType == "Advection"
-  if Model.Equation == "Compressible"  
+  if State == "Dry"  
     Global.Output.cNames = [
       "Rho",
       "u",
@@ -276,7 +354,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
 #     "Vort",
 #     "Pres",
       ]
-  elseif Model.Equation == "CompressibleMoist"  
+  elseif State == "Moist"  
     Global.Output.cNames = [
       "Rho",
       "u",
@@ -326,6 +404,7 @@ Global.TimeStepper.IntMethod = IntMethod
 Global.TimeStepper.Table = Table
 Global.TimeStepper.dtau = dtau
 Global.TimeStepper.SimDays = SimDays
+Global.TimeStepper.SimHours = SimHours
 Global.TimeStepper.SimMinutes = SimMinutes
 Global.TimeStepper.SimSeconds = SimSeconds
 if ModelType == "VectorInvariant" || ModelType == "Advection"
@@ -335,16 +414,10 @@ elseif ModelType == "Conservative"
 end  
 
 
-if Device == "CPU"  || Device == "GPU"
-  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  @show "vor Timestepper"
-  Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
-else
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
-    Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,DiscType)
-end
+
+Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
+nT = max(7 + NumTr, NumV + NumTr)
+Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+@show "vor Timestepper"
+Integration.TimeStepper!(U,GPU.FcnGPUAMD!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
+  Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
