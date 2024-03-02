@@ -323,7 +323,7 @@ Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.DoF,Grid.NumFaces)
 @. Global.LandUseData.LandClass = 5
 if Model.SurfaceFlux || Model.VerticalDiffusion
   if SurfaceScheme == ""
-    if Problem == "HeldSuarezMoistSphere"
+    if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues

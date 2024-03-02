@@ -1,4 +1,4 @@
-mpirun -n 2 julia --project Examples/testNHCart.jl \
+mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Problem="HillAgnesiXCart" \
   --Device="CPU" \
   --GPUType="CUDA" \
@@ -22,8 +22,8 @@ mpirun -n 2 julia --project Examples/testNHCart.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --Thermo="" \
-  --SimMinutes=1 \
-  --PrintSeconds=30 \
+  --SimMinutes=30 \
+  --PrintSeconds=60 \
   --PrintTime=0 \
   --dtau=.3 \
   --IntMethod="Rosenbrock" \
@@ -33,7 +33,7 @@ mpirun -n 2 julia --project Examples/testNHCart.jl \
   --P1=0.0\
   --P2=10000.0\
   --P3=400.0\
-  --Stretch=false \
+  --Stretch=true \
   --StretchType="ICON" \
   --H=19600.0 \
   --Lx=40000.0 \

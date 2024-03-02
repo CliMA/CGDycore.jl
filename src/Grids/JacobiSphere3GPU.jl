@@ -4,7 +4,7 @@
 #  FT = eltype(X)
 #
 #end
-function JacobiSphere2GPU!(X,dXdx,dXdxI,J,FE,F,Rad)
+function JacobiSphere2GPU!(X,dXdxI,J,FE,F,Rad)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -18,7 +18,7 @@ function JacobiSphere2GPU!(X,dXdx,dXdxI,J,FE,F,Rad)
 
   KJacobiSphere2Kernel! = JacobiSphere2Kernel!(backend,group)
 
-  KJacobiSphere2Kernel!(X,dXdx,dXdxI,J,FE.xw,FE.DS,F,Rad,ndrange=ndrange)
+  KJacobiSphere2Kernel!(X,dXdxI,J,FE.xw,FE.DS,F,Rad,ndrange=ndrange)
 end
 
 function JacobiSphere3GPU!(AdaptGrid,X,dXdx,dXdxI,J,FE,F,z,zs,Rad,Equation::Models.CompressibleShallow)
@@ -59,7 +59,7 @@ function JacobiSphere3GPU!(AdaptGrid,X,dXdx,dXdxI,J,FE,F,z,zs,Rad,Equation::Mode
   KernelAbstractions.synchronize(backend)
 end
 
-@kernel function JacobiSphere2Kernel!(X,dXdx,dXdxI,JJ,@Const(ksi),@Const(D),@Const(F),Rad)
+@kernel function JacobiSphere2Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(D),@Const(F),Rad)
 
   gi, gj, gF = @index(Group, NTuple)
   I, J,  iF   = @index(Local, NTuple)
@@ -74,13 +74,9 @@ end
   eta = ksi
   if IF <= NF
     ID = I + (J - 1) * N
-    @views @inbounds JacobiSphere2Loc!(X[ID,:,IF],dXdxLoc,[I,J,:,:,iF],ksi[I],eta[J],F[:,:,IF],Rad)
+    @views @inbounds JacobiSphere2Loc!(X[ID,:,IF],dXdxLoc[I,J,:,:,iF],ksi[I],eta[J],F[:,:,IF],Rad)
     @views @inbounds JJ[ID,IF] = Det2(dXdxLoc[I,J,:,:,iF])
     @views @inbounds Adjunct2!(dXdxI[:,:,ID,IF],dXdxLoc[I,J,:,:,iF])
-    dXdx[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] 
-    dXdx[1,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] 
-    dXdx[2,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,1,iz] 
-    dXdx[2,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] 
   end
 end
 

@@ -730,7 +730,7 @@ end
     Rho[2] * (dXdxI[1,1,2] * u[2] + dXdxI[2,1,2] * v[2] + dXdxI[3,1,2] * w)
 end
   
-@inline function RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR)
+@inline function RecU41(cLL,cL,cR,cRR,JLL,JL,JR,JRR)
 
   kR = (JL / (JL + JR)) * ((JLL + JL) / (JLL + JL + JR))
   kL = -(JL / (JLL + JL)) * (JR / (JLL + JL + JR))
@@ -739,6 +739,23 @@ end
   kL = (JR / (JR + JL)) * ((JRR + JR)/(JL + JR + JRR))
   kR = -(JR /(JRR + JR)) *(JL /(JL + JR + JRR))
   cFR = kL * cL + (1 - kL - kR) * cR + kR * cRR
+ 
+  return (cFL,cFR)
+end
+
+@inline function RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR)
+
+  kR = (JL / (JL + JR)) * ((JLL + JL) / (JLL + JL + JR))
+  kL = (JL / (JLL + JL)) * (JR / (JLL + JL + JR))
+  #r = (cL - cLL) / (cR - cL + sign(cR- cL)*1.e-20 + 1.e-20)
+  r = (cL - cLL) / (cR - cL + 1.e-20)
+  cFL = cL + max(eltype(cLL)(0), min(r, min(kL * r + kR, eltype(cLL)(1)))) * (cR - cL) 
+
+  kL = (JR / (JR + JL)) * ((JRR + JR)/(JL + JR + JRR))
+  kR = (JR /(JRR + JR)) *(JL /(JL + JR + JRR))
+# r = (cR - cRR) / (cL - cR  + sign(cL- cR)*1.e-20 + 1.e-20)
+  r = (cR - cRR) / (cL - cR  + 1.e-20)
+  cFR = cR + max(eltype(cLL)(0), min(r, min(kR * r + kL, eltype(cLL)(1)))) * (cL - cR) 
  
   return (cFL,cFR)
 end

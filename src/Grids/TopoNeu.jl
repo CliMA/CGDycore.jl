@@ -276,6 +276,7 @@ function Orography(backend,FT,CG,Exchange,Global)
   @inbounds for ilat = 1 : length(lat)
     @inbounds for ilon = 1 : length(lonL)
       P = Point(sphereDeg2cart(lonL[ilon],lat[ilat],RadEarth))
+      Pv = SVector{3}([P.x, P.y, P.z])
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xe,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
@@ -288,6 +289,7 @@ function Orography(backend,FT,CG,Exchange,Global)
     end
     @inbounds for ilon = 1 : length(lonR)
       P = Point(sphereDeg2cart(lonR[ilon],lat[ilat],RadEarth))
+      Pv = SVector{3}([P.x, P.y, P.z])
       (Face_id, iPosFace_id, jPosFace_id) = walk_to_nc(P,start_Face,xe,TransSphereS,RadEarth,Grid)
       start_Face = Face_id
       Inside = InsideFace(P,Grid.Faces[start_Face],Grid)
@@ -345,6 +347,432 @@ function Orography(backend,FT,CG,Exchange,Global)
   return HeightCG
 end
 
+function Orography1(backend,FT,CG,Exchange,Global)
+  Grid = Global.Grid
+  Proc = Global.ParallelCom.Proc
+  OrdPoly = CG.OrdPoly
+  Glob = CG.Glob
+  NumG = CG.NumG
+  (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
+  RadEarth = Grid.Rad
+  NF = Grid.NumFaces
+  OP = OrdPoly + 1
+  HeightCG = zeros(Float64,OP,OP,NF)
+  (lonL, lonR, lat, zLevelL, zLevelR) = TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
+  start_Face = 1
+  Height = zeros(Float64,NumG)
+  HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
+  NumHeight = zeros(Float64,NumG)
+  xe = CG.xe
+  PointsTree = zeros(3,Grid.NumFaces)
+  for i = 1 : Grid.NumFaces
+    PointsTree[1,i] = Grid.Faces[i].Mid.x
+    PointsTree[2,i] = Grid.Faces[i].Mid.y
+    PointsTree[3,i] = Grid.Faces[i].Mid.z
+  end
+  tree = BallTree(PointsTree, SphericalAngleCart(), leafsize=10)
+
+  PS = Point()
+  @inbounds for ilat = 1 : length(lat)
+    @inbounds for ilon = 1 : length(lonL)
+      P = Point(sphereDeg2cart(lonL[ilon],lat[ilat],RadEarth))
+      Pv = SVector{3}([P.x, P.y, P.z])
+      idx, distP = nn(tree,Pv)
+      Inside1 = InsideFace(P,Grid.Faces[idx],Grid)
+      if Inside1
+        distMin = 1.e40
+        iD = 1
+        for j = 1 : OrdPoly + 1
+          for i = 1 : OrdPoly + 1
+            TransSphereS!(PS,xe[i],xe[j],Grid.Faces[idx],RadEarth) 
+            dist = SizeGreatCircle(PS,P) 
+            if dist < distMin
+              distMin = dist  
+              iD = i + (j - 1) * (OrdPoly + 1)
+            end
+          end
+        end
+        iG = Glob[iD,idx]
+        Height[iG] += max(zLevelL[ilon,ilat],0)
+        NumHeight[iG] += 1
+      end    
+    end
+    @inbounds for ilon = 1 : length(lonR)
+      P = Point(sphereDeg2cart(lonR[ilon],lat[ilat],RadEarth))
+      Pv = SVector{3}([P.x, P.y, P.z])
+      idx, distP = nn(tree,Pv)
+      Inside1 = InsideFace(P,Grid.Faces[idx],Grid)
+      if Inside1
+        distMin = 1.e40
+        iD = 1
+        for j = 1 : OrdPoly + 1
+          for i = 1 : OrdPoly + 1
+            TransSphereS!(PS,xe[i],xe[j],Grid.Faces[idx],RadEarth) 
+            dist = SizeGreatCircle(PS,P) 
+            if dist < distMin
+              distMin = dist  
+              iD = i + (j - 1) * (OrdPoly + 1)
+            end
+          end
+        end
+        iG = Glob[iD,idx]
+        Height[iG] += max(zLevelR[ilon,ilat],0)
+        NumHeight[iG] += 1
+      end    
+    end
+  end
+  Parallels.ExchangeData!(Height,Exchange)
+  Parallels.ExchangeData!(NumHeight,Exchange)
+  @. Height /= (NumHeight + 1.e-14)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
+  end
+  @inbounds for iF = 1:NF
+    @views ChangeBasisHeight!(HeightCG[:,:,iF],HeightCG[:,:,iF],CG)
+  end
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        Height[ind] = HeightCG[iP,jP,iF] 
+      end
+    end
+  end
+  
+  copyto!(HeightGPU,Height)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  copyto!(Height,HeightGPU)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
+  end
+  @show maximum(HeightCG)
+  @show minimum(HeightCG)
+  return HeightCG
+end
+
+function Orography2(backend,FT,CG,Exchange,Global)
+  Grid = Global.Grid
+  Proc = Global.ParallelCom.Proc
+  OrdPoly = CG.OrdPoly
+  Glob = CG.Glob
+  NumG = CG.NumG
+  (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
+  RadEarth = Grid.Rad
+  NF = Grid.NumFaces
+  OP = OrdPoly + 1
+  HeightCG = zeros(Float64,OP,OP,NF)
+  (lonL, lonR, lat, zLevelL, zLevelR) = TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
+  start_Face = 1
+  Height = zeros(Float64,NumG)
+  HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
+  NumHeight = zeros(Float64,NumG)
+  xe = CG.xe
+  PointsTree = zeros(3,Grid.NumFaces)
+  for iF = 1 : Grid.NumFaces
+    PointsTree[1,iF] = Grid.Faces[iF].Mid.x
+    PointsTree[2,iF] = Grid.Faces[iF].Mid.y
+    PointsTree[3,iF] = Grid.Faces[iF].Mid.z
+  end
+  treeMid = BallTree(PointsTree, SphericalAngleCart(), leafsize=10)
+
+  PointsTree = zeros(3,CG.NumG)
+  PS = Point()
+  for iF = 1 : Grid.NumFaces
+    for j = 1 : OrdPoly + 1
+      for i = 1 : OrdPoly + 1
+        TransSphereS!(PS,xe[i],xe[j],Grid.Faces[iF],RadEarth) 
+        iD = i + (j - 1) * (OrdPoly + 1)
+        iG = Glob[iD,iF]
+        PointsTree[1,iG] = PS.x
+        PointsTree[2,iG] = PS.y
+        PointsTree[3,iG] = PS.z
+      end
+    end  
+  end
+  tree = BallTree(PointsTree, SphericalAngleCart(), leafsize=10)
+
+  @inbounds for ilat = 1 : length(lat)
+    @inbounds for ilon = 1 : length(lonL)
+      P = Point(sphereDeg2cart(lonL[ilon],lat[ilat],RadEarth))
+      Pv = SVector{3}([P.x, P.y, P.z])
+      iF, distP = nn(treeMid,Pv)
+      Inside1 = InsideFace(P,Grid.Faces[iF],Grid)
+      if Inside1
+        iG, distP = nn(tree,Pv)
+        Height[iG] += max(zLevelL[ilon,ilat],0)
+        NumHeight[iG] += 1
+      end    
+    end
+    @inbounds for ilon = 1 : length(lonR)
+      P = Point(sphereDeg2cart(lonR[ilon],lat[ilat],RadEarth))
+      Pv = SVector{3}([P.x, P.y, P.z])
+      iF, distP = nn(treeMid,Pv)
+      Inside1 = InsideFace(P,Grid.Faces[iF],Grid)
+      if Inside1
+        iG, distP = nn(tree,Pv)
+        Height[iG] += max(zLevelR[ilon,ilat],0)
+        NumHeight[iG] += 1
+      end    
+    end
+  end
+  Parallels.ExchangeData!(Height,Exchange)
+  Parallels.ExchangeData!(NumHeight,Exchange)
+  @. Height /= (NumHeight + 1.e-14)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
+  end
+  @inbounds for iF = 1:NF
+    @views ChangeBasisHeight!(HeightCG[:,:,iF],HeightCG[:,:,iF],CG)
+  end
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+
+      end
+    end
+  end
+  
+  copyto!(HeightGPU,Height)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  copyto!(Height,HeightGPU)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
+  end
+  @show maximum(HeightCG)
+  @show minimum(HeightCG)
+  return HeightCG
+end
+
+function Orography3(backend,FT,CG,Exchange,Global)
+  Grid = Global.Grid
+  Proc = Global.ParallelCom.Proc
+  OrdPoly = CG.OrdPoly
+  Glob = CG.Glob
+  NumG = CG.NumG
+  (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
+  RadEarth = Grid.Rad
+  NF = Grid.NumFaces
+  OP = OrdPoly + 1
+  HeightCG = zeros(Float64,OP,OP,NF)
+  (lonL, lonR, lat, zLevelL, zLevelR) = TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
+  start_Face = 1
+  Height = zeros(Float64,NumG)
+  HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
+  NumHeight = zeros(Float64,NumG)
+  xe = CG.xe
+  PointsTree = zeros(3,Grid.NumFaces)
+  for iF = 1 : Grid.NumFaces
+    PointsTree[1,iF] = Grid.Faces[iF].Mid.x
+    PointsTree[2,iF] = Grid.Faces[iF].Mid.y
+    PointsTree[3,iF] = Grid.Faces[iF].Mid.z
+  end
+  treeMid = BallTree(PointsTree, SphericalAngleCart(), leafsize=20)
+
+  PointsTree = zeros(3,CG.NumG)
+  PS = Point()
+  for iF = 1 : Grid.NumFaces
+    for j = 1 : OrdPoly + 1
+      for i = 1 : OrdPoly + 1
+        TransSphereS!(PS,xe[i],xe[j],Grid.Faces[iF],RadEarth) 
+        iD = i + (j - 1) * (OrdPoly + 1)
+        iG = Glob[iD,iF]
+        PointsTree[1,iG] = PS.x
+        PointsTree[2,iG] = PS.y
+        PointsTree[3,iG] = PS.z
+      end
+    end  
+  end
+  tree = BallTree(PointsTree, SphericalAngleCart(), leafsize=20)
+
+  incrlat = 300
+  incrlon = 300
+  Pv = zeros(3,incrlat*incrlon)
+  zLoc = zeros(incrlat*incrlon)
+  P = Array{Point,1}(undef,incrlat*incrlon)
+  @inbounds for ilat = 1 : incrlat : length(lat)
+    @show ilat
+    @inbounds for ilon = 1 : incrlon : length(lonL)
+      iPv = 0
+      for iilat = 1 : incrlat
+        for iilon = 1 : incrlon
+          ilonLoc = ilon+iilon-1
+          ilatLoc = ilat+iilat-1
+          if ilatLoc <= length(lat) && ilonLoc <= length(lonL)
+            iPv += 1
+            P[iPv] = Point(sphereDeg2cart(lonL[ilonLoc],lat[ilatLoc],RadEarth))
+            Pv[1,iPv] = P[iPv].x
+            Pv[2,iPv] = P[iPv].y
+            Pv[3,iPv] = P[iPv].z
+          end  
+        end
+      end  
+      @time @views iiF, distP = nn(treeMid,Pv[:,1:iPv])
+      iPv = 0
+      iPvInside = 0
+      for iilat = 1 : incrlat
+        for iilon = 1 : incrlon
+          ilonLoc = ilon+iilon-1
+          ilatLoc = ilat+iilat-1
+          if ilatLoc <= length(lat) && ilonLoc <= length(lonL)
+            iPv += 1
+            Inside1 = InsideFace(P[iPv],Grid.Faces[iiF[iPv]],Grid)
+            if Inside1
+              iPvInside += 1  
+              @views Pv[:,iPvInside] .= Pv[:,iPv]
+              zLoc[iPvInside] = max(zLevelL[ilonLoc,ilatLoc],0)
+            end
+          end
+        end
+      end
+      @views iG, distP = nn(tree,Pv[:,1:iPvInside])
+      for i = 1 : iPvInside
+        Height[iG[i]] += zLoc[i]
+        NumHeight[iG[i]] += 1
+      end    
+    end
+
+    @inbounds for ilon = 1 : incrlon : length(lonR)
+      iPv = 0
+      for iilat = 1 : incrlat
+        for iilon = 1 : incrlon
+          ilonLoc = ilon+iilon-1
+          ilatLoc = ilat+iilat-1
+          if ilatLoc <= length(lat) && ilonLoc <= length(lonR)
+            iPv += 1
+            P[iPv] = Point(sphereDeg2cart(lonR[ilonLoc],lat[ilatLoc],RadEarth))
+            Pv[1,iPv] = P[iPv].x
+            Pv[2,iPv] = P[iPv].y
+            Pv[3,iPv] = P[iPv].z
+          end  
+        end
+      end  
+      @views iiF, distP = nn(treeMid,Pv[:,1:iPv])
+      iPv = 0
+      iPvInside = 0
+      for iilat = 1 : incrlat
+        for iilon = 1 : incrlon
+          ilonLoc = ilon+iilon-1
+          ilatLoc = ilat+iilat-1
+          if ilatLoc <= length(lat) && ilonLoc <= length(lonR)
+            iPv += 1
+            Inside1 = InsideFace(P[iPv],Grid.Faces[iiF[iPv]],Grid)
+            if Inside1
+              iPvInside += 1  
+              @views Pv[:,iPvInside] .= Pv[:,iPv]
+              zLoc[iPvInside] = max(zLevelR[ilonLoc,ilatLoc],0)
+            end
+          end
+        end
+      end
+      @views iG, distP = nn(tree,Pv[:,1:iPvInside])
+      for i = 1 : iPvInside
+        Height[iG[i]] += zLoc[i]
+        NumHeight[iG[i]] += 1
+      end    
+    end
+  end
+  Parallels.ExchangeData!(Height,Exchange)
+  Parallels.ExchangeData!(NumHeight,Exchange)
+  @. Height /= (NumHeight + 1.e-14)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
+  end
+  @inbounds for iF = 1:NF
+    @views ChangeBasisHeight!(HeightCG[:,:,iF],HeightCG[:,:,iF],CG)
+  end
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        Height[ind] = HeightCG[iP,jP,iF] 
+      end
+    end
+  end
+  
+  copyto!(HeightGPU,Height)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  copyto!(Height,HeightGPU)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
+  end
+  @show maximum(HeightCG)
+  @show minimum(HeightCG)
+  return HeightCG
+end
+#=
+function Orography4(backend,FT,CG,Exchange,Global)
+  Grid = Global.Grid
+  Proc = Global.ParallelCom.Proc
+  OrdPoly = CG.OrdPoly
+  Glob = CG.Glob
+  NumG = CG.NumG
+  (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
+  RadEarth = Grid.Rad
+  NF = Grid.NumFaces
+  OP = OrdPoly + 1
+
+zlevels = Array(data["elevation"])
+            lon = Array(data["longitude"])
+            lat = Array(data["latitude"])
+            # Apply Smoothing
+            smooth_degree = Int(parsed_args["smoothing_order"])
+            esmth = CA.gaussian_smooth(zlevels, smooth_degree)
+            linear_interpolation(
+                (lon, lat),
+                esmth,
+                extrapolation_bc = (Periodic(), Flat()),
+=#
 function BoundingBoxFace(Face,Grid)
   MinLon = 180.0
   MaxLon = -180.0

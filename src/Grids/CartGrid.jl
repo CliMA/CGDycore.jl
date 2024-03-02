@@ -47,7 +47,7 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
       @inbounds for ix=1:nx+1
         if ix==nx+1 && Boundary.WE == "Period"
         else
-          Nodes[NodeNumber]=Node(Point([x,y,0.0]),NodeNumber)
+          Nodes[NodeNumber]=Node(Point([x,y,0.0]),NodeNumber,' ')
           NodeNumber=NodeNumber+1
         end
         x=x+dx

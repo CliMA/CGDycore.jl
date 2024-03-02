@@ -12,7 +12,7 @@ function interpolate(SrcGrid,DestGrid)
     Points1[3,i] = SrcGrid.Nodes[i].P.z   
   end  
 
-  tree1 = BallTree(Points1, SphericalAngleCart(), leafsize=10)
+  tree = BallTree(Points1, SphericalAngleCart(), leafsize=10)
 
   Val = Array{Float64,1}(undef,0)
   RowInd = Array{Int,1}(undef,0)
@@ -27,10 +27,10 @@ function interpolate(SrcGrid,DestGrid)
       P = SVector{3}(DestGrid.Nodes[N].P.x,DestGrid.Nodes[N].P.y,DestGrid.Nodes[N].P.z)
       r = max(r, SphericalAngleCart()(Mid,P))
     end  
-    idxsLnn, dist = nn(tree1, Mid)
+    idxsLnn, dist = nn(tree, Mid)
 #   r = max(r, 1.5*dist + 10.0 * EPS)
     r = max(r, 1.9999*dist + 10.0 * EPS)
-    idxsL = inrange(tree1, Mid, r, true)
+    idxsL = inrange(tree, Mid, r, true)
     FaceSource = zeros(Int,0)
     for N in idxsL
       for F in SrcGrid.Nodes[N].F

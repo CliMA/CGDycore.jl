@@ -5,7 +5,7 @@ import Base: *
 import LinearAlgebra: norm
 import LinearAlgebra: dot
 
-struct Point
+mutable struct Point
   x::Float64
   y::Float64
   z::Float64
@@ -32,6 +32,8 @@ end
 /(P::Point,s::Float64)=Point([P.x/s,P.y/s,P.z/s])
 *(s::Float64,P::Point)=Point([s*P.x,s*P.y,s*P.z])
 *(P::Point,s::Float64)=Point([s*P.x,s*P.y,s*P.z])
+*(s::Float32,P::Point)=Point([s*P.x,s*P.y,s*P.z])
+*(P::Point,s::Float32)=Point([s*P.x,s*P.y,s*P.z])
 norm(P::Point)=sqrt(P.x*P.x + P.y*P.y + P.z*P.z)
 dot(P1::Point,P2::Point)=P1.x*P2.x + P1.y*P2.y + P1.z*P2.z
 cross(P1::Point,P2::Point)=Point([P1.y*P2.z-P1.z*P2.y,P1.z*P2.x-P1.x*P2.z,P1.x*P2.y-P1.y*P2.x])

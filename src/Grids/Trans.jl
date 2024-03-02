@@ -37,6 +37,24 @@ X=X/r
 X=X*Rad
 end
 
+function TransSphereS!(P,ksi,eta,F,Rad)
+  P.x=0.25*((1-ksi)*(1-eta)*F.P[1].x+
+  (1+ksi)*(1-eta)*F.P[2].x+
+  (1+ksi)*(1+eta)*F.P[3].x+
+  (1-ksi)*(1+eta)*F.P[4].x)
+  P.y=0.25*((1-ksi)*(1-eta)*F.P[1].y+
+  (1+ksi)*(1-eta)*F.P[2].y+
+  (1+ksi)*(1+eta)*F.P[3].y+
+  (1-ksi)*(1+eta)*F.P[4].y)
+  P.z=0.25*((1-ksi)*(1-eta)*F.P[1].z+
+  (1+ksi)*(1-eta)*F.P[2].z+
+  (1+ksi)*(1+eta)*F.P[3].z+
+  (1-ksi)*(1+eta)*F.P[4].z)
+  r=norm(P)
+  P=P/r
+  P=P*Rad
+end
+
 function TransSphereX(ksi,eta,zeta,X,CG,Global)
   OrdPoly=CG.OrdPoly
   OrdPolyZ=CG.OrdPolyZ

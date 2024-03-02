@@ -19,7 +19,7 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Profile, Force = Examples.HeldSuarezDryExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
-  elseif Problem == "HeldSuarezMoistSphere"
+  elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
     Profile, Force, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force

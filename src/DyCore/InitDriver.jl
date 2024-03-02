@@ -26,7 +26,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProf
   end
 
   if Topography.TopoS == "EarthOrography"
-    zS = Grids.Orography(backend,FT,CG,Exchange,Global)
+    @time zS = Grids.Orography3(backend,FT,CG,Exchange,Global)
   else
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile)
   end

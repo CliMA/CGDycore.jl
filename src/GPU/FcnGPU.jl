@@ -104,6 +104,7 @@ end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
+  @show sum(abs.(U))
   backend = get_backend(F)
   FT = eltype(F)
   Glob = FE.Glob
@@ -162,18 +163,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views CacheFF = Temp1[:,:,1:6+NumTr+1]
   @views Cachew = Temp1[:,:,6 + 1 + NumTr]  
   @views p = Cache.AuxG[:,:,1]
-  KV = Cache.KV
-  CT = Global.SurfaceData.CT
-  CH = Global.SurfaceData.CH
-  uStar = Global.SurfaceData.uStar
-  TSurf = Global.SurfaceData.TS
-  RhoVSurf = Global.SurfaceData.RhoVS
-  @views KV_I = Cache.KV[:,:,NBF+1:NF]
-  @views CT_I = Global.SurfaceData.CT[:,NBF+1:NF]
-  @views CH_I = Global.SurfaceData.CH[:,NBF+1:NF]
-  @views uStar_I = Global.SurfaceData.uStar[:,NBF+1:NF]
-  @views TSurf_I = Global.SurfaceData.TS[:,NBF+1:NF]
-  @views RhoVSurf_I = Global.SurfaceData.RhoVS[:,NBF+1:NF]
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
@@ -269,6 +258,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KernelAbstractions.synchronize(backend)
   end  
   if Global.Model.VerticalDiffusion
+    KV = Cache.KV
     @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
       dXdxI,J,M,Glob,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
@@ -280,6 +270,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end    
   if Global.Model.SurfaceFlux
     ndrangeSB = (N * N,NBF)
+    CT = Global.SurfaceData.CT
+    CH = Global.SurfaceData.CH
+    uStar = Global.SurfaceData.uStar
+    TSurf = Global.SurfaceData.TS
+    RhoVSurf = Global.SurfaceData.RhoVS
     KSurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,M,Phys,ndrange=ndrangeSB)
     KernelAbstractions.synchronize(backend)
   end  
@@ -311,6 +306,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KernelAbstractions.synchronize(backend)
   end  
   if Global.Model.VerticalDiffusion
+    @views KV_I = Cache.KV[:,:,NBF+1:NF]
     @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV_I,
       dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
@@ -323,6 +319,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   if Global.Model.SurfaceFlux
     ndrangeSB = (N * N,NBF)  
     ndrangeSI = (N * N,NF-NBF)  
+    @views CT_I = Global.SurfaceData.CT[:,NBF+1:NF]
+    @views CH_I = Global.SurfaceData.CH[:,NBF+1:NF]
+    @views uStar_I = Global.SurfaceData.uStar[:,NBF+1:NF]
+    @views TSurf_I = Global.SurfaceData.TS[:,NBF+1:NF]
+    @views RhoVSurf_I = Global.SurfaceData.RhoVS[:,NBF+1:NF]
     KSurfaceFluxScalarsKernel(F,U,p,TSurf_I,RhoVSurf_I,uStar_I,CT_I,CH_I,dXdxI_I,Glob_I,M,Phys,ndrange=ndrangeSI)
     KernelAbstractions.synchronize(backend)
   end  
@@ -420,7 +421,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views TSurf_I = Cache.TSurf[:,NBF+1:NF]
   @views RhoVSurf_I = Cache.RhoVSurf[:,NBF+1:NF]
   @views uStar_I = Cache.uStar[:,NBF+1:NF]
-  @views CT_I = Cache.CT[:,NBF+1:NF]
   @views CH_I = Cache.CH[:,NBF+1:NF]
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
