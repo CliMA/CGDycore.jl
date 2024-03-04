@@ -1,5 +1,4 @@
 function DivMatrix(backend,FTB,FeF::HDivElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  @show "Case 1"
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
   Weights = QQ.Weights
   Points = QQ.Points

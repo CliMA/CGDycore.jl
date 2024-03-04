@@ -204,9 +204,9 @@ read!("TestAMD/GlobInd",GlobCPU)
 
 
 
-#backend = CPU()
+backend = CPU()
 #backend = CUDABackend()
-backend = ROCBackend()
+#backend = ROCBackend()
 FT = Float32
 NzG = min(div(NumberThreadGPU,DoF),Nz)
 group = (Ord, Ord, NzG, 1)

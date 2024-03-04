@@ -41,20 +41,20 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
   FHeight = similar(Height)
   Height1 = similar(Height)
   if SmoothType == "Diff"
-    SmoothFac=1.0e8
+    SmoothFac = 1.0e8
     @inbounds for i = 1 : NumSmoothSteps
       @. FHeight = 0
       KHyperViscHeightKernel!(FHeight,Height,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
       KernelAbstractions.synchronize(backend)
       Parallels.ExchangeData!(FHeight,Exchange)
-      @. Height1 = Height + 0.5 * SmoothFac * FHeight
-      @. FHeight = 0
-      KHyperViscHeightKernel!(FHeight,Height1,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
-      KernelAbstractions.synchronize(backend)
-      Parallels.ExchangeData!(FHeight,Exchange)
+#     @. Height1 = Height + 0.5 * SmoothFac * FHeight
+#     @. FHeight = 0
+#     KHyperViscHeightKernel!(FHeight,Height1,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
+#     KernelAbstractions.synchronize(backend)
+#     Parallels.ExchangeData!(FHeight,Exchange)
       @. Height += SmoothFac * FHeight
-      @. Height = max(Height,0)
     end
+    @. Height = max(Height,0)
   elseif SmoothType == "Hyper"
     SmoothFac=1.e16
     FHeight1 = similar(Height)

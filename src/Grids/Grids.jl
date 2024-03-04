@@ -18,6 +18,7 @@ using NearestNeighbors
 using Distances
 using LinearAlgebra
 using SparseArrays
+using Interpolations
 
 EPS::Float64 = eps(Float64)
 EPS2 = EPS * EPS
@@ -51,6 +52,7 @@ include("OrientFaceSphere.jl")
 include("Orientation.jl")
 include("Renumbering.jl")
 include("Topo.jl")
+include("TopographySmoothing.jl")
 include("TopoNeu.jl")
 include("Trans.jl")
 include("NearestNeighbour.jl")
@@ -62,7 +64,6 @@ include("InputGrid.jl")
 include("polygon.jl")
 include("intersect.jl")
 include("interpolate.jl")
-include("TopographySmoothing.jl")
 include("InitGrid.jl")
 include("SphericalGrid.jl")
 include("JacobiSphereDG3GPU.jl")

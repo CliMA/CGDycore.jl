@@ -226,7 +226,7 @@ function Orography(backend,FT,CG,Exchange,Global,TopoProfile)
   xe = zeros(OrdPoly+1)
   xe[1] = -1.0
   @inbounds for i = 2 : OrdPoly
-    xe[i] = CG.xe[i-1] + 2.0/OrdPoly
+    xe[i] = xe[i-1] + 2.0/OrdPoly
   end
   xe[OrdPoly+1] = 1.0
   X = zeros(3)
@@ -547,14 +547,6 @@ function Orography2(backend,FT,CG,Exchange,Global)
   @inbounds for iF = 1:NF
     @views ChangeBasisHeight!(HeightCG[:,:,iF],HeightCG[:,:,iF],CG)
   end
-  @inbounds for iF = 1:NF
-    @inbounds for jP=1:OP
-      @inbounds for iP=1:OP
-        iD = iP + (jP - 1) * OP
-
-      end
-    end
-  end
   
   copyto!(HeightGPU,Height)
   @show maximum(HeightGPU)
@@ -750,29 +742,65 @@ function Orography3(backend,FT,CG,Exchange,Global)
   @show minimum(HeightCG)
   return HeightCG
 end
-#=
+
 function Orography4(backend,FT,CG,Exchange,Global)
   Grid = Global.Grid
   Proc = Global.ParallelCom.Proc
   OrdPoly = CG.OrdPoly
   Glob = CG.Glob
   NumG = CG.NumG
-  (MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat) = BoundingBox(Grid)
   RadEarth = Grid.Rad
   NF = Grid.NumFaces
   OP = OrdPoly + 1
+  ds = NCDataset("ETOPO_2022_v1_60s_N90W180_surface.nc")
+  lon = Array(ds["lon"])
+  lat = Array(ds["lat"])
+  zlevels = Array(ds["z"])
+  # Apply Smoothing
+  # smooth_degree = Int(parsed_args["smoothing_order"])
+  @show typeof(zlevels)
+  @show size(zlevels)
+  esmth = gaussian_smooth(zlevels)
+# esmth = deepcopy(zlevels)
+  earth_spline = linear_interpolation((lon, lat), esmth, extrapolation_bc = (Periodic(), Flat()),)
+  PS = Point()
+  xw = CG.xw
+  HeightCG = zeros(Float64,OP,OP,NF)
+  Height = zeros(Float64,NumG)
+  HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
+  for iF = 1 : Grid.NumFaces
+    for j = 1 : OrdPoly + 1
+      for i = 1 : OrdPoly + 1
+        TransSphereS!(PS,xw[i],xw[j],Grid.Faces[iF],RadEarth)
+        (lonLoc, latLoc) = cart2sphereDeg(PS.x,PS.y,PS.z)
+        iD = i + (j - 1) * (OrdPoly + 1)
+        ind = Glob[iD,iF]
+        Height[ind] = max(earth_spline(lonLoc,latLoc), 0.0)
+      end
+    end
+  end
 
-zlevels = Array(data["elevation"])
-            lon = Array(data["longitude"])
-            lat = Array(data["latitude"])
-            # Apply Smoothing
-            smooth_degree = Int(parsed_args["smoothing_order"])
-            esmth = CA.gaussian_smooth(zlevels, smooth_degree)
-            linear_interpolation(
-                (lon, lat),
-                esmth,
-                extrapolation_bc = (Periodic(), Flat()),
-=#
+  copyto!(HeightGPU,Height)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
+  @show maximum(HeightGPU)
+  @show minimum(HeightGPU)
+  copyto!(Height,HeightGPU)
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        HeightCG[iP,jP,iF] = Height[ind]
+      end
+    end
+  end
+  @show maximum(HeightCG)
+  @show minimum(HeightCG)
+  return HeightCG
+end
+
 function BoundingBoxFace(Face,Grid)
   MinLon = 180.0
   MaxLon = -180.0

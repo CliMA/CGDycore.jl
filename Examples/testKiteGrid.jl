@@ -197,19 +197,15 @@ UNew = similar(U)
 
 for i = 1 : nAdveVel
   @show i  
-# @views mul!(r[RhoPos:uPos-1],Div,U[uPos:end])
   @views r[RhoPos:uPos-1] = Div * U[uPos:end]
   @views r[RhoPos:uPos-1] = CG1KiteP.M\r[RhoPos:uPos-1]
-# @views mul!(r[uPos:end],Div',U[RhoPos:uPos-1])
   @views r[uPos:end] = Div' * U[RhoPos:uPos-1]
   @views r[uPos:end] = -CG1KiteD.M\r[uPos:end]
 
   @. UNew = U + 0.5 * dtau * r
 
-# @views mul!(r[RhoPos:uPos-1],Div,UNew[uPos:end])
   @views r[RhoPos:uPos-1] = Div * UNew[uPos:end]
   @views r[RhoPos:uPos-1] = CG1KiteP.M\r[RhoPos:uPos-1]
-# @views mul!(r[uPos:end],Div',UNew[RhoPos:uPos-1])
   @views r[uPos:end] = Div' * UNew[RhoPos:uPos-1]
   @views r[uPos:end] = -CG1KiteD.M\r[uPos:end]
 

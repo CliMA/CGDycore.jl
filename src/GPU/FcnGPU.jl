@@ -647,7 +647,7 @@ function FcnGPUAMD!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Mod
   @views CacheFF = Temp1[:,:,1:6+NumTr]
   @views p = Cache.AuxG[:,:,1]
   @views MRho = CacheF[:,:,6]
-  @. MRho = FT(1)
+  copyto!(MRho,FT(1))
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
