@@ -29,11 +29,11 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \
-  --SimSeconds=100 \
+  --SimSeconds=0 \
   --SimDays=10 \
-  --PrintSeconds=0 \
+  --PrintSeconds=200 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \

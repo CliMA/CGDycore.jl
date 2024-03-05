@@ -834,6 +834,69 @@ end
   end  
 end  
 
+@kernel function VerticalDiffusionMomentumKernel!(Fu,Fv,@Const(u),@Const(v),@Const(K),
+  @Const(dXdxI),@Const(JJ),@Const(M),@Const(Glob))
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N
+  @inbounds ind = Glob[ID,IF]
+
+  uCol = @localmem eltype(Fu) (N,N,ColumnTilesDim+1)
+  vCol = @localmem eltype(Fu) (N,N,ColumnTilesDim+1)
+
+  if Iz <= Nz
+    @inbounds uCol[I,J,iz] = u[Iz,ind]
+    @inbounds vCol[I,J,iz] = v[Iz,ind]
+  end
+  if iz == ColumnTilesDim || Iz == Nz
+    Izp1 = min(Iz + 1,Nz)
+    @inbounds uCol[I,J,iz+1] = u[Izp1,ind]
+    @inbounds vCol[I,J,iz+1] = v[Izp1,ind]
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  @inbounds ind = Glob[ID,IF]
+
+  if Iz < Nz
+    @inbounds grad = (K[ID,Iz,IF] + K[ID,Iz+1,IF]) * (uCol[I,J,iz+1] - uCol[I,J,iz]) *
+       (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    @inbounds @atomic Fu[Iz,ind] +=  dXdxI[3,3,2,ID,Iz,IF] * grad / M[Iz,ind]  
+    @inbounds @atomic Fu[Iz+1,ind] += - dXdxI[3,3,1,ID,Iz+1,IF] * grad / M[Iz+1,ind]     
+    @inbounds grad = (K[ID,Iz,IF] + K[ID,Iz+1,IF]) * (vCol[I,J,iz+1] - vCol[I,J,iz]) *
+       (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    @inbounds @atomic Fv[Iz,ind] +=  dXdxI[3,3,2,ID,Iz,IF] * grad / M[Iz,ind]  
+    @inbounds @atomic Fv[Iz+1,ind] += - dXdxI[3,3,1,ID,Iz+1,IF] * grad / M[Iz+1,ind]     
+  end  
+end  
+
+
+@kernel function SurfaceFluxMomentumKernel!(Fu,Fv,@Const(u),@Const(v),@Cons(w),@Const(K),
+  @Const(dXdxI),@Const(nS),@Const(JJ),@Const(M),@Const(Glob))
+  ID,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[2]
+
+  if IF <= NF
+    @inbounds ind = Glob[ID,IF]  
+    v1 = u[1,ind]
+    v2 = v[1,ind]
+    WS = -(dXdxI[3,1,1,ID,1,IF]* v1 +
+        dXdxI[3,2,1,ID,1,IF] * v2) /
+        dXdxI[3,2,1,ID,1,IF]
+    ww = 0.5 * (WS + w[1,ind])
+    nU = nS[ID,1] * v1 + nS[ID,2] * v2 + nS[ID,3] * ww
+    uStar = sqrt((v1 - nS[ID,1] * nU)^2 + (v2 - nS[ID,2] * nU)^2 + (ww - nS[ID,3] * nU)^2)
+    @atomic Fu[1,ind] += -CMom * uStar * (u - nSTV * nS[ID,1]) / M[1,ind]
+    @atomic Fv[1,ind] += -CMom * uStar * (v - nSTV * nS[ID,2]) / M[1,ind]
+  end
+end  
 
 @kernel function SurfaceFluxScalarsKernel(F,@Const(U),@Const(p),@Const(TSurf),@Const(RhoVSurf),@Const(uStar),
   @Const(CT),@Const(CH),@Const(dXdxI),@Const(Glob),@Const(M),@Const(Phys))
@@ -841,8 +904,8 @@ end
 
   NF = @uniform @ndrange()[2]
 
-  @inbounds ind = Glob[ID,IF]  
   if IF <= NF
+    @inbounds ind = Glob[ID,IF]  
     @inbounds Rho = U[1,ind,1]
     @inbounds RhoTh = U[1,ind,5]
     @inbounds RhoV = U[1,ind,6]
