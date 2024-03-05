@@ -76,40 +76,40 @@ function DiscretizationCG(backend,FT,Jacobi,CG,Exchange,Global)
   KernelAbstractions.zeros(backend,FT,CG.OrdPoly+1,CG.OrdPoly+1,Global.Grid.NumFaces))
 end  
 
-@kernel function SurfaceNormalKernel!(FS,nS,@Const(dXdxI))
+@kernel inbounds = true function SurfaceNormalKernel!(FS,nS,@Const(dXdxI))
 
   ID,IF = @index(Global, NTuple)
 
   NF = @uniform @ndrange()[2]
 
   if IF <= NF
-    @inbounds FS[ID,IF] = sqrt(dXdxI[3,1,1,ID,1,IF] * dXdxI[3,1,1,ID,1,IF] +
+    FS[ID,IF] = sqrt(dXdxI[3,1,1,ID,1,IF] * dXdxI[3,1,1,ID,1,IF] +
       dXdxI[3,2,1,ID,1,IF] * dXdxI[3,2,1,ID,1,IF] + 
       dXdxI[3,3,1,ID,1,IF] * dXdxI[3,3,1,ID,1,IF])
-    @inbounds nS[ID,1,IF] = dXdxI[3,1,1,ID,1,IF] / FS[ID,IF]
-    @inbounds nS[ID,2,IF] = dXdxI[3,2,1,ID,1,IF] / FS[ID,IF]
-    @inbounds nS[ID,3,IF] = dXdxI[3,3,1,ID,1,IF] / FS[ID,IF]
+    nS[ID,1,IF] = dXdxI[3,1,1,ID,1,IF] / FS[ID,IF]
+    nS[ID,2,IF] = dXdxI[3,2,1,ID,1,IF] / FS[ID,IF]
+    nS[ID,3,IF] = dXdxI[3,3,1,ID,1,IF] / FS[ID,IF]
   end
 end
 
-@kernel function CenterJacobiansKernel!(N,JC,JCW,@Const(J),@Const(w))
+@kernel inbounds = true function CenterJacobiansKernel!(N,JC,JCW,@Const(J),@Const(w))
   Iz,IF = @index(Global, NTuple)
 
   FT = eltype(JC)
   Nz = @uniform @ndrange()[1]
   if Iz <= Nz
-    @inbounds @views sumJ = sum(J[:,:,Iz,IF])
+    @views sumJ = sum(J[:,:,Iz,IF])
     for j = 1 : N
       for i = 1 : N
         ID = i + (j - 1) * N  
-        @inbounds JC[ID,Iz,IF] = J[ID,1,Iz,IF] + J[ID,2,Iz,IF] 
-        @inbounds JCW[ID,Iz,IF] = JC[ID,Iz,IF] * w[i] * w[j] / sumJ
+        JC[ID,Iz,IF] = J[ID,1,Iz,IF] + J[ID,2,Iz,IF] 
+        JCW[ID,Iz,IF] = JC[ID,Iz,IF] * w[i] * w[j] / sumJ
       end
     end  
   end  
 end
 
-@kernel function GridSizeSphereKernel!(lat,zP,dz,@Const(X),@Const(Glob),Rad)
+@kernel inbounds = true function GridSizeSphereKernel!(lat,zP,dz,@Const(X),@Const(Glob),Rad)
 
   ID,Iz,IF = @index(Global, NTuple)
 
@@ -118,28 +118,28 @@ end
 
 
   if Iz <= Nz && IF <= NF
-    @inbounds ind = Glob[ID,IF]
-    @inbounds x = eltype(X)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
-    @inbounds y = eltype(X)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
-    @inbounds z = eltype(X)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
+    ind = Glob[ID,IF]
+    x = eltype(X)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
+    y = eltype(X)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
+    z = eltype(X)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
     r = sqrt(x * x + y * y + z * z)
     if Iz == 1
-      @inbounds lat[ind] = asin(z / r)
+      lat[ind] = asin(z / r)
     end  
-    @inbounds zP[Iz,ind] = max(r-Rad, eltype(X)(0))
-    @inbounds x = X[ID,1,1,Iz,IF]
-    @inbounds y = X[ID,1,2,Iz,IF]
-    @inbounds z = X[ID,1,3,Iz,IF]
+    zP[Iz,ind] = max(r-Rad, eltype(X)(0))
+    x = X[ID,1,1,Iz,IF]
+    y = X[ID,1,2,Iz,IF]
+    z = X[ID,1,3,Iz,IF]
     r1 = sqrt(x * x + y * y + z * z)
-    @inbounds x = X[ID,2,1,Iz,IF]
-    @inbounds y = X[ID,2,2,Iz,IF]
-    @inbounds z = X[ID,2,3,Iz,IF]
+    x = X[ID,2,1,Iz,IF]
+    y = X[ID,2,2,Iz,IF]
+    z = X[ID,2,3,Iz,IF]
     r2 = sqrt(x * x + y * y + z * z)
-    @inbounds dz[Iz,ind] =  r2 - r1
+    dz[Iz,ind] =  r2 - r1
   end
 end
 
-@kernel function GridSizeCartKernel!(zP,dz,@Const(X),@Const(Glob))
+@kernel inbounds = true function GridSizeCartKernel!(zP,dz,@Const(X),@Const(Glob))
 
   ID,Iz,IF = @index(Global, NTuple)
 
@@ -148,8 +148,8 @@ end
   
   if Iz <= Nz && IF <= NF
     ind = Glob[ID,IF]  
-    @inbounds zP[Iz,ind] = eltype(X)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF]) 
-    @inbounds dz[Iz,ind] = X[ID,2,3,Iz,IF] - X[ID,1,3,Iz,IF] 
+    zP[Iz,ind] = eltype(X)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF]) 
+    dz[Iz,ind] = X[ID,2,3,Iz,IF] - X[ID,1,3,Iz,IF] 
   end
 end  
 

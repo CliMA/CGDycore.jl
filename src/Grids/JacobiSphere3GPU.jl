@@ -59,7 +59,7 @@ function JacobiSphere3GPU!(AdaptGrid,X,dXdx,dXdxI,J,FE,F,z,zs,Rad,Equation::Mode
   KernelAbstractions.synchronize(backend)
 end
 
-@kernel function JacobiSphere2Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(D),@Const(F),Rad)
+@kernel inbounds = true function JacobiSphere2Kernel!(X,dXdxI,JJ,@Const(ksi),@Const(D),@Const(F),Rad)
 
   gi, gj, gF = @index(Group, NTuple)
   I, J,  iF   = @index(Local, NTuple)
@@ -74,13 +74,13 @@ end
   eta = ksi
   if IF <= NF
     ID = I + (J - 1) * N
-    @views @inbounds JacobiSphere2Loc!(X[ID,:,IF],dXdxLoc[I,J,:,:,iF],ksi[I],eta[J],F[:,:,IF],Rad)
-    @views @inbounds JJ[ID,IF] = Det2(dXdxLoc[I,J,:,:,iF])
-    @views @inbounds Adjunct2!(dXdxI[:,:,ID,IF],dXdxLoc[I,J,:,:,iF])
+    @views JacobiSphere2Loc!(X[ID,:,IF],dXdxLoc[I,J,:,:,iF],ksi[I],eta[J],F[:,:,IF],Rad)
+    @views JJ[ID,IF] = Det2(dXdxLoc[I,J,:,:,iF])
+    @views Adjunct2!(dXdxI[:,:,ID,IF],dXdxLoc[I,J,:,:,iF])
   end
 end
 
-@kernel function JacobiSphere3Kernel!(AdaptGrid,X,dXdx,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
+@kernel inbounds = true function JacobiSphere3Kernel!(AdaptGrid,X,dXdx,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
   @Const(F),@Const(z),Rad,@Const(zs))
 
   gi, gj, gk, gz, gF = @index(Group, NTuple)
@@ -99,8 +99,8 @@ end
 
   if Iz <= Nz
     ID = I + (J - 1) * N
-    @inbounds z1 = z[Iz]
-    @inbounds z2 = z[Iz+1]
+    z1 = z[Iz]
+    z2 = z[Iz+1]
     ksi1 = ksi[I]
     ksi2 = ksi[J]
     ksi3 = zeta[K]
@@ -163,35 +163,35 @@ end
 
   if Iz <= Nz
     ID = I + (J - 1) * N
-    @inbounds DxhR = D[I,1] * hR[1,J,K,iz]
-    @inbounds DyhR = D[J,1] * hR[I,1,K,iz]
+    DxhR = D[I,1] * hR[1,J,K,iz]
+    DyhR = D[J,1] * hR[I,1,K,iz]
     for k = 2 : N
-      @inbounds DxhR += D[I,k] * hR[k,J,K,iz]
-      @inbounds DyhR += D[J,k] * hR[I,k,K,iz]
+      DxhR += D[I,k] * hR[k,J,K,iz]
+      DyhR += D[J,k] * hR[I,k,K,iz]
     end    
 
-    @inbounds dXdxLoc[I,J,K,3,1,iz] = DxhR
-    @inbounds dXdxLoc[I,J,K,3,2,iz] = DyhR
-    @views @inbounds JJ[ID,K,Iz,IF] = Det3(dXdxLoc[I,J,K,:,:,iz])
-    @inbounds dXdxI[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxLoc[I,J,K,3,1,iz] = DxhR
+    dXdxLoc[I,J,K,3,2,iz] = DyhR
+    @views JJ[ID,K,Iz,IF] = Det3(dXdxLoc[I,J,K,:,:,iz])
+    dXdxI[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,2,3,iz] * dXdxLoc[I,J,K,3,2,iz]
-    @inbounds dXdxI[2,1,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxI[2,1,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,2,3,iz] * dXdxLoc[I,J,K,3,1,iz])
-    @inbounds dXdxI[3,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
+    dXdxI[3,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
       dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,1,iz]
 
-    @inbounds dXdxI[1,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxI[1,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,3,2,iz])
-    @inbounds dXdxI[2,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxI[2,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,3,1,iz]
-    @inbounds dXdxI[3,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
+    dXdxI[3,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
       dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,3,1,iz])
 
-    @inbounds dXdxI[1,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,3,iz] - 
+    dXdxI[1,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,2,2,iz]
-    @inbounds dXdxI[2,3,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,3,iz] - 
+    dXdxI[2,3,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,2,1,iz])
-    @inbounds dXdxI[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,2,iz] - 
+    dXdxI[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,2,iz] - 
       dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,1,iz]
     dXdx[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] 
     dXdx[1,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] 
@@ -205,7 +205,7 @@ end
   end
 end
 
-@kernel function JacobiSphereDeep3Kernel!(AdaptGrid,X,dXdx,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
+@kernel inbounds = true function JacobiSphereDeep3Kernel!(AdaptGrid,X,dXdx,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
   @Const(F),@Const(z),Rad,@Const(zs))
 
   gi, gj, gk, gz, gF = @index(Group, NTuple)
@@ -224,8 +224,8 @@ end
 
   if Iz <= Nz
     ID = I + (J - 1) * N
-    @inbounds z1 = z[Iz]
-    @inbounds z2 = z[Iz+1]
+    z1 = z[Iz]
+    z2 = z[Iz+1]
     ksi1 = ksi[I]
     ksi2 = ksi[J]
     ksi3 = zeta[K]
@@ -288,35 +288,35 @@ end
 
   if Iz <= Nz
     ID = I + (J - 1) * N
-    @inbounds DxhR = D[I,1] * hR[1,J,K,iz]
-    @inbounds DyhR = D[J,1] * hR[I,1,K,iz]
+    DxhR = D[I,1] * hR[1,J,K,iz]
+    DyhR = D[J,1] * hR[I,1,K,iz]
     for k = 2 : N
-      @inbounds DxhR += D[I,k] * hR[k,J,K,iz]
-      @inbounds DyhR += D[J,k] * hR[I,k,K,iz]
+      DxhR += D[I,k] * hR[k,J,K,iz]
+      DyhR += D[J,k] * hR[I,k,K,iz]
     end    
 
-    @inbounds dXdxLoc[I,J,K,3,1,iz] = DxhR
-    @inbounds dXdxLoc[I,J,K,3,2,iz] = DyhR
-    @views @inbounds JJ[ID,K,Iz,IF] = Det3(dXdxLoc[I,J,K,:,:,iz])
-    @inbounds dXdxI[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxLoc[I,J,K,3,1,iz] = DxhR
+    dXdxLoc[I,J,K,3,2,iz] = DyhR
+    @views JJ[ID,K,Iz,IF] = Det3(dXdxLoc[I,J,K,:,:,iz])
+    dXdxI[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,2,3,iz] * dXdxLoc[I,J,K,3,2,iz]
-    @inbounds dXdxI[2,1,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxI[2,1,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,2,3,iz] * dXdxLoc[I,J,K,3,1,iz])
-    @inbounds dXdxI[3,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
+    dXdxI[3,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
       dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,1,iz]
 
-    @inbounds dXdxI[1,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxI[1,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,3,2,iz])
-    @inbounds dXdxI[2,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
+    dXdxI[2,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,3,1,iz]
-    @inbounds dXdxI[3,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
+    dXdxI[3,2,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,3,2,iz] - 
       dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,3,1,iz])
 
-    @inbounds dXdxI[1,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,3,iz] - 
+    dXdxI[1,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,2,2,iz]
-    @inbounds dXdxI[2,3,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,3,iz] - 
+    dXdxI[2,3,K,ID,Iz,IF] = -(dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,3,iz] - 
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,2,1,iz])
-    @inbounds dXdxI[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,2,iz] - 
+    dXdxI[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,2,iz] - 
       dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,1,iz]
     dXdx[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] 
     dXdx[1,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] 

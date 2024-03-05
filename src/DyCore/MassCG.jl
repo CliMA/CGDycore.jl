@@ -7,17 +7,17 @@ function MassCG(CG,J,Glob,Exchange)
   M = zeros(nz,CG.NumG)
   MMass = zeros(nz,CG.NumG)
   MW = zeros(nz-1,CG.NumG)
-  @inbounds for iF = 1 : NF
+  for iF = 1 : NF
     iD = 0
-    @inbounds for j = 1 : OrdPoly + 1
-      @inbounds for i = 1 : OrdPoly + 1
+    for j = 1 : OrdPoly + 1
+      for i = 1 : OrdPoly + 1
         iD += 1
         ind = Glob[iD,iF]  
-        @inbounds for iz = 1 : nz  
+        for iz = 1 : nz  
           M[iz,ind] += (J[iD,1,iz,iF] + J[iD,2,iz,iF])
           MMass[iz,ind] += 0.5 * (J[iD,1,iz,iF] + J[iD,2,iz,iF]) * w[i] * w[j]
         end  
-        @inbounds for iz = 1 : nz - 1  
+        for iz = 1 : nz - 1  
           MW[iz,ind] += (J[iD,2,iz,iF] + J[iD,1,iz+1,iF])
         end
       end
@@ -60,7 +60,7 @@ function MassCGGPU!(CG,J,Glob,Exchange,Global)
   Parallels.ExchangeData!(MW,Exchange)
 end
 
-@kernel function MassCGKernel!(M,MMass,MW,@Const(JJ),@Const(w),@Const(Glob))
+@kernel inbounds = true function MassCGKernel!(M,MMass,MW,@Const(JJ),@Const(w),@Const(Glob))
   I,J,Iz,IF = @index(Global, NTuple)
 
   N = @uniform @groupsize()[1]
@@ -69,14 +69,14 @@ end
 
   if Iz <= Nz && IF <= NF
     ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]  
-    @inbounds @atomic M[Iz,ind] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    @inbounds @atomic MMass[Iz,ind] += eltype(M)(0.5) * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J]
+    ind = Glob[ID,IF]  
+    @atomic :monotonic M[Iz,ind] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    @atomic :monotonic MMass[Iz,ind] += eltype(M)(0.5) * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J]
   end  
   if Iz < Nz && IF <= NF
     ID = I + (J - 1) * N  
-    @inbounds ind = Glob[ID,IF]  
-    @inbounds @atomic MW[Iz,ind] += (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    ind = Glob[ID,IF]  
+    @atomic :monotonic MW[Iz,ind] += (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
   end  
 end
 

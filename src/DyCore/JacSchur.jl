@@ -26,7 +26,7 @@ function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equati
   @views RhoThF = J.CacheCol2[1:nz-1]
   @views RhoTrF = J.CacheCol2[1:nz-1]
 
-  @inbounds for iC=1:nCol
+  for iC=1:nCol
     @views Pres = Cache.AuxG[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
     @views RhoTh = U[:,iC,ThPos]
@@ -78,7 +78,7 @@ function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equati
       @views @. J.JThW[2,1:nz-1,iC] = J.JThW[2,1:nz-1,iC] + D[2:nz]
     end  
 
-    @inbounds for iT = 1 : NumTr
+    for iT = 1 : NumTr
       @views @. RhoTrF = (Tr[1:nz-1,iT] * dz[1:nz-1] + Tr[2:nz,iT] * dz[2:nz]) /
         (dz[1:nz-1] + dz[2:nz])
         
@@ -147,7 +147,7 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
 end
 
 
-@kernel function JacSchurKernel!(JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(dz),Phys,Param)
+@kernel inbounds = true function JacSchurKernel!(JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(dz),Phys,Param)
   iz, iC   = @index(Local, NTuple)
   Iz,IC = @index(Global, NTuple)
 
@@ -158,40 +158,40 @@ end
   if Iz < Nz && IC <= NumG
     RhoPos = 1
     ThPos = 5
-    @inbounds RhoL = U[Iz,IC,RhoPos]
-    @inbounds RhoR = U[Iz+1,IC,RhoPos]
-    @inbounds RhoThL = U[Iz,IC,ThPos]
-    @inbounds RhoThR = U[Iz+1,IC,ThPos]
-    @inbounds dzL = dz[Iz,IC]
-    @inbounds dzR = dz[Iz+1,IC]
+    RhoL = U[Iz,IC,RhoPos]
+    RhoR = U[Iz+1,IC,RhoPos]
+    RhoThL = U[Iz,IC,ThPos]
+    RhoThR = U[Iz+1,IC,ThPos]
+    dzL = dz[Iz,IC]
+    dzR = dz[Iz+1,IC]
 
     RhoF = (RhoL * dzL + RhoR * dzR) / (dzL + dzR)
     # JRhoW low bidiagonal matrix
     # First row diagonal
     # Second row lower diagonal
-    @inbounds JRhoW[1,Iz,IC] = -RhoF / dzL
-    @inbounds JRhoW[2,Iz,IC] = RhoF / dzR
+    JRhoW[1,Iz,IC] = -RhoF / dzL
+    JRhoW[2,Iz,IC] = RhoF / dzR
 
     dPdThL = dPresdThGPU(RhoThL, Phys)
     dPdThR = dPresdThGPU(RhoThR, Phys)
     # JWRhoTh upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
-    @inbounds JWRhoTh[1,Iz,IC] = -dPdThR / RhoF / ( eltype(dz)(0.5) * (dzL + dzR))
-    @inbounds JWRhoTh[2,Iz,IC] = dPdThL / RhoF / ( eltype(dz)(0.5) * (dzL + dzR))
+    JWRhoTh[1,Iz,IC] = -dPdThR / RhoF / ( eltype(dz)(0.5) * (dzL + dzR))
+    JWRhoTh[2,Iz,IC] = dPdThL / RhoF / ( eltype(dz)(0.5) * (dzL + dzR))
 
     # JWRho upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
-    @inbounds JWRho[1,Iz,IC] = -Phys.Grav * dzR / RhoF / (dzL + dzR)
-    @inbounds JWRho[2,Iz,IC] = -Phys.Grav * dzL / RhoF / (dzL + dzR)
+    JWRho[1,Iz,IC] = -Phys.Grav * dzR / RhoF / (dzL + dzR)
+    JWRho[2,Iz,IC] = -Phys.Grav * dzL / RhoF / (dzL + dzR)
 
     RhoThF = (RhoThL * dzL + RhoThR * dzR) / (dzL + dzR)
     # JRhoThW low bidiagonal matrix
     # First row diagonal
     # Second row lower diagonal
-    @inbounds JRhoThW[1,Iz,IC] = -RhoThF / dzL
-    @inbounds JRhoThW[2,Iz,IC] = RhoThF / dzR
+    JRhoThW[1,Iz,IC] = -RhoThF / dzL
+    JRhoThW[2,Iz,IC] = RhoThF / dzR
   end
 end
 
@@ -218,7 +218,7 @@ function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
   dPdTh = J.CacheCol1
   K = J.CacheCol1
 
-  @inbounds for iC=1:nCol
+  for iC=1:nCol
     @views Pres = Global.Cache.AuxG[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
     @views Th = U[:,iC,ThPos]
@@ -258,7 +258,7 @@ function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
       @views @. J.JThW[2,1:nz-1,iC] = J.JThW[2,1:nz-1,iC] + D[2:nz]
     end  
 
-    @inbounds for iT = 1 : NumTr
+    for iT = 1 : NumTr
       @views @. D[1:nz-1] = -(Tr[1:nz-1,iT] / Rho[1:nz-1] * dz[1:nz-1] + Tr[2:nz,iT] / Rho[2:nz] * dz[2:nz]) /
         (dz[1:nz-1] + dz[2:nz])
       @views @. J.JTrW[1,:,iC,iT] = D / dz

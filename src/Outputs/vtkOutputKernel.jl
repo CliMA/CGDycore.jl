@@ -1,4 +1,4 @@
-@kernel function InterpolateRotKernel!(Rot,@Const(uC),@Const(vC),@Const(D),@Const(dXdxI),
+@kernel inbounds = true function InterpolateRotKernel!(Rot,@Const(uC),@Const(vC),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(Inter),@Const(Glob))
 
   ID, iz   = @index(Local,  NTuple)
@@ -21,14 +21,14 @@
   if Iz <= Nz 
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
-    @inbounds ind = Glob[ID,IF]
-    @inbounds tempx = ((dXdxI[1,1,1,ID,Iz,IF] + dXdxI[1,1,2,ID,Iz,IF]) * vC[Iz,ind] - 
+    ind = Glob[ID,IF]
+    tempx = ((dXdxI[1,1,1,ID,Iz,IF] + dXdxI[1,1,2,ID,Iz,IF]) * vC[Iz,ind] - 
       (dXdxI[1,2,1,ID,Iz,IF] + dXdxI[1,2,2,ID,Iz,IF]) * uC[Iz,ind])
-    @inbounds tempy = ((dXdxI[2,1,1,ID,Iz,IF] + dXdxI[2,1,2,ID,Iz,IF]) * vC[Iz,ind] - 
+    tempy = ((dXdxI[2,1,1,ID,Iz,IF] + dXdxI[2,1,2,ID,Iz,IF]) * vC[Iz,ind] - 
       (dXdxI[2,2,1,ID,Iz,IF] + dXdxI[2,2,2,ID,Iz,IF]) * uC[Iz,ind])
     for k = 1 : N
-      @inbounds @atomic RotLoc[k,J,iz] += D[k,I] * tempx
-      @inbounds @atomic RotLoc[I,k,iz] += D[k,J] * tempy
+      @atomic :monotonic RotLoc[k,J,iz] += D[k,I] * tempx
+      @atomic :monotonic RotLoc[I,k,iz] += D[k,J] * tempy
     end
   end
   @synchronize
@@ -36,17 +36,17 @@
   if Iz <= Nz 
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
-    @inbounds temp = RotLoc[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    temp = RotLoc[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     for j = 1 : size(Inter,1) 
       for i = 1 : size(Inter,2) 
-        @inbounds @atomic Rot[i,j,Iz,IF] += Inter[i,j,I,J] * temp
+        @atomic :monotonic Rot[i,j,Iz,IF] += Inter[i,j,I,J] * temp
       end    
     end    
   end    
 
 end  
 
-@kernel function InterpolateKernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
+@kernel inbounds = true function InterpolateKernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
   I, J, iz   = @index(Local,  NTuple)
   _,_,Iz,IF = @index(Global,  NTuple)
@@ -61,19 +61,19 @@ end
 
   
   if Iz <= Nz
-    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    cCell[I,J,Iz,IF] = eltype(cCell)(0)
     iD = 0
     for jP = 1 : N
       for iP = 1 : N
         iD += 1  
-        @inbounds ind = Glob[iD,IF]
-        @inbounds  cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * c[Iz,ind]
+        ind = Glob[iD,IF]
+         cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * c[Iz,ind]
       end
     end
   end
 end
 
-@kernel function InterpolateCGDim2Kernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
+@kernel inbounds = true function InterpolateCGDim2Kernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
   I, J   = @index(Local,  NTuple)
   _,_,IF = @index(Global,  NTuple)
@@ -85,16 +85,16 @@ end
   @uniform N = size(Inter,3)
 
   if IF <= NF
-    @inbounds cCell[I,J,IF] = eltype(cCell)(0)
+    cCell[I,J,IF] = eltype(cCell)(0)
     for jP = 1 : N
       for iP = 1 : N
-        @inbounds  cCell[I,J,IF] += Inter[I,J,iP,jP] * c[I,J,IF]
+         cCell[I,J,IF] += Inter[I,J,iP,jP] * c[I,J,IF]
       end
     end
   end
 end
 
-@kernel function InterpolateRhoKernel!(cCell,@Const(c),@Const(RhoC),@Const(Inter),@Const(Glob),
+@kernel inbounds = true function InterpolateRhoKernel!(cCell,@Const(c),@Const(RhoC),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
   I, J, iz   = @index(Local,  NTuple)
   _,_,Iz,IF = @index(Global,  NTuple)
@@ -108,19 +108,19 @@ end
   @uniform N = size(Inter,3)
   
   if Iz <= Nz
-    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    cCell[I,J,Iz,IF] = eltype(cCell)(0)
     ID = 0
     for jP = 1 : N
       for iP = 1 : N
         ID += 1
-        @inbounds ind = Glob[ID,IF]
-        @inbounds  cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * c[Iz,ind] / RhoC[Iz,ind]
+        ind = Glob[ID,IF]
+         cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * c[Iz,ind] / RhoC[Iz,ind]
       end
     end
   end
 end
 
-@kernel function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),@Const(Inter),@Const(dXdxI),@Const(Glob))
+@kernel inbounds = true function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),@Const(Inter),@Const(dXdxI),@Const(Glob))
   I, J, iz   = @index(Local,  NTuple)
   _,_,Iz,IF = @index(Global,  NTuple)
 
@@ -134,30 +134,30 @@ end
 
 
   if Iz == 1
-    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    cCell[I,J,Iz,IF] = eltype(cCell)(0)
     iD = 0  
     for jP = 1 : N
       for iP = 1 : N
         iD += 1
-        @inbounds ind = Glob[iD,IF]
-        @inbounds w0 = -(u[Iz,ind] * dXdxI[3,1,1,iD,Iz,IF] +
+        ind = Glob[iD,IF]
+        w0 = -(u[Iz,ind] * dXdxI[3,1,1,iD,Iz,IF] +
           v[Iz,ind] * dXdxI[3,2,1,iD,Iz,IF]) / dXdxI[3,3,1,iD,Iz,IF]
-        @inbounds  cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w0)
+         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w0)
       end
     end
   elseif Iz <= Nz
-    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    cCell[I,J,Iz,IF] = eltype(cCell)(0)
     iD = 0
     for jP = 1 : N
       for iP = 1 : N
         iD += 1
-        @inbounds ind = Glob[iD,IF]
-        @inbounds  cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w[Iz-1,ind])
+        ind = Glob[iD,IF]
+         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w[Iz-1,ind])
       end
     end
   end
 end
-@kernel function InterpolateThEKernel!(cCell,@Const(RhoTh),@Const(Rho),@Const(RhoV),@Const(RhoC),@Const(Inter),@Const(Glob),@Const(Phys))
+@kernel inbounds = true function InterpolateThEKernel!(cCell,@Const(RhoTh),@Const(Rho),@Const(RhoV),@Const(RhoC),@Const(Inter),@Const(Glob),@Const(Phys))
   I, J, iz   = @index(Local,  NTuple)
   _,_,Iz,IF = @index(Global,  NTuple)
 
@@ -170,14 +170,14 @@ end
   @uniform N = size(Inter,3)
 
   if Iz <= Nz
-    @inbounds cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    cCell[I,J,Iz,IF] = eltype(cCell)(0)
     iD = 0
     for jP = 1 : N
       for iP = 1 : N
         iD += 1
-        @inbounds ind = Glob[iD,IF]
+        ind = Glob[iD,IF]
         cLoc = Thermodynamics.fThE(Rho[Iz,ind],RhoV[Iz,ind],RhoC[Iz,ind],RhoTh[Iz,ind],Phys)
-        @inbounds  cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * cLoc
+         cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * cLoc
       end
     end
   end    

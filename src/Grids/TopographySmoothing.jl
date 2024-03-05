@@ -42,7 +42,7 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
   Height1 = similar(Height)
   if SmoothType == "Diff"
     SmoothFac = 1.0e8
-    @inbounds for i = 1 : NumSmoothSteps
+    for i = 1 : NumSmoothSteps
       @. FHeight = 0
       KHyperViscHeightKernel!(FHeight,Height,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
       KernelAbstractions.synchronize(backend)
@@ -59,7 +59,7 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
     SmoothFac=1.e16
     FHeight1 = similar(Height)
     Height1 = similar(Height)
-    @inbounds for i = 1 : NumSmoothSteps
+    for i = 1 : NumSmoothSteps
       @. FHeight1 = 0
       KHyperViscHeightKernel!(FHeight1,Height,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
       KernelAbstractions.synchronize(backend)
@@ -86,7 +86,7 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
 end
 
 
-@kernel function HyperViscHeightKernel!(FHeight,@Const(Height),@Const(D),@Const(DW),@Const(dXdxI),
+@kernel inbounds = true function HyperViscHeightKernel!(FHeight,@Const(Height),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob)) 
 
   I, J, iF   = @index(Local, NTuple)
@@ -97,46 +97,46 @@ end
   NF = @uniform @ndrange()[3]
 
   ID = I + (J - 1) * N  
-  @inbounds ind = Glob[ID,IF]
+  ind = Glob[ID,IF]
 
   HeightCol = @localmem eltype(FHeight) (N,N, FaceTilesDim)
   HeightCxCol = @localmem eltype(FHeight) (N,N, FaceTilesDim)
   HeightCyCol = @localmem eltype(FHeight) (N,N, FaceTilesDim)
   if IF <= NF
-    @inbounds HeightCol[I,J,iF] = Height[ind] 
+    HeightCol[I,J,iF] = Height[ind] 
   end
   @synchronize
 
   ID = I + (J - 1) * N  
-  @inbounds ind = Glob[ID,IF]
+  ind = Glob[ID,IF]
 
   if IF <= NF
-    @inbounds Dxc = D[I,1] * HeightCol[1,J,iF]
-    @inbounds Dyc = D[J,1] * HeightCol[I,1,iF]
+    Dxc = D[I,1] * HeightCol[1,J,iF]
+    Dyc = D[J,1] * HeightCol[I,1,iF]
     for k = 2 : N
-      @inbounds Dxc += D[I,k] * HeightCol[k,J,iF]
-      @inbounds Dyc += D[J,k] * HeightCol[I,k,iF] 
+      Dxc += D[I,k] * HeightCol[k,J,iF]
+      Dyc += D[J,k] * HeightCol[I,k,iF] 
     end 
-    @inbounds GradDx = (dXdxI[1,1,ID,IF] * Dxc +
+    GradDx = (dXdxI[1,1,ID,IF] * Dxc +
       dXdxI[2,1,ID,IF] * Dyc) / JJ[ID,IF]
-    @inbounds GradDy = (dXdxI[1,2,ID,IF] * Dxc +
+    GradDy = (dXdxI[1,2,ID,IF] * Dxc +
       dXdxI[2,2,ID,IF] * Dyc) / JJ[ID,IF]
-    @inbounds tempx = dXdxI[1,1,ID,IF] * GradDx + dXdxI[1,2,ID,IF] * GradDy
-    @inbounds tempy = dXdxI[2,1,ID,IF] * GradDx + dXdxI[2,2,ID,IF] * GradDy
-    @inbounds HeightCxCol[I,J,iF] = tempx
-    @inbounds HeightCyCol[I,J,iF] = tempy
+    tempx = dXdxI[1,1,ID,IF] * GradDx + dXdxI[1,2,ID,IF] * GradDy
+    tempy = dXdxI[2,1,ID,IF] * GradDx + dXdxI[2,2,ID,IF] * GradDy
+    HeightCxCol[I,J,iF] = tempx
+    HeightCyCol[I,J,iF] = tempy
   end
 
   @synchronize 
 
   ID = I + (J - 1) * N  
-  @inbounds ind = Glob[ID,IF]
+  ind = Glob[ID,IF]
   if IF <= NF
-    @inbounds DivHeight = DW[I,1] * HeightCxCol[1,J,iF] + DW[J,1] * HeightCyCol[I,1,iF]
+    DivHeight = DW[I,1] * HeightCxCol[1,J,iF] + DW[J,1] * HeightCyCol[I,1,iF]
     for k = 2 : N
-      @inbounds DivHeight += DW[I,k] * HeightCxCol[k,J,iF] + DW[J,k] * HeightCyCol[I,k,iF]
+      DivHeight += DW[I,k] * HeightCxCol[k,J,iF] + DW[J,k] * HeightCyCol[I,k,iF]
     end
-    @inbounds @atomic FHeight[ind] += DivHeight / M[ind]
+    @atomic :monotonic FHeight[ind] += DivHeight / M[ind]
   end
 end
 
@@ -161,7 +161,7 @@ function MassCGGPU2(CG,J,Exchange,Global)
   return M
 end
 
-@kernel function MassCG2Kernel!(M,@Const(JJ),@Const(Glob))
+@kernel inbounds = true function MassCG2Kernel!(M,@Const(JJ),@Const(Glob))
   I,J,IF = @index(Global, NTuple)
 
   N = @uniform @groupsize()[1]
@@ -169,8 +169,8 @@ end
 
   if IF <= NF
     ID = I + (J - 1) * N
-    @inbounds ind = Glob[ID,IF]
-    @inbounds @atomic M[ind] += JJ[ID,IF] 
+    ind = Glob[ID,IF]
+    @atomic :monotonic M[ind] += JJ[ID,IF] 
   end
 end
 

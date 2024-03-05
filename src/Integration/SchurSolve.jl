@@ -3,12 +3,12 @@
 # b is destroyed after the elemination
   n = size(tri,2)
   x[1] = tri[2,1]
-  @inbounds for i=1:n-1
+  for i=1:n-1
     x[i+1] = tri[2,i+1]-tri[3,i]/x[i]*tri[1,i+1]  
     b[i+1] = b[i+1]-tri[3,i]/x[i]*b[i]  
   end
   x[n] = b[n]/x[n]
-  @inbounds for i=n-1:-1:1
+  for i=n-1:-1:1
     x[i]=(b[i] - tri[1,i+1]*x[i+1])/x[i]  
   end
 end
@@ -17,7 +17,7 @@ end
   n = size(biL,2)
   tri[2,1] = tri[2,1] - biU[2,1]*biL[1,1] - biU[1,1]*biL[2,1]
   tri[3,1] = tri[3,1] - biU[2,2]*biL[2,1]
-  @inbounds for i=2:n-1
+  for i=2:n-1
     tri[1,i] = tri[1,i] - biU[1,i-1]*biL[1,i]
     tri[2,i] = tri[2,i] - biU[2,i]*biL[1,i] - biU[1,i]*biL[2,i]
     tri[3,i] = tri[3,i] - biU[2,i+1]*biL[2,i]
@@ -28,7 +28,7 @@ end
 
 @inline function mulbiUv!(u,biU,v)
   n = size(biU,2)
-  @inbounds for i=1:n
+  for i=1:n
     u[i] = u[i] + biU[2,i]*v[i] + biU[1,i]*v[i+1]
   end
 end
@@ -36,13 +36,13 @@ end
 @inline function mulbiLv!(u,biL,v)
   n = size(biL,2)
   u[1] = u[1] + biL[1,1]*v[1]
-  @inbounds for i=2:n
+  for i=2:n
     u[i] = u[i] + biL[2,i-1]*v[i-1] + biL[1,i]*v[i]
   end
   u[n+1] = u[n+1] + biL[2,n]*v[n]
 end
 
-@kernel function SchurSolveFacKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
+@kernel inbounds = true function SchurSolveFacKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
@@ -51,35 +51,35 @@ end
   invfac2 = invfac / fac
 
   if IC <= NumG
-    @inbounds @views rRho=v[:,IC,1]
-    @inbounds @views rTh=v[:,IC,5]
-    @inbounds @views rw=v[1:Nz-1,IC,4]
-    @inbounds @views sw=k[1:Nz-1,IC,4]
-    @inbounds k[end,IC,4] = 0
-    @inbounds @views @. tri[1,:,IC] = 0
-    @inbounds @views @. tri[2,:,IC] = invfac2
-    @inbounds @views @. tri[3,:,IC] = 0
-    @inbounds @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
-    @inbounds @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
+    @views rRho=v[:,IC,1]
+    @views rTh=v[:,IC,5]
+    @views rw=v[1:Nz-1,IC,4]
+    @views sw=k[1:Nz-1,IC,4]
+    k[end,IC,4] = 0
+    @views @. tri[1,:,IC] = 0
+    @views @. tri[2,:,IC] = invfac2
+    @views @. tri[3,:,IC] = 0
+    @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
+    @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
     @. rw = invfac * rw
-    @inbounds @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
-    @inbounds @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
-    @inbounds @views triSolve!(sw,tri[:,:,IC],rw)
-    @inbounds @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
-    @inbounds @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
+    @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
+    @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
+    @views triSolve!(sw,tri[:,:,IC],rw)
+    @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
+    @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
     for iz = 1 : Nz
-      @inbounds k[iz,IC,1] = fac * v[iz,IC,1]
-      @inbounds k[iz,IC,2] = fac * v[iz,IC,2]
-      @inbounds k[iz,IC,3] = fac * v[iz,IC,3]
-      @inbounds k[iz,IC,5] = fac * v[iz,IC,5]
+      k[iz,IC,1] = fac * v[iz,IC,1]
+      k[iz,IC,2] = fac * v[iz,IC,2]
+      k[iz,IC,3] = fac * v[iz,IC,3]
+      k[iz,IC,5] = fac * v[iz,IC,5]
       for iT = 6 : NumVTr
-        @inbounds k[iz,IC,iT] = fac * v[iz,IC,iT]
+        k[iz,IC,iT] = fac * v[iz,IC,iT]
       end
     end 
   end    
 end
 
-@kernel function SchurSolveKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
+@kernel inbounds = true function SchurSolveKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
@@ -87,25 +87,25 @@ end
   if IC <= NumG
     invfac=1/fac
     invfac2=invfac/fac
-    @inbounds @views rRho=v[:,IC,1]
-    @inbounds @views rTh=v[:,IC,5]
-    @inbounds @views rw=v[1:Nz-1,IC,4]
-    @inbounds @views sw=k[1:Nz-1,IC,4]
-    @inbounds k[end,IC,4] = 0
+    @views rRho=v[:,IC,1]
+    @views rTh=v[:,IC,5]
+    @views rw=v[1:Nz-1,IC,4]
+    @views sw=k[1:Nz-1,IC,4]
+    k[end,IC,4] = 0
     @. rw = invfac * rw
-    @inbounds @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
-    @inbounds @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
-    @inbounds @views triSolve!(sw,tri[:,:,IC],rw)
-    @inbounds @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
-    @inbounds @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
+    @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
+    @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
+    @views triSolve!(sw,tri[:,:,IC],rw)
+    @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
+    @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
 
     for iz = 1 : Nz
-      @inbounds k[iz,IC,1] = fac * v[iz,IC,1]
-      @inbounds k[iz,IC,2] = fac * v[iz,IC,2]
-      @inbounds k[iz,IC,3] = fac * v[iz,IC,3]
-      @inbounds k[iz,IC,5] = fac * v[iz,IC,5]
+      k[iz,IC,1] = fac * v[iz,IC,1]
+      k[iz,IC,2] = fac * v[iz,IC,2]
+      k[iz,IC,3] = fac * v[iz,IC,3]
+      k[iz,IC,5] = fac * v[iz,IC,5]
       for iT = 6 : NumVTr
-        @inbounds k[iz,IC,iT] = fac * v[iz,IC,iT]
+        k[iz,IC,iT] = fac * v[iz,IC,iT]
       end
     end 
   end    
@@ -165,7 +165,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
   invfac2=invfac/fac
 
   if Global.Model.JacVerticalDiffusion && Global.Model.JacVerticalAdvection
-    @inbounds for in2=1:n2
+    for in2=1:n2
       if J.CompTri
         @views @. JAdvC[2,:,in2] += invfac
         @views @. JAdvF[2,:,in2] += invfac
@@ -194,7 +194,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
       @. rTh = invfac * sTh
     end
     if Global.Model.Equation == "CompressibleMoist"
-      @inbounds for in2=1:n2
+      for in2=1:n2
         JDiff[2,1,in2] += CdTr[1,in2,1] 
         @views rTh=v[:,in2,NumV+1]
         @views sTh=k[:,in2,NumV+1]
@@ -204,7 +204,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
       end  
     end    
   elseif Global.Model.JacVerticalAdvection
-    @inbounds for in2=1:n2
+    for in2=1:n2
       if J.CompTri
         @views @. JAdvC[2,:,in2] += invfac
         @views @. JAdvF[2,:,in2] += invfac
@@ -236,7 +236,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
       @. rTh = invfac * sTh
     end
     if Global.Model.Equation == "CompressibleMoist"
-      @inbounds for in2=1:n2
+      for in2=1:n2
         @views rTh=v[:,in2,NumV+1]
         @views sTh=k[:,in2,NumV+1]
         @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
@@ -246,7 +246,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
   end    
 
   if Global.Model.Equation == "Compressible"
-    @inbounds for in2=1:n2
+    for in2=1:n2
       @views rRho=v[:,in2,1]
       @views rTh=v[:,in2,5]
       @views rw=v[1:n1-1,in2,4]
@@ -283,7 +283,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
       @views @. k[:,in2,1] = fac * rRho
       @views @. k[:,in2,2:3] = fac * v[:,in2,2:3]
       @views @. k[:,in2,5] = fac * rTh
-      @inbounds for iT = 1 : NumTr
+      for iT = 1 : NumTr
         @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
         @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
       end  
@@ -294,7 +294,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
   elseif Global.Model.Equation == "CompressibleMoist"
     RhoVPos = Global.Model.RhoVPos
     JWRhoV=J.JWRhoV
-    @inbounds for in2=1:n2
+    for in2=1:n2
       @views rRho=v[:,in2,1]
       @views rTh=v[:,in2,5]
       @views rRhoV=v[:,in2,NumV + RhoVPos]
@@ -337,7 +337,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
       @views @. k[:,in2,1] = fac * rRho
       @views @. k[:,in2,2:3] = fac * v[:,in2,2:3]
       @views @. k[:,in2,5] = fac * rTh
-      @inbounds for iT = 1 : NumTr
+      for iT = 1 : NumTr
         @views mulbiLv!(v[:,in2,5+iT],JTrW[:,:,in2,iT],sw)  
         @views @. k[:,in2,5+iT] = fac * v[:,in2,5+iT]
       end  

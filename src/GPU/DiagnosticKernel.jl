@@ -1,26 +1,26 @@
-@kernel function PressureKernel!(Pressure,p,@Const(U))
+@kernel inbounds = true function PressureKernel!(Pressure,p,@Const(U))
   Iz,IC = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    @inbounds p[Iz,IC] = Pressure(view(U,Iz,IC,:))
+    p[Iz,IC] = Pressure(view(U,Iz,IC,:))
   end
 end
 
-@kernel function PressureCKernel!(Pressure,p,@Const(U),@Const(Glob),@Const(JJ),@Const(M))
+@kernel inbounds = true function PressureCKernel!(Pressure,p,@Const(U),@Const(Glob),@Const(JJ),@Const(M))
   ID,Iz,IF = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
 
   if Iz <= Nz && IF <= NF
-    @inbounds ind = Glob[ID,IF]  
-    @inbounds @atomic p[Iz,ind] += Pressure(view(U,Iz,ind,:)) * JJ[ID,Iz,IF] / M[Iz,ind]
+    ind = Glob[ID,IF]  
+    @atomic :monotonic p[Iz,ind] += Pressure(view(U,Iz,ind,:)) * JJ[ID,Iz,IF] / M[Iz,ind]
   end
 end
 
-@kernel function SurfaceKernel!(Surface,@Const(U),@Const(p),@Const(X),
+@kernel inbounds = true function SurfaceKernel!(Surface,@Const(U),@Const(p),@Const(X),
   @Const(dXdxI),@Const(nS),@Const(Glob),SurfaceValues,SurfaceData)
 
   ID,IF = @index(Global, NTuple)
@@ -28,38 +28,38 @@ end
   NumF = @uniform @ndrange()[2]
 
   if IF <= NumF
-    @inbounds ind = Glob[ID,IF]
-    @inbounds xS = SVector{3}(X[ID,1,1,1,IF], X[ID,1,2,1,IF], X[ID,1,3,1,IF])
-    @inbounds dz = sqrt(X[ID,2,1,1,IF]^2 + X[ID,2,2,1,IF]^2 + X[ID,2,3,1,IF]^2) -
+    ind = Glob[ID,IF]
+    xS = SVector{3}(X[ID,1,1,1,IF], X[ID,1,2,1,IF], X[ID,1,3,1,IF])
+    dz = sqrt(X[ID,2,1,1,IF]^2 + X[ID,2,2,1,IF]^2 + X[ID,2,3,1,IF]^2) -
       sqrt(X[ID,1,1,1,IF]^2 + X[ID,1,2,1,IF]^2 + X[ID,1,3,1,IF]^2)
-    @inbounds SurfaceValues(xS,view(U,1,ind,:),p[1,ind],Surface[ID,IF])
-    @inbounds SurfaceData(dz,view(U,1,ind,:),p[1,ind],
+    SurfaceValues(xS,view(U,1,ind,:),p[1,ind],Surface[ID,IF])
+    SurfaceData(dz,view(U,1,ind,:),p[1,ind],
      view(dXdxI,3,:,1,ID,1,IF),view(nS,ID,:,IF),Surface[ID,IF])
   end
 end
 
-@kernel function EddyCoefficientKernel!(Eddy,K,@Const(Rho),@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
+@kernel inbounds = true function EddyCoefficientKernel!(Eddy,K,@Const(Rho),@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
   ID,Iz,IF = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[2]
   NumF = @uniform @ndrange()[3]
 
   if Iz <= Nz && IF <= NumF
-    @inbounds ind = Glob[ID,IF]
-    @inbounds @views K[ID,Iz,IF] = Eddy(uStar[ID,IF],p[Iz,ind],dz[1,ind]) * Rho[Iz,ind]
+    ind = Glob[ID,IF]
+    @views K[ID,Iz,IF] = Eddy(uStar[ID,IF],p[Iz,ind],dz[1,ind]) * Rho[Iz,ind]
   end
 end
 
-@kernel function EddyCoefficientCKernel!(Eddy,K,@Const(Rho),@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
+@kernel inbounds = true function EddyCoefficientCKernel!(Eddy,K,@Const(Rho),@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
   ID,Iz,IF = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[2]
   NumF = @uniform @ndrange()[3]
 
   if Iz <= Nz && IF <= NumF
-    @inbounds ind = Glob[ID,IF]
-    @inbounds p = Pressure(view(U,Iz,ind,:)) 
-    @inbounds K[Iz,ind] += Eddy(uStar[ID,IF],p,dz[1,ind]) * Rho[Iz,ind] * JJ[ID,Iz,IF] / M[Iz,ind]
+    ind = Glob[ID,IF]
+    p = Pressure(view(U,Iz,ind,:)) 
+    K[Iz,ind] += Eddy(uStar[ID,IF],p,dz[1,ind]) * Rho[Iz,ind] * JJ[ID,Iz,IF] / M[Iz,ind]
   end
 end
 
