@@ -117,9 +117,7 @@ end
      F[3,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
      F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-#   hR[I,J,K,iz], D33 = GalChen(zLoc,H,zs[I,J,IF])
-    hR[I,J,K,iz], D33 = AdaptGrid(zLoc,zs[I,J,IF])
-    D33 = eltype(X)(1/2) * D33*(z2-z1)
+    hR[I,J,K,iz] = AdaptGrid(zLoc,zs[I,J,IF])
     r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
     f = Rad / r
     X[ID,K,1,Iz,IF] = X1 / r * (Rad + hR[I,J,K,iz])
@@ -156,7 +154,7 @@ end
     @views dXdxLoc[I,J,K,1:2,1:2,iz] .= eltype(X)(1/4) * f * DD * A * B * C
     dXdxLoc[I,J,K,1,3,iz] = eltype(X)(0)
     dXdxLoc[I,J,K,2,3,iz] = eltype(X)(0)
-    dXdxLoc[I,J,K,3,3,iz] = D33
+    dXdxLoc[I,J,K,3,3,iz] = eltype(X)(0)
   end  
 
   @synchronize 
@@ -169,9 +167,11 @@ end
       DxhR += D[I,k] * hR[k,J,K,iz]
       DyhR += D[J,k] * hR[I,k,K,iz]
     end    
+    DzhR = eltype(X)(0.5) * (hR[I,J,2,iz] - hR[I,J,1,iz])
 
     dXdxLoc[I,J,K,3,1,iz] = DxhR
     dXdxLoc[I,J,K,3,2,iz] = DyhR
+    dXdxLoc[I,J,K,3,3,iz] = DzhR
     @views JJ[ID,K,Iz,IF] = Det3(dXdxLoc[I,J,K,:,:,iz])
     dXdxI[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,2,3,iz] * dXdxLoc[I,J,K,3,2,iz]
@@ -242,9 +242,7 @@ end
      F[3,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
      F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-#   hR[I,J,K,iz], D33 = GalChen(zLoc,H,zs[I,J,IF])
-    hR[I,J,K,iz], D33 = AdaptGrid(zLoc,zs[I,J,IF])
-    D33 = eltype(X)(1/2) * D33*(z2-z1)
+    hR[I,J,K,iz] = AdaptGrid(zLoc,zs[I,J,IF])
     r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
     f = Rad / r
     X[ID,K,1,Iz,IF] = X1 / r * (Rad + hR[I,J,K,iz])
@@ -279,9 +277,6 @@ end
               eltype(X)(1)+ksi2   eltype(X)(1)+ksi1;
              -eltype(X)(1)-ksi2   eltype(X)(1)-ksi1])
     @views dXdxLoc[I,J,K,1:2,1:2,iz] .= eltype(X)(1/4) * f * DD * A * B * C
-    dXdxLoc[I,J,K,1,3,iz] = eltype(X)(0)
-    dXdxLoc[I,J,K,2,3,iz] = eltype(X)(0)
-    dXdxLoc[I,J,K,3,3,iz] = D33
   end  
 
   @synchronize 
@@ -294,9 +289,11 @@ end
       DxhR += D[I,k] * hR[k,J,K,iz]
       DyhR += D[J,k] * hR[I,k,K,iz]
     end    
+    DzhR = eltype(X)(0.5) * (hR[I,J,2,iz] - hR[I,J,1,iz])
 
     dXdxLoc[I,J,K,3,1,iz] = DxhR
     dXdxLoc[I,J,K,3,2,iz] = DyhR
+    dXdxLoc[I,J,K,3,3,iz] = DzhR
     @views JJ[ID,K,Iz,IF] = Det3(dXdxLoc[I,J,K,:,:,iz])
     dXdxI[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] * dXdxLoc[I,J,K,3,3,iz] - 
       dXdxLoc[I,J,K,2,3,iz] * dXdxLoc[I,J,K,3,2,iz]
@@ -416,48 +413,3 @@ end
   A[1,2] * (A[2,1] * A[3,3] - A[2,3] * A[3,1]) +
   A[1,3] * (A[2,1] * A[3,2] - A[2,2] * A[3,1]) 
 end  
-
-
-abstract type AdaptGrid end
-
-Base.@kwdef struct GalChen <: AdaptGrid end
-
-function (::GalChen)(H)
-  @inline function AdaptHeight(zRef,zs)
-    z = zRef + (H - zRef) * zs / H
-    DzDzRef  = eltype(zRef)(1) - zs / H
-    return (z, DzDzRef)
-  end
-  return AdaptHeight
-end
-
-Base.@kwdef struct Sleve{T} <: AdaptGrid 
-  etaH::T = .7
-  s::T = 8/10
-
-end
-
-function (F::Sleve)(H)
-  (;s,etaH) = F
-  @inline function AdaptHeight(zRef,zs)
-    eta = zRef / H
-    if eta <= etaH
-      z = eta * H + zs * sinh((etaH - eta) / s / etaH) / sinh(1 / s) 
-      DzDzRef  = eltype(zRef)(1) - zs / H / s / etaH * cosh((etaH - eta) / s / etaH) / sinh(1 / s) 
-    else
-      z = eta * H
-      DzDzRef  = eltype(zRef)(1) 
-    end  
-    return (z, DzDzRef)
-  end
-  return AdaptHeight
-end
-
-function AdaptGrid(FT,Type,H)
-
-  if Type == "GalChen"
-    AdaptGridFunction = Grids.GalChen()(H)
-  elseif Type == "Sleve"
-    AdaptGridFunction = Grids.Sleve{FT}()(H)
-  end
-end

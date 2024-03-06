@@ -5,8 +5,7 @@ Base.@kwdef struct GalChen <: AdaptGrid end
 function (::GalChen)(H)
   @inline function AdaptHeight(zRef,zs)
     z = zRef + (H - zRef) * zs / H
-    DzDzRef  = eltype(zRef)(1) - zs / H
-    return (z, DzDzRef)
+    return z
   end
   return AdaptHeight
 end
@@ -22,13 +21,11 @@ function (F::Sleve)(H)
   @inline function AdaptHeight(zRef,zs)
     eta = zRef / H
     if eta <= etaH
-      z = eta * H + zs * sinh((etaH - eta) / s / etaH) / sinh(1 / s) 
-      DzDzRef  = eltype(zRef)(1) - zs / H / s / etaH * cosh((etaH - eta) / s / etaH) / sinh(1 / s) 
+      z = eta * H + zs * sinh((etaH - eta) / s / etaH) / sinh(eltype(zRef)(1) / s) 
     else
       z = eta * H
-      DzDzRef  = eltype(zRef)(1) 
     end  
-    return (z, DzDzRef)
+    return z
   end
   return AdaptHeight
 end
@@ -40,4 +37,5 @@ function AdaptGrid(FT,Type,H)
   elseif Type == "Sleve"
     AdaptGridFunction = Grids.Sleve{FT}()(H)
   end
+  return AdaptGridFunction
 end

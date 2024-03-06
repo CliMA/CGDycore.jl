@@ -326,7 +326,6 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz;order=true)
   NumEdgesB=0;
   NumFaces=size(Faces,1);
   Dim=3;
-  @show order
   if order
     Orientation!(Edges,Faces);
     Renumbering!(Edges,Faces);

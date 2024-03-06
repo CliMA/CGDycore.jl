@@ -758,8 +758,6 @@ function Orography4(backend,FT,CG,Exchange,Global)
   zlevels = Array(ds["z"])
   # Apply Smoothing
   # smooth_degree = Int(parsed_args["smoothing_order"])
-  @show typeof(zlevels)
-  @show size(zlevels)
   esmth = gaussian_smooth(zlevels)
 # esmth = deepcopy(zlevels)
   earth_spline = linear_interpolation((lon, lat), esmth, extrapolation_bc = (Periodic(), Flat()),)
@@ -781,11 +779,10 @@ function Orography4(backend,FT,CG,Exchange,Global)
   end
 
   copyto!(HeightGPU,Height)
-  @show maximum(HeightGPU)
-  @show minimum(HeightGPU)
-  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
-  @show maximum(HeightGPU)
-  @show minimum(HeightGPU)
+  nz = Grid.nz
+  GradDxH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
+  GradDyH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
+  TopographySmoothing!(HeightGPU,GradDxH,GradDyH,CG,Exchange,Global)
   copyto!(Height,HeightGPU)
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP
@@ -796,9 +793,7 @@ function Orography4(backend,FT,CG,Exchange,Global)
       end
     end
   end
-  @show maximum(HeightCG)
-  @show minimum(HeightCG)
-  return HeightCG
+  return HeightCG, GradDxH, GradDyH
 end
 
 function BoundingBoxFace(Face,Grid)

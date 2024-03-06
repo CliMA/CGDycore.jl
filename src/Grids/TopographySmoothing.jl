@@ -1,4 +1,4 @@
-function TopographySmoothing!(Height,CG,Exchange,Global)
+function TopographySmoothing!(Height,GradDxH,GradDyH,CG,Exchange,Global)
  
   backend = get_backend(Height)
   FT = eltype(Height)
@@ -83,8 +83,53 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
       @. Height = max(Height,0)
     end
   end    
+# Compute derivatives  
+  z = Global.Grid.z
+  Nz = length(z)
+  AdaptGrid = Global.Grid.AdaptGrid
+  NzG = min(div(512,N*N),Nz)
+  group = (N, N, NzG, 1)
+  ndrange = (N, N, Nz, NF)
+  KGradHeightKernel! = GradHeightKernel!(backend,group)
+  KGradHeightKernel!(AdaptGrid,GradDxH,GradDyH,Height,CG.DS,J,M,CG.Glob,z,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+  Parallels.ExchangeData!(GradDxH,Exchange)
+  Parallels.ExchangeData!(GradDyH,Exchange)
 end
 
+@kernel inbounds = true function GradHeightKernel!(AdaptGrid,GradDxH,GradDyH,@Const(Height),@Const(D),
+  @Const(JJ),@Const(M),@Const(Glob),@Const(z)) 
+  I, J, iz, iF   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+  H = @uniform z[end]
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  HeightCol = @localmem eltype(Height) (N,N, ColumnTilesDim)
+  if IF <= NF
+    HeightCol[I,J,iz] = AdaptGrid(z[Iz],Height[ind]) 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+  if Iz <= Nz && IF <= NF
+    Dxc = D[I,1] * HeightCol[1,J,iz]
+    Dyc = D[J,1] * HeightCol[I,1,iz]
+    for k = 2 : N
+      Dxc += D[I,k] * HeightCol[k,J,iz]
+      Dyc += D[J,k] * HeightCol[I,k,iz] 
+    end 
+    @atomic :monotonic GradDxH[Iz,ind] += Dxc * J[ID,IF] / M[ind]
+    @atomic :monotonic GradDyH[Iz,ind] += Dyc * J[ID,IF] / M[ind]
+  end
+end  
 
 @kernel inbounds = true function HyperViscHeightKernel!(FHeight,@Const(Height),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob)) 

@@ -7,7 +7,7 @@ function (::DampingW)(H,StrideDamp,Relax,wPos)
     FT = eltype(z)
     if z>=H-StrideDamp
       Damp = Relax *
-        sin(0.5*pi*(1.0 - (H - z)/StrideDamp))^2
+        sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
       Fw = -Damp * U[wPos]
     else
       Fw = FT(0)
