@@ -758,8 +758,8 @@ function Orography4(backend,FT,CG,Exchange,Global)
   zlevels = Array(ds["z"])
   # Apply Smoothing
   # smooth_degree = Int(parsed_args["smoothing_order"])
-  esmth = gaussian_smooth(zlevels)
-# esmth = deepcopy(zlevels)
+# esmth = gaussian_smooth(zlevels)
+  esmth = deepcopy(zlevels)
   earth_spline = linear_interpolation((lon, lat), esmth, extrapolation_bc = (Periodic(), Flat()),)
   PS = Point()
   xw = CG.xw

@@ -108,12 +108,12 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KPressureKernel!(Pressure,p,U,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
-  if Global.Model.SurfaceFlux
+  if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,X,Glob,SurfaceData,Model,NumberThreadGPU)  
     Surfaces.SurfaceFluxData!(U,p,X,dXdxI,nS,Glob,SurfaceData,LandUseData,Model,NumberThreadGPU)  
   end  
-  if Global.Model.VerticalDiffusion 
-    if Global.Model.SurfaceFlux  
+  if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom
+    if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom 
       KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
       KEddyCoefficientKernel!(Eddy,KV,Rho,uStar,p,dz,Glob,ndrange=ndrangeK)
       KernelAbstractions.synchronize(backend)

@@ -37,7 +37,7 @@ function TopographySmoothing!(Height,GradDxH,GradDyH,CG,Exchange,Global)
   KHyperViscHeightKernel! = HyperViscHeightKernel!(backend,group)
   SmoothType = "Hyper"
   SmoothType = "Diff"
-  NumSmoothSteps = 100
+  NumSmoothSteps = 120
   FHeight = similar(Height)
   Height1 = similar(Height)
   if SmoothType == "Diff"

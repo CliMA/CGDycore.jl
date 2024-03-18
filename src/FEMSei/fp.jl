@@ -1,4 +1,7 @@
-function fp(x,y,z)
+function fp(X,time)
+  x = X[1]
+  y = X[2]
+  z = X[3]
   lon,lat,r = Grids.cart2sphere(x,y,z)
   lat0 = 4.0*atan(1.0)
   lon0 = 2.0*atan(1.0)
@@ -9,7 +12,7 @@ function fp(x,y,z)
     h = 0.0 
   end
 end
-function up(x,y,z)
+function fu(x,y,z)
   lon,lat,r = Grids.cart2sphere(x,y,z)
   VelSp = zeros(3)
   VelSp[1] = 40 * cos(lat)

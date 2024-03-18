@@ -10,6 +10,12 @@ Base.@kwdef struct ParamGalewskiSphere
   Omega = 2*pi/24.0/3600.0 
 end
 
+Base.@kwdef struct ParamLinearBlob
+  lat0 = 4.0*atan(1.0)
+  lon0 = 2.0*atan(1.0)
+  Width = 0.8
+end
+
 Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   T0E::FT = 310.0
   T0P::FT = 240.0
@@ -94,6 +100,7 @@ Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
   T_equator::FT = 315.0
   T_min::FT = 200.0
   sigma_b::FT = 7.0/10.0
+  CM::FT  = 0.01 #0.0044
   CE::FT  = 0.0044
   CH::FT = 0.0044
   CTr::FT = 0.004
@@ -329,6 +336,49 @@ function Parameters(FT,Problem::String)
   elseif Problem == "GalewskiSphere"
     @show Problem
     Param = ParamGalewskiSphere()
+  elseif Problem == "LinearBlob"
+    @show Problem
+    Param = ParamLinearBlob()
+  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" || 
+    Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
+    @show Problem
+    Param = ParamHeldSuarezDrySphere{FT}()
+  elseif Problem == "HillSchaerCart"
+    @show Problem
+    Param = ParamHillSchaerCart()
+  elseif Problem == "HillAgnesiXCart"
+    @show Problem
+    Param = ParamHillAgnesiXCart()
+  elseif Problem == "HillAgnesiYCart"
+    @show Problem
+    Param = ParamHillAgnesiYCart()
+  elseif Problem == "HillGaussCart"
+    @show Problem
+    Param = ParamHillGaussCart()
+  elseif Problem == "AdvectionDCMIP"
+    @show Problem
+    Param = ParamAdvectionSphereDCMIP{FT}()
+  elseif Problem == "AdvectionSphereGaussian"
+    @show Problem
+    Param = ParamAdvectionSphereGaussian()
+  elseif Problem == "AdvectionSphereSlottedCylinder"
+    @show Problem
+    Param = ParamAdvectionSphereSlottedCylinder()
+  elseif Problem == "AdvectionCart"
+    @show Problem
+    Param = ParamAdvectionCart()
+  elseif Problem == "AdvectionCubeCart"
+    @show Problem
+    Param = ParamAdvectionCubeCart()
+  elseif Problem == "AdvectionCubeRotCart"
+    @show Problem
+    Param = ParamAdvectionCubeRotCart()
+  elseif Problem == "LimAdvectionCart"
+    @show Problem
+    Param = LimAdvectionCart{FT}()  
+  elseif Problem == "WarmBubble2DXCart"
+    @show Problem
+    Param = ParamWarmBubble2DXCart()
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" || 
     Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
     @show Problem

@@ -384,6 +384,9 @@ end
   if iz == 1
     Izm1 = max(Iz - 1,1)
     cCol[I,J,iz] = U[Izm1,ind,5] / U[Izm1,ind,1]
+#   if Iz == 1
+#     cCol[I,J,iz] = eltype(F)(2) * cCol[I,J,iz] - U[2,ind,5] / U[2,ind,1]  
+#   end  
   end
   if iz == ColumnTilesDim || Iz == Nz
     Izp1 = min(Iz + 1,Nz)
@@ -402,8 +405,8 @@ end
     cR = cCol[I,J,iz+2]
     cRR = cCol[I,J,iz+3]
 
-    @views wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
-      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+    @views wCon = Contra3W(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
+      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF],JJ[ID,:,Iz:Iz+1,IF])
 
     Izm1 = max(Iz - 1,1)
     Izp2 = min(Iz + 2, Nz)
@@ -412,10 +415,10 @@ end
     JR = JJ[ID,1,Iz+1,IF] + JJ[ID,2,Iz+1,IF]
     JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
     cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
-    Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
+    Flux = eltype(F)(0.5) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
     @atomic :monotonic F[Iz,ind,5] += -Flux / M[Iz,ind]
     @atomic :monotonic F[Iz+1,ind,5] += Flux / M[Iz+1,ind]
-    Flux = eltype(F)(0.5) * wCon
+    Flux = wCon
     @atomic :monotonic F[Iz,ind,1] += -Flux / M[Iz,ind]
     @atomic :monotonic F[Iz+1,ind,1] += Flux / M[Iz+1,ind]
   end 
@@ -729,6 +732,12 @@ end
   wCon = Rho[1] * (dXdxI[1,2,1] * u[1] + dXdxI[2,2,1] * v[1] + dXdxI[3,2,1] * w) + 
     Rho[2] * (dXdxI[1,1,2] * u[2] + dXdxI[2,1,2] * v[2] + dXdxI[3,1,2] * w)
 end
+
+@inline function Contra3W(Rho,u,v,w,dXdxI,J)
+  wCon = (J[2,1] * Rho[1] * (dXdxI[1,2,1] * u[1] + dXdxI[2,2,1] * v[1] + dXdxI[3,2,1] * w) + 
+    J[1,2] * Rho[2] * (dXdxI[1,1,2] * u[2] + dXdxI[2,1,2] * v[2] + dXdxI[3,1,2] * w)) /
+    (J[2,1] + J[1,2])
+end
   
 @inline function RecU41(cLL,cL,cR,cRR,JLL,JL,JR,JRR)
 
@@ -833,72 +842,6 @@ end
     @atomic :monotonic FTr[Iz+1,ind] += - dXdxI[3,3,1,ID,Iz+1,IF] * grad / M[Iz+1,ind]     
   end  
 end  
-
-#=
-@kernel inbounds = true function VerticalDiffusionMomentumKernel!(Fu,Fv,@Const(u),@Const(v),@Const(K),
-  @Const(dXdxI),@Const(JJ),@Const(M),@Const(Glob))
-  I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
-
-  ColumnTilesDim = @uniform @groupsize()[3]
-  N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
-
-  ID = I + (J - 1) * N
-  ind = Glob[ID,IF]
-
-  uCol = @localmem eltype(Fu) (N,N,ColumnTilesDim+1)
-  vCol = @localmem eltype(Fu) (N,N,ColumnTilesDim+1)
-
-  if Iz <= Nz
-    uCol[I,J,iz] = u[Iz,ind]
-    vCol[I,J,iz] = v[Iz,ind]
-  end
-  if iz == ColumnTilesDim || Iz == Nz
-    Izp1 = min(Iz + 1,Nz)
-    uCol[I,J,iz+1] = u[Izp1,ind]
-    vCol[I,J,iz+1] = v[Izp1,ind]
-  end
-  @synchronize
-
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-
-  if Iz < Nz
-    grad = (K[ID,Iz,IF] + K[ID,Iz+1,IF]) * (uCol[I,J,iz+1] - uCol[I,J,iz]) *
-       (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
-    @atomic :monotonic Fu[Iz,ind] +=  dXdxI[3,3,2,ID,Iz,IF] * grad / M[Iz,ind]  
-    @atomic :monotonic Fu[Iz+1,ind] += - dXdxI[3,3,1,ID,Iz+1,IF] * grad / M[Iz+1,ind]     
-    grad = (K[ID,Iz,IF] + K[ID,Iz+1,IF]) * (vCol[I,J,iz+1] - vCol[I,J,iz]) *
-       (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
-    @atomic :monotonic Fv[Iz,ind] +=  dXdxI[3,3,2,ID,Iz,IF] * grad / M[Iz,ind]  
-    @atomic :monotonic Fv[Iz+1,ind] += - dXdxI[3,3,1,ID,Iz+1,IF] * grad / M[Iz+1,ind]     
-  end  
-end  
-
-
-@kernel inbounds = true function SurfaceFluxMomentumKernel!(Fu,Fv,@Const(u),@Const(v),@Const(w),@Const(K),
-  @Const(dXdxI),@Const(nS),@Const(JJ),@Const(M),@Const(Glob))
-  ID,IF = @index(Global, NTuple)
-
-  NF = @uniform @ndrange()[2]
-
-  if IF <= NF
-    ind = Glob[ID,IF]  
-    v1 = u[1,ind]
-    v2 = v[1,ind]
-    WS = -(dXdxI[3,1,1,ID,1,IF]* v1 +
-        dXdxI[3,2,1,ID,1,IF] * v2) /
-        dXdxI[3,2,1,ID,1,IF]
-    ww = 0.5 * (WS + w[1,ind])
-    nU = nS[ID,1] * v1 + nS[ID,2] * v2 + nS[ID,3] * ww
-    uStar = sqrt((v1 - nS[ID,1] * nU)^2 + (v2 - nS[ID,2] * nU)^2 + (ww - nS[ID,3] * nU)^2)
-    @atomic :monotonic Fu[1,ind] += -CMom * uStar * (u - nSTV * nS[ID,1]) / M[1,ind]
-    @atomic :monotonic Fv[1,ind] += -CMom * uStar * (v - nSTV * nS[ID,2]) / M[1,ind]
-  end
-end  
-=#
 
 @kernel inbounds = true function SurfaceFluxScalarsKernel(F,@Const(U),@Const(p),@Const(TSurf),@Const(RhoVSurf),@Const(uStar),
   @Const(CT),@Const(CH),@Const(dXdxI),@Const(Glob),@Const(M),@Const(Phys))

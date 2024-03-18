@@ -41,7 +41,7 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi)
   VelCa = zeros(3)
   for iF = 1 : Grid.NumFaces
     VelLoc = Vel[Fe.Glob[:,iF]]  
-    DF, detJ, X = Jacobi(Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
+    DF, detJ,_,X = Jacobi(Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     VelCa .= (1 / detJ) * DF * (fRef[:, :] * VelLoc) 
     lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
     VelSpLoc = VelCart2Sphere(VelCa,lon,lat)

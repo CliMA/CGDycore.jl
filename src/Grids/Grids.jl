@@ -19,6 +19,7 @@ using Distances
 using LinearAlgebra
 using SparseArrays
 using Interpolations
+using MPI
 
 EPS::Float64 = eps(Float64)
 EPS2 = EPS * EPS
@@ -69,5 +70,6 @@ include("InitGrid.jl")
 include("SphericalGrid.jl")
 include("JacobiSphereDG3GPU.jl")
 include("Grid2KiteGrid.jl")
+include("GridLength.jl")
 
 end

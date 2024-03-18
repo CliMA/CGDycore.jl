@@ -11,7 +11,6 @@ using ArgParse
 using LinearAlgebra
 
 # Model
-function TestKite()
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
@@ -145,120 +144,157 @@ RefineLevel = 5
 RadEarth = 1.0
 nz = 1
 nPanel = 40
-nQuad = 3
+OP = 4
+DoF = OP * OP
+OPZ = 2
 Decomp = ""
 Decomp = "EqualArea"
-Problem = "GalewskiSphere"
-#Problem = "LinearBlob"
-Param = Examples.Parameters(FTB,Problem)
-Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-#TRI
-GridType = "DelaunaySphere"
-#GridType = "CubedSphere"
-#GridType = "TriangularSphere" # Achtung Orientierung
+GridType = "CubedSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-p = ones(Grid.NumFaces,1)
-for i = 1 : Grid.NumFaces
-  p[i] = i
-end  
-global FileNumber = 0
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
-
-KiteGrid = Grids.Grid2KiteGrid(backend,FTB,Grid,Grids.OrientFaceSphere)
-vtkSkeletonKite = Outputs.vtkStruct{Float64}(backend,KiteGrid)
-
-
-CG1KiteP = FEMSei.CG1KitePrimalStruct{FTB}(Grids.Quad(),backend,KiteGrid)
-CG1KiteP.M = FEMSei.MassMatrix(backend,FTB,CG1KiteP,KiteGrid,1,FEMSei.Jacobi)
-CG1KiteDHDiv = FEMSei.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,KiteGrid)
-CG1KiteDHDiv.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHDiv,KiteGrid,1,FEMSei.Jacobi)
-Div = FEMSei.DivMatrix(backend,FTB,CG1KiteDHDiv,CG1KiteP,KiteGrid,3,FEMSei.Jacobi)
-CG1KiteDHCurl = FEMSei.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,KiteGrid)
-CG1KiteDHCurl.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHCurl,KiteGrid,1,FEMSei.Jacobi)
-Curl = FEMSei.CurlMatrix(backend,FTB,CG1KiteDHCurl,CG1KiteP,KiteGrid,3,FEMSei.Jacobi)
-#Grad = FEMSei.GradMatrix(backend,FTB,CG1KiteP,CG1KiteD,KiteGrid,3,FEMSei.Jacobi)
+  iF = 1000
+  F = zeros(4,3)
+  F[1,1] = Grid.Faces[iF].P[1].x
+  F[1,2] = Grid.Faces[iF].P[1].y
+  F[1,3] = Grid.Faces[iF].P[1].z
+  F[2,1] = Grid.Faces[iF].P[2].x
+  F[2,2] = Grid.Faces[iF].P[2].y
+  F[2,3] = Grid.Faces[iF].P[2].z
+  F[3,1] = Grid.Faces[iF].P[3].x
+  F[3,2] = Grid.Faces[iF].P[3].y
+  F[3,3] = Grid.Faces[iF].P[3].z
+  F[4,1] = Grid.Faces[iF].P[4].x
+  F[4,2] = Grid.Faces[iF].P[4].y
+  F[4,3] = Grid.Faces[iF].P[4].z
 
 
-U = zeros(FTB,CG1KiteP.NumG+CG1KiteDHDiv.NumG)
-UNew = zeros(FTB,CG1KiteP.NumG+CG1KiteDHDiv.NumG)
-pPosS = 1
-pPosE = CG1KiteP.NumG
-uPosS = CG1KiteP.NumG + 1
-uPosE = CG1KiteP.NumG + CG1KiteDHDiv.NumG
-uCurl = zeros(FTB,CG1KiteDHCurl.NumG)
+  Rad = 1.e5
+  zero = eltype(F)(0)
+  one = eltype(F)(1)
+  half = eltype(F)(1/2)
+  quarter = eltype(F)(1/4)
+  ksi1 = 0.75
+  ksi2 = 0.75
+  dXdx = zeros(2,2)
+  X1 = quarter * (F[1,1] * (one-ksi1)*(one-ksi2) +
+   F[2,1] * (one+ksi1)*(one-ksi2) +
+   F[3,1] * (one+ksi1)*(one+ksi2) +
+   F[4,1] * (one-ksi1)*(one+ksi2))
+  X2 = quarter * (F[1,2] * (one-ksi1)*(one-ksi2) +
+   F[2,2] * (one+ksi1)*(one-ksi2) +
+   F[3,2] * (one+ksi1)*(one+ksi2) +
+   F[4,2] * (one-ksi1)*(one+ksi2))
+  X3 = quarter * (F[1,3] * (one-ksi1)*(one-ksi2) +
+   F[2,3] * (one+ksi1)*(one-ksi2) +
+   F[3,3] * (one+ksi1)*(one+ksi2) +
+   F[4,3] * (one-ksi1)*(one+ksi2))
+
+  r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
+  f = Rad / r
+  X1 = X1 / r
+  X2 = X2 / r
+  X3 = X3 / r
+  (lam,theta)=Grids.cart2sphere(X1,X2,X3)
+
+  DD=@SArray([-sin(lam) cos(lam) zero;
+      zero       zero     one])
+
+  sinlam = sin(lam)
+  coslam = cos(lam)
+  sinth = sin(theta)
+  costh = cos(theta)
+  a11 = sinlam * sinlam * costh * costh + sinth * sinth
+  a12 = -sinlam * coslam * costh * costh
+  a13 = -coslam * sinth * costh
+  a21 = a12
+  a22 = coslam * coslam * costh * costh + sinth * sinth
+  a23 = -sinlam * sinth * costh
+  a31 = -coslam * sinth
+  a32 = -sinlam * sinth
+  a33 = costh
+  A = @SArray([a11 a12 a13;
+      a21 a22 a23;
+      a31 a32 a33])
+
+  B = @SArray([F[1,1] F[2,1] F[3,1] F[4,1];
+       F[1,2] F[2,2] F[3,2] F[4,2];
+       F[1,3] F[2,3] F[3,3] F[4,3]])
+
+  C = @SArray([-one+ksi2  -one+ksi1;
+              one-ksi2  -one-ksi1;
+              one+ksi2   one+ksi1;
+             -one-ksi2   one-ksi1])
+  D = quarter * f * DD * A * B * C
+  dXdx[1,1] = D[1,1]	    
+  dXdx[1,2] = D[1,2]	    
+  dXdx[2,1] = D[2,1]	    
+  dXdx[2,2] = D[2,2]	    
+
+  detdXdx = det(dXdx) 
+  dXdxI = inv(dXdx) * detdXdx
 
 
-@views FEMSei.Project!(backend,FTB,U[pPosS:pPosE],CG1KiteP,KiteGrid,nQuad,
-  FEMSei.Jacobi,Model.InitialProfile)
-@views FEMSei.Project!(backend,FTB,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,nQuad,
-  FEMSei.Jacobi,Model.InitialProfile)
+  P1 = Grid.Faces[iF].P[1]
+  P2 = Grid.Faces[iF].P[2]
+  P3 = Grid.Faces[iF].P[3]
+  P4 = Grid.Faces[iF].P[4]
 
-@views FEMSei.ProjectHDivHCurl!(backend,FTB,uCurl,CG1KiteDHCurl,Grid,nQuad,FEMSei.Jacobi,
-  CG1KiteDHDiv,U[pPosS:pPosE])
+  XT1 =  0.25*(P1.x*(1-ksi1)*(1-ksi2)+
+            P2.x*(1+ksi1)*(1-ksi2)+
+            P3.x*(1+ksi1)*(1+ksi2)+
+            P4.x*(1-ksi1)*(1+ksi2))
+    
+  XT2 =  0.25*(P1.y*(1-ksi1)*(1-ksi2)+
+            P2.y*(1+ksi1)*(1-ksi2)+
+            P3.y*(1+ksi1)*(1+ksi2)+
+            P4.y*(1-ksi1)*(1+ksi2))
+           
+  XT3 =  0.25*(P1.z*(1-ksi1)*(1-ksi2)+
+           P2.z*(1+ksi1)*(1-ksi2)+
+            P3.z*(1+ksi1)*(1+ksi2)+
+            P4.z*(1-ksi1)*(1+ksi2))
+    
+  X = SVector{3}(XT1,XT2,XT3)
+  JP = @SArray[P1.x P2.x P3.x P4.x;
+               P1.y P2.y P3.y P4.y;
+               P1.z P2.z P3.z P4.z]
 
-q = zeros(FTB,CG1KiteP.NumG)
-mul!(q,Curl,uCurl)
+  J3 = @SArray([-0.25 + 0.25*ksi2  -0.25 + 0.25*ksi1
+                 0.25 - 0.25*ksi2  -0.25 - 0.25*ksi1
+                 0.25 + 0.25*ksi2   0.25 + 0.25*ksi1
+                -0.25 - 0.25*ksi2   0.25 - 0.25*ksi1])
 
-VelCa = zeros(KiteGrid.NumFaces,Grid.Dim)
-VelSp = zeros(KiteGrid.NumFaces,2)
-@views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
-@views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,q)
-@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-stop
 
-nAdveVel = 4000
-dtau = 0.0005
-time = 0.0
-r = similar(U)
-temp = similar(U)
-UNew = similar(U)
+  f = Rad *(XT1^2 + XT2^2 + XT3^2)^(-3/2)
+  dX1dXT1 = f * (XT2^2 + XT3^2)
+  dX1dXT2= -f * XT1 * XT2 
+  dX1dXT3= -f * XT1 * XT3
+  dX2dXT1 = dX1dXT2 
+  dX2dXT2 = f * (XT1^2+XT3^2)
+  dX2dXT3 = -f * XT2 * XT3
+  dX3dXT1 = dX1dXT3 
+  dX3dXT2 = dX2dXT3 
+  dX3dXT3 = f*(XT1^2+XT2^2)
 
-@views rp = r[pPosS:pPosE]
-@views ru = r[uPosS:uPosE]
-@views tp = temp[pPosS:pPosE]
-@views tu = temp[uPosS:uPosE]
-@views Up = U[pPosS:pPosE]
-@views Uu = U[uPosS:uPosE]
-@views UNewp = UNew[pPosS:pPosE]
-@views UNewu = UNew[uPosS:uPosE]
-FuM = lu(CG1KiteDHDiv.M)
-FpM = lu(CG1KiteP.M)
+  J1 = @SArray([dX1dXT1    dX2dXT1     dX3dXT1   
+                dX1dXT2     dX2dXT2     dX3dXT2
+                dX1dXT3     dX2dXT3     dX3dXT3])   
+  J = J1 * JP * J3      
 
-for i = 1 : nAdveVel
-  mul!(tp,Div,Uu)
-  ldiv!(rp,FpM,tp)
-  mul!(tu,Div',Up)
-  ldiv!(ru,FuM,tu)
-  @.ru = -ru
-  @. UNew = U + 0.5 * dtau * r
+  detJ = norm(cross(J[:,1],J[:,2]))
+  pinvJ = detJ * (J / (J' * J))
 
-  mul!(tp,Div,UNewu)
-  ldiv!(rp,FpM,tp)
-  mul!(tu,Div',UNewp)
-  ldiv!(ru,FuM,tu)
-  @.ru = -ru
-  @. U = U + dtau * r
-
-  if mod(i,100) == 0
-    global FileNumber += 1
-    @views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
-    @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-    @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-    Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-  end
-end
-
-FileNumber += 1
-@views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
-@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-nothing
-end
+  (lon,lat)=Grids.cart2sphere(XT1,XT2,XT3)
+  Rotate = zeros(3,3)
+  Rotate[1,1] =           -sin(lon)
+  Rotate[2,1] =-sin(lat) * cos(lon)
+  Rotate[3,1] = cos(lat) * cos(lon)
+  Rotate[1,2] =           cos(lon)
+  Rotate[2,2] =-sin(lat) * sin(lon)
+  Rotate[3,2] = cos(lat) * sin(lon)
+  Rotate[1,3] =          0.0
+  Rotate[2,3] = cos(lat)
+  Rotate[3,3] = sin(lat)
 
 

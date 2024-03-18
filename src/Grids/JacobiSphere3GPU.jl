@@ -154,7 +154,6 @@ end
     @views dXdxLoc[I,J,K,1:2,1:2,iz] .= eltype(X)(1/4) * f * DD * A * B * C
     dXdxLoc[I,J,K,1,3,iz] = eltype(X)(0)
     dXdxLoc[I,J,K,2,3,iz] = eltype(X)(0)
-    dXdxLoc[I,J,K,3,3,iz] = eltype(X)(0)
   end  
 
   @synchronize 
@@ -277,6 +276,8 @@ end
               eltype(X)(1)+ksi2   eltype(X)(1)+ksi1;
              -eltype(X)(1)-ksi2   eltype(X)(1)-ksi1])
     @views dXdxLoc[I,J,K,1:2,1:2,iz] .= eltype(X)(1/4) * f * DD * A * B * C
+    dXdxLoc[I,J,K,1,3,iz] = eltype(X)(0)
+    dXdxLoc[I,J,K,2,3,iz] = eltype(X)(0)
   end  
 
   @synchronize 

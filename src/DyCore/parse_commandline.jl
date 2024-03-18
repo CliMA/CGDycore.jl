@@ -187,11 +187,6 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
-    "--VerticalDiffusion"
-    help = "Vertical diffusion"
-    arg_type = Bool
-    default = false
-
     "--JacVerticalDiffusion"
     help = "Jacobian Vertical diffusion"
     arg_type = Bool
@@ -199,6 +194,11 @@ function parse_commandline()
 
     "--JacVerticalAdvection"
     help = "Jacobian Vertical advection"
+    arg_type = Bool
+    default = false
+
+    "--VerticalDiffusion"
+    help = "Vertical diffusion"
     arg_type = Bool
     default = false
 

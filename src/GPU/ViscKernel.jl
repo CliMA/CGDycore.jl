@@ -75,8 +75,8 @@
     end
     @views FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
-    @atomic :monotonic F[Iz,ind,1] += FuC / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,2] += FvC / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,1] += -FuC / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,2] += -FvC / M[Iz,ind]
     @atomic :monotonic F[Iz,ind,3] += FuD / M[Iz,ind]
     @atomic :monotonic F[Iz,ind,4] += FvD / M[Iz,ind]
     @atomic :monotonic F[Iz,ind,5] += DivTh / M[Iz,ind]
@@ -121,7 +121,7 @@ end
     @views uD, vD = Contra12(Cache[Iz,ind,3],Cache[Iz,ind,4],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uDCol[I,J,iz] = uD
     vDCol[I,J,iz] = vD
-    ThCol[I,J,iz] = Cache[Iz,ind,5]
+    ThCol[I,J,iz] = Cache[Iz,ind,5] 
   end
   @synchronize
 
@@ -166,8 +166,8 @@ end
     end
     @views FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF])
-    @atomic :monotonic F[Iz,ind,2] += -(KoeffCurl * FuC + KoeffGrad * FuD) / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,3] += -(KoeffCurl * FvC + KoeffGrad * FvD) / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,2] += -(-KoeffCurl * FuC + KoeffGrad * FuD) / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,3] += -(-KoeffCurl * FvC + KoeffGrad * FvD) / M[Iz,ind]
     @atomic :monotonic F[Iz,ind,5] += -KoeffDiv * DivTh / M[Iz,ind]
   end
 end

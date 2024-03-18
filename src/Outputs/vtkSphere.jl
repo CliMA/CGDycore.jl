@@ -188,7 +188,7 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Metric,Global)
           end
           for i = 1 : 4
             pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Output.RadPrint,0.0)/Global.Output.H/5.0]
-            pts[:,ipts] = [lam[i],theta[i],0.0]
+#           pts[:,ipts] = [lam[i],theta[i],0.0]
             ipts = ipts + 1
           end
         else

@@ -48,7 +48,6 @@ Base.@kwdef struct GravitationShallow <: GravitationType end
 function (GravitationFun::GravitationShallow)(Phys)
   @inline function Gravitation(x,y,z)
     FT = eltype(x)
-    r = sqrt(x^2 + y^2 + z^2)
     return Phys.Grav
   end
   return Gravitation

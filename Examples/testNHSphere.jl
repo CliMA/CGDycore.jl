@@ -321,10 +321,16 @@ Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.DoF,Grid.NumFaces)
 @. Global.LandUseData.z0M = 0.01
 @. Global.LandUseData.z0H = 0.01
 @. Global.LandUseData.LandClass = 5
-if Model.SurfaceFlux || Model.VerticalDiffusion
+if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
   if SurfaceScheme == ""
-    if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
+    if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" ||
+     Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+      Model.SurfaceValues = SurfaceValues
+      Model.SurfaceFluxValues = SurfaceFluxValues
+    elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
+      @show "Surface HeldSuarezDry"
+      SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezDrySurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     end  
@@ -335,6 +341,10 @@ if Model.SurfaceFlux || Model.VerticalDiffusion
     Model.SurfaceFluxValues = SurfaceFluxValues
   end  
 end
+
+# HyperViscosity
+  GridLength = Grids.GridLength(Grid,Grid.Type)
+  @show GridLength
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")

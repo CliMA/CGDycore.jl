@@ -38,6 +38,7 @@ mutable struct SurfaceData{FT<:AbstractFloat,
   TS::AT1
   RhoVS::AT1
   uStar::AT1
+  CM::AT1
   CT::AT1
   CH::AT1
 end
@@ -46,6 +47,7 @@ function SurfaceData{FT}(backend,DoF,NF) where FT<:AbstractFloat
   TS = KernelAbstractions.zeros(backend,FT,DoF,NF)
   RhoVS = KernelAbstractions.zeros(backend,FT,DoF,NF)
   uStar = KernelAbstractions.zeros(backend,FT,DoF,NF)
+  CM = KernelAbstractions.zeros(backend,FT,DoF,NF)
   CT = KernelAbstractions.zeros(backend,FT,DoF,NF)
   CH = KernelAbstractions.zeros(backend,FT,DoF,NF)
   return SurfaceData{FT,
@@ -53,6 +55,7 @@ function SurfaceData{FT}(backend,DoF,NF) where FT<:AbstractFloat
     TS,
     RhoVS,
     uStar,
+    CM,
     CT,
     CH,
   )

@@ -28,11 +28,15 @@ abstract type VectorElement <: FiniteElement end
 abstract type VectorKiteElement <: FiniteElement end
 abstract type HDivElement <: VectorElement end
 abstract type HDivKiteDElement <: HDivElement end
+abstract type HCurlElement <: VectorElement end
+abstract type HCurlKiteDElement <: HCurlElement end
 abstract type TensorElement <: VectorElement end
 
 include("Quadratur.jl")
 include("RT0.jl")
 include("DG0.jl")
+include("RT1.jl")
+include("DG1.jl")
 include("CGKite.jl")
 include("MassMatrix.jl")
 include("Jacobi.jl")

@@ -139,7 +139,7 @@ Base.@kwdef struct BryanFritsch <: Example
 end
 
 function (profile::BryanFritsch)(Param,Phys)
-  (; ProfileBF) = profile
+  ( ProfileBF) = profile
   function local_profile(x,time)
     FT = eltype(x)
     z = x[3]
@@ -256,6 +256,27 @@ function (profile::GalewskiExample)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct LinearBlob <: Example end
+
+function (profile::LinearBlob)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
+    d = acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0))
+    if abs(d) <= Param.Width
+      h = cos(pi*d/Param.Width/2)^2
+    else
+      h = 0.0
+    end
+    u = FT(0)
+    v = FT(0)
+    w = FT(0)
+    Th = FT(1)
+    return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct BaroWaveExample <: Example end
 
 function (profile::BaroWaveExample)(Param,Phys)
@@ -338,7 +359,7 @@ function (::HeldSuarezDryExample)(Param,Phys)
   function profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    z=max(R-Phys.RadEarth,FT(0));
+    z=max(R-Phys.RadEarth,FT(0))
     temp = Param.T_Init + Param.LapseRate * z #+ rand(FT) * FT(0.1) * (z < FT(5000))
     pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
     Rho = pres / Phys.Rd / temp
@@ -366,7 +387,15 @@ function (::HeldSuarezDryExample)(Param,Phys)
     FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
     return FT(0),Fu,Fv,FT(0),FRhoTh
   end
-  return profile,Force
+  function Eddy(uStar,p,dz)
+    K = Param.CE * uStar * dz / 2
+    if p < Param.p_pbl
+      dpR = (Param.p_pbl - p) / Param.p_strato
+      K = K * exp(-dpR * dpR)
+    end
+    return K
+  end
+  return profile,Force,Eddy
 end
 
 Base.@kwdef struct HeldSuarezMoistExample <: Example end
@@ -375,7 +404,7 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    z=max(R-Phys.RadEarth,FT(0));
+    z=max(R-Phys.RadEarth,FT(0))
     temp = Param.T_Init + Param.LapseRate * z + rand(FT) * FT(0.01) * (z < FT(5000))
     pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
     Rho = pres / Phys.Rd / temp
@@ -443,4 +472,37 @@ function (profile::SchaerSphereExample)(Param,Phys)
     return (Rho,uS,vS,w,Th)
   end
   return local_profile
+end
+
+function integrandG(tau,RadEarth,Param)
+  f=2.0*Param.Omega*sin(tau)
+  if (tau<=Param.lat0G) || (tau>=Param.lat1G)
+    uStart=0.0
+  else
+    uStart=Param.uM/Param.eN*exp(1.0/((tau-Param.lat0G)*(tau-Param.lat1G)))
+  end
+  if abs(tau)<0.5*pi
+    intG=(RadEarth*f+uStart*tan(tau))*uStart
+  else
+    intG=0.0
+  end
+  return intG
+end
+
+function simpson(x0,xN,r,dx,f,Param)
+  n=(xN-x0)/dx+1
+  h=(xN-x0)/n
+  res=0.5*(f(x0,r,Param)+f(xN,r,Param))
+  xi=x0
+  for i=1:(n-1)
+    xi=xi+h
+    res=res+f(xi,r,Param)
+  end
+  xi=x0-0.5*h
+  for i=1:n
+    xi=xi+h
+    res=res+2.0*f(xi,r,Param)
+  end
+  res=res*h/3.0
+  return res
 end

@@ -169,3 +169,72 @@
     end  
   end
 end
+
+@kernel inbounds = true function VerticalDiffusionMomentumKernel!(F,@Const(U),@Const(K),
+  @Const(dXdxI),@Const(JJ),@Const(M),@Const(Glob))
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N
+  ind = Glob[ID,IF]
+
+  uCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  vCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+
+  if Iz <= Nz
+    uCol[I,J,iz] = U[Iz,ind,2]
+    vCol[I,J,iz] = U[Iz,ind,3]
+    RhoCol[I,J,iz] = U[Iz,ind,1]
+  end
+  if iz == ColumnTilesDim || Iz == Nz
+    Izp1 = min(Iz + 1,Nz)
+    uCol[I,J,iz+1] = U[Izp1,ind,2]
+    vCol[I,J,iz+1] = U[Izp1,ind,3]
+    RhoCol[I,J,iz+1] = U[Izp1,ind,1]
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz < Nz
+    fac = (RhoCol[I,J,iz] * K[ID,Iz,IF] + RhoCol[I,J,iz+1] * K[ID,Iz+1,IF]) / 
+      (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])  
+    facDiv1 = dXdxI[3,3,2,ID,Iz,IF] / M[Iz,ind] / RhoCol[I,J,iz]  
+    facDiv2 = -dXdxI[3,3,2,ID,Iz+1,IF] / M[Iz+1,ind] / RhoCol[I,J,iz+1]  
+    grad = fac * (uCol[I,J,iz+1] - uCol[I,J,iz]) *
+    @atomic :monotonic F[Iz,ind,2] +=  facDiv1 * grad
+    @atomic :monotonic F[Iz+1,ind,2] += facDiv2 * grad 
+    grad = fac * (vCol[I,J,iz+1] - vCol[I,J,iz])
+    @atomic :monotonic F[Iz,ind,3] +=  facDiv1 * grad
+    @atomic :monotonic F[Iz+1,ind,3] += facDiv2 * grad 
+  end  
+end  
+
+
+@kernel inbounds = true function SurfaceFluxMomentumKernel!(F,@Const(U),
+  @Const(dXdxI),@Const(nS),@Const(CM),@Const(M),@Const(Glob))
+  ID,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[2]
+
+  if IF <= NF
+    ind = Glob[ID,IF]  
+    uCol = U[1,ind,2]
+    vCol = U[1,ind,3]
+    WS = -(dXdxI[3,1,1,ID,1,IF]* uCol +
+        dXdxI[3,2,1,ID,1,IF] * vCol) /
+        dXdxI[3,3,1,ID,1,IF]
+    ww = 0.5 * (WS + U[1,ind,4])
+    nU = nS[ID,1,IF] * uCol + nS[ID,2,IF] * vCol + nS[ID,3,IF] * ww
+    uStar = sqrt((uCol - nS[ID,1,IF] * nU)^2 + (vCol - nS[ID,2,IF] * nU)^2 + (ww - nS[ID,3,IF] * nU)^2)
+    @atomic :monotonic F[1,ind,2] += -CM[ID,IF] * uStar * (uCol - nU * nS[ID,1,IF]) / M[1,ind]
+    @atomic :monotonic F[1,ind,3] += -CM[ID,IF] * uStar * (vCol - nU * nS[ID,2,IF]) / M[1,ind]
+  end
+end  

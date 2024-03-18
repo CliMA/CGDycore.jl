@@ -37,7 +37,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=75 \
+  --dtau=250 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="EarthOrography" \
@@ -45,11 +45,11 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
-  --nPanel=32 \
+  --nPanel=16 \
   --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=0.5e16 \
-  --HyperDGrad=0.5e16 \
-  --HyperDDiv=0.3250e16 \
+  --HyperDCurl=2.0e16 \
+  --HyperDGrad=2.0e16 \
+  --HyperDDiv=1.4e16 \
   --HyperDDivW=0.e16

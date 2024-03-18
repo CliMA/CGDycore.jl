@@ -6,7 +6,10 @@ import ..Thermodynamics
 
 function InitialProfile!(Model,Problem,Param,Phys)
   # Initial values
-  if Problem == "Galewski"
+  if Problem == "GalewskiSphere"
+    Profile = Examples.GalewskiExample()(Param,Phys)
+    Model.InitialProfile = Profile
+  elseif Problem == "LinearBlob"
     Profile = Examples.GalewskiExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere"
@@ -16,9 +19,10 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Profile = Examples.SchaerSphereExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
-    Profile, Force = Examples.HeldSuarezDryExample()(Param,Phys)
+    Profile, Force, Eddy = Examples.HeldSuarezDryExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
+    Model.Eddy = Eddy
   elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
     Profile, Force, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
     Model.InitialProfile = Profile

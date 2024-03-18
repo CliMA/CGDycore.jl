@@ -287,9 +287,9 @@ Base.@kwdef mutable struct ModelStruct{FT}
   TypeMicrophysics::String
   RelCloud::FT
   Rain::FT
-  VerticalDiffusion::Bool
   JacVerticalDiffusion::Bool
   JacVerticalAdvection::Bool
+  VerticalDiffusion::Bool
   VerticalDiffusionMom::Bool
   SurfaceFlux::Bool
   SurfaceFluxMom::Bool
@@ -359,9 +359,9 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   TypeMicrophysics = ""
   RelCloud = 0.0
   Rain = 0.0
-  VerticalDiffusion = false
   JacVerticalDiffusion = false
   JacVerticalAdvection = false
+  VerticalDiffusion = false
   VerticalDiffusionMom = false
   SurfaceFlux = false
   SurfaceFluxMom = false
@@ -429,9 +429,9 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    TypeMicrophysics,
    RelCloud,
    Rain,
-   VerticalDiffusion,
    JacVerticalDiffusion,
    JacVerticalAdvection,
+   VerticalDiffusion,
    VerticalDiffusionMom,
    SurfaceFlux,
    SurfaceFluxMom,
