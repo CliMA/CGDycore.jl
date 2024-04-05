@@ -7,8 +7,8 @@ srun -n 4 gpu_wrapper.sh -n 4 -e "julia --project Examples/testNHSphere.jl \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
-  --RhoVPos=1 \
-  --RhoCPos=2 \
+  --RhoVPos=6 \
+  --RhoCPos=7 \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=true \
@@ -34,7 +34,7 @@ srun -n 4 gpu_wrapper.sh -n 4 -e "julia --project Examples/testNHSphere.jl \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=12 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \

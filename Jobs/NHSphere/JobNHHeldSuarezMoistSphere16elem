@@ -1,8 +1,7 @@
-export UCX_ERROR_SIGNALS=""
-srun -n 1 gpu_wrapper.sh -n 1 -e "julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
-  --Device="GPU" \
-  --GPUType="CUDA" \
+  --Device="CPU" \
+  --GPUType="Metal" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
@@ -34,11 +33,11 @@ srun -n 1 gpu_wrapper.sh -n 1 -e "julia --project Examples/testNHSphere.jl \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=150 \
+  --dtau=300 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -46,11 +45,11 @@ srun -n 1 gpu_wrapper.sh -n 1 -e "julia --project Examples/testNHSphere.jl \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
-  --nPanel=30 \
+  --nPanel=16 \
   --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=2.e15 \
-  --HyperDGrad=2.e15 \
-  --HyperDDiv=2.e15 \
-  --HyperDDivW=2.e15"
+  --HyperDCurl=9.e15 \
+  --HyperDGrad=9.e15 \
+  --HyperDDiv=9.e15 \
+  --HyperDDivW=9.e15

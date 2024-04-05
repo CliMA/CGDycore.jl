@@ -226,6 +226,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     @views FThEDMF = F[:,:,ThEDMFPos]  
   end  
 # Cache
+# Need clearer cache distribution for different setups
   @views CacheF = Temp1[:,:,1:6]
   @views CacheFF = Temp1[:,:,1:6+NumTr+1]
   @views Cachew = Temp1[:,:,6 + 1 + NumTr]  
@@ -335,7 +336,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   if EDMF
     if KoeffDivW > 0
       KHyperViscWKernel! = HyperViscWKernel!(backend, groupTr)
-      @views KHyperViscWKernel!(FwEDMF,CachewEDMF,DS,DW,dXdxI,J,MW,Glob,KoeffDivW,ndrange=ndrangeB)
+      @views KHyperViscWKoeffKernel!(FwEDMF,CachewEDMF,DS,DW,dXdxI,J,MW,Glob,KoeffDivW,ndrange=ndrangeB)
       KernelAbstractions.synchronize(backend)
     end  
     @views KHyperViscTracerKernel!(FThEDMF,CacheThEDMF,RhoEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDiv,ndrange=ndrangeB)

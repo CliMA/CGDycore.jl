@@ -1,4 +1,3 @@
-using KernelAbstractions
 function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,DiscType)  
   backend = get_backend(U)
   FT = eltype(U)
