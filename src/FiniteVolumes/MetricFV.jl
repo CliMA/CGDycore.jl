@@ -13,18 +13,18 @@ function MetricFiniteVolume(backend,FT,Grid,type::Grids.Tri)
   PrimalEdgeCPU = zeros(FT,NumEdges)
   DualEdgeCPU = zeros(FT,NumEdges)
   for iE = 1 : NumEdges
-    PrimalEdgeCPU[iE] = Grids.SizeGreatCircle(Edges[iE],Nodes) * Grids.Rad
+    PrimalEdgeCPU[iE] = Grids.SizeGreatCircle(Edges[iE],Nodes) * Grid.Rad
     iF1 = Edges[iE].F[1]
     iF2 = Edges[iE].F[2]
     Mid1 = Faces[iF1].Mid
     Mid2 = Faces[iF2].Mid
-    DualEdgeCPU[iE] = Grids.SizeGreatCircle(Mid1,Mid2) * Grids.Rad
+    DualEdgeCPU[iE] = Grids.SizeGreatCircle(Mid1,Mid2) * Grid.Rad
   end
   copyto!(PrimalEdge,PrimalEdgeCPU)
 
   PrimalVolumeCPU = zeros(FT,NumFaces)
   for iF = 1 : NumFaces
-    PrimalVolumeCPU[iF] = Grids.AreaFace(Faces[iF],Nodes) * Grids.Rad^2
+    PrimalVolumeCPU[iF] = Grids.AreaFace(Faces[iF],Nodes) * Grid.Rad^2
   end
   copyto!(PrimalVolume,PrimalVolumeCPU)
 
@@ -48,7 +48,7 @@ function MetricFiniteVolume(backend,FT,Grid,type::Grids.Tri)
     PC1 = Faces[Edges[iE].F[1]].Mid
     PC2 = Faces[Edges[iE].F[2]].Mid
     DualEdgeVolumeCPU[iE] = (Grids.AreaSphericalTriangle(P1,P2,PC1) +
-      Grids.AreaSphericalTriangle(P1,P2,PC2)) * Grids.Rad^2
+      Grids.AreaSphericalTriangle(P1,P2,PC2)) * Grid.Rad^2
   end
   copyto!(DualEdgeVolume,DualEdgeVolumeCPU)
   copyto!(DualEdge,DualEdgeCPU)

@@ -4,17 +4,18 @@ Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
 
 function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
-  @inline function SurfaceValues(x,U,p)
-    FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+  @inline function SurfaceValues(xS,U,p)
+    FT = eltype(xS)
+    Lon = xS[1]
+    Lat = xS[2]
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     p_vs = Thermodynamics.fpvs(TSurf,Phys.T0)
     RhoVSurf = p_vs / (Phys.Rv * TSurf)
     return TSurf, RhoVSurf
   end  
-  @inline function SurfaceFluxValues(z,U,p,dXdxI,nS,TS,z0M,z0H,LandClass)
+  @inline function SurfaceFluxValues(z,U,p,nS,TS,z0M,z0H,LandClass)
     FT = eltype(U)
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
+    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     CM = FT(Param.CM)
     CT = FT(Param.CE)
     CH = FT(Param.CH)
@@ -32,9 +33,9 @@ function (::HeldSuarezDrySurface)(Phys,Param,uPos,vPos,wPos)
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     return TSurf, FT(0)
   end
-  @inline function SurfaceFluxValues(z,U,p,dXdxI,nS,TS,z0M,z0H,LandClass)
+  @inline function SurfaceFluxValues(z,U,p,nS,TS,z0M,z0H,LandClass)
     FT = eltype(U)
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
+    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     CM = FT(Param.CM)
     CT = FT(Param.CE)
     CH = FT(0)
@@ -44,10 +45,10 @@ function (::HeldSuarezDrySurface)(Phys,Param,uPos,vPos,wPos)
 end
 
 
-@inline function uStarCoefficientGPU(v1,v2,w,dXdxI,nS)
+@inline function uStarCoefficientGPU(v1,v2,w,nS)
 # Computation norm_v_a
 # |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)
-  wS = -(dXdxI[1]* v1 + dXdxI[2] * v2) / dXdxI[3]
+  wS = -(nS[1]* v1 + nS[2] * v2) / nS[3]
   wC = eltype(v1)(0.5) * (wS + w)
   nU = nS[1] * v1 + nS[2] * v2 + nS[3] * wC
   sqrt((v1 - nS[1] * nU) * (v1 - nS[1] * nU) +
@@ -62,9 +63,9 @@ function (::MOSurface)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
     FT = eltype(x)
     return FT(300), FT(0)
   end
-  @inline function SurfaceFluxValues(z,U,p,dXdxI,nS,TS,z0M,z0H,LandClass)
+  @inline function SurfaceFluxValues(z,U,p,nSS,TS,z0M,z0H,LandClass)
     FT = eltype(U)
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],dXdxI,nS)
+    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
     theta = U[ThPos] / U[RhoPos]
     CM, CT = Surfaces.MOSTIteration(uf,z0M,z0H,z,uStar,theta,TS,LandClass,Phys)
     return uStar, CM, CT, CT
@@ -74,25 +75,21 @@ end
 
 
 
-@kernel inbounds = true function SurfaceFluxDataKernel!(SurfaceFluxValues,uStar,CM,CT,CH,@Const(U),@Const(p),@Const(X),
-  @Const(dXdxI),@Const(nS),@Const(Glob),@Const(TS),@Const(z0M),@Const(z0H),@Const(LandClass))
+@kernel inbounds = true function SurfaceFluxDataKernel!(SurfaceFluxValues,uStar,CM,CT,CH,@Const(U),@Const(p),@Const(dz),
+  @Const(nSS),@Const(TS),@Const(z0M),@Const(z0H),@Const(LandClass))
 
-  ID,IF = @index(Global, NTuple)
+  IC, = @index(Global, NTuple)
 
-  NumF = @uniform @ndrange()[2]
+  NumG = @uniform @ndrange()[1]
 
-  if IF <= NumF
-    ind = Glob[ID,IF]
-    xS = SVector{3}(X[ID,1,1,1,IF], X[ID,1,2,1,IF], X[ID,1,3,1,IF])
-    dz = sqrt(X[ID,2,1,1,IF]^2 + X[ID,2,2,1,IF]^2 + X[ID,2,3,1,IF]^2) -
-      sqrt(X[ID,1,1,1,IF]^2 + X[ID,1,2,1,IF]^2 + X[ID,1,3,1,IF]^2)
-    uStar[ID,IF], CM[ID,IF], CT[ID,IF], CH[ID,IF] = SurfaceFluxValues(dz,
-      view(U,1,ind,:),p[1,ind], view(dXdxI,3,:,1,ID,1,IF),view(nS,ID,:,IF),
-      TS[ID,IF],z0M[ID,IF],z0H[ID,IF],LandClass[ID,IF])
+  if IC <= NumG
+    uStar[IC], CM[IC], CT[IC], CH[IC] = SurfaceFluxValues(dz[1,IC],
+      view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
+      TS[IC],z0M[IC],z0H[IC],LandClass[IC])
   end
 end
 
-function SurfaceFluxData!(U,p,X,dXdxI,nS,Glob,SurfaceData,LandUseData,Model,NumberThreadGPU)
+function SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)
   TS = SurfaceData.TS
   uStar = SurfaceData.uStar
   CM = SurfaceData.CM
@@ -102,38 +99,34 @@ function SurfaceFluxData!(U,p,X,dXdxI,nS,Glob,SurfaceData,LandUseData,Model,Numb
   z0H = LandUseData.z0H
   LandClass = LandUseData.LandClass
   backend = get_backend(TS)
-  DoF, NumF = size(TS)
-  NFG = min(div(NumberThreadGPU,DoF),NumF)
-  groupS = (DoF, NFG)
-  ndrangeS = (DoF, NumF)
+  NumG, = size(TS)
+  groupS = (max(div(NumG,NumberThreadGPU),1))
+  ndrangeS = (NumG)
   KSurfaceFluxDataKernel! = SurfaceFluxDataKernel!(backend,groupS)
-  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,uStar,CM,CT,CH,U,p,X,dXdxI,nS,Glob,TS,
+  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,uStar,CM,CT,CH,U,p,dz,nSS,TS,
     z0M,z0H,LandClass,ndrange=ndrangeS)
   KernelAbstractions.synchronize(backend)
 end
 
-@kernel inbounds = true function SurfaceDataKernel!(SurfaceValues,TS,RhoVS,@Const(U),@Const(p),@Const(X),@Const(Glob))
+@kernel inbounds = true function SurfaceDataKernel!(SurfaceValues,TS,RhoVS,@Const(U),@Const(p),@Const(xS),@Const(Glob))
 
-  ID,IF = @index(Global, NTuple)
+  IC, = @index(Global, NTuple)
 
-  NumF = @uniform @ndrange()[2]
+  NumG = @uniform @ndrange()[1]
 
-  if IF <= NumF
-    ind = Glob[ID,IF]
-    xS = SVector{3}(X[ID,1,1,1,IF], X[ID,1,2,1,IF], X[ID,1,3,1,IF])
-    TS[ID,IF], RhoVS[ID,IF] =  SurfaceValues(xS,view(U,1,ind,:),p[1,ind])
+  if IC <= NumG
+    TS[IC], RhoVS[IC] =  SurfaceValues(xS[:,IC],view(U,1,IC,:),p[1,IC])
   end
 end
 
-function SurfaceData!(U,p,X,Glob,SurfaceData,Model,NumberThreadGPU)
+function SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)
   TS = SurfaceData.TS
   RhoVS = SurfaceData.RhoVS
   backend = get_backend(TS)
-  DoF, NumF = size(TS)
-  NFG = min(div(NumberThreadGPU,DoF),NumF)
-  groupS = (DoF, NFG)
-  ndrangeS = (DoF, NumF)
+  NumG, = size(TS)
+  groupS = (max(div(NumG,NumberThreadGPU),1))
+  ndrangeS = (NumG)
   KSurfaceDataKernel! = SurfaceDataKernel!(backend,groupS)
-  KSurfaceDataKernel!(Model.SurfaceValues,TS,RhoVS,U,p,X,Glob,ndrange=ndrangeS)
+  KSurfaceDataKernel!(Model.SurfaceValues,TS,RhoVS,U,p,xS,Glob,ndrange=ndrangeS)
   KernelAbstractions.synchronize(backend)
 end

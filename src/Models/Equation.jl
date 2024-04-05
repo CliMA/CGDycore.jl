@@ -1,15 +1,24 @@
 abstract type EquationType end
     
-struct Advection  <: EquationType end
 struct ShallowWater  <: EquationType end
+struct Advection  <: EquationType end
 struct CompressibleShallow  <: EquationType end
 struct CompressibleDeep  <: EquationType  end
 
 abstract type State end
-struct StateShallow  <: State  end
+struct ShallowWaterState  <: State  end
 struct Dry  <: State  end
 struct Moist  <: State end
   
+function (::ShallowWaterState)(Phys)
+  function Pressure(U)
+    FT = eltype(U)
+    p = FT(0.5) * Phys.Grav * U[5]^2
+    return p
+  end
+  return Pressure
+end 
+
 function (::Dry)(Phys)
   function Pressure(U)
     FT = eltype(U)

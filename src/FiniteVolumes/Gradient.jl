@@ -8,7 +8,7 @@ function Gradient(backend,FTB,MetricFV,Grid)
       push!(ColInd,Grid.Faces[iF].F)
       iE =  Grid.Faces[iF].E[i]
       push!(RowInd,iE)
-      Value = Grid.Faces[iF].OrientE[i]
+      Value = Grid.Faces[iF].OrientE[i] / MetricFV.DualEdge[iE]
       push!(Val,Value)
     end  
   end

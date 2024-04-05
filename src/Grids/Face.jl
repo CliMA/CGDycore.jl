@@ -45,7 +45,7 @@ function Face()
   )
 end  
 
-function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Float64,2}=[])
+function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",Rad=1.0,P::Array{Float64,2}=[])
   F = Face()
   if EdgesF[1]==0
     return (F,Edges)
@@ -100,7 +100,7 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Flo
       F.P[i]=Point(P[:,i])
     end
   end
-  if Type == "Sphere"
+  if Form == "Sphere"
     F.Area = AreaFace(F,Nodes)
   else  
     PT=Point([0.0, 0.0, 0.0]);
@@ -114,11 +114,11 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;P::Array{Flo
     F.Mid=F.Mid+F.P[i];
   end
   F.Mid=F.Mid/Float64(nE);
-  if Type == "Sphere"
-    F.Mid = F.Mid / norm(F.Mid) * norm(F.P[1])  
+  if Form == "Sphere"
+    F.Mid = F.Mid / norm(F.Mid) * Rad
   end  
-  if Type == "Sphere"
-    F.Radius = RadiusFace(F,Nodes)  
+  if Form == "Sphere"
+    F.Radius = Rad
   else
   end    
 

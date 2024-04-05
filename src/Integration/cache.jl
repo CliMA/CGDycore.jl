@@ -4,7 +4,7 @@ mutable struct CacheStruct{FT<:AbstractFloat,
                            AT4<:AbstractArray}
 PresCG::Array{FT, 2}
 AuxG::AT3
-KV::AT3
+KV::AT2
 Aux2DG::Array{FT, 3}
 Temp::Array{FT, 3}
 KE::AT2
@@ -49,7 +49,7 @@ end
 function CacheStruct{FT}(backend) where FT<:AbstractFloat
 PresCG=zeros(FT,0,0)
 AuxG=KernelAbstractions.zeros(backend,FT,0,0,0)
-KV=KernelAbstractions.zeros(backend,FT,0,0,0)
+KV=KernelAbstractions.zeros(backend,FT,0,0)
 Aux2DG=zeros(FT,0,0,0)
 Temp=zeros(FT,0,0,0)
 KE=KernelAbstractions.zeros(backend,FT,0,0)
@@ -141,13 +141,11 @@ end
 function CacheStruct{FT}(backend,DoF,NF,NGF,NumG,nz,NumV,NumTr) where FT<:AbstractFloat
 PresCG=zeros(FT,DoF,nz)
 AuxG=KernelAbstractions.zeros(backend,FT,nz,NumG,4)
-KV=KernelAbstractions.zeros(backend,FT,DoF,nz,NF)
+KV=KernelAbstractions.zeros(backend,FT,nz,NumG)
 Aux2DG=zeros(FT,1,NumG,NumTr+1)
 Temp=zeros(FT,DoF,nz,NF)
 KE=KernelAbstractions.zeros(backend,FT,DoF,nz)
-uStar=KernelAbstractions.zeros(backend,FT,DoF,NF)
 cTrS=zeros(FT,DoF,NF,NumTr)
-TSurf=KernelAbstractions.zeros(backend,FT,DoF,NF)
 RhoVSurf=KernelAbstractions.zeros(backend,FT,DoF,NF)
 CT=KernelAbstractions.zeros(backend,FT,DoF,NF)
 CH=KernelAbstractions.zeros(backend,FT,DoF,NF)

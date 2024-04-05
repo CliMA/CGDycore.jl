@@ -115,7 +115,6 @@ function OutputStruct()
 end  
 
 mutable struct MetricStruct{FT<:AbstractFloat,
-                            AT1<:AbstractArray,
                             AT2<:AbstractArray,
                             AT3<:AbstractArray,
                             AT4<:AbstractArray,
@@ -123,30 +122,29 @@ mutable struct MetricStruct{FT<:AbstractFloat,
                             AT6<:AbstractArray}
   J::AT4
   X::AT5
-  dXdx::AT6
   dXdxI::AT6
+  nSS::AT2
   nS::AT3
   FS::AT2
   dz::AT2
   zP::AT2
-  lat::AT1
   JC::AT3
   JCW::AT3
+  xS::AT2
 end
-function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
+function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
     X      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,3,nz,NF)
-    dXdx   = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
     dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
+    nSS  = KernelAbstractions.zeros(backend,FT,3,NumG)
     nS = KernelAbstractions.zeros(backend,FT,nQuad,3,NF)
     FS = KernelAbstractions.zeros(backend,FT,nQuad,NF)
     dz = KernelAbstractions.zeros(backend,FT,0,0)
     zP = KernelAbstractions.zeros(backend,FT,0,0)
-    lat = KernelAbstractions.zeros(backend,FT,0)
     JC     = KernelAbstractions.zeros(backend,FT,0,0,0)
     JCW    = KernelAbstractions.zeros(backend,FT,0,0,0)
+    xS    = KernelAbstractions.zeros(backend,FT,2,NumG)
     return MetricStruct{FT,
-                        typeof(lat),
                         typeof(zP),
                         typeof(nS),
                         typeof(J),
@@ -154,15 +152,15 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz) where FT<:AbstractFloat
                         typeof(dXdxI)}(
         J,
         X,
-        dXdx,
         dXdxI,
+        nSS,
         nS, 
         FS, 
         dz,
         zP,
-        lat,
         JC,
         JCW,
+        xS,
     )
 end
 
@@ -183,6 +181,8 @@ struct PhysParameters{FT<:AbstractFloat}
   Omega::FT
   T0::FT
   T00::FT
+  Cd::FT # Dissipation Koefficient
+  PrTke::FT # Prandtl number for Tke
 end
 function PhysParameters{FT}() where FT<:AbstractFloat
   RadEarth = 6.37122e+6
@@ -202,6 +202,8 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   Omega = 2 * pi / 24.0 / 3600.0
   T0 = 273.15
   T00 = 273.15 -35.0
+  Cd = 0.125
+  PrTke = 1.0
  return PhysParameters{FT}(
   RadEarth,
   Grav,
@@ -219,6 +221,8 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   Omega,
   T0,
   T00,
+  Cd,
+  PrTke,
   )
 end 
 
@@ -255,11 +259,15 @@ Base.@kwdef mutable struct ModelStruct{FT}
   vPos::Int
   wPos::Int
   ThPos::Int
-  PertTh::Bool
   RhoVPos::Int
   RhoCPos::Int
   RhoIPos::Int
   RhoRPos::Int
+  TkePos::Int
+  EDMFPos::Int
+  RhoEDMFPos::Int
+  wEDMFPos::Int
+  ThEDMFPos::Int
   NumV::Int
   NumTr::Int
   Equation::Models.EquationType
@@ -274,6 +282,8 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Coriolis::Bool
   CoriolisType::String
   Buoyancy::Bool
+  Turbulence::Bool
+  EDMF::Bool
   RefProfile::Bool
   HyperVisc::Bool
   HyperDCurl::FT
@@ -305,6 +315,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   CoriolisFun::Any
   GravitationFun::Any
   MicrophysicsSource::Any
+  TurbulenceSource::Any
   SurfaceFluxRhs::Any
   SurfaceValues::Any
   SurfaceFluxValues::Any
@@ -327,11 +338,15 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   vPos = 0
   wPos = 0
   ThPos = 0
-  PertTh = false
   RhoVPos = 0
   RhoCPos = 0
   RhoIPos = 0
   RhoRPos = 0
+  TkePos = 0
+  EDMFPos = 0
+  RhoEDMFPos = 0
+  wEDMFPos = 0
+  ThEDMFPos = 0
   NumV = 0
   NumTr = 0
   Equation = Models.CompressibleShallow()
@@ -346,6 +361,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Coriolis = false
   CoriolisType = ""
   Buoyancy = true
+  Turbulence = false
+  EDMF = false
   RefProfile = false
   HyperVisc = false
   HyperDCurl = 0.0
@@ -377,6 +394,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   CoriolisFun = ""
   GravitationFun = ""
   MicrophysicsSource = ""
+  TurbulenceSource = ""
   SurfaceFluxRhs = ""
   SurfaceValues = ""
   SurfaceFluxValues = ""
@@ -397,11 +415,15 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    vPos,
    wPos,
    ThPos,
-   PertTh,
    RhoVPos,
    RhoCPos,
    RhoIPos,
    RhoRPos,
+   TkePos,
+   EDMFPos,
+   RhoEDMFPos,
+   wEDMFPos,
+   ThEDMFPos,
    NumV,
    NumTr,
    Equation,
@@ -416,6 +438,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Coriolis,
    CoriolisType,
    Buoyancy,
+   Turbulence,
+   EDMF,
    RefProfile,
    HyperVisc,
    HyperDCurl,
@@ -447,6 +471,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    CoriolisFun,
    GravitationFun,
    MicrophysicsSource,
+   TurbulenceSource,
    SurfaceFluxRhs,
    SurfaceValues,
    SurfaceFluxValues,
@@ -484,8 +509,8 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
   RhoBGrd = zeros(0,0)
   UGeo = zeros(0,0)
   VGeo = zeros(0,0)
-  SurfaceData = Surfaces.SurfaceData{FT}(backend,0,0)
-  LandUseData = Surfaces.LandUseData{FT}(backend,0,0)
+  SurfaceData = Surfaces.SurfaceData{FT}(backend,0)
+  LandUseData = Surfaces.LandUseData{FT}(backend,00)
   return GlobalStruct{FT}(
     Grid,
     Model,

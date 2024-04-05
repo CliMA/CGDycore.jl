@@ -140,84 +140,43 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-Problem = "LinearBlob"
-Param = Examples.Parameters(FTB,Problem)
-Examples.InitialProfile!(Model,Problem,Param,Phys)
-
-RefineLevel = 5
-RadEarth = 1.0
+RefineLevel = 1
+RadEarth = Phys.RadEarth
 nz = 1
-nPanel = 40
-nQuad = 2
+nPanel = 8
+nQuad = 3
+OrdPoly = 1
+nx = 5
+ny = 5
+Lx = 5.0
+Ly = 5.0
+x0 = 0.0
+y0 = 0.0
+Boundary = Grids.Boundary()
+Boundary.WE = "Period"
+Boundary.SN = "Period"
 Decomp = ""
 Decomp = "EqualArea"
+Problem = "GalewskiSphere"
+#Problem = "LinearBlob"
+Param = Examples.Parameters(FTB,Problem)
+Examples.InitialProfile!(Model,Problem,Param,Phys)
+GridType = "Sphere"
 
-#TRI
-GridType = "DelaunaySphere"
-GridType = "CubedSphere"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
-  Model,ParallelCom;order=false)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+Grid = Grids.QuadGrid(backend,FTB)
+F,LocGlob,IC = FiniteVolumes.LocalGrid(Grid.Faces[1],Grid)
+NumF = length(F)
 
-#MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid,Grid.Type)
+Ord = 4;
+SDiv = FiniteVolumes.DivDiv(F,LocGlob,FiniteVolumes.DivRT0!,Ord);
+SDivV = FiniteVolumes.WeakVort(F,LocGlob,IC,FiniteVolumes.CG1Grad!,FiniteVolumes.RT0!,Ord);
+SSDiv=[SDiv;SDivV]
 
-
-#Div = FiniteVolumes.Divergence(backend,FTB,MetricFV,Grid)
-#GradFV = FiniteVolumes.Gradient(backend,FTB,MetricFV,Grid)
-Grad = FiniteVolumes.GradMPFA(backend,FTB,Grid)
-Div = FiniteVolumes.DivMPFA(backend,FTB,Grid)
-
-
-pPosS = 1
-pPosE = Grid.NumFaces
-uPosS = pPosE + 1
-uPosE = pPosE + Grid.NumEdges
-U = zeros(FTB,Grid.NumEdges+Grid.NumFaces)
-r = similar(U)
-UNew = similar(U)
-@views rp = r[pPosS:pPosE]
-@views ru = r[uPosS:uPosE]
-@views Up = U[pPosS:pPosE]
-@views Uu = U[uPosS:uPosE]
-@views UNewp = UNew[pPosS:pPosE]
-@views UNewu = UNew[uPosS:uPosE]
-
-FiniteVolumes.ProjectFace!(backend,FTB,Up,Grid,Model.InitialProfile)
-FileNumber = 0
-VelCa = zeros(Grid.NumFaces,Grid.Dim)
-VelSp = zeros(Grid.NumFaces,2)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
-pNeu = zeros(FTB,Grid.NumFaces)
-
-nAdveVel = 1000
-dtau = 0.001
-time = 0.0
-
-
-
-for i = 1 : nAdveVel
-  mul!(rp,Div,Uu)
-  mul!(ru,Grad,Up)
-  @. ru = -ru
-  @. UNew = U + 0.5 * dtau * r  
-
-  mul!(rp,Div,UNewu)
-  mul!(ru,Grad,UNewp)
-  @. ru = -ru
-  @. U = U + dtau * r  
-
-
-  #time = time + dtau
-end
-
-
-FileNumber += 1
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
-
-
-#= ToDO
-Gleichungen testen mit @show
-mehr Quadraturregeln für Dreiecke höhere ordnungen
-RT1, DG1
-Wiki von github
-=#
+uB = zeros(NumF,NumF)
+for i = 1 : NumF
+  uB[i,i] = 1;
+end  
+uI = -SSDiv[5:end,5:end] \ (SSDiv[5:end,1:4] * uB)
+NVal = FiniteVolumes.TangentialDiv(F,LocGlob,FiniteVolumes.RT0!,Ord)
+U = [uB;uI]
+T = NVal * U

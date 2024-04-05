@@ -382,6 +382,20 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global, part::Int, 
       InterpolateGPU!(cCell,Pres,vtkInter,CG.Glob)
       @views copyto!(pCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["p", VTKCellData()] = pCell 
+    elseif  str == "Tke" 
+      TkePos = Global.Model.TkePos
+      RhoPos = Global.Model.RhoPos
+      TkeCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views InterpolateRhoGPU!(cCell,U[:,:,TkePos],U[:,:,RhoPos],vtkInter,CG.Glob)
+      copyto!(TkeCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+      vtk["Tke", VTKCellData()] = TkeCell
+    elseif  str == "DiffKoeff" 
+      DiffKoeff = Cache.KV  
+      RhoPos = Global.Model.RhoPos
+      DiffKoeffCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views InterpolateRhoGPU!(cCell,DiffKoeff,U[:,:,RhoPos],vtkInter,CG.Glob)
+      copyto!(DiffKoeffCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+      vtk["DiffKoeff", VTKCellData()] = DiffKoeffCell
     elseif  str == "Tr1" 
       Tr1Pos = Global.Model.NumV + 1
       RhoPos = Global.Model.RhoPos

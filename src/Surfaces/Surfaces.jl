@@ -20,10 +20,10 @@ mutable struct LandUseData{FT<:AbstractFloat,
   LandClass::IT1
 end
 
-function LandUseData{FT}(backend,DoF,NF) where FT<:AbstractFloat
-  z0M = KernelAbstractions.zeros(backend,FT,DoF,NF)
-  z0H = KernelAbstractions.zeros(backend,FT,DoF,NF)
-  LandClass = KernelAbstractions.zeros(backend,Int,DoF,NF)
+function LandUseData{FT}(backend,NumG) where FT<:AbstractFloat
+  z0M = KernelAbstractions.zeros(backend,FT,NumG)
+  z0H = KernelAbstractions.zeros(backend,FT,NumG)
+  LandClass = KernelAbstractions.zeros(backend,Int,NumG)
   return LandUseData{FT,
                      typeof(z0M),
                      typeof(LandClass)}(
@@ -43,13 +43,13 @@ mutable struct SurfaceData{FT<:AbstractFloat,
   CH::AT1
 end
 
-function SurfaceData{FT}(backend,DoF,NF) where FT<:AbstractFloat
-  TS = KernelAbstractions.zeros(backend,FT,DoF,NF)
-  RhoVS = KernelAbstractions.zeros(backend,FT,DoF,NF)
-  uStar = KernelAbstractions.zeros(backend,FT,DoF,NF)
-  CM = KernelAbstractions.zeros(backend,FT,DoF,NF)
-  CT = KernelAbstractions.zeros(backend,FT,DoF,NF)
-  CH = KernelAbstractions.zeros(backend,FT,DoF,NF)
+function SurfaceData{FT}(backend,NumG) where FT<:AbstractFloat
+  TS = KernelAbstractions.zeros(backend,FT,NumG)
+  RhoVS = KernelAbstractions.zeros(backend,FT,NumG)
+  uStar = KernelAbstractions.zeros(backend,FT,NumG)
+  CM = KernelAbstractions.zeros(backend,FT,NumG)
+  CT = KernelAbstractions.zeros(backend,FT,NumG)
+  CH = KernelAbstractions.zeros(backend,FT,NumG)
   return SurfaceData{FT,
                      typeof(TS)}(
     TS,

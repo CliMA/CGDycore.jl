@@ -154,6 +154,7 @@ GridType = "CubedSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
   iF = 1000
+  iF = 333
   F = zeros(4,3)
   F[1,1] = Grid.Faces[iF].P[1].x
   F[1,2] = Grid.Faces[iF].P[1].y
@@ -264,8 +265,9 @@ Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,
                  0.25 - 0.25*ksi2  -0.25 - 0.25*ksi1
                  0.25 + 0.25*ksi2   0.25 + 0.25*ksi1
                 -0.25 - 0.25*ksi2   0.25 - 0.25*ksi1])
+# X[i] = xT[i]/norm(XT)*(R + 0.5*(1-xi3)*h1 + (1+xi3)*h2)
 
-
+  f1 = 1.0 / (XT1^2 + XT2^2 + XT3^2)^(1/2)
   f = Rad *(XT1^2 + XT2^2 + XT3^2)^(-3/2)
   dX1dXT1 = f * (XT2^2 + XT3^2)
   dX1dXT2= -f * XT1 * XT2 
@@ -296,5 +298,5 @@ Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,
   Rotate[1,3] =          0.0
   Rotate[2,3] = cos(lat)
   Rotate[3,3] = sin(lat)
-
+  JJ = [J[:,1] J[:,2] [XT1 / f1 ;XT2 / f1 ;XT3 / f1 ]]
 

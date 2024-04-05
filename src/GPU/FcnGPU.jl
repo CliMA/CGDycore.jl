@@ -26,7 +26,6 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   @views qMin = Cache.qMin[:,:,1:NumTr]
   @views qMax = Cache.qMax[:,:,1:NumTr]
 
-
 # State vector
   @views Rho = U[:,:,1]
   @views u = U[:,:,2]
@@ -46,13 +45,24 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   NFG = min(div(512,Nz),NF)
   groupL = (Nz, NFG, 1)
   ndrangeL = (Nz, NF, NumTr)
+  NF = Global.Grid.NumFaces
+  NBF = Global.Grid.NumBoundaryFaces
+  ndrangeB = (N, N, Nz, NBF)
+  ndrangeI = (N, N, Nz, NF-NBF)
+
+  @views dXdxI_I = dXdxI[:,:,:,:,:,NBF+1:NF]
+  @views J_I = J[:,:,:,NBF+1:NF]
+  @views X_I = X[:,:,:,:,NBF+1:NF]
+  @views Glob_I = Glob[:,NBF+1:NF]
+  @views Stencil_I = Stencil[NBF+1:NF,:]
 
   KLimitKernel! = LimitKernel!(backend, groupL)
   KuvwFunCKernel! = uvwFunCKernel!(backend, groupC)
   KDivRhoKernel! = DivRhoKernel!(backend, group)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, group)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, group)
-  KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
+# KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, group)
+  KAdvectionTrUpwind3Kernel! = AdvectionTrUpwind3Kernel!(backend, group)
   KDivRhoTrUpwind3LimKernel! = DivRhoTrUpwind3LimKernel!(backend, group)
   KDivRhoTrViscUpwind3LimKernel! = DivRhoTrViscUpwind3LimKernel!(backend, group)
 
@@ -70,35 +80,62 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
 
 # Hyperviscosity Part 1
   if ~Global.Model.HorLimit
-     KHyperViscTracerKernel!(CacheTr,U[:,:,1+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrange)
-     KernelAbstractions.synchronize(backend)
+    @. CacheTr = FT(0)  
+    KHyperViscTracerKernel!(CacheTr,U[:,:,1+NumV],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    KernelAbstractions.synchronize(backend)
 
 #   Data exchange  
     Parallels.ExchangeData3DSendGPU(CacheTr,Exchange)
+
+    KHyperViscTracerKernel!(CacheTr,U[:,:,1+NumV],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
     Parallels.ExchangeData3DRecvGPU!(CacheTr,Exchange)
   end  
 
   F .= FT(0)
 
-  KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrange)
+  KDivRhoKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)  
 
   if Global.Model.HorLimit
     @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
-      dXdxI,J,M,Glob,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrange)
+      dXdxI,J,M,Glob,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)  
   else
     @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
-      KoeffDiv,ndrange=ndrange)
+      KoeffDiv,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
 
-    @views KDivRhoTrUpwind3Kernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
-      dXdxI,J,M,Glob,ndrange=ndrange)
+#   @views KDivRhoTrUpwind3Kernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
+#     dXdxI,J,M,Glob,ndrange=ndrangeB)
+    @views KAdvectionTrUpwind3Kernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,U[:,:,4],DS,dXdxI,
+      J,M,Glob,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)  
   end
 
 # Data exchange  
   @views Parallels.ExchangeData3DSendGPU(F[:,:,1:1+NumV],Exchange)
+
+  KDivRhoKernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+  KernelAbstractions.synchronize(backend)
+
+  if Global.Model.HorLimit
+    @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
+      dXdxI_I,J_I,M,Glob_I,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil_I,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
+  else
+    @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
+      KoeffDiv,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
+
+#   @views KDivRhoTrUpwind3Kernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
+#     dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    @views KAdvectionTrUpwind3Kernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,U[:,:,4],DS,
+      dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
+  end
+
+# Data exchange  
   @views Parallels.ExchangeData3DRecvGPU!(F[:,:,1:1+NumV],Exchange)
 end
 
@@ -113,6 +150,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   MW = FE.MW
   dXdxI = Metric.dXdxI
   nS = Metric.nS
+  nSS = Metric.nSS
   X = Metric.X
   J = Metric.J
   NF = Global.Grid.NumFaces
@@ -128,7 +166,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views X_I = X[:,:,:,:,NBF+1:NF]
   @views nS_I = nS[:,:,NBF+1:NF]
   @views Glob_I = Glob[:,NBF+1:NF]
-  lat = Metric.lat  
+  xS = Metric.xS  
   dz = Metric.dz  
   zP = Metric.zP  
   DoF = FE.DoF
@@ -142,6 +180,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Force = Global.Model.Force
   Damp = Global.Model.Damp
+  EDMF = Global.Model.EDMF
   MicrophysicsSource = Global.Model.MicrophysicsSource
   CoriolisFun = Global.Model.CoriolisFun
   GravitationFun = Global.Model.GravitationFun
@@ -151,20 +190,51 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KoeffDiv = Global.Model.HyperDDiv
   KoeffDivW = Global.Model.HyperDDivW
 
+# Position  
+  TkePos = Global.Model.TkePos
+  RhoPos = Global.Model.RhoPos
+  uPos = Global.Model.uPos
+  vPos = Global.Model.vPos
+  wPos = Global.Model.wPos
+  ThPos = Global.Model.ThPos
+  TkePos = Global.Model.TkePos
+  RhoEDMFPos = Global.Model.RhoEDMFPos
+  wEDMFPos = Global.Model.wEDMFPos
+  ThEDMFPos = Global.Model.ThEDMFPos
 # State vector
-  @views Rho = U[:,:,1]
-  @views u = U[:,:,2]
-  @views v = U[:,:,3]
-  @views w = U[:,:,4]
-  @views RhoTr = U[:,:,5]
+  @views Rho = U[:,:,RhoPos]
+  @views u = U[:,:,uPos]
+  @views v = U[:,:,vPos]
+  @views w = U[:,:,wPos]
+  @views Th = U[:,:,ThPos]
+  if TkePos > 0
+    @views Tke = U[:,:,TkePos]  
+  end  
+  if EDMF
+    @views RhoEDMF = U[:,:,RhoEDMFPos] 
+    @views wEDMF = U[:,:,wEDMFPos]  
+    @views ThEDMF = U[:,:,ThEDMFPos]  
+  end  
 # Tendency
   @views FRho = F[:,:,1]
-  @views FRhoTr = F[:,:,5]
+  if TkePos > 0
+    @views FTke = F[:,:,TkePos]  
+  end  
+  if EDMF
+    @views FRhoEDMF = F[:,:,RhoEDMFPos] 
+    @views FwEDMF = F[:,:,wEDMFPos]  
+    @views FThEDMF = F[:,:,ThEDMFPos]  
+  end  
 # Cache
   @views CacheF = Temp1[:,:,1:6]
   @views CacheFF = Temp1[:,:,1:6+NumTr+1]
   @views Cachew = Temp1[:,:,6 + 1 + NumTr]  
+  if EDMF
+    @views CachewEDMF = Temp1[:,:,6 + 1 + NumTr + 1]  
+    @views CacheThEDMF = Temp1[:,:,6 + 1 + NumTr + 2]  
+  end
   @views p = Cache.AuxG[:,:,1]
+
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)
@@ -176,6 +246,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   NDoFG = min(div(NumberThreadGPU,Nz),NDoF)
   groupG = (Nz, NDoFG)  
   ndrangeG = (Nz, NDoF)  
+  groupS = max(div(NDoF,NumberThreadGPU),1)
+  ndrangeS = (NDoF)  
   NzG = min(div(NumberThreadGPU,N*N),Nz-1)
   groupw = (N, N, NzG, 1)
   ndrangewB = (Nz-1, NBF)  
@@ -209,6 +281,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     @views KHyperViscWKernel!(Cachew,U[:,:,4],DS,DW,dXdxI,J,MW,Glob,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
   end  
+  
+  if EDMF
+    # Computation MRhoEDMF, new kernel which includes MRhoEDMF  
+    KHyperViscWKernel! = HyperViscWKernel!(backend, groupTr)
+    @views KHyperViscWKernel!(CachewEDMF,wEDMF,DS,DW,dXdxI,J,MW,Glob,ndrange=ndrangeB)
+    KernelAbstractions.synchronize(backend)
+    @views KHyperViscTracerKernel!(CacheThEDMF,ThEDMF,RhoEDMF,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    KernelAbstractions.synchronize(backend)
+  end    
   Parallels.ExchangeData3DSendGPU(CacheFF,Exchange)
 
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -222,6 +303,13 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     @views KHyperViscWKernel!(Cachew,U[:,:,4],DS,DW,dXdxI_I,J_I,MW,Glob_I,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
   end  
+  if EDMF
+    @views KHyperViscWKernel!(CachewEDMF,wEDMF,DS,DW,dXdxI_I,J_I,MW,Glob_I,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
+
+    @views KHyperViscTracerKernel!(CacheThEDMF,ThEDMF,RhoEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
+  end  
 
   Parallels.ExchangeData3DRecvGPU!(CacheFF,Exchange)
   KernelAbstractions.synchronize(backend)
@@ -229,7 +317,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 ####
 # Second phase  
 ####
-
   F .= FT(0)
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
@@ -242,6 +329,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   if KoeffDivW > 0
     KHyperViscWKoeffKernel! = HyperViscWKoeffKernel!(backend, groupTr)
     @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI,J,MW,Glob,KoeffDivW,ndrange=ndrangeB)
+    KernelAbstractions.synchronize(backend)
+  end  
+  if EDMF
+    if KoeffDivW > 0
+      KHyperViscWKernel! = HyperViscWKernel!(backend, groupTr)
+      @views KHyperViscWKernel!(FwEDMF,CachewEDMF,DS,DW,dXdxI,J,MW,Glob,KoeffDivW,ndrange=ndrangeB)
+      KernelAbstractions.synchronize(backend)
+    end  
+    @views KHyperViscTracerKernel!(FThEDMF,CacheThEDMF,RhoEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDiv,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
   end  
   KGradKernel!(F,U,p,DS,dXdxI,J,X,M,MRho,Glob,GravitationFun,ndrange=ndrangeB)
@@ -257,47 +353,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
       dXdxI,J,M,Glob,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
   end  
-  if Global.Model.VerticalDiffusionMom
-    KVerticalDiffusionMomentumKernel! = VerticalDiffusionMomentumKernel!(backend,group)
-    KV = Cache.KV
-    KVerticalDiffusionMomentumKernel!(F,U,KV,dXdxI,J,M,Glob,ndrange=ndrangeB)
+  if EDMF
+    #Transport ThEDMF,RhoEDMF 
+    #Advection wEDMF  
   end    
-  if Global.Model.VerticalDiffusion
-    KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend,groupTr)  
-    KV = Cache.KV
-    @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV,
-      dXdxI,J,M,Glob,ndrange=ndrangeB)
-    KernelAbstractions.synchronize(backend)
-    for iT = 1 : NumTr
-      @views KVerticalDiffusionScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV,
-        dXdxI,J,M,Glob,ndrange=ndrangeB)
-      KernelAbstractions.synchronize(backend)
-    end  
-  end    
-  if Global.Model.SurfaceFluxMom
-    NFG = min(div(NumberThreadGPU,N*N),NF)
-    groupS = (N * N, NFG)
-    KSurfaceFluxMomentumKernel! = SurfaceFluxMomentumKernel!(backend,groupS)  
-    ndrangeSB = (N * N,NBF)
-    CM = Global.SurfaceData.CM
-    KSurfaceFluxMomentumKernel!(F,U,dXdxI,nS,CM,M,Glob,ndrange=ndrangeSB)
-  end  
-  if Global.Model.SurfaceFlux
-    NFG = min(div(NumberThreadGPU,N*N),NF)
-    groupS = (N * N, NFG)
-    KSurfaceFluxScalarsKernel = SurfaceFluxScalarsKernel(backend,groupS)  
-    ndrangeSB = (N * N,NBF)
-    CT = Global.SurfaceData.CT
-    CH = Global.SurfaceData.CH
-    uStar = Global.SurfaceData.uStar
-    TSurf = Global.SurfaceData.TS
-    RhoVSurf = Global.SurfaceData.RhoVS
-    KSurfaceFluxScalarsKernel(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dXdxI,Glob,M,Phys,ndrange=ndrangeSB)
-    KernelAbstractions.synchronize(backend)
-  end  
 
   Parallels.ExchangeData3DSendGPU(F,Exchange)
-
 
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
@@ -311,6 +372,16 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI_I,J_I,MW,Glob,KoeffDivW,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
   end  
+  if EDMF
+    if KoeffDivW > 0
+    @views KHyperViscWKoeffKernel!(FwEDMF,CachewEDMF,DS,DW,dXdxI_I,J_I,MW,Glob,KoeffDivW,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
+    end  
+    @views KHyperViscTracerKoeffKernel!(FThEDMF,CacheThEDMF,RhoEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,
+      KoeffDiv,ndrange=ndrangeI)
+    KernelAbstractions.synchronize(backend)
+  end  
+
   KGradKernel!(F,U,p,DS,dXdxI_I,J_I,X_I,M,MRho,Glob_I,GravitationFun,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
   KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,MRho,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
@@ -324,43 +395,55 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
       dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
   end  
-  if Global.Model.VerticalDiffusionMom
-    KV = Cache.KV
-    KVerticalDiffusionMomentumKernel!(F,U,KV,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-  end    
-  if Global.Model.VerticalDiffusion
-    @views KV_I = Cache.KV[:,:,NBF+1:NF]
-    @views KVerticalDiffusionScalarKernel!(F[:,:,5],U[:,:,5],Rho,KV_I,
-      dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-    KernelAbstractions.synchronize(backend)
-    for iT = 1 : NumTr
-      @views KVerticalDiffusionScalarKernel!(F[:,:,iT+NumV],U[:,:,iT+NumV],Rho,KV_I,
-        dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-      KernelAbstractions.synchronize(backend)
-    end  
-  end    
-  if Global.Model.SurfaceFluxMom
-    ndrangeSI = (N * N,NF-NBF)  
-    @views CM_I = Global.SurfaceData.CM[:,NBF+1:NF]
-    KSurfaceFluxMomentumKernel!(F,U,dXdxI_I,nS_I,CM_I,M,Glob_I,ndrange=ndrangeSI)
-  end  
-  if Global.Model.SurfaceFlux
-    ndrangeSI = (N * N,NF-NBF)  
-    @views CT_I = Global.SurfaceData.CT[:,NBF+1:NF]
-    @views CH_I = Global.SurfaceData.CH[:,NBF+1:NF]
-    @views uStar_I = Global.SurfaceData.uStar[:,NBF+1:NF]
-    @views TSurf_I = Global.SurfaceData.TS[:,NBF+1:NF]
-    @views RhoVSurf_I = Global.SurfaceData.RhoVS[:,NBF+1:NF]
-    KSurfaceFluxScalarsKernel(F,U,p,TSurf_I,RhoVSurf_I,uStar_I,CT_I,CH_I,dXdxI_I,Glob_I,M,Phys,ndrange=ndrangeSI)
-    KernelAbstractions.synchronize(backend)
-  end  
       
   Parallels.ExchangeData3DRecvGPU!(F,Exchange)
   KernelAbstractions.synchronize(backend)
 
+  if Global.Model.Turbulence
+    KV = Cache.KV
+    KTkeSourceKernel! = TkeSourceKernel!(backend, groupG)
+    KTkeSourceKernel!(Global.Model.TurbulenceSource,FTke,KV,U,dz,ndrange=ndrangeG)
+    KernelAbstractions.synchronize(backend)
+  end 
+  if Global.Model.VerticalDiffusionMom
+    KVerticalDiffusionMomentumKernel! = VerticalDiffusionMomentumKernel!(backend,groupG)
+    KV = Cache.KV
+    KVerticalDiffusionMomentumKernel!(F,U,KV,dz,ndrange=ndrangeG)
+    KernelAbstractions.synchronize(backend)
+  end 
+  if Global.Model.SurfaceFluxMom
+    CM = Global.SurfaceData.CM
+    KSurfaceFluxMomentumKernel! = SurfaceFluxMomentumKernel!(backend,groupS)
+    KSurfaceFluxMomentumKernel!(F,U,nSS,CM,dz,ndrange=ndrangeS)
+    KernelAbstractions.synchronize(backend)
+  end  
+  if Global.Model.VerticalDiffusion
+    KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend,groupG)
+    KV = Cache.KV
+    @views FTh = F[:,:,5]
+    @views Th = U[:,:,5]
+    @views KVerticalDiffusionScalarKernel!(FTh,Th,Rho,KV,dz,ndrange=ndrangeG)
+    KernelAbstractions.synchronize(backend)
+    for iT = 1 : NumTr
+      @views FTr = F[:,:,iT+NumV]
+      @views Tr = U[:,:,iT+NumV]
+      @views KVerticalDiffusionScalarKernel!(FTr,Tr,Rho,KV,dz,ndrange=ndrangeG)
+      KernelAbstractions.synchronize(backend)
+    end
+  end
+  if Global.Model.SurfaceFlux
+    KSurfaceFluxScalarsKernel! = SurfaceFluxScalarsKernel!(backend,groupS)
+    CT = Global.SurfaceData.CT
+    CH = Global.SurfaceData.CH
+    uStar = Global.SurfaceData.uStar
+    TSurf = Global.SurfaceData.TS
+    RhoVSurf = Global.SurfaceData.RhoVS
+    KSurfaceFluxScalarsKernel!(F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dz,Phys,ndrange=ndrangeS)
+    KernelAbstractions.synchronize(backend)
+  end
   if Global.Model.Forcing
     KForceKernel! = ForceKernel!(backend, groupG)
-    KForceKernel!(Force,F,U,p,lat,ndrange=ndrangeG)  
+    KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
     KernelAbstractions.synchronize(backend)
   end  
 
@@ -403,7 +486,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views J_I = J[:,:,:,NBF+1:NF]
   @views X_I = X[:,:,:,:,NBF+1:NF]
   @views Glob_I = Glob[:,NBF+1:NF]
-  lat = Metric.lat  
+  xS = Metric.xS  
   dz = Metric.dz  
   zP = Metric.zP  
   DoF = FE.DoF
@@ -607,7 +690,9 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   if Global.Model.Forcing
     KForceKernel! = ForceKernel!(backend, groupG)
-    KForceKernel!(Force,F,U,p,lat,ndrange=ndrangeG)  
+    @show maximum(xS[2,:])
+    @show minimum(xS[2,:])
+    KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
     KernelAbstractions.synchronize(backend)
   end  
 

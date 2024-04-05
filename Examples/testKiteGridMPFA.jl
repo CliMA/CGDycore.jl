@@ -140,90 +140,53 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 4
+RefineLevel = 1
 RadEarth = Phys.RadEarth
 nz = 1
-nPanel = 40
+nPanel = 8
 nQuad = 3
+OrdPoly = 1
+nx = 5
+ny = 5
+Lx = 5.0
+Ly = 5.0
+x0 = 0.0
+y0 = 0.0
+Boundary = Grids.Boundary()
+Boundary.WE = "Period"
+Boundary.SN = "Period"
 Decomp = ""
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 #Problem = "LinearBlob"
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
+GridType = "Sphere"
 
-#TRI
-#GridType = "DelaunaySphere"
-GridType = "CubedSphere"
-#GridType = "TriangularSphere" # Achtung Orientierung
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
-  Model,ParallelCom;order=false)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-p = ones(Grid.NumFaces,1)
-for i = 1 : Grid.NumFaces
-  p[i] = i
+if GridType == "Sphere"
+  #TRI
+  #GridType = "DelaunaySphere"
+  GridType = "CubedSphere"
+  #GridType = "TriangularSphere" # Achtung Orientierung
+  Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
+    Model,ParallelCom;order=false)
+elseif GridType == "Cart"
+  Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;order=false)
 end  
-global FileNumber = 0
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
 
 KiteGrid = Grids.Grid2KiteGrid(backend,FTB,Grid,Grids.OrientFaceSphere)
-vtkSkeletonKite = Outputs.vtkStruct{Float64}(backend,KiteGrid)
+
+@show Grid.Rad
+@show KiteGrid.Rad
+MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid,Grid.Type)
 
 
-CG1KiteP = FEMSei.CG1KitePrimalStruct{FTB}(Grids.Quad(),backend,KiteGrid)
-CG1KiteP.M = FEMSei.MassMatrix(backend,FTB,CG1KiteP,KiteGrid,1,FEMSei.Jacobi)
-FpM = lu(CG1KiteP.M)
-CG1KiteDHDiv = FEMSei.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,KiteGrid)
-CG1KiteDHDiv.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHDiv,KiteGrid,1,FEMSei.Jacobi)
-Div = FEMSei.DivMatrix(backend,FTB,CG1KiteDHDiv,CG1KiteP,KiteGrid,3,FEMSei.Jacobi)
-FuM = lu(CG1KiteDHDiv.M)
-CG1KiteDHCurl = FEMSei.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,KiteGrid)
-CG1KiteDHCurl.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHCurl,KiteGrid,1,FEMSei.Jacobi)
-Curl = FEMSei.CurlMatrix(backend,FTB,CG1KiteDHCurl,CG1KiteP,KiteGrid,3,FEMSei.Jacobi)
-#Grad = FEMSei.GradMatrix(backend,FTB,CG1KiteP,CG1KiteD,KiteGrid,3,FEMSei.Jacobi)
+GradFV = FiniteVolumes.Gradient(backend,FTB,MetricFV,Grid)
+Grad = FiniteVolumes.GradMPFA1(KiteGrid,Grid)
+GradMPFA = FiniteVolumes.GradMPFA(backend,FTB,Grid)
+Div = FiniteVolumes.DivMPFA(Grid)
 
-
-U = zeros(FTB,CG1KiteP.NumG+CG1KiteDHDiv.NumG)
-UNew = zeros(FTB,CG1KiteP.NumG+CG1KiteDHDiv.NumG)
-pPosS = 1
-pPosE = CG1KiteP.NumG
-uPosS = CG1KiteP.NumG + 1
-uPosE = CG1KiteP.NumG + CG1KiteDHDiv.NumG
-uCurl = zeros(FTB,CG1KiteDHCurl.NumG)
-uCurl1 = zeros(FTB,CG1KiteDHCurl.NumG)
-
-
-@views FEMSei.Project!(backend,FTB,U[pPosS:pPosE],CG1KiteP,KiteGrid,nQuad,
-  FEMSei.Jacobi,Model.InitialProfile)
-@views FEMSei.Project!(backend,FTB,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,nQuad,
-  FEMSei.Jacobi,Model.InitialProfile)
-@views FEMSei.Project!(backend,FTB,uCurl1,CG1KiteDHCurl,KiteGrid,nQuad,
-  FEMSei.Jacobi,Model.InitialProfile)
-
-@views FEMSei.ProjectHDivHCurl!(backend,FTB,uCurl,CG1KiteDHCurl,KiteGrid,nQuad,FEMSei.Jacobi,
-  CG1KiteDHDiv,U[uPosS:uPosE])
-
-q = zeros(FTB,CG1KiteP.NumG)
-mul!(q,Curl,uCurl)
-ldiv!(FpM,q)
-
-VelCa = zeros(KiteGrid.NumFaces,Grid.Dim)
-VelSp = zeros(KiteGrid.NumFaces,2)
-@views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
-@views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,q)
-@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uCurl,CG1KiteDHCurl,KiteGrid,FEMSei.Jacobi)
-Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-stop
-
-nAdveVel = 0
-dtau = 0.0005
-time = 0.0
-r = similar(U)
-temp = similar(U)
-UNew = similar(U)
-
+#=
 @views rp = r[pPosS:pPosE]
 @views ru = r[uPosS:uPosE]
 @views tp = temp[pPosS:pPosE]
@@ -247,21 +210,10 @@ for i = 1 : nAdveVel
   ldiv!(ru,FuM,tu)
   @.ru = -ru
   @. U = U + dtau * r
-
-# if mod(i,100) == 0
-#   global FileNumber += 1
-#   @views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
-#   @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-#   @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-#   Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-# end
 end
+=#
 
-FileNumber += 1
-@views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
-@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
+
 nothing
 
 

@@ -21,6 +21,7 @@ RhoVPos = parsed_args["RhoVPos"]
 RhoCPos = parsed_args["RhoCPos"]
 RhoIPos = parsed_args["RhoIPos"]
 RhoRPos = parsed_args["RhoRPos"]
+TkePos = parsed_args["TkePos"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -31,6 +32,7 @@ Coriolis = parsed_args["Coriolis"]
 Gravitation = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
+Turbulence = parsed_args["Turbulence"]
 Equation = parsed_args["Equation"]
 Thermo = parsed_args["Thermo"]
 State = parsed_args["State"]
@@ -44,6 +46,7 @@ Rain = parsed_args["Rain"]
 Source = parsed_args["Source"]
 Forcing = parsed_args["Forcing"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
+VerticalDiffusionMom = parsed_args["VerticalDiffusionMom"]
 JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
 JacVerticalAdvection = parsed_args["JacVerticalAdvection"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
@@ -162,7 +165,7 @@ if ProfTheta == ""
 else
   Model.ProfTheta = ProfTheta  
 end  
-Model.PertTh = PertTh
+#Model.PertTh = PertTh
 if ProfVel == ""
   Model.ProfVel = Problem
 else
@@ -185,6 +188,7 @@ Model.RhoVPos  = RhoVPos
 Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
+Model.TkePos  = TkePos
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping
@@ -194,7 +198,9 @@ Model.Relax = Relax
 Model.Coriolis = Coriolis
 Model.CoriolisType = CoriolisType
 Model.Buoyancy = Buoyancy
+Model.Turbulence = Turbulence
 Model.VerticalDiffusion = VerticalDiffusion
+Model.VerticalDiffusionMom = VerticalDiffusionMom
 Model.JacVerticalDiffusion = JacVerticalDiffusion
 Model.JacVerticalAdvection = JacVerticalAdvection
 Model.Source = Source
@@ -247,7 +253,9 @@ end
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 
-@show "InitSphere"
+if ParallelCom.Proc == 1
+  @show "InitSphere"
+end  
 (CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
   Phys,TopoProfile,Exchange,Grid,ParallelCom)
 #(CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,
@@ -299,6 +307,10 @@ elseif State == "Moist"
   Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos+NumV,Model.RhoCPos+NumV)
   Model.Pressure = Pressure
+elseif State == "ShallowWater"
+  Pressure = Models.ShallowWaterState()(Phys)
+  Model.Pressure = Pressure
+  @show Pressure
 end  
 # Microphysics
 if Microphysics
@@ -316,8 +328,8 @@ if Damping
 end
 
 # Surface flux
-Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.DoF,Grid.NumFaces)
-Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.DoF,Grid.NumFaces)
+Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.NumG)
+Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
 @. Global.LandUseData.z0M = 0.01
 @. Global.LandUseData.z0H = 0.01
 @. Global.LandUseData.LandClass = 5
@@ -342,9 +354,25 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   end  
 end
 
+#Vertical Diffusion
+if Model.VerticalDiffusion || Model.VerticalDiffusionMom
+  if Model.Turbulence
+  else  
+    Model.Eddy = Examples.SimpleKoefficient()(Param,Phys)
+  end
+end  
+
+#Turbulence
+if Model.Turbulence
+  Model.TurbulenceSource = Examples.TKEModel()(Param,Phys,Model.RhoPos,Model.uPos,
+    Model.vPos,Model.ThPos,Model.TkePos)
+end  
+
 # HyperViscosity
   GridLength = Grids.GridLength(Grid,Grid.Type)
-  @show GridLength
+  if ParallelCom.Proc == 1
+    @show GridLength
+  end  
 
 # Output
 Global.Output.vtkFileName = string(Problem*"_")
@@ -361,9 +389,17 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-#     "Vort",
-#     "Pres",
       ]
+    if TkePos > 0
+      push!(Global.Output.cNames,"Tke")
+    end  
+    @show RhoVPos
+    if RhoVPos > 0
+      push!(Global.Output.cNames,"Tr1")
+    end  
+    if VerticalDiffusion
+      push!(Global.Output.cNames,"DiffKoeff")
+    end  
   elseif State == "Moist"  
     Global.Output.cNames = [
       "Rho",
@@ -376,7 +412,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "Tr1",
       "Tr2",
       ]
-  elseif Model.Equation == "Shallow"  
+  elseif State == "ShallowWater"  
     Global.Output.cNames = [
       "Rho",
 #     "u",
@@ -428,6 +464,8 @@ end
 Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
 nT = max(7 + NumTr, NumV + NumTr)
 Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-@show "vor Timestepper"
+if ParallelCom.Proc == 1
+  @show "vor Timestepper"
+end  
 Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
   Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)

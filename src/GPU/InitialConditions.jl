@@ -32,13 +32,13 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
   if Model.RhoVPos > 0
-    @views RhoV = U[:,:,NumV+Model.RhoVPos]
+    @views RhoV = U[:,:,Model.RhoVPos]
     KRhoVFunCKernel! = RhoVFunCKernel!(backend, group)
     KRhoVFunCKernel!(Profile,RhoV,time,Glob,X,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   end  
   if Model.RhoCPos > 0
-    @views RhoC = U[:,:,NumV+Model.RhoCPos]
+    @views RhoC = U[:,:,Model.RhoCPos]
     KRhoCFunCKernel! = RhoCFunCKernel!(backend, group)
     KRhoCFunCKernel!(Profile,RhoC,time,Glob,X,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)

@@ -57,12 +57,14 @@ function CG0KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
     M,
       )
 end
+
 mutable struct CG1KitePrimalStruct{FT<:AbstractFloat,
                         IT2<:AbstractArray} <: ScalarKitePElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
   phi::Array{Polynomial,2}                       
+  rotphi::Array{Polynomial,2}                       
   Gradphi::Array{Polynomial,2}                       
   NumG::Int
   NumI::Int
@@ -77,6 +79,7 @@ function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
   Comp = 1
   @polyvar x y
   phi = Array{Polynomial,2}(undef,DoF,Comp)
+  rotphi = Array{Polynomial,2}(undef,DoF,2)
   xP, w = gaussradau(2)
   lx0 = (x - xP[2])/(xP[1] - xP[2])
   lx1 = (x - xP[1])/(xP[2] - xP[1])
@@ -90,6 +93,8 @@ function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
   for i = 1 : DoF
     Gradphi[i,1] = differentiate(phi[i,1],x)
     Gradphi[i,2] = differentiate(phi[i,1],y)
+    rotphi[i,1] = differentiate(phi[i,1],y)
+    rotphi[i,2] = -differentiate(phi[i,1],x)
   end  
   
   NumNodes = Grid.NumNodes
@@ -130,6 +135,7 @@ function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
     DoF,
     Comp,
     phi,                      
+    rotphi,                      
     Gradphi,                      
     NumG,
     NumI,
@@ -163,30 +169,35 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   xP, w = gaussradau(2)
   xP .= -xP
+  @show "Dual",xP
   lx0 = (x - xP[2])/(xP[1] - xP[2])
   lx1 = (x - xP[1])/(xP[2] - xP[1])
   ly0 = (y - xP[2])/(xP[1] - xP[2])
   ly1 = (y - xP[1])/(xP[2] - xP[1])
   p0 = 0.0*x + 0.0*y
+# x line 3 --> 4, y0
   phi[1,1] = p0
   phi[1,2] = lx0 * ly0
   phi[2,1] = p0
   phi[2,2] = lx1 * ly0
   
+# y line 2 --> 3, x0
   phi[3,1] = -lx0 * ly0
   phi[3,2] = p0
   phi[4,1] = -lx0 * ly1
   phi[4,2] = p0
 
-  phi[5,1] = lx1 * ly0
-  phi[5,2] = p0
-  phi[6,1] = lx1 * ly1
-  phi[6,2] = p0
+# x line 3 --> 4, y1
+  phi[5,1] = p0
+  phi[5,2] = lx0 * ly1
+  phi[6,1] = p0
+  phi[6,2] = lx1 * ly1
 
-  phi[7,1] = p0
-  phi[7,2] = lx0 * ly1
-  phi[8,1] = p0
-  phi[8,2] = lx1 * ly1
+# y line 2 --> 3, x1
+  phi[7,1] = lx1 * ly0
+  phi[7,2] = p0
+  phi[8,1] = lx1 * ly1
+  phi[8,2] = p0
 
 
   Divphi[1,1] =  (differentiate(phi[1,1],x) + differentiate(phi[1,2],y))
@@ -340,26 +351,31 @@ function CG1KiteDualHCurl{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   lx1 = (x - xP[1])/(xP[2] - xP[1])
   ly0 = (y - xP[2])/(xP[1] - xP[2])
   ly1 = (y - xP[1])/(xP[2] - xP[1])
+# x line 3 --> 4, y0
   p0 = 0.0*x + 0.0*y
   phi[1,1] = lx0 * ly0
   phi[1,2] = p0
   phi[2,1] = lx1 * ly0
   phi[2,2] = p0
   
+# y line 2 --> 3, x0
+  p0 = 0.0*x + 0.0*y
   phi[3,1] = p0
   phi[3,2] = -lx0 * ly0
   phi[4,1] = p0
   phi[4,2] = -lx0 * ly1
 
-  phi[5,1] = p0
-  phi[5,2] = lx1 * ly0
-  phi[6,1] = p0
-  phi[6,2] = lx1 * ly1
+# x line 3 --> 4, y1
+  phi[5,1] = lx0 * ly1
+  phi[5,2] = p0
+  phi[6,1] = lx1 * ly1
+  phi[6,2] = p0
 
-  phi[7,1] = lx0 * ly1
-  phi[7,2] = p0
-  phi[8,1] = lx1 * ly1
-  phi[8,2] = p0
+# y line 2 --> 3, x1
+  phi[7,1] = p0
+  phi[7,2] = lx1 * ly0
+  phi[8,1] = p0
+  phi[8,2] = lx1 * ly1
 
 
   #Change from div to curl

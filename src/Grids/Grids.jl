@@ -71,5 +71,6 @@ include("SphericalGrid.jl")
 include("JacobiSphereDG3GPU.jl")
 include("Grid2KiteGrid.jl")
 include("GridLength.jl")
+include("QuadGrid.jl")
 
 end

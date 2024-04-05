@@ -18,7 +18,7 @@ return [x;y;z];
 end
 
 
-function cart2sphere(x,y,z)
+@inline function cart2sphere(x,y,z)
   FT = eltype(x)
   r = sqrt(x^2 + y^2 + z^2)
   phi = asin(z / r)

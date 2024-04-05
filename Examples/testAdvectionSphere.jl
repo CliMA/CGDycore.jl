@@ -51,6 +51,7 @@ SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
+AdaptGridType = parsed_args["AdaptGridType"]
 GridType = parsed_args["GridType"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
@@ -63,6 +64,7 @@ SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 # Grid
 RadEarth = parsed_args["RadEarth"]
 nPanel = parsed_args["nPanel"]
+RefineLevel = parsed_args["RefineLevel"]
 nz = parsed_args["nz"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
@@ -88,6 +90,14 @@ Flat = parsed_args["Flat"]
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
+
+MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+ParallelCom = DyCore.ParallelComStruct()
+ParallelCom.Proc = Proc
+ParallelCom.ProcNumber  = ProcNumber
 
 if Device == "CPU"
   backend = CPU()
@@ -131,7 +141,8 @@ Phys=DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 # Initial conditions
-Model.Equation="Compressible"
+# Equation
+Model.Equation = Models.Advection()
 Model.NumV=NumV
 Model.NumTr=NumTr
 Model.Problem=Problem
@@ -212,8 +223,14 @@ Topography=(TopoS=TopoS,H=H,Rad=RadEarth)
 
 OrdPolyZ = 1
 @show "vor InitSphere"
-(CG,Metric,Exchange,Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,nz,nPanel,H,GridType,
-  Topography,Decomp,Model,Phys,RadEarth)
+if ParallelCom.Proc == 1
+  @show "InitSphere"
+end
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+TopoProfile = Examples.Flat()()
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
+(CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+  Phys,TopoProfile,Exchange,Grid,ParallelCom)
 
 if Problem == "AdvectionDCMIP"
   Profile = Examples.AdvectionSphereDCMIP()(Param,Phys)
@@ -222,6 +239,9 @@ elseif Problem == "AdvectionSphereSlottedCylinder"
 end  
 
 U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+
+Model.ThPos = NumV
+@views @. U[:,:,Model.ThPos] = U[:,:,NumV+1]
 
 # Output
   Global.Output.vtkFileName=string(Problem*"_")
@@ -233,6 +253,7 @@ U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Par
       "Rho",
       "u",
       "v",
+      "Th",
       "Tr1",
       ]
   Global.Output.PrintDays = PrintDays
@@ -258,8 +279,4 @@ U = GPU.InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Par
   nT = NumV + NumTr
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)  
   @show "vor TimeStepperGPUAdvection!"
-  if Device == "CPU" || Device == "GPU" 
-    Integration.TimeStepperGPUAdvection!(U,GPU.FcnAdvectionGPU!,Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Profile)
-  else
-    Integration.TimeStepperAdvection!(U,DyCore.FcnTracer!,Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Profile)
-  end
+  Integration.TimeStepperGPUAdvection!(U,GPU.FcnAdvectionGPU!,Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Profile)

@@ -1,6 +1,5 @@
 #TriSphere   
 function Jacobi(::Grids.Tri,ksi1,ksi2,F,Grid)
-  @show "Jac Tri"
   Rad =   Grid.Rad
 
   XT1 = 0.5 * (Grid.Nodes[F.N[1]].P.x*(-ksi1 - ksi2)+
@@ -88,9 +87,9 @@ function Jacobi(::Grids.Quad,ksi1,ksi2,F,Grid)
   dX3dXT2 = dX2dXT3 
   dX3dXT3 = f * (XT1^2 + XT2^2)
 
-  J1  =   @SArray([dX1dXT1    dX2dXT1     dX3dXT1   
-                dX1dXT2     dX2dXT2     dX3dXT2
-                dX1dXT3     dX2dXT3     dX3dXT3])   
+  J1  =   @SArray([dX1dXT1    dX1dXT2     dX1dXT3   
+                dX2dXT1     dX2dXT2     dX2dXT3
+                dX3dXT1     dX3dXT2     dX3dXT3])   
   J   =   J1*JP*J3      
 
   detJ=norm(cross(J[:,1],J[:,2]))
@@ -100,8 +99,6 @@ end
 
 function Jacobi(::Grids.Quad,ksi1,ksi2,P1,P2,P3,P4,Rad)
 
-  @show "Jac Quad"
-    
   XT1 =  0.25*(P1.x*(1-ksi1)*(1-ksi2)+
             P2.x*(1+ksi1)*(1-ksi2)+
             P3.x*(1+ksi1)*(1+ksi2)+
@@ -139,9 +136,9 @@ function Jacobi(::Grids.Quad,ksi1,ksi2,P1,P2,P3,P4,Rad)
   dX3dXT2 = dX2dXT3 
   dX3dXT3 = f*(XT1^2+XT2^2)
 
-  J1 = @SArray([dX1dXT1    dX2dXT1     dX3dXT1   
-                dX1dXT2     dX2dXT2     dX3dXT2
-                dX1dXT3     dX2dXT3     dX3dXT3])   
+  J1  =   @SArray([dX1dXT1    dX1dXT2     dX1dXT3   
+                dX2dXT1     dX2dXT2     dX2dXT3
+                dX3dXT1     dX3dXT2     dX3dXT3])   
   J = J1 * JP * J3      
 
   detJ = norm(cross(J[:,1],J[:,2]))

@@ -112,6 +112,36 @@ function Project!(backend,FTB,p,Fe::HDivKiteDElement,Grid,QuadOrd,Jacobi,F)
   @. p = pp
 end
 
+function Project!(backend,FTB,p,Fe::HCurlKiteDElement,Grid,QuadOrd,Jacobi,F)
+  QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
+  Weights = QQ.Weights
+  Points = QQ.Points
+  fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+
+  pp=zeros(Fe.NumG)
+  VelSp = zeros(3)
+  for i = 1 : length(Weights)
+    for iComp = 1 : Fe.Comp
+      for iD = 1 : Fe.DoF
+        fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  for iF = 1 : Grid.NumFaces
+    pLoc = zeros(Fe.DoF)
+    for i = 1 : length(Weights)
+      _, detJ,invPDF,X = Jacobi(Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+      _,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
+      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
+      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      @views pLoc .+= detJ * Weights[i] * (fRef[:,:,i]' * (invPDF' * VelCa))
+    end
+    @views @. pp[Fe.Glob[:,iF]] += pLoc[:]
+  end
+  pp = Fe.M \ pp
+  @. p = pp
+end
+
 function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlKiteDElement,Grid,QuadOrd,Jacobi,
   FeF::HDivKiteDElement,uDiv)
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
@@ -121,25 +151,27 @@ function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlKiteDElement,Grid,QuadOrd,
   fFRef  = zeros(FeF.Comp,FeF.DoF,length(Weights))
 
   pp=zeros(Fe.NumG)
-  for i = 1 : length(Weights)
-    for iComp = 1 : Fe.Comp
-      for iD = 1 : Fe.DoF
+  @inbounds for i = 1 : length(Weights)
+    @inbounds for iComp = 1 : Fe.Comp
+      @inbounds for iD = 1 : Fe.DoF
         fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
       end
     end
   end
-  for i = 1 : length(Weights)
-    for iComp = 1 : Fe.Comp
-      for iD = 1 : Fe.DoF
+  @inbounds for i = 1 : length(Weights)
+    @inbounds for iComp = 1 : Fe.Comp
+      @inbounds for iD = 1 : Fe.DoF
         fFRef[iComp,iD,i] = FeF.phi[iD,iComp](Points[i,1],Points[i,2])
       end
     end
   end
-  for iF = 1 : Grid.NumFaces
-    pLoc = zeros(Fe.DoF)
-    ppF = uDiv[FeF.Glob[:,iF]]
-    for i = 1 : length(Weights)
-      pLoc += Weights[i] * (fRef[:,:,i]' * (fFRef[:,:,i] * ppF))
+  pLoc = zeros(Fe.DoF)
+  ppF = zeros(FeF.DoF)
+  @inbounds for iF = 1 : Grid.NumFaces
+    @. pLoc = 0
+    @views ppF .= uDiv[FeF.Glob[:,iF]]
+    @inbounds for i = 1 : length(Weights)
+      @views pLoc += Weights[i] * ((fRef[:,:,i])' * (fFRef[:,:,i] * ppF))
     end
     @. pp[Fe.Glob[:,iF]] += pLoc[:]
   end

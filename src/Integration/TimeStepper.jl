@@ -227,11 +227,13 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
 end  
 
 function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,Profile)  
+  
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
   ProcNumber = Global.ParallelCom.ProcNumber
   IntMethod = TimeStepper.IntMethod
+  @show IntMethod
   Table = TimeStepper.Table
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP"
@@ -317,10 +319,11 @@ function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,
       end
     end
   elseif IntMethod == "SSPRungeKutta"
+    @show "SSPRungeKutta"
     @time begin
       for i = 1 : nIter
         Δt = @elapsed begin
-          SSPRungeKutta!(time[1],U,dtau,Fcn,CG,Metric,Phys,Cache,Exchange,Global,Param,Profile)
+          SSPRungeKuttaGPU!(time[1],U,dtau,Fcn,CG,Metric,Phys,Cache,Exchange,Global,Param,Profile)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)

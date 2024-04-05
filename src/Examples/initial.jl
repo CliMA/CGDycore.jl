@@ -272,7 +272,7 @@ function (profile::LinearBlob)(Param,Phys)
     v = FT(0)
     w = FT(0)
     Th = FT(1)
-    return (Rho,u,v,w,Th)
+    return (h,u,v,w,Th)
   end
   return local_profile
 end
@@ -364,10 +364,11 @@ function (::HeldSuarezDryExample)(Param,Phys)
     pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
     Rho = pres / Phys.Rd / temp
     Th = temp * (Phys.p0 / pres)^Phys.kappa
+    qv = FT(0)
     uS = FT(0)
     vS = FT(0)
     w = FT(0)
-    return (Rho,uS,vS,w,Th)
+    return (Rho,uS,vS,w,Th,qv)
   end
   function Force(U,p,lat)
     FT = eltype(U)
@@ -387,15 +388,7 @@ function (::HeldSuarezDryExample)(Param,Phys)
     FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
     return FT(0),Fu,Fv,FT(0),FRhoTh
   end
-  function Eddy(uStar,p,dz)
-    K = Param.CE * uStar * dz / 2
-    if p < Param.p_pbl
-      dpR = (Param.p_pbl - p) / Param.p_strato
-      K = K * exp(-dpR * dpR)
-    end
-    return K
-  end
-  return profile,Force,Eddy
+  return profile,Force
 end
 
 Base.@kwdef struct HeldSuarezMoistExample <: Example end
@@ -439,20 +432,12 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
     return FT(0),Fu,Fv,FT(0),FRhoTh
   end
-  function Eddy(uStar,p,dz)
-    K = Param.CE * uStar * dz / 2
-    if p < Param.p_pbl
-      dpR = (Param.p_pbl - p) / Param.p_strato
-      K = K * exp(-dpR * dpR)
-    end
-    return K
-  end
   function TSurf(x)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     TS = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
   end
-  return local_profile,Force,Eddy,TSurf
+  return local_profile,Force,TSurf
 end
 
 Base.@kwdef struct SchaerSphereExample <: Example end

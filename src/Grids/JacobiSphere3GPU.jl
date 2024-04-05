@@ -21,7 +21,7 @@ function JacobiSphere2GPU!(X,dXdxI,J,FE,F,Rad)
   KJacobiSphere2Kernel!(X,dXdxI,J,FE.xw,FE.DS,F,Rad,ndrange=ndrange)
 end
 
-function JacobiSphere3GPU!(AdaptGrid,X,dXdx,dXdxI,J,FE,F,z,zs,Rad,Equation::Models.CompressibleShallow)
+function JacobiSphere3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs,Rad,Equation::Models.CompressibleShallow)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -36,11 +36,30 @@ function JacobiSphere3GPU!(AdaptGrid,X,dXdx,dXdxI,J,FE,F,z,zs,Rad,Equation::Mode
 
   KJacobiSphere3Kernel! = JacobiSphere3Kernel!(backend,group)
 
-  KJacobiSphere3Kernel!(AdaptGrid,X,dXdx,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
+  KJacobiSphere3Kernel!(AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end
 
-function JacobiSphere3GPU!(AdaptGrid,X,dXdx,dXdxI,J,FE,F,z,zs,Rad,Equation::Models.CompressibleDeep)
+function JacobiSphere3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs,Rad,Equation::Models.Advection)
+
+  backend = get_backend(X)
+  FT = eltype(X)
+
+  NF = size(X,5)
+  N = size(FE.xw,1)
+  Nz = size(X,4)
+ 
+  NzG = min(div(256,N*N*2),Nz)
+  group = (N, N, 2, NzG, 1)
+  ndrange = (N, N, 2, Nz, NF)
+
+  KJacobiSphere3Kernel! = JacobiSphere3Kernel!(backend,group)
+
+  KJacobiSphere3Kernel!(AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end
+
+function JacobiSphere3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs,Rad,Equation::Models.CompressibleDeep)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -55,7 +74,7 @@ function JacobiSphere3GPU!(AdaptGrid,X,dXdx,dXdxI,J,FE,F,z,zs,Rad,Equation::Mode
 
   KJacobiSphereDeep3Kernel! = JacobiSphereDeep3Kernel!(backend,group)
 
-  KJacobiSphereDeep3Kernel!(AdaptGrid,X,dXdx,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
+  KJacobiSphereDeep3Kernel!(AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,F,z,Rad,zs,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end
 
@@ -80,7 +99,7 @@ end
   end
 end
 
-@kernel inbounds = true function JacobiSphere3Kernel!(AdaptGrid,X,dXdx,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
+@kernel inbounds = true function JacobiSphere3Kernel!(AdaptGrid,X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
   @Const(F),@Const(z),Rad,@Const(zs))
 
   gi, gj, gk, gz, gF = @index(Group, NTuple)
@@ -192,19 +211,10 @@ end
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,2,1,iz])
     dXdxI[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,2,iz] - 
       dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,1,iz]
-    dXdx[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] 
-    dXdx[1,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] 
-    dXdx[1,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,3,iz] 
-    dXdx[2,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,1,iz] 
-    dXdx[2,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] 
-    dXdx[2,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,3,iz] 
-    dXdx[3,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,3,1,iz] 
-    dXdx[3,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,3,2,iz] 
-    dXdx[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,3,3,iz] 
   end
 end
 
-@kernel inbounds = true function JacobiSphereDeep3Kernel!(AdaptGrid,X,dXdx,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
+@kernel inbounds = true function JacobiSphereDeep3Kernel!(AdaptGrid,X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
   @Const(F),@Const(z),Rad,@Const(zs))
 
   gi, gj, gk, gz, gF = @index(Group, NTuple)
@@ -316,15 +326,6 @@ end
       dXdxLoc[I,J,K,1,3,iz] * dXdxLoc[I,J,K,2,1,iz])
     dXdxI[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] * dXdxLoc[I,J,K,2,2,iz] - 
       dXdxLoc[I,J,K,1,2,iz] * dXdxLoc[I,J,K,2,1,iz]
-    dXdx[1,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,1,iz] 
-    dXdx[1,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,2,iz] 
-    dXdx[1,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,1,3,iz] 
-    dXdx[2,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,1,iz] 
-    dXdx[2,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,2,iz] 
-    dXdx[2,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,2,3,iz] 
-    dXdx[3,1,K,ID,Iz,IF] = dXdxLoc[I,J,K,3,1,iz] 
-    dXdx[3,2,K,ID,Iz,IF] = dXdxLoc[I,J,K,3,2,iz] 
-    dXdx[3,3,K,ID,Iz,IF] = dXdxLoc[I,J,K,3,3,iz] 
   end
 end
 

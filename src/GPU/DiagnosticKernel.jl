@@ -1,3 +1,52 @@
+@kernel inbounds = true function StrainRate!(Strain,@Const(U),@Const(dz))
+  Iz,IC = @index(Global, NTuple)
+
+  NumG = @uniform @ndrange()[2]
+
+  if IC <= NumG
+    SU = eltype(Strain)(0)
+    SL = eltype(Strain)(0)
+    if Iz < Nz
+      dudzU = (U[Iz+1,IC,2] - U[Iz,IC,2]) / (dz[Iz+1] - dz[Iz])
+      dvdzU = (U[Iz+1,IC,3] - U[Iz,IC,3]) / (dz[Iz+1] - dz[Iz])
+      SU = sqrt(dudzU * dudzU + dvdzU * dvdzU)
+    end
+    if Iz > 1
+      dudzL = (U[Iz,IC,2] - U[Iz-1,IC,2]) / (dz[Iz] - dz[Iz-1])
+      dvdzL = (U[Iz,IC,3] - U[Iz-1,IC,3]) / (dz[Iz] - dz[Iz-1])
+      SL = sqrt(dudzL * dudzL + dvdzL * dvdzL)
+    end   
+    Strain[Iz,IC] = eltype(Strain)(0.5) * (SU + SL)
+  end
+end
+
+
+@kernel inbounds = true function TkeSourceKernel!(Source,FTke,KV,@Const(U),@Const(dz))
+  Iz,IC = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[1]
+  NumG = @uniform @ndrange()[2]
+
+  if IC <= NumG && Iz < Nz
+    @views FLoc, KLoc = Source(U[Iz+1,IC,:],U[Iz,IC,:],dz[Iz+1,IC],dz[Iz,IC])  
+    @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc
+    @atomic :monotonic FTke[Iz+1,IC] += eltype(FTke)(.5) * FLoc
+    KV[Iz,IC] = KLoc
+  end  
+end
+
+
+@kernel inbounds = true function EddyCoefficientTKEKernel!(Eddy,K,@Const(Rho),@Const(Tke),@Const(Glob))
+  Iz,IC = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[1]
+  NumG = @uniform @ndrange()[2]
+
+  if IC <= NumG
+    @views K[Iz,IC] = Eddy(Tke[Iz,IC],  )
+  end
+end
+
 @kernel inbounds = true function PressureKernel!(Pressure,p,@Const(U))
   Iz,IC = @index(Global, NTuple)
 
@@ -38,15 +87,15 @@ end
   end
 end
 
-@kernel inbounds = true function EddyCoefficientKernel!(Eddy,K,@Const(Rho),@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
-  ID,Iz,IF = @index(Global, NTuple)
+@kernel inbounds = true function EddyCoefficientKernel!(Eddy,K,@Const(U),@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
+  Iz,IC = @index(Global, NTuple)
 
-  Nz = @uniform @ndrange()[2]
-  NumF = @uniform @ndrange()[3]
+  Nz = @uniform @ndrange()[1]
+  NumG = @uniform @ndrange()[2]
 
-  if Iz <= Nz && IF <= NumF
-    ind = Glob[ID,IF]
-    @views K[ID,Iz,IF] = Eddy(uStar[ID,IF],p[Iz,ind],dz[1,ind]) * Rho[Iz,ind]
+  if IC <= NumG
+    LenScale = 100.0  
+    @views K[Iz,IC] = Eddy(U[Iz,IC,:],uStar[IC],p[Iz,IC],dz[1,IC],LenScale) 
   end
 end
 
@@ -75,7 +124,9 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   backend = get_backend(U)
   dXdxI = Metric.dXdxI
   X = Metric.X
+  xS = Metric.xS
   nS = Metric.nS
+  nSS = Metric.nSS
   FT = eltype(U)
   N = size(FE.DS,1)
   Nz = size(U,1)
@@ -109,24 +160,26 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KernelAbstractions.synchronize(backend)
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
-    Surfaces.SurfaceData!(U,p,X,Glob,SurfaceData,Model,NumberThreadGPU)  
-    Surfaces.SurfaceFluxData!(U,p,X,dXdxI,nS,Glob,SurfaceData,LandUseData,Model,NumberThreadGPU)  
+    Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
+    Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
   end  
-  if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom
-    if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom 
-      KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
-      KEddyCoefficientKernel!(Eddy,KV,Rho,uStar,p,dz,Glob,ndrange=ndrangeK)
-      KernelAbstractions.synchronize(backend)
-    else    
-      NFG = min(div(NumberThreadGPU,N*N),NumF)
-      groupS = (N * N, NFG)
-      ndrangeS = (N * N, NumF)
-      Surfaces.SurfaceData!(U,p,X,Glob,SurfaceData,Model,NumberThreadGPU)  
-      Surfaces.SurfaceFluxData!(U,p,X,dXdxI,nS,Glob,SurfaceData,LandUseData,Model,NumberThreadGPU)  
-      KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
-      KEddyCoefficientKernel!(Eddy,KV,Rho,uStar,p,dz,Glob,ndrange=ndrangeK)
-      KernelAbstractions.synchronize(backend)
-    end
+  if !Global.Model.Turbulence
+    if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom
+      if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom 
+        KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
+        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeK)
+        KernelAbstractions.synchronize(backend)
+      else    
+        NFG = min(div(NumberThreadGPU,N*N),NumF)
+        groupS = (N * N, NFG)
+        ndrangeS = (N * N, NumF)
+        Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
+        Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
+        KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
+        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeK)
+        KernelAbstractions.synchronize(backend)
+      end
+    end  
   end
 end
 

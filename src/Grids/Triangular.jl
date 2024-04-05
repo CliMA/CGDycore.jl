@@ -415,7 +415,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
     NumEdges += 1
     n1 = EdgeL.data.Node1.data.Number
     n2 = EdgeL.data.Node2.data.Number
-    Edges[NumEdges] = Edge(sort([n1;n2]),Nodes,NumEdges,NumEdges,"",NumEdges)
+    Edges[NumEdges] = Edge(sort([n1;n2]),Nodes,NumEdges,NumEdges,"",NumEdges;Form,Rad)
     EdgeL = EdgeL.next
   end
 
@@ -443,7 +443,8 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
     else  
       ee = [e3,e1,e2]
     end  
-    (Faces[NumFaces], Edges) = Face(ee,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
+    (Faces[NumFaces], Edges) = Face(ee,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;
+       P=zeros(Float64,0,0),Form=Form,Rad=Rad)
     FaceL = FaceL.next
   end
   NumNodes = size(Nodes,1)
@@ -511,7 +512,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   NumNodes = 0
   while ~attail(FaceL)
     NumNodes += 1
-    Nodes[NumNodes] = Node(MidPoint(FaceL),NumNodes,'N')
+    Nodes[NumNodes] = Node(Rad*MidPoint(FaceL),NumNodes,'N')
     FaceL = FaceL.next
   end
 
@@ -527,7 +528,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
     NumEdges += 1
     n1 = EdgeL.data.Face[1]
     n2 = EdgeL.data.Face[2]
-    Edges[NumEdges] = Edge([n1,n2],Nodes,NumEdges,NumEdges,"",NumEdges)
+    Edges[NumEdges] = Edge([n1,n2],Nodes,NumEdges,NumEdges,"",NumEdges;Form,Rad)
     EdgeL = EdgeL.next
   end
 
@@ -542,7 +543,8 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   while ~attail(NodeL)
     NumFaces += 1
     e = NodeL.data.Edge
-    (Faces[NumFaces], Edges) = Face(e,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;P=zeros(Float64,0,0))
+    (Faces[NumFaces], Edges) = Face(e,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;
+      Form=Form,Rad=Rad,P=zeros(Float64,0,0))
     NodeL = NodeL.next
   end
   NumNodes = size(Nodes,1)
@@ -553,6 +555,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   NumEdgesB = 0
 
   FacesInNodes!(Nodes,Faces)
+  SortFacesInNodes!(Nodes,Faces)
 
   TestOrientation(Faces,Nodes)
 

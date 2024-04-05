@@ -6,9 +6,10 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
   OPZ = CG.OrdPolyZ+1
   nz = Grid.nz
   NF = Grid.NumFaces
+  NumG = CG.NumG
 
   nQuad = OP * OP
-  Metric = MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz)
+  Metric = MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
   F = zeros(4,3,NF)
   FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
   for iF = 1 : NF
@@ -27,7 +28,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
   end  
   copyto!(FGPU,F)
   if Global.Grid.Form == "Sphere"
-    Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdx,Metric.dXdxI,Metric.J,CG,FGPU,
+    Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,
       Grid.z,zs,Grid.Rad,Global.Model.Equation)
   else
     Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
@@ -35,17 +36,16 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
 
   MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)
 
-  Metric.dz = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
-  Metric.zP = KernelAbstractions.zeros(backend,FT,nz,CG.NumG)
+  Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU  
   NzG = min(div(NumberThreadGPU,DoF),nz)  
   group = (DoF,NzG,1)  
   ndrange = (DoF,nz,NF)
   if Global.Grid.Form == "Sphere"
-    Metric.lat = KernelAbstractions.zeros(backend,FT,CG.NumG)
     KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
     Rad = Global.Grid.Rad
-    KGridSizeSphereKernel!(Metric.lat,Metric.zP,Metric.dz,Metric.X,CG.Glob,
+    KGridSizeSphereKernel!(Metric.zP,Metric.dz,Metric.X,CG.Glob,
       Rad,ndrange=ndrange)
   else
     Metric.lat = KernelAbstractions.zeros(backend,FT,0)
@@ -57,6 +57,13 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
   ndrange = (DoF, NF)
   KSurfaceNormalKernel! = SurfaceNormalKernel!(backend,group)
   KSurfaceNormalKernel!(Metric.FS,Metric.nS,Metric.dXdxI,ndrange=ndrange)
+  KMetricLowerBoundaryKernel! = MetricLowerBoundaryKernel!(backend,group)
+  KMetricLowerBoundaryKernel!(Metric.nSS,Metric.xS,Metric.dXdxI,Metric.X,CG.M,CG.Glob,ndrange=ndrange)
+  Parallels.ExchangeData!(Metric.nSS,Exchange)
+  groupS = (max(div(NumG,NumberThreadGPU),1))
+  ndrangeS = (NumG)
+  KMetricLowerBoundaryScaleKernel! = MetricLowerBoundaryScaleKernel!(backend,groupS)
+  KMetricLowerBoundaryScaleKernel!(Metric.nSS,ndrange=ndrangeS)
 
   if Global.Model.HorLimit
     Metric.JC = KernelAbstractions.zeros(backend,FT,size(Metric.J,1),size(Metric.J,3),size(Metric.J,4))  
@@ -89,6 +96,7 @@ end
     nS[ID,1,IF] = dXdxI[3,1,1,ID,1,IF] / FS[ID,IF]
     nS[ID,2,IF] = dXdxI[3,2,1,ID,1,IF] / FS[ID,IF]
     nS[ID,3,IF] = dXdxI[3,3,1,ID,1,IF] / FS[ID,IF]
+
   end
 end
 
@@ -109,7 +117,7 @@ end
   end  
 end
 
-@kernel inbounds = true function GridSizeSphereKernel!(lat,zP,dz,@Const(X),@Const(Glob),Rad)
+@kernel inbounds = true function GridSizeSphereKernel!(zP,dz,@Const(X),@Const(Glob),Rad)
 
   ID,Iz,IF = @index(Global, NTuple)
 
@@ -123,9 +131,6 @@ end
     y = eltype(X)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
     z = eltype(X)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
     r = sqrt(x * x + y * y + z * z)
-    if Iz == 1
-      lat[ind] = asin(z / r)
-    end  
     zP[Iz,ind] = max(r-Rad, eltype(X)(0))
     x = X[ID,1,1,Iz,IF]
     y = X[ID,1,2,Iz,IF]
@@ -152,4 +157,38 @@ end
     dz[Iz,ind] = X[ID,2,3,Iz,IF] - X[ID,1,3,Iz,IF] 
   end
 end  
+
+@kernel inbounds = true function MetricLowerBoundaryKernel!(nS,xS,@Const(dXdxI),@Const(X),@Const(M),@Const(Glob))
+
+  ID,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[2]
+
+  if IF <= NF
+    ind = Glob[ID,IF]
+    @atomic :monotonic nS[1,ind] += dXdxI[3,1,1,ID,1,IF] / M[1,ind]
+    @atomic :monotonic nS[2,ind] += dXdxI[3,2,1,ID,1,IF] / M[1,ind]
+    @atomic :monotonic nS[3,ind] += dXdxI[3,3,1,ID,1,IF] / M[1,ind]
+    x = X[ID,1,1,1,IF]
+    y = X[ID,1,2,1,IF]
+    z = X[ID,1,3,1,IF]
+    lon,lat,_ = Grids.cart2sphere(x,y,z)
+    @atomic :monotonic xS[1,ind] = lon
+    @atomic :monotonic xS[2,ind] = lat
+  end
+end
+
+@kernel inbounds = true function MetricLowerBoundaryScaleKernel!(nS)
+
+  IC, = @index(Global, NTuple)
+
+  NumG = @uniform @ndrange()[1]
+
+  if IC <= NumG
+    fac = eltype(nS)(1) / (nS[1,IC]^2 + nS[2,IC]^2 + nS[3,IC]^2)
+    nS[1,IC] *= fac
+    nS[2,IC] *= fac
+    nS[3,IC] *= fac
+  end
+end
 

@@ -10,7 +10,7 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Profile = Examples.GalewskiExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "LinearBlob"
-    Profile = Examples.GalewskiExample()(Param,Phys)
+    Profile = Examples.LinearBlob()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere"
     Profile = Examples.BaroWaveExample()(Param,Phys)
@@ -19,15 +19,13 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Profile = Examples.SchaerSphereExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
-    Profile, Force, Eddy = Examples.HeldSuarezDryExample()(Param,Phys)
+    Profile, Force = Examples.HeldSuarezDryExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
-    Model.Eddy = Eddy
   elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
-    Profile, Force, Eddy = Examples.HeldSuarezMoistExample()(Param,Phys)
+    Profile, Force = Examples.HeldSuarezMoistExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
-    Model.Eddy = Eddy
   elseif Problem == "Stratified" || Problem == "HillAgnesiXCart"
     Profile = Examples.StratifiedExample()(Param,Phys)
     Model.InitialProfile = Profile
@@ -47,5 +45,7 @@ include("initial.jl")
 include("force.jl")
 include("topography.jl")
 include("PerturbProfile.jl")
+include("eddy.jl")
+include("Turbulence.jl")
 
 end

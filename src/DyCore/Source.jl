@@ -93,8 +93,8 @@ function SourceMicroPhysics(F,U,Pres,CG,Phys,Global,iG)
    @inbounds for i = 1:nz
      Rho = U[i,RhoPos]  
      RhoTh = U[i,ThPos]  
-     RhoV = max(U[i,NumV+RhoVPos], 0.0)  
-     RhoC = max(U[i,NumV+RhoCPos], 0.0)  
+     RhoV = max(U[i,RhoVPos], 0.0)  
+     RhoC = max(U[i,RhoCPos], 0.0)  
      RhoD = Rho - RhoV - RhoC
      Cpml = Cpd * RhoD + Cpv * RhoV + Cpl * RhoC
      Rm = Rd * RhoD + Rv * RhoV

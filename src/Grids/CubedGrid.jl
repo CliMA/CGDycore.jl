@@ -243,50 +243,50 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz;order=true)
   (Edges,EdgeNumber,EdgeNumberW1,EdgeNumberW2)=InsertFaceEdge(n,EdgeNumber,NodeNumberW
     ,NodeNumberBTmm,NodeNumberBTmp
     ,NodeNumberSNmm,NodeNumberSNmp
-    ,Edges,Nodes);
+    ,Edges,Nodes,Form,Rad);
 
   # East
   (Edges,EdgeNumber,EdgeNumberE1,EdgeNumberE2)=InsertFaceEdge(n,EdgeNumber,NodeNumberE
                      ,NodeNumberBTpm,NodeNumberBTpp
                      ,NodeNumberSNpm,NodeNumberSNpp
-                     ,Edges,Nodes);
+                     ,Edges,Nodes,Form,Rad);
   # South
   (Edges,EdgeNumber,EdgeNumberS1,EdgeNumberS2)=InsertFaceEdge(n,EdgeNumber,NodeNumberS
                      ,NodeNumberBTmm,NodeNumberBTpm
                      ,NodeNumberWEmm,NodeNumberWEmp
-                     ,Edges,Nodes);
+                     ,Edges,Nodes,Form,Rad);
   # North
   (Edges,EdgeNumber,EdgeNumberN1,EdgeNumberN2)=InsertFaceEdge(n,EdgeNumber,NodeNumberN
                      ,NodeNumberBTmp,NodeNumberBTpp
                      ,NodeNumberWEpm,NodeNumberWEpp
-                     ,Edges,Nodes);
+                     ,Edges,Nodes,Form,Rad);
   # Bottom
   (Edges,EdgeNumber,EdgeNumberB1,EdgeNumberB2)=InsertFaceEdge(n,EdgeNumber,NodeNumberB
                      ,NodeNumberSNmm,NodeNumberSNpm
                      ,NodeNumberWEmm,NodeNumberWEpm
-                     ,Edges,Nodes);
+                     ,Edges,Nodes,Form,Rad);
   # Top
   (Edges,EdgeNumber,EdgeNumberT1,EdgeNumberT2)=InsertFaceEdge(n,EdgeNumber,NodeNumberT
      ,NodeNumberSNmp,NodeNumberSNpp
      ,NodeNumberWEmp,NodeNumberWEpp
-     ,Edges,Nodes);
+     ,Edges,Nodes,Form,Rad);
 
 # Edges
 #West East
-  (Edges,EdgeNumber,EdgeNumberWEmm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEmm,NodeNumbermmm,NodeNumberpmm,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberWEpm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEpm,NodeNumbermpm,NodeNumberppm,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberWEmp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEmp,NodeNumbermmp,NodeNumberpmp,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberWEpp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEpp,NodeNumbermpp,NodeNumberppp,Edges,Nodes);
+  (Edges,EdgeNumber,EdgeNumberWEmm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEmm,NodeNumbermmm,NodeNumberpmm,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberWEpm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEpm,NodeNumbermpm,NodeNumberppm,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberWEmp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEmp,NodeNumbermmp,NodeNumberpmp,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberWEpp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberWEpp,NodeNumbermpp,NodeNumberppp,Edges,Nodes,Form,Rad);
 # South North
-  (Edges,EdgeNumber,EdgeNumberSNmm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNmm,NodeNumbermmm,NodeNumbermpm,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberSNpm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNpm,NodeNumberpmm,NodeNumberppm,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberSNmp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNmp,NodeNumbermmp,NodeNumbermpp,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberSNpp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNpp,NodeNumberpmp,NodeNumberppp,Edges,Nodes);
+  (Edges,EdgeNumber,EdgeNumberSNmm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNmm,NodeNumbermmm,NodeNumbermpm,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberSNpm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNpm,NodeNumberpmm,NodeNumberppm,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberSNmp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNmp,NodeNumbermmp,NodeNumbermpp,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberSNpp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberSNpp,NodeNumberpmp,NodeNumberppp,Edges,Nodes,Form,Rad);
 # Bottom Top
-  (Edges,EdgeNumber,EdgeNumberBTmm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTmm,NodeNumbermmm,NodeNumbermmp,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberBTpm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTpm,NodeNumberpmm,NodeNumberpmp,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberBTmp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTmp,NodeNumbermpm,NodeNumbermpp,Edges,Nodes);
-  (Edges,EdgeNumber,EdgeNumberBTpp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTpp,NodeNumberppm,NodeNumberppp,Edges,Nodes);
+  (Edges,EdgeNumber,EdgeNumberBTmm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTmm,NodeNumbermmm,NodeNumbermmp,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberBTpm)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTpm,NodeNumberpmm,NodeNumberpmp,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberBTmp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTmp,NodeNumbermpm,NodeNumbermpp,Edges,Nodes,Form,Rad);
+  (Edges,EdgeNumber,EdgeNumberBTpp)=InsertEdgeEdge(n,EdgeNumber,NodeNumberBTpp,NodeNumberppm,NodeNumberppp,Edges,Nodes,Form,Rad);
 
   NumFaces=6*n*n;
   Faces = map(1:NumFaces) do i
@@ -298,28 +298,28 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz;order=true)
 # West
   (Faces,FaceNumber,Edges)=InsertFaceFace(n,FaceNumber,"W",EdgeNumberW1,EdgeNumberW2
                      ,EdgeNumberSNmm,EdgeNumberSNmp
-                     ,EdgeNumberBTmm,EdgeNumberBTmp,Nodes,Edges,Faces,OrientFace);
+                     ,EdgeNumberBTmm,EdgeNumberBTmp,Nodes,Edges,Faces,OrientFace,Form,Rad);
 
 # East
   (Faces,FaceNumber,Edges)=InsertFaceFace(n,FaceNumber,"E",EdgeNumberE1,EdgeNumberE2
                      ,EdgeNumberSNpm,EdgeNumberSNpp
-                     ,EdgeNumberBTpm,EdgeNumberBTpp,Nodes,Edges,Faces,OrientFace);
+                     ,EdgeNumberBTpm,EdgeNumberBTpp,Nodes,Edges,Faces,OrientFace,Form,Rad);
 # South
   (Faces,FaceNumber,Edges)=InsertFaceFace(n,FaceNumber,"S",EdgeNumberS1,EdgeNumberS2
                      ,EdgeNumberWEmm,EdgeNumberWEmp
-                     ,EdgeNumberBTmm,EdgeNumberBTpm,Nodes,Edges,Faces,OrientFace);
+                     ,EdgeNumberBTmm,EdgeNumberBTpm,Nodes,Edges,Faces,OrientFace,Form,Rad);
 # North
   (Faces,FaceNumber,Edges)=InsertFaceFace(n,FaceNumber,"N",EdgeNumberN1,EdgeNumberN2
                      ,EdgeNumberWEpm,EdgeNumberWEpp
-                     ,EdgeNumberBTmp,EdgeNumberBTpp,Nodes,Edges,Faces,OrientFace);
+                     ,EdgeNumberBTmp,EdgeNumberBTpp,Nodes,Edges,Faces,OrientFace,Form,Rad);
 # Bottom
   (Faces,FaceNumber,Edges)=InsertFaceFace(n,FaceNumber,"B",EdgeNumberB1,EdgeNumberB2
                      ,EdgeNumberWEmm,EdgeNumberWEpm
-                     ,EdgeNumberSNmm,EdgeNumberSNpm,Nodes,Edges,Faces,OrientFace);
+                     ,EdgeNumberSNmm,EdgeNumberSNpm,Nodes,Edges,Faces,OrientFace,Form,Rad);
 # Top
   (Faces,FaceNumber,Edges)=InsertFaceFace(n,FaceNumber,"T",EdgeNumberT1,EdgeNumberT2
                      ,EdgeNumberWEmp,EdgeNumberWEpp
-                     ,EdgeNumberSNmp,EdgeNumberSNpp,Nodes,Edges,Faces,OrientFace);
+                     ,EdgeNumberSNmp,EdgeNumberSNpp,Nodes,Edges,Faces,OrientFace,Form,Rad);
   NumNodes=size(Nodes,1);
   NumEdges=size(Edges,1);
   NumEdgesI=size(Edges,1);
@@ -331,6 +331,7 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz;order=true)
     Renumbering!(Edges,Faces);
   end  
   FacesInNodes!(Nodes,Faces)
+  SortFacesInNodes!(Nodes,Faces)
 
   zP=zeros(nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
@@ -388,7 +389,7 @@ end
 
 function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
                          NodeNumberE1Start1,NodeNumberE2Start1,
-                         NodeNumberE1Start2,NodeNumberE2Start2,Edges,Nodes)
+                         NodeNumberE1Start2,NodeNumberE2Start2,Edges,Nodes,Form,Rad)
 
   NodeNumber=NodeNumberStart;
   NodeNumberE1=NodeNumberE1Start1;
@@ -407,7 +408,7 @@ function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
         NodeNumberE2=NodeNumberE2+1;
         NodeNumber=NodeNumber-1;
       end
-      Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"X",EdgeNumber);
+      Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"X",EdgeNumber;Form,Rad);
       EdgeNumber=EdgeNumber+1;
       NodeNumber=NodeNumber+1;
     end
@@ -428,7 +429,7 @@ function InsertFaceEdge(n,EdgeNumber,NodeNumberStart,
         N2=NodeNumberE2;
         NodeNumberE2=NodeNumberE2+1;
       end
-      Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"X",EdgeNumber);
+      Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"X",EdgeNumber;Form,Rad);
       EdgeNumber=EdgeNumber+1;
       NodeNumber=NodeNumber+1;
     end
@@ -438,7 +439,7 @@ end
 
 function InsertEdgeEdge(n,EdgeNumber,
     NodeNumberStart,NodeNumberE1,NodeNumberE2,
-     Edges,Nodes)
+     Edges,Nodes,Form,Rad)
   NodeNumber=NodeNumberStart;
   EdgeNumberStart=EdgeNumber;
   @inbounds for i=1:n
@@ -450,7 +451,7 @@ function InsertEdgeEdge(n,EdgeNumber,
     if i==n
       N2=NodeNumberE2;
     end
-    Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"X",EdgeNumber);
+    Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"X",EdgeNumber;Form,Rad);
     EdgeNumber=EdgeNumber+1;
     NodeNumber=NodeNumber+1;
   end
@@ -460,7 +461,7 @@ end
 function InsertFaceFace(n,FaceNumber,Type,EdgeNumberStart1,EdgeNumberStart2,
                          EdgeNumberStartEW1,EdgeNumberStartEW2,
                          EdgeNumberStartSN1,EdgeNumberStartSN2,
-                         Nodes,Edges,Faces,OrientFace)
+                         Nodes,Edges,Faces,OrientFace,Form,Rad)
 
 
   EdgeNumber1=EdgeNumberStart1;
@@ -501,7 +502,7 @@ function InsertFaceFace(n,FaceNumber,Type,EdgeNumberStart1,EdgeNumberStart2,
       end
       EdgeNumber1=EdgeNumber1+1;
       EdgeNumber2=EdgeNumber2+1;
-      (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,Type,OrientFace;P=zeros(Float64,0,0));
+      (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,Type,OrientFace;Form=Form,Rad=Rad,P=zeros(Float64,0,0));
       FaceNumber=FaceNumber+1;
     end
   end

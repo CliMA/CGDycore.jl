@@ -92,6 +92,11 @@ function parse_commandline()
     arg_type = Int
     default = 0
 
+    "--TkePos"
+    help = "Position of turbulent kinetic energy in the tracer list"
+    arg_type = Int
+    default = 0
+
     "--HorLimit"
     help = "Horizontal limiter"
     arg_type = Bool
@@ -136,6 +141,11 @@ function parse_commandline()
     help = "Buoyancy "
     arg_type = Bool
     default = true
+
+    "--Turbulence"
+    help = "Turbulence "
+    arg_type = Bool
+    default = false
 
     "--RefProfile"
     help = "RefProfile"

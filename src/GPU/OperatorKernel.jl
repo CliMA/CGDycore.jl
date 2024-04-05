@@ -555,8 +555,77 @@ end
   end
 end
 
+@kernel inbounds = true function AdvectionTrUpwind3Kernel!(FTr,@Const(Tr),@Const(U),@Const(w),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob))
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  cCol = @localmem eltype(FTr) (N,N, ColumnTilesDim+3)
+  if Iz <= Nz
+    cCol[I,J,iz+1] = Tr[Iz,ind]
+  end
+  if iz == 1
+    Izm1 = max(Iz - 1,1)
+    cCol[I,J,iz] = Tr[Izm1,ind] 
+  end
+  if iz == ColumnTilesDim || Iz == Nz
+    Izp1 = min(Iz + 1,Nz)
+    cCol[I,J,iz+2] = Tr[Izp1,ind]
+    Izp2 = min(Iz + 2,Nz)
+    cCol[I,J,iz+3] = Tr[Izp2,ind]
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz < Nz 
+    cLL = cCol[I,J,iz]
+    cL = cCol[I,J,iz+1]
+    cR = cCol[I,J,iz+2]
+    cRR = cCol[I,J,iz+3]
+
+    @views wCon = Contra3(U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
+      w[Iz,ind],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+
+    Izm1 = max(Iz - 1,1)
+    Izp2 = min(Iz + 2, Nz)
+    JLL = JJ[ID,1,Izm1,IF] + JJ[ID,2,Izm1,IF]
+    JL = JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]
+    JR = JJ[ID,1,Iz+1,IF] + JJ[ID,2,Iz+1,IF]
+    JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
+    cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
+    Flux = eltype(FTr)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
+    @atomic :monotonic FTr[Iz,ind] += (-Flux + wCon * cL) / M[Iz,ind] 
+    @atomic :monotonic FTr[Iz+1,ind] += (Flux - wCon * cR) / M[Iz+1,ind]
+  end 
+
+  if Iz <= Nz
+    GradxTr = D[I,1] * cCol[1,J,iz+1] 
+    GradyTr = D[J,1] * cCol[I,1,iz+1]
+    for k = 2 : N
+      GradxTr += D[I,k] * cCol[k,J,iz+1] 
+      GradyTr += D[J,k] * cCol[I,k,iz+1]
+    end
+    @views (uCon, vCon) = Contra12(U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @atomic :monotonic FTr[Iz,ind] += -(GradxTr * uCon + GradyTr * vCon) / M[Iz,ind]
+  end
+end
+
+#=
 @kernel inbounds = true function DivRhoTrUpwind3Kernel!(F,@Const(U),@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),Koeff)
+
+# Combines hyperViscosity with advection for tracers
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
@@ -664,6 +733,7 @@ end
     @atomic :monotonic F[Iz,ind,5] += FTrCol[I,J,iz] / M[Iz,ind]
   end
 end
+=#
 
 
 @inline function Contra12(Rho,u,v,dXdxI)
@@ -734,7 +804,7 @@ end
 end
 
 @inline function Contra3W(Rho,u,v,w,dXdxI,J)
-  wCon = (J[2,1] * Rho[1] * (dXdxI[1,2,1] * u[1] + dXdxI[2,2,1] * v[1] + dXdxI[3,2,1] * w) + 
+  wCon = eltype(Rho)(2) * (J[2,1] * Rho[1] * (dXdxI[1,2,1] * u[1] + dXdxI[2,2,1] * v[1] + dXdxI[3,2,1] * w) + 
     J[1,2] * Rho[2] * (dXdxI[1,1,2] * u[2] + dXdxI[2,1,2] * v[2] + dXdxI[3,1,2] * w)) /
     (J[2,1] + J[1,2])
 end
@@ -770,106 +840,87 @@ end
 end
 
 @kernel inbounds = true function DampKernel!(Damp,F,U,zP)
-  Iz,IG = @index(Global, NTuple)
-  NG = @uniform @ndrange()[2]
+  Iz,IC = @index(Global, NTuple)
+  NumG = @uniform @ndrange()[2]
 
-  if IG <= NG
-    Fu,Fv,Fw = Damp(zP[Iz,IG],view(U,Iz,IG,1:5))
-    F[Iz,IG,2] += Fu
-    F[Iz,IG,3] += Fv
-    F[Iz,IG,4] += Fw
+  if IC <= NumG
+    Fu,Fv,Fw = Damp(zP[Iz,IC],view(U,Iz,IC,1:5))
+    F[Iz,IC,2] += Fu
+    F[Iz,IC,3] += Fv
+    F[Iz,IC,4] += Fw
   end
 end  
 
-@kernel inbounds = true function ForceKernel!(Force,F,U,p,lat)
-  Iz,IG = @index(Global, NTuple)
-  NG = @uniform @ndrange()[2]
+@kernel inbounds = true function ForceKernel!(Force,F,U,p,xS)
+  Iz,IC = @index(Global, NTuple)
+  NumG = @uniform @ndrange()[2]
 
-  if IG <= NG
-    FRho,Fu,Fv,Fw,FRhoTh = Force(view(U,Iz,IG,1:5),p[Iz,IG],lat[IG])
-    F[Iz,IG,1] += FRho
-    F[Iz,IG,2] += Fu
-    F[Iz,IG,3] += Fv
-    F[Iz,IG,4] += Fw
-    F[Iz,IG,5] += FRhoTh
+  if IC <= NumG
+    FRho,Fu,Fv,Fw,FRhoTh = Force(view(U,Iz,IC,1:5),p[Iz,IC],xS[2,IC])
+    F[Iz,IC,1] += FRho
+    F[Iz,IC,2] += Fu
+    F[Iz,IC,3] += Fv
+    F[Iz,IC,4] += Fw
+    F[Iz,IC,5] += FRhoTh
   end
 end  
 
 @kernel inbounds = true function MicrophysicsKernel!(Source,F,U,p)
-  Iz,IG = @index(Global, NTuple)
-  NG = @uniform @ndrange()[2]
+  Iz,IC = @index(Global, NTuple)
+  NumG = @uniform @ndrange()[2]
 
-  if IG <= NG
-    FRho,FRhoTh,FRhoV,FRhoC = Source(view(U,Iz,IG,:),p[Iz,IG])
-    F[Iz,IG,1] += FRho
-    F[Iz,IG,5] += FRhoTh
-    F[Iz,IG,6] += FRhoV
-    F[Iz,IG,7] += FRhoC
+  if IC <= NumG
+    FRho,FRhoTh,FRhoV,FRhoC = Source(view(U,Iz,IC,:),p[Iz,IC])
+    F[Iz,IC,1] += FRho
+    F[Iz,IC,5] += FRhoTh
+    F[Iz,IC,6] += FRhoV
+    F[Iz,IC,7] += FRhoC
   end
 end  
 
 @kernel inbounds = true function VerticalDiffusionScalarKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),
-  @Const(dXdxI),@Const(JJ),@Const(M),@Const(Glob))
-  I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  @Const(dz))
+  iz,iC = @index(Local, NTuple)
+  Iz,IC = @index(Global, NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
-  N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[1]
+  NumG = @uniform @ndrange()[2]
 
-  ID = I + (J - 1) * N
-  ind = Glob[ID,IF]
-
-  cCol = @localmem eltype(FTr) (N,N,ColumnTilesDim+1)
-
-  if Iz <= Nz
-    cCol[I,J,iz] = Tr[Iz,ind] / Rho[Iz,ind]
-  end
-  if iz == ColumnTilesDim || Iz == Nz
-    Izp1 = min(Iz + 1,Nz)
-    cCol[I,J,iz+1] = Tr[Izp1,ind] / Rho[Izp1,ind]
-  end
-  @synchronize
-
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-
-  if Iz < Nz
-    grad = (K[ID,Iz,IF] + K[ID,Iz+1,IF]) * (cCol[I,J,iz+1] - cCol[I,J,iz]) *
-       (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF]) / ( JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
-    @atomic :monotonic FTr[Iz,ind] +=  dXdxI[3,3,2,ID,Iz,IF] * grad / M[Iz,ind]  
-    @atomic :monotonic FTr[Iz+1,ind] += - dXdxI[3,3,1,ID,Iz+1,IF] * grad / M[Iz+1,ind]     
+  if Iz < Nz && IC <= NumG
+    grad = eltype(FTr)(2) * K[Iz,IC] * (Tr[Iz+1,IC] / Rho[Iz+1,IC] - 
+      Tr[Iz,IC] / Rho[Iz,IC]) / (dz[Iz+1,IC] + dz[Iz,IC])
+    @atomic :monotonic FTr[Iz,IC] +=  grad / dz[Iz,IC]
+    @atomic :monotonic FTr[Iz+1,IC] +=  -grad / dz[Iz+1,IC]
   end  
 end  
 
-@kernel inbounds = true function SurfaceFluxScalarsKernel(F,@Const(U),@Const(p),@Const(TSurf),@Const(RhoVSurf),@Const(uStar),
-  @Const(CT),@Const(CH),@Const(dXdxI),@Const(Glob),@Const(M),@Const(Phys))
-  ID,IF = @index(Global, NTuple)
+@kernel inbounds = true function SurfaceFluxScalarsKernel!(F,@Const(U),@Const(p),@Const(TSurf),@Const(RhoVSurf),@Const(uStar),
+  @Const(CT),@Const(CH),@Const(dz),@Const(Phys))
 
-  NF = @uniform @ndrange()[2]
+  IC, = @index(Global, NTuple)
 
-  if IF <= NF
-    ind = Glob[ID,IF]  
-    Rho = U[1,ind,1]
-    RhoTh = U[1,ind,5]
-    RhoV = U[1,ind,6]
+  NumG = @uniform @ndrange()[1]
+
+  if IC <= NumG
+    Rho = U[1,IC,1]
+    RhoTh = U[1,IC,5]
+    RhoV = U[1,IC,6]
+    dz1 = dz[1,IC]
     RhoD = Rho - RhoV
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
-    T = p[1,ind] / Rm
-    LatFlux = - eltype(F)(2) * CT[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
-      (RhoV[1,ind] - RhoVSurf[ID,IF]) / M[1,ind]
-    SensFlux = - eltype(F)(2) * CH[ID,IF] * uStar[ID,IF] * dXdxI[3,3,1,ID,1,IF] * 
-      (T - TSurf[ID,IF]) / M[1,ind]
+    T = p[1,IC] / Rm
+    LatFlux = -CT[IC] * uStar[IC] * (RhoV - RhoVSurf[IC]) 
+    SensFlux = -CH[IC] * uStar[IC] * (T - TSurf[IC]) 
     FRho = LatFlux
     FRhoV = LatFlux
-    PrePi=(p[1,ind] / Phys.p0)^(Rm / Cpml)
+    PrePi=(p[1,IC] / Phys.p0)^(Rm / Cpml)
     FRhoTh = RhoTh * (SensFlux / T + ((Phys.Rv / Rm) - eltype(F)(1) / Rho - 
       log(PrePi)*(Phys.Rv / Rm - Phys.Cpv / Cpml)) *  LatFlux)
-    @atomic :monotonic F[1,ind,1] += FRho 
-    @atomic :monotonic F[1,ind,5] += FRhoTh 
-    @atomic :monotonic F[1,ind,6] += FRhoV 
+    F[1,IC,1] += FRho / dz1 
+    F[1,IC,5] += FRhoTh  / dz1
+    F[1,IC,6] += FRhoV  / dz1
+#   @views SurfaceFluxScalars(FU[1,IC,:],U[1,IC,:],p[1,IC],CT[IC],CH[IC],uStar[iC])
   end  
 end
 

@@ -51,7 +51,7 @@ function Edge()
   )
 end  
 
-function Edge(NodesE,Nodes,PosG,PosI,Type,PosT=nothing)
+function Edge(NodesE,Nodes,PosG,PosI,Type,PosT=nothing;Form="Cart",Rad=1.0)
   E = Edge()
   E.E=PosG;
   E.EI=PosI;
@@ -62,9 +62,16 @@ function Edge(NodesE,Nodes,PosG,PosI,Type,PosT=nothing)
   end
   E.N=NodesE;
   E.t=Nodes[E.N[2]].P-Nodes[E.N[1]].P;
-  E.a=norm(E.t);
+  if Form == "Sphere"
+    E.a = SizeGreatCircle(Nodes[E.N[2]].P,Nodes[E.N[1]].P) * Rad  
+  else    
+    E.a=norm(E.t);
+  end  
   E.t=E.t/E.a;
   E.Mid=0.5*(Nodes[E.N[1]].P+Nodes[E.N[2]].P);
+  if Form == "Sphere"
+    E.Mid = E.Mid * (Rad / norm(E.Mid))  
+  end  
   E.Type=Type;
   return E
 end
