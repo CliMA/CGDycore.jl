@@ -290,6 +290,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     @views KHyperViscTracerKernel!(CacheThEDMF,ThEDMF,RhoEDMF,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
   end    
+
   Parallels.ExchangeData3DSendGPU(CacheFF,Exchange)
 
   KHyperViscKernel!(CacheF,MRho,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)

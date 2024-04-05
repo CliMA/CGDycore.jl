@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -6,8 +6,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
-  --RhoVPos=1 \
-  --RhoCPos=2 \
+  --RhoVPos=6 \
+  --RhoCPos=7 \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=true \

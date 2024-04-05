@@ -115,7 +115,7 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    TS[IC], RhoVS[IC] =  SurfaceValues(xS[:,IC],view(U,1,IC,:),p[1,IC])
+    TS[IC], RhoVS[IC] =  SurfaceValues(view(xS,:,IC),view(U,1,IC,:),p[1,IC])
   end
 end
 

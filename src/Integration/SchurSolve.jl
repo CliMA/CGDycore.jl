@@ -297,7 +297,7 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
     for in2=1:n2
       @views rRho=v[:,in2,1]
       @views rTh=v[:,in2,5]
-      @views rRhoV=v[:,in2,NumV + RhoVPos]
+      @views rRhoV=v[:,in2,RhoVPos]
       @views rw=v[:,in2,4]
       @views sw=k[:,in2,4]
       invfac=1/fac

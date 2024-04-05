@@ -305,18 +305,17 @@ if State == "Dry"
   Model.Pressure = Pressure
 elseif State == "Moist"
   Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
-    Model.RhoVPos+NumV,Model.RhoCPos+NumV)
+    Model.RhoVPos,Model.RhoCPos)
   Model.Pressure = Pressure
 elseif State == "ShallowWater"
   Pressure = Models.ShallowWaterState()(Phys)
   Model.Pressure = Pressure
-  @show Pressure
 end  
 # Microphysics
 if Microphysics
   if TypeMicrophysics == "SimpleMicrophysics"
     MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
-      Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
+      Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
   else
   end
@@ -341,7 +340,6 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
-      @show "Surface HeldSuarezDry"
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezDrySurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues

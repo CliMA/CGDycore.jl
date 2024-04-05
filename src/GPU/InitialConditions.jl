@@ -118,8 +118,6 @@ function InitialConditionsAdvection(backend,FTB,CG,Metric,Phys,Global,Profile,Pa
   group = (N * N, NzG, 1)
   ndrange = (N * N, Nz, NF)
 
-  @show NF
-
   U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,NumV+NumTr)
   @views Rho = U[:,:,Model.RhoPos]
   @views u = U[:,:,Model.uPos]
