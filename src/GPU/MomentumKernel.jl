@@ -1,5 +1,5 @@
 @kernel inbounds = true function MomentumVectorInvariantCoriolisKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),CoriolisFun)
+  @Const(JJ),@Const(X),@Const(M),@Const(Glob),CoriolisFun)
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
@@ -15,6 +15,7 @@
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
   tempuZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempvZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempwZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
@@ -28,12 +29,15 @@
   if Iz <= Nz
     uCol[I,J,iz] = U[Iz,ind,2]
     vCol[I,J,iz] = U[Iz,ind,3]
+    RhoCol[I,J,iz+1] = U[Iz,ind,1]
     wCol[I,J,iz+1] = U[Iz,ind,4]
     if iz == 1 && Iz == 1
       wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
         dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+        RhoCol[I,J,1] = U[1,ind,1]
     elseif iz == 1
       wCol[I,J,1] = U[Iz-1,ind,4]
+      RhoCol[I,J,1] = U[Iz-1,ind,1]
     end   
   end 
   @synchronize 
@@ -160,26 +164,28 @@
       vCol[I,J,iz] * W2 - wCol[I,J,iz+1] * V2 + FU) / M[Iz,ind]
     @atomic :monotonic F[Iz,ind,3] += (uCol[I,J,iz] * W1 - wCol[I,J,iz] * U1 +
       uCol[I,J,iz] * W2 - wCol[I,J,iz+1] * U2 + FV) / M[Iz,ind]
-    RhoCol = U[Iz,ind,1]  
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += RhoCol * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) / MRho[Iz-1,ind]
+      @atomic :monotonic F[Iz-1,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
+        (RhoCol[I,J,iz-1] * M[ind,iz-1] + RhoCol[I,J,iz] * M[ind,iz])
     end
     if Iz < Nz
-      @atomic :monotonic F[Iz,ind,4] += RhoCol * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / MRho[Iz,ind]
+      @atomic :monotonic F[Iz,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
+        (RhoCol[I,J,iz+1] * M[ind,iz+1] + RhoCol[I,J,iz] * M[ind,iz])
     end  
   end
 end
 
-@kernel inbounds = true function MomentumVectorInvariantCoriolisDraftKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(X),@Const(MRho),@Const(M),@Const(Glob),CoriolisFun)
+@kernel inbounds = true function MomentumVectorInvariantCoriolisDraftKernel!(F,@Const(U),@Const(w),@Const(Rho),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(X),@Const(M),@Const(Glob),CoriolisFun)
 
   I, J, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IF,IE = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[3]
   N = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+  NE = @uniform @ndrange()[5]
 
   ID = I + (J - 1) * N  
   ind = Glob[ID,IF]
@@ -187,6 +193,7 @@ end
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
   tempuZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempvZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempwZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
@@ -200,12 +207,15 @@ end
   if Iz <= Nz
     uCol[I,J,iz] = U[Iz,ind,2]
     vCol[I,J,iz] = U[Iz,ind,3]
-    wCol[I,J,iz+1] = U[Iz,ind,4]
+    wCol[I,J,iz+1] = w[Iz,ind,IE]
+    RhoCol[I,J,iz+1] = Rho[Iz,ind,IE]
     if iz == 1 && Iz == 1
       wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
-        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+        dXdxI[3,2,1,ID,1,IF] * w[Iz,ind,IE]) / dXdxI[3,3,1,ID,1,IF]
+      RhoCol[I,J,1] = Rho[1,ind,IE]
     elseif iz == 1
-      wCol[I,J,1] = U[Iz-1,ind,4]
+      wCol[I,J,1] = w[Iz-1,ind,IE]
+      RhoCol[I,J,1] = Rho[Iz-1,ind,IE]
     end   
   end 
   @synchronize 
@@ -300,12 +310,13 @@ end
     FW1 += FwCor * JJ[ID,1,Iz,IF]
     FW2 += FwCor * JJ[ID,2,Iz,IF]
 
-    RhoCol = U[Iz,ind,1]  
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += RhoCol * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) / MRho[Iz-1,ind]
+      @atomic :monotonic F[Iz-1,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
+        (RhoCol[I,J,iz-1] * M[ind,iz-1] + RhoCol[I,J,iz] * M[ind,iz])
     end
     if Iz < Nz
-      @atomic :monotonic F[Iz,ind,4] += RhoCol * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / MRho[Iz,ind]
+      @atomic :monotonic F[Iz,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
+        (RhoCol[I,J,iz+1] * M[ind,iz+1] + RhoCol[I,J,iz] * M[ind,iz])
     end  
   end
 end

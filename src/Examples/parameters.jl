@@ -355,7 +355,7 @@ function Parameters(FT,Problem::String)
   elseif Problem == "HillGaussCart"
     @show Problem
     Param = ParamHillGaussCart()
-  elseif Problem == "AdvectionDCMIP"
+  elseif Problem == "AdvectionSphereDCMIP"
     @show Problem
     Param = ParamAdvectionSphereDCMIP{FT}()
   elseif Problem == "AdvectionSphereGaussian"

@@ -22,6 +22,7 @@ RhoCPos = parsed_args["RhoCPos"]
 RhoIPos = parsed_args["RhoIPos"]
 RhoRPos = parsed_args["RhoRPos"]
 TkePos = parsed_args["TkePos"]
+@show TkePos,RhoVPos,RhoCPos
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -39,6 +40,8 @@ State = parsed_args["State"]
 RefProfile = parsed_args["RefProfile"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
+EDMF = parsed_args["EDMF"]
+NDEDMF = parsed_args["NDEDMF"]
 Microphysics = parsed_args["Microphysics"]
 TypeMicrophysics = parsed_args["TypeMicrophysics"]
 RelCloud = parsed_args["RelCloud"]
@@ -188,6 +191,7 @@ Model.RhoVPos  = RhoVPos
 Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
+@show TkePos
 Model.TkePos  = TkePos
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
@@ -222,6 +226,8 @@ Model.HyperDGrad = HyperDGrad
 Model.HyperDRhoDiv = HyperDRhoDiv
 Model.HyperDDiv = HyperDDiv
 Model.HyperDDivW = HyperDDivW
+Model.EDMF = EDMF
+Model.NDEDMF = NDEDMF
 
 OrdPolyZ = 1
 if RadEarth == 0.0
@@ -351,6 +357,9 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
     Model.SurfaceFluxValues = SurfaceFluxValues
   end  
 end
+if Model.SurfaceFlux
+  Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos,Model.RhoVPos)  
+end  
 
 #Vertical Diffusion
 if Model.VerticalDiffusion || Model.VerticalDiffusionMom
@@ -460,10 +469,12 @@ end
 
 
 Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
-nT = max(7 + NumTr, NumV + NumTr)
+nT = max(7 + NumTr, NumV + NumTr) + Model.NDEDMF*(4 + NumTr)
+@show nT
 Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
 if ParallelCom.Proc == 1
   @show "vor Timestepper"
 end  
+@show TkePos
 Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
   Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)

@@ -1,5 +1,5 @@
 @kernel inbounds = true function GradKernel!(F,@Const(U),@Const(p),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(X),@Const(M),@Const(MRho),@Const(Glob),Gravitation)
+  @Const(JJ),@Const(X),@Const(M),@Const(Glob),Gravitation)
 
 
 # gi, gj, gz, gF = @index(Group, NTuple)
@@ -12,15 +12,18 @@
   NF = @uniform @ndrange()[4]
 
   Pres = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
 
   ID = I + (J - 1) * N  
   ind = Glob[ID,IF]
 
   if Iz <= Nz
     Pres[I,J,iz] = p[Iz,ind]
+    RhoCol[I,J,iz] = U[Iz,ind,1]
   end
   if iz == ColumnTilesDim && Iz < Nz
     Pres[I,J,iz+1] = p[Iz+1,ind]
+    RhoCol[I,J,iz+1] = U[Iz+1,ind,1]
   end  
 
   @synchronize
@@ -41,12 +44,12 @@
     y = eltype(F)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
     z = eltype(F)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
     Grav = Gravitation(x,y,z)
-    GradZ = -Grav * U[Iz,ind,1] *
+    GradZ = -Grav * RhoCol[I,J,iz] *
         (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / (dXdxI[3,3,1,ID,Iz,IF] + dXdxI[3,3,2,ID,Iz,IF])
     Gradu += GradZ * (dXdxI[3,1,1,ID,Iz,IF] + dXdxI[3,1,2,ID,Iz,IF])
     Gradv += GradZ * (dXdxI[3,2,1,ID,Iz,IF] + dXdxI[3,2,2,ID,Iz,IF])
-    @atomic :monotonic F[Iz,ind,2] += -Gradu / M[Iz,ind] / U[Iz,ind,1]
-    @atomic :monotonic F[Iz,ind,3] += -Gradv / M[Iz,ind] / U[Iz,ind,1]
+    @atomic :monotonic F[Iz,ind,2] += -Gradu / M[Iz,ind] / RhoCol[I,J,iz]
+    @atomic :monotonic F[Iz,ind,3] += -Gradv / M[Iz,ind] / RhoCol[I,J,iz]
   end  
 
   if Iz < Nz
@@ -57,8 +60,8 @@
     z = eltype(F)(0.5) * (X[ID,2,3,Iz,IF] + X[ID,1,3,Iz+1,IF])
     Grav = Gravitation(x,y,z)
     @atomic :monotonic F[Iz,ind,4] += -(Gradw + 
-      Grav * (U[Iz,ind,1] * JJ[ID,2,Iz,IF] + U[Iz+1,ind,1] * JJ[ID,1,Iz+1,IF])) /
-      MRho[Iz,ind]
+      Grav * (RhoCol[I,J,iz] * JJ[ID,2,Iz,IF] + RhoCol[I,J,iz+1] * JJ[ID,1,Iz+1,IF])) /
+      (RhoCol[I,J,iz] * M[iz,ind] + RhoCol[I,J,iz+1] * M[iz+1,ind])
   end      
    
 end

@@ -11,6 +11,7 @@ using ArgParse
 using LinearAlgebra
 
 # Model
+function LinearShallow()
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
@@ -141,20 +142,20 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 RefineLevel = 4
-RadEarth = Phys.RadEarth
+RadEarth = 1.0
 nz = 1
 nPanel = 40
 nQuad = 3
 Decomp = ""
 Decomp = "EqualArea"
-Problem = "GalewskiSphere"
-#Problem = "LinearBlob"
+#Problem = "GalewskiSphere"
+Problem = "LinearBlob"
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #TRI
-#GridType = "DelaunaySphere"
-GridType = "CubedSphere"
+GridType = "DelaunaySphere"
+#GridType = "CubedSphere"
 #GridType = "TriangularSphere" # Achtung Orientierung
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
@@ -177,11 +178,6 @@ CG1KiteDHDiv = FEMSei.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,KiteGrid)
 CG1KiteDHDiv.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHDiv,KiteGrid,1,FEMSei.Jacobi)
 Div = FEMSei.DivMatrix(backend,FTB,CG1KiteDHDiv,CG1KiteP,KiteGrid,3,FEMSei.Jacobi)
 FuM = lu(CG1KiteDHDiv.M)
-CG1KiteDHCurl = FEMSei.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,KiteGrid)
-CG1KiteDHCurl.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHCurl,KiteGrid,1,FEMSei.Jacobi)
-Curl = FEMSei.CurlMatrix(backend,FTB,CG1KiteDHCurl,CG1KiteP,KiteGrid,3,FEMSei.Jacobi)
-#Grad = FEMSei.GradMatrix(backend,FTB,CG1KiteP,CG1KiteD,KiteGrid,3,FEMSei.Jacobi)
-
 
 U = zeros(FTB,CG1KiteP.NumG+CG1KiteDHDiv.NumG)
 UNew = zeros(FTB,CG1KiteP.NumG+CG1KiteDHDiv.NumG)
@@ -189,8 +185,6 @@ pPosS = 1
 pPosE = CG1KiteP.NumG
 uPosS = CG1KiteP.NumG + 1
 uPosE = CG1KiteP.NumG + CG1KiteDHDiv.NumG
-uCurl = zeros(FTB,CG1KiteDHCurl.NumG)
-uCurl1 = zeros(FTB,CG1KiteDHCurl.NumG)
 VelCa = zeros(KiteGrid.NumFaces,Grid.Dim)
 VelSp = zeros(KiteGrid.NumFaces,2)
 
@@ -199,9 +193,14 @@ VelSp = zeros(KiteGrid.NumFaces,2)
   FEMSei.Jacobi,Model.InitialProfile)
 @views FEMSei.Project!(backend,FTB,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,nQuad,
   FEMSei.Jacobi,Model.InitialProfile)
-@show maximum(U[uPosS:uPosE]),minimum(U[uPosS:uPosE])
+@views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
+@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
+@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
+Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
+FileNumber += 1
 
-nAdveVel = 0
+
+nAdveVel = 1000
 dtau = 0.0005
 time = 0.0
 r = similar(U)
@@ -232,20 +231,20 @@ for i = 1 : nAdveVel
   @.ru = -ru
   @. U = U + dtau * r
 
-# if mod(i,100) == 0
-#   global FileNumber += 1
-#   @views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
-#   @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-#   @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
-#   Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-# end
+  if mod(i,100) == 0
+    @views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
+    @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
+    @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
+    Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
+    FileNumber += 1
+  end
 end
 
-FileNumber += 1
 @views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,U[pPosS:pPosE])
 @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
 @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,U[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi)
 Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
 nothing
+end
 
 

@@ -232,7 +232,7 @@ Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 (CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
   Phys,TopoProfile,Exchange,Grid,ParallelCom)
 
-if Problem == "AdvectionDCMIP"
+if Problem == "AdvectionSphereDCMIP"
   Profile = Examples.AdvectionSphereDCMIP()(Param,Phys)
 elseif Problem == "AdvectionSphereSlottedCylinder"
   Profile = Examples.DivergentSphereExample()(Param,Phys)
@@ -257,6 +257,8 @@ Model.ThPos = NumV
       "Tr1",
       ]
   Global.Output.PrintDays = PrintDays
+  Global.Output.PrintHours = PrintHours
+  Global.Output.PrintMinutes = PrintMinutes
   Global.Output.PrintSeconds = PrintSeconds
   Global.Output.PrintTime = PrintTime
   Global.Output.PrintStartTime = 0

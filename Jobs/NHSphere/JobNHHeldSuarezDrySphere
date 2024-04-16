@@ -6,9 +6,9 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
-  --TkePos=7 \
-  --RhoVPos=6 \
-  --RhoCPos=0 \
+  --TkePos=6 \
+  --RhoVPos=7 \
+  --RhoCPos=8 \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=true \
@@ -25,8 +25,8 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=false \
   --Equation="CompressibleShallow" \
-  --State="Dry" \
-  --Microphysics=false \
+  --State="Moist" \
+  --Microphysics=true \
   --TypeMicrophysics="SimpleMicrophysics" \
   --Buoyancy=true \
   --Damping=true \

@@ -139,11 +139,9 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   group = (Nz, NG)
   ndrange = (Nz, NumG)
   NF = min(div(NumberThreadGPU,N*N),NumF)
-  groupS = (N * N, NF)
-  ndrangeS = (N * N, NumF)
-  NzG = min(div(NumberThreadGPU,N*N),Nz)
-  groupK = (N * N, NzG, 1)
-  ndrangeK = (N * N, Nz, NumF)
+  NDoFG = min(div(NumberThreadGPU,Nz),NumG)
+  groupG = (Nz, NDoFG)
+  ndrangeG = (Nz, NumG)
   @views p = Cache.AuxG[:,:,1]
   @views KV = Cache.KV
   @views Rho = U[:,:,1]
@@ -166,17 +164,16 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   if !Global.Model.Turbulence
     if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom
       if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom 
-        KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
-        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeK)
+        KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
+        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeG)
         KernelAbstractions.synchronize(backend)
       else    
         NFG = min(div(NumberThreadGPU,N*N),NumF)
-        groupS = (N * N, NFG)
-        ndrangeS = (N * N, NumF)
         Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
         Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
-        KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupK)
-        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeK)
+        KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
+        @show "EddyCoefficientKernel",groupK,ndrangeK
+        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeG)
         KernelAbstractions.synchronize(backend)
       end
     end  

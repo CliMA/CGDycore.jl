@@ -31,7 +31,6 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
   for iF = 1 : Grid.NumFaces
     NumEdges += length(Grid.Faces[iF].E)
   end  
-  @show NumEdges
   Edges = map(1:NumEdges) do i
     Edge([1,2],Nodes,0,0,"",0);
   end
@@ -54,7 +53,6 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
       EdgeNumber += 1
     end
   end  
-  @show EdgeNumber
 
 
   NumFaces = 0

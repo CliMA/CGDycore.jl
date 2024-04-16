@@ -52,7 +52,6 @@ function Project!(backend,FTB,p,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
 end
 
 function Project(backend,FTB,Fe::HDivKiteDElement,Grid,QuadOrd,Jacobi,F)
-  @show "ProjectHDiv"
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
   Weights = QQ.Weights
   Points = QQ.Points
@@ -76,7 +75,6 @@ function Project(backend,FTB,Fe::HDivKiteDElement,Grid,QuadOrd,Jacobi,F)
     end
     @. p[Fe.Glob[:,iF]] += pLoc[:]
   end
-  @show "fu1",maximum(abs.(p))
   p = Fe.M\p
   return p
 end
@@ -107,8 +105,8 @@ function Project!(backend,FTB,p,Fe::HDivKiteDElement,Grid,QuadOrd,Jacobi,F)
     end
     @. pp[Fe.Glob[:,iF]] += pLoc[:]
   end
+  @show "HDiv",maximum(pp)
   pp = Fe.M \ pp
-  @show "fu",maximum(abs.(pp))
   @. p = pp
 end
 
@@ -138,6 +136,7 @@ function Project!(backend,FTB,p,Fe::HCurlKiteDElement,Grid,QuadOrd,Jacobi,F)
     end
     @views @. pp[Fe.Glob[:,iF]] += pLoc[:]
   end
+  @show "HCurl",maximum(pp)
   pp = Fe.M \ pp
   @. p = pp
 end

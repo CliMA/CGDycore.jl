@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -6,8 +6,9 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
-  --RhoVPos=6 \
-  --RhoCPos=7 \
+  --TkePos=6 \
+  --RhoVPos=7 \
+  --RhoCPos=8 \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=true \
@@ -24,6 +25,9 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --State="Moist" \
   --Microphysics=true \
   --TypeMicrophysics="SimpleMicrophysics" \
+  --Turbulence=true \
+  --EDMF=true \
+  --NDEDMF=2 \
   --Buoyancy=true \
   --Damping=true \
   --StrideDamp=10000 \
@@ -52,4 +56,4 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --HyperDCurl=9.e15 \
   --HyperDGrad=9.e15 \
   --HyperDDiv=9.e15 \
-  --HyperDDivW=9.e15
+  --HyperDDivW=0.e15

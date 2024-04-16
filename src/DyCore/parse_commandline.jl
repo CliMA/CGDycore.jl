@@ -157,6 +157,16 @@ function parse_commandline()
     arg_type = String
     default = "Shallow"
 
+    "--EDMF"
+    help = "EDMF"
+    arg_type = Bool
+    default = false
+
+    "--NDEDMF"
+    help = "Number of Drafts in EDMF"
+    arg_type = Int
+    default = 0
+
     "--State"
     help = "Equation Type, ShallowWater, Dry, Moist"
     arg_type = String

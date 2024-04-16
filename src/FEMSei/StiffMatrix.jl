@@ -1,3 +1,130 @@
+function VortCrossVel!(backend,FTB,Rhs,u,uFe::HDivElement,q,qFe::ScalarElement,FeT::HDivElement,
+  Grid,QuadOrd,Jacobi)
+  QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
+  Weights = QQ.Weights
+  Points = QQ.Points
+  fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
+  qfFRef  = zeros(qFe.Comp,qFe.DoF,length(Weights))
+
+  for i = 1 : length(Weights)
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeT.DoF
+        fTRef[iComp,iD,i] = FeT.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+    for iComp = 1 : qFe.Comp
+      for iD = 1 : qFe.DoF
+        qfFRef[iComp,iD,i] = qFe.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  ufFRef = fTRef
+  RhsLoc = zeros(FeT.DoF)
+  uLoc = zeros(uFe.Comp)
+  for iF = 1 : Grid.NumFaces
+    RhsLoc .= 0
+    for i = 1 : length(Weights)
+      DF, detJ = Jacobi(Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+      qLoc = qfFRef[1,1,i] * q[qFe.Glob[1,iF]]
+      for j = 2 : qFe.DoF 
+        qLoc += qfFRef[1,j,i] * q[qFe.Glob[j,iF]]
+      end  
+      uLoc .= [-ufFRef[2,1,i],ufFRef[1,1,i]] * u[uFe.Glob[1,iF]]
+      for j = 2 : FeT.DoF 
+        uLoc .+= [-ufFRef[2,j,i],ufFRef[1,j,i]] * u[uFe.Glob[j,iF]]
+      end  
+      RhsLoc += 1 / detJ * Weights[i] * qLoc * ((DF * uLoc)' * (DF * fTRef[:,:,i]))'
+    end
+    @views @. Rhs[FeT.Glob[:,iF]] += RhsLoc
+  end
+end  
+
+function GradKinHeight!(backend,FTB,Rhs,u,uFe::HDivElement,h,hFe::ScalarElement,FeT::HDivElement,
+  Grid,QuadOrd,Jacobi)
+  QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
+  Weights = QQ.Weights
+  Points = QQ.Points
+  fTRef  = zeros(hFe.Comp,FeT.DoF,length(Weights))
+  hfFRef  = zeros(hFe.Comp,hFe.DoF,length(Weights))
+  ufFRef  = zeros(uFe.Comp,uFe.DoF,length(Weights))
+
+  for i = 1 : length(Weights)
+    for iComp = 1 : hFe.Comp
+      for iD = 1 : FeT.DoF
+        fTRef[iComp,iD,i] = FeT.Divphi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+    for iComp = 1 : hFe.Comp
+      for iD = 1 : hFe.DoF
+        hfFRef[iComp,iD,i] = hFe.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+    for iComp = 1 : uFe.Comp
+      for iD = 1 : uFe.DoF
+        ufFRef[iComp,iD,i] = uFe.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  RhsLoc = zeros(FeT.DoF)
+  uLoc = zeros(uFe.Comp)
+  for iF = 1 : Grid.NumFaces
+    RhsLoc .= 0
+    for i = 1 : length(Weights)
+      DF, detJ = Jacobi(Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+      hLoc = hfFRef[1,1,i] * h[hFe.Glob[1,iF]]
+      for j = 2 : hFe.DoF 
+        hLoc = hfFRef[1,j,i] * h[hFe.Glob[j,iF]]
+      end  
+      uLoc .= ufFRef[:,1,i] * u[uFe.Glob[1,iF]]
+      for j = 2 : FeT.DoF 
+        uLoc .+= ufFRef[:,j,i] * u[uFe.Glob[j,iF]]
+      end  
+      uLoc3 = 1 / detJ * DF * uLoc
+      RhsLoc += Weights[i] * (uLoc3'*uLoc3 + hLoc) * fTRef[:,:,i]'
+    end
+    @views @. Rhs[FeT.Glob[:,iF]] += RhsLoc
+  end
+end  
+
+function DivHeight!(backend,FTB,Rhs,u,uFe::HDivElement,h,hFe::ScalarElement,FeT::ScalarElement,
+  Grid,QuadOrd,Jacobi)
+  QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
+  Weights = QQ.Weights
+  Points = QQ.Points
+  fTRef  = zeros(hFe.Comp,FeT.DoF,length(Weights))
+  ufFRef  = zeros(FeT.Comp,uFe.DoF,length(Weights))
+
+  for i = 1 : length(Weights)
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeT.DoF
+        fTRef[iComp,iD,i] = FeT.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : uFe.DoF
+        ufFRef[iComp,iD,i] = uFe.Divphi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  hfFRef = fTRef
+  RhsLoc = zeros(FeT.DoF)
+  for iF = 1 : Grid.NumFaces
+    RhsLoc .= 0
+    for i = 1 : length(Weights)
+      hLoc = hfFRef[1,1,i] * h[hFe.Glob[1,iF]]
+      for j = 2 : hFe.DoF 
+        hLoc += hfFRef[1,j,i] * h[hFe.Glob[j,iF]]
+      end  
+      uLoc = ufFRef[1,1,i] * u[uFe.Glob[1,iF]]
+      for j = 2 : uFe.DoF 
+        uLoc += ufFRef[1,j,i] * u[uFe.Glob[j,iF]]
+      end  
+      RhsLoc += Weights[i] * uLoc * hLoc * fTRef[:,:,i]'
+    end
+    @views @. Rhs[FeT.Glob[:,iF]] += RhsLoc
+  end
+end  
+
 function DivMatrix(backend,FTB,FeF::HDivElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
   Weights = QQ.Weights
@@ -41,7 +168,6 @@ function DivMatrix(backend,FTB,FeF::HDivElement,FeT::ScalarElement,Grid,QuadOrd,
 end
 
 function DivMatrix(backend,FTB,FeF::HDivKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  @show "Case 2"
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
   Weights = QQ.Weights
   Points = QQ.Points
@@ -108,86 +234,6 @@ function DivMatrix(backend,FTB,FeF::HDivKiteDElement,FeT::ScalarElement,Grid,Qua
 end
 
 function CurlMatrix(backend,FTB,FeF::HCurlKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  @show "Case 2"
-  QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
-  Weights = QQ.Weights
-  Points = QQ.Points
-  fFRef  = zeros(FeF.Comp,FeF.DoF,length(Weights))
-  fTRef  = zeros(FeF.Comp,FeT.DoF,length(Weights))
-
-  for i = 1 : length(Weights)
-    for iComp = 1 : FeF.Comp
-      for iD = 1 : FeT.DoF
-        fTRef[iComp,iD,i] = FeT.rotphi[iD,iComp](Points[i,1],Points[i,2])
-      end
-    end
-    for iComp = 1 : FeF.Comp
-      for iD = 1 : FeF.DoF
-        fFRef[iComp,iD,i] = FeF.phi[iD,iComp](Points[i,1],Points[i,2])
-      end
-    end
-  end
-  QQL = FEMSei.QuadRule{FTB}(Grids.Line(),backend,QuadOrd)
-  WeightsL = QQL.Weights
-  PointsL = QQL.Points
-  fFRefX  = zeros(FeT.Comp,FeF.DoF,length(WeightsL))
-  fFRefY  = zeros(FeT.Comp,FeF.DoF,length(WeightsL))
-  fTRefX  = zeros(FeT.Comp,FeT.DoF,length(WeightsL))
-  fTRefY  = zeros(FeT.Comp,FeT.DoF,length(WeightsL))
-  for i = 1 : length(WeightsL)
-    for iComp = 1 : FeT.Comp
-      for iD = 1 : FeT.DoF
-        fTRefX[iComp,iD,i] = FeT.phi[iD,iComp](-1.0,PointsL[i])
-        fTRefY[iComp,iD,i] = FeT.phi[iD,iComp](PointsL[i],-1.0)
-      end
-    end
-    for iD = 1 : FeF.DoF
-      fFRefX[1,iD,i] = FeF.phi[iD,2](-1.0,PointsL[i])
-      fFRefY[1,iD,i] = FeF.phi[iD,1](PointsL[i],-1.0)
-    end
-  end
-
-  RowInd = Int64[]
-  ColInd = Int64[]
-  Val = Float64[]
-  CurlLoc = zeros(FeT.DoF,FeF.DoF)
-
-  for iF = 1 : Grid.NumFaces
-    CurlLoc .= 0
-    for iW = 1 : length(Weights)
-#     _, detJ = Jacobi(Grid.Type,Points[iW,1],Points[iW,2],Grid.Faces[iF], Grid)
-      for j = 1 : size(CurlLoc,2)
-        for i = 1 : size(CurlLoc,1)
-          CurlLoc[i,j] += Weights[iW] * 
-            (fTRef[1,i,iW] * fFRef[1,j,iW] + fTRef[2,i,iW] * fFRef[2,j,iW])
-        end
-      end  
-    end
-    for iW = 1 : length(WeightsL)
-      for j = 1 : size(CurlLoc,2)
-        for i = 1 : size(CurlLoc,1)
-          CurlLoc[i,j] += WeightsL[iW] * (fTRefX[1,i,iW] * fFRefX[1,j,iW] +  
-            fTRefY[1,i,iW] * fFRefY[1,j,iW])  
-        end
-      end  
-    end   
-    for j = 1 : size(CurlLoc,2)
-      for i = 1 : size(CurlLoc,1)
-        push!(RowInd,FeT.Glob[i,iF])
-        push!(ColInd,FeF.Glob[j,iF])
-        push!(Val,CurlLoc[i,j])
-      end
-    end
-  end
-  Curl = sparse(RowInd, ColInd, Val)
-  return Curl
-end
-
-
-
-
-function CurlMatrix1(backend,FTB,FeF::HCurlKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  @show "Case 2"
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
   Weights = QQ.Weights
   Points = QQ.Points
@@ -237,7 +283,6 @@ function CurlMatrix1(backend,FTB,FeF::HCurlKiteDElement,FeT::ScalarElement,Grid,
     for i = 1 : length(Weights)
       _, detJ = Jacobi(Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
       CurlLoc += -sign(detJ) * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
-#     CurlLoc += detJ * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
     end
     for i = 1 : length(WeightsL)
       CurlLoc += WeightsL[i] * (fTRefX[:,:,i]' * fFRefX[:,:,i] +  
@@ -256,7 +301,6 @@ function CurlMatrix1(backend,FTB,FeF::HCurlKiteDElement,FeT::ScalarElement,Grid,
 end
 
 function GradMatrix(backend,FTB,FeF::ScalarElement,FeT::HDivElement,Grid,QuadOrd,Jacobi)
-  @show "Case 3"
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
   Weights = QQ.Weights
   Points = QQ.Points
@@ -299,7 +343,6 @@ function GradMatrix(backend,FTB,FeF::ScalarElement,FeT::HDivElement,Grid,QuadOrd
 end
     
 function GradMatrix(backend,FTB,FeF::ScalarElement,FeT::HDivKiteDElement,Grid,QuadOrd,Jacobi)
-  @show "Case 4"
   QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,QuadOrd)
   Weights = QQ.Weights
   Points = QQ.Points

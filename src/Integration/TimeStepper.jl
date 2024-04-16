@@ -49,15 +49,16 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
+  ND = Global.Model.NDEDMF
   nz = Global.Grid.nz
   NumG = CG.NumG
   Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
-    NumV,NumTr)
+    NumV,NumTr,ND)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockAMD"
     JCache = JStruct{FT}(backend,NumG,nz,NumTr)
-    Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
-    Cache.fV = KernelAbstractions.zeros(backend,FT,size(U))
+    Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,:])..., TimeStepper.ROS.nStage);
+    Cache.fV = similar(U)
     Cache.Vn = similar(U)
   elseif IntMethod == "RosenbrockSSP"
     Global.J = JStruct(NumG,nz,NumTr)
@@ -475,12 +476,13 @@ function TimeStepperGPUAdvection!(U,Fcn!,Trans,CG,Metric,Phys,Exchange,Global,Pa
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
+  ND = Global.Model.NDEDMF
   nz = Global.Grid.nz
   NumG = CG.NumG
   FT = eltype(U)
   backend = get_backend(U)
   Cache=CacheStruct{FT}(backend,CG.OrdPoly+1,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
-    NumV,NumTr)
+    NumV,NumTr,ND)
 
   if IntMethod == "SSPRungeKutta"
     Cache.fS=KernelAbstractions.zeros(backend,FT,nz,NumG,NumTr,TimeStepper.SSP.nStage)

@@ -14,8 +14,19 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   NzG = min(div(256,N*N),Nz)
   group = (N * N, NzG, 1)
   ndrange = (N * N, Nz, NF)
+  lengthU = NumV
+  if Model.TkePos > 0
+    lengthU += 1
+  end  
+  if NumTr > 0
+    lengthU += NumTr  
+  end
+  if Model.EDMF
+    ND = Model.NDEDMF  
+    lengthU += ND*(1 + 1 + 1 + NumTr)
+  end    
 
-  U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,NumV+NumTr)
+  U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,lengthU)
   @views Rho = U[:,:,Model.RhoPos]
   @views u = U[:,:,Model.uPos]
   @views v = U[:,:,Model.vPos]

@@ -1,4 +1,4 @@
-@kernel inbounds = true function HyperViscKernel!(F,MRho,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
+@kernel inbounds = true function HyperViscKernel!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob)) 
 
   I, J, iz   = @index(Local, NTuple)
@@ -80,12 +80,6 @@
     @atomic :monotonic F[Iz,ind,3] += FuD / M[Iz,ind]
     @atomic :monotonic F[Iz,ind,4] += FvD / M[Iz,ind]
     @atomic :monotonic F[Iz,ind,5] += DivTh / M[Iz,ind]
-    if Iz < Nz
-      @atomic :monotonic MRho[Iz,ind] += U[Iz,ind,1] * JJ[ID,2,Iz,IF] 
-    end  
-    if Iz > 1
-      @atomic :monotonic MRho[Iz-1,ind] += U[Iz,ind,1] * JJ[ID,1,Iz,IF] 
-    end  
   end
 end
 
@@ -390,9 +384,227 @@ end
 end
 
 
+@kernel inbounds = true function HyperViscWEDMFKernel!(Fw,@Const(w),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(MW),@Const(Glob)) 
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF,IE = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+  NE = @uniform @ndrange()[5]
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  wCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCxCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCyCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  if Iz < Nz && IF <= NF && IE <= NE
+    wCol[I,J,iz] = w[Iz,ind,IE] 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz < Nz && IF <= NF && IE <= NE
+    DxcF = D[I,1] * wCol[1,J,iz]
+    DycF = D[J,1] * wCol[I,1,iz]
+    for k = 2 : N
+      DxcF += D[I,k] * wCol[k,J,iz]
+      DycF += D[J,k] * wCol[I,k,iz] 
+    end
+    GradDx = ((dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    GradDy = ((dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    tempx = (dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * GradDy
+    tempy = (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * GradDy
+    wCxCol[I,J,iz] = tempx
+    wCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+  if Iz < Nz && IF <= NF && IE <= NE
+    Divw = DW[I,1] * wCxCol[1,J,iz] + DW[J,1] * wCyCol[I,1,iz]
+    for k = 2 : N
+      Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
+    end
+    @atomic :monotonic Fw[Iz,ind,IE] += Divw / MW[Iz,ind]
+  end
+end
+
+@kernel inbounds = true function HyperViscWKoeffEDMFKernel!(Fw,@Const(w),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(MW),@Const(Glob),KoeffDivW) 
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF,IE = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+  NE = @uniform @ndrange()[5]
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  wCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCxCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  wCyCol = @localmem eltype(Fw) (N,N, ColumnTilesDim)
+  if Iz < Nz && IF <= NF && I <= NE
+    wCol[I,J,iz] = w[Iz,ind,IE] 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz < Nz && IF <= NF && IE <= NE
+    DxcF = D[I,1] * wCol[1,J,iz]
+    DycF = D[J,1] * wCol[I,1,iz]
+    for k = 2 : N
+      DxcF += D[I,k] * wCol[k,J,iz]
+      DycF += D[J,k] * wCol[I,k,iz] 
+    end
+    GradDx = ((dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    GradDy = ((dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * DxcF +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * DycF) / (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
+    tempx = (dXdxI[1,1,2,ID,Iz,IF] + dXdxI[1,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[1,2,2,ID,Iz,IF] + dXdxI[1,2,1,ID,Iz+1,IF]) * GradDy
+    tempy = (dXdxI[2,1,2,ID,Iz,IF] + dXdxI[2,1,1,ID,Iz+1,IF]) * GradDx +
+      (dXdxI[2,2,2,ID,Iz,IF] + dXdxI[2,2,1,ID,Iz+1,IF]) * GradDy
+    wCxCol[I,J,iz] = tempx
+    wCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+  if Iz < Nz && IF <= NF && IE <= NE
+    Divw = DW[I,1] * wCxCol[1,J,iz] + DW[J,1] * wCyCol[I,1,iz]
+    for k = 2 : N
+      Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
+    end
+    @atomic :monotonic Fw[Iz,ind,IE] += -KoeffDivW * Divw / MW[Iz,ind]
+  end
+end
+
+@kernel inbounds = true function HyperViscTracerEDMFKernel!(FTr,@Const(Tr),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob)) 
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF,IE = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+  NE = @uniform @ndrange()[5]
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  if Iz <= Nz && IF <= NF && IE <= NE
+    TrCol[I,J,iz] = Tr[Iz,ind,IE] 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz <= Nz && IF <= NF && IE <= NE
+    Dxc = D[I,1] * TrCol[1,J,iz]
+    Dyc = D[J,1] * TrCol[I,1,iz]
+    for k = 2 : N
+      Dxc += D[I,k] * TrCol[k,J,iz]
+      Dyc += D[J,k] * TrCol[I,k,iz] 
+    end
+    @views (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
+    @views (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    TrCxCol[I,J,iz] = tempx
+    TrCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+  if Iz <= Nz && IF <= NF && IE <= NE
+    DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
+    for k = 2 : N
+      DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+    end
+    @atomic :monotonic FTr[Iz,ind,IE] += DivTr / M[Iz,ind]
+  end
+end
 
 
+@kernel inbounds = true function HyperViscTracerKoeffEDMFKernel!(FTr,@Const(Cache),@Const(D),@Const(DW),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob),KoeffDiv) 
 
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF,IE = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+  NE = @uniform @ndrange()[5]
+
+  TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz <= Nz && IF <= NF && IE <= NE
+    TrCol[I,J,iz] = Cache[Iz,ind,IE] 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz <= Nz && IF <= NF && IE <= NE
+    Dxc = D[I,1] * TrCol[1,J,iz]
+    Dyc = D[J,1] * TrCol[I,1,iz]
+    for k = 2 : N
+      Dxc += D[I,k] * TrCol[k,J,iz]
+      Dyc += D[J,k] * TrCol[I,k,iz] 
+    end
+    @views (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
+    @views (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    TrCxCol[I,J,iz] = tempx
+    TrCyCol[I,J,iz] = tempy
+  end
+
+  @synchronize 
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+  if Iz <= Nz && IF <= NF && IE <= NE
+    DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
+    for k = 2 : N
+      DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+    end
+    @atomic :monotonic FTr[Iz,ind,IE] += -KoeffDiv * DivTr / M[Iz,ind]
+  end
+end
 
 
 

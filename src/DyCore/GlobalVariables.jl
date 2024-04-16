@@ -284,6 +284,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Buoyancy::Bool
   Turbulence::Bool
   EDMF::Bool
+  NDEDMF::Int
   RefProfile::Bool
   HyperVisc::Bool
   HyperDCurl::FT
@@ -363,6 +364,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Buoyancy = true
   Turbulence = false
   EDMF = false
+  NDEDMF = 0
   RefProfile = false
   HyperVisc = false
   HyperDCurl = 0.0
@@ -440,6 +442,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Buoyancy,
    Turbulence,
    EDMF,
+   NDEDMF,
    RefProfile,
    HyperVisc,
    HyperDCurl,

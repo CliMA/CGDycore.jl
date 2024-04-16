@@ -169,7 +169,6 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   xP, w = gaussradau(2)
   xP .= -xP
-  @show "Dual",xP
   lx0 = (x - xP[2])/(xP[1] - xP[2])
   lx1 = (x - xP[1])/(xP[2] - xP[1])
   ly0 = (y - xP[2])/(xP[1] - xP[2])
@@ -361,14 +360,14 @@ function CG1KiteDualHCurl{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
 # y line 2 --> 3, x0
   p0 = 0.0*x + 0.0*y
   phi[3,1] = p0
-  phi[3,2] = -lx0 * ly0
+  phi[3,2] = lx0 * ly0
   phi[4,1] = p0
-  phi[4,2] = -lx0 * ly1
+  phi[4,2] = lx0 * ly1
 
 # x line 3 --> 4, y1
-  phi[5,1] = lx0 * ly1
+  phi[5,1] = -lx0 * ly1
   phi[5,2] = p0
-  phi[6,1] = lx1 * ly1
+  phi[6,1] = -lx1 * ly1
   phi[6,2] = p0
 
 # y line 2 --> 3, x1
