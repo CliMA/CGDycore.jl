@@ -35,12 +35,19 @@ RadEarth = 1.0
 Decomp = "EqualArea"
 
 FileNumber = 1
+GridType = "MPAS"
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+c = ones(FTB,Grid.NumFaces) * Proc
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
+
+@show "MPASO"
 GridType = "MPASO"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 c = ones(FTB,Grid.NumFaces) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, c, FileNumber)
-stop
+
 GridType = "Msh"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
@@ -64,5 +71,12 @@ Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 c = ones(FTB,Grid.NumFaces) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
+
+GridType = "HealPix"
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+c = ones(FTB,Grid.NumFaces) * Proc
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
+
 
 

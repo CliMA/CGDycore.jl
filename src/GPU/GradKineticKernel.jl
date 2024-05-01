@@ -11,13 +11,13 @@
   NF = @uniform @ndrange()[4]
 
   KinF = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
-  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+2)
 
   ID = I + (J - 1) * N
   ind = Glob[ID,IF]
 
   if Iz <= Nz
-    RhoCol[I,J,iz] = U[Iz,ind,1]
+    RhoCol[I,J,iz+1] = U[Iz,ind,1]
     KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
     KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + 1/2 * U[Iz,ind,4]^2
     if iz == 1 && Iz == 1
@@ -26,20 +26,20 @@
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * wCol^2
       KinF[I,J,2,iz] = KinF[I,J,1,iz+1]
     elseif iz == 1
+      RhoCol[I,J,1] = U[Iz-1,ind,1]
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
       KinF[I,J,2,iz] =  eltype(F)(0.5) * (U[Iz-1,ind,4]^2 + U[Iz-1,ind,2]^2 + U[Iz-1,ind,3]^2)
     else
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2  
     end
     if iz == ColumnTilesDim && Iz < Nz
-      RhoCol[I,J,iz+1] = U[Iz+1,ind,1]
+      RhoCol[I,J,iz+2] = U[Iz+1,ind,1]
       KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[Iz+1,ind,2]^2 + U[Iz+1,ind,3]^2)
       KinF[I,J,1,iz+2] +=  eltype(F)(0.5) * U[Iz,ind,4]^2
     end  
   end
 
   @synchronize
-
 
   ID = I + (J - 1) * N
   ind = Glob[ID,IF]
@@ -70,32 +70,32 @@
       GradZ = eltype(F)(0.5) * (KinF[I,J,1,iz+1] - KinF[I,J,2,iz] )  
       GraduF1 += -GradZ * dXdxI[3,1,1,ID,Iz,IF]
       GradvF1 += -GradZ * dXdxI[3,2,1,ID,Iz,IF]
-      GradwF1 += -RhoCol[I,J,iz] * GradZ * dXdxI[3,3,1,ID,Iz,IF]
+      GradwF1 += -RhoCol[I,J,iz+1] * GradZ * dXdxI[3,3,1,ID,Iz,IF]
     end  
     if Iz < Nz
       GradZ = eltype(F)(0.5) * (KinF[I,J,1,iz+2] - KinF[I,J,2,iz+1] )  
       GraduF2 += -GradZ * dXdxI[3,1,2,ID,Iz,IF]
       GradvF2 += -GradZ * dXdxI[3,2,2,ID,Iz,IF]
-      GradwF2 += -RhoCol[I,J,iz] * GradZ * dXdxI[3,3,2,ID,Iz,IF]
+      GradwF2 += -RhoCol[I,J,iz+1] * GradZ * dXdxI[3,3,2,ID,Iz,IF]
     end  
     GradZ = eltype(F)(0.5) * (KinF[I,J,2,iz+1] - KinF[I,J,1,iz+1])
     GraduF2 += -GradZ * dXdxI[3,1,2,ID,Iz,IF]
     GraduF1 += -GradZ * dXdxI[3,1,1,ID,Iz,IF]
     GradvF2 += -GradZ * dXdxI[3,2,2,ID,Iz,IF]
     GradvF1 += -GradZ * dXdxI[3,2,1,ID,Iz,IF]
-    GradwF2 += -RhoCol[I,J,iz] * GradZ * dXdxI[3,3,2,ID,Iz,IF]
-    GradwF1 += -RhoCol[I,J,iz] * GradZ * dXdxI[3,3,1,ID,Iz,IF]
+    GradwF2 += -RhoCol[I,J,iz+1] * GradZ * dXdxI[3,3,2,ID,Iz,IF]
+    GradwF1 += -RhoCol[I,J,iz+1] * GradZ * dXdxI[3,3,1,ID,Iz,IF]
 
-    @atomic :monotonic F[Iz,ind,2] += (GraduF1 + GraduF2) / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,3] += (GradvF1 + GradvF2) / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,2] += (GraduF1 + GraduF2) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,3] += (GradvF1 + GradvF2) / (M[Iz,ind,1] + M[Iz,ind,2])
 
     if Iz < Nz
       @atomic :monotonic F[Iz,ind,4] += GradwF2 / 
-      (RhoCol[I,J,iz] * M[Iz,ind] + RhoCol[I,J,iz+1] * M[Iz+1,ind])
+        (RhoCol[I,J,iz+2] * M[Iz+1,ind,1] + RhoCol[I,J,iz+1] * M[Iz,ind,2])
     end  
     if Iz > 1  
       @atomic :monotonic F[Iz-1,ind,4] += GradwF1 / 
-        (RhoCol[I,J,iz] * M[Iz,ind] + RhoCol[I,J,iz-1] * M[Iz-1,ind])
+        (RhoCol[I,J,iz] * M[Iz-1,ind,2] + RhoCol[I,J,iz+1] * M[Iz,ind,1])
     end  
   end
 
@@ -167,11 +167,11 @@ end
 
     if Iz < Nz
       @atomic :monotonic F[Iz,ind,4] += GradwF2 / 
-      (RhoCol[I,J,iz] * M[Iz,ind] + RhoCol[I,J,iz+1] * M[Iz+1,ind])
+      (RhoCol[I,J,iz] * M[Iz,ind,2] + RhoCol[I,J,iz+1] * M[Iz+1,ind,1])
     end  
     if Iz > 1  
       @atomic :monotonic F[Iz-1,ind,4] += GradwF1 / 
-        (RhoCol[I,J,iz] * M[Iz,ind] + RhoCol[I,J,iz-1] * M[Iz-1,ind])
+        (RhoCol[I,J,iz] * M[Iz,ind,1] + RhoCol[I,J,iz-1] * M[Iz-1,ind,2])
     end  
   end
 

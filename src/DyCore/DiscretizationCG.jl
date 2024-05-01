@@ -48,7 +48,6 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
     KGridSizeSphereKernel!(Metric.zP,Metric.dz,Metric.X,CG.Glob,
       Rad,ndrange=ndrange)
   else
-    Metric.lat = KernelAbstractions.zeros(backend,FT,0)
     KGridSizeCartKernel! = GridSizeCartKernel!(backend,group)
     KGridSizeCartKernel!(Metric.zP,Metric.dz,Metric.X,CG.Glob,ndrange=ndrange)
   end    
@@ -166,9 +165,9 @@ end
 
   if IF <= NF
     ind = Glob[ID,IF]
-    @atomic :monotonic nS[1,ind] += dXdxI[3,1,1,ID,1,IF] / M[1,ind]
-    @atomic :monotonic nS[2,ind] += dXdxI[3,2,1,ID,1,IF] / M[1,ind]
-    @atomic :monotonic nS[3,ind] += dXdxI[3,3,1,ID,1,IF] / M[1,ind]
+    @atomic :monotonic nS[1,ind] += dXdxI[3,1,1,ID,1,IF] / (M[1,ind,1] + M[1,ind,2])
+    @atomic :monotonic nS[2,ind] += dXdxI[3,2,1,ID,1,IF] / (M[1,ind,1] + M[1,ind,2])
+    @atomic :monotonic nS[3,ind] += dXdxI[3,3,1,ID,1,IF] / (M[1,ind,1] + M[1,ind,2])
     x = X[ID,1,1,1,IF]
     y = X[ID,1,2,1,IF]
     z = X[ID,1,3,1,IF]

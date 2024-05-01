@@ -101,7 +101,7 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",
     end
   end
   if Form == "Sphere"
-    F.Area = AreaFace(F,Nodes)
+    F.Area = AreaFace(F,Nodes) * Rad * Rad
   else  
     PT=Point([0.0, 0.0, 0.0]);
     @inbounds for i=1:nE-1

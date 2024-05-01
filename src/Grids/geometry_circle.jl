@@ -83,8 +83,11 @@ end
 
 
 function AreaSphericalTriangle(P1,P2,P3)
-  P1P2P3 = dot(P1,P2) + dot(P2,P3) + dot(P3,P1)
-  P1_P2P3 = dot(P1,cross(P2,P3))
+  P1Loc = P1 / norm(P1)
+  P2Loc = P2 / norm(P2)
+  P3Loc = P3 / norm(P3)
+  P1P2P3 = dot(P1Loc,P2Loc) + dot(P2Loc,P3Loc) + dot(P3Loc,P1Loc)
+  P1_P2P3 = dot(P1Loc,cross(P2Loc,P3Loc))
   area = 2.0 * atan(abs(P1_P2P3)  / (1.0 + P1P2P3))
 end  
 

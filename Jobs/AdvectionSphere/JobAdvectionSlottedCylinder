@@ -23,10 +23,10 @@ mpirun -n 6 julia --project Examples/testAdvectionSphere.jl \
   --GridType="CubedSphere" \
   --nz=1 \
   --RadEarth=1.0 \
-  --nPanel=32 \
+  --nPanel=40 \
   --RadEarth=1 \
   --H=1.0 \
-  --OrdPoly=4 \
+  --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=1.e-5 \
   --HyperDGrad=1.e-5 \

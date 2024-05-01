@@ -140,24 +140,34 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
+Problem = "GalewskiSphere"
+RadEarth = Phys.RadEarth
+dtau = 6
+nAdveVel = 5000
 Problem = "LinearBlob"
+Fac = 1.0
+RadEarth = 1.0 * Fac
+dtau = 0.001 * Fac
+nAdveVel = 2000
+
+
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 RefineLevel = 5
-RadEarth = 1.0
 nz = 1
-nPanel = 40
+nPanel = 120
 nQuad = 2
 Decomp = ""
 Decomp = "EqualArea"
 
 #TRI
-GridType = "DelaunaySphere"
+#GridType = "DelaunaySphere"
 GridType = "CubedSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+KiteFaces = FiniteVolumes.MatrixTangential(Grid)
 
 #MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid,Grid.Type)
 
@@ -183,18 +193,20 @@ UNew = similar(U)
 @views UNewu = UNew[uPosS:uPosE]
 
 FiniteVolumes.ProjectFace!(backend,FTB,Up,Grid,Model.InitialProfile)
+@. Up *= Fac
+FiniteVolumes.ProjectEdge!(backend,FTB,Uu,Grid,Model.InitialProfile)
 FileNumber = 0
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
+FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
+FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
 pNeu = zeros(FTB,Grid.NumFaces)
 
-nAdveVel = 1000
-dtau = 0.001
 time = 0.0
 
 
-
+@show dtau,nAdveVel
 for i = 1 : nAdveVel
   mul!(rp,Div,Uu)
   mul!(ru,Grad,Up)
@@ -212,6 +224,8 @@ end
 
 
 FileNumber += 1
+FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
+FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
 
 

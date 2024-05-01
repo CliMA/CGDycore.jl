@@ -10,8 +10,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
   elseif GridType == "SQuadGen"
     Grid = Grids.InputGrid(backend,FT,"Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "Msh"
-    Grid = Grids.InputGridMsh(backend,FT,"Grid/natural_earthNeu.msh",Grids.OrientFaceSphere,RadEarth,nz)
-#   Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
+#   Grid = Grids.InputGridMsh(backend,FT,"Grid/natural_earth.msh",Grids.OrientFaceSphere,RadEarth,nz)
+    Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "CubedSphere"
     Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz,order=order)
   elseif GridType == "TriangularSphere"
@@ -20,6 +20,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
     Grid = DelaunayGrid(backend,FT,RefineLevel,RadEarth,nz)
   elseif GridType == "MPASO"
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/QU240.nc", Grids.OrientFaceSphere,RadEarth,nz)
+  elseif GridType == "MPAS"
+    Grid=Grids.InputGridMPASO(backend,FT,"Grid/x4.163842.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
   else
     @show "False GridType"
   end

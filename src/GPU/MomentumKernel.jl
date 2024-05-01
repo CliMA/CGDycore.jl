@@ -15,7 +15,7 @@
   uCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   vCol = @localmem eltype(F) (N,N,ColumnTilesDim)
   wCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
-  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+2)
   tempuZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempvZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempwZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
@@ -38,6 +38,8 @@
     elseif iz == 1
       wCol[I,J,1] = U[Iz-1,ind,4]
       RhoCol[I,J,1] = U[Iz-1,ind,1]
+    elseif iz == ColumnTilesDim && Iz < Nz  
+      RhoCol[I,J,ColumnTilesDim+2] = U[Iz+1,ind,1]
     end   
   end 
   @synchronize 
@@ -161,16 +163,16 @@
     FW2 += FwCor * JJ[ID,2,Iz,IF]
 
     @atomic :monotonic F[Iz,ind,2] += (-vCol[I,J,iz] * W1 - wCol[I,J,iz] * V1 -
-      vCol[I,J,iz] * W2 - wCol[I,J,iz+1] * V2 + FU) / M[Iz,ind]
+      vCol[I,J,iz] * W2 - wCol[I,J,iz+1] * V2 + FU) / (M[Iz,ind,1] + M[Iz,ind,2])
     @atomic :monotonic F[Iz,ind,3] += (uCol[I,J,iz] * W1 - wCol[I,J,iz] * U1 +
-      uCol[I,J,iz] * W2 - wCol[I,J,iz+1] * U2 + FV) / M[Iz,ind]
+      uCol[I,J,iz] * W2 - wCol[I,J,iz+1] * U2 + FV) / (M[Iz,ind,1] + M[Iz,ind,2])
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
-        (RhoCol[I,J,iz-1] * M[ind,iz-1] + RhoCol[I,J,iz] * M[ind,iz])
+      @atomic :monotonic F[Iz-1,ind,4] += RhoCol[I,J,iz+1] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
+        (RhoCol[I,J,iz] * M[Iz-1,ind,2] + RhoCol[I,J,iz+1] * M[Iz,ind,1])
     end
     if Iz < Nz
-      @atomic :monotonic F[Iz,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
-        (RhoCol[I,J,iz+1] * M[ind,iz+1] + RhoCol[I,J,iz] * M[ind,iz])
+      @atomic :monotonic F[Iz,ind,4] += RhoCol[I,J,iz+1] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
+        (RhoCol[I,J,iz+2] * M[Iz+1,ind,1] + RhoCol[I,J,iz+1] * M[Iz,ind,2])
     end  
   end
 end
@@ -312,11 +314,11 @@ end
 
     if Iz > 1  
       @atomic :monotonic F[Iz-1,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
-        (RhoCol[I,J,iz-1] * M[ind,iz-1] + RhoCol[I,J,iz] * M[ind,iz])
+        (RhoCol[I,J,iz-1] * M[Iz-1,ind,2] + RhoCol[I,J,iz] * M[Iz,ind,1])
     end
     if Iz < Nz
       @atomic :monotonic F[Iz,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
-        (RhoCol[I,J,iz+1] * M[ind,iz+1] + RhoCol[I,J,iz] * M[ind,iz])
+        (RhoCol[I,J,iz+1] * M[Iz+1,ind,1] + RhoCol[I,J,iz] * M[Iz,ind,2])
     end  
   end
 end

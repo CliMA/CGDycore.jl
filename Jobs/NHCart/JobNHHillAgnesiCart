@@ -8,6 +8,7 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --NumTr=0 \
   --RefProfile=false \
   --Equation="CompressibleShallow" \
+  --State="Dry" \
   --Buoyancy=true \
   --Coriolis=false \
   --Curl=true \
@@ -31,7 +32,7 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --TopoS="AgnesiHill" \
   `#Topography `        \
   --P1=0.0\
-  --P2=10000.0\
+  --P2=1000.0\
   --P3=400.0\
   --Stretch=true \
   --StretchType="ICON" \

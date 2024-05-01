@@ -162,7 +162,11 @@ function LocalInterpolation1!(ILoc,Face,Grid)
   n[2] = 0.0
   P1 = Grid.Nodes[Face.N[2]].P
   P2 = Grid.Nodes[Face.N[3]].P
-  _,J,pinvDF,_ = FEMSei.Jacobi(Grid.Type,ksi1,ksi2,Face,Grid)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  FEMSei.Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Face,Grid)
   eInv = 2.0 * J / (Grids.SizeGreatCircle(P1,P2) * Grid.Rad)
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
@@ -182,7 +186,7 @@ function LocalInterpolation1!(ILoc,Face,Grid)
   n[2] = 1.0
   P1 = Grid.Nodes[Face.N[3]].P
   P2 = Grid.Nodes[Face.N[4]].P
-  _,J,pinvDF,_ = FEMSei.Jacobi(Grid.Type,ksi1,ksi2,Face,Grid)
+  FEMSei.Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Face,Grid)
   eInv = 2.0 * J / (Grids.SizeGreatCircle(P1,P2) * Grid.Rad)
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
@@ -228,8 +232,13 @@ function LocalInterpolation!(ILoc,P1,P2,P3,P4,Rad)
   ksi2 = -1.0
   n[1] = 1.0
   n[2] = 0.0
-  _,J,pinvDF,_ = FEMSei.Jacobi(Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
-  eInv = J / (Grids.SizeGreatCircle(P2,P3) * Rad)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
+
+  eInv = detDF[1] / (Grids.SizeGreatCircle(P2,P3) * Rad)
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
   ILoc[2,1] = eInv * (pinvDF * n)' * (pinvDF * grad)
@@ -246,8 +255,8 @@ function LocalInterpolation!(ILoc,P1,P2,P3,P4,Rad)
   ksi2 = 1.0
   n[1] = 0.0
   n[2] = 1.0
-  _,J,pinvDF,_ = FEMSei.Jacobi(Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
-  eInv = J / (Grids.SizeGreatCircle(P3,P4) * Rad)
+  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
+  eInv = detDF[1] / (Grids.SizeGreatCircle(P3,P4) * Rad)
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
   ILoc[4,1] = eInv * (pinvDF * n)' * (pinvDF * grad)

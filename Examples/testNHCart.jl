@@ -161,7 +161,6 @@ if ProfTheta == ""
 else
   Model.ProfTheta = ProfTheta  
 end  
-Model.PertTh = PertTh
 if ProfVel == ""
   Model.ProfVel = Problem
 else

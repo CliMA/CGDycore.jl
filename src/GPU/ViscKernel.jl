@@ -75,11 +75,11 @@
     end
     @views FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
-    @atomic :monotonic F[Iz,ind,1] += -FuC / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,2] += -FvC / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,3] += FuD / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,4] += FvD / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,5] += DivTh / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,1] += -FuC / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,2] += -FvC / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,3] += FuD / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,4] += FvD / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,5] += DivTh / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -160,9 +160,9 @@ end
     end
     @views FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF])
-    @atomic :monotonic F[Iz,ind,2] += -(-KoeffCurl * FuC + KoeffGrad * FuD) / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,3] += -(-KoeffCurl * FvC + KoeffGrad * FvD) / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,5] += -KoeffDiv * DivTh / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,2] += -(-KoeffCurl * FuC + KoeffGrad * FuD) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,3] += -(-KoeffCurl * FvC + KoeffGrad * FvD) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,5] += -KoeffDiv * DivTh / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -213,12 +213,12 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[Iz,ind] += DivTr / M[Iz,ind]
+    @atomic :monotonic FTr[Iz,ind] += DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
 @kernel inbounds = true function HyperViscWKernel!(Fw,@Const(w),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(MW),@Const(Glob)) 
+  @Const(JJ),@Const(M),@Const(Glob)) 
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
@@ -270,7 +270,7 @@ end
     for k = 2 : N
       Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
     end
-    @atomic :monotonic Fw[Iz,ind] += Divw / MW[Iz,ind]
+    @atomic :monotonic Fw[Iz,ind] += Divw / (M[Iz,ind,2] + M[Iz+1,ind,1])
   end
 end
 
@@ -322,12 +322,12 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[Iz,ind] += -KoeffDiv * DivTr / M[Iz,ind]
+    @atomic :monotonic FTr[Iz,ind] += -KoeffDiv * DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
 @kernel inbounds = true function HyperViscWKoeffKernel!(Fw,@Const(w),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(MW),@Const(Glob),KoeffDivW) 
+  @Const(JJ),@Const(M),@Const(Glob),KoeffDivW) 
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
@@ -379,13 +379,13 @@ end
     for k = 2 : N
       Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
     end
-    @atomic :monotonic Fw[Iz,ind] += -KoeffDivW * Divw / MW[Iz,ind]
+    @atomic :monotonic Fw[Iz,ind] += -KoeffDivW * Divw / (M[Iz,ind,2] + M[Iz+1,ind,1])
   end
 end
 
 
 @kernel inbounds = true function HyperViscWEDMFKernel!(Fw,@Const(w),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(MW),@Const(Glob)) 
+  @Const(JJ),@Const(W),@Const(Glob)) 
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF,IE = @index(Global, NTuple)
@@ -438,12 +438,12 @@ end
     for k = 2 : N
       Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
     end
-    @atomic :monotonic Fw[Iz,ind,IE] += Divw / MW[Iz,ind]
+    @atomic :monotonic Fw[Iz,ind,IE] += Divw / (M[Iz,ind,2] + M[Iz+1,ind,1]) 
   end
 end
 
 @kernel inbounds = true function HyperViscWKoeffEDMFKernel!(Fw,@Const(w),@Const(D),@Const(DW),@Const(dXdxI),
-  @Const(JJ),@Const(MW),@Const(Glob),KoeffDivW) 
+  @Const(JJ),@Const(M),@Const(Glob),KoeffDivW) 
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF,IE = @index(Global, NTuple)
@@ -496,7 +496,7 @@ end
     for k = 2 : N
       Divw += DW[I,k] * wCxCol[k,J,iz] + DW[J,k] * wCyCol[I,k,iz]
     end
-    @atomic :monotonic Fw[Iz,ind,IE] += -KoeffDivW * Divw / MW[Iz,ind]
+    @atomic :monotonic Fw[Iz,ind,IE] += -KoeffDivW * Divw / (M[Iz,ind,2] + M[Iz+1,ind,1])
   end
 end
 
@@ -548,7 +548,7 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[Iz,ind,IE] += DivTr / M[Iz,ind]
+    @atomic :monotonic FTr[Iz,ind,IE] += DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -602,7 +602,7 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[Iz,ind,IE] += -KoeffDiv * DivTr / M[Iz,ind]
+    @atomic :monotonic FTr[Iz,ind,IE] += -KoeffDiv * DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 

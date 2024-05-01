@@ -1,9 +1,26 @@
+mutable struct KiteFace
+  MatTan::Array{Float64,2}
+  LocGlob::Array{Int,1}
+end
+
+function KiteFace()
+
+  MatTan = zeros(0,0)
+  LocGlob = zeros(Int,0)
+
+  return KiteFace(
+    MatTan,
+    LocGlob,
+  )
+end  
+
 mutable struct FaceT
  P1::Grids.Point
  P2::Grids.Point
  P3::Grids.Point
  P4::Grids.Point
 end
+
 function DivDiv(F,LocGlob,fDiv!,Ord)
   w,xw = GaussLobatto(Ord)
   W = zeros(length(w)^2,1)
@@ -22,9 +39,10 @@ function DivDiv(F,LocGlob,fDiv!,Ord)
     @views fDiv!(fDivLoc[:,iw],ksi[1,iw],ksi[2,iw])
   end
 
-  S=zeros(8,8)
+  NumF = length(F)
+  S=zeros(2*NumF,2*NumF)
   SLoc=zeros(4,4)
-  for iF = 1 : length(F)
+  for iF = 1 : NumF
     @. SLoc = 0
     for iw = 1 : length(W)
       dXdx,J,dXdxIT = Jacobi(F[iF],ksi[1,iw],ksi[2,iw])
@@ -154,6 +172,83 @@ function LocalGrid(Face,Grid)
     F[4] = FaceT(PE4,PC,PE3,P4)
     LocGlob[1:4,4]=[8 7 3 4]
     IC[4]=2
+  elseif NumNodes == 5
+    F = Array{FaceT,1}(undef,5)
+    P1 = Grid.Nodes[Face.N[1]].P
+    P2 = Grid.Nodes[Face.N[2]].P
+    P3 = Grid.Nodes[Face.N[3]].P
+    P4 = Grid.Nodes[Face.N[4]].P
+    P5 = Grid.Nodes[Face.N[5]].P
+    PE1 = 0.5 * (P1 + P2)
+    PE2 = 0.5 * (P2 + P3)
+    PE3 = 0.5 * (P3 + P4)
+    PE4 = 0.5 * (P4 + P5)
+    PE5 = 0.5 * (P5 + P1)
+    PC = 1/5 * (P1 + P2 + P3 + P4 + P5)
+    LocGlob = zeros(Int,4,5)
+    IC = zeros(Int,5)
+
+    F[1] = FaceT(P1,PE1,PC,PE5)
+    LocGlob[1:4,1] = [1 6 10 5]
+    IC[1]=3
+
+    F[2] = FaceT(PE1,P2,PE2,PC)
+    LocGlob[1:4,2] = [1 2 7 6]
+    IC[2]=4
+
+    F[3] = FaceT(PC,PE2,P3,PE3)
+    LocGlob[1:4,3]=[7 2 3 8]
+    IC[3]=1
+
+    F[4] = FaceT(PC,PE3,P4,PE4)
+    LocGlob[1:4,4]=[8 3 4 9]
+    IC[4]=1
+
+    F[5] = FaceT(PE5,PC,PE4,P5)
+    LocGlob[1:4,5]=[10 9 4 5]
+    IC[5]=2
+  elseif NumNodes == 6
+    F = Array{FaceT,1}(undef,6)
+    P1 = Grid.Nodes[Face.N[1]].P
+    P2 = Grid.Nodes[Face.N[2]].P
+    P3 = Grid.Nodes[Face.N[3]].P
+    P4 = Grid.Nodes[Face.N[4]].P
+    P5 = Grid.Nodes[Face.N[5]].P
+    P6 = Grid.Nodes[Face.N[6]].P
+    PE1 = 0.5 * (P1 + P2)
+    PE2 = 0.5 * (P2 + P3)
+    PE3 = 0.5 * (P3 + P4)
+    PE4 = 0.5 * (P4 + P5)
+    PE5 = 0.5 * (P5 + P6)
+    PE6 = 0.5 * (P6 + P1)
+    PC = 1/6 * (P1 + P2 + P3 + P4 + P5 + P6)
+    LocGlob = zeros(Int,4,4)
+    IC = zeros(Int,6)
+
+    F[1] = FaceT(P1,PE1,PC,PE6)
+    LocGlob[1:4,1] = [1 7 12 6]
+    IC[1] = 3
+
+    F[2] = FaceT(PE1,P2,PE2,PC)
+    LocGlob[1:4,2] = [1 2 8 7]
+    IC[2] = 4
+
+    F[3] = FaceT(PC,PE2,P3,PE3)
+    LocGlob[1:4,3]=[8 2 3 9]
+    IC[3] = 1
+
+    F[4] = FaceT(PC,PE3,P4,PE4)
+    LocGlob[1:4,4]=[9 3 4 10]
+    IC[4] = 1
+
+    F[5] = FaceT(PC,PE4,P5,PE5)
+    LocGlob[1:4,5]=[10 5 5 11]
+    IC[5] = 1
+
+    F[6] = FaceT(PE6,PC,PE5,P6)
+    LocGlob[1:4,6]=[12 11 5 6]
+    IC[6] = 2
+
   end  
   return F,LocGlob,IC
 end
@@ -261,3 +356,38 @@ function TangentialDiv(F,LocGlob,fu!,Ord)
   end
   return NVal
 end
+
+function MatrixTangential(Grid)
+  NumFaces = Grid.NumFaces
+
+  KiteFaces=map(1:NumFaces) do i
+    FiniteVolumes.KiteFace()
+  end
+
+  for iF = 1 : Grid.NumFaces
+    F,LocGlob,IC = FiniteVolumes.LocalGrid(Grid.Faces[1],Grid)
+    NumF = length(F)
+
+    Ord = 4;
+    SDiv = FiniteVolumes.DivDiv(F,LocGlob,FiniteVolumes.DivRT0!,Ord);
+    SDivV = FiniteVolumes.WeakVort(F,LocGlob,IC,FiniteVolumes.CG1Grad!,FiniteVolumes.RT0!,Ord);
+    SSDiv=[SDiv;SDivV]
+
+    uB = zeros(NumF,NumF)
+    for i = 1 : NumF
+      uB[i,i] = 1;
+    end
+    uI = -SSDiv[NumF+1:end,NumF+1:end] \ (SSDiv[NumF+1:end,1:NumF] * uB)
+    @show uI
+    NVal = FiniteVolumes.TangentialDiv(F,LocGlob,FiniteVolumes.RT0!,Ord)
+    @show NVal
+    U = [uB;uI]
+    T = NVal * U
+    KiteFaces[iF].MatTan = T
+    LocGlob = zeros(Int,length(Grid.Faces[iF].E))
+    @. LocGlob = Grid.Faces[iF].E
+    KiteFaces[iF].LocGlob = LocGlob
+    stop
+  end    
+  return KiteFaces
+end    

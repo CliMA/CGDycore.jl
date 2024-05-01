@@ -1,13 +1,3 @@
-function RosenbrockSchurAMD!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,Exchange,
-  Global,Param,DiscType)
-
-  ROS = Global.TimeStepper.ROS
-  nStage = ROS.nStage
-  fV = Cache.fV
-  Vn = Cache.Vn
-  Fcn!(fV,V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
-end
-
 function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,Exchange,
   Global,Param,DiscType)
 

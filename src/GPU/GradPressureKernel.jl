@@ -48,8 +48,8 @@
         (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / (dXdxI[3,3,1,ID,Iz,IF] + dXdxI[3,3,2,ID,Iz,IF])
     Gradu += GradZ * (dXdxI[3,1,1,ID,Iz,IF] + dXdxI[3,1,2,ID,Iz,IF])
     Gradv += GradZ * (dXdxI[3,2,1,ID,Iz,IF] + dXdxI[3,2,2,ID,Iz,IF])
-    @atomic :monotonic F[Iz,ind,2] += -Gradu / M[Iz,ind] / RhoCol[I,J,iz]
-    @atomic :monotonic F[Iz,ind,3] += -Gradv / M[Iz,ind] / RhoCol[I,J,iz]
+    @atomic :monotonic F[Iz,ind,2] += -Gradu / (M[Iz,ind,1] + M[Iz,ind,2]) / RhoCol[I,J,iz]
+    @atomic :monotonic F[Iz,ind,3] += -Gradv / (M[Iz,ind,1] + M[Iz,ind,2]) / RhoCol[I,J,iz]
   end  
 
   if Iz < Nz
@@ -61,7 +61,7 @@
     Grav = Gravitation(x,y,z)
     @atomic :monotonic F[Iz,ind,4] += -(Gradw + 
       Grav * (RhoCol[I,J,iz] * JJ[ID,2,Iz,IF] + RhoCol[I,J,iz+1] * JJ[ID,1,Iz+1,IF])) /
-      (RhoCol[I,J,iz] * M[iz,ind] + RhoCol[I,J,iz+1] * M[iz+1,ind])
+      (RhoCol[I,J,iz] * M[Iz,ind,2] + RhoCol[I,J,iz+1] * M[Iz+1,ind,1])
   end      
    
 end

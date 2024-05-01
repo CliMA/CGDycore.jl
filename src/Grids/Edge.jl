@@ -9,6 +9,7 @@ mutable struct Edge
   FG::Array{Int, 1}
   FP::Array{Int, 1}
   t::Point
+  n::Point
   a::Float64
   Mid::Point
   FE::Array{Int,1}
@@ -27,6 +28,7 @@ function Edge()
   FG=zeros(Int,2)
   FP=zeros(Int,2)
   t=Point()
+  n=Point()
   a=0.0
   Mid=Point()
   FE=zeros(Int,0)
@@ -43,6 +45,7 @@ function Edge()
     FG,
     FP,
     t,
+    n,
     a,
     Mid,
     FE,
@@ -67,11 +70,25 @@ function Edge(NodesE,Nodes,PosG,PosI,Type,PosT=nothing;Form="Cart",Rad=1.0)
   else    
     E.a=norm(E.t);
   end  
-  E.t=E.t/E.a;
+  E.t=E.t/norm(E.t)
   E.Mid=0.5*(Nodes[E.N[1]].P+Nodes[E.N[2]].P);
   if Form == "Sphere"
     E.Mid = E.Mid * (Rad / norm(E.Mid))  
   end  
+  k = zeros(3)
+  t = zeros(3)
+  n = zeros(3)
+  k[1] = E.Mid.x
+  k[2] = E.Mid.y
+  k[3] = E.Mid.z
+  k = k / norm(k)
+  t[1] = E.t.x
+  t[2] = E.t.y
+  t[3] = E.t.z
+  n = LinearAlgebra.cross(k,t)
+  E.n.x = n[1]
+  E.n.y = n[2]
+  E.n.z = n[3]
   E.Type=Type;
   return E
 end

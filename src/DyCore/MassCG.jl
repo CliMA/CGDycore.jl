@@ -39,11 +39,9 @@ function MassCGGPU!(CG,J,Glob,Exchange,Global)
   NF = size(Glob,2)
   M = CG.M
   MMass = CG.MMass
-  MW = CG.MW
 
   M .= FT(0)
   MMass .= FT(0)
-  MW .= FT(0)
 
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
 
@@ -52,15 +50,15 @@ function MassCGGPU!(CG,J,Glob,Exchange,Global)
   ndrange = (N, N, Nz, NF)
 
   KMassCGKernel! = MassCGKernel!(backend,group)
-  KMassCGKernel!(M,MMass,MW,J,w,Glob,ndrange=ndrange)
+  KMassCGKernel!(M,MMass,J,w,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
-  Parallels.ExchangeData!(M,Exchange)
+  @views Parallels.ExchangeData!(M[:,:,1],Exchange)
+  @views Parallels.ExchangeData!(M[:,:,2],Exchange)
   Parallels.ExchangeData!(MMass,Exchange)
-  Parallels.ExchangeData!(MW,Exchange)
 end
 
-@kernel inbounds = true function MassCGKernel!(M,MMass,MW,@Const(JJ),@Const(w),@Const(Glob))
+@kernel inbounds = true function MassCGKernel!(M,MMass,@Const(JJ),@Const(w),@Const(Glob))
   I,J,Iz,IF = @index(Global, NTuple)
 
   N = @uniform @groupsize()[1]
@@ -70,13 +68,9 @@ end
   if Iz <= Nz && IF <= NF
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]  
-    @atomic :monotonic M[Iz,ind] += (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    @atomic :monotonic M[Iz,ind,1] += JJ[ID,1,Iz,IF]
+    @atomic :monotonic M[Iz,ind,2] += JJ[ID,2,Iz,IF]
     @atomic :monotonic MMass[Iz,ind] += eltype(M)(0.5) * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) * w[I] * w[J]
-  end  
-  if Iz < Nz && IF <= NF
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]  
-    @atomic :monotonic MW[Iz,ind] += (JJ[ID,2,Iz,IF] + JJ[ID,1,Iz+1,IF])
   end  
 end
 

@@ -44,7 +44,7 @@
   ID = I + (J - 1) * N  
   ind = Glob[ID,IF]
   if Iz <= Nz
-    @atomic :monotonic F[Iz,ind,5] += FCol[I,J,iz] / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,5] += FCol[I,J,iz] / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -132,12 +132,12 @@ end
   ind = Glob[ID,IF]
 
   if Iz <= Nz 
-    @atomic :monotonic F[Iz,ind] += FCol[I,J,iz+1] / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind] += FCol[I,J,iz+1] / (M[Iz,ind,1] + M[Iz,ind,2])
     if iz == 1 && Iz >  1
-      @atomic :monotonic F[Iz-1,ind] += FCol[I,J,iz] / M[Iz-1,ind]
+      @atomic :monotonic F[Iz-1,ind] += FCol[I,J,iz] / (M[Iz-1,ind,1] + M[Iz-1,ind,2])
     end
     if iz == ColumnTilesDim && Iz <  Nz
-      @atomic :monotonic F[Iz+1,ind] += FCol[I,J,iz+2] / M[Iz+1,ind]
+      @atomic :monotonic F[Iz+1,ind] += FCol[I,J,iz+2] / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
     end
   end
 end
@@ -229,12 +229,12 @@ end
   ID = I + (J - 1) * N  
   ind = Glob[ID,IF]
   if Iz <= Nz 
-    @atomic :monotonic F[Iz,ind] += FCol[I,J,iz+1] / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind] += FCol[I,J,iz+1] / (M[Iz,ind,1] + M[Iz,ind,2])
     if iz == 1 && Iz >  1
-      @atomic :monotonic F[Iz-1,ind] += FCol[I,J,iz] / M[Iz-1,ind]
+      @atomic :monotonic F[Iz-1,ind] += FCol[I,J,iz] / (M[Iz-1,ind,1] + M[Iz-1,ind,2])
     end
     if iz == ColumnTilesDim && Iz <  Nz
-      @atomic :monotonic F[Iz+1,ind] += FCol[I,J,iz+2] / M[Iz+1,ind]
+      @atomic :monotonic F[Iz+1,ind] += FCol[I,J,iz+2] / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
     end
   end
 end
@@ -296,12 +296,12 @@ end
     JR = JJ[ID,1,Iz+1,IF] + JJ[ID,2,Iz+1,IF]
     JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
     cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
-    Flux = eltype(F)(0.5) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
-    @atomic :monotonic F[Iz,ind,5] += -Flux / M[Iz,ind]
-    @atomic :monotonic F[Iz+1,ind,5] += Flux / M[Iz+1,ind]
-    Flux = wCon
-    @atomic :monotonic F[Iz,ind,1] += -Flux / M[Iz,ind]
-    @atomic :monotonic F[Iz+1,ind,1] += Flux / M[Iz+1,ind]
+    Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
+    @atomic :monotonic F[Iz,ind,5] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz+1,ind,5] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
+    Flux = eltype(F)(0.5)*wCon
+    @atomic :monotonic F[Iz,ind,1] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz+1,ind,1] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
   end 
 
   if Iz <= Nz
@@ -315,8 +315,8 @@ end
       DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
       DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
     end
-    @atomic :monotonic F[Iz,ind,1] += DivRho / M[Iz,ind]
-    @atomic :monotonic F[Iz,ind,5] += DivRhoTr / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,1] += DivRho / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,5] += DivRhoTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -351,8 +351,8 @@ end
       U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
 
     Flux = eltype(F)(0.5) * wCon
-    @atomic :monotonic F[Iz,ind,1] += -Flux / M[Iz,ind]
-    @atomic :monotonic F[Iz+1,ind,1] += Flux / M[Iz+1,ind]
+    @atomic :monotonic F[Iz,ind,1] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz+1,ind,1] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
   end 
 
   if Iz <= Nz
@@ -362,7 +362,7 @@ end
       DivRho += D[I,k] * uConCol[k,J,iz] 
       DivRho += D[J,k] * vConCol[I,k,iz] 
     end
-    @atomic :monotonic F[Iz,ind,1] += DivRho / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,1] += DivRho / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -421,8 +421,8 @@ end
     JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
     cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
     Flux = eltype(FTr)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
-    @atomic :monotonic FTr[Iz,ind] += -Flux / M[Iz,ind]
-    @atomic :monotonic FTr[Iz+1,ind] += Flux / M[Iz+1,ind]
+    @atomic :monotonic FTr[Iz,ind] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[Iz+1,ind] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
   end 
 
   if Iz <= Nz
@@ -432,7 +432,7 @@ end
       DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
       DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
     end
-    @atomic :monotonic FTr[Iz,ind] += DivRhoTr / M[Iz,ind]
+    @atomic :monotonic FTr[Iz,ind] += DivRhoTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -487,8 +487,8 @@ end
     JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
     cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
     Flux = eltype(FTr)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
-    @atomic :monotonic FTr[Iz,ind,IE] += (-Flux + wCon * cL) / M[Iz,ind] 
-    @atomic :monotonic FTr[Iz+1,ind,IE] += (Flux - wCon * cR) / M[Iz+1,ind]
+    @atomic :monotonic FTr[Iz,ind,IE] += (-Flux + wCon * cL) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[Iz+1,ind,IE] += (Flux - wCon * cR) / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
   end 
 
   if Iz <= Nz
@@ -499,7 +499,7 @@ end
       GradyTr += D[J,k] * cCol[I,k,iz+1]
     end
     @views (uCon, vCon) = Contra12(U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
-    @atomic :monotonic FTr[Iz,ind,IE] += -(GradxTr * uCon + GradyTr * vCon) / M[Iz,ind]
+    @atomic :monotonic FTr[Iz,ind,IE] += -(GradxTr * uCon + GradyTr * vCon) / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -535,8 +535,8 @@ end
       w[Iz,ind,IE],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
 
     Flux = eltype(F)(0.5) * wCon
-    @atomic :monotonic F[Iz,ind,IE] += -Flux / M[Iz,ind]
-    @atomic :monotonic F[Iz+1,ind,IE] += Flux / M[Iz+1,ind]
+    @atomic :monotonic F[Iz,ind,IE] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz+1,ind,IE] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
   end 
 
   if Iz <= Nz
@@ -546,7 +546,7 @@ end
       DivRho += D[I,k] * uConCol[k,J,iz] 
       DivRho += D[J,k] * vConCol[I,k,iz] 
     end
-    @atomic :monotonic F[Iz,ind,1] += DivRho / M[Iz,ind]
+    @atomic :monotonic F[Iz,ind,1] += DivRho / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 

@@ -1,6 +1,7 @@
 mutable struct CGQuad{FT<:AbstractFloat,
                         AT1<:AbstractArray,
                         AT2<:AbstractArray,
+                        AT3<:AbstractArray,
                         IT1<:AbstractArray,
                         IT2<:AbstractArray}
     OrdPoly::Int
@@ -24,9 +25,8 @@ mutable struct CGQuad{FT<:AbstractFloat,
     DST::Array{FT, 2}
     DSZ::AT2
     S::Array{FT, 2}
-    M::AT2
+    M::AT3
     MMass::AT2
-    MW::AT2
     Boundary::Array{Int, 1}
     MasterSlave::IT1
 end
@@ -124,12 +124,12 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
        end  
     end
   end  
-  M = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  M = KernelAbstractions.zeros(backend,FT,nz,NumG,2)
   MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
-  MW = KernelAbstractions.zeros(backend,FT,nz-1,NumG)
   return CGQuad{FT,
                  typeof(w),
                  typeof(DW),
+                 typeof(M),
                  typeof(MasterSlave),
                  typeof(Stencil)}(
     OrdPoly,
@@ -155,7 +155,6 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     S,
     M,
     MMass,
-    MW,
     Boundary,
     MasterSlave,
  )
