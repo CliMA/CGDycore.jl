@@ -30,7 +30,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
-  --GridType="CubedSphere" \
+  --GridType="SQuadGen" \
   --nz=1 \
   --nPanel=32 \
   --H=300.0 \

@@ -8,6 +8,7 @@ using Metal
 using KernelAbstractions
 using StaticArrays
 using ArgParse
+using LinearAlgebra
 
 # Model
 parsed_args = DyCore.parse_commandline()
@@ -142,63 +143,93 @@ Model = DyCore.ModelStruct{FTB}()
 RefineLevel = 5
 RadEarth = 1.0
 nz = 1
-nPanel = 30
+nPanel = 50
 nQuad = 2
 Decomp = "EqualArea"
+Problem = "GalewskiSphere"
+RadEarth = Phys.RadEarth
+dtau = 50
+nAdveVel = 60
+Problem = "LinearBlob"
+RadEarth = 1.0
+dtau = 0.00025
+nAdveVel = 6000
+Param = Examples.Parameters(FTB,Problem)
+Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Quad
 GridType = "CubedSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 
-RT0 = FEMSei.RT0Struct{FTB}(Grid.Type,backend,Grid)
-DG0 = FEMSei.DG0Struct{FTB}(Grid.Type,backend,Grid)
-QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,nQuad)
+RT = FEMSei.RT1Struct{FTB}(Grid.Type,backend,Grid)
+DG = FEMSei.DG1Struct{FTB}(Grid.Type,backend,Grid)
+@show DG.NumG
 
-RT0.M = FEMSei.MassMatrix(backend,FTB,RT0,Grid,nQuad,FEMSei.Jacobi) 
-DG0.M = FEMSei.MassMatrix(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi)
+RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi!) 
+FuM = lu(RT.M)
+DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,FEMSei.Jacobi!)
+FpM = lu(DG.M)
 
-Div = FEMSei.DivMatrix(backend,FTB,RT0,DG0,Grid,nQuad,FEMSei.Jacobi)
+Div = FEMSei.DivMatrix(backend,FTB,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
 
-u = zeros(FTB,RT0.NumG)
-uNeu = zeros(FTB,RT0.NumG)
 
-p = FEMSei.Project(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi,FEMSei.fp)
+pPosS = 1
+pPosE = DG.NumG
+uPosS = DG.NumG + 1
+uPosE = DG.NumG + RT.NumG
+U = zeros(FTB,DG.NumG+RT.NumG)
+@views Up = U[pPosS:pPosE]
+@views Uu = U[uPosS:uPosE]
+UNew = zeros(FTB,DG.NumG+RT.NumG)
+@views UNewp = U[pPosS:pPosE]
+@views UNewu = U[uPosS:uPosE]
+F = zeros(FTB,DG.NumG+RT.NumG)
+@views Fp = F[pPosS:pPosE]
+@views Fu = F[uPosS:uPosE]
+
+FEMSei.Project!(backend,FTB,Uu,RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Project!(backend,FTB,Up,DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 p0 = deepcopy(p)
 FileNumber = 0
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
-pNeu = zeros(FTB,DG0.NumG)
+pC = zeros(Grid.NumFaces)
+FEMSei.ConvertScalar!(backend,FTB,pC,Up,DG,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,RT,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
+pNeu = zeros(FTB,DG.NumG)
 
-nAdveVel = 100
-dtau = 0.001
 time = 0.0
 
 for i = 1 : nAdveVel
-  rp = Div*u
-  rp = DG0.M\rp
-  ru = -Div'*p
-  ru = RT0.M\ru
+  mul!(Fp,Div,Uu)
+  ldiv!(FpM,Fp)
+  mul!(Fu,Div',Up)
+  ldiv!(FuM,Fu)
 
-  @. uNeu = u + 0.5 * dtau * ru
-  @. pNeu = p + 0.5 * dtau * rp
+  @. Fu = -Fu
+  @. UNew = U + 0.5 * dtau * F
 
-  rp = Div*uNeu
-  rp = DG0.M\rp
-  ru = -Div'*pNeu
-  ru = RT0.M\ru
+  mul!(Fp,Div,UNewu)
+  ldiv!(FpM,Fp)
+  mul!(Fu,Div',UNewp)
+  ldiv!(FuM,Fu)
 
-  @. u = u + dtau * ru
-  @. p = p + dtau * rp
+  @. Fu = -Fu
+  @. U = U + dtau * F
+
 
   #time = time + dtau
 end
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,u,RT0,Grid,FEMSei.Jacobi)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT0,Grid,FEMSei.Jacobi)
+@show "Ende"
+FEMSei.ConvertScalar!(backend,FTB,pC,Up,DG,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,RT,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
 
 FileNumber += 1
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
 
 #= ToDO
 Gleichungen testen mit @show

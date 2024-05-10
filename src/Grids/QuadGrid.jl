@@ -1,4 +1,4 @@
-function QuadGrid(backend,FT)
+function QuadGrid(backend,FT,Fac)
   NumNodes = 4
   Rad = 1.0
   Form = "Planar"
@@ -7,10 +7,10 @@ function QuadGrid(backend,FT)
   Nodes = map(1:NumNodes) do i
     Node()
   end
-  Nodes[1]=Node(Point([-1.0,-1.0,0.0]),1,' ')
-  Nodes[2]=Node(Point([ 1.0,-1.0,0.0]),2,' ')
-  Nodes[3]=Node(Point([ 1.0, 1.0,0.0]),3,' ')
-  Nodes[4]=Node(Point([-1.0, 1.0,0.0]),4,' ')
+  Nodes[1]=Node(Point([-Fac,-Fac,0.0]),1,' ')
+  Nodes[2]=Node(Point([ Fac,-Fac,0.0]),2,' ')
+  Nodes[3]=Node(Point([ Fac, Fac,0.0]),3,' ')
+  Nodes[4]=Node(Point([-Fac, Fac,0.0]),4,' ')
   NumEdges = 4
   Edges= map(1:NumEdges) do i
     Edge([1,2],Nodes,0,0,"",0)

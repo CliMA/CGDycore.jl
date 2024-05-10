@@ -39,7 +39,6 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
     Node()
   end
   NodeNumber = 1
-  @show "Nodes",NumNodes
   for i = 1 : NumNodes
     P = Point(xVertex[i],yVertex[i],zVertex[i]) 
     P = P / norm(P) * Rad
@@ -51,7 +50,6 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
     Edge()
   end
   EdgeNumber = 1
-  @show "Edges",NumEdges
   for i = 1 : NumEdges
     Edges[EdgeNumber] = Edge(verticesOnEdge[:,i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
     EdgeNumber += 1
@@ -62,7 +60,6 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
   end
   FaceNumber = 1
   e = zeros(Int,size(edgesOnCell,1))
-  @show "Faces"
   for i = 1 : NumFaces
     e .= edgesOnCell[:,i]  
    (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
@@ -93,7 +90,6 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
   nBar = zeros(0,0)
   NumBoundaryFaces = 0
   AdaptGrid = ""
-  @show "End MPASO"
 
   return GridStruct{FT,
                     typeof(z)}(

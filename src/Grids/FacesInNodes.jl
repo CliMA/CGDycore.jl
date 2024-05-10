@@ -77,8 +77,5 @@ function SortFacesInNodes!(Nodes,Faces)
         end
       end  
     end  
-    if Nodes[iN].Type == 'B' || Nodes[iN].Type == 'P'  
-      @show  Nodes[iN].F 
-    end  
   end
 end

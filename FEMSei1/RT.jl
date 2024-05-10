@@ -18,28 +18,20 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Type = Grids.Quad()
   DoF = 4
   Comp = 2
-  @polyvar x1 x2 ksi1 ksi2
+  @polyvar x1 x2
   phi = Array{Polynomial,2}(undef,DoF,Comp)
-  nu = Array{Polynomial,2}(undef,DoF,Comp)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
+  phi[1,1] = 0.0*x1 + 0.0*x2
+  phi[1,2] = -0.5 + 0.5*x2  + 0.0*x1
 
-  nu[1,1] = 0.0*ksi1 + 0.0*ksi2
-  nu[1,2] = 0.0*ksi1 + 1.0 - 1.0*ksi2
+  phi[2,1] = 0.5 + 0.5*x1 + 0.0*x2
+  phi[2,2] = 0.0*x1 + 0.0*x2
 
-  nu[2,1] = -1.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 0.0*ksi1 + 0.0*ksi2
+  phi[3,1] = 0*x1 + 0.0*x2
+  phi[3,2] = -0.5 - 0.5*x2 + 0.0*x1
 
-  nu[3,1] = 0.0*ksi1 + 0.0*ksi2
-  nu[3,2] = 0.0*ksi1 + 1.0*ksi2
-
-  nu[4,1] = 1.0*ksi1 -1.0 + 0.0*ksi2
-  nu[4,2] = 0.0*ksi1 + 0.0*ksi2
-
-  for s = 1 : DoF
-    for t = 1 : 2
-      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
-    end
-  end
+  phi[4,1] = 0.5 - 0.5*x1 + 0.0*x2
+  phi[4,2] = 0.0*x1 + 0.0*x2
 
   for i = 1 : DoF
     Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
@@ -171,43 +163,82 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   @polyvar x1 x2 ksi1 ksi2
 
-#RT1 DEFelement
+#=RT1 DEFelement
+  nu[1,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[1,1] = -18*ksi1*ksi2^2 + 24*ksi1*ksi2 - 6*ksi1 + 12*ksi2^2 - 16*ksi2 + 4
+
+  nu[2,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[2,1] = 18*ksi1*ksi2^2 - 24*ksi1*ksi2 + 6*ksi1 - 6*ksi2^2 + 8*ksi2 - 2
+
+  nu[8,1] = -18*ksi1^2*ksi2 + 12*ksi1^2 + 24*ksi1*ksi2 - 16*ksi1 - 6*ksi2 + 4
+  nu[8,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+  nu[7,1] = +18*ksi1^2*ksi2 - 6*ksi1^2 - 24*ksi1*ksi2 + 8*ksi1 + 6*ksi2 - 2
+  nu[7,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+  nu[3,1] = -18*ksi1^2*ksi2 + 12*ksi1^2 + 12*ksi1*ksi2 - 8*ksi1
+  nu[3,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+  nu[4,1] = +18*ksi1^2*ksi2 - 6*ksi1^2 - 12*ksi1*ksi2 + 4*ksi1
+  nu[4,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+  nu[6,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[6,1] = -18*ksi1*ksi2^2 + 12*ksi1*ksi2 + 12*ksi2^2 - 8*ksi2
+
+  nu[5,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[5,1] = 18*ksi1*ksi2^2 - 12*ksi1*ksi2 - 6*ksi2^2 + 4*ksi2
+
   nu[9,1] = 36*ksi1^2*ksi2 - 24*ksi1^2 - 36*ksi1*ksi2 + 24*ksi1
-  nu[9,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[9,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
   nu[10,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
-  nu[10,2] =  36*ksi1*ksi2^2 - 36*ksi1*ksi2 - 24*ksi2^2 + 24*ksi2
+  nu[10,1] =  36*ksi1*ksi2^2 - 36*ksi1*ksi2 - 24*ksi2^2 + 24*ksi2
 
   nu[11,1] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
-  nu[11,2] =  -36*ksi1*ksi2^2 + 36*ksi1*ksi2 + 12*ksi2^2 - 12*ksi2
+  nu[11,1] =  -36*ksi1*ksi2^2 + 36*ksi1*ksi2 + 12*ksi2^2 - 12*ksi2
 
   nu[12,1] =  -36*ksi1^2*ksi2 + 12*ksi1^2 + 36*ksi1*ksi2 - 12*ksi1
-  nu[12,2] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[12,1] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+=#
+  #RT1Denise
+  nu[1,1] = +4.0*ksi1^2*ksi2 - 4.0*ksi1^2 - 4.0*ksi1*ksi2 + 4.0*ksi1
+  nu[1,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
+  nu[2,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[2,2] = -4.0*ksi1*ksi2^2 + 4.0*ksi1*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-  nu[1,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[1,2] = -18*ksi1*ksi2^2 + 24*ksi1*ksi2 - 6*ksi1 + 12*ksi2^2 - 16*ksi2 + 4
+  nu[3,1] = -4.0*ksi1^2*ksi2 + 4.0*ksi1*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[3,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-  nu[2,1] = 0.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 18*ksi1*ksi2^2 - 24*ksi1*ksi2 + 6*ksi1 - 6*ksi2^2 + 8*ksi2 - 2
+  nu[4,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[4,2] = 4.0*ksi1*ksi2^2 + 4.0*ksi2 - 4.0*ksi2^2 - 4.0*ksi1*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-  nu[3,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 12*ksi1*ksi2 + 8*ksi1
-  nu[3,2] = 0.0*ksi1 + 0.0*ksi2
+  nu[5,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[5,2] = 1.0 + 0.0*ksi1 - 4.0*ksi2 + 0.0*ksi1^2 + 2.0*ksi2^2 + 0.0*ksi1^2*ksi2 - 2.0*ksi1*ksi2^2 + 3.0*ksi1*ksi2
 
-  nu[4,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 12*ksi1*ksi2 - 4*ksi1
-  nu[4,2] = 0.0*ksi1 + 0.0*ksi2
+  nu[6,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[6,2] = 2.0*ksi1*ksi2^2 - 3.0*ksi1*ksi2 + 1.0*ksi1 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-  nu[5,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[5,2] = -18*ksi1*ksi2^2 + 12*ksi1*ksi2 + 12*ksi2^2 - 8*ksi2
+  nu[7,1] = -2.0*ksi1^2*ksi2 + 2.0*ksi1^2 + 1.0*ksi1*ksi2 - ksi1 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[7,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-  nu[6,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[6,2] = 18*ksi1*ksi2^2 - 12*ksi1*ksi2 - 6*ksi2^2 + 4*ksi2
+  nu[8,1] = 2.0*ksi1^2*ksi2 - 1.0*ksi1*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[8,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-  nu[7,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 24*ksi1*ksi2 + 16*ksi1 + 6*ksi2 - 4
-  nu[7,2] = 0.0*ksi1 + 0.0*ksi2
+  #non-normal
 
-  nu[8,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 24*ksi1*ksi2 - 8*ksi1 - 6*ksi2 + 2
-  nu[8,2] = 0.0*ksi1 + 0.0*ksi2
+  nu[9,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[9,2] = -2.0*ksi1*ksi2^2 + 2.0*ksi2^2 + ksi1*ksi2 - ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+  nu[10,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[10,2] = 2.0*ksi1*ksi2^2 - 1.0*ksi1*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+  nu[11,1] =  -2.0*ksi1^2*ksi2+  3.0*ksi1*ksi2 - ksi2 + 2.0*ksi1^2 - 3.0*ksi1 + 1.0 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[11,2] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+  nu[12,1] =  2.0*ksi1^2*ksi2 - 3.0*ksi1*ksi2 + 1.0*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[12,2] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
 
   for s = 1 : DoF
     for t = 1 : 2

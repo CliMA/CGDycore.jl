@@ -10,7 +10,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --ProfRhoBGrd="" \
   --Source=false \
   --Forcing=false \
-  --Equation="CompressibleDeep" \
+  --Equation="CompressibleShallow" \
   --State="Dry" \
   --Buoyancy=true \
   --Curl=false \
@@ -29,7 +29,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=150 \
+  --dtau=180 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -37,7 +37,7 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
-  --nPanel=16 \
+  --nPanel=32 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \

@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei
 using MPI
 using Base
 using CUDA
@@ -8,7 +8,6 @@ using Metal
 using KernelAbstractions
 using StaticArrays
 using ArgParse
-using LinearAlgebra
 
 # Model
 parsed_args = DyCore.parse_commandline()
@@ -140,48 +139,82 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 1
-RadEarth = Phys.RadEarth
+RefineLevel = 5
+RadEarth = 1.0
 nz = 1
-nPanel = 8
-nQuad = 3
-OrdPoly = 1
-nx = 5
-ny = 5
-Lx = 5.0
-Ly = 5.0
-x0 = 0.0
-y0 = 0.0
-Boundary = Grids.Boundary()
-Boundary.WE = "Period"
-Boundary.SN = "Period"
-Decomp = ""
+nPanel = 2
+nQuad = 4
 Decomp = "EqualArea"
-Problem = "GalewskiSphere"
-#Problem = "LinearBlob"
-Param = Examples.Parameters(FTB,Problem)
-Examples.InitialProfile!(Model,Problem,Param,Phys)
-GridType = "Sphere"
 
-Grid = Grids.QuadGrid(backend,FTB,10.0)
-F,LocGlob,IC = FiniteVolumes.LocalGrid(Grid.Faces[1],Grid)
-NumF = length(F)
+#Quad
+GridType = "CubedSphere"
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 
-Ord = 4;
-SDiv = FiniteVolumes.DivDiv(F,LocGlob,FiniteVolumes.DivRT0!,Ord);
-SDivV = FiniteVolumes.WeakVort(F,LocGlob,IC,FiniteVolumes.CG1Grad!,FiniteVolumes.RT0!,Ord);
-SSDiv=[SDiv;SDivV]
+RT = FEMSei.RT0Struct{FTB}(Grid.Type,backend,Grid)
+for iF = 1 : Grid.NumFaces
+  @show RT.Glob[:,iF], iF
+  @show Grid.Edges[iF].F
+end
+@show RT.Glob[:,1]
+@show length(Grid.Faces[24].E)
 
-uB = zeros(NumF,NumF)
-for i = 1 : NumF
-  uB[i,i] = 1;
-end  
-uI = -SSDiv[5:end,5:end] \ (SSDiv[5:end,1:4] * uB)
-NVal = FiniteVolumes.TangentialDiv(F,LocGlob,FiniteVolumes.RT0!,Ord)
-U = [uB;uI]
-@show uB
-@show uI
-T = NVal * U
+DG0 = FEMSei.DG0Struct{FTB}(Grid.Type,backend,Grid)
+QQ = FEMSei.QuadRule{FTB}(Grid.Type,backend,nQuad)
 
+RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi)
+DG0.M = FEMSei.MassMatrix(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi)
 
+Div = FEMSei.DivMatrix(backend,FTB,RT,DG0,Grid,nQuad,FEMSei.Jacobi)
 
+u = zeros(FTB,RT.NumG)
+uNeu = zeros(FTB,RT.NumG)
+
+p = FEMSei.Project(backend,FTB,DG0,Grid,nQuad,FEMSei.Jacobi,FEMSei.fp)
+u = FEMSei.Project(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi,FEMSei.fu)
+p0 = deepcopy(p)
+FileNumber = 0
+VelCa = zeros(Grid.NumFaces,Grid.Dim)
+VelSp = zeros(Grid.NumFaces,2)
+FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,u,RT,Grid,FEMSei.Jacobi)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
+
+pNeu = zeros(FTB,DG0.NumG)
+@. u = 0.0
+nAdveVel = 100
+dtau = 0.001
+time = 0.0
+
+for i = 1 : nAdveVel
+  rp = Div*u
+  rp = DG0.M\rp
+  ru = -Div'*p
+  ru = RT.M\ru
+
+  @. uNeu = u + 0.5 * dtau * ru
+  @. pNeu = p + 0.5 * dtau * rp
+
+  rp = Div*uNeu
+  rp = DG0.M\rp
+  ru = -Div'*pNeu
+  ru = RT.M\ru
+
+  @. u = u + dtau * ru
+  @. p = p + dtau * rp
+
+  #time = time + dtau
+  if mod(i,100)==0
+    FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,u,RT,Grid,FEMSei.Jacobi)
+    FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi)
+    global FileNumber += 1
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [p VelCa VelSp], FileNumber)
+  end
+end
+
+#= ToDO
+Gleichungen testen mit @show
+mehr Quadraturregeln für Dreiecke höhere ordnungen
+RT1, DG1
+Wiki von github
+=#

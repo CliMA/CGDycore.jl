@@ -1,16 +1,19 @@
 mutable struct KiteFace
   MatTan::Array{Float64,2}
   LocGlob::Array{Int,1}
+  KiteVol::Array{Float64,1}
 end
 
 function KiteFace()
 
   MatTan = zeros(0,0)
   LocGlob = zeros(Int,0)
+  KiteVol = zeros(0)
 
   return KiteFace(
     MatTan,
     LocGlob,
+    KiteVol,
   )
 end  
 
@@ -77,6 +80,40 @@ function DivRT0!(f,ksi1,ksi2)
   f[2] = 1/2
   f[3] = 1/2
   f[4] = -1/2
+end
+
+function Ned0!(f,ksi1,ksi2)
+
+  f[1,1] = 1/2 * (1 - ksi2)
+  f[2,1] = 0
+
+  f[1,2] = 0
+  f[2,2] = -1/2 * (1 + ksi1)
+
+  f[1,3] = 1/2 * (1 + ksi2)
+  f[2,3] = 0
+
+  f[1,4] = 0
+  f[2,4] = -1/2 * (1 - ksi1)
+end
+
+function MassMatrix(M,LocGlob,fCurl!,Ord)
+  w,xw = GaussLobatto(Ord)
+  W = zeros(length(w)^2,1)
+  ksi = zeros(2,length(w)^2)
+  iw = 1
+  for i = 1 : length(w)
+    for j = 1 : length(w)
+      W[iw] = w[i] * w[j]
+      ksi[1,iw] = xw[i]
+      ksi[2,iw] = xw[j]
+      iw=iw+1
+    end
+  end
+  fCurlLoc = zeros(2,4,length(W))
+  for iw = 1 : length(W)
+    @views fCurl!(fCurlLoc[:,:,iw],ksi[1,iw],ksi[2,iw])
+  end  
 end
 
 function CG1Grad!(f,ksi1,ksi2)
@@ -300,6 +337,9 @@ function GaussLobatto(Ord)
 return w,xw
 end
 
+function HCurlHDiv()
+end
+
 function TangentialDiv(F,LocGlob,fu!,Ord)
   w,xw = GaussLobatto(Ord)
   fuLocB = zeros(2,4,length(w),4)
@@ -352,6 +392,7 @@ function TangentialDiv(F,LocGlob,fu!,Ord)
           (dXdx * fuLocB[:,j,iw,4]) * e[j]
        end
     end
+    @show LocGlob[:,iF]
     NVal[LocGlob[:,iF],LocGlob[:,iF]] = NVal[LocGlob[:,iF],LocGlob[:,iF]] + SLoc
   end
   return NVal
@@ -365,7 +406,7 @@ function MatrixTangential(Grid)
   end
 
   for iF = 1 : Grid.NumFaces
-    F,LocGlob,IC = FiniteVolumes.LocalGrid(Grid.Faces[1],Grid)
+    F,LocGlob,IC = FiniteVolumes.LocalGrid(Grid.Faces[iF],Grid)
     NumF = length(F)
 
     Ord = 4;
@@ -378,16 +419,20 @@ function MatrixTangential(Grid)
       uB[i,i] = 1;
     end
     uI = -SSDiv[NumF+1:end,NumF+1:end] \ (SSDiv[NumF+1:end,1:NumF] * uB)
-    @show uI
-    NVal = FiniteVolumes.TangentialDiv(F,LocGlob,FiniteVolumes.RT0!,Ord)
-    @show NVal
+    NVal = TangentialDiv(F,LocGlob,FiniteVolumes.RT0!,Ord)
     U = [uB;uI]
     T = NVal * U
     KiteFaces[iF].MatTan = T
     LocGlob = zeros(Int,length(Grid.Faces[iF].E))
     @. LocGlob = Grid.Faces[iF].E
     KiteFaces[iF].LocGlob = LocGlob
-    stop
+    KiteVol = zeros(NumF)
+    for i = 1 : NumF
+      KiteVol[i] = (Grids.AreaSphericalTriangle(F[i].P1,F[i].P2,F[i].P3) + 
+        Grids.AreaSphericalTriangle(F[i].P2,F[i].P3,F[i].P4)) * Grid.Rad^2
+      @show iF,i,KiteVol[i],AA  
+    end  
+    KiteFaces[iF].KiteVol = KiteVol
   end    
   return KiteFaces
 end    

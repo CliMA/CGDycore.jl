@@ -147,8 +147,9 @@ nAdveVel = 5000
 Problem = "LinearBlob"
 Fac = 1.0
 RadEarth = 1.0 * Fac
-dtau = 0.001 * Fac
-nAdveVel = 2000
+dtau = 0.0001 * Fac
+nAdveVel = 16000
+PrintStp = 800
 
 
 Param = Examples.Parameters(FTB,Problem)
@@ -156,7 +157,7 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 RefineLevel = 5
 nz = 1
-nPanel = 120
+nPanel = 2
 nQuad = 2
 Decomp = ""
 Decomp = "EqualArea"
@@ -164,10 +165,13 @@ Decomp = "EqualArea"
 #TRI
 #GridType = "DelaunaySphere"
 GridType = "CubedSphere"
+#GridType = "MPASO"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 KiteFaces = FiniteVolumes.MatrixTangential(Grid)
+
+stop
 
 #MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid,Grid.Type)
 
@@ -208,6 +212,7 @@ time = 0.0
 
 @show dtau,nAdveVel
 for i = 1 : nAdveVel
+  @show i  
   mul!(rp,Div,Uu)
   mul!(ru,Grad,Up)
   @. ru = -ru
@@ -217,6 +222,13 @@ for i = 1 : nAdveVel
   mul!(ru,Grad,UNewp)
   @. ru = -ru
   @. U = U + dtau * r  
+
+  if mod(i,PrintStp) == 0
+    global FileNumber += 1
+    FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
+    FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
+  end  
 
 
   #time = time + dtau

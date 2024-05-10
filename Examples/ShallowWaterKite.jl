@@ -232,38 +232,38 @@ time = 0.0
 
 for i = 1 : nAdveVel
   @. F = 0  
-# FEMSei.DivRhs!(backend,FTB,Fp,Uu,CG1KiteDHDiv,UUp,CG1KiteP,CG1KiteP,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivRhs!(backend,FTB,Fp,Uu,CG1KiteDHDiv,UUp,CG1KiteP,CG1KiteP,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
   mul!(Fp,Div,Uu)
   ldiv!(FpM,Fp)
 
-# @views FEMSei.GradRhs!(backend,FTB,Fu,Up,CG1KiteP,
-# UUu,CG1KiteDHDiv,CG1KiteDHDiv,KiteGrid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  @views FEMSei.GradRhs!(backend,FTB,Fu,Up,CG1KiteP,
+  UUu,CG1KiteDHDiv,CG1KiteDHDiv,KiteGrid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
 # @views FEMSei.ProjectHDivHCurl!(backend,FTB,UCurl,CG1KiteDHCurl,Uu,CG1KiteDHDiv,
 #   Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
 # mul!(qVort,Curl,UCurl)
 # @. qVort = 0
 # @time @views FEMSei.CrossRhs!(backend,FTB,Fu,qVort,CG1KiteP,
 # Uu,CG1KiteDHDiv,CG1KiteDHDiv,KiteGrid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  mul!(Fu,Div',Up)
+# mul!(Fu,Div',Up)
   ldiv!(FuM,Fu)
 
   @. Fu = -Fu
   @. UNew = U + 0.5 * dtau * F
 
   @. F = 0  
-# FEMSei.DivRhs!(backend,FTB,Fp,UNewu,CG1KiteDHDiv,UUp,CG1KiteP,CG1KiteP,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  mul!(Fp,Div,UNewu)
+  FEMSei.DivRhs!(backend,FTB,Fp,UNewu,CG1KiteDHDiv,UUp,CG1KiteP,CG1KiteP,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+# mul!(Fp,Div,UNewu)
   ldiv!(FpM,Fp)
 
-# @views FEMSei.GradRhs!(backend,FTB,Fu,UNewp,CG1KiteP,
-# UUu,CG1KiteDHDiv,CG1KiteDHDiv,KiteGrid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  @views FEMSei.GradRhs!(backend,FTB,Fu,UNewp,CG1KiteP,
+  UUu,CG1KiteDHDiv,CG1KiteDHDiv,KiteGrid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
 # @views FEMSei.ProjectHDivHCurl!(backend,FTB,UCurl,CG1KiteDHCurl,UNewu,CG1KiteDHDiv,
 #   Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
 # mul!(qVort,Curl,UCurl)
 # @. qVort = 0
 # @time @views FEMSei.CrossRhs!(backend,FTB,Fu,qVort,CG1KiteP,
 # Uu,CG1KiteDHDiv,CG1KiteDHDiv,KiteGrid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  mul!(Fu,Div',UNewp)
+# mul!(Fu,Div',UNewp)
   ldiv!(FuM,Fu)
 
   @. Fu = -Fu

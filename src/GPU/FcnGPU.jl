@@ -571,7 +571,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   DS = FE.DS
   DW = FE.DW
   M = FE.M
-  dXdx = Metric.dXdx
   dXdxI = Metric.dXdxI
   X = Metric.X
   J = Metric.J
