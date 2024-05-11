@@ -41,7 +41,7 @@
                 dX1dXT3     dX2dXT3     dX3dXT3])   
   J .= J1 * JP * J3      
   @views detJLoc = det(J[:,1],J[:,2])
-  detJ .= detJLoc
+  detJ .= detJLoc * F.Orientation
   pinvJ  .= pinv(J)
   X .= XLoc / norm(XLoc) * Rad
 end

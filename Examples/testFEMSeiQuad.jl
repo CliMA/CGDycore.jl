@@ -190,7 +190,6 @@ F = zeros(FTB,DG.NumG+RT.NumG)
 
 FEMSei.Project!(backend,FTB,Uu,RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.Project!(backend,FTB,Up,DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-p0 = deepcopy(p)
 FileNumber = 0
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)

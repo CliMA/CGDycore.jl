@@ -83,14 +83,15 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   @polyvar x1 x2 ksi1 ksi2
 
-  nu[2,1] = 0.0 + 1.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 0.0 + 1.0*ksi2 + 0.0*ksi1
 
-  nu[3,1] = +1.0 - 1.0*ksi1 + 0.0*ksi2
-  nu[3,2] = 0.0 - 1.0*ksi2 + 0.0*ksi1
+  nu[1,1] = (-1.0*ksi1 + 0.0*ksi2)
+  nu[1,2] = (0.0*ksi1 - 1.0*ksi2 + 1.0)
 
-  nu[1,1] = 0.0 + 1.0*ksi1 + 0.0*ksi2
-  nu[1,2] = -1.0 + 1.0*ksi2 + 0.0*ksi1
+  nu[2,1] = (-1.0*ksi1 + 0.0*ksi2)
+  nu[2,2] = (0.0*ksi1 - 1.0*ksi2)
+
+  nu[3,1] = (1.0*ksi1 + 0.0*ksi2 - 1.0)
+  nu[3,2] = (0.0*ksi1 + 1.0*ksi2)
 
   for s = 1 : DoF
     for t = 1 : 2
