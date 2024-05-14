@@ -140,11 +140,11 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 6
+RefineLevel = 0
 RadEarth = 1.0
 nz = 1
 nPanel = 50
-nQuad = 2
+nQuad = 3
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
@@ -152,8 +152,10 @@ dtau = 50
 nAdveVel = 60
 Problem = "LinearBlob"
 RadEarth = 1.0
-dtau = 0.00025*.5
-nAdveVel = 6000*2
+dtau = 0.00025*.3
+nAdveVel = 6000*3
+nAdveVel = 600*3
+nAdveVel = 1
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
@@ -163,8 +165,8 @@ GridType = "TriangularSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 
-RT = FEMSei.RT0Struct{FTB}(Grid.Type,backend,Grid)
-DG = FEMSei.DG0Struct{FTB}(Grid.Type,backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grid.Type,backend,Grid)
+DG = FEMSei.DG1Struct{FTB}(Grid.Type,backend,Grid)
 @show DG.NumG
 
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi!) 

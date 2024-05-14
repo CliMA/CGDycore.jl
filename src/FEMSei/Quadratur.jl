@@ -72,16 +72,16 @@ function QuadRule(type::Grids.Quad,n)
   return NumQuad, Weights, Points
 end
 
-function QuadRule(type::Grids.Tri,n)
+function QuadRule(type::Grids.Tri,Ord)
 
-  if n == 1
+  if Ord == 1
     NumQuad = 1  
     Weights = zeros(NumQuad)
     Points = zeros(NumQuad,2)
     Weights[1] = 2
     Points[1,1] = -1/3
     Points[1,2] = -1/3
-  elseif n == 2
+  elseif Ord == 2
     NumQuad = 3  
     Weights = zeros(NumQuad)
     Points = zeros(NumQuad,2)
@@ -94,7 +94,7 @@ function QuadRule(type::Grids.Tri,n)
     Points[2,2] = -2/3
     Points[3,1] = -2/3
     Points[3,2] = -2/3
-  elseif n == 3
+  elseif Ord == 3
     NumQuad = 4 
     Weights = zeros(NumQuad)
     Points = zeros(NumQuad,2)
@@ -104,12 +104,44 @@ function QuadRule(type::Grids.Tri,n)
     Weights[4] = 25/96
     Points[1,1] = 1/3
     Points[1,2] = 1/3
-    Points[2,1] = -3/5
-    Points[2,2] = -3/5
-    Points[3,1] = 3/5
-    Points[3,2] = -3/5
-    Points[4,1] = -3/5
-    Points[4,2] = 3/5
+    Points[2,1] = 0.2
+    Points[2,2] = 0.2
+    Points[3,1] = 0.6
+    Points[3,2] = 0.2
+    Points[4,1] = 0.2
+    Points[4,2] = 0.6
+    @. Weights = 4.0 * Weights
+    for i = 1 : 4
+      Points[i,1] = 2.0 * Points[i,1] - 1.0  
+      Points[i,2] = 2.0 * Points[i,2] - 1.0  
+    end  
+  elseif Ord == 5
+    NumQuad = 6
+    Weights = zeros(NumQuad)
+    Points = zeros(NumQuad,2)
+    Weights[1] = 0.109951743655322
+    Weights[2] = 0.109951743655322
+    Weights[3] = 0.109951743655322
+    Weights[4] = 0.223381589678011
+    Weights[5] = 0.223381589678011
+    Weights[6] = 0.223381589678011
+    Points[1,1] = 0.816847572980459 
+    Points[1,2] = 0.091576213509771
+    Points[2,1] = 0.091576213509771 
+    Points[2,2] = 0.816847572980459
+    Points[3,1] = 0.091576213509771 
+    Points[3,2] = 0.091576213509771
+    Points[4,1] = 0.108103018168070 
+    Points[4,2] = 0.445948490915965
+    Points[5,1] = 0.445948490915965 
+    Points[5,2] = 0.108103018168070
+    Points[6,1] = 0.445948490915965 
+    Points[6,2] = 0.445948490915965
+    @. Weights = 2.0 * Weights
+    for i = 1 : NumQuad
+      Points[i,1] = 2.0 * Points[i,1] - 1.0  
+      Points[i,2] = 2.0 * Points[i,2] - 1.0  
+    end  
   end
 
   return NumQuad, Weights, Points

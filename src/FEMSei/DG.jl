@@ -134,28 +134,32 @@ end
 function DG1Struct{FT}(Type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   DoF = 3
-  Comp = 2
+  Comp = 1
+  nu = Array{Polynomial,2}(undef,DoF,Comp)
   phi = Array{Polynomial,2}(undef,DoF,Comp)
-  @polyvar x1 x2
-  phi[1,1] = (1.0-1.0*x1)+0.0*x2
-  phi[1,2] = -1.0*x2+0.0*x1
+  @polyvar x1 x2 ksi1 ksi2
+  nu[1,1] = 0.0*ksi1 + 0.0*ksi2 + 2.0
+  nu[2,1] = 0.0*ksi1 + 1.0*ksi2 - 1.0/3.0
+  nu[3,1] = 1.0*ksi1 + 0.0*ksi2 - 1.0/3.0
   
-  phi[2,1] = 1.0*x1+0.0*x2
-  phi[2,2] = 0.0*x2+0.0*x1
+  for s = 1 : DoF
+    for t = 1 : 1
+      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
+    end
+  end
 
-  phi[3,1] = 0.0*x1+0.0*x2
-  phi[3,2] = 1.0*x2+0.0*x1
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = 3 * Grid.NumFaces
   NumI = 3 * Grid.NumFaces
   for iF = 1 : Grid.NumFaces
-    GlobCPU[1,iF] = Grid.Faces[iF].F
+    GlobCPU[1,iF] = 3 * Grid.Faces[iF].F - 2
+    GlobCPU[2,iF] = 3 * Grid.Faces[iF].F - 1
+    GlobCPU[3,iF] = 3 * Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
   M = spzeros(0,0)
-  @show NumG
   return DG1Struct{FT,
                   typeof(Glob)}( 
     Glob,

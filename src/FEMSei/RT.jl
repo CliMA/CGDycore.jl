@@ -84,14 +84,14 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   @polyvar x1 x2 ksi1 ksi2
 
 
-  nu[1,1] = (-1.0*ksi1 + 0.0*ksi2)
-  nu[1,2] = (0.0*ksi1 - 1.0*ksi2 + 1.0)
+  nu[1,1] = -1.0*ksi1 + 0.0*ksi2
+  nu[1,2] = 0.0*ksi1 - 1.0*ksi2 + 1.0
 
-  nu[2,1] = (-1.0*ksi1 + 0.0*ksi2)
-  nu[2,2] = (0.0*ksi1 - 1.0*ksi2)
+  nu[2,1] = -1.0*ksi1 + 0.0*ksi2
+  nu[2,2] = 0.0*ksi1 - 1.0*ksi2
 
-  nu[3,1] = (1.0*ksi1 + 0.0*ksi2 - 1.0)
-  nu[3,2] = (0.0*ksi1 + 1.0*ksi2)
+  nu[3,1] = 1.0*ksi1 + 0.0*ksi2 - 1.0
+  nu[3,2] = 0.0*ksi1 + 1.0*ksi2
 
   for s = 1 : DoF
     for t = 1 : 2
@@ -281,31 +281,31 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   @polyvar x1 x2 ksi1 ksi2
 
-  nu[3,1] = +8.0*(ksi1^2) - 4.0*ksi1 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[3,2] = +8.0*ksi1*ksi2 - 2.0*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[1,1] = 2.0*ksi1 * (4.0*ksi1 + 4.0*ksi2 - 3.0)
+  nu[1,2] = 8.0*ksi1*ksi2 - 6.0*ksi1 + 8.0*ksi2*ksi2 - 12.0*ksi2 + 4.0
 
-  nu[4,1] = +8.0*ksi1*ksi2 - 2.0*ksi1 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[4,2] = +8.0*(ksi2^2) - 4.0*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[2,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2
+  nu[2,2] = -8.0*ksi1*ksi2 + 6.0*ksi1 + 2.0*ksi2 - 2.0
 
-  nu[6,1] = +8.0*(ksi1^2) + 8.0*ksi1*ksi2 - 12.0*ksi1 - 6.0*ksi2 + 4.0 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[6,2] = +8.0*ksi1*ksi2 + 8.0*(ksi2^2) - 6.0*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[3,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2 
+  nu[3,2] = 2.0*ksi2 * (1.0 - 4.0*ksi1)
 
-  nu[5,1] = -8.0*ksi1*ksi2 + 2.0*ksi1 + 6.0*ksi2 - 2.0 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[5,2] = -8.0*(ksi2^2) + 4.0*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[4,1] = 2.0*ksi1 * (1.0 - 4.0*ksi2) 
+  nu[4,2] = 4.0*ksi2 * (1.0 - 2.0*ksi2) + 0.0*ksi1
 
-  nu[1,1] = -8.0*(ksi1^2) - 8.0*ksi1*ksi2 + 6.0*ksi1 - 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[1,2] = -8.0*ksi1*ksi2 + 6.0*ksi1 - 8.0*(ksi2^2) + 12.0*ksi2 - 4.0 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[6,1] = -8.0*ksi1*ksi1 - 8.0*ksi1*ksi2 + 12.0*ksi1 + 6.0*ksi2 - 4.0
+  nu[6,2] = 2.0*ksi2 * (-4.0*ksi1 - 4.0*ksi2 + 3.0)
 
-  nu[2,1] = +8.0*(ksi1^2) - 4.0*ksi1 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[2,2] = +8.0*ksi1*ksi2 - 6.0*ksi1 - 2.0*ksi2 + 2.0 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[5,1] = 8.0*ksi1*ksi2 -2.0*ksi1 - 6.0*ksi2 + 2.0
+  nu[5,2] = 4.0*ksi2 * (2.0*ksi2 - 1.0) + 0.0*ksi1
 
   #non-normal
 
-  nu[7,1] = -16.0*(ksi1^2) - 8.0*ksi1*ksi2 + 16.0*ksi1 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[7,2] = -16.0*ksi1*ksi2 - 8.0*(ksi2^2) + 8.0*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[7,1] = 8.0*ksi1 * (-2.0*ksi1 - 1.0*ksi2 + 2.0)
+  nu[7,2] = 8.0*ksi2 * (-2.0*ksi1 - 1.0*ksi2 + 1.0)
 
-  nu[8,1] = -8.0*(ksi1^2) - 16.0*ksi1*ksi2 + 8.0*ksi1 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
-  nu[8,2] = -8.0*ksi1*ksi2 - 16.0*(ksi2^2) + 16.0*ksi2 + 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1*ksi2
+  nu[8,1] = 8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
+  nu[8,2] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
   
   for s = 1 : DoF
     for t = 1 : 2
