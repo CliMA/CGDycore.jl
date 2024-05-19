@@ -293,11 +293,11 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   nu[4,1] = 2.0*ksi1 * (1.0 - 4.0*ksi2) 
   nu[4,2] = 4.0*ksi2 * (1.0 - 2.0*ksi2) + 0.0*ksi1
 
-  nu[6,1] = -8.0*ksi1*ksi1 - 8.0*ksi1*ksi2 + 12.0*ksi1 + 6.0*ksi2 - 4.0
-  nu[6,2] = 2.0*ksi2 * (-4.0*ksi1 - 4.0*ksi2 + 3.0)
-
   nu[5,1] = 8.0*ksi1*ksi2 -2.0*ksi1 - 6.0*ksi2 + 2.0
   nu[5,2] = 4.0*ksi2 * (2.0*ksi2 - 1.0) + 0.0*ksi1
+
+  nu[6,1] = -8.0*ksi1*ksi1 - 8.0*ksi1*ksi2 + 12.0*ksi1 + 6.0*ksi2 - 4.0
+  nu[6,2] = 2.0*ksi2 * (-4.0*ksi1 - 4.0*ksi2 + 3.0)
 
   #non-normal
 
@@ -306,7 +306,7 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
 
   nu[8,1] = 8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
   nu[8,2] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
-  
+
   for s = 1 : DoF
     for t = 1 : 2
       phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
@@ -322,11 +322,15 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB + 2*Grid.NumFaces
   NumI = Grid.NumEdgesI
   for iF = 1 : Grid.NumFaces
-    for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
-      GlobCPU[2*i-1,iF] = 2*Grid.Edges[iE].E - 1
-      GlobCPU[2*i,iF] = 2*Grid.Edges[iE].E
-    end
+      iE1 = Grid.Faces[iF].E[1]
+      GlobCPU[1,iF] = 2*Grid.Edges[iE1].E - 1
+      GlobCPU[2,iF] = 2*Grid.Edges[iE1].E
+      iE2 = Grid.Faces[iF].E[2]
+      GlobCPU[3,iF] = 2*Grid.Edges[iE2].E - 1 
+      GlobCPU[4,iF] = 2*Grid.Edges[iE2].E 
+      iE3 = Grid.Faces[iF].E[3]
+      GlobCPU[5,iF] = 2*Grid.Edges[iE3].E 
+      GlobCPU[6,iF] = 2*Grid.Edges[iE3].E - 1
     GlobCPU[7,iF] = 2*Grid.NumEdges + 2*Grid.Faces[iF].F - 1
     GlobCPU[8,iF] = 2*Grid.NumEdges + 2*Grid.Faces[iF].F
   end

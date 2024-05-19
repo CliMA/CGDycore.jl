@@ -2,7 +2,6 @@ function Project(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
   NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
-  @show Fe.NumG,Grid.NumFaces
   p=zeros(Fe.NumG)
   for i = 1 : length(Weights)
     for iComp = 1 : Fe.Comp

@@ -37,7 +37,6 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
   end
   SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc,order=order)
 
-
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,Model.HorLimit)
   return SubGrid, Exchange
 end  

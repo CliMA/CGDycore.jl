@@ -140,22 +140,22 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 0
+RefineLevel = 5
 RadEarth = 1.0
 nz = 1
 nPanel = 50
-nQuad = 3
+nQuad = 5
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
 dtau = 50
-nAdveVel = 60
+nAdveVel = 1
 Problem = "LinearBlob"
 RadEarth = 1.0
-dtau = 0.00025*.3
+dtau = 0.00025
 nAdveVel = 6000*3
 nAdveVel = 600*3
-nAdveVel = 1
+nAdveVel = 3000
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
@@ -164,6 +164,9 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 GridType = "TriangularSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+for iF = 1 : Grid.NumFaces
+# @show Grid.Faces[iF].N
+end  
 
 RT = FEMSei.RT1Struct{FTB}(Grid.Type,backend,Grid)
 DG = FEMSei.DG1Struct{FTB}(Grid.Type,backend,Grid)
@@ -202,7 +205,6 @@ FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,RT,Grid,FEMSei.Jacobi!)
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
 pNeu = zeros(FTB,DG.NumG)
-
 time = 0.0
 
 for i = 1 : nAdveVel
@@ -221,7 +223,6 @@ for i = 1 : nAdveVel
 
   @. Fu = -Fu
   @. U = U + dtau * F
-
 
   #time = time + dtau
 end

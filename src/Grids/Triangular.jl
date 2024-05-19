@@ -436,13 +436,8 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
     s2 = sum(Edges[e2].N)
     s3 = sum(Edges[e3].N)
     permu = sortperm([s1;s2;s3])
-    if permu[1] == 1
-      ee = [e1,e2,e3]
-    elseif permu[1] == 2
-      ee = [e2,e3,e1]
-    else  
-      ee = [e3,e1,e2]
-    end  
+    eee = [e1 e2 e3]
+    ee = [eee[permu[1]] ;eee[permu[3]] ;eee[permu[2]]]
     (Faces[NumFaces], Edges) = Face(ee,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;
        P=zeros(Float64,0,0),Form=Form,Rad=Rad)
     FaceL = FaceL.next

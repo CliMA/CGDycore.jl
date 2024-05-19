@@ -68,28 +68,13 @@ function DivMatrix(backend,FTB,FeF::HDivElement,FeT::ScalarElement,Grid,QuadOrd,
   pinvDF = zeros(3,2)
   X = zeros(3)
 
-  @show fFRef[1,7,:]
-  @show fFRef[1,8,:]
-  @show fTRef[1,2,:]
-  @show fTRef[1,3,:]
-
   for iF = 1 : Grid.NumFaces
     DivLoc .= 0
     for i = 1 : length(Weights)
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
-      aa = sign(detDFLoc) * Weights[i] * fTRef[:,2:3,i]' * fFRef[:,end-1:end,i]
-      @show sign(detDFLoc)
-      @show aa[1,:]
-      @show aa[2,:]
       DivLoc += sign(detDFLoc) * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
-      @show DivLoc[2:3,end-1]
-      @show DivLoc[2:3,end]
     end
-    @show size(DivLoc)
-    @show DivLoc[:,end-1]
-    @show DivLoc[:,end]
-    stop
     for j = 1 : size(DivLoc,2)
       for i = 1 : size(DivLoc,1)
         push!(RowInd,FeT.Glob[i,iF])
