@@ -1,43 +1,48 @@
-#RT0-RT2 for triangles
-#RT0 for quads Todo RT1-RT2 for quads
-
-mutable struct RT0Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+mutable struct Nedelec0Struct{FT<:AbstractFloat,
+                      IT2<:AbstractArray} <: HCurlElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
   phi::Array{Polynomial,2}  
-  Divphi::Array{Polynomial,2}                       
+  Curlphi::Array{Polynomial,2}                       
   NumG::Int
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
 end
 
-#RT0 Quad
+#Nedelec0 Quad
 
-function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
+function Nedelec0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Quad()
   DoF = 4
   Comp = 2
-  @polyvar x1 x2
+  @polyvar x1 x2 ksi1 ksi2
   phi = Array{Polynomial,2}(undef,DoF,Comp)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
-  phi[1,1] = 0.0*x1 + 0.0*x2
-  phi[1,2] = -0.5 + 0.5*x2  + 0.0*x1
+  nu = Array{Polynomial,2}(undef,DoF,Comp)
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
 
-  phi[2,1] = 0.5 + 0.5*x1 + 0.0*x2
-  phi[2,2] = 0*x1 + 0.0*x2
+  nu[1,1] = 0.0*ksi1 + 1.0 - 1.0*ksi2
+  nu[1,2] = 0.0*ksi1 + 0.0*ksi2
 
-  phi[3,1] = 0*x1 + 0.0*x2
-  phi[3,2] = -0.5 - 0.5*x2 + 0.0*x1
+  nu[2,1] = 0.0*ksi1 + 0.0*ksi2
+  nu[2,2] = 1.0*ksi1 + 0.0*ksi2
 
-  phi[4,1] = 0.5 - 0.5*x1 + 0.0*x2
-  phi[4,2] = 0*x1 + 0.0*x2
+  nu[3,1] = 0.0*ksi1 + 1.0*ksi2
+  nu[3,2] = 0.0*ksi1 + 0.0*ksi2
+
+  nu[4,1] = 0.0*ksi1 + 0.0*ksi2
+  nu[4,2] = -1.0*ksi1 +1.0 + 0.0*ksi2
+
+  for s = 1 : DoF
+    for t = 1 : 2
+      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
+    end
+  end
 
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Curlphi[i,1] = -differentiate(phi[i,1],x2) + differentiate(phi[i,2],x1)
   end
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
@@ -52,13 +57,13 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   end
   copyto!(Glob,GlobCPU)
   M = spzeros(0,0)
-  return RT0Struct{FT,
+  return Nedelec0Struct{FT,
                   typeof(Glob)}( 
   Glob,
   DoF,
   Comp,
   phi,                      
-  Divphi,
+  Curlphi,
   NumG,
   NumI,
   Type,
@@ -66,26 +71,27 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     )
   end
 
-#RT0 Tri
+#Nedelec0 Tri
 
-function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
+function Nedelec0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  Type = Grids.Quad()
+  Type = Grids.Tri()
   DoF = 3
   Comp = 2
   phi = Array{Polynomial,2}(undef,DoF,Comp) #base function of our used reference element
-  nu = Array{Polynomial,2}(undef,DoF,Comp) #base function of standard reference element
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
+  nu = Array{Polynomial,2}(undef,DoF,Comp) #base function of standard reference element see defelement.com
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
   @polyvar x1 x2 ksi1 ksi2
-  #Numbering 1-P(0,0), 2-P(-1,0), 3-P(0,-1) vertauschen zu 3-P(0,-1) 1-P(0,0) und 2-P(-1,0)
-  nu[2,1] = 0.0 + 1.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 0.0 + 1.0*ksi2 + 0.0*ksi1
 
-  nu[3,1] = +1.0 - 1.0*ksi1 + 0.0*ksi2
-  nu[3,2] = 0.0 - 1.0*ksi2 + 0.0*ksi1
 
-  nu[1,1] = 0.0 + 1.0*ksi1 + 0.0*ksi2
-  nu[1,2] = -1.0 + 1.0*ksi2 + 0.0*ksi1
+  nu[1,1] = -1.0*ksi1 + 0.0*ksi2
+  nu[1,2] = 0.0*ksi1 - 1.0*ksi2 + 1.0
+
+  nu[2,1] = -1.0*ksi1 + 0.0*ksi2
+  nu[2,2] = 0.0*ksi1 - 1.0*ksi2
+
+  nu[3,1] = 1.0*ksi1 + 0.0*ksi2 - 1.0
+  nu[3,2] = 0.0*ksi1 + 1.0*ksi2
 
   for s = 1 : DoF
     for t = 1 : 2
@@ -94,7 +100,7 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   end
 
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Curlphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
   end
 
 
@@ -110,13 +116,13 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   end
   copyto!(Glob,GlobCPU)
   M = spzeros(0,0)
-  return RT0Struct{FT,
+  return Nedelec0Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
     Comp,
     phi,
-    Divphi,                      
+    Curlphi,                      
     NumG,
     NumI,
     Type,
@@ -124,66 +130,85 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
       )
 end
 
-mutable struct RT1Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+mutable struct Nedelec1Struct{FT<:AbstractFloat,
+                      IT2<:AbstractArray} <: HCurlElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
   phi::Array{Polynomial,2}  
-  Divphi::Array{Polynomial,2}                       
+  Curlphi::Array{Polynomial,2}                       
   NumG::Int
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
 end
 
-#RT1 QuadTODO
+#Nedelec1 Quad
+#=
+__6__7_
+|  11  |
+3 9 10 5
+|  8   |
+2      4
+|_0__1_|
 
-function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
+New
+__6__5_
+|  12  |
+7 10 11 4
+|  9   |
+8      3
+|_1__2_|
+
+=#
+
+function Nedelec1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Quad()
   DoF = 12
   Comp = 2
   phi = Array{Polynomial,2}(undef,DoF,Comp) 
   nu = Array{Polynomial,2}(undef,DoF,Comp)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
   @polyvar x1 x2 ksi1 ksi2
-  
-  nu[1,1] = 0
-  nu[1,1] = -18*ksi1*ksi2^2 + 24*ksi1*ksi2 - 6*ksi1 + 12*ksi2^2 - 16*ksi2 + 4
 
-  nu[2,1] = 0
-  nu[2,1] = 18*ksi1*ksi2^2 - 24*ksi1*ksi2 + 6*ksi1 - 6*ksi2^2 + 8*ksi2 - 2
-
-  nu[3,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 24*ksi1*ksi2 + 16*ksi1 + 6*ksi2 - 4
-  nu[3,1] = 0
-
-  nu[4,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 24*ksi1*ksi2 - 8*ksi1 - 6*ksi2 + 2
-  nu[4,1] = 0
-
-  nu[5,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 12*ksi1*ksi2 + 8*ksi1
-  nu[5,1] = 0
-
-  nu[6,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 12*ksi1*ksi2 - 4*ksi1
-  nu[6,1] = 0
-
-  nu[7,1] = 0
-  nu[7,1] = -18*ksi1*ksi2^2 + 12*ksi1*ksi2 + 12*ksi2^2 - 8*ksi2
-
-  nu[8,1] = 0
-  nu[8,1] = 18*ksi1*ksi2^2 - 12*ksi1*ksi2 - 6*ksi2^2 + 4*ksi2
-
+#Nedelec1 DEFelement
   nu[9,1] = 36*ksi1^2*ksi2 - 24*ksi1^2 - 36*ksi1*ksi2 + 24*ksi1
-  nu[9,1] = 0
+  nu[9,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-  nu[10,1] = 0
-  nu[10,1] =  36*ksi1*ksi2^2 - 36*ksi1*ksi2 - 24*ksi2^2 + 24*ksi2
+  nu[10,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[10,2] =  36*ksi1*ksi2^2 - 36*ksi1*ksi2 - 24*ksi2^2 + 24*ksi2
 
-  nu[11,1] =  0
-  nu[11,1] =  -36*ksi1*ksi2^2 + 36*ksi1*ksi2 + 12*ksi2^2 - 12*ksi2
+  nu[11,1] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+  nu[11,2] =  -36*ksi1*ksi2^2 + 36*ksi1*ksi2 + 12*ksi2^2 - 12*ksi2
 
   nu[12,1] =  -36*ksi1^2*ksi2 + 12*ksi1^2 + 36*ksi1*ksi2 - 12*ksi1
-  nu[12,1] =  0
+  nu[12,2] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
+
+
+  nu[1,1] = 0.0*ksi1 + 0.0*ksi2 
+  nu[1,2] = -18*ksi1*ksi2^2 + 24*ksi1*ksi2 - 6*ksi1 + 12*ksi2^2 - 16*ksi2 + 4
+
+  nu[2,1] = 0.0*ksi1 + 0.0*ksi2
+  nu[2,2] = 18*ksi1*ksi2^2 - 24*ksi1*ksi2 + 6*ksi1 - 6*ksi2^2 + 8*ksi2 - 2
+
+  nu[3,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 12*ksi1*ksi2 + 8*ksi1
+  nu[3,2] = 0.0*ksi1 + 0.0*ksi2
+
+  nu[4,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 12*ksi1*ksi2 - 4*ksi1
+  nu[4,2] = 0.0*ksi1 + 0.0*ksi2
+
+  nu[5,1] = 0.0*ksi1 + 0.0*ksi2 
+  nu[5,2] = -18*ksi1*ksi2^2 + 12*ksi1*ksi2 + 12*ksi2^2 - 8*ksi2
+
+  nu[6,1] = 0.0*ksi1 + 0.0*ksi2 
+  nu[6,2] = 18*ksi1*ksi2^2 - 12*ksi1*ksi2 - 6*ksi2^2 + 4*ksi2
+
+  nu[7,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 24*ksi1*ksi2 + 16*ksi1 + 6*ksi2 - 4
+  nu[7,2] = 0.0*ksi1 + 0.0*ksi2
+
+  nu[8,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 24*ksi1*ksi2 - 8*ksi1 - 6*ksi2 + 2
+  nu[8,2] = 0.0*ksi1 + 0.0*ksi2
 
   for s = 1 : DoF
     for t = 1 : 2
@@ -192,28 +217,34 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   end
   
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Curlphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
   end
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdgesI + Grid.NumEdgesB
+  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB + 4*Grid.NumFaces
   NumI = Grid.NumEdgesI
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
-      GlobCPU[i,iF] = Grid.Edges[iE].E
+      GlobCPU[2*i-1,iF] = 2*Grid.Edges[iE].E - 1
+      GlobCPU[2*i,iF] = 2*Grid.Edges[iE].E 
+    
     end
+    GlobCPU[9,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F - 3
+    GlobCPU[10,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F - 2
+    GlobCPU[11,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F - 1
+    GlobCPU[12,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
   M = spzeros(0,0)
-  return RT1Struct{FT,
+  return Nedelec1Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
     Comp,
     phi,                      
-    Divphi,
+    Curlphi,
     NumG,
     NumI,
     Type,
@@ -221,66 +252,97 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
       )
   end
 
-#RT1 Tri
+#Nedelec1 Tri
+#=Numbering
 
-function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
+| \
+4  2
+| 8 \
+3 7  1
+|_5_6_\
+
+New
+| \
+5  4
+| 8 \
+6 7  3
+|_1_2_\
+
+
+=#
+
+function Nedelec1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Tri()
   DoF = 8
   Comp = 2
-  phi = Array{Polynomial,2}(undef,DoF,Comp)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
-  @polyvar x1 x2
+  phi = Array{Polynomial,2}(undef,DoF,Comp) #base function of our reference triangle
+  nu = Array{Polynomial,2}(undef,DoF,Comp) #base function of standard reference element
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
+  @polyvar x1 x2 ksi1 ksi2
 
-  phi[1,1] = -(x2^2) - x2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[1,2] = -0.5 - 0.5*x2 - x1 - x1*x2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[1,1] = 2.0*ksi1 * (4.0*ksi1 + 4.0*ksi2 - 3.0)
+  nu[1,2] = 8.0*ksi1*ksi2 - 6.0*ksi1 + 8.0*ksi2*ksi2 - 12.0*ksi2 + 4.0
 
-  phi[2,1] = -x1*x2 - x1/2 - x2 - 1/2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[2,2] = -x2^2-x2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[2,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2
+  nu[2,2] = -8.0*ksi1*ksi2 + 6.0*ksi1 + 2.0*ksi2 - 2.0
 
-  phi[3,1] = -x1^2 - x1*x2 + x2/2 + 1/2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[3,2] = -x1*x2 - x1 - x2^2 - 3*x2/2 - 1/2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[3,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2 
+  nu[3,2] = 2.0*ksi2 * (1.0 - 4.0*ksi1)
 
-  phi[4,1] = x1*x2 + x1/2 - x2/2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[4,2] = x2^2 + x2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[4,1] = 2.0*ksi1 * (1.0 - 4.0*ksi2) 
+  nu[4,2] = 4.0*ksi2 * (1.0 - 2.0*ksi2) + 0.0*ksi1
 
-  phi[5,1] = x1^2 + x1*x2 + 3*x1/2 + x2 + 1/2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[5,2] = x1*x2 - x1/2 + x2^2 - 1/2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[5,1] = 8.0*ksi1*ksi2 -2.0*ksi1 - 6.0*ksi2 + 2.0
+  nu[5,2] = 4.0*ksi2 * (2.0*ksi2 - 1.0) + 0.0*ksi1
 
-  phi[6,1] = -x1^2 - x1 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[6,2] = -x1*x2 + x1/2 - x2/2 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[6,1] = -8.0*ksi1*ksi1 - 8.0*ksi1*ksi2 + 12.0*ksi1 + 6.0*ksi2 - 4.0
+  nu[6,2] = 2.0*ksi2 * (-4.0*ksi1 - 4.0*ksi2 + 3.0)
 
   #non-normal
 
-  phi[7,1] = -2*x1^2 - x1*x2 - x1 - x2 + 1 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[7,2] = -2*x1*x2 - 2*x1 - x2^2 - 2*x2 - 1 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[7,1] = 8.0*ksi1 * (-2.0*ksi1 - 1.0*ksi2 + 2.0)
+  nu[7,2] = 8.0*ksi2 * (-2.0*ksi1 - 1.0*ksi2 + 1.0)
 
-  phi[8,1] = -x1^2 - 2*x1*x2 - 2*x1 - 2*x2 - 1 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
-  phi[8,2] = -x1*x2 - x1 - 2*x2^2 - x2 + 1 + 0.0x1 + 0.0x2 + 0.0x1^2 + 0.0x2^2 + 0.0x1*x2
+  nu[8,1] = 8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
+  nu[8,2] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
+
+  for s = 1 : DoF
+    for t = 1 : 2
+      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
+    end
+  end
 
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Curlphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
   end
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdgesI + Grid.NumEdgesB
+  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB + 2*Grid.NumFaces
   NumI = Grid.NumEdgesI
   for iF = 1 : Grid.NumFaces
-    for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
-      GlobCPU[i,iF] = Grid.Edges[iE].E
-    end
+      iE1 = Grid.Faces[iF].E[1]
+      GlobCPU[1,iF] = 2*Grid.Edges[iE1].E - 1
+      GlobCPU[2,iF] = 2*Grid.Edges[iE1].E
+      iE2 = Grid.Faces[iF].E[2]
+      GlobCPU[3,iF] = 2*Grid.Edges[iE2].E - 1 
+      GlobCPU[4,iF] = 2*Grid.Edges[iE2].E 
+      iE3 = Grid.Faces[iF].E[3]
+      GlobCPU[5,iF] = 2*Grid.Edges[iE3].E 
+      GlobCPU[6,iF] = 2*Grid.Edges[iE3].E - 1
+    GlobCPU[7,iF] = 2*Grid.NumEdges + 2*Grid.Faces[iF].F - 1
+    GlobCPU[8,iF] = 2*Grid.NumEdges + 2*Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
   M = spzeros(0,0)
-  return RT1Struct{FT,
+  return Nedelec1Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
     Comp,
     phi,
-    Divphi,                      
+    Curlphi,                      
     NumG,
     NumI,
     Type, 
@@ -288,28 +350,28 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
       )
   end
 
-mutable struct RT2Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+mutable struct Nedelec2Struct{FT<:AbstractFloat,
+                      IT2<:AbstractArray} <: HCurlElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
   phi::Array{Polynomial,2}  
-  Divphi::Array{Polynomial,2}                       
+  Curlphi::Array{Polynomial,2}                       
   NumG::Int
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
 end
 
-#RT2 Tri
-
-function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
+#Nedelec2 Tri
+#todo
+function Nedelec2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Tri()
   DoF = 15
   Comp = 2
   phi = Array{Polynomial,2}(undef,DoF,Comp)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
   @polyvar x1 x2
     
   phi[1,1] = -45*x1^3/16 - 45*x1^2/16 + 9*x1/16 + 9/16
@@ -358,7 +420,7 @@ function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   phi[15,2] = -45*x1*x2^2/4 - 15*x1*x2 - 15*x1/4 - 135*x2^3/8 - 135*x2^2/8 + 15*x2/8 + 15/8
        
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Curlphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
   end
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
@@ -373,13 +435,13 @@ function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   end
   copyto!(Glob,GlobCPU)
   M = spzeros(0,0)
-  return RT2Struct{FT,
+  return Nedelec2Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
     Comp,
     phi,
-    Divphi,                      
+    Curlphi,                      
     NumG,
     NumI,
     Type,

@@ -353,8 +353,8 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDE
   end
   uFRef = fTRef
   NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
-  fTRefX  = zeros(hFeF.Comp,FeT.DoF,NumQuadL)
-  fTRefY  = zeros(hFeF.Comp,FeT.DoF,NumQuadL)
+  fTRefX  = zeros(FeT.Comp,FeT.DoF,NumQuadL)
+  fTRefY  = zeros(FeT.Comp,FeT.DoF,NumQuadL)
   hFRefX  = zeros(hFeF.Comp,hFeF.DoF,NumQuadL)
   hFRefY  = zeros(hFeF.Comp,hFeF.DoF,NumQuadL)
   for iQ = 1 : NumQuadL
@@ -364,9 +364,12 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDE
         hFRefY[iComp,iD,iQ] = hFeF.phi[iD,iComp](PointsL[iQ],1.0)
       end
     end
+    @show size(FeT.phi)
     for iD = 1 : FeT.DoF
       fTRefX[1,iD,iQ] = FeT.phi[iD,1](1.0,PointsL[iQ])
-      fTRefY[1,iD,iQ] = FeT.phi[iD,2](PointsL[iQ],1.0)
+      fTRefX[2,iD,iQ] = FeT.phi[iD,2](1.0,PointsL[iQ])
+      fTRefY[1,iD,iQ] = FeT.phi[iD,1](PointsL[iQ],1.0)
+      fTRefY[2,iD,iQ] = FeT.phi[iD,2](PointsL[iQ],1.0)
     end
   end
   uFRefX = fTRefX

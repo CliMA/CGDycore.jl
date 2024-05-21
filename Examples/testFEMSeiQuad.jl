@@ -143,7 +143,7 @@ Model = DyCore.ModelStruct{FTB}()
 RefineLevel = 5
 RadEarth = 1.0
 nz = 1
-nPanel = 10
+nPanel = 40
 nQuad = 2
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
@@ -162,8 +162,8 @@ GridType = "CubedSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 
-RT = FEMSei.RT1Struct{FTB}(Grid.Type,backend,Grid)
-DG = FEMSei.DG1Struct{FTB}(Grid.Type,backend,Grid)
+RT = FEMSei.RT0Struct{FTB}(Grid.Type,backend,Grid)
+DG = FEMSei.DG0Struct{FTB}(Grid.Type,backend,Grid)
 @show DG.NumG
 
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi!) 
