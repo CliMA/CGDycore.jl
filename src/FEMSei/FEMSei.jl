@@ -33,11 +33,11 @@ abstract type HCurlKiteDElement <: HCurlElement end
 abstract type TensorElement <: VectorElement end
 
 include("Quadratur.jl")
-#include("RT0.jl")
-#include("DG0.jl")
 include("RT.jl")
 include("Nedelec.jl")
 include("DG.jl")
+include("CG.jl")
+include("BDM.jl")
 include("CGKite.jl")
 include("MassMatrix.jl")
 include("Jacobi.jl")

@@ -87,6 +87,51 @@ function DivMatrix(backend,FTB,FeF::HDivElement,FeT::ScalarElement,Grid,QuadOrd,
   return Div
 end
 
+function CurlMatrix(backend,FTB,FeF::HCurlElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
+  NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
+  fFRef  = zeros(FeT.Comp,FeF.DoF,length(Weights))
+  fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
+
+  for i = 1 : length(Weights)
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeT.DoF
+        fTRef[iComp,iD,i] = FeT.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeF.DoF
+        fFRef[iComp,iD,i] = FeF.Curlphi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  RowInd = Int64[]
+  ColInd = Int64[]
+  Val = Float64[]
+  CurlLoc = zeros(FeT.DoF,FeF.DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+
+  for iF = 1 : Grid.NumFaces
+    CurlLoc .= 0
+    for i = 1 : length(Weights)
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+      detDFLoc = detDF[1]
+      CurlLoc += sign(detDFLoc) * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
+    end
+    for j = 1 : size(CurlLoc,2)
+      for i = 1 : size(CurlLoc,1)
+        push!(RowInd,FeT.Glob[i,iF])
+        push!(ColInd,FeF.Glob[j,iF])
+        push!(Val,CurlLoc[i,j])
+      end
+    end
+  end
+  Curl = sparse(RowInd, ColInd, Val)
+  return Curl
+end
+
 function DivMatrix(backend,FTB,FeF::HDivKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,length(Weights))

@@ -143,7 +143,7 @@ Model = DyCore.ModelStruct{FTB}()
 RefineLevel = 5
 RadEarth = 1.0
 nz = 1
-nPanel = 40
+nPanel = 60
 nQuad = 2
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
@@ -153,7 +153,7 @@ nAdveVel = 60
 Problem = "LinearBlob"
 RadEarth = 1.0
 dtau = 0.00025
-nAdveVel = 1 #6000
+nAdveVel = 6000
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
