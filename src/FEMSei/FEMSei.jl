@@ -18,6 +18,8 @@ using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using DynamicPolynomials
 using FastGaussQuadrature
+using LinearAlgebra
+using SparseArrays
 
 export parse_commandline 
 
@@ -45,6 +47,8 @@ include("StiffMatrix.jl")
 include("Project.jl")
 include("fp.jl")
 include("ConvertVelocity.jl")
+include("ModelFEM.jl")
+include("Fcn.jl")
 
 
 

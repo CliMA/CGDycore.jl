@@ -179,6 +179,7 @@ CG1KiteDHDiv = FEMSei.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,KiteGrid)
 CG1KiteDHDiv.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHDiv,KiteGrid,nQuad,FEMSei.Jacobi!)
 FuM = lu(CG1KiteDHDiv.M)
 Div = FEMSei.DivMatrix(backend,FTB,CG1KiteDHDiv,CG1KiteP,KiteGrid,nQuad,FEMSei.Jacobi!)
+Grad = FEMSei.GradMatrix(backend,FTB,CG1KiteP,CG1KiteDHDiv,KiteGrid,nQuad,FEMSei.Jacobi!)
 
 CG1KiteDHCurl = FEMSei.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,KiteGrid)
 CG1KiteDHCurl.M = FEMSei.MassMatrix(backend,FTB,CG1KiteDHCurl,KiteGrid,nQuad,FEMSei.Jacobi!)
@@ -237,20 +238,26 @@ Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pMCurl VelC
 FileNumber += 1
 
 
-#=
 F = similar(UDiv)
 # Test Gradient
 @views FEMSei.Project!(backend,FTB,UDiv[pPosS:pPosE],CG1KiteP,KiteGrid,nQuad,
   FEMSei.Jacobi!,Model.InitialProfile)
 @. F = 0
-@views FEMSei.GradKinHeight!(backend,FTB,F[uPosS:uPosE],UDiv[pPosS:pPosE],CG1KiteP,
+@views @. UDiv[pPosS:pPosE] = 0
+#@views @. UDiv[uPosS:uPosE] = 0
+@views FEMSei.GradKinHeightKite!(backend,FTB,F[uPosS:uPosE],UDiv[pPosS:pPosE],CG1KiteP,
   UDiv[uPosS:uPosE],CG1KiteDHDiv,CG1KiteDHDiv,KiteGrid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+
+#@views mul!(F[uPosS:uPosE],Grad,UDiv[pPosS:pPosE])
+
 @views ldiv!(FuM,F[uPosS:uPosE])
 @views pM = FEMSei.ComputeScalar(backend,FTB,CG1KiteP,KiteGrid,UDiv[pPosS:pPosE])
 @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,F[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi!)
 @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,F[uPosS:uPosE],CG1KiteDHDiv,KiteGrid,FEMSei.Jacobi!)
+@show FileNumber
 Outputs.vtkSkeleton!(vtkSkeletonKite, "KiteGrid", Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
 FileNumber += 1
+#=
 
 @views FEMSei.Project!(backend,FTB,UDiv[pPosS:pPosE],CG1KiteP,KiteGrid,nQuad,
   FEMSei.Jacobi!,Model.InitialProfile)

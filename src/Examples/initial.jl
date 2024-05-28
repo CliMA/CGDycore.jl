@@ -264,9 +264,9 @@ function (profile::LinearBlob)(Param,Phys)
     (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
     d = acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0))
     if abs(d) <= Param.Width
-      h = cos(pi*d/Param.Width/2)^2
+      h = cos(pi*d/Param.Width/2)^2 + 1.0
     else
-      h = 0.0
+      h = 0.0 + 1.0
     end
     u = FT(0)
     v = FT(0)
@@ -475,7 +475,7 @@ function integrandG(tau,RadEarth,Param)
 end
 
 function simpson(x0,xN,r,dx,f,Param)
-  n=(xN-x0)/dx+1
+  n=ceil(Int,(xN-x0)/dx) + 1
   h=(xN-x0)/n
   res=0.5*(f(x0,r,Param)+f(xN,r,Param))
   xi=x0

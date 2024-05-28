@@ -173,9 +173,9 @@ DG = FEMSei.DG1Struct{FTB}(Grid.Type,backend,Grid)
 @show DG.NumG
 
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi!) 
-FuM = lu(RT.M)
+RT.LUM = lu(RT.M)
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,FEMSei.Jacobi!)
-FpM = lu(DG.M)
+DG.LUM = lu(DG.M)
 
 Div = FEMSei.DivMatrix(backend,FTB,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
 
@@ -209,17 +209,17 @@ time = 0.0
 
 for i = 1 : nAdveVel
   mul!(Fp,Div,Uu)
-  ldiv!(FpM,Fp)
+  ldiv!(DG.LUM,Fp)
   mul!(Fu,Div',Up)
-  ldiv!(FuM,Fu)
+  ldiv!(RT.LUM,Fu)
 
   @. Fu = -Fu
   @. UNew = U + 0.5 * dtau * F
 
   mul!(Fp,Div,UNewu)
-  ldiv!(FpM,Fp)
+  ldiv!(DG.LUM,Fp)
   mul!(Fu,Div',UNewp)
-  ldiv!(FuM,Fu)
+  ldiv!(RT.LUM,Fu)
 
   @. Fu = -Fu
   @. U = U + dtau * F

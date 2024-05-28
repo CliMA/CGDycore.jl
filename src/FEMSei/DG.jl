@@ -8,6 +8,7 @@ mutable struct DG0Struct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #DG0 Quad
@@ -30,7 +31,8 @@ function DG0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     GlobCPU[1,iF] = Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return DG0Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -41,6 +43,7 @@ function DG0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -62,7 +65,8 @@ function DG0Struct{FT}(Type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     GlobCPU[1,iF] = Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return DG0Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -73,6 +77,7 @@ function DG0Struct{FT}(Type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -86,6 +91,7 @@ mutable struct DG1Struct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #DG1 Quad
@@ -115,7 +121,8 @@ function DG1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     GlobCPU[4,iF] = 4 * Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return DG1Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -126,6 +133,7 @@ function DG1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -159,7 +167,8 @@ function DG1Struct{FT}(Type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     GlobCPU[3,iF] = 3 * Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return DG1Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -170,6 +179,7 @@ function DG1Struct{FT}(Type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 

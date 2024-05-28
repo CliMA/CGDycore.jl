@@ -1,5 +1,5 @@
 function Project(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
   p=zeros(Fe.NumG)
@@ -24,12 +24,12 @@ function Project(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
     end
     @. p[Fe.Glob[:,iF]] += pLoc[Fe.Comp,:]
   end
-  p = Fe.M\p
+  ldiv!(Fe.LUM,p)
   return p
 end
 
 function Project!(backend,FTB,p,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
   for i = 1 : length(Weights)
@@ -54,11 +54,11 @@ function Project!(backend,FTB,p,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
     end
     @. p[Fe.Glob[:,iF]] += pLoc[Fe.Comp,:]
   end
-  p .= Fe.M \ p
+  ldiv!(Fe.LUM,p)
 end
 
 function Project(backend,FTB,Fe::HDivKiteDElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
   p=zeros(Fe.NumG)
@@ -84,15 +84,15 @@ function Project(backend,FTB,Fe::HDivKiteDElement,Grid,QuadOrd,Jacobi,F)
     end
     @. p[Fe.Glob[:,iF]] += pLoc[:]
   end
-  p = Fe.M\p
+  ldiv!(Fe.LUM,p)
   return p
 end
 
 function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
-  pp=zeros(Fe.NumG)
+  @. p = 0
   VelSp = zeros(3)
   for i = 1 : length(Weights)
     for iComp = 1 : Fe.Comp
@@ -115,17 +115,16 @@ function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
       VelCa = VelSphere2Cart(VelSp,lon,lat)
       pLoc += sign(detDFLoc)*Weights[i]*(fRef[:,:,i]' * (DF' * VelCa))
     end
-    @. pp[Fe.Glob[:,iF]] += pLoc[:]
+    @. p[Fe.Glob[:,iF]] += pLoc[:]
   end
-  pp = Fe.M \ pp
-  @. p = pp
+  ldiv!(Fe.LUM,p)
 end
 
 function Project!(backend,FTB,p,Fe::HCurlElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
-  pp=zeros(Fe.NumG)
+  @. p = 0
   VelSp = zeros(3)
   for i = 1 : length(Weights)
     for iComp = 1 : Fe.Comp
@@ -148,19 +147,18 @@ function Project!(backend,FTB,p,Fe::HCurlElement,Grid,QuadOrd,Jacobi,F)
       VelCa = VelSphere2Cart(VelSp,lon,lat)
       @views pLoc .+= detDFLoc * Weights[i] * (fRef[:,:,i]' * (pinvDF' * VelCa))
     end
-    @views @. pp[Fe.Glob[:,iF]] += pLoc[:]
+    @views @. p[Fe.Glob[:,iF]] += pLoc[:]
   end
-  pp = Fe.M \ pp
-  @. p = pp
+  ldiv!(Fe.LUM,p)
 end
 
 function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
   uDiv,FeF::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(ElemType,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   fFRef  = zeros(FeF.Comp,FeF.DoF,length(Weights))
 
-  pp=zeros(Fe.NumG)
+  @. uCurl = 0
   @inbounds for i = 1 : length(Weights)
     @inbounds for iComp = 1 : Fe.Comp
       @inbounds for iD = 1 : Fe.DoF
@@ -183,16 +181,15 @@ function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
     @inbounds for i = 1 : length(Weights)
       @views pLoc += Weights[i] * ((fRef[:,:,i])' * (fFRef[:,:,i] * ppF))
     end
-    @. pp[Fe.Glob[:,iF]] += pLoc[:]
+    @. uCurl[Fe.Glob[:,iF]] += pLoc[:]
   end
-  pp = Fe.M \ pp
-  @. uCurl = pp
+  ldiv!(Fe.LUM,uCurl)
 end
 
 #=
 function ProjectHDivHVort!(backend,FTB,qVort, u,FeF::HDivKiteDElement,
   FeT::ScalarElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   fFRef  = zeros(FeF.Comp,FeF.DoF,length(Weights))
 
@@ -228,12 +225,12 @@ end
 
 function ProjectHDivHDivScalar!(backend,FTB,uh,Fe::HDivKiteDElement,
   u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(ElemType,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
   uFFRef  = zeros(uFeF.Comp,uFeF.DoF,NumQuad)
   hFFRef  = zeros(hFeF.Comp,hFeF.DoF,NumQuad)
 
-  pp=zeros(Fe.NumG)
+  @. uh = 0
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : Fe.Comp
       @inbounds for iD = 1 : Fe.DoF
@@ -292,13 +289,11 @@ function ProjectHDivHDivScalar!(backend,FTB,uh,Fe::HDivKiteDElement,
     end  
     for iDoFFe = 1 : Fe.DoF
       ind = Fe.Glob[iDoFFe,iF] 
-      pp[ind] += pLoc[iDoFFe]
+      uh[ind] += pLoc[iDoFFe]
     end  
   end
-  pp = Fe.M \ pp
-  @. uh = pp
+  ldiv!(Fe.LUM,uh)
 end
-
 
 function ComputeScalar(backend,FTB,Fe::ScalarElement,Grid,p)
   fRef  = zeros(Fe.Comp,Fe.DoF)

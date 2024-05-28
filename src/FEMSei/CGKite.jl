@@ -378,14 +378,14 @@ function CG1KiteDualHCurl{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
 
 
   #Change from div to curl
-  Curlphi[1,1] =  (differentiate(phi[1,2],x) - differentiate(phi[1,1],y))
-  Curlphi[2,1] =  (differentiate(phi[2,2],x) - differentiate(phi[2,1],y))
-  Curlphi[3,1] =  (differentiate(phi[3,2],x) - differentiate(phi[3,1],y))
-  Curlphi[4,1] =  (differentiate(phi[4,2],x) - differentiate(phi[4,1],y))
-  Curlphi[5,1] =  (differentiate(phi[5,2],x) - differentiate(phi[5,1],y))
-  Curlphi[6,1] =  (differentiate(phi[6,2],x) - differentiate(phi[6,1],y))
-  Curlphi[7,1] =  (differentiate(phi[7,2],x) - differentiate(phi[7,1],y))
-  Curlphi[8,1] =  (differentiate(phi[8,2],x) - differentiate(phi[8,1],y))
+  Curlphi[1,1] =  -(differentiate(phi[1,2],x) - differentiate(phi[1,1],y))
+  Curlphi[2,1] =  -(differentiate(phi[2,2],x) - differentiate(phi[2,1],y))
+  Curlphi[3,1] =  -(differentiate(phi[3,2],x) - differentiate(phi[3,1],y))
+  Curlphi[4,1] =  -(differentiate(phi[4,2],x) - differentiate(phi[4,1],y))
+  Curlphi[5,1] =  -(differentiate(phi[5,2],x) - differentiate(phi[5,1],y))
+  Curlphi[6,1] =  -(differentiate(phi[6,2],x) - differentiate(phi[6,1],y))
+  Curlphi[7,1] =  -(differentiate(phi[7,2],x) - differentiate(phi[7,1],y))
+  Curlphi[8,1] =  -(differentiate(phi[8,2],x) - differentiate(phi[8,1],y))
 
   NumFaces = Grid.NumFaces
   NumEdges = Grid.NumEdges

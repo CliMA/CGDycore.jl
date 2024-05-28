@@ -9,6 +9,7 @@ mutable struct RT0Struct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #RT0 Quad
@@ -56,7 +57,8 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     end
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return RT0Struct{FT,
                   typeof(Glob)}( 
   Glob,
@@ -68,6 +70,7 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   NumI,
   Type,
   M,
+  LUM,
     )
   end
 
@@ -115,7 +118,8 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     end
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return RT0Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -127,6 +131,7 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -141,6 +146,7 @@ mutable struct RT1Struct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #RT1 Quad
@@ -173,6 +179,31 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   @polyvar x1 x2 ksi1 ksi2
 
 #RT1 DEFelement
+
+  nu[1,1] = 0.0*ksi1 + 0.0*ksi2 
+  nu[1,2] = -18*ksi1*ksi2^2 + 24*ksi1*ksi2 - 6*ksi1 + 12*ksi2^2 - 16*ksi2 + 4
+
+  nu[2,1] = 0.0*ksi1 + 0.0*ksi2
+  nu[2,2] = 18*ksi1*ksi2^2 - 24*ksi1*ksi2 + 6*ksi1 - 6*ksi2^2 + 8*ksi2 - 2
+
+  nu[3,1] = 2.0*ksi1 * (9.0*ksi1*ksi2 - 6.0*ksi1 - 6.0*ksi2 + 4.0)
+  nu[3,2] = 0.0*ksi1 + 0.0*ksi2
+
+  nu[4,1] = 2.0*ksi1 * (-9.0*ksi1*ksi2 + 3.0*ksi1 + 6.0*ksi2 - 2.0)
+  nu[4,2] = 0.0*ksi1 + 0.0*ksi2
+
+  nu[5,1] = 0.0*ksi1 + 0.0*ksi2 
+  nu[5,2] = 2.0*ksi2 * (-9.0*ksi1*ksi2 + 6.0*ksi1 + 6.0*ksi2 - 4.0)
+
+  nu[6,1] = 0.0*ksi1 + 0.0*ksi2 
+  nu[6,2] = 2.0*ksi2 * (9.0*ksi1*ksi2 - 6.0*ksi1 - 3.0*ksi2 + 2.0)
+
+  nu[7,1] = 18*ksi1^2*ksi2 - 12.0*ksi1^2 - 24.0*ksi1*ksi2 + 16.0*ksi1 + 6.0*ksi2 - 4.0
+  nu[7,2] = 0.0*ksi1 + 0.0*ksi2
+
+  nu[8,1] = -18.0*ksi1^2*ksi2 + 6.0*ksi1^2 + 24.0*ksi1*ksi2 - 8.0*ksi1 - 6.0*ksi2 + 2.0
+  nu[8,2] = 0.0*ksi1 + 0.0*ksi2
+
   nu[9,1] = 36*ksi1^2*ksi2 - 24*ksi1^2 - 36*ksi1*ksi2 + 24*ksi1
   nu[9,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
@@ -185,30 +216,6 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   nu[12,1] =  -36*ksi1^2*ksi2 + 12*ksi1^2 + 36*ksi1*ksi2 - 12*ksi1
   nu[12,2] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
 
-
-  nu[1,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[1,2] = -18*ksi1*ksi2^2 + 24*ksi1*ksi2 - 6*ksi1 + 12*ksi2^2 - 16*ksi2 + 4
-
-  nu[2,1] = 0.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 18*ksi1*ksi2^2 - 24*ksi1*ksi2 + 6*ksi1 - 6*ksi2^2 + 8*ksi2 - 2
-
-  nu[3,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 12*ksi1*ksi2 + 8*ksi1
-  nu[3,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[4,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 12*ksi1*ksi2 - 4*ksi1
-  nu[4,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[5,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[5,2] = -18*ksi1*ksi2^2 + 12*ksi1*ksi2 + 12*ksi2^2 - 8*ksi2
-
-  nu[6,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[6,2] = 18*ksi1*ksi2^2 - 12*ksi1*ksi2 - 6*ksi2^2 + 4*ksi2
-
-  nu[7,1] = 18*ksi1^2*ksi2 - 12*ksi1^2 - 24*ksi1*ksi2 + 16*ksi1 + 6*ksi2 - 4
-  nu[7,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[8,1] = -18*ksi1^2*ksi2 + 6*ksi1^2 + 24*ksi1*ksi2 - 8*ksi1 - 6*ksi2 + 2
-  nu[8,2] = 0.0*ksi1 + 0.0*ksi2
 
   for s = 1 : DoF
     for t = 1 : 2
@@ -237,7 +244,8 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     GlobCPU[12,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return RT1Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -249,6 +257,7 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
   end
 
@@ -335,7 +344,8 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     GlobCPU[8,iF] = 2*Grid.NumEdges + 2*Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return RT1Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -347,6 +357,7 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type, 
     M,
+    LUM,
       )
   end
 
@@ -361,6 +372,7 @@ mutable struct RT2Struct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #RT2 Tri
@@ -434,7 +446,8 @@ function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     end
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return RT2Struct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -446,5 +459,6 @@ function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
   end

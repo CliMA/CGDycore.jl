@@ -140,10 +140,10 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 4
+RefineLevel = 6
 nz = 1
 nPanel = 60
-nQuad = 3
+nQuad = 5
 Decomp = ""
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
@@ -154,10 +154,10 @@ Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #TRI
-GridType = "CubedSphere"
-#GridType = "TriangularSphere" # Achtung Orientierung
+#GridType = "CubedSphere"
+GridType = "TriangularSphere" # Achtung Orientierung
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
-  Model,ParallelCom)
+  Model,ParallelCom;order=false)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 p = ones(Grid.NumFaces,1)
 for i = 1 : Grid.NumFaces
@@ -167,22 +167,15 @@ global FileNumber = 0
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
 
 
-DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
-ND = FEMSei.Nedelec1Struct{FTB}(Grids.Quad(),backend,Grid)
-
-ModelFEM = FEMSei.ModelFEM(ND,RT,DG)
-
+DG = FEMSei.DG1Struct{FTB}(Grids.Tri(),backend,Grid)
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,FEMSei.Jacobi!)
-DG.LUM = lu(DG.M)
+FpM = lu(DG.M)
 
+RT = FEMSei.RT1Struct{FTB}(Grids.Tri(),backend,Grid)
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi!)
-RT.LUM = lu(RT.M)
+FuM = lu(RT.M)
 Div = FEMSei.DivMatrix(backend,FTB,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
 
-ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuad,FEMSei.Jacobi!)
-ND.LUM = lu(ND.M)
-Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuad,FEMSei.Jacobi!)
 
 pPosS = 1
 pPosE = DG.NumG
@@ -197,56 +190,14 @@ pM = zeros(Grid.NumFaces)
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
 
-@views FEMSei.Project!(backend,FTB,UDiv[uPosS:uPosE],RT,Grid,nQuad,
-  FEMSei.Jacobi!,Model.InitialProfile)
-@views FEMSei.Project!(backend,FTB,UDiv[pPosS:pPosE],DG,Grid,nQuad,
-  FEMSei.Jacobi!,Model.InitialProfile)
-@views FEMSei.Project!(backend,FTB,UCurl[uPosS:uPosE],ND,Grid,nQuad,
-  FEMSei.Jacobi!,Model.InitialProfile)
-
-@views pM = FEMSei.ComputeScalar(backend,FTB,DG,Grid,UDiv[pPosS:pPosE])
-@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
-@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-FileNumber += 1
-
-
-@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,UCurl[uPosS:uPosE],ND,Grid,FEMSei.Jacobi!)
-@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,UCurl[uPosS:uPosE],ND,Grid,FEMSei.Jacobi!)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
-FileNumber += 1
-
-
-#Curl Matrix
-mul!(qCurl,Curl,UCurl[uPosS:uPosE])
-ldiv!(DG.LUM,qCurl)
-pMCurl = FEMSei.ComputeScalar(backend,FTB,DG,Grid,qCurl)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pMCurl VelCa VelSp], FileNumber)
-FileNumber += 1
-
-#Projection HDiv HCurl
-@views FEMSei.ProjectHDivHCurl!(backend,FTB,UCurl[uPosS:uPosE],ND,UDiv[uPosS:uPosE],RT,
-  Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-mul!(qCurl,Curl,UCurl[uPosS:uPosE])
-ldiv!(DG.LUM,qCurl)
-pMCurl = FEMSei.ComputeScalar(backend,FTB,DG,Grid,qCurl)
-@show FileNumber
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pMCurl VelCa VelSp], FileNumber)
-FileNumber += 1
-
-
 F = similar(UDiv)
-FEMSei.Fcn!(F,UDiv,ModelFEM)
 # Test Gradient
 @views FEMSei.Project!(backend,FTB,UDiv[pPosS:pPosE],DG,Grid,nQuad,
   FEMSei.Jacobi!,Model.InitialProfile)
 @. F = 0
-#@views @. UDiv[uPosS:uPosE] = 0
-@views @. UDiv[pPosS:pPosE] = 0
-@show maximum(abs.(UDiv[uPosS:uPosE]))
 @views FEMSei.GradKinHeight!(backend,FTB,F[uPosS:uPosE],UDiv[pPosS:pPosE],DG,
   UDiv[uPosS:uPosE],RT,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-@views ldiv!(RT.LUM,F[uPosS:uPosE])
+@views ldiv!(FuM,F[uPosS:uPosE])
 @views pM = FEMSei.ComputeScalar(backend,FTB,DG,Grid,UDiv[pPosS:pPosE])
 @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,F[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
 @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,F[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
@@ -258,7 +209,7 @@ FileNumber += 1
 @views FEMSei.Project!(backend,FTB,UDiv[pPosS:pPosE],DG,Grid,nQuad,
   FEMSei.Jacobi!,Model.InitialProfile)
 @views mul!(F[uPosS:uPosE],Div',UDiv[pPosS:pPosE])
-@views ldiv!(RT.LUM,F[uPosS:uPosE])
+@views ldiv!(FuM,F[uPosS:uPosE])
 @views pM = FEMSei.ComputeScalar(backend,FTB,DG,Grid,F[pPosS:pPosE])
 @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,F[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
 @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
@@ -273,7 +224,7 @@ FileNumber += 1
 @views @. UDiv[pPosS:pPosE] = 1
 @views FEMSei.DivHeight!(backend,FTB,F[pPosS:uPosE],UDiv[pPosS:pPosE],DG,
   UDiv[uPosS:uPosE],RT,DG,Grid,nQuad,FEMSei.Jacobi!)
-@views ldiv!(DG.LUM,F[pPosS:pPosE])
+@views ldiv!(FpM,F[pPosS:pPosE])
 @views pM = FEMSei.ComputeScalar(backend,FTB,DG,Grid,F[pPosS:pPosE])
 @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
 @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
@@ -285,7 +236,7 @@ FileNumber += 1
 @. F = 0
 @views @. UDiv[pPosS:pPosE] = 1
 @views mul!(F[pPosS:pPosE],Div,UDiv[uPosS:uPosE])
-@views ldiv!(DG.LUM,F[pPosS:pPosE])
+@views ldiv!(FpM,F[pPosS:pPosE])
 @views pM = FEMSei.ComputeScalar(backend,FTB,DG,Grid,F[pPosS:pPosE])
 @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
 @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
@@ -296,7 +247,7 @@ Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pM VelCa VelS
 @views FEMSei.VortCrossVel!(backend,FTB,F[uPosS:uPosE],UDiv[uPosS:uPosE],RT,
   qCurl,DG,RT,Grid,nQuad,FEMSei.Jacobi!)
 @views FEMSei.DivHeight!(backend,FTB,F[pPosS:pPosE],UDiv[uPosS:uPosE],RT,
-  UDiv[pPosS:pPosE],DG,DG,Grid,nQuad,FEMSei.Jacobi!)
+  UDiv[pPosS:pPosE],DG,DG0,Grid,nQuad,FEMSei.Jacobi!)
 
 =#
 
