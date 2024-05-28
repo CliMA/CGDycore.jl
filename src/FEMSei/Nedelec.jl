@@ -87,14 +87,14 @@ function Nedelec0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
   @polyvar x1 x2 ksi1 ksi2
 
 
-  nu[1,1] = -1.0*ksi1 + 0.0*ksi2
-  nu[1,2] = 0.0*ksi1 - 1.0*ksi2 + 1.0
+  nu[1,1] = 0.0*ksi1 - 1.0*ksi2 + 1.0
+  nu[1,2] = 1.0*ksi1 + 0.0*ksi2
 
-  nu[2,1] = -1.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 0.0*ksi1 - 1.0*ksi2
+  nu[2,1] = 0.0*ksi1 - 1.0*ksi2
+  nu[2,2] = 1.0*ksi1 + 0.0*ksi2
 
-  nu[3,1] = 1.0*ksi1 + 0.0*ksi2 - 1.0
-  nu[3,2] = 0.0*ksi1 + 1.0*ksi2
+  nu[3,1] = 0.0*ksi1 + 1.0*ksi2
+  nu[3,2] = -1.0*ksi1 + 0.0*ksi2 + 1.0
 
   for s = 1 : DoF
     for t = 1 : 2
@@ -103,7 +103,7 @@ function Nedelec0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
   end
 
   for i = 1 : DoF
-    Curlphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Curlphi[i,1] = -differentiate(phi[i,1],x2) + differentiate(phi[i,2],x1)
   end
 
 
@@ -289,31 +289,31 @@ function Nedelec1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
   Curlphi = Array{Polynomial,2}(undef,DoF,1)
   @polyvar x1 x2 ksi1 ksi2
 
-  nu[1,1] = 2.0*ksi1 * (4.0*ksi1 + 4.0*ksi2 - 3.0)
-  nu[1,2] = 8.0*ksi1*ksi2 - 6.0*ksi1 + 8.0*ksi2*ksi2 - 12.0*ksi2 + 4.0
+  nu[1,1] = 8.0*ksi1*ksi2 - 6.0*ksi1 + 8.0*ksi2*ksi2 - 12.0*ksi2 + 4.0
+  nu[1,2] = -2.0*ksi1 * (4.0*ksi1 + 4.0*ksi2 - 3.0)
 
-  nu[2,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2
-  nu[2,2] = -8.0*ksi1*ksi2 + 6.0*ksi1 + 2.0*ksi2 - 2.0
+  nu[2,1] = -8.0*ksi1*ksi2 + 6.0*ksi1 + 2.0*ksi2 - 2.0
+  nu[2,2] = -4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2
 
-  nu[3,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2 
-  nu[3,2] = 2.0*ksi2 * (1.0 - 4.0*ksi1)
+  nu[3,1] = 2.0*ksi2 * (1.0 - 4.0*ksi1)
+  nu[3,2] = -4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2 
 
-  nu[4,1] = 2.0*ksi1 * (1.0 - 4.0*ksi2) 
-  nu[4,2] = 4.0*ksi2 * (1.0 - 2.0*ksi2) + 0.0*ksi1
+  nu[4,1] = 4.0*ksi2 * (1.0 - 2.0*ksi2) + 0.0*ksi1
+  nu[4,2] = -2.0*ksi1 * (1.0 - 4.0*ksi2) 
 
-  nu[5,1] = 8.0*ksi1*ksi2 -2.0*ksi1 - 6.0*ksi2 + 2.0
-  nu[5,2] = 4.0*ksi2 * (2.0*ksi2 - 1.0) + 0.0*ksi1
+  nu[5,1] = 4.0*ksi2 * (2.0*ksi2 - 1.0) + 0.0*ksi1
+  nu[5,2] = -8.0*ksi1*ksi2 + 2.0*ksi1 + 6.0*ksi2 - 2.0
 
-  nu[6,1] = -8.0*ksi1*ksi1 - 8.0*ksi1*ksi2 + 12.0*ksi1 + 6.0*ksi2 - 4.0
-  nu[6,2] = 2.0*ksi2 * (-4.0*ksi1 - 4.0*ksi2 + 3.0)
+  nu[6,1] = 2.0*ksi2 * (-4.0*ksi1 - 4.0*ksi2 + 3.0)
+  nu[6,2] = 8.0*ksi1*ksi1 + 8.0*ksi1*ksi2 - 12.0*ksi1 - 6.0*ksi2 + 4.0
 
   #non-normal
 
-  nu[7,1] = 8.0*ksi1 * (-2.0*ksi1 - 1.0*ksi2 + 2.0)
-  nu[7,2] = 8.0*ksi2 * (-2.0*ksi1 - 1.0*ksi2 + 1.0)
+  nu[7,1] = 8.0*ksi2 * (-2.0*ksi1 - 1.0*ksi2 + 1.0)
+  nu[7,2] = -8.0*ksi1 * (-2.0*ksi1 - 1.0*ksi2 + 2.0)
 
-  nu[8,1] = 8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
-  nu[8,2] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
+  nu[8,1] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
+  nu[8,2] = -8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
 
   for s = 1 : DoF
     for t = 1 : 2
@@ -322,7 +322,7 @@ function Nedelec1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
   end
 
   for i = 1 : DoF
-    Curlphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Curlphi[i,1] = -differentiate(phi[i,1],x2) + differentiate(phi[i,2],x1)
   end
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
@@ -356,7 +356,7 @@ function Nedelec1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
     NumI,
     Type, 
     M,
-    LUMM,
+    LUM,
       )
 end
 

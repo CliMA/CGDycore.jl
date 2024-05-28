@@ -143,100 +143,70 @@ Model = DyCore.ModelStruct{FTB}()
 RefineLevel = 5
 RadEarth = 1.0
 nz = 1
-nPanel = 50
+nPanel = 60
 nQuad = 5
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
 dtau = 50
-nAdveVel = 1
+nAdveVel = 60
 Problem = "LinearBlob"
 RadEarth = 1.0
 dtau = 0.00025
-nAdveVel = 6000*3
-nAdveVel = 600*3
-nAdveVel = 3000
+nAdveVel = 6000
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Tri
-#GridType = "CubedSphere"
 GridType = "TriangularSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-for iF = 1 : Grid.NumFaces
-# @show Grid.Faces[iF].N
-end  
-
-RT = FEMSei.RT1Struct{FTB}(Grid.Type,backend,Grid)
-DG = FEMSei.DG1Struct{FTB}(Grid.Type,backend,Grid)
-@show DG.NumG
-
-RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,FEMSei.Jacobi!) 
-RT.LUM = lu(RT.M)
-DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,FEMSei.Jacobi!)
-DG.LUM = lu(DG.M)
-
-Div = FEMSei.DivMatrix(backend,FTB,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
 
 
-pPosS = 1
-pPosE = DG.NumG
-uPosS = DG.NumG + 1
-uPosE = DG.NumG + RT.NumG
-U = zeros(FTB,DG.NumG+RT.NumG)
+DG = FEMSei.DG1Struct{FTB}(Grids.Tri(),backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grids.Tri(),backend,Grid)
+ND = FEMSei.Nedelec1Struct{FTB}(Grids.Tri(),backend,Grid)
+
+ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
+
+
+pPosS = ModelFEM.pPosS
+pPosE = ModelFEM.pPosE
+uPosS = ModelFEM.uPosS
+uPosE = ModelFEM.uPosE
+U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
-UNew = zeros(FTB,DG.NumG+RT.NumG)
+UNew = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views UNewp = U[pPosS:pPosE]
 @views UNewu = U[uPosS:uPosE]
 F = zeros(FTB,DG.NumG+RT.NumG)
 @views Fp = F[pPosS:pPosE]
 @views Fu = F[uPosS:uPosE]
 
-FEMSei.Project!(backend,FTB,Uu,RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,Up,DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 FileNumber = 0
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
 pC = zeros(Grid.NumFaces)
-FEMSei.ConvertScalar!(backend,FTB,pC,Up,DG,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,RT,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertScalar!(backend,FTB,pC,Up,ModelFEM.DG,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
-pNeu = zeros(FTB,DG.NumG)
+
 time = 0.0
 
 for i = 1 : nAdveVel
-  mul!(Fp,Div,Uu)
-  ldiv!(DG.LUM,Fp)
-  mul!(Fu,Div',Up)
-  ldiv!(RT.LUM,Fu)
-
-  @. Fu = -Fu
+  FEMSei.Fcn!(F,U,ModelFEM) 
   @. UNew = U + 0.5 * dtau * F
-
-  mul!(Fp,Div,UNewu)
-  ldiv!(DG.LUM,Fp)
-  mul!(Fu,Div',UNewp)
-  ldiv!(RT.LUM,Fu)
-
-  @. Fu = -Fu
+  FEMSei.Fcn!(F,UNew,ModelFEM) 
   @. U = U + dtau * F
-
-  #time = time + dtau
 end
-@show "Ende"
-FEMSei.ConvertScalar!(backend,FTB,pC,Up,DG,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,RT,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertScalar!(backend,FTB,pC,Up,ModelFEM.DG,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
 
 FileNumber += 1
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
 
-#= ToDO
-Gleichungen testen mit @show
-mehr Quadraturregeln für Dreiecke höhere ordnungen
-RT1, DG1
-Wiki von github
-=#

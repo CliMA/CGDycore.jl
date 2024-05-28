@@ -171,7 +171,7 @@ DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
 RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
 ND = FEMSei.Nedelec1Struct{FTB}(Grids.Quad(),backend,Grid)
 
-ModelFEM = FEMSei.ModelFEM(ND,RT,DG)
+ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
 
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,FEMSei.Jacobi!)
 DG.LUM = lu(DG.M)
