@@ -1,7 +1,7 @@
 mutable struct ModelFEM
-  ND::HCurlElement
-  RT::HDivElement
-  DG::ScalarElement
+  ND
+  RT
+  DG
   pPosS::Int
   pPosE::Int
   uPosS::Int
@@ -9,6 +9,35 @@ mutable struct ModelFEM
   Div::AbstractMatrix
   Grad::AbstractMatrix
   Curl::AbstractMatrix
+  Lapl::AbstractMatrix
+end
+
+function ModelFEM(backend,FTB,DG,Grid,nQuad,Jacobi)
+  pPosS = 1
+  pPosE = DG.NumG
+  uPosS = 0
+  uPosE = 0
+  ND = nothing
+  RT = nothing
+  Div = spzeros(0,0)
+  Grad = spzeros(0,0)
+  Curl = spzeros(0,0)
+  Lapl = FEMSei.LaplMatrix(backend,FTB,DG,DG,Grid,nQuad,Jacobi)
+  DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,Jacobi)
+  DG.LUM = lu(DG.M)
+  return ModelFEM(
+    ND,
+    RT,
+    DG,
+    pPosS,
+    pPosE,
+    uPosS,
+    uPosE,
+    Div,
+    Grad,
+    Curl,
+    Lapl,
+  )  
 end
 
 function ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,Jacobi)
@@ -27,6 +56,7 @@ function ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,Jacobi)
   ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuad,Jacobi)
   ND.LUM = lu(ND.M)
   Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuad,Jacobi)
+  Lapl = spzeros(0,0)
   return ModelFEM(
     ND,
     RT,
@@ -38,5 +68,6 @@ function ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,Jacobi)
     Div,
     Grad,
     Curl,
+    Lapl,
   )  
 end

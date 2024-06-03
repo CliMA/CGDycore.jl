@@ -1,5 +1,5 @@
 mutable struct Nedelec0Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HCurlElement
+                      IT2<:AbstractArray} <: HCurlConfElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -136,7 +136,7 @@ function Nedelec0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
 end
 
 mutable struct Nedelec1Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HCurlElement
+                      IT2<:AbstractArray} <: HCurlConfElement
   Glob::IT2
   DoF::Int
   Comp::Int                      

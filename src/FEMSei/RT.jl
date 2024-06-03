@@ -1,5 +1,5 @@
 mutable struct RT0Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+                      IT2<:AbstractArray} <: HDivConfElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -136,7 +136,7 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
 end
 
 mutable struct RT1Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+                      IT2<:AbstractArray} <: HDivConfElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -362,7 +362,7 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   end
 
 mutable struct RT2Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+                      IT2<:AbstractArray} <: HDivConfElement
   Glob::IT2
   DoF::Int
   Comp::Int                      

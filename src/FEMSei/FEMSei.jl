@@ -30,8 +30,10 @@ abstract type VectorElement <: FiniteElement end
 abstract type VectorKiteElement <: FiniteElement end
 abstract type HDivElement <: VectorElement end
 abstract type HDivKiteDElement <: HDivElement end
+abstract type HDivConfElement <: HDivElement end
 abstract type HCurlElement <: VectorElement end
 abstract type HCurlKiteDElement <: HCurlElement end
+abstract type HCurlConfElement <: HCurlElement end
 abstract type TensorElement <: VectorElement end
 
 include("Quadratur.jl")
@@ -49,6 +51,7 @@ include("fp.jl")
 include("ConvertVelocity.jl")
 include("ModelFEM.jl")
 include("Fcn.jl")
+include("TimestepperFEM.jl")
 
 
 

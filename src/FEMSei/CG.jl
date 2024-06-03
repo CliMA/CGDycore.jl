@@ -4,10 +4,12 @@ mutable struct CG1Struct{FT<:AbstractFloat,
   DoF::Int
   Comp::Int                      
   phi::Array{Polynomial,2} 
+  Gradphi::Array{Polynomial,2} 
   NumG::Int
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #CG1 Quad
@@ -35,30 +37,38 @@ function CG1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
       phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
     end
   end
+  Gradphi = Array{Polynomial,2}(undef,DoF,2)
+  for i = 1 : DoF
+    Gradphi[i,1] = differentiate(phi[i,1],x1)
+    Gradphi[i,2] = differentiate(phi[i,1],x2)
+  end
   
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumNodes)
   GlobCPU = zeros(Int,DoF,Grid.NumNodes)
-  NumG = 4 * Grid.NumNodes
-  NumI = 4 * Grid.NumNodes
-  for iF = 1 : Grid.NumNodes
-    GlobCPU[1,iF] = 4 * Grid.Nodes[iF].N - 3
-    GlobCPU[2,iF] = 4 * Grid.Nodes[iF].N - 2
-    GlobCPU[3,iF] = 4 * Grid.Nodes[iF].N - 1
-    GlobCPU[4,iF] = 4 * Grid.Nodes[iF].N
-  end
+  NumG = Grid.NumNodes
+  NumI = Grid.NumNodes
+  for iF = 1 : Grid.NumFaces
+    for i = 1 : length(Grid.Faces[iF].N)
+      iN = Grid.Faces[iF].N[i]
+      GlobCPU[i,iF] = Grid.Nodes[iN].N
+    end  
+  end  
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return CG1Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
     Comp,
     phi,
+    Gradphi,
     NumG,
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -85,28 +95,37 @@ function CG1Struct{FT}(Type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
       phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
     end
   end
+  Gradphi = Array{Polynomial,2}(undef,DoF,2)
+  for i = 1 : DoF
+    Gradphi[i,1] = differentiate(phi[i,1],x1)
+    Gradphi[i,2] = differentiate(phi[i,1],x2)
+  end
 
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumNodes)
   GlobCPU = zeros(Int,DoF,Grid.NumNodes)
-  NumG = 3 * Grid.NumNodes
-  NumI = 3 * Grid.NumNodes
-  for iF = 1 : Grid.NumNodes
-    GlobCPU[1,iF] = 3 * Nodes[iF].N - 2
-    GlobCPU[2,iF] = 3 * Nodes[iF].N - 1
-    GlobCPU[3,iF] = 3 * Nodes[iF].N
-  end
+  NumG = Grid.NumNodes
+  NumI = Grid.NumNodes
+  for iF = 1 : Grid.NumFaces
+    for i = 1 : length(Grid.Faces[iF].N)
+      iN = Grid.Faces[iF].N[i]
+      GlobCPU[i,iF] = Grid.Nodes[iE].N
+    end  
+  end  
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return CG1Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
     Comp,
     phi,
+    Gradphi,
     NumG,
     NumI,
     Type,
     M,
+    LUM,
       )
 end

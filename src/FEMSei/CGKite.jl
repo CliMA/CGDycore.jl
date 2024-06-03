@@ -8,6 +8,7 @@ mutable struct CG0KitePrimalStruct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 function CG0KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
@@ -44,7 +45,8 @@ function CG0KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
   end
   NumI = NumG
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return CG0KitePrimalStruct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -55,6 +57,7 @@ function CG0KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -70,6 +73,7 @@ mutable struct CG1KitePrimalStruct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
@@ -128,7 +132,8 @@ function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
   end
   NumI = NumG
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   return CG1KitePrimalStruct{FT,
                   typeof(Glob)}( 
     Glob,
@@ -141,6 +146,7 @@ function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -157,6 +163,7 @@ mutable struct CG1KiteDualHDiv{FT<:AbstractFloat,
   ListB::IT1
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
@@ -302,7 +309,8 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   NumG = iOff
   NumI = NumG
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   ListB = KernelAbstractions.zeros(backend,Int,size(ListBCPU))
   copyto!(ListB,ListBCPU)
   return CG1KiteDualHDiv{FT,
@@ -318,6 +326,7 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     ListB,
     Type,
     M,
+    LUM,
       )
 end
 
@@ -334,6 +343,7 @@ mutable struct CG1KiteDualHCurl{FT<:AbstractFloat,
   ListB::IT1
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 function CG1KiteDualHCurl{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
@@ -481,7 +491,8 @@ function CG1KiteDualHCurl{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   NumG = iOff
   NumI = NumG
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
   ListB = KernelAbstractions.zeros(backend,Int,size(ListBCPU))
   copyto!(ListB,ListBCPU)
   return CG1KiteDualHCurl{FT,
@@ -497,6 +508,7 @@ function CG1KiteDualHCurl{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     ListB,
     Type,
     M,
+    LUM,
       )
 end
 

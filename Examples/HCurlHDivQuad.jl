@@ -142,8 +142,8 @@ Model = DyCore.ModelStruct{FTB}()
 
 RefineLevel = 4
 nz = 1
-nPanel = 60
-nQuad = 3
+nPanel = 120
+nQuad = 2
 Decomp = ""
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
@@ -167,9 +167,9 @@ global FileNumber = 0
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, p, FileNumber)
 
 
-DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
-ND = FEMSei.Nedelec1Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
+ND = FEMSei.Nedelec0Struct{FTB}(Grids.Quad(),backend,Grid)
 
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
 
@@ -225,34 +225,46 @@ Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pMCurl VelCa 
 FileNumber += 1
 
 #Projection HDiv HCurl
+@views FEMSei.Project!(backend,FTB,UDiv[uPosS:uPosE],RT,Grid,nQuad,
+  FEMSei.Jacobi!,Model.InitialProfile)
+@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
+@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,UDiv[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pMCurl VelCa VelSp], FileNumber)
+@show "UDiv",FileNumber
+FileNumber += 1
+
+@show maximum(UDiv[uPosS:uPosE])
+@show minimum(UDiv[uPosS:uPosE])
 @views FEMSei.ProjectHDivHCurl!(backend,FTB,UCurl[uPosS:uPosE],ND,UDiv[uPosS:uPosE],RT,
   Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-mul!(qCurl,Curl,UCurl[uPosS:uPosE])
-ldiv!(DG.LUM,qCurl)
-pMCurl = FEMSei.ComputeScalar(backend,FTB,DG,Grid,qCurl)
-@show FileNumber
+@views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,UCurl[uPosS:uPosE],ND,Grid,FEMSei.Jacobi!)
+@views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,UCurl[uPosS:uPosE],ND,Grid,FEMSei.Jacobi!)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pMCurl VelCa VelSp], FileNumber)
+@show "UCurl",FileNumber
 FileNumber += 1
 
 
+mul!(qCurl,Curl,UCurl[uPosS:uPosE])
+ldiv!(DG.LUM,qCurl)
+pMCurl = FEMSei.ComputeScalar(backend,FTB,DG,Grid,qCurl)
 F = similar(UDiv)
-FEMSei.Fcn!(F,UDiv,ModelFEM)
+@. F = 0
+@views FEMSei.CrossRhs!(backend,FTB,F[uPosS:uPosE],qCurl,DG,UDiv[uPosS:uPosE],RT,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+
 # Test Gradient
 @views FEMSei.Project!(backend,FTB,UDiv[pPosS:pPosE],DG,Grid,nQuad,
   FEMSei.Jacobi!,Model.InitialProfile)
-@. F = 0
-#@views @. UDiv[uPosS:uPosE] = 0
-@views @. UDiv[pPosS:pPosE] = 0
-@show maximum(abs.(UDiv[uPosS:uPosE]))
 @views FEMSei.GradKinHeight!(backend,FTB,F[uPosS:uPosE],UDiv[pPosS:pPosE],DG,
   UDiv[uPosS:uPosE],RT,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
 @views ldiv!(RT.LUM,F[uPosS:uPosE])
 @views pM = FEMSei.ComputeScalar(backend,FTB,DG,Grid,UDiv[pPosS:pPosE])
 @views FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,F[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
 @views FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,F[uPosS:uPosE],RT,Grid,FEMSei.Jacobi!)
-@show FileNumber
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pM VelCa VelSp], FileNumber)
+@show "Kin",FileNumber
 FileNumber += 1
+stop
+
 
 #=
 @views FEMSei.Project!(backend,FTB,UDiv[pPosS:pPosE],DG,Grid,nQuad,

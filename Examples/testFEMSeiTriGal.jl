@@ -152,10 +152,10 @@ dtau = 50
 nAdveVel = ceil(Int,1*3600/dtau)
 nAdveVel = 20
 @show nAdveVel
-Problem = "LinearBlob"
-RadEarth = 1.0
-dtau = 0.00025
-nAdveVel = 6000
+#Problem = "LinearBlob"
+#RadEarth = 1.0
+#dtau = 0.00025
+#nAdveVel = 6000
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
@@ -170,7 +170,6 @@ RT = FEMSei.RT0Struct{FTB}(Grids.Tri(),backend,Grid)
 ND = FEMSei.Nedelec0Struct{FTB}(Grids.Tri(),backend,Grid)
 
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
-stop
 
 
 pPosS = ModelFEM.pPosS
@@ -202,9 +201,11 @@ time = 0.0
 
 UCache = similar(U)
 for i = 1 : nAdveVel
-  FEMSei.Fcn!(F,U,ModelFEM) 
+# FEMSei.Fcn!(F,U,ModelFEM) 
+  FEMSei.Fcn1!(backend,FTB,F,U,ModelFEM,Grid,nQuad,FEMSei.Jacobi!;UCache)
   @. UNew = U + 0.5 * dtau * F
-  FEMSei.Fcn!(F,UNew,ModelFEM) 
+# FEMSei.Fcn!(F,UNew,ModelFEM) 
+  FEMSei.Fcn1!(backend,FTB,F,UNew,ModelFEM,Grid,nQuad,FEMSei.Jacobi!;UCache)
   @. U = U + dtau * F
 end
 FEMSei.ConvertScalar!(backend,FTB,pC,Up,ModelFEM.DG,Grid,FEMSei.Jacobi!)
