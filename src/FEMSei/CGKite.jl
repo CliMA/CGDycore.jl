@@ -79,6 +79,7 @@ end
 function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.QuadPrimal()
+  Type = Grids.Quad()
   DoF = 4
   Comp = 1
   @polyvar x y
@@ -169,6 +170,7 @@ end
 function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.QuadDual()
+  Type = Grids.Quad()
   DoF = 8
   Comp = 2
   @polyvar x y
@@ -176,6 +178,7 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   xP, w = gaussradau(2)
   xP .= -xP
+  @show xP
   lx0 = (x - xP[2])/(xP[1] - xP[2])
   lx1 = (x - xP[1])/(xP[2] - xP[1])
   ly0 = (y - xP[2])/(xP[1] - xP[2])
@@ -234,6 +237,7 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
         N1 = Faces[iF].N[1]
         N3 = Faces[iF].N[3]  
         KiteList[(N1,N3)] = iKite
+        KiteList[(N1,N3)] = iF
         iKite +=1 
       end 
     end 
@@ -386,16 +390,9 @@ function CG1KiteDualHCurl{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   phi[8,1] = p0
   phi[8,2] = lx1 * ly1
 
-
-  #Change from div to curl
-  Curlphi[1,1] =  -(differentiate(phi[1,2],x) - differentiate(phi[1,1],y))
-  Curlphi[2,1] =  -(differentiate(phi[2,2],x) - differentiate(phi[2,1],y))
-  Curlphi[3,1] =  -(differentiate(phi[3,2],x) - differentiate(phi[3,1],y))
-  Curlphi[4,1] =  -(differentiate(phi[4,2],x) - differentiate(phi[4,1],y))
-  Curlphi[5,1] =  -(differentiate(phi[5,2],x) - differentiate(phi[5,1],y))
-  Curlphi[6,1] =  -(differentiate(phi[6,2],x) - differentiate(phi[6,1],y))
-  Curlphi[7,1] =  -(differentiate(phi[7,2],x) - differentiate(phi[7,1],y))
-  Curlphi[8,1] =  -(differentiate(phi[8,2],x) - differentiate(phi[8,1],y))
+  for i = 1 : DoF
+    Curlphi[i,1] = -differentiate(phi[i,1],y) + differentiate(phi[i,2],x)
+  end
 
   NumFaces = Grid.NumFaces
   NumEdges = Grid.NumEdges

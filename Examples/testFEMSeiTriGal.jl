@@ -143,14 +143,16 @@ Model = DyCore.ModelStruct{FTB}()
 RefineLevel = 6
 RadEarth = 1.0
 nz = 1
-nPanel = 60
+nPanel = 40
 nQuad = 5
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
-dtau = 50
-nAdveVel = ceil(Int,1*3600/dtau)
-nAdveVel = 20
+dtau = 30
+nAdveVel = ceil(Int,1.0*3600/dtau)
+nAdveVel = 8000
+nAdveVel = 100
+nAdveVel = 1
 @show nAdveVel
 #Problem = "LinearBlob"
 #RadEarth = 1.0
@@ -162,12 +164,14 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 #Tri
 GridType = "TriangularSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 
 
+#DG = FEMSei.DG1Struct{FTB}(Grids.Tri(),backend,Grid)
+#RT = FEMSei.RT1Struct{FTB}(Grids.Tri(),backend,Grid)
+#ND = FEMSei.Nedelec1Struct{FTB}(Grids.Tri(),backend,Grid)
 DG = FEMSei.DG0Struct{FTB}(Grids.Tri(),backend,Grid)
-RT = FEMSei.RT0Struct{FTB}(Grids.Tri(),backend,Grid)
-ND = FEMSei.Nedelec0Struct{FTB}(Grids.Tri(),backend,Grid)
+RT = FEMSei.BDMHDiv0Struct{FTB}(Grids.Tri(),backend,Grid)
+ND = FEMSei.BDMHCurl0Struct{FTB}(Grids.Tri(),backend,Grid)
 
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
 
@@ -179,39 +183,10 @@ uPosE = ModelFEM.uPosE
 U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
-UNew = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
-@views UNewp = U[pPosS:pPosE]
-@views UNewu = U[uPosS:uPosE]
-F = zeros(FTB,DG.NumG+RT.NumG)
-@views Fp = F[pPosS:pPosE]
-@views Fu = F[uPosS:uPosE]
 
 FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-FileNumber = 0
-VelCa = zeros(Grid.NumFaces,Grid.Dim)
-VelSp = zeros(Grid.NumFaces,2)
-pC = zeros(Grid.NumFaces)
-FEMSei.ConvertScalar!(backend,FTB,pC,Up,ModelFEM.DG,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
 
-time = 0.0
 
-UCache = similar(U)
-for i = 1 : nAdveVel
-# FEMSei.Fcn!(F,U,ModelFEM) 
-  FEMSei.Fcn1!(backend,FTB,F,U,ModelFEM,Grid,nQuad,FEMSei.Jacobi!;UCache)
-  @. UNew = U + 0.5 * dtau * F
-# FEMSei.Fcn!(F,UNew,ModelFEM) 
-  FEMSei.Fcn1!(backend,FTB,F,UNew,ModelFEM,Grid,nQuad,FEMSei.Jacobi!;UCache)
-  @. U = U + dtau * F
-end
-FEMSei.ConvertScalar!(backend,FTB,pC,Up,ModelFEM.DG,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,ModelFEM.RT,Grid,FEMSei.Jacobi!)
-
-FileNumber += 1
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
+FEMSei.TimeStepperEul(backend,FTB,U,dtau,FEMSei.Fcn2!,ModelFEM,Grid,Grids.Tri(),nQuad,FEMSei.Jacobi!,nAdveVel,GridType,Proc,ProcNumber)
 

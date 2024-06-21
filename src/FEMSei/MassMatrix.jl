@@ -1,5 +1,5 @@
 function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   DF  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
@@ -43,7 +43,7 @@ function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
 end
 
 function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   DF  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
@@ -87,8 +87,11 @@ function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
 end
 
 function MassMatrix(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+  @show Weights
+  @show Points
+  @show NumQuad
 
   for i = 1 : length(Weights)
     for iComp = 1 : Fe.Comp

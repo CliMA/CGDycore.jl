@@ -382,7 +382,7 @@ function MidPoint(Face)
   M = Div(P, Norm(P) / (Rad))
 end
 
-function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
+function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
   nBar=[ 0  1   0   1
              -1  0  -1   0]
   Dim = 3
@@ -399,7 +399,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
   NumNodes = 0
   while ~attail(NodeL)
     NumNodes += 1
-    Nodes[NumNodes] = Node(NodeL.data.P,NumNodes,'N')
+    Nodes[NumNodes] = Node(Rad*NodeL.data.P,NumNodes,'N')
     NodeL = NodeL.next
   end
 
@@ -439,7 +439,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz)
     eee = [e1 e2 e3]
     ee = [eee[permu[1]] ;eee[permu[3]] ;eee[permu[2]]]
     (Faces[NumFaces], Edges) = Face(ee,Nodes,Edges,NumFaces,"Sphere",OrientFaceSphere;
-       P=zeros(Float64,0,0),Form=Form,Rad=Rad)
+       P=zeros(Float64,0,0),Form=Form,Rad=Rad,ChangeOrient=ChangeOrient)
     FaceL = FaceL.next
   end
   NumNodes = size(Nodes,1)
@@ -594,7 +594,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
 
 end
 
-function TriangularGrid(backend,FT,RefineLevel,RadEarth,nz)
+function TriangularGrid(backend,FT,RefineLevel,RadEarth,nz;ChangeOrient=3)
 
   IcosahedronGrid = Grids.CreateIcosahedronGrid()
   for iRef = 1 : RefineLevel
@@ -602,7 +602,7 @@ function TriangularGrid(backend,FT,RefineLevel,RadEarth,nz)
     Grids.RefineFaceTriangularGrid!(IcosahedronGrid)
   end
   Grids.NumberingTriangularGrid!(IcosahedronGrid)
-  Grids.TriangularGridToGrid(backend,FT,IcosahedronGrid,RadEarth,nz)
+  Grids.TriangularGridToGrid(backend,FT,IcosahedronGrid,RadEarth,nz;ChangeOrient=ChangeOrient)
 end  
 
 function DelaunayGrid(backend,FT,RefineLevel,RadEarth,nz)

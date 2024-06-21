@@ -40,22 +40,22 @@ function ModelFEM(backend,FTB,DG,Grid,nQuad,Jacobi)
   )  
 end
 
-function ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,Jacobi)
+function ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,Jacobi)
   pPosS = 1
   pPosE = DG.NumG
   uPosS = pPosE + 1
   uPosE = pPosE + RT.NumG
-  DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,Jacobi)
+  DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,Jacobi)
   DG.LUM = lu(DG.M)
 
-  RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuad,Jacobi)
+  RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,Jacobi)
   RT.LUM = lu(RT.M)
-  Div = FEMSei.DivMatrix(backend,FTB,RT,DG,Grid,nQuad,Jacobi)
+  Div = FEMSei.DivMatrix(backend,FTB,RT,DG,Grid,nQuadS,Jacobi)
   Grad = -Div'
 
-  ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuad,Jacobi)
+  ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuadM,Jacobi)
   ND.LUM = lu(ND.M)
-  Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuad,Jacobi)
+  Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuadS,Jacobi)
   Lapl = spzeros(0,0)
   return ModelFEM(
     ND,

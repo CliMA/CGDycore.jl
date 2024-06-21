@@ -1,5 +1,5 @@
 function Project(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
   p=zeros(Fe.NumG)
@@ -29,7 +29,7 @@ function Project(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
 end
 
 function Project!(backend,FTB,p,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
   for i = 1 : length(Weights)
@@ -59,7 +59,7 @@ end
 
 
 function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
   @. p = 0
@@ -91,7 +91,7 @@ function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
 end
 
 function Project!(backend,FTB,p,Fe::HCurlElement,Grid,QuadOrd,Jacobi,F)
-  NumQuad,Weights,Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
   @. p = 0
@@ -124,7 +124,7 @@ end
 
 function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
   uDiv,FeF::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   fFRef  = zeros(FeF.Comp,FeF.DoF,length(Weights))
 
@@ -208,7 +208,7 @@ function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  @inbounds for iF = 1 : Grid.NumFaces
+  @time @inbounds for iF = 1 : Grid.NumFaces
     @. huDivLoc = 0
     for iDoF = 1 : uFeF.DoF
       ind = uFeF.Glob[iDoF,iF]  
@@ -238,7 +238,7 @@ function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
       uLoc2 = DF[1,2] * uLoc31 + DF[2,2] * uLoc32 + DF[3,2] * uLoc33
       for iDoF = 1 : Fe.DoF
         huDivLoc[iDoF] += Weights[iQ] * hfFRefLoc * (fRef[1,iDoF,iQ] * uLoc1 +
-          fRef[2,iDoF,iQ] * uLoc2) / abs(detDFLoc)
+          fRef[2,iDoF,iQ] * uLoc2) / detDFLoc
       end  
     end
     for iDoF = 1 : Fe.DoF
@@ -288,7 +288,7 @@ end
 
 function ProjectHDivHDivScalar!(backend,FTB,uh,Fe::HDivKiteDElement,
   u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
   uFFRef  = zeros(uFeF.Comp,uFeF.DoF,NumQuad)
   hFFRef  = zeros(hFeF.Comp,hFeF.DoF,NumQuad)

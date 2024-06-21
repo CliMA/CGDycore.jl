@@ -1,10 +1,13 @@
-mpirun -n 6 julia --project Examples/testNHCart.jl \
+mpirun -n 1 julia --project Examples/testNHCart.jl \
   --Problem="HillSchaerCart" \
+  --Device="CPU" \
+  --GPUType="CUDA" \
+  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
-  --ProfRho="SchaerCart" \
-  --ProfTheta="SchaerCart" \
-  --ProfVel="Const" \
+  --Equation="CompressibleShallow" \
+  --State="Dry" \
   --Damping=true \
   --Upwind=false \
   --StrideDamp=10500 \
@@ -12,18 +15,18 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
-  --Thermo="TotalEnergy" \
   --SimMinutes=300 \
   --PrintSeconds=300 \
   --dtau=.3 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  --TopoS="SchaerCart" \
+  --TopoS="SchaerHill" \
   `#Topography `        \
   --P1=5000.0 \
   --P2=4000.0 \
   --P3=250.0 `#Comment`\
-  --stretch=false \
+  --Stretch=true \
+  --StretchType="ICON" \
   --H=21000.0 \
   --Lx=50000.0 \
   --Ly=6000.0 \

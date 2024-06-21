@@ -108,7 +108,7 @@ elseif Device == "GPU"
 #   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
     backend = ROCBackend()
-    AMDGPU.allowscalar(false)
+    AMCG1KitePPU.allowscalar(false)
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
@@ -140,43 +140,63 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 6
+RefineLevel = 5
 RadEarth = 1.0
 nz = 1
-nPanel = 8
-nQuad = 4
+nPanel = 40
+nQuad = 3
 Decomp = "EqualArea"
-#Problem = "GalewskiSphere"
-#RadEarth = Phys.RadEarth
-#dtau = 30
-#nAdveVel = ceil(Int,1.0*3600/dtau)
-#nAdveVel = 8000
-#nAdveVel = 1
-Problem = "LinearBlob"
-RadEarth = 1.0
-dtau = 2.5e-5
-nAdveVel = 6000
+Problem = "GalewskiSphere"
+RadEarth = Phys.RadEarth
+dtau = 30
+nAdveVel = ceil(Int,1.0*3600/dtau)
+nAdveVel = 8000
+nAdveVel = 100
 @show nAdveVel
+#Problem = "LinearBlob"
+#RadEarth = 1.0
+#dtau = 0.00025
+#nAdveVel = 6000
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-#Tri
-GridType = "CubedSphere"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 
+GridType = "DelaunaySphere"
+if GridType == "TriangularSphere"
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,
+    RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
+else  
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,
+    RadEarth,Model,ParallelCom;order=false)
+end  
 
-CG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
+Grid = Grids.Grid2KiteGrid(backend,FTB,GridC,Grids.OrientFaceSphere)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
 
-ModelFEM = FEMSei.ModelFEM(backend,FTB,CG,Grid,nQuad,FEMSei.Jacobi!)
+CG1KiteP = FEMSei.CG1KitePrimalStruct{FTB}(Grids.Quad(),backend,Grid)
+CG1KiteDHDiv = FEMSei.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
+CG1KiteDHCurl = FEMSei.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,Grid)
+
+ModelFEM = FEMSei.ModelFEM(backend,FTB,CG1KiteDHCurl,CG1KiteDHDiv,CG1KiteP,Grid,nQuad,FEMSei.Jacobi!)
 
 
 pPosS = ModelFEM.pPosS
 pPosE = ModelFEM.pPosE
-U = zeros(FTB,ModelFEM.DG.NumG)
+uPosS = ModelFEM.uPosS
+uPosE = ModelFEM.uPosE
+U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
+@views Uu = U[uPosS:uPosE]
+UNew = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
+@views UNewp = U[pPosS:pPosE]
+@views UNewu = U[uPosS:uPosE]
+F = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
+@views Fp = F[pPosS:pPosE]
+@views Fu = F[uPosS:uPosE]
 
+FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 
 
-FEMSei.TimeStepperEul(backend,FTB,U,dtau,FEMSei.FcnHeat!,ModelFEM,Grid,nQuad,FEMSei.Jacobi!,nAdveVel,GridType*"Heat",Proc,ProcNumber)
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.Fcn2!,ModelFEM,Grid,nQuad,FEMSei.Jacobi!,nAdveVel,GridType*"Kite",Proc,ProcNumber)
 

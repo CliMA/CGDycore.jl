@@ -140,18 +140,18 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 6
+RefineLevel = 5
 RadEarth = 1.0
 nz = 1
-nPanel = 60
-nQuad = 4
+nPanel = 30
+nQuad = 1
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
-dtau = 30
+dtau = 20
 nAdveVel = ceil(Int,1.0*3600/dtau)
 nAdveVel = 8000
-nAdveVel = 1
+nAdveVel = 100
 @show nAdveVel
 #Problem = "LinearBlob"
 #RadEarth = 1.0
@@ -162,8 +162,15 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Tri
 GridType = "CubedSphere"
-GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,
-  RadEarth,Model,ParallelCom;order=false)
+#GridType = "TriangularSphere"
+ChangeOrient=2
+if GridType == "TriangularSphere"
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,
+    RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
+else  
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,
+    RadEarth,Model,ParallelCom;order=false)
+end  
 
 Grid = Grids.Grid2KiteGrid(backend,FTB,GridC,Grids.OrientFaceSphere)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
@@ -193,5 +200,5 @@ FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.Init
 FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 
 
-FEMSei.TimeStepperEul(backend,FTB,U,dtau,FEMSei.Fcn2!,ModelFEM,Grid,nQuad,FEMSei.Jacobi!,nAdveVel,GridType*"Kite",Proc,ProcNumber)
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuad,FEMSei.Jacobi!,nAdveVel,GridType*"Kite",Proc,ProcNumber)
 

@@ -1,4 +1,5 @@
-function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom;order=true)    
+function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,
+  ParallelCom;order=true,ChangeOrient=3)
 
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc
@@ -15,7 +16,7 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
   elseif GridType == "CubedSphere"
     Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz,order=order)
   elseif GridType == "TriangularSphere"
-    Grid = TriangularGrid(backend,FT,RefineLevel,RadEarth,nz)
+    Grid = TriangularGrid(backend,FT,RefineLevel,RadEarth,nz;ChangeOrient=ChangeOrient)
   elseif GridType == "DelaunaySphere"
     Grid = DelaunayGrid(backend,FT,RefineLevel,RadEarth,nz)
   elseif GridType == "MPASO"

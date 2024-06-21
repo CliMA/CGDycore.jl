@@ -1,5 +1,5 @@
-mutable struct BDM0Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+mutable struct BDMHDiv0Struct{FT<:AbstractFloat,
+                      IT2<:AbstractArray} <: HDivConfElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -9,6 +9,21 @@ mutable struct BDM0Struct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
+end
+
+mutable struct BDMHCurl0Struct{FT<:AbstractFloat,
+                      IT2<:AbstractArray} <: HCurlConfElement
+  Glob::IT2
+  DoF::Int
+  Comp::Int                      
+  phi::Array{Polynomial,2}  
+  Curlphi::Array{Polynomial,2}                       
+  NumG::Int
+  NumI::Int
+  Type::Grids.ElementType
+  M::AbstractSparseMatrix
+  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #BDM0 Quad Brezzi-Douglas-Marini
@@ -31,7 +46,7 @@ __5__6_
 
 =#
 
-function BDM0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
+function BDMHDiv0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Quad()
   DoF = 8
@@ -88,8 +103,9 @@ function BDM0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     @show Grid.Edges[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
-  return BDM0Struct{FT,
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
+  return BDMHDiv0Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
@@ -100,6 +116,7 @@ function BDM0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 #BDM0 Tri Brezzi-Douglas-Marini
@@ -121,7 +138,7 @@ New
 see RT1
 =#
 
-function BDM0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
+function BDMHDiv0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Tri()
   DoF = 6
@@ -174,8 +191,9 @@ function BDM0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
       GlobCPU[6,iF] = 2*Grid.Edges[iE3].E - 1
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
-  return BDM0Struct{FT,
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
+  return BDMHDiv0Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
@@ -186,13 +204,84 @@ function BDM0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type, 
     M,
+    LUM,
       )
 end
 
+function BDMHCurl0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
+  Glob = KernelAbstractions.zeros(backend,Int,0,0)
+  Type = Grids.Tri()
+  DoF = 6
+  Comp = 2
+  phi = Array{Polynomial,2}(undef,DoF,Comp) #base function of our reference triangle
+  nu = Array{Polynomial,2}(undef,DoF,Comp) #base function of standard reference element
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
+  @polyvar x1 x2 ksi1 ksi2
+
+  nu[1,1] = -6.0*ksi1 - 4.0*ksi2 + 4.0
+  nu[1,2] = -(2.0*ksi1 + 0.0*ksi2)
+
+  nu[2,1] = 6.0*ksi1 + 2.0*ksi2 - 2.0
+  nu[2,2] = -(-4.0*ksi1 + 0.0*ksi2)
+
+  nu[3,1] = 2.0*ksi2 + 0.0*ksi1
+  nu[3,2] = -(-4.0*ksi1 + 0.0*ksi2) 
+
+  nu[4,1] = -4.0*ksi2 + 0.0*ksi1
+  nu[4,2] = -(2.0*ksi1 + 0.0*ksi2) 
+
+  nu[5,1] = 4.0*ksi2 + 0.0*ksi1
+  nu[5,2] = -(-2.0*ksi1 - 6.0*ksi2 + 2.0)
+
+  nu[6,1] = -2.0*ksi2 + 0.0*ksi1
+  nu[6,2] = -(4.0*ksi1 + 6.0*ksi2 - 4.0)
+
+  for s = 1 : DoF
+    for t = 1 : 2
+      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
+    end
+  end
+
+  for i = 1 : DoF
+    Curlphi[i,1] = -differentiate(phi[i,1],x2) + differentiate(phi[i,2],x1)
+  end
+
+  Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
+  GlobCPU = zeros(Int,DoF,Grid.NumFaces)
+  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB
+  NumI = Grid.NumEdgesI
+  for iF = 1 : Grid.NumFaces
+      iE1 = Grid.Faces[iF].E[1]
+      GlobCPU[1,iF] = 2*Grid.Edges[iE1].E - 1
+      GlobCPU[2,iF] = 2*Grid.Edges[iE1].E
+      iE2 = Grid.Faces[iF].E[2]
+      GlobCPU[3,iF] = 2*Grid.Edges[iE2].E - 1 
+      GlobCPU[4,iF] = 2*Grid.Edges[iE2].E 
+      iE3 = Grid.Faces[iF].E[3]
+      GlobCPU[5,iF] = 2*Grid.Edges[iE3].E 
+      GlobCPU[6,iF] = 2*Grid.Edges[iE3].E - 1
+  end
+  copyto!(Glob,GlobCPU)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
+  return BDMHCurl0Struct{FT,
+                  typeof(Glob)}( 
+    Glob,
+    DoF,
+    Comp,
+    phi,
+    Curlphi,                      
+    NumG,
+    NumI,
+    Type, 
+    M,
+    LUM,
+      )
+end
 #BDM1 Brezzi-Douglas-Marini
 
-mutable struct BDM1Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivElement
+mutable struct BDMHDiv1Struct{FT<:AbstractFloat,
+                      IT2<:AbstractArray} <: HDivConfElement
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -217,7 +306,7 @@ end
 
 =#
 
-function BDM1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
+function BDMHDiv1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Quad()
   DoF = 14
@@ -295,8 +384,9 @@ function BDM1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     GlobCPU[14,iF] = 3*Grid.NumEdges + 2*Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
-  return BDM1Struct{FT,
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
+  return BDMHDiv1Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
@@ -307,6 +397,7 @@ function BDM1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     M,
+    LUM,
       )
 end
 #BDM1 Brezzi-Douglas-Marini Tri
@@ -322,7 +413,7 @@ end
 
 =#
 
-function BDM1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
+function BDMHDiv1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.Tri()
   DoF = 12
@@ -401,8 +492,9 @@ function BDM1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     GlobCPU[12,iF] = 3*Grid.NumEdges + 3*Grid.Faces[iF].F
   end
   copyto!(Glob,GlobCPU)
-  M = spzeros(0,0)
-  return BDM1Struct{FT,
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
+  return BDMHDiv1Struct{FT,
                   typeof(Glob)}( 
     Glob,
     DoF,
@@ -413,5 +505,6 @@ function BDM1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     NumI,
     Type, 
     M,
+    LUM,
       )
 end

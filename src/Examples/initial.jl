@@ -250,6 +250,7 @@ function (profile::GalewskiExample)(Param,Phys)
     end
     v = FT(0)
     w = FT(0)
+    Th = FT(1)
 
     return (Rho,u,v,w,Th)
   end

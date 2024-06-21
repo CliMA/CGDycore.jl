@@ -149,9 +149,7 @@ Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
 dtau = 30
-nAdveVel = ceil(Int,1.0*3600/dtau)
-nAdveVel = 8000
-nAdveVel = 1
+nAdveVel = ceil(Int,6*24*3600/dtau)
 @show nAdveVel
 #Problem = "LinearBlob"
 #RadEarth = 1.0
@@ -162,7 +160,8 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Tri
 GridType = "CubedSphere"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
+  Model,ParallelCom)
 
 
 DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
@@ -184,5 +183,5 @@ FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.Init
 FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 
 
-FEMSei.TimeStepperEul(backend,FTB,U,dtau,FEMSei.Fcn2!,ModelFEM,Grid,nQuad,FEMSei.Jacobi!,nAdveVel,GridType,Proc,ProcNumber)
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.Fcn2!,ModelFEM,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!,nAdveVel,GridType,Proc,ProcNumber)
 

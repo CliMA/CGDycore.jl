@@ -234,6 +234,8 @@ Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Bounda
 #Topography
 if TopoS == "AgnesiHill"
   TopoProfile = Examples.AgnesiHill()()
+elseif TopoS == "SchaerHill"
+  TopoProfile = Examples.SchaerHill()()
 else
   TopoProfile = Examples.Flat()()  
 end  

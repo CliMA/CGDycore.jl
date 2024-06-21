@@ -49,7 +49,7 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HDivElement,Grid,Jacobi)
   for iF = 1 : Grid.NumFaces
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1]
-    @views VelCa[iF,:]  .= (1 / detDFLoc) * DF * (fRef[:, :] * Vel[Fe.Glob[:,iF]])
+    @views VelCa[iF,:]  .= (Grid.Faces[iF].Orientation / detDFLoc) * DF * (fRef[:, :] * Vel[Fe.Glob[:,iF]])
   end  
 end
 
@@ -107,7 +107,7 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi)
     VelLoc = Vel[Fe.Glob[:,iF]]  
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1]
-    VelCa .= (1 / detDFLoc) * DF * (fRef[:, :] * VelLoc) 
+    VelCa .= (Grid.Faces[iF].Orientation / detDFLoc) * DF * (fRef[:, :] * VelLoc) 
     lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
     VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
     VelSp[iF,1] = VelSpLoc[1]

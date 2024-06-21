@@ -26,7 +26,7 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Profile, Force = Examples.HeldSuarezMoistExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
-  elseif Problem == "Stratified" || Problem == "HillAgnesiXCart"
+  elseif Problem == "Stratified" || Problem == "HillAgnesiXCart" || Problem == "HillSchaerCart"
     Profile = Examples.StratifiedExample()(Param,Phys)
     Model.InitialProfile = Profile
     @show "Stratified"

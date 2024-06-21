@@ -16,6 +16,22 @@ function (profile::AgnesiHill)()
   return local_profile
 end
 
+Base.@kwdef struct SchaerHill{T} <: Topography 
+  d0::T = 5000.0
+  ksi0::T = 4000.0
+  h0::T = 250.0
+end
+
+function (profile::SchaerHill)()
+  (; d0, ksi0, h0) = profile
+  function local_profile(x)
+    FT = eltype(x)
+    h = h0 * exp( -(x[1]  / d0)^2) * cos(pi * x[1] / ksi0)^2
+    return h
+  end  
+  return local_profile
+end
+
 Base.@kwdef struct Flat <: Topography end
 
 function (profile::Flat)()

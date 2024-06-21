@@ -45,7 +45,7 @@ function Face()
   )
 end  
 
-function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",Rad=1.0,P::Array{Float64,2}=[])
+function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",Rad=1.0,P::Array{Float64,2}=[],ChangeOrient=3)
   F = Face()
   if EdgesF[1]==0
     return (F,Edges)
@@ -130,7 +130,7 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",
   F.n=F.n/norm(F.n);
   if OrientFace(F.n,F.Mid) < 0 
     F.Orientation = -1  
-    if NumE > 3
+    if NumE > ChangeOrient
       #Change Orientation
       NTemp=copy(F.N);
       ETemp=copy(F.E);

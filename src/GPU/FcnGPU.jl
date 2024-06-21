@@ -141,6 +141,7 @@ end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
+  @show sum(abs.(U))
   backend = get_backend(F)
   FT = eltype(F)
   Glob = FE.Glob

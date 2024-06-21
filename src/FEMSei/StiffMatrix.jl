@@ -43,7 +43,7 @@ function VortCrossVel!(backend,FTB,Rhs,u,uFe::HDivConfElement,q,qFe::ScalarEleme
 end  
 
 function DivMatrix(backend,FTB,FeF::HDivConfElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,length(Weights))
   fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
 
@@ -136,7 +136,7 @@ end
 function DivRhs!(backend,FTB,Div,u,uFeF::HDivConfElement,FeT::ScalarElement,Grid,ElemType::Grids.ElementType,
   QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
-  fFRef  = zeros(FeT.Comp,uFeF.DoF,length(Weights))
+  uFRef  = zeros(FeT.Comp,uFeF.DoF,length(Weights))
   fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
 
   for i = 1 : length(Weights)
@@ -147,7 +147,7 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivConfElement,FeT::ScalarElement,Grid
     end
     for iComp = 1 : FeT.Comp
       for iDoF = 1 : uFeF.DoF
-        fFRef[iComp,iDoF,i] = uFeF.Divphi[iDoF,iComp](Points[i,1],Points[i,2])
+        uFRef[iComp,iDoF,i] = uFeF.Divphi[iDoF,iComp](Points[i,1],Points[i,2])
       end
     end
   end
@@ -161,12 +161,12 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivConfElement,FeT::ScalarElement,Grid
       uLoc[iDoF] = u[ind]
     end
     for iQ = 1 : length(Weights)
-      fFRefLoc = 0.0
+      uFRefLoc = 0.0
       for iDoF = 1 : uFeF.DoF
-        fFRefLoc += fFRef[1,iDoF,iQ] * uLoc[iDoF]  
+        uFRefLoc += uFRef[1,iDoF,iQ] * uLoc[iDoF]  
       end  
       for iDoF = 1 : FeT.DoF
-        DivLoc[iDoF] -= Grid.Faces[iF].Orientation * Weights[iQ] * fTRef[1,iDoF,iQ] * fFRefLoc 
+        DivLoc[iDoF] -= Grid.Faces[iF].Orientation * Weights[iQ] * fTRef[1,iDoF,iQ] * uFRefLoc 
       end  
     end
     for iDoF  = 1 : FeT.DoF
@@ -220,7 +220,7 @@ function GradRhs!(backend,FTB,Grad,h,hFeF::ScalarElement,FeT::HDivConfElement,Gr
 end
 
 function CurlMatrix(backend,FTB,FeF::HCurlConfElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,length(Weights))
   fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
 
@@ -240,17 +240,11 @@ function CurlMatrix(backend,FTB,FeF::HCurlConfElement,FeT::ScalarElement,Grid,Qu
   ColInd = Int64[]
   Val = Float64[]
   CurlLoc = zeros(FeT.DoF,FeF.DoF)
-  DF = zeros(3,2)
-  detDF = zeros(1)
-  pinvDF = zeros(3,2)
-  X = zeros(3)
 
   @inbounds for iF = 1 : Grid.NumFaces
     CurlLoc .= 0
     for i = 1 : length(Weights)
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
-      detDFLoc = detDF[1]
-      CurlLoc += Grid.Faces[iF].Orientation * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
+      CurlLoc += Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
     end
     for j = 1 : size(CurlLoc,2)
       for i = 1 : size(CurlLoc,1)
@@ -265,7 +259,7 @@ function CurlMatrix(backend,FTB,FeF::HCurlConfElement,FeT::ScalarElement,Grid,Qu
 end
 
 function DivMatrix(backend,FTB,FeF::HDivKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,length(Weights))
   fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
 
@@ -334,7 +328,7 @@ end
 function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,FeT::ScalarElement,Grid,ElemType::Grids.ElementType,
   QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
-  fFRef  = zeros(FeT.Comp,uFeF.DoF,length(Weights))
+  uFRef  = zeros(FeT.Comp,uFeF.DoF,length(Weights))
   fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
 
   for i = 1 : length(Weights)
@@ -345,13 +339,13 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,FeT::ScalarElement,Gri
     end
     for iComp = 1 : FeT.Comp
       for iD = 1 : uFeF.DoF
-        fFRef[iComp,iD,i] = uFeF.Divphi[iD,iComp](Points[i,1],Points[i,2])
+        uFRef[iComp,iD,i] = uFeF.Divphi[iD,iComp](Points[i,1],Points[i,2])
       end
     end
   end
   NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
-  fFRefX  = zeros(FeT.Comp,uFeF.DoF,length(WeightsL))
-  fFRefY  = zeros(FeT.Comp,uFeF.DoF,length(WeightsL))
+  uFRefX  = zeros(FeT.Comp,uFeF.DoF,length(WeightsL))
+  uFRefY  = zeros(FeT.Comp,uFeF.DoF,length(WeightsL))
   fTRefX  = zeros(FeT.Comp,FeT.DoF,length(WeightsL))
   fTRefY  = zeros(FeT.Comp,FeT.DoF,length(WeightsL))
   for i = 1 : length(WeightsL)
@@ -362,8 +356,8 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,FeT::ScalarElement,Gri
       end
     end
     for iD = 1 : uFeF.DoF
-      fFRefX[1,iD,i] = uFeF.phi[iD,1](-1.0,PointsL[i])
-      fFRefY[1,iD,i] = uFeF.phi[iD,2](PointsL[i],-1.0)
+      uFRefX[1,iD,i] = uFeF.phi[iD,1](-1.0,PointsL[i])
+      uFRefY[1,iD,i] = uFeF.phi[iD,2](PointsL[i],-1.0)
     end
   end
 
@@ -379,7 +373,7 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,FeT::ScalarElement,Gri
     for i = 1 : length(Weights)
       uLoc = 0.0
       for iDoF = 1 : uFeF.DoF
-        uLoc += fFRef[1,iDoF,i] * u[iDoF]  
+        uLoc += uFRef[1,iDoF,i] * uF[iDoF]  
       end  
       for iDoF = 1 : FeT.DoF
         DivLoc[iDoF] -= Grid.Faces[iF].Orientation * Weights[i] * fTRef[1,iDoF,i] * uLoc
@@ -389,8 +383,8 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,FeT::ScalarElement,Gri
        uLocX = 0.0 
        uLocY = 0.0 
        for iDoF = 1 : uFeF.DoF
-         uLocX += fFRefX[1,iDoF,i] * uF[iDoF]  
-         uLocY += fFRefY[1,iDoF,i] * uF[iDoF]  
+         uLocX += uFRefX[1,iDoF,i] * uF[iDoF]  
+         uLocY += uFRefY[1,iDoF,i] * uF[iDoF]  
        end  
       for iDoF = 1 : FeT.DoF
          DivLoc[iDoF] -= WeightsL[i] * (fTRefX[1,iDoF,i] * uLocX +
@@ -405,7 +399,7 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,FeT::ScalarElement,Gri
 end
 
 function CurlMatrix(backend,FTB,FeF::HCurlKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
-  NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
+  NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeF.Comp,FeF.DoF,length(Weights))
   fTRef  = zeros(FeF.Comp,FeT.DoF,length(Weights))
 
@@ -443,18 +437,11 @@ function CurlMatrix(backend,FTB,FeF::HCurlKiteDElement,FeT::ScalarElement,Grid,Q
   ColInd = Int64[]
   Val = Float64[]
   CurlLoc = zeros(FeT.DoF,FeF.DoF)
-  CurlLoc1 = zeros(FeT.DoF,FeF.DoF)
-  DF = zeros(3,2)
-  detDF = zeros(1)
-  pinvDF = zeros(3,2)
-  X = zeros(3)
 
   @inbounds for iF = 1 : Grid.NumFaces
     CurlLoc .= 0
     for i = 1 : length(Weights)
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
-      detDFLoc = detDF[1]
-      CurlLoc += -Grid.Faces[iF].Orientation * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
+      CurlLoc += Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
     end
     for i = 1 : length(WeightsL)
       CurlLoc += WeightsL[i] * (fTRefX[:,:,i]' * fFRefX[:,:,i] +  
@@ -659,8 +646,8 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDE
   FeT::HDivKiteDElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
   Grav =  9.81
-  NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
-  fFRef  = zeros(hFeF.Comp,hFeF.DoF,length(Weights))
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
+  hFRef  = zeros(hFeF.Comp,hFeF.DoF,length(Weights))
   fTRef  = zeros(hFeF.Comp,FeT.DoF,length(Weights))
   uFRef  = zeros(uFeF.Comp,uFeF.DoF,length(Weights))
 
@@ -672,7 +659,7 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDE
     end
     for iComp = 1 : hFeF.Comp
       for iDoF = 1 : hFeF.DoF
-        fFRef[iComp,iDoF,iQ] = hFeF.phi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
+        hFRef[iComp,iDoF,iQ] = hFeF.phi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
     for iComp = 1 : uFeF.Comp
@@ -730,18 +717,18 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDE
       u1 = 0.0
       u2 = 0.0
       for iDoF = 1 : uFeF.DoF
-        @views u1 += uFRef[1,iDoF,iQ] * uF[iDoF]
-        @views u2 += uFRef[2,iDoF,iQ] * uF[iDoF]
+        u1 += uFRef[1,iDoF,iQ] * uF[iDoF]
+        u2 += uFRef[2,iDoF,iQ] * uF[iDoF]
       end
       uLoc1 = 1 / detDFLoc * (DF[1,1] * u1 + DF[1,2] * u2)
       uLoc2 = 1 / detDFLoc * (DF[2,1] * u1 + DF[2,2] * u2)
       uLoc3 = 1 / detDFLoc * (DF[3,1] * u1 + DF[3,2] * u2)
       hLoc = 0.5 * (uLoc1 * uLoc1 + uLoc2 * uLoc2 + uLoc3 * uLoc3)
       for iDoF = 1 : hFeF.DoF 
-        hLoc += fFRef[1,iDoF,iQ] * Grav * hF[iDoF]
+        hLoc += hFRef[1,iDoF,iQ] * Grav * hF[iDoF]
       end  
       for iDoF = 1 : FeT.DoF
-        GradLoc[iDoF] += Weights[iQ] * fTRef[1,iDoF,iQ] * hLoc
+        GradLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[iQ] * fTRef[1,iDoF,iQ] * hLoc
       end
     end
     for iQ = 1 : length(WeightsL)
@@ -820,17 +807,17 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,
   for iQ = 1 : NumQuadL
     for iComp = 1 : FeT.Comp
       for iD = 1 : FeT.DoF
-        fTRefX[iComp,iD,iQ] = FeT.phi[iD,iComp](-1.0,PointsL[iQ])
-        fTRefY[iComp,iD,iQ] = FeT.phi[iD,iComp](PointsL[iQ],-1.0)
+        fTRefX[iComp,iD,iQ] = FeT.phi[iD,iComp](1.0,PointsL[iQ])
+        fTRefY[iComp,iD,iQ] = FeT.phi[iD,iComp](PointsL[iQ],1.0)
       end
     end
     for iD = 1 : uFeF.DoF
-      uFFRefX[1,iD,iQ] = uFeF.phi[iD,1](-1.0,PointsL[iQ])
-      uFFRefY[1,iD,iQ] = uFeF.phi[iD,2](PointsL[iQ],-1.0)
+      uFFRefX[1,iD,iQ] = uFeF.phi[iD,1](1.0,PointsL[iQ])
+      uFFRefY[1,iD,iQ] = uFeF.phi[iD,2](PointsL[iQ],1.0)
     end
     for iD = 1 : hFeF.DoF
-      hFFRefX[1,iD,iQ] = hFeF.phi[iD,1](-1.0,PointsL[iQ])
-      hFFRefY[1,iD,iQ] = hFeF.phi[iD,1](PointsL[iQ],-1.0)
+      hFFRefX[1,iD,iQ] = hFeF.phi[iD,1](1.0,PointsL[iQ])
+      hFFRefY[1,iD,iQ] = hFeF.phi[iD,1](PointsL[iQ],1.0)
     end
   end
 
@@ -841,10 +828,6 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,
   hFLoc = zeros(NumQuad)
   hFLocX = zeros(NumQuadL)
   hFLocY = zeros(NumQuadL)
-  DF = zeros(3,2)
-  detDF = zeros(1)
-  pinvDF = zeros(3,2)
-  X = zeros(3)
 
   @time for iF = 1 : Grid.NumFaces
     @. uFLoc = 0 
@@ -875,10 +858,8 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,
       end  
     end   
     for iQ = 1 : NumQuad
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
-      detDFLoc = detDF[1]
       for iDoFFeT = 1 : FeT.DoF
-        DivLoc[iDoFFeT] +=  Grid.Faces[iF].Orientation * Weights[iQ] * fTRef[1,iDoFFeT,iQ] * uFLoc[iQ] * hFLoc[iQ]
+        DivLoc[iDoFFeT] +=  Weights[iQ] * fTRef[1,iDoFFeT,iQ] * uFLoc[iQ] * hFLoc[iQ]
       end
     end
     for iQ = 1 : NumQuadL
@@ -1097,7 +1078,7 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
       end
       for iDoF = 1 : FeT.DoF
         CrossLoc[iDoF] -=  Weights[iQ] * qFLoc * (fTRef[1,iDoF,iQ] * cu1 +
-          fTRef[2,iDoF,iQ] * cu2) / abs(detDFLoc[iQ])
+          fTRef[2,iDoF,iQ] * cu2) / detDFLoc[iQ]
       end    
     end  
     for iDoF = 1 : FeT.DoF

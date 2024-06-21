@@ -127,13 +127,13 @@ Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
 end
 
 Base.@kwdef struct ParamHillSchaerCart
-  Deep=false
-  NBr=1.e-2
-  Th0=300.0
-  uMax=10
-  vMax=0
-  TEq=300.0
-  Stretch = false
+  Deep::Float64 = false
+  NBr::Float64 = 1.e-2
+  Th0::Float64 = 300.0
+  uMax::Float64 = 10
+  vMax::Float64 = 0
+  TEq::Float64 = 300.0
+  Stretch::Bool = false
 end
 
 Base.@kwdef struct ParamHillAgnesiXCart
