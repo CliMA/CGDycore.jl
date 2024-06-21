@@ -1,5 +1,5 @@
 mpirun -n 6 julia --project Examples/testNHSphere.jl \
-  --Problem="HeldSuarezDrySphere" \
+  --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
   --NumberThreadGPU=512 \
