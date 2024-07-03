@@ -1,4 +1,4 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -6,21 +6,21 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
-  --TkePos=0 \
-  --RhoVPos=6 \
-  --RhoCPos=7 \
+  --TkePos=6 \
+  --RhoVPos=7 \
+  --RhoCPos=8 \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=true \
   --Forcing=true \
   --Curl=false \
   --ModelType="VectorInvariant" \
-  --Turbulence=false \
-  --VerticalDiffusionMom=false \
   --VerticalDiffusion=true \
-  --SurfaceFluxMom=false \
+  --VerticalDiffusionMom=true \
+  --Turbulence=true \
   --SurfaceFlux=true \
-  --SurfaceScheme="" \
+  --SurfaceFluxMom=true \
+  --SurfaceScheme="MOST" \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
@@ -37,11 +37,11 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=1 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=75 \
+  --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -49,11 +49,11 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
-  --nPanel=60 \
+  --nPanel=30 \
   --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=5.e14 \
-  --HyperDGrad=5.e14 \
-  --HyperDDiv=5.50e14 \
-  --HyperDDivW=0.e16
+  --HyperDCurl=2.e15 \
+  --HyperDGrad=2.e15 \
+  --HyperDDiv=2.e15 \
+  --HyperDDivW=0.e15

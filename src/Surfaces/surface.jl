@@ -51,9 +51,11 @@ end
   wS = -(nS[1]* v1 + nS[2] * v2) / nS[3]
   wC = eltype(v1)(0.5) * (wS + w)
   nU = nS[1] * v1 + nS[2] * v2 + nS[3] * wC
-  sqrt((v1 - nS[1] * nU) * (v1 - nS[1] * nU) +
+  uStar = sqrt((v1 - nS[1] * nU) * (v1 - nS[1] * nU) +
     (v2 - nS[2] * nU) * (v2 - nS[2] * nU) +
     (wC - nS[3] * nU) * (wC - nS[3] * nU))
+  uStar = max(uStar, 0.1)
+
 end
 
 Base.@kwdef struct MOSurface <: SurfaceValues end
@@ -151,6 +153,22 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos)
     FU[RhoPos] += FRho / dz
     FU[ThPos] += FRhoTh  / dz
     FU[RhoVPos] += FRhoV  / dz
+  end  
+  return SurfaceFlux!
+end     
+function SurfaceFlux(Phys,Param,ThPos,RhoPos)
+  @inline function SurfaceFlux!(FU,U,p,dz,uStar,CT,CH,TSurf,RhoVSurf)
+    FT = eltype(U)
+    Rho = U[RhoPos]
+    RhoTh = U[ThPos]
+    RhoD = Rho
+    Rm = Phys.Rd * RhoD 
+    Cpml = Phys.Cpd * RhoD 
+    T = p / Rm
+    SensFlux = -CH * uStar * (T - TSurf)
+    PrePi=(p / Phys.p0)^(Rm / Cpml)
+    FRhoTh = RhoTh * SensFlux / T 
+    FU[ThPos] += FRhoTh  / dz
   end  
   return SurfaceFlux!
 end     

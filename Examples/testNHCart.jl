@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
+  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  GPU, DyCore
 using MPI
 using Base
 using CUDA
@@ -20,6 +20,11 @@ PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
+RhoVPos = parsed_args["RhoVPos"]
+RhoCPos = parsed_args["RhoCPos"]
+RhoIPos = parsed_args["RhoIPos"]
+RhoRPos = parsed_args["RhoRPos"]
+TkePos = parsed_args["TkePos"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -63,6 +68,7 @@ AdaptGridType = parsed_args["AdaptGridType"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
+Turbulence = parsed_args["Turbulence"]
 Source = parsed_args["Source"]
 VerticalDiffusion = parsed_args["VerticalDiffusion"]
 JacVerticalDiffusion = parsed_args["JacVerticalDiffusion"]
@@ -70,6 +76,7 @@ JacVerticalAdvection = parsed_args["JacVerticalAdvection"]
 VerticalDiffusionMom = parsed_args["VerticalDiffusionMom"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
+SurfaceScheme = parsed_args["SurfaceScheme"]
 # Grid
 nx = parsed_args["nx"]
 ny = parsed_args["ny"]
@@ -88,6 +95,7 @@ HyperDCurl = parsed_args["HyperDCurl"]
 HyperDGrad = parsed_args["HyperDGrad"]
 HyperDDiv = parsed_args["HyperDDiv"]
 # Output
+OrdPrint = parsed_args["OrdPrint"]
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
@@ -175,10 +183,11 @@ Model.uPos=2
 Model.vPos=3
 Model.wPos=4
 Model.ThPos=5
-if Model.Equation == "CompressibleMoist"
-  Model.RhoVPos = 1
-  Model.RhoCPos = 2
-end
+Model.RhoVPos  = RhoVPos
+Model.RhoCPos  = RhoCPos
+Model.RhoIPos  = RhoIPos
+Model.RhoRPos  = RhoRPos
+Model.TkePos  = TkePos
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping
@@ -186,6 +195,8 @@ Model.StrideDamp = StrideDamp
 Model.Relax = Relax
 Model.Coriolis = Coriolis
 Model.CoriolisType = CoriolisType
+Model.Buoyancy = Buoyancy
+Model.Turbulence = Turbulence
 Model.VerticalDiffusion = VerticalDiffusion
 Model.JacVerticalDiffusion = JacVerticalDiffusion
 Model.JacVerticalAdvection = JacVerticalAdvection
@@ -306,6 +317,7 @@ elseif State == "Moist"
   Model.Pressure = Pressure
 end
 
+#Microphysics
 if Microphysics
   if TypeMicrophysics == "SimpleMicrophysics"
     MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
@@ -314,6 +326,46 @@ if Microphysics
   else
     @show "False Type Microphysics"
   end
+end
+
+# Surface flux
+Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.NumG)
+Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
+@. Global.LandUseData.z0M = 0.01
+@. Global.LandUseData.z0H = 0.01
+@. Global.LandUseData.LandClass = 5
+if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
+  if SurfaceScheme == ""
+    @show "Warning: No surface scheme"  
+  elseif SurfaceScheme == "MOST"
+    @show "SurfaceScheme MOST"
+    SurfaceValues, SurfaceFluxValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
+      Model.vPos,Model.wPos,Model.ThPos)
+    Model.SurfaceValues = SurfaceValues
+    Model.SurfaceFluxValues = SurfaceFluxValues
+  end
+end
+if Model.SurfaceFlux
+  if RhoVPos > 0  
+    Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos,Model.RhoVPos)
+  else  
+    Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos)
+  end  
+end
+
+#Vertical Diffusion
+if Model.VerticalDiffusion || Model.VerticalDiffusionMom
+  if Model.Turbulence
+    Model.Eddy = Examples.TkeKoefficient()(Param,Phys,TkePos,Model.RhoPos)
+  else
+    Model.Eddy = Examples.SimpleKoefficient()(Param,Phys)
+  end
+end
+
+#Turbulence
+if Model.Turbulence
+  Model.TurbulenceSource = Examples.TKEModel()(Param,Phys,Model.RhoPos,Model.uPos,
+    Model.vPos,Model.ThPos,Model.TkePos)
 end
 
 # Forcing
@@ -339,6 +391,12 @@ Global.Output.vtk=0
         "Th",
         "Pres",
         ]
+      if TkePos > 0
+        push!(Global.Output.cNames,"Tke")
+      end
+      if VerticalDiffusion
+        push!(Global.Output.cNames,"DiffKoeff")
+      end
     elseif State == "Moist"
       Global.Output.cNames = [
         "Rho",
@@ -369,7 +427,11 @@ Global.Output.vtk=0
   Global.Output.PrintSeconds = PrintSeconds
   Global.Output.PrintTime = PrintTime
   Global.Output.PrintStartTime = PrintStartTime
-  Global.Output.OrdPrint=CG.OrdPoly
+  if OrdPrint == 0
+    Global.Output.OrdPrint = CG.OrdPoly
+  else  
+    Global.Output.OrdPrint = OrdPrint
+  end  
   Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Grids.TransCartX!,CG,Metric,Global)
 
   # TimeStepper

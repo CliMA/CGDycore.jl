@@ -464,6 +464,11 @@ function parse_commandline()
      arg_type = String
      default = "Output"
 
+    "--OrdPrint"
+     help = "Subcell printing"
+     arg_type = Int
+     default = 0
+
     "--PrintDays"
      help = "Number of print days"
      arg_type = Int

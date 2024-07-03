@@ -330,7 +330,7 @@ end
   Nz = @uniform @ndrange()[1]
   NumG = @uniform @ndrange()[2]
 
-  if Iz < Nz && IC < NumG
+  if Iz < Nz && IC <= NumG
     fac = eltype(F)(2) * K[Iz,IC] / (dz[Iz,IC] + dz[Iz+1,IC]) 
     facDiv1 = eltype(dz)(1) / dz[Iz,IC] / U[Iz,IC,1]
     facDiv2 = -eltype(dz)(1) / dz[Iz+1,IC] / U[Iz+1,IC,1]

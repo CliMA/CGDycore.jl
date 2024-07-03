@@ -54,6 +54,9 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
     KRhoCFunCKernel!(Profile,RhoC,time,Glob,X,ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   end  
+  if Model.TkePos > 0
+    @views @. U[:,:,Model.TkePos] = U[:,:,Model.RhoPos] * 1.e-2 
+  end  
 
 #=
   if Global.Model.Profile

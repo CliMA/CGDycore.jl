@@ -4,7 +4,7 @@ Base.@kwdef struct SimpleMicrophysics <: Microphysics end
 
 
 function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
-  function Microphysics(U,p)
+  @inline function Microphysics(F,U,p)
     FT = eltype(U)
     Rho = U[RhoPos]
     RhoTh = U[ThPos]
@@ -24,7 +24,10 @@ function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
     FRhoTh = RhoTh*((-L/(Cpml*T) - log(p / Phys.p0) * (Rm / Cpml) * (Phys.Rv / Rm + 
       (Phys.Cpl - Phys.Cpv) / Cpml)  + Phys.Rv / Rm) * FPh +
       (FT(1) / Rho - log(p/Phys.p0) * (Rm / Cpml) * (Phys.Cpl / Cpml)) * FR)
-    return (-FR, FRhoTh, FPh, -FPh - FR)
+    F[RhoPos] += -FR
+    F[ThPos] += FRhoTh
+    F[RhoVPos] += FPh
+    F[RhoCPos] += -FPh - FR
   end
   return Microphysics
 end

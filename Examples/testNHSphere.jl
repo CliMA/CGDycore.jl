@@ -22,7 +22,6 @@ RhoCPos = parsed_args["RhoCPos"]
 RhoIPos = parsed_args["RhoIPos"]
 RhoRPos = parsed_args["RhoRPos"]
 TkePos = parsed_args["TkePos"]
-@show TkePos,RhoVPos,RhoCPos
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -93,6 +92,7 @@ HyperDRhoDiv = parsed_args["HyperDRhoDiv"]
 HyperDDiv = parsed_args["HyperDDiv"]
 HyperDDivW = parsed_args["HyperDDivW"]
 # Output
+OrdPrint = parsed_args["OrdPrint"]
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
@@ -191,7 +191,6 @@ Model.RhoVPos  = RhoVPos
 Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
-@show TkePos
 Model.TkePos  = TkePos
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
@@ -355,6 +354,10 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
       Model.vPos,Model.wPos,Model.ThPos)
     Model.SurfaceValues = SurfaceValues
     Model.SurfaceFluxValues = SurfaceFluxValues
+    if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" 
+      SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+      Model.SurfaceValues = SurfaceValues
+    end   
   end  
 end
 if Model.SurfaceFlux
@@ -364,6 +367,7 @@ end
 #Vertical Diffusion
 if Model.VerticalDiffusion || Model.VerticalDiffusionMom
   if Model.Turbulence
+    Model.Eddy = Examples.TkeKoefficient()(Param,Phys,TkePos,Model.RhoPos)
   else  
     Model.Eddy = Examples.SimpleKoefficient()(Param,Phys)
   end
@@ -400,10 +404,6 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
     if TkePos > 0
       push!(Global.Output.cNames,"Tke")
     end  
-    @show RhoVPos
-    if RhoVPos > 0
-      push!(Global.Output.cNames,"Tr1")
-    end  
     if VerticalDiffusion
       push!(Global.Output.cNames,"DiffKoeff")
     end  
@@ -414,11 +414,19 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-#     "Vort",
-#     "Pres",
+      "Vort",
       "Tr1",
       "Tr2",
       ]
+    Model.TrPos = NumV + 1
+    if TkePos > 0
+      push!(Global.Output.cNames,"Tke")
+      Model.TrPos += 1
+    end  
+    if VerticalDiffusion
+      push!(Global.Output.cNames,"DiffKoeff")
+    end  
+
   elseif State == "ShallowWater"  
     Global.Output.cNames = [
       "Rho",
@@ -447,7 +455,11 @@ Global.Output.PrintMinutes = PrintMinutes
 Global.Output.PrintSeconds = PrintSeconds
 Global.Output.StartAverageDays = StartAverageDays
 Global.Output.PrintStartTime = PrintStartTime
-Global.Output.OrdPrint = CG.OrdPoly
+if OrdPrint == 0
+  Global.Output.OrdPrint = CG.OrdPoly
+else  
+  Global.Output.OrdPrint = OrdPrint
+end  
 
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Grids.TransSphereX!,CG,Metric,Global)
 
@@ -470,11 +482,9 @@ end
 
 Global.ParallelCom.NumberThreadGPU = NumberThreadGPU   
 nT = max(7 + NumTr, NumV + NumTr) + Model.NDEDMF*(4 + NumTr)
-@show nT
 Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
 if ParallelCom.Proc == 1
   @show "vor Timestepper"
 end  
-@show TkePos
 Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
   Grids.TransSphereX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)

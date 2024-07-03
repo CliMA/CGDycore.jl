@@ -45,7 +45,6 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     iAv = 1
   end  
   PrintStartInt=0
-  Output.OrdPrint=CG.OrdPoly
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
@@ -260,7 +259,6 @@ function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
-  Output.OrdPrint=CG.OrdPoly
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
@@ -369,7 +367,6 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Metric,Global,Param)
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
-  Output.OrdPrint=CG.OrdPoly
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
@@ -472,7 +469,6 @@ function TimeStepperGPUAdvection!(U,Fcn!,Trans,CG,Metric,Phys,Exchange,Global,Pa
   nIter=ceil((24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime)/dtau)
   PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+PrintSeconds+PrintTime)/dtau)
   PrintStartInt=0
-  Output.OrdPrint=CG.OrdPoly
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr

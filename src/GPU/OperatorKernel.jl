@@ -689,11 +689,7 @@ end
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    FRho,FRhoTh,FRhoV,FRhoC = Source(view(U,Iz,IC,:),p[Iz,IC])
-    F[Iz,IC,1] += FRho
-    F[Iz,IC,5] += FRhoTh
-    F[Iz,IC,6] += FRhoV
-    F[Iz,IC,7] += FRhoC
+    Source(view(F,Iz,IC,:),view(U,Iz,IC,:),p[Iz,IC])
   end
 end  
 

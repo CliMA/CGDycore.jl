@@ -244,7 +244,7 @@ function CurlMatrix(backend,FTB,FeF::HCurlConfElement,FeT::ScalarElement,Grid,Qu
   @inbounds for iF = 1 : Grid.NumFaces
     CurlLoc .= 0
     for i = 1 : length(Weights)
-      CurlLoc += Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
+      CurlLoc += Grid.Faces[iF].Orientation * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
     end
     for j = 1 : size(CurlLoc,2)
       for i = 1 : size(CurlLoc,1)

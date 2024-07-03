@@ -2,38 +2,42 @@ function Most()
 
 #RiB  = Grav/Tgn*((AbsT-Tgn)*(dz(iz)-z0M))/(VT*VT+Eps)
 end
-function VertProfile(uf,z0,z,L,tt)
-  log(z / z0) - psi(uf, z / L, tt) +
-  psi(uf, z0 / L, tt)
+@inline function VertProfile(uf,z0,z,zeta,tt)
+  log(z / z0) - psi(uf, zeta, tt) +
+  psi(uf, z0 / z * zeta, tt)
 end  
-function MOSTIteration(uf,z0M,z0H,z,U,theta,thetaS,LandClass,Phys)
+@inline function MOSTIteration(uf,z0M,z0H,z,U,theta,thetaS,LandClass,Phys)
   FT = eltype(theta)
   Karm = 0.4
   Pr = 0.74
-  Ri_b = min(Phys.Grav / thetaS *(theta - thetaS) * z  / (U * U), 0.2)
-  L = (theta - thetaS) / U^2
+  U2 = U^2
+  Ri_b = min(Phys.Grav / thetaS *(theta - thetaS) * z  / U2, 0.2)
+  L = (theta - thetaS) / U2
+  L = L + sign(L) * eps(FT) + eps(FT)
+
+  zeta = L / z
   for Iter = 1 : 10
-    f = Ri_b - Pr * z / L *
-      VertProfile(uf, z0H, z, L, HeatTransport()) / 
-      VertProfile(uf, z0M, z, L, MomentumTransport())^2 
-    LP = L * (FT(1) + sqrt(eps(FT))) + flipsign(sqrt(eps(FT)), L)
-    fP = Ri_b - Pr * z / LP *
-      VertProfile(uf, z0H, z, LP, HeatTransport()) / 
-      VertProfile(uf, z0M, z, LP, MomentumTransport())^2 
-    df = (fP - f) /(LP - L)
-    LNew = L - f/df
-    if abs(LNew-L) < eps(FT)^FT(1/3)
-      L  = LNew 
+    f = Ri_b - Pr * zeta *
+      VertProfile(uf, z0H, z, zeta, HeatTransport()) / 
+      VertProfile(uf, z0M, z, zeta, MomentumTransport())^2 
+    zetaP = zeta * (FT(1) + sqrt(eps(FT))) + flipsign(sqrt(eps(FT)), L)
+    fP = Ri_b - Pr * zetaP *
+      VertProfile(uf, z0H, z, zetaP, HeatTransport()) / 
+      VertProfile(uf, z0M, z, zetaP, MomentumTransport())^2 
+    df = (fP - f) /(zetaP - zeta)
+    zetaNew = zeta - f/df
+    if abs(zetaNew-zeta) < eps(FT)^FT(1/3)
+      zeta  = zetaNew 
       break
     else
-      L = LNew  
+      zeta = zetaNew  
     end  
   end  
 
-  CT = Karm^2 / (log(z/z0M) - psi(uf, z / L, MomentumTransport()))^2
-  CH = Karm^2 / (log(z/z0M) - psi(uf, z / L, MomentumTransport())) /
-    (log(z/z0H) - psi(uf, z / L, HeatTransport()))
-  return CT, CH
+  CM = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport()))^2
+  CT = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport())) /
+    (log(z/z0H) - psi(uf, zeta, HeatTransport()))
+  return CM, CT
 
 end
 

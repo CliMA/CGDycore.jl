@@ -32,6 +32,12 @@ end
     @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc
     @atomic :monotonic FTke[Iz+1,IC] += eltype(FTke)(.5) * FLoc
     KV[Iz,IC] = KLoc
+    if Iz == 1
+      @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc  
+    end  
+    if Iz == Nz
+      @atomic :monotonic FTke[Iz+1,IC] += eltype(FTke)(.5) * FLoc  
+    end  
   end  
 end
 
