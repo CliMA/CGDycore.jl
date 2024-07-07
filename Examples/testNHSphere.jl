@@ -414,7 +414,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-      "Vort",
+#     "Vort",
       "Tr1",
       "Tr2",
       ]

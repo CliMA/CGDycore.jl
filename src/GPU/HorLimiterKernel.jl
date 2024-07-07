@@ -380,6 +380,7 @@ end
   if Iz <= Nz
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
+    @show Iz,ind,q[I,J,iz],RhoColS[I,J,iz]
     @atomic :monotonic FTr[Iz,ind] += (q[I,J,iz] * RhoColS[I,J,iz] - Tr[Iz,ind]) *
       (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / dt / M[Iz,ind]
   end  

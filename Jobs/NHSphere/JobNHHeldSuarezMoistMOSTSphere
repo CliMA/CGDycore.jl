@@ -1,4 +1,4 @@
-mpirun -n 1 julia --project Examples/testNHSphere.jl \
+mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -23,7 +23,7 @@ mpirun -n 1 julia --project Examples/testNHSphere.jl \
   --SurfaceScheme="MOST" \
   --Coriolis=true \
   --Upwind=true \
-  --HorLimit=false \
+  --HorLimit=true \
   --Equation="CompressibleShallow" \
   --State="Moist" \
   --Microphysics=true \

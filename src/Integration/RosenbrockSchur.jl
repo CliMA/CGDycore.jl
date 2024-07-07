@@ -6,6 +6,7 @@ function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phys,Cache,JCache,
   k = Cache.k
   fV = Cache.fV
   Vn = Cache.Vn
+  Global.TimeStepper.dtauStage = dt  # Oswald
 
   JCache.CompTri = true
   @. Vn = V

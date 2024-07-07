@@ -12,8 +12,6 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   dXdxI = Metric.dXdxI
   X = Metric.X
   J = Metric.J
-  JC = Metric.JC
-  JCW = Metric.JCW
   N = FE.OrdPoly+1
   ww = FE.w
   Nz = size(F,1)
@@ -143,15 +141,19 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   backend = get_backend(F)
   FT = eltype(F)
+  dtau = Global.TimeStepper.dtauStage
   Glob = FE.Glob
   DS = FE.DS
   DW = FE.DW
   M = FE.M
+  Stencil = FE.Stencil
   dXdxI = Metric.dXdxI
   nS = Metric.nS
   nSS = Metric.nSS
   X = Metric.X
   J = Metric.J
+  N = FE.OrdPoly+1
+  ww = FE.w
   NF = Global.Grid.NumFaces
   NBF = Global.Grid.NumBoundaryFaces
   @views dXdxI_B = dXdxI[:,:,:,:,:,1:NBF]
@@ -165,6 +167,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views X_I = X[:,:,:,:,NBF+1:NF]
   @views nS_I = nS[:,:,NBF+1:NF]
   @views Glob_I = Glob[:,NBF+1:NF]
+  @views Stencil_I = Stencil[NBF+1:NF,:]
   xS = Metric.xS  
   dz = Metric.dz  
   zP = Metric.zP  
@@ -184,6 +187,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   MicrophysicsSource = Global.Model.MicrophysicsSource
   CoriolisFun = Global.Model.CoriolisFun
   GravitationFun = Global.Model.GravitationFun
+  HorLimit = Global.Model.HorLimit
 
   KoeffCurl = Global.Model.HyperDCurl
   KoeffGrad = Global.Model.HyperDGrad
@@ -253,7 +257,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     LenTemp1 += 1
     @views CacheTke = Temp1[:,:,LenTemp1]
   end  
-  if NumTr > 0
+  if ~HorLimit && NumTr > 0
     @views CacheTr = Temp1[:,:,LenTemp1+1:LenTemp1+NumTr]
     LenTemp1 += NumTr
   end  
@@ -286,6 +290,9 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   groupw = (N, N, NzG, 1)
   ndrangewB = (Nz-1, NBF)  
   ndrangewI = (Nz-1, NF-NBF)  
+  NFG = min(div(NumberThreadGPU,Nz),NF)
+  groupL = (Nz, NFG, 1)
+  ndrangeL = (Nz, NF, NumTr)
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
   KGradKernel! = GradKernel!(backend,group)
@@ -296,6 +303,16 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
+  KDivRhoTrUpwind3LimKernel! = DivRhoTrUpwind3LimKernel!(backend, groupTr)
+  KLimitKernel! = LimitKernel!(backend, groupL)
+
+  if HorLimit
+    @views qMin = Cache.qMin[:,:,1:NumTr]
+    @views qMax = Cache.qMax[:,:,1:NumTr]
+    @views KLimitKernel!(DoF,qMin,qMax,UTr,Rho,Glob,ndrange=ndrangeL)
+    KernelAbstractions.synchronize(backend)
+    Parallels.ExchangeDataFSendGPU(qMin,qMax,Exchange)
+  end
 
 
 ####
@@ -304,9 +321,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   Temp1 .= FT(0)
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  for iT = 1 : NumTr
-    @views KHyperViscTracerKernel!(CacheTr[:,:,iT],UTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
-    KernelAbstractions.synchronize(backend)
+  if ~HorLimit
+    for iT = 1 : NumTr
+      @views KHyperViscTracerKernel!(CacheTr[:,:,iT],UTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+      KernelAbstractions.synchronize(backend)
+    end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
@@ -334,13 +353,18 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     end
   end    
 
+  if HorLimit
+    Parallels.ExchangeDataFRecvGPU!(qMin,qMax,Exchange)  
+  end  
   @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,1:LenTemp1],Exchange)
 
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
-  for iT = 1 : NumTr
-    @views KHyperViscTracerKernel!(CacheTr[:,:,iT],UTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-    KernelAbstractions.synchronize(backend)
+  if ~HorLimit
+    for iT = 1 : NumTr
+      @views KHyperViscTracerKernel!(CacheTr[:,:,iT],UTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+      KernelAbstractions.synchronize(backend)
+    end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -372,10 +396,20 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   F .= FT(0)
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  for iT = 1 : NumTr
-    @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,
-      KoeffDiv,ndrange=ndrangeB)
-    KernelAbstractions.synchronize(backend)
+  if ~HorLimit
+    for iT = 1 : NumTr
+      @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,
+        KoeffDiv,ndrange=ndrangeB)
+      KernelAbstractions.synchronize(backend)
+      @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+        dXdxI,J,M,Glob,ndrange=ndrangeB)
+      KernelAbstractions.synchronize(backend)
+    end  
+  else  
+    for iT = 1 : NumTr
+      @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+         dXdxI,J,M,Glob,dtau,ww,qMin[:,:,iT],qMax[:,:,iT],Stencil,ndrange=ndrangeB)
+    end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI,J,M,Glob,
@@ -407,11 +441,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  for iT = 1 : NumTr
-    @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-      dXdxI,J,M,Glob,ndrange=ndrangeB)
-    KernelAbstractions.synchronize(backend)
-  end  
   if TkePos > 0
     @views KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS, dXdxI,J,M,Glob,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)
@@ -436,10 +465,23 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
-  for iT = 1 : NumTr
-    @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
-      KoeffDiv,ndrange=ndrangeI)
-    KernelAbstractions.synchronize(backend)
+  if ~HorLimit
+    for iT = 1 : NumTr
+      @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
+        KoeffDiv,ndrange=ndrangeI)
+      KernelAbstractions.synchronize(backend)
+    end  
+    for iT = 1 : NumTr
+      @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+        dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+      KernelAbstractions.synchronize(backend)
+    end  
+  else  
+    for iT = 1 : NumTr
+      @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+        dXdxI_I,J_I,M,Glob_I,dtau,ww,qMin[:,:,iT],qMax[:,:,iT],Stencil_I,ndrange=ndrangeI)
+      KernelAbstractions.synchronize(backend)
+    end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
@@ -472,11 +514,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
 
-  for iT = 1 : NumTr
-    @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-      dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-    KernelAbstractions.synchronize(backend)
-  end  
   if TkePos > 0
     KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
