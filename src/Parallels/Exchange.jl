@@ -77,6 +77,9 @@ end
 
 function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit) where FT<:AbstractFloat
 
+  @show "ExchangeStruct",Proc	
+  IndSendBuffer = Dict()
+  IndRecvBuffer = Dict()
   # Inner Nodes on Edges  
   NumInBoundEdges = 0
   InBoundEdges = zeros(Int,NumInBoundEdges)
@@ -338,22 +341,27 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
   InitSendBuffer = true
   InitSendBufferF = true
   SendBuffer = Dict()
-  SendBuffer3 = Dict{Int,Array{Int,3}}()
-  SendBufferF = Dict{Int,Array{Int,4}}()
+  @show "SendBuffer 3"
+# SendBuffer3 = Dict{Int,Array{FT,3}}()
+# SendBufferF = Dict{Int,Array{FT,4}}()
+  SendBuffer3 = Dict()
+  SendBufferF = Dict()
   for iP in eachindex(NeiProcN)
-    SendBuffer[iP] = zeros(0)
-    SendBuffer3[iP] = zeros(0,0,0)
-    SendBufferF[iP] = zeros(0,0,0,0)
+    SendBuffer[iP] = KernelAbstractions.zeros(backend,FT,0)
+    SendBuffer3[iP] = KernelAbstractions.zeros(backend,FT,0,0,0)
+    SendBufferF[iP] = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   end
   InitRecvBuffer = true
   InitRecvBufferF = true
   RecvBuffer = Dict()
-  RecvBuffer3 = Dict{Int,Array{Int,3}}()
-  RecvBufferF = Dict{Int,Array{Int,4}}()
+# RecvBuffer3 = Dict{Int,Array{FT,3}}()
+# RecvBufferF = Dict{Int,Array{FT,4}}()
+  RecvBuffer3 = Dict()
+  RecvBufferF = Dict()
   for iP in NeiProcN
-    RecvBuffer[iP] = zeros(0)
-    RecvBuffer3[iP] = zeros(0,0,0)
-    RecvBufferF[iP] = zeros(0,0,0,0)
+    RecvBuffer[iP] = KernelAbstractions.zeros(backend,FT,0)
+    RecvBuffer3[iP] = KernelAbstractions.zeros(backend,FT,0,0,0)
+    RecvBufferF[iP] = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   end
 
   sreq = MPI.UnsafeMultiRequest(length(NeiProcN))
@@ -554,18 +562,16 @@ function ExchangeData!(U::Array{Float64,3},Exchange)
   end
 
   RecvBuffer = Dict()
-# rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
-  sreq = MPI.UnsafeMultiRequest(length(NeiProc))
-  rreq = MPI.UnsafeMultiRequest(length(NeiProc))
+  rreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
   for iP in eachindex(NeiProc)
     RecvBuffer[NeiProc[iP]] = zeros(nz,length(IndRecvBuffer[NeiProc[iP]]),nT)
     tag = Proc + ProcNumber*NeiProc[iP]
-    MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD, rreq[iP])
+    rreq[iP] = MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
   end  
-# sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
+  sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
   for iP in eachindex(NeiProc)
     tag = NeiProc[iP] + ProcNumber*Proc
-    MPI.Isend(SendBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD, sreq[iP])
+    sreq[iP] = MPI.Isend(SendBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
   end
 
   stats = MPI.Waitall!(rreq)
@@ -615,15 +621,13 @@ function ExchangeData3D!(U,Exchange)
   for iP in NeiProc
     tag = Proc + ProcNumber*iP
     i += 1
-#   rreq[i] = MPI.Irecv!(RecvBuffer[iP], iP - 1, tag, MPI.COMM_WORLD)
-    MPI.Irecv!(RecvBuffer[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
+    rreq[i] = MPI.Irecv!(RecvBuffer[iP], iP - 1, tag, MPI.COMM_WORLD)
   end  
   i = 0
   for iP in NeiProc
     tag = iP + ProcNumber*Proc
     i += 1
-#   sreq[i] = MPI.Isend(SendBuffer[iP], iP - 1, tag, MPI.COMM_WORLD)
-    MPI.Isend(SendBuffer[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
+    sreq[i] = MPI.Isend(SendBuffer[iP], iP - 1, tag, MPI.COMM_WORLD)
   end
 
   stats = MPI.Waitall!(rreq)
