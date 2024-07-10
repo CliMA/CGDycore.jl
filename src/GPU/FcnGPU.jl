@@ -387,7 +387,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     end
   end    
 
-  Parallels.ExchangeData3DRecvGPU!(Temp1,Exchange)
+  @views Parallels.ExchangeData3DRecvGPU!(Temp1[:,:,1:LenTemp1],Exchange)
   KernelAbstractions.synchronize(backend)
 
 ####
