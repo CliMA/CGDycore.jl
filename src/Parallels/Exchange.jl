@@ -12,13 +12,11 @@ mutable struct ExchangeStruct{FT<:AbstractFloat,
   InitSendBuffer::Bool
   InitSendBufferF::Bool
   SendBuffer::Dict
-  #SendBuffer3::Dict{Int,Array{FT, 3}}
   SendBuffer3::Dict{Int,AT3}
   SendBufferF::Dict{Int,AT4}
   InitRecvBuffer::Bool
   InitRecvBufferF::Bool
   RecvBuffer::Dict
-# RecvBuffer3::Dict{Int,Array{FT, 3}}
   RecvBuffer3::Dict{Int,AT3}
   RecvBufferF::Dict{Int,AT4}
   sreq::MPI.UnsafeMultiRequest
@@ -77,7 +75,6 @@ end
 
 function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit) where FT<:AbstractFloat
 
-  @show "ExchangeStruct",Proc	
   IndSendBuffer = Dict()
   IndRecvBuffer = Dict()
   # Inner Nodes on Edges  
@@ -300,8 +297,9 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
       end
       LocTemp = unique(LocTemp)
       GlobTemp = unique(GlobTemp)
+      GlobFTemp = unique(GlobFTemp)
       IndSendBufferF[NeiProcF[iP]] = LocTemp
-      IndRecvBufferF[NeiProcF[iP]] = unique(GlobFTemp)
+      IndRecvBufferF[NeiProcF[iP]] = GlobFTemp
       GlobBuffer[NeiProcF[iP]] = GlobTemp
     end
 
@@ -320,7 +318,8 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
 
     stats = MPI.Waitall(rreq)
     stats = MPI.Waitall(sreq)
-    IndRecvBufferF = Dict()
+    IndRecvBufferFGPU = Dict()
+    IndSendBufferFGPU = Dict()
 
     for iP in eachindex(NeiProcF)
       GlobInd = GlobRecvBuffer[NeiProcF[iP]]
@@ -331,19 +330,22 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
         (iF,) = DictF[(GlobInd[iFB1],NeiProcF[iP])]
         push!(LocTemp,iF)
       end
-      IndRecvBufferF[NeiProcF[iP]] = LocTemp
+      LocTempGPU = KernelAbstractions.zeros(backend,Int,size(LocTemp))
+      copyto!(LocTempGPU,LocTemp)
+      IndRecvBufferFGPU[NeiProcF[iP]] = LocTempGPU
+      LocTemp = IndSendBufferF[NeiProcF[iP]]
+      LocTempGPU = KernelAbstractions.zeros(backend,Int,size(LocTemp))
+      copyto!(LocTempGPU,LocTemp)
+      IndSendBufferFGPU[NeiProcF[iP]] = LocTempGPU
     end
   else
-    IndSendBufferF = Dict()
-    IndRecvBufferF=Dict()  
+    IndSendBufferFGPU = Dict()
+    IndRecvBufferFGPU=Dict()  
   end  
 
   InitSendBuffer = true
   InitSendBufferF = true
   SendBuffer = Dict()
-  @show "SendBuffer 3"
-# SendBuffer3 = Dict{Int,Array{FT,3}}()
-# SendBufferF = Dict{Int,Array{FT,4}}()
   SendBuffer3 = Dict()
   SendBufferF = Dict()
   for iP in eachindex(NeiProcN)
@@ -372,15 +374,13 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
   AT4 = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   IT1 = KernelAbstractions.zeros(backend,Int,0)
 
-  SendBuffer = Dict()
   for (key,) in SendBufferN
-    SendBuffer[key] = KernelAbstractions.zeros(backend,Int,size(SendBufferN[key]))
-    copyto!(SendBuffer[key],SendBufferN[key])
+    IndSendBuffer[key] = KernelAbstractions.zeros(backend,Int,size(SendBufferN[key]))
+    copyto!(IndSendBuffer[key],SendBufferN[key])
   end  
-  RecvBuffer = Dict()
   for (key,) in RecvBufferN
-    RecvBuffer[key] = KernelAbstractions.zeros(backend,Int,size(RecvBufferN[key]))
-    copyto!(RecvBuffer[key],RecvBufferN[key])
+    IndRecvBuffer[key] = KernelAbstractions.zeros(backend,Int,size(RecvBufferN[key]))
+    copyto!(IndRecvBuffer[key],RecvBufferN[key])
   end  
 
 
@@ -388,10 +388,10 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
                         typeof(IT1),
                         typeof(AT3),
                         typeof(AT4)}(
-    SendBuffer,
-    IndSendBufferF,
-    RecvBuffer,
-    IndRecvBufferF,
+    IndSendBuffer,
+    IndSendBufferFGPU,
+    IndRecvBuffer,
+    IndRecvBufferFGPU,
     NeiProcN,
     Proc,
     ProcNumber,
@@ -700,8 +700,8 @@ function ExchangeDataFSendGPU(cFMin,cFMax,Exchange)
   nT = size(cFMin,3)
   if Exchange.InitRecvBufferF
     for iP in NeiProc
-      Exchange.RecvBufferF[iP] = zeros(nz,length(IndRecvBufferF[iP]),2,nT)
-      Exchange.SendBufferF[iP] = zeros(nz,length(IndSendBufferF[iP]),2,nT)
+      Exchange.RecvBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndRecvBufferF[iP]),2,nT)
+      Exchange.SendBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndSendBufferF[iP]),2,nT)
     end
     RecvBufferF = Exchange.RecvBufferF
     SendBufferF = Exchange.SendBufferF
