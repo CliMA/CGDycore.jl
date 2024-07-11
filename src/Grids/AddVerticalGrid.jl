@@ -16,25 +16,30 @@ function AddVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64)
 end
 
 function AddStretchICONVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,sigma::Float64,lambda::Float64)
-  Grid.zP=zeros(nz);
-  Grid.z=zeros(nz+1);
-  Grid.dzeta = zeros(nz)
+  zP=zeros(nz);
+  z=zeros(nz+1);
+  dzeta = zeros(nz)
   Grid.H = H
   for iz=1:nz
     i = nz + 1 - iz  
-    Grid.z[iz+1] = H*(2.0/pi*acos(((i - 1) / nz)^sigma))^lambda
+    z[iz+1] = H*(2.0/pi*acos(((i - 1) / nz)^sigma))^lambda
   end
-# Grid.z[1] = 0.0
-# Grid.z[2] = 20.0
-# dz = (H-Grid.z[2]) / (nz - 1)
-# for i = 2 : nz -1 
-#   Grid.z[i+1] = Grid.z[i] + dz  
-# end
-  Grid.z[nz+1] = H
+  z[nz+1] = H
   for i=1:nz
-    Grid.dzeta[i] = Grid.z[i+1] -Grid.z[i]
-    Grid.zP[i] = 0.5 * (Grid.z[i] + Grid.z[i+1])
+    dzeta[i] = z[i+1] - z[i]
+    zP[i] = 0.5 * (z[i] + z[i+1])
   end
+  backend = get_backend(Grid.z)
+  FT = eltype(Grid.z)
+  zGPU = KernelAbstractions.zeros(backend,FT,size(z))
+  copyto!(zGPU,z)
+  Grid.z = zGPU
+  zPGPU = KernelAbstractions.zeros(backend,FT,size(zP))
+  copyto!(zPGPU,zP)
+  Grid.zP = zPGPU
+  dzetaGPU = KernelAbstractions.zeros(backend,FT,size(dzeta))
+  copyto!(dzetaGPU,dzeta)
+  Grid.dzeta = dzetaGPU
 end
 
 function AddStretchDCMIPVerticalGrid!(Grid::GridStruct, nz::Int,H::Float64, mue::Float64)

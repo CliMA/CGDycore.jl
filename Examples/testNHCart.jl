@@ -116,17 +116,20 @@ ParallelCom = DyCore.ParallelComStruct()
 ParallelCom.Proc = Proc
 ParallelCom.ProcNumber  = ProcNumber
 
-if Device == "CPU" || Device == "CPU_P"
+JuliaDevice = get(ENV, "JuliaDevice", "CPU")
+JuliaGPU = get(ENV, "JuliaGPU", "CUDA")
+
+if JuliaDevice == "CPU" 
   backend = CPU()
-elseif Device == "GPU" || Device == "GPU_P"
-  if GPUType == "CUDA"
+elseif JuliaDevice == "GPU" 
+  if JuliaGPU == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(false)
     CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
-  elseif GPUType == "AMD"
+  elseif JuliaGPU == "AMD"
     backend = ROCBackend()
     AMDGPU.allowscalar(false)
-  elseif GPUType == "Metal"
+  elseif JuliaGPU == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
   end
@@ -372,7 +375,7 @@ end
 Force =  Examples.NoForcing()(Param,Phys)
 # Damping
 if Damping
-  Damp = GPU.DampingW()(H,StrideDamp,Relax,Model.wPos)
+  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
   Model.Damp = Damp
 end
 

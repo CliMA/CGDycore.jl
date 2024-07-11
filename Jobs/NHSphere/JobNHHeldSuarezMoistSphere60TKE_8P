@@ -1,4 +1,5 @@
 export UCX_ERROR_SIGNALS=""
+values=`cat file`
 srun -n 8 gpu_wrapper.sh -n 8 -e "julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="GPU" \

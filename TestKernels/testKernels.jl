@@ -42,7 +42,6 @@ DW = KernelAbstractions.ones(backend,FT,4,4)
 dXdxI = KernelAbstractions.ones(backend,FT,3,3,2,DoF,Nz,NF)
 J = KernelAbstractions.ones(backend,FT,DoF,2,Nz,NF)
 X = KernelAbstractions.ones(backend,FT,DoF,2,3,Nz,NF)
-MRho = KernelAbstractions.ones(backend,FT,Nz-1,NumG)
 M = KernelAbstractions.ones(backend,FT,Nz,NumG)
 p = KernelAbstractions.ones(backend,FT,Nz,NumG)
 KoeffCurl = FT(1)
@@ -50,20 +49,22 @@ KoeffGrad = FT(1)
 KoeffDiv = FT(1)
 Glob = KernelAbstractions.zeros(backend,Int,DoF,NF)
 copyto!(Glob,GlobCPU)
+CoriolisFun = GPU.CoriolisShallow()(Phys)
+GravitationFun = GPU.GravitationShallow()(Phys)
 
-KMomentumCoriolisKernel! = GPU.MomentumCoriolisKernel!(backend,group)
-KMomentumCoriolisKernel!(F,U,D,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
+KMomentumVectorInvariantCoriolisKernel! = GPU.MomentumVectorInvariantCoriolisKernel!(backend,group)
+KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
 @time for iter = 1 : 100
-  KMomentumCoriolisKernel!(F,U,D,dXdxI,J,X,MRho,M,Glob,Phys,ndrange=ndrange)
+  KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
 
 KGradKernel! = GPU.GradKernel!(backend,group)
-KGradKernel!(F,U,p,D,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
+KGradKernel!(F,U,p,D,dXdxI,J,X,M,Glob,GravitationFun,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
 @time for iter = 1 : 100
-  KGradKernel!(F,U,p,D,dXdxI,J,M,MRho,Glob,Phys,ndrange=ndrange)
+  KGradKernel!(F,U,p,D,dXdxI,J,X,M,Glob,GravitationFun,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
 
@@ -82,3 +83,4 @@ KernelAbstractions.synchronize(backend)
   KHyperViscKoeffKernel!(F,U,CacheF,D,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
+stop
