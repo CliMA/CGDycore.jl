@@ -1,8 +1,5 @@
-mpirun -n 1 julia --project Examples/testNHCart.jl \
+julia --project Examples/testNHCart.jl \
   --Problem="HillAgnesiXCart" \
-  --Device="GPU" \
-  --Device="CPU" \
-  --GPUType="CUDA" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \

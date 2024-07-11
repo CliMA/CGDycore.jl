@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=benchmark
 #SBATCH --account=project_465000863
-#SBATCH --time=00:10:00
+#SBATCH --time=00:20:00
 #SBATCH --nodes=1
-#SBATCH --ntasks=2
+#SBATCH --ntasks=8
 #SBATCH --cpus-per-task=1
-#SBATCH --gpus-per-node=2
-#SBATCH --mem=16G
+#SBATCH --gpus-per-node=8
+#SBATCH --mem=0
 #SBATCH --partition=dev-g
 # dev-g max 56 cpus per task
 
@@ -25,7 +25,7 @@ chmod +x ./select_gpu
 echo '####'
 
 #CPU_BIND="map_cpu:49,57"
-srun --cpu-bind=cores ./select_gpu julia --project Examples/testNHSphere.jl \
+srun --cpu-bind=cores --unbuffered  ./select_gpu julia --project Examples/testNHSphere.jl \
   --Problem="HeldSuarezMoistSphere" \
   --Device="GPU" \
   --GPUType="AMD" \
