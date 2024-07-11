@@ -1,3 +1,4 @@
+#!/bin/bash
 julia --project Examples/testNHCart.jl \
   --Problem="HillAgnesiXCart" \
   --NumberThreadGPU=512 \
