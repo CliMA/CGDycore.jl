@@ -60,9 +60,9 @@ end
 function AddExpStretchVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,
   dz_bottom::Float64,dz_top::Float64)
 
-  Grid.zP=zeros(nz);
-  z=zeros(nz+1);
-  Grid.dzeta = zeros(nz)
+  z = zeros(nz+1)
+  zP = zeros(nz)
+  dzeta = zeros(nz)
   Grid.H = H
 
   z_bottom = 0.0
@@ -127,8 +127,19 @@ function AddExpStretchVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,
     z[iz] = faces[iz]
   end
   for i = 1 : nz
-    Grid.dzeta[i] = z[i+1] - z[i]
-    Grid.zP[i] = 0.5 * (z[i] + z[i+1])
+    dzeta[i] = z[i+1] - z[i]
+    zP[i] = 0.5 * (z[i] + z[i+1])
   end
+  backend = get_backend(Grid.z)
+  FT = eltype(Grid.z)
+  zGPU = KernelAbstractions.zeros(backend,FT,size(z))
+  copyto!(zGPU,z)
+  Grid.z = zGPU
+  zPGPU = KernelAbstractions.zeros(backend,FT,size(zP))
+  copyto!(zPGPU,zP)
+  Grid.zP = zPGPU
+  dzetaGPU = KernelAbstractions.zeros(backend,FT,size(dzeta))
+  copyto!(dzetaGPU,dzeta)
+  Grid.dzeta = dzetaGPU
   copyto!(Grid.z,z)
 end

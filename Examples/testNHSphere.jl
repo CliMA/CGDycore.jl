@@ -114,23 +114,25 @@ ParallelCom = DyCore.ParallelComStruct()
 ParallelCom.Proc = Proc
 ParallelCom.ProcNumber  = ProcNumber
 
-if Device == "CPU" 
+JuliaDevice = get(ENV, "JuliaDevice", "CPU")
+JuliaGPU = get(ENV, "JuliaGPU", "CUDA")
+
+if JuliaDevice == "CPU"
   backend = CPU()
-elseif Device == "GPU" 
-  if GPUType == "CUDA"
+elseif JuliaDevice == "GPU"
+  if JuliaGPU == "CUDA"
     backend = CUDABackend()
-    CUDA.allowscalar(true)
-#   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
-  elseif GPUType == "AMD"
+    CUDA.allowscalar(false)
+    CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+  elseif JuliaGPU == "AMD"
     backend = ROCBackend()
-    AMDGPU.allowscalar(true)
-  elseif GPUType == "Metal"
+    AMDGPU.allowscalar(false)
+  elseif JuliaGPU == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
   end
 else
   backend = CPU()
-  Device == "CPU"
 end
 
 if FloatTypeBackend == "Float64"

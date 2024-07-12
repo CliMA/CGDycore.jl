@@ -1,2 +1,2 @@
 export JuliaDevice="CPU"
-mpirun -n 1 ./Jobs/NHCart/JobNHHillAgnesiCart
+mpirun -n 2 ./Jobs/NHCart/JobNHHillAgnesiCart
