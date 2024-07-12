@@ -1,3 +1,5 @@
+#!/bin/bash
+#SBATCH --job-name=benchmark
 #SBATCH --account=project_465000863
 #SBATCH --time=00:20:00
 #SBATCH --nodes=1
