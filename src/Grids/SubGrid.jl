@@ -39,8 +39,6 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
     end
   end
   FaceNumbersG = unique(FaceNumbersG)
-  @show FaceNumbersG
-  @show FaceNumbersB
   FaceNumbers =[FaceNumbersB; FaceNumbersI]
   for i = 1 : length(FaceNumbers)
      iF = FaceNumbers[i]
