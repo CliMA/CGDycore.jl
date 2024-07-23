@@ -89,7 +89,6 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     NumberingFemCGQuad(Grid,OrdPoly)  
 
   Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
-  copyto!(Glob,GlobCPU)
   Stencil = KernelAbstractions.zeros(backend,Int,size(StencilCPU))
   copyto!(Stencil,StencilCPU)
   MasterSlave = KernelAbstractions.zeros(backend,Int,size(MasterSlaveCPU))
@@ -103,7 +102,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     for iE in Grid.Faces[iF].E
        Side += 1 
        if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-         @views GlobLoc = reshape(Glob[:,iF],OP,OP) 
+         @views GlobLoc = reshape(GlobCPU[:,iF],OP,OP) 
          if Side == 1
            for i in GlobLoc[1:OP-1,1]   
              push!(Boundary,i)
@@ -124,6 +123,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
        end  
     end
   end  
+  copyto!(Glob,GlobCPU)
   M = KernelAbstractions.zeros(backend,FT,nz,NumG,2)
   MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
   return CGQuad{FT,

@@ -67,6 +67,7 @@ function GradMPFA(backend,FT,Grid)
   Nodes = Grid.Nodes
   Edges = Grid.Edges
   Faces = Grid.Faces
+  @show length(Faces)
   NumNodes = Grid.NumNodes
 
   RowInd = Int64[]

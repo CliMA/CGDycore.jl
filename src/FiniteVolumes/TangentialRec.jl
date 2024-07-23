@@ -392,7 +392,6 @@ function TangentialDiv(F,LocGlob,fu!,Ord)
           (dXdx * fuLocB[:,j,iw,4]) * e[j]
        end
     end
-    @show LocGlob[:,iF]
     NVal[LocGlob[:,iF],LocGlob[:,iF]] = NVal[LocGlob[:,iF],LocGlob[:,iF]] + SLoc
   end
   return NVal
@@ -430,7 +429,6 @@ function MatrixTangential(Grid)
     for i = 1 : NumF
       KiteVol[i] = (Grids.AreaSphericalTriangle(F[i].P1,F[i].P2,F[i].P3) + 
         Grids.AreaSphericalTriangle(F[i].P2,F[i].P3,F[i].P4)) * Grid.Rad^2
-      @show iF,i,KiteVol[i],AA  
     end  
     KiteFaces[iF].KiteVol = KiteVol
   end    

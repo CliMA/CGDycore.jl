@@ -257,6 +257,45 @@ function (profile::GalewskiExample)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct HaurwitzExample <: Example end
+
+function (profile::HaurwitzExample)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    g = Phys.Grav
+    Ω = Phys.Omega
+    ω = Param.ω
+    R = Param.R
+    (lon,lat,r) = Grids.cart2sphere(x[1],x[2],x[3])
+    a = Phys.RadEarth
+    Th = FT(1)
+    aKcos = a * Param.K * cos(lat)^(R-1)
+    # eq. 143 from Williamson et al. 1992
+    u = a * ω * cos(lat)
+      + aKcos * (R * sin(lat)^2 - cos(lat)^2) * cos(R*lon)
+    # eq. 144 from Williamson et al. 1992
+    v = -aKcos * R * sin(lat) * sin(R * lon)
+    w = FT(0)
+    Th = FT(1)
+
+    c2lat = cos(lat)^2
+    cRlat = cos(lat)^R
+    c2Rlat = cos(lat)^(2R)
+    # eq. 147 from Williamson et al. 1992
+    A = ω/2 * (2Ω + ω) * c2lat
+      + Param.K^2 * c2Rlat * ((R+1)*c2lat + (2R^2-R-2) - 2R^2/c2lat)
+    # eq. 148 from Williamson et al. 1992
+    B = ( 2(Ω+ω)*Param.K )/( (R+1)*(R+2) )*cRlat*((R^2+2R+2) - (R+1)^2*c2lat)
+    # eq. 149 from Williamson et al. 1992
+    C = (Param.K^2 * c2Rlat * ( (R+1)*c2lat - (R+2)))/4
+    # eq. 146 from Williamson et al. 1992
+    Rho = Param.h0 + a^2/g*(A + B*cos(R*lon) + C*cos(2R*lon))
+
+    return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct LinearBlob <: Example end
 
 function (profile::LinearBlob)(Param,Phys)

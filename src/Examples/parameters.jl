@@ -10,6 +10,14 @@ Base.@kwdef struct ParamGalewskiSphere
   Omega = 2*pi/24.0/3600.0 
 end
 
+Base.@kwdef struct ParamHaurwitzSphere
+  ω = 7.848e-6 # Hz
+  K = 7.848e-6 # Hz
+  h0 = 8000 # m
+  R = 4
+  Ω = 2*pi/24.0/3600.0
+end
+
 Base.@kwdef struct ParamLinearBlob
   lat0 = 4.0*atan(1.0)
   lon0 = 2.0*atan(1.0)
@@ -136,23 +144,19 @@ Base.@kwdef struct ParamHillSchaerCart
   Stretch::Bool = false
 end
 
-Base.@kwdef struct ParamHillAgnesiXCart{FT}
+Base.@kwdef struct ParamHillAgnesiXCart
   Deep::Bool = false
-  NBr::FT = 1.e-4
-  Th0::FT =300.0
-  uMax::FT =10
-  vMax::FT =0
-  wMax::FT =0
-  TEq::FT =300.0
-  a::FT  = 1000.0
-  h::FT  = 400.0
-  xc::FT  = 0.0
+  NBr::Float64 = 1.e-2
+  Th0::Float64 =300.0
+  uMax::Float64 =10
+  vMax::Float64 =0
+  wMax::Float64 =0
+  TEq::Float64 =300.0
+  a::Float64  = 1000.0
+  h::Float64  = 400.0
+  xc::Float64  = 0.0
   Stretch::Bool = false
-  CMom::FT = 1.e-3
-  CM::FT  = 0.01 #0.0044
-  CE::FT  = 0.0044
-  CH::FT = 0.0044
-  CTr::FT = 0.004
+  CMom::Float64 = 1.e-3
 end
 
 Base.@kwdef struct ParamHillAgnesiYCart
@@ -340,6 +344,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "GalewskiSphere"
     @show Problem
     Param = ParamGalewskiSphere()
+  elseif Problem == "HaurwitzSphere"
+    @show Problem
+    Param = ParamHaurwitzSphere()
   elseif Problem == "LinearBlob"
     @show Problem
     Param = ParamLinearBlob()
@@ -352,7 +359,7 @@ function Parameters(FT,Problem::String)
     Param = ParamHillSchaerCart()
   elseif Problem == "HillAgnesiXCart"
     @show Problem
-    Param = ParamHillAgnesiXCart{FT}()
+    Param = ParamHillAgnesiXCart()
   elseif Problem == "HillAgnesiYCart"
     @show Problem
     Param = ParamHillAgnesiYCart()

@@ -8,6 +8,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
   NumFaces = 0
   FaceNumbersI = zeros(Int,0)
   FaceNumbersB = zeros(Int,0)
+  FaceNumbersG = zeros(Int,0)
   GhostFaceNumbers = zeros(Int,0)
   EdgeNumbers = zeros(Int,0)
   NodeNumbers = zeros(Int,0)
@@ -24,6 +25,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
         for j = 1 : length(N.F)
           if Proc[N.F[j]] != ProcNumber
             Inner = false
+            push!(FaceNumbersG,N.F[j])
           end
         end  
       end
@@ -36,6 +38,9 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
       end  
     end
   end
+  FaceNumbersG = unique(FaceNumbersG)
+  @show FaceNumbersG
+  @show FaceNumbersB
   FaceNumbers =[FaceNumbersB; FaceNumbersI]
   for i = 1 : length(FaceNumbers)
      iF = FaceNumbers[i]
@@ -177,7 +182,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
   end
 
 # Add Ghost Faces
-  @inbounds for i = 1:NumNodes
+  @inbounds for i = 1 : NumNodes
     Nodes[i].F = zeros(Int,0)
     @inbounds for j in eachindex(Nodes[i].FG)
       push!(Nodes[i].F,DictF[Nodes[i].FG[j]])  

@@ -9,6 +9,9 @@ function InitialProfile!(Model,Problem,Param,Phys)
   if Problem == "GalewskiSphere"
     Profile = Examples.GalewskiExample()(Param,Phys)
     Model.InitialProfile = Profile
+  elseif Problem == "HaurwitzSphere"
+    Profile = Examples.HaurwitzExample()(Param,Phys)
+    Model.InitialProfile = Profile
   elseif Problem == "LinearBlob"
     Profile = Examples.LinearBlob()(Param,Phys)
     Model.InitialProfile = Profile

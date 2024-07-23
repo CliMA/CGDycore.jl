@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei
 using MPI
 using Base
 using CUDA
@@ -140,115 +140,70 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-Problem = "GalewskiSphere"
-RadEarth = Phys.RadEarth
-dtau = 6
-nAdveVel = 5000
-Problem = "LinearBlob"
-Fac = 1.0
-RadEarth = 1.0 * Fac
-dtau = 0.0001 * Fac
-nAdveVel = 16000
-PrintStp = 800
+RefineLevel = 6
+RadEarth = 1.0
+nz = 1
+nPanel = 80
+nQuad = 5
+nQuadM = 5#2
+nQuadS = 5 #3
+Decomp = "EqualArea"
 
+GridType = "TriangularSphere"
 
+print("Which Problem do you want so solve? \n")
+print("1 - GalewskiSphere\n\
+       2 - HaurwitzSphere\n\
+       3 - LinearBlob\n")
+text = readline() 
+a = parse(Int,text)
+if  a == 1
+  Problem = "GalewskiSphere"
+  RadEarth = Phys.RadEarth
+  dtau = 30
+  nAdveVel = ceil(Int,6*24*3600/dtau)
+  GridTypeOut = GridType*"NonLinShallowGal"
+  @show nAdveVel
+elseif  a == 2
+  Problem = "HaurwitzSphere"
+  RadEarth = Phys.RadEarth
+  dtau = 100
+  nAdveVel = ceil(Int,6*24*3600/dtau)
+  GridTypeOut = GridType*"NonLinShallowHaurwitz"
+  @show nAdveVel
+elseif  a == 3
+  Problem = "LinearBlob"
+  RadEarth = 1.0
+  dtau = 0.00025
+  nAdveVel = 100
+  GridTypeOut = GridType*"NonLinShallowBlob"
+  @show nAdveVel
+else  
+    print("Error")
+end
+println("The chosen Problem is ") 
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-RefineLevel = 5
-nz = 1
-nPanel = 4
-nQuad = 2
-Decomp = ""
-Decomp = "EqualArea"
-Model.HorLimit = true
-OrdPoly = 1
-
-#TRI
-#GridType = "DelaunaySphere"
-GridType = "CubedSphere"
-#GridType = "MPASO"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
-  Model,ParallelCom;order=false)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-KiteFaces = FiniteVolumes.MatrixTangential(Grid)
+  Model,ParallelCom)
 
 
-#MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid,Grid.Type)
+DG = FEMSei.DG1Struct{FTB}(Grids.Tri(),backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grids.Tri(),backend,Grid)
+ND = FEMSei.Nedelec1Struct{FTB}(Grids.Tri(),backend,Grid)
 
+ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
 
-#Div = FiniteVolumes.Divergence(backend,FTB,MetricFV,Grid)
-#GradFV = FiniteVolumes.Gradient(backend,FTB,MetricFV,Grid)
-Grad = FiniteVolumes.GradMPFA(backend,FTB,Grid)
-Div = FiniteVolumes.DivMPFA(backend,FTB,Grid)
-
-
-pPosS = 1
-pPosE = Grid.NumFaces
-uPosS = pPosE + 1
-uPosE = pPosE + Grid.NumEdges
-Uu = zeros(FTB,Grid.NumEdges)
-Up = zeros(FTB,Grid.NumFaces+Grid.NumBoundaryFaces)
-@views UpI = Up[1:Grid.NumFaces]
-FiniteVolumes.ProjectFace!(backend,FTB,UpI,Grid,Model.InitialProfile)
-stop
-r = similar(U)
-UNew = similar(U)
-@views rp = r[pPosS:pPosE]
-@views ru = r[uPosS:uPosE]
+pPosS = ModelFEM.pPosS
+pPosE = ModelFEM.pPosE
+uPosS = ModelFEM.uPosS
+uPosE = ModelFEM.uPosE
+U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
-@views UNewp = UNew[pPosS:pPosE]
-@views UNewu = UNew[uPosS:uPosE]
 
-FiniteVolumes.ProjectFace!(backend,FTB,Up,Grid,Model.InitialProfile)
-@. Up *= Fac
-FiniteVolumes.ProjectEdge!(backend,FTB,Uu,Grid,Model.InitialProfile)
-FileNumber = 0
-VelCa = zeros(Grid.NumFaces,Grid.Dim)
-VelSp = zeros(Grid.NumFaces,2)
-FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
-pNeu = zeros(FTB,Grid.NumFaces)
+FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
 
-time = 0.0
-
-
-@show dtau,nAdveVel
-for i = 1 : nAdveVel
-  @show i  
-  mul!(rp,Div,Uu)
-  mul!(ru,Grad,Up)
-  @. ru = -ru
-  @. UNew = U + 0.5 * dtau * r  
-
-  mul!(rp,Div,UNewu)
-  mul!(ru,Grad,UNewp)
-  @. ru = -ru
-  @. U = U + dtau * r  
-
-  if mod(i,PrintStp) == 0
-    global FileNumber += 1
-    FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
-    FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
-  end  
-
-
-  #time = time + dtau
-end
-
-
-FileNumber += 1
-FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [Up VelCa VelSp], FileNumber)
-
-
-#= ToDO
-Gleichungen testen mit @show
-mehr Quadraturregeln für Dreiecke höhere ordnungen
-RT1, DG1
-Wiki von github
-=#
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,GridTypeOut,Proc,ProcNumber)

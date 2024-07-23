@@ -73,7 +73,7 @@ function ExchangeStruct{FT}(backend) where FT<:AbstractFloat
 end  
 
 
-function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,HorLimit) where FT<:AbstractFloat
+function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,ProcNumber,HorLimit) where FT<:AbstractFloat
 
   IndSendBuffer = Dict()
   IndRecvBuffer = Dict()
@@ -118,8 +118,8 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
       if InBoundEdgesP[iEB] == NeiProcE[iP]
         iE = InBoundEdges[iEB] 
         push!(GlobTemp,SubGrid.Edges[iE].EG)
-        for k = 1 : OrdPoly - 1
-          push!(LocTemp,k + SubGrid.NumNodes + (iE - 1)*(OrdPoly - 1))
+        for k = 1 : OrdEdge
+          push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
         end
       end  
     end
@@ -153,8 +153,8 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
       if InBoundEdgesP[iEB] == NeiProcE[iP]
         iEB1 += 1  
         (iE,) = DictE[GlobInd[iEB1]]  
-        for k = 1 : OrdPoly - 1
-          push!(LocTemp,k + SubGrid.NumNodes + (iE - 1)*(OrdPoly - 1))
+        for k = 1 : OrdEdge
+          push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
         end
       end
     end
@@ -166,82 +166,84 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdPoly,CellToProc,Proc,ProcNumber,H
   InBoundNodes = zeros(Int,0)
   InBoundNodesP = zeros(Int,0)
   InBoundNodesFG = zeros(Int,0)
-  for i = 1 : SubGrid.NumNodes
-    NeiProcLoc = zeros(Int,0)  
-    NeiFG = zeros(Int,0)  
-    for iF in eachindex(SubGrid.Nodes[i].FG)
-      if CellToProc[SubGrid.Nodes[i].FG[iF]] != Proc
-        push!(NeiProcLoc,CellToProc[SubGrid.Nodes[i].FG[iF]])  
-        push!(NeiFG,SubGrid.Nodes[i].FG[iF])  
+  if OrdNode > 0
+    for i = 1 : SubGrid.NumNodes
+      NeiProcLoc = zeros(Int,0)  
+      NeiFG = zeros(Int,0)  
+      for iF in eachindex(SubGrid.Nodes[i].FG)
+        if CellToProc[SubGrid.Nodes[i].FG[iF]] != Proc
+          push!(NeiProcLoc,CellToProc[SubGrid.Nodes[i].FG[iF]])  
+          push!(NeiFG,SubGrid.Nodes[i].FG[iF])  
+        end
       end
+      NeiProcLoc = unique(NeiProcLoc)
+      for iC in eachindex(NeiProcLoc)
+        push!(InBoundNodes,SubGrid.Nodes[i].N)  
+        push!(InBoundNodesP,NeiProcLoc[iC])
+        push!(InBoundNodesFG,NeiFG[iC])
+        NumInBoundNodes += 1
+      end  
+    end   
+    NeiProcN = unique(InBoundNodesP)
+    NeiFG = unique(InBoundNodesFG)
+    NumNeiProcN = length(NeiProcN)
+    NumNeiFG = length(NeiFG)
+    DictN=Dict()
+    for iN = 1 : NumInBoundNodes
+      DictN[(SubGrid.Nodes[InBoundNodes[iN]].NG,InBoundNodesP[iN])] = (SubGrid.Nodes[InBoundNodes[iN]].N,
+        InBoundNodesP[iN])
     end
-    NeiProcLoc = unique(NeiProcLoc)
-    for iC in eachindex(NeiProcLoc)
-      push!(InBoundNodes,SubGrid.Nodes[i].N)  
-      push!(InBoundNodesP,NeiProcLoc[iC])
-      push!(InBoundNodesFG,NeiFG[iC])
-      NumInBoundNodes += 1
+    GlobBuffer = Dict()
+    SendBufferN = Dict()
+    for iP in eachindex(NeiProcN)
+      LocTemp = zeros(Int,0)
+      GlobTemp = zeros(Int,0)
+      for iNB = 1 : NumInBoundNodes
+        if InBoundNodesP[iNB] == NeiProcN[iP]
+          iN = InBoundNodes[iNB]
+          push!(GlobTemp,SubGrid.Nodes[iN].NG)
+          push!(LocTemp,iN)
+        end
+      end
+      SendBufferN[NeiProcN[iP]] = LocTemp
+      GlobBuffer[NeiProcN[iP]] = GlobTemp
+    end
+    GlobRecvBuffer = Dict()
+    rreq = MPI.UnsafeMultiRequest(length(NeiProcN))
+    for iP in eachindex(NeiProcN)
+      GlobRecvBuffer[NeiProcN[iP]] = similar(GlobBuffer[NeiProcN[iP]])
+      tag = Proc + ProcNumber*NeiProcN[iP]
+      MPI.Irecv!(GlobRecvBuffer[NeiProcN[iP]], NeiProcN[iP] - 1, tag, MPI.COMM_WORLD, rreq[iP])
     end  
-  end   
-  NeiProcN = unique(InBoundNodesP)
-  NeiFG = unique(InBoundNodesFG)
-  NumNeiProcN = length(NeiProcN)
-  NumNeiFG = length(NeiFG)
-  DictN=Dict()
-  for iN = 1 : NumInBoundNodes
-    DictN[(SubGrid.Nodes[InBoundNodes[iN]].NG,InBoundNodesP[iN])] = (SubGrid.Nodes[InBoundNodes[iN]].N,
-      InBoundNodesP[iN])
-  end
-  GlobBuffer = Dict()
-  SendBufferN = Dict()
-  for iP in eachindex(NeiProcN)
-    LocTemp = zeros(Int,0)
-    GlobTemp = zeros(Int,0)
-    for iNB = 1 : NumInBoundNodes
-      if InBoundNodesP[iNB] == NeiProcN[iP]
-        iN = InBoundNodes[iNB]
-        push!(GlobTemp,SubGrid.Nodes[iN].NG)
-        push!(LocTemp,iN)
+    sreq = MPI.UnsafeMultiRequest(length(NeiProcN))
+    for iP in eachindex(NeiProcN)
+      tag = NeiProcN[iP] + ProcNumber*Proc
+      MPI.Isend(GlobBuffer[NeiProcN[iP]], NeiProcN[iP] - 1, tag, MPI.COMM_WORLD, sreq[iP])
+    end  
+
+    stats = MPI.Waitall(rreq)
+    stats = MPI.Waitall(sreq)
+
+    MPI.Barrier(MPI.COMM_WORLD)
+
+    RecvBufferN = Dict()
+    for iP in eachindex(NeiProcN)
+      GlobInd = GlobRecvBuffer[NeiProcN[iP]]
+      LocTemp=zeros(Int,0)
+      iNB1 = 0
+      for iNB = 1 : NumInBoundNodes
+        if InBoundNodesP[iNB] == NeiProcN[iP]
+          iNB1 += 1
+          (iN,) = DictN[(GlobInd[iNB1],NeiProcN[iP])]
+          push!(LocTemp,iN)
+        end
       end
+      RecvBufferN[NeiProcN[iP]] = LocTemp
     end
-    SendBufferN[NeiProcN[iP]] = LocTemp
-    GlobBuffer[NeiProcN[iP]] = GlobTemp
-  end
-  GlobRecvBuffer = Dict()
-  rreq = MPI.UnsafeMultiRequest(length(NeiProcN))
-  for iP in eachindex(NeiProcN)
-    GlobRecvBuffer[NeiProcN[iP]] = similar(GlobBuffer[NeiProcN[iP]])
-    tag = Proc + ProcNumber*NeiProcN[iP]
-    MPI.Irecv!(GlobRecvBuffer[NeiProcN[iP]], NeiProcN[iP] - 1, tag, MPI.COMM_WORLD, rreq[iP])
-  end  
-  sreq = MPI.UnsafeMultiRequest(length(NeiProcN))
-  for iP in eachindex(NeiProcN)
-    tag = NeiProcN[iP] + ProcNumber*Proc
-    MPI.Isend(GlobBuffer[NeiProcN[iP]], NeiProcN[iP] - 1, tag, MPI.COMM_WORLD, sreq[iP])
-  end  
-
-  stats = MPI.Waitall(rreq)
-  stats = MPI.Waitall(sreq)
-
-  MPI.Barrier(MPI.COMM_WORLD)
-
-  RecvBufferN = Dict()
-  for iP in eachindex(NeiProcN)
-    GlobInd = GlobRecvBuffer[NeiProcN[iP]]
-    LocTemp=zeros(Int,0)
-    iNB1 = 0
-    for iNB = 1 : NumInBoundNodes
-      if InBoundNodesP[iNB] == NeiProcN[iP]
-        iNB1 += 1
-        (iN,) = DictN[(GlobInd[iNB1],NeiProcN[iP])]
-        push!(LocTemp,iN)
-      end
-    end
-    RecvBufferN[NeiProcN[iP]] = LocTemp
-  end
-  for iP in eachindex(NeiProcE)
-    RecvBufferN[NeiProcE[iP]] = [RecvBufferN[NeiProcE[iP]];RecvBufferE[NeiProcE[iP]]] 
-    SendBufferN[NeiProcE[iP]] = [SendBufferN[NeiProcE[iP]];SendBufferE[NeiProcE[iP]]] 
+    for iP in eachindex(NeiProcE)
+      RecvBufferN[NeiProcE[iP]] = [RecvBufferN[NeiProcE[iP]];RecvBufferE[NeiProcE[iP]]] 
+      SendBufferN[NeiProcE[iP]] = [SendBufferN[NeiProcE[iP]];SendBufferE[NeiProcE[iP]]] 
+    end  
   end  
 
   if HorLimit 
