@@ -21,9 +21,9 @@ DoF = Ord * Ord
 NumV = 5
 NumTr = 2
 Nz = 64
-NumberThreadGPU = 1024
+NumberThreadGPU = 512
 GlobCPU = zeros(Int,DoF,NF)
-read!("TestAMD/GlobInd",GlobCPU)
+read!("TestKernels/GlobInd",GlobCPU)
 
 
 
