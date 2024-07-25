@@ -22,7 +22,7 @@ function index_fun(arr; backend=get_backend(arr))
 	    kernel1!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
             KernelAbstractions.synchronize(backend)
         end    
-	kernel2! = my_kernel1!(backend)
+	kernel2! = my_kernel2!(backend)
 	kernel2!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
         KernelAbstractions.synchronize(backend)
         @time for i = 1 : 200
@@ -42,7 +42,7 @@ end
 @kernel function my_kernel1!(out, arr)
         i, j = @index(Global, NTuple)
         for k in 1:size(out, 1)
-             @roc unsafe_fp_atomics=true @atomic :monotonic out[k, i] += arr[i, j]
+             @atomic out[k, i] += arr[i, j]
         end
 end
 
@@ -83,5 +83,3 @@ img[350:450, 350:450] .= 2;
 copyto!(imgGPU,img)
 
 out = Array(index_fun(imgGPU));
-simshow(out)
-
