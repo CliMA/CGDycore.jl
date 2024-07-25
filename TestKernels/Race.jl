@@ -10,7 +10,7 @@ function index_fun(arr; backend=get_backend(arr))
 	fill!(out, 0)
 	kernel! = my_kernel!(backend)
 	kernel!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
-        @time for i = 1 : 10
+        @time for i = 1 : 200
 	    kernel!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
         end    
 	return out
@@ -32,7 +32,7 @@ elseif JuliaDevice == "GPU"
   if JuliaGPU == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(false)
-    CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+#   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif JuliaGPU == "AMD"
     backend = ROCBackend()
     AMDGPU.allowscalar(false)
