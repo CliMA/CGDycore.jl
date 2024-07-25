@@ -10,8 +10,10 @@ function index_fun(arr; backend=get_backend(arr))
 	fill!(out, 0)
 	kernel! = my_kernel!(backend)
 	kernel!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
+        KernelAbstractions.synchronize(backend)
         @time for i = 1 : 200
 	    kernel!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
+            KernelAbstractions.synchronize(backend)
         end    
 	return out
 end
