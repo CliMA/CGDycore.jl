@@ -15,14 +15,42 @@ function index_fun(arr; backend=get_backend(arr))
 	    kernel!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
             KernelAbstractions.synchronize(backend)
         end    
+	kernel1! = my_kernel1!(backend)
+	kernel1!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
+        KernelAbstractions.synchronize(backend)
+        @time for i = 1 : 200
+	    kernel1!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
+            KernelAbstractions.synchronize(backend)
+        end    
+	kernel2! = my_kernel1!(backend)
+	kernel2!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
+        KernelAbstractions.synchronize(backend)
+        @time for i = 1 : 200
+	    kernel2!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
+            KernelAbstractions.synchronize(backend)
+        end    
 	return out
 end
 
 @kernel function my_kernel!(out, arr)
 	i, j = @index(Global, NTuple)
 	for k in 1:size(out, 1)
-             @atomic out[k, i] += arr[i, j]
+             @atomic :monotonic out[k, i] += arr[i, j]
 	end
+end
+
+@kernel function my_kernel1!(out, arr)
+        i, j = @index(Global, NTuple)
+        for k in 1:size(out, 1)
+             @roc unsafe_fp_atomics=true @atomic :monotonic out[k, i] += arr[i, j]
+        end
+end
+
+@kernel function my_kernel2!(out, arr)
+        i, j = @index(Global, NTuple)
+        for k in 1:size(out, 1)
+             out[k, i] += arr[i, j]
+        end
 end
 
 JuliaDevice = get(ENV, "JuliaDevice", "CPU")
