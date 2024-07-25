@@ -1,4 +1,4 @@
 export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
 export UCX_ERROR_SIGNALS=""
-srun -n 1 gpu_wrapper.sh -n 1 -e "./Jobs/NHCart/JobNHHillAgnesiCart"
+srun -n 1 gpu_wrapper.sh -n 1 -e "julia --project TestKernels/Race.jl"
