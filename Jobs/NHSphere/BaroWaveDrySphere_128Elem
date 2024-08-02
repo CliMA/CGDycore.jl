@@ -19,7 +19,7 @@ julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
+  --SimDays=1 \
   --SimHours=0 \
   --SimSeconds=0 \
   --PrintSeconds=0 \
@@ -28,7 +28,7 @@ julia --project Examples/testNHSphere.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=180 \
+  --dtau=37.5 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -40,6 +40,6 @@ julia --project Examples/testNHSphere.jl \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=5.e14 \
-  --HyperDGrad=5.e14 \
-  --HyperDDiv=5.e14
+  --HyperDCurl=3.125e13 \
+  --HyperDGrad=3.125e13 \
+  --HyperDDiv=3.125e13

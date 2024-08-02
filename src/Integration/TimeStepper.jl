@@ -122,6 +122,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
       end
     end
     Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+    @show sum(abs.(U))
   elseif IntMethod == "RosenbrockAMD"
     @time begin
       for i=1:nIter
