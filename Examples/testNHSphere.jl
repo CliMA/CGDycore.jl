@@ -116,6 +116,7 @@ ParallelCom.ProcNumber  = ProcNumber
 
 JuliaDevice = get(ENV, "JuliaDevice", "CPU")
 JuliaGPU = get(ENV, "JuliaGPU", "CUDA")
+machine = get(ENV, "machine", "")
 
 if JuliaDevice == "CPU"
   backend = CPU()
@@ -123,7 +124,10 @@ elseif JuliaDevice == "GPU"
   if JuliaGPU == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(false)
-    CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+    if machine == "levante"
+    else
+       CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+    end
   elseif JuliaGPU == "AMD"
     backend = ROCBackend()
     AMDGPU.allowscalar(false)

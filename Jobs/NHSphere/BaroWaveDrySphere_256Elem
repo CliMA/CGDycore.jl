@@ -28,7 +28,7 @@ julia --project Examples/testNHSphere.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=37.5 \
+  --dtau=18.75 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -36,10 +36,10 @@ julia --project Examples/testNHSphere.jl \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
-  --nPanel=128 \
+  --nPanel=256 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=3.125e13 \
-  --HyperDGrad=3.125e13 \
-  --HyperDDiv=3.125e13
+  --HyperDCurl=7.8125e12 \
+  --HyperDGrad=7.8125e12 \
+  --HyperDDiv=7.8125e12 \
