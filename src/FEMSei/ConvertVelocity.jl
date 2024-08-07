@@ -53,6 +53,36 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HDivElement,Grid,Jacobi)
   end  
 end
 
+function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::VectorElement,Grid,Jacobi)
+  if Grid.Type == Grids.Tri()
+    ksi1 = -1/3 
+    ksi2 = -1/3
+  elseif Grid.Type == Grids.Quad()
+    ksi1 = 0
+    ksi2 = 0
+  end  
+      
+  fRef = zeros(Fe.Comp,Fe.DoF)
+  for iComp = 1 : Fe.Comp
+    for iD = 1 : Fe.DoF
+      fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
+    end
+  end
+
+  VelLoc = zeros(Fe.DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  for iF = 1 : Grid.NumFaces
+    Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
+    detDFLoc = detDF[1]
+    @views VelCa[iF,1] = (fRef[:, 1]' * Vel[Fe.Glob[:,iF]])
+    @views VelCa[iF,2] = (fRef[:, 2]' * Vel[Fe.Glob[:,iF]])
+    @views VelCa[iF,3] = (fRef[:, 3]' * Vel[Fe.Glob[:,iF]])
+  end  
+end
+
 function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HCurlElement,Grid,Jacobi)
   if Grid.Type == Grids.Tri()
     ksi1 = -1/3
@@ -108,6 +138,40 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi)
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1]
     VelCa .= (Grid.Faces[iF].Orientation / detDFLoc) * DF * (fRef[:, :] * VelLoc) 
+    lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
+    VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
+    VelSp[iF,1] = VelSpLoc[1]
+    VelSp[iF,2] = VelSpLoc[2]
+  end  
+end
+
+function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::VectorElement,Grid,Jacobi)
+  if Grid.Type == Grids.Tri()
+    ksi1 = -1/3 
+    ksi2 = -1/3
+  elseif Grid.Type == Grids.Quad()
+    ksi1 = 0
+    ksi2 = 0
+  end  
+      
+  fRef = zeros(Fe.Comp,Fe.DoF)
+  for iComp = 1 : Fe.Comp
+    for iD = 1 : Fe.DoF
+      fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
+    end
+  end
+
+  VelLoc = zeros(Fe.DoF)
+  VelCa = zeros(3)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  for iF = 1 : Grid.NumFaces
+    VelLoc = Vel[Fe.Glob[:,iF]]  
+    Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
+    detDFLoc = detDF[1]
+    VelCa .= (fRef[:, 1]' * Vel[Fe.Glob[:,iF]])
     lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
     VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
     VelSp[iF,1] = VelSpLoc[1]

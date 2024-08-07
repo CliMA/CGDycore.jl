@@ -222,8 +222,8 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Metric,Global)
       ksi1=ksi0+dd;
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
-          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),CG.xwCPU,i)*
-                DG.Lagrange(0.5*(eta0+eta1),CG.xwCPU,j)
+          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
+                DG.Lagrange(0.5*(eta0+eta1),CG.xw,j)
         end
       end
       ksi0 = ksi1
@@ -248,8 +248,9 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber)
   stepS = "$step"
   vtk_filename_noext = filename * stepS;
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  cName=["Height","uC","vC","wC","uS","vS"]
   for iC = 1 : size(c,2)
-    vtk["c"*"$iC", VTKCellData()] = c[:,iC]
+    vtk[cName[iC], VTKCellData()] = c[:,iC]
   end
   outfiles = vtk_save(vtk);
   return nothing
@@ -397,14 +398,14 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global, part::Int, 
       copyto!(DiffKoeffCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["DiffKoeff", VTKCellData()] = DiffKoeffCell
     elseif  str == "Tr1" 
-      Tr1Pos = Global.Model.TrPos
+      Tr1Pos = Global.Model.NumV + 1
       RhoPos = Global.Model.RhoPos
       Tr1Cell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views InterpolateRhoGPU!(cCell,U[:,:,Tr1Pos],U[:,:,RhoPos],vtkInter,CG.Glob)
       copyto!(Tr1Cell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["Tr1", VTKCellData()] = Tr1Cell
     elseif  str == "Tr2" 
-      Tr2Pos = Global.Model.TrPos + 1
+      Tr2Pos = Global.Model.NumV + 2
       Tr2Cell = zeros(OrdPrint*OrdPrint*nz*NF)
       RhoPos = Global.Model.RhoPos
 #     @views Interpolate!(Tr2Cell,U[:,:,Tr2Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
