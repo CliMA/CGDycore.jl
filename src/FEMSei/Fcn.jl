@@ -58,3 +58,10 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   DivRhs!(backend,FTB,Fp,UCacheu,RT,DG,Grid,DG.Type,QuadOrdS,Jacobi)
   ldiv!(DG.LUM,Fp)
 end
+
+function Curl!(backend,FTB,uCurl,DG,Uu,RT,ND,Grid,Jacobi,QuadOrdM,Curl,UCacheu)
+  ProjectHDivHCurl!(backend,FTB,UCacheu,ND,Uu,RT,
+    Grid,RT.Type,QuadOrdM,Jacobi)
+  mul!(uCurl,Curl,UCacheu)
+  ldiv!(DG.LUM,uCurl)
+end

@@ -302,11 +302,11 @@ if Buoyancy
     GravitationFun = GPU.GravitationDeep()(Phys)
     Model.GravitationFun = GravitationFun
   else
-    GravitationFun = GPU.GravitationNo()
+    GravitationFun = GPU.GravitationNo()()
     Model.GravitationFun = GravitationFun
   end
 else
-  GravitationFun = GPU.GravitationNo()
+  GravitationFun = GPU.GravitationNo()()
   Model.GravitationFun = GravitationFun
 end
 

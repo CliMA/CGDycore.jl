@@ -21,14 +21,53 @@ function vtkStruct{FT}(backend,Grid) where FT<:AbstractFloat
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   celltype = VTKCellTypes.VTK_POLYGON
   cells = MeshCell[]
-  for iF = 1 : Grid.NumFaces
-    push!(cells, MeshCell(celltype, Grid.Faces[iF].N))
+  NumNodes = 0
+
+  for iF in 1 : Grid.NumFaces
+    inds = Vector(1 : length(Grid.Faces[iF].N)) .+ NumNodes
+    push!(cells, MeshCell(celltype, inds))
+    NumNodes += length(Grid.Faces[iF].N)
   end
-  pts = Array{Float64,2}(undef,3,Grid.NumNodes)
-  for iN = 1 : Grid.NumNodes
-    pts[1,iN] = Grid.Nodes[iN].P.x  
-    pts[2,iN] = Grid.Nodes[iN].P.y  
-    pts[3,iN] = Grid.Nodes[iN].P.z  
+
+  pts = Array{Float64,2}(undef,3,NumNodes)
+  NumNodes = 0
+  Flat = true
+  dTol = 2*pi / 30
+  if Flat
+    for iF in 1 : Grid.NumFaces
+      lam = zeros(length(Grid.Faces[iF].N))
+      theta = zeros(length(Grid.Faces[iF].N))
+      NumNodesLoc = 0
+      for iN in Grid.Faces[iF].N  
+        NumNodesLoc += 1  
+        (lam[NumNodesLoc],theta[NumNodesLoc],z) = Grids.cart2sphere(Grid.Nodes[iN].P.x,Grid.Nodes[iN].P.y,Grid.Nodes[iN].P.z)
+      end  
+      lammin = minimum(lam)
+      lammax = maximum(lam)
+      if abs(lammin - lammax) > 2*pi-dTol
+        for i = 1 : NumNodesLoc
+          if lam[i] > pi
+            lam[i] = lam[i] - 2*pi
+            if lam[i] > 3*pi
+              lam[i] = lam[i]  - 2*pi
+            end
+          end
+        end
+      end  
+      for i = 1 : NumNodesLoc
+        NumNodes += 1  
+        pts[:,NumNodes] = [lam[i],theta[i],0.0]
+      end
+    end
+  else    
+    for iF in 1 : Grid.NumFaces
+      for iN in Grid.Faces[iF].N  
+        NumNodes += 1  
+        pts[1,NumNodes] = Grid.Nodes[iN].P.x  
+        pts[2,NumNodes] = Grid.Nodes[iN].P.y  
+        pts[3,NumNodes] = Grid.Nodes[iN].P.z  
+      end  
+    end
   end  
 
   return vtkStruct{FT,

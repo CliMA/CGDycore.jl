@@ -1,14 +1,10 @@
 #!/bin/bash
 julia --project Examples/testNHSphere.jl \
-  --Problem=""GalewskiSphere"" \
+  --Problem="HaurwitzSphere" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
-  --RhoVPos=0 \
-  --RhoCPos=0 \
-  --ProfpBGrd="" \
-  --ProfRhoBGrd="" \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
@@ -18,20 +14,20 @@ julia --project Examples/testNHSphere.jl \
   --Buoyancy=false \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
-  --SimDays=6 \
+  --SimDays=14 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=6 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --StartAverageDays=100 \
-  --Flat=true \
-  --dtau=100 \
+  --Flat=false \
+  --dtau=50 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
   --GridType="CubedSphere" \
   --nz=1 \
-  --nPanel=32 \
+  --nPanel=40 \
   --H=300.0 \
   --OrdPoly=4 \
   --HyperVisc=true \

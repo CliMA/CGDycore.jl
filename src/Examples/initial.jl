@@ -226,6 +226,8 @@ function (profile::StratifiedExample)(Param,Phys)
     Th = Th0 * exp(z *  S)
     pLoc = p0 * (FT(1) - Grav / (Cpd * Th0 * S) * (FT(1) - exp(-S * z))).^(Cpd / Rd)
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
+    Rho = 1.0
+    Th = Th0
     return (Rho,u,v,w,Th)
   end
   return local_profile
@@ -266,13 +268,15 @@ function (profile::HaurwitzExample)(Param,Phys)
     Ω = Phys.Omega
     ω = Param.ω
     R = Param.R
+    K = Param.K
+    h0 = Param.h0
     (lon,lat,r) = Grids.cart2sphere(x[1],x[2],x[3])
     a = Phys.RadEarth
     Th = FT(1)
-    aKcos = a * Param.K * cos(lat)^(R-1)
+    aKcos = a * K * cos(lat)^(R-1)
     # eq. 143 from Williamson et al. 1992
-    u = a * ω * cos(lat)
-      + aKcos * (R * sin(lat)^2 - cos(lat)^2) * cos(R*lon)
+    u = a * ω * cos(lat) +
+      aKcos * (R * sin(lat)^2 - cos(lat)^2) * cos(R*lon)
     # eq. 144 from Williamson et al. 1992
     v = -aKcos * R * sin(lat) * sin(R * lon)
     w = FT(0)
@@ -282,14 +286,14 @@ function (profile::HaurwitzExample)(Param,Phys)
     cRlat = cos(lat)^R
     c2Rlat = cos(lat)^(2R)
     # eq. 147 from Williamson et al. 1992
-    A = ω/2 * (2Ω + ω) * c2lat
-      + Param.K^2 * c2Rlat * ((R+1)*c2lat + (2R^2-R-2) - 2R^2/c2lat)
+    A = ω/2 * (2Ω + ω) * c2lat +
+      K^2 * c2Rlat * ((R+1)*c2lat + (2R^2-R-2) - 2R^2/c2lat)/4
     # eq. 148 from Williamson et al. 1992
-    B = ( 2(Ω+ω)*Param.K )/( (R+1)*(R+2) )*cRlat*((R^2+2R+2) - (R+1)^2*c2lat)
+    B = ( 2(Ω+ω)*K )/( (R+1)*(R+2) )*cRlat*((R^2+2R+2) - (R+1)^2*c2lat)
     # eq. 149 from Williamson et al. 1992
-    C = (Param.K^2 * c2Rlat * ( (R+1)*c2lat - (R+2)))/4
+    C = (K^2 * c2Rlat * ( (R+1)*c2lat - (R+2)))/4
     # eq. 146 from Williamson et al. 1992
-    Rho = Param.h0 + a^2/g*(A + B*cos(R*lon) + C*cos(2R*lon))
+    Rho = h0 + a^2/g*(A + B*cos(R*lon) + C*cos(2R*lon))
 
     return (Rho,u,v,w,Th)
   end

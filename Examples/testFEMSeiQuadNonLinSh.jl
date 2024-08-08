@@ -142,7 +142,7 @@ Model = DyCore.ModelStruct{FTB}()
 
 RefineLevel = 6
 nz = 1
-nPanel = 80
+nPanel = 40
 nQuad = 4
 nQuadM = 4 #2
 nQuadS = 4 #3
@@ -166,7 +166,7 @@ if  a == 1
 elseif  a == 2
     Problem = "HaurwitzSphere"
     RadEarth = Phys.RadEarth
-    dtau = 30
+    dtau = 60
     nAdveVel = ceil(Int,6*24*3600/dtau)
     GridTypeOut = GridType*"NonLinShallowHaurwitz"
     @show nAdveVel
