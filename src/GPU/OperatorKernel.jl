@@ -239,6 +239,86 @@ end
   end
 end
 
+@kernel inbounds = true function DivRhoKEUpwind3Kernel!(F,@Const(U),@Const(p),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob))
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  cCol = @localmem eltype(F) (N,N, ColumnTilesDim+3)
+  uConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  vConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  if Iz <= Nz
+    cCol[I,J,iz+1] = (U[Iz,ind,5] + p[Iz,ind]) / U[Iz,ind,1] 
+    @views (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    uConCol[I,J,iz] = uCon
+    vConCol[I,J,iz] = vCon
+  end
+  if iz == 1
+    Izm1 = max(Iz - 1,1)
+    cCol[I,J,iz] = (U[Izm1,ind,5] + p[Izm1,ind]) / U[Izm1,ind,1] 
+#   if Iz == 1
+#     cCol[I,J,iz] = eltype(F)(2) * cCol[I,J,iz] - U[2,ind,5] / U[2,ind,1]  
+#   end  
+  end
+  if iz == ColumnTilesDim || Iz == Nz
+    Izp1 = min(Iz + 1,Nz)
+    cCol[I,J,iz+2] = (U[Izp1,ind,5] + p[Izp1,ind]) / U[Izp1,ind,1] 
+    Izp2 = min(Iz + 2,Nz)
+    cCol[I,J,iz+3] = (U[Izp2,ind,5] + p[Izp2,ind]) / U[Izp2,ind,1] 
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz < Nz 
+    cLL = cCol[I,J,iz]
+    cL = cCol[I,J,iz+1]
+    cR = cCol[I,J,iz+2]
+    cRR = cCol[I,J,iz+3]
+
+    @views wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
+      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+
+    Izm1 = max(Iz - 1,1)
+    Izp2 = min(Iz + 2, Nz)
+    JLL = JJ[ID,1,Izm1,IF] + JJ[ID,2,Izm1,IF]
+    JL = JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]
+    JR = JJ[ID,1,Iz+1,IF] + JJ[ID,2,Iz+1,IF]
+    JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
+    cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
+    Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
+    @atomic :monotonic F[Iz,ind,5] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz+1,ind,5] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
+    Flux = eltype(F)(0.5)*wCon
+    @atomic :monotonic F[Iz,ind,1] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz+1,ind,1] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
+  end 
+
+  if Iz <= Nz
+    DivRho = D[I,1] * uConCol[1,J,iz] 
+    DivRho += D[J,1] * vConCol[I,1,iz] 
+    DivRhoTr = D[I,1] * uConCol[1,J,iz] * cCol[1,J,iz+1] 
+    DivRhoTr += D[J,1] * vConCol[I,1,iz] * cCol[I,1,iz+1]
+    for k = 2 : N
+      DivRho += D[I,k] * uConCol[k,J,iz] 
+      DivRho += D[J,k] * vConCol[I,k,iz] 
+      DivRhoTr += D[I,k] * uConCol[k,J,iz] * cCol[k,J,iz+1] 
+      DivRhoTr += D[J,k] * vConCol[I,k,iz] * cCol[I,k,iz+1]
+    end
+    @atomic :monotonic F[Iz,ind,1] += DivRho / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz,ind,5] += DivRhoTr / (M[Iz,ind,1] + M[Iz,ind,2])
+  end
+end
 @kernel inbounds = true function DivRhoThUpwind3Kernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 

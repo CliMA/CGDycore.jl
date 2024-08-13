@@ -186,7 +186,7 @@ struct PhysParameters{FT<:AbstractFloat}
 end
 function PhysParameters{FT}() where FT<:AbstractFloat
   RadEarth = 6.37122e+6
-  Grav =  9.81
+  Grav =  9.80616
   Cpd = 1004.0
   Cvd = 717.0
   Cpv = 1885.0
@@ -309,11 +309,13 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Curl::Bool
   Stretch::Bool
   StretchType::String
+  State::String
   InitialProfile::Any
   Eddy::Any
   Force::Any
   Damp::Any
   Pressure::Any
+  dPresdRhoTh::Any
   CoriolisFun::Any
   GravitationFun::Any
   MicrophysicsSource::Any
@@ -390,11 +392,13 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Curl = true
   Stretch = false
   StretchType = ""
+  State = ""
   InitialProfile = ""
   Eddy = ""
   Force = ""
   Damp = ""
   Pressure = ""
+  dPresdRhoTh = ""
   CoriolisFun = ""
   GravitationFun = ""
   MicrophysicsSource = ""
@@ -469,11 +473,13 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Curl,
    Stretch,
    StretchType,
+   State,
    InitialProfile,
    Eddy,
    Force,
    Damp,
    Pressure,
+   dPresdRhoTh,
    CoriolisFun,
    GravitationFun,
    MicrophysicsSource,

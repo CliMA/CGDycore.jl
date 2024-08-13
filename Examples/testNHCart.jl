@@ -215,6 +215,7 @@ Model.Thermo = Thermo
 Model.Curl = Curl
 Model.Stretch = Stretch
 Model.StretchType = StretchType
+Model.State = State
 Model.ModelType = ModelType
 Model.HyperVisc = HyperVisc
 Model.HyperDCurl = HyperDCurl # =7.e15
@@ -312,8 +313,13 @@ end
 
 # Pressure
 if State == "Dry"
-  Pressure = Models.Dry()(Phys)
+  Pressure, dPresdRhoTh = Models.Dry()(Phys)
   Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "DryEnergy"
+  Pressure, dPresdRhoTh = Models.DryEnergy()(Phys)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "Moist"
   Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos+NumV,Model.RhoCPos+NumV)
@@ -385,7 +391,7 @@ Global.Output.vtk=0
   Global.Output.Flat=true
   Global.Output.H=H
   if ModelType == "VectorInvariant" || ModelType == "Advection"
-    if State == "Dry"
+    if State == "Dry" || State == "DryEnergy"
       Global.Output.cNames = [
         "Rho",
         "u",

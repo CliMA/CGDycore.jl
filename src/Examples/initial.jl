@@ -183,9 +183,11 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     u = Param.uMax
     v = Param.vMax
     w = FT(0)
+    z = x[3]
     Grav = Phys.Grav
     p0 = Phys.p0
     Rd = Phys.Rd
+    Cvd = Phys.Cvd
     kappa = Phys.kappa
     Th0 = Param.Th0
     DeltaTh = Param.DeltaTh
@@ -201,7 +203,10 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
       Th = Th + DeltaTh * cos(FT(0.5) * pi * rr /rC0)^2
     end
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
-    return (Rho,u,v,w,Th)
+    T = pLoc / (Rd * Rho)
+    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
+
+    return (Rho,u,v,w,Th,E)
   end
   return local_profile
 end
@@ -219,6 +224,7 @@ function (profile::StratifiedExample)(Param,Phys)
     Grav = Phys.Grav
     p0 = Phys.p0
     Cpd = Phys.Cpd
+    Cvd = Phys.Cvd
     Rd = Phys.Rd
     kappa = Phys.kappa
     Th0 = Param.Th0
@@ -226,9 +232,9 @@ function (profile::StratifiedExample)(Param,Phys)
     Th = Th0 * exp(z *  S)
     pLoc = p0 * (FT(1) - Grav / (Cpd * Th0 * S) * (FT(1) - exp(-S * z))).^(Cpd / Rd)
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
-    Rho = 1.0
-    Th = Th0
-    return (Rho,u,v,w,Th)
+    T = pLoc / (Rd * Rho)
+    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
+    return (Rho,u,v,w,Th,E)
   end
   return local_profile
 end
@@ -284,16 +290,16 @@ function (profile::HaurwitzExample)(Param,Phys)
 
     c2lat = cos(lat)^2
     cRlat = cos(lat)^R
-    c2Rlat = cos(lat)^(2R)
+    c2Rlat = cos(lat)^(2*R)
     # eq. 147 from Williamson et al. 1992
-    A = ω/2 * (2Ω + ω) * c2lat +
-      K^2 * c2Rlat * ((R+1)*c2lat + (2R^2-R-2) - 2R^2/c2lat)/4
+    A = ω / 2 * (2 * Ω + ω) * c2lat +
+      K^2 / 4 * c2Rlat * ((R + 1) * c2lat + (2 * R^2 - R - 2) - 2 * R^2 / c2lat) 
     # eq. 148 from Williamson et al. 1992
-    B = ( 2(Ω+ω)*K )/( (R+1)*(R+2) )*cRlat*((R^2+2R+2) - (R+1)^2*c2lat)
+    B =  2 * (Ω + ω) * K /((R + 1) * (R+2)) * cRlat *((R^2 + 2 * R + 2) - (R + 1)^2 * c2lat)
     # eq. 149 from Williamson et al. 1992
-    C = (K^2 * c2Rlat * ( (R+1)*c2lat - (R+2)))/4
+    C = K^2 / 4 * c2Rlat * ((R + 1) * c2lat - (R + 2))
     # eq. 146 from Williamson et al. 1992
-    Rho = h0 + a^2/g*(A + B*cos(R*lon) + C*cos(2R*lon))
+    Rho = h0 + a^2 / g *(A + B * cos(R * lon) + C * cos(2 * R * lon))
 
     return (Rho,u,v,w,Th)
   end

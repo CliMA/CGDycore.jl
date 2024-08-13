@@ -7,7 +7,6 @@ Base.@kwdef struct ParamGalewskiSphere
   lat1G = pi/2.0-lat0G
   eN = exp(-4.0/(lat1G-lat0G)^2.0)
   uM = 80.0
-  Omega = 2*pi/24.0/3600.0 
 end
 
 Base.@kwdef struct ParamHaurwitzSphere
@@ -15,7 +14,6 @@ Base.@kwdef struct ParamHaurwitzSphere
   K = 7.848e-6 # Hz
   h0 = 8000 # m
   R = 4
-  Ω = 2*pi/24.0/3600.0
 end
 
 Base.@kwdef struct ParamLinearBlob

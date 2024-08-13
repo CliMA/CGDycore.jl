@@ -4,6 +4,7 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   NF = Global.Grid.NumFaces
   NumV = Model.NumV
   NumTr = Model.NumTr
+  State = Model.State
   N = CG.OrdPoly + 1
   Glob = CG.Glob
   X = Metric.X
@@ -33,14 +34,19 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   @views w = U[:,:,Model.wPos]
   @views RhoTh = U[:,:,Model.ThPos]
   KRhoFunCKernel! = RhoFunCKernel!(backend, group)
-  KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
   KuvwFunCKernel! = uvwFunCKernel!(backend, group)
 
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-  KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+  if State == "Dry" || State == "Moist"
+    KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
+    KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+  elseif State == "DryEnergy" || State == "MoistEnergy"
+    KRhoEFunCKernel! = RhoEFunCKernel!(backend, group)
+    KRhoEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+  end
   KernelAbstractions.synchronize(backend)
   if Model.RhoVPos > 0
     @views RhoV = U[:,:,Model.RhoVPos]

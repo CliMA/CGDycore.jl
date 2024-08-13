@@ -141,6 +141,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   backend = get_backend(F)
   FT = eltype(F)
+  State = Global.Model.State
   dtau = Global.TimeStepper.dtauStage
   Glob = FE.Glob
   DS = FE.DS
@@ -298,6 +299,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KGradKernel! = GradKernel!(backend,group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
+  if State == "Dry"
+    KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
+  elseif State == "DryEnergy"
+    KDivRhoKEUpwind3Kernel! = DivRhoKEUpwind3Kernel!(backend, group)
+  end
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
   KMomentumCoriolisKernel! = MomentumVectorInvariantCoriolisKernel!(backend, group)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
@@ -439,7 +445,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
   KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+  if State == "Dry"
+    KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+  elseif State == "DryEnergy"
+    KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+  end
   KernelAbstractions.synchronize(backend)
   if TkePos > 0
     @views KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS, dXdxI,J,M,Glob,ndrange=ndrangeB)
@@ -511,7 +521,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
 
-  KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+  if State == "Dry"
+    KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob,ndrange=ndrangeI)
+  elseif State == "DryEnergy"
+    KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob,ndrange=ndrangeI)
+  end
   KernelAbstractions.synchronize(backend)
 
   if TkePos > 0

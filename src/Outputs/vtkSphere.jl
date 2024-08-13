@@ -376,10 +376,9 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global, part::Int, 
         @views InterpolateTh!(ThCell,Pres,U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
         vtk["Th", VTKCellData()] = ThCell 
       else
-        ThPos = Global.Model.ThPos
-        RhoPos = Global.Model.RhoPos
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
-        @views InterpolateRhoGPU!(cCell,U[:,:,ThPos],U[:,:,RhoPos],vtkInter,CG.Glob)
+        @views PotT = Cache.AuxG[:,:,3]  
+        InterpolateGPU!(cCell,PotT,vtkInter,CG.Glob)
         copyto!(ThCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
         vtk["Th", VTKCellData()] = ThCell
       end

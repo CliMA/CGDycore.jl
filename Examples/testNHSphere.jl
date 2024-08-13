@@ -285,11 +285,11 @@ if Coriolis
     CoriolisFun = GPU.CoriolisDeep()(Phys)
     Model.CoriolisFun = CoriolisFun  
   else  
-    CoriolisFun = GPU.CoriolisNo()
+    CoriolisFun = GPU.CoriolisNo()()
     Model.CoriolisFun = CoriolisFun
   end  
 else
-  CoriolisFun = GPU.CoriolisNo()
+  CoriolisFun = GPU.CoriolisNo()()
   Model.CoriolisFun = CoriolisFun
 end
 

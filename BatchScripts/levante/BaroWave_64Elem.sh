@@ -7,7 +7,7 @@
 #SBATCH --time=00:30:00            # Set a limit on the total run time
 #SBATCH --mail-type=FAIL           # Notify user by email in case of job failure
 #SBATCH --account=bb1143           # Charge resources on this project account
-#SBATCH --output=BaroWave64Elem           # File name for standard output
+#SBATCH --output=BaroWave_64Elem           # File name for standard output
 
 set -e
 ulimit -s 204800

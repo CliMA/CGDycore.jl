@@ -2,7 +2,7 @@
 #SBATCH --job-name=my_gpu_job      # Specify job name
 #SBATCH --partition=gpu            # Specify partition name
 #SBATCH --gpus-per-node=4
-#SBATCH --nodes=2   # -> 8GPUs
+#SBATCH --nodes=4   # -> 8GPUs
 #SBATCH --tasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --exclusive
@@ -10,7 +10,7 @@
 #SBATCH --time=00:30:00            # Set a limit on the total run time
 #SBATCH --mail-type=FAIL           # Notify user by email in case of job failure
 #SBATCH --account=bb1143           # Charge resources on this project account
-#SBATCH --output=BaroWave256Elem           # File name for standard output
+#SBATCH --output=BaroWave_256Elem           # File name for standard output
 
 set -e
 ulimit -s 204800
@@ -25,4 +25,4 @@ export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
 export machine="levante"
 export UCX_ERROR_SIGNALS=""
-srun -n 8 gpu_wrapper.sh -n 8 -e "./Jobs/NHSphere/BaroWaveDrySphere_256Elem"
+srun -n 32 gpu_wrapper.sh -n 32 -e "./Jobs/NHSphere/BaroWaveDrySphere_256Elem"

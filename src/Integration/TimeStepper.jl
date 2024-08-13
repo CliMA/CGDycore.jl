@@ -97,6 +97,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
 
 
 # Print initial conditions
+  FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
 
   if IntMethod == "Rosenbrock"

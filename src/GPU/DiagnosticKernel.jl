@@ -1,3 +1,43 @@
+#=
+@kernel inbounds = true function KineticKernel!(KE,@Const(U),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob))
+
+# gi, gj, gz, gF = @index(Group, NTuple)
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  KinF = @localmem eltype(F) (N,N,ColumnTilesDim)
+
+  ID = I + (J - 1) * N
+  ind = Glob[ID,IF]
+
+  if Iz <= Nz
+    KinF[I,J,iz] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
+    if iz == 1 && Iz == 1
+      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
+        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+      KinF[I,J,iz] +=  eltype(F)(0.5) * wCol^2
+    elseif iz == 1
+      KinF[I,J,iz] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
+    else
+      KinF[I,J,1,iz] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
+    end
+    if iz == ColumnTilesDim && Iz < Nz
+      KinF[I,J,iz] +=  eltype(F)(0.5) * U[Iz,ind,4]^2
+    end
+  end
+  if Iz <= Nz && IF <= NF
+    ind = Glob[ID,IF]  
+    @atomic :monotonic KE[Iz,ind] += KinF[I,J,iz] * JJ[ID,Iz,IF] / M[Iz,ind]
+  end
+end  
+=#
+
 @kernel inbounds = true function StrainRate!(Strain,@Const(U),@Const(dz))
   Iz,IC = @index(Global, NTuple)
 
@@ -53,13 +93,24 @@ end
   end
 end
 
-@kernel inbounds = true function PressureKernel!(Pressure,p,@Const(U))
+@kernel inbounds = true function PressureKernel!(Pressure,p,T,PotT,@Const(U),@Const(nS),@Const(zP))
   Iz,IC = @index(Global, NTuple)
 
+  Nz = @uniform @ndrange()[1]
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    p[Iz,IC] = Pressure(view(U,Iz,IC,:))
+    if Iz == 1
+      wL = wCol = -(nS[1,Iz] * U[Iz,IC,2] + nS[1,Iz] * U[Iz,IC,3]) / nS[3,Iz]
+    else
+      wL = U[Iz,IC,4]
+    end
+    if Iz == Nz
+      wR = eltype(U)(0)
+    else
+      wR = U[Iz+1,IC,4] 
+    end  
+    p[Iz,IC], T[Iz,IC], PotT[Iz,IC] = Pressure(view(U,Iz,IC,:),wL,wR,zP[Iz,IC])
   end
 end
 
@@ -149,9 +200,12 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   groupG = (Nz, NDoFG)
   ndrangeG = (Nz, NumG)
   @views p = Cache.AuxG[:,:,1]
+  @views T = Cache.AuxG[:,:,2]
+  @views PotT = Cache.AuxG[:,:,3]
   @views KV = Cache.KV
   @views Rho = U[:,:,1]
   dz = Metric.dz
+  zP = Metric.zP
   Eddy = Global.Model.Eddy
   SurfaceData = Global.SurfaceData
   uStar = SurfaceData.uStar
@@ -160,12 +214,12 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   Pressure = Global.Model.Pressure
 
   KPressureKernel! = PressureKernel!(backend,group)
-  KPressureKernel!(Pressure,p,U,ndrange=ndrange)
+  KPressureKernel!(Pressure,p,T,PotT,U,nSS,zP,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
-    Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
+    Surfaces.SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
   end  
   if !Global.Model.Turbulence
     if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom

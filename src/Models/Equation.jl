@@ -9,9 +9,10 @@ abstract type State end
 struct ShallowWaterState  <: State  end
 struct Dry  <: State  end
 struct Moist  <: State end
+struct DryEnergy  <: State  end
   
 function (::ShallowWaterState)(Phys)
-  function Pressure(U)
+  @inline function Pressure(U,wL,wR,z)
     FT = eltype(U)
     p = FT(0.5) * Phys.Grav * U[5]^2
     return p
@@ -20,16 +21,38 @@ function (::ShallowWaterState)(Phys)
 end 
 
 function (::Dry)(Phys)
-  function Pressure(U)
+  @inline function Pressure(U,wL,wR,z)
     FT = eltype(U)
     p = Phys.p0 * fast_powGPU(Phys.Rd * U[5] / Phys.p0, FT(1) / (FT(1) - Phys.kappa))
-    return p
+    T = p / (Phys.Rd * U[1])
+    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    return p, T, PotT
   end
-  return Pressure
+  @inline function dPresdRhoTh(RhoTh)
+    dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
+    return dpdTRhoh
+  end  
+  return Pressure,dPresdRhoTh
+end 
+
+function (::DryEnergy)(Phys)
+  @inline function Pressure(U,wL,wR,z)
+    FT = eltype(U)
+    KE = FT(0.5) * (U[2]^2 + U[3]^2 + FT(0.5) * (wL^2 + wR^2))
+    p = (Phys.Rd / Phys.Cvd) * (U[5] - U[1] * (KE + Phys.Grav * z))
+    T = p / (Phys.Rd * U[1])
+    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    return p, T, PotT
+  end
+  @inline function dPresdRhoE(RhoE)
+    dpdRhoE = Phys.Rd / Phys.Cvd
+    return dpdRhoE
+  end  
+  return Pressure,dPresdRhoE
 end 
 
 function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
-  function Pressure(U)
+  @inline function Pressure(U,wL,wR,z)
     FT = eltype(U)
     RhoV = U[RhoVPos]
     RhoC = U[RhoCPos]

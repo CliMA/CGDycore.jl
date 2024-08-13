@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -A UCIT0011
+#PBS -N gpu_BaroWave1
+#PBS -q main
+#PBS -m n
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=64:mpiprocs=1:mem=480GB:ngpus=4
+#PBS -o BaroWave1
+
+# Use scratch for temporary files to avoid space limits in /tmp
+
+# If you are using zsh as default shell
+
+
+module use /glade/campaign/univ/ucit0011/ClimaModules-Derecho
+
+module purge
+module load climacommon/2024_05_27
+
+export JuliaDevice="GPU"
+export JuliaGPU="CUDA"
+
+mpirun -n 1 Jobs/NHSphere/BaroWaveDrySphere

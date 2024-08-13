@@ -1,131 +1,4 @@
 using KernelAbstractions
-function JacSchur!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
-  (;  RhoPos,
-      uPos,
-      vPos,
-      wPos,
-      ThPos,
-      NumV,
-      NumTr) = Global.Model
-  nz=Global.Grid.nz
-  NF=Global.Grid.NumFaces
-  nCol=size(U,2)
-  nJ=nCol*nz
-
-  @. J.CacheCol1 = 0
-  @. J.CacheCol2 = 0
-  @. J.CacheCol3 = 0
-  dPdTh = J.CacheCol1
-  dPdRhoV = J.CacheCol1
-  K = J.CacheCol1
-  abswConF = J.CacheCol1
-  abswConC = J.CacheCol1
-  D = J.CacheCol2
-  @views DF = J.CacheCol2[1:nz-1]
-  @views RhoF = J.CacheCol2[1:nz-1]
-  @views RhoThF = J.CacheCol2[1:nz-1]
-  @views RhoTrF = J.CacheCol2[1:nz-1]
-
-  for iC=1:nCol
-    @views Pres = Cache.AuxG[:,iC,1]
-    @views Rho = U[:,iC,RhoPos]
-    @views RhoTh = U[:,iC,ThPos]
-    @views Tr = U[:,iC,NumV+1:end]
-    @views dz = Metric.dz[:,iC]
-
-    @views @. RhoF = (Rho[1:nz-1] * dz[1:nz-1] + Rho[2:nz] * dz[2:nz]) /
-      (dz[1:nz-1] + dz[2:nz])
-    # JRhoW low bidiagonal matrix
-    # First row diagonal
-    # Second row lower diagonal
-    @views @. J.JRhoW[1,:,iC] = -RhoF / dz[1:nz-1]
-    @views @. J.JRhoW[2,:,iC] = RhoF / dz[2:nz]
-
-    dPresdTh!(dPdTh, RhoTh, Rho, Tr, Phys, Global)
-    # JWRhoTh upper bidiagonal matrix
-    # First row upper diagonal
-    # Second row diagonal
-    @views @. J.JWRhoTh[1,:,iC] = -dPdTh[2:nz] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
-    @views @. J.JWRhoTh[2,:,iC] = dPdTh[1:nz-1] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
-
-    if Global.Model.Equation == "CompressibleMoist"
-      dPresdRhoV!(dPdRhoV, RhoTh, Rho, Tr, Pres, Phys, Global)
-      @views @. J.JWRhoV[1,:,iC] = - dPdRhoV[2:nz] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
-      @views @. J.JWRhoV[2,:,iC] = dPdRhoV[1:nz-1] / RhoF / ( 1/2 * (dz[1:nz-1] + dz[2:nz]))
-    end  
-
-    # JWRho upper bidiagonal matrix
-    # First row upper diagonal
-    # Second row diagonal
-    @views @. J.JWRho[1,:,iC] = -Phys.Grav * dz[2:nz] / RhoF / ( dz[1:nz-1] + dz[2:nz])
-    @views @. J.JWRho[2,:,iC] = -Phys.Grav * dz[1:nz-1] / RhoF / ( dz[1:nz-1] + dz[2:nz]) 
-
-    @views @. RhoThF = (RhoTh[1:nz-1] * dz[1:nz-1] + RhoTh[2:nz] * dz[2:nz]) /
-      (dz[1:nz-1] + dz[2:nz])
-    # JRhoThW low bidiagonal matrix
-    # First row diagonal
-    # Second row lower diagonal
-    @views @. J.JRhoThW[1,:,iC] = -RhoThF / dz[1:nz-1]
-    @views @. J.JRhoThW[2,:,iC] = RhoThF / dz[2:nz]
-
-
-    if Global.Model.Thermo == "TotalEnergy" 
-      # Noch Falsch Oswald  
-      @views @. D[1:nz-1] -= 1/2*(Pres[1:nz-1] + Pres[2:nz]) 
-    elseif Global.Model.Thermo == "InternalEnergy"
-      @views @. D = Pres / dz
-      @views @. J.JThW[1,:,iC] = J.JThW[1,:,iC] - D
-      @views @. J.JThW[2,1:nz-1,iC] = J.JThW[2,1:nz-1,iC] + D[2:nz]
-    end  
-
-    for iT = 1 : NumTr
-      @views @. RhoTrF = (Tr[1:nz-1,iT] * dz[1:nz-1] + Tr[2:nz,iT] * dz[2:nz]) /
-        (dz[1:nz-1] + dz[2:nz])
-        
-      @views @. J.JTrW[1,:,iC,iT] = -RhoTrF / dz[1:nz-1]
-      @views @. J.JTrW[2,:,iC,iT] = RhoTrF / dz[2:nz]
-    end    
-
-    if Global.Model.Damping
-      @views DampingKoeff!(J.JWW[1,:,iC],CG,Global)
-    end
-    if Global.Model.VerticalDiffusion
-      @views JDiff = J.JDiff[:,:,iC]
-      @. JDiff = 0
-      @views KV = Cache.AuxG[:,iC,2]
-      # The Rho factor is already included in KV
-      @views @. DF = - (KV[1:nz-1] + KV[2:nz]) / (dz[1:nz-1] + dz[2:nz])
-      # J tridiagonal matrix
-      # First row upper diagonal
-      # Second row diagonal
-      # Third row lower diagonal
-      @views @. JDiff[1,2:nz] = DF / Rho[2:nz] / dz[1:nz-1]
-      @views @. JDiff[3,1:nz-1] = DF / Rho[1:nz-1] / dz[2:nz]
-      @views @. JDiff[2,2:nz] = -DF
-      @views @. JDiff[2,1:nz-1] += -DF
-      @views @. JDiff[2,1:nz] /= (Rho * dz)
-    end
-    @views JAdvC = J.JAdvC[:,:,iC]
-    @. JAdvC = 0
-    @views wConF = Cache.AuxG[:,iC,3]
-    @. abswConF = abs(wConF)
-    @views @. JAdvC[1,2:nz] = -(abswConF[1:nz-1] - wConF[1:nz-1]) / (2 * Rho[2:nz] * dz[1:nz-1])
-    @views @. JAdvC[3,1:nz-1] = (-abswConF[1:nz-1] - wConF[1:nz-1]) / (2 * Rho[1:nz-1] * dz[2:nz]) 
-    @views @. JAdvC[2,2:nz] = +abswConF[1:nz-1] - wConF[1:nz-1] 
-    @views @. JAdvC[2,1:nz-1] += +abswConF[1:nz-1] + wConF[1:nz-1]
-    @views @. JAdvC[2,1:nz] /= (2 * Rho * dz)
-
-    @views JAdvF = J.JAdvF[:,:,iC]
-    @. JAdvF = 0
-    @views wConC = Cache.AuxG[:,iC,4]
-    @. abswConC = abs(wConC)
-    @views @. JAdvF[1,2:nz-1] = -(abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[1:nz-2] + dz[2:nz-1])
-    @views @. JAdvF[3,1:nz-2] = (-abswConC[2:nz-1] - wConC[2:nz-1]) / (dz[2:nz-1] + dz[3:nz]) 
-    @views @. JAdvF[2,1:nz-1] = +abswConC[1:nz-1] - wConC[1:nz-1] 
-    @views @. JAdvF[2,1:nz-1] += +abswConC[2:nz] + wConC[2:nz]
-    @views @. JAdvF[2,1:nz-1] /= (dz[1:nz-1] + dz[2:nz])
-  end
-end
 
 function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
 
@@ -138,16 +11,18 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   NG = div(256,Nz)
   group = (Nz, NG)
   ndrange = (Nz, NumG)
+  dPresdRhoTh = Global.Model.dPresdRhoTh
+  @views p = Cache.AuxG[:,:,1]
 
   KJacSchurKernel! = JacSchurKernel!(backend,group)
 
-  KJacSchurKernel!(J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,Metric.dz,Phys,Param,ndrange=ndrange)
+  KJacSchurKernel!(dPresdRhoTh,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,p,Metric.dz,Phys,Param,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
 end
 
 
-@kernel inbounds = true function JacSchurKernel!(JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(dz),Phys,Param)
+@kernel inbounds = true function JacSchurKernel!(dPresdRhoTh,JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(p),@Const(dz),Phys,Param)
   iz, iC   = @index(Local, NTuple)
   Iz,IC = @index(Global, NTuple)
 
@@ -160,8 +35,8 @@ end
     ThPos = 5
     RhoL = U[Iz,IC,RhoPos]
     RhoR = U[Iz+1,IC,RhoPos]
-    RhoThL = U[Iz,IC,ThPos]
-    RhoThR = U[Iz+1,IC,ThPos]
+    RhoThL = U[Iz,IC,ThPos] + p[Iz,IC]
+    RhoThR = U[Iz+1,IC,ThPos] + p[Iz+1,IC]
     dzL = dz[Iz,IC]
     dzR = dz[Iz+1,IC]
 
@@ -172,8 +47,8 @@ end
     JRhoW[1,Iz,IC] = -RhoF / dzL
     JRhoW[2,Iz,IC] = RhoF / dzR
 
-    dPdThL = dPresdThGPU(RhoThL, Phys)
-    dPdThR = dPresdThGPU(RhoThR, Phys)
+    dPdThL = dPresdRhoTh(RhoThL)
+    dPdThR = dPresdRhoTh(RhoThR)
     # JWRhoTh upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
@@ -195,9 +70,9 @@ end
   end
 end
 
-@inline function dPresdThGPU(RhoTh, Phys)
-  dpdTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
-end
+#@inline function dPresdThGPU(RhoTh, Phys)
+#  dpdTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
+#end
 
 function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
   (  RhoPos,
