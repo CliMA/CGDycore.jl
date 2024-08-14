@@ -361,44 +361,46 @@ function (profile::BaroWaveExample)(Param,Phys)
 
     InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
          (RRatio * cos(Lat))^(Param.K + FT(1.0))
-      BigU = Phys.Grav / Phys.RadEarth * Param.K *
-        IntTau2 * InteriorTermU * Temperature
-      if Param.Deep
-        RCosLat = R * cos(Lat)
-      else
-        RCosLat =Phys.RadEarth * cos(Lat)
-      end
-      OmegaRCosLat = Phys.Omega*RCosLat
+    BigU = Phys.Grav / Phys.RadEarth * Param.K *
+      IntTau2 * InteriorTermU * Temperature
+    if Param.Deep
+      RCosLat = R * cos(Lat)
+    else
+      RCosLat =Phys.RadEarth * cos(Lat)
+    end
+    OmegaRCosLat = Phys.Omega*RCosLat
 
-      #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
-      #                         _EXCEPTIONT("Negative discriminant detected.")
-      #                 }
+    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                         _EXCEPTIONT("Negative discriminant detected.")
+    #                 }
 
-      uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
-      vS = 0
-      # Exponential perturbation
-      GreatCircleR = acos(sin(Param.PertLat) * sin(Lat) +
-        cos(Param.PertLat) * cos(Lat) * cos(Lon - Param.PertLon))
+    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    vS = 0
+    # Exponential perturbation
+    GreatCircleR = acos(sin(Param.PertLat) * sin(Lat) +
+      cos(Param.PertLat) * cos(Lat) * cos(Lon - Param.PertLon))
 
-      GreatCircleR = GreatCircleR / Param.PertExpR
+    GreatCircleR = GreatCircleR / Param.PertExpR
 
-      # Tapered perturbation with height
-      if Z < Param.PertZ
-        PertTaper = FT(1.0) - FT(3.0) * Z * Z / (Param.PertZ * Param.PertZ) +
-           FT(2.0) * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
-      else
-        PertTaper = FT(0.0)
-      end
+    # Tapered perturbation with height
+    if Z < Param.PertZ
+      PertTaper = FT(1.0) - FT(3.0) * Z * Z / (Param.PertZ * Param.PertZ) +
+         FT(2.0) * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
+    else
+      PertTaper = FT(0.0)
+    end
 
-      # Apply perturbation in zonal velocity
-      if GreatCircleR < FT(1.0)
-        uSPert = Param.Up * PertTaper * exp(-GreatCircleR * GreatCircleR)
-      else
-        uSPert = FT(0.0)
-      end
-      uS = uS + uSPert
-      w = FT(0)
-    return (Rho,uS,vS,w,Th)
+    # Apply perturbation in zonal velocity
+    if GreatCircleR < FT(1.0)
+      uSPert = Param.Up * PertTaper * exp(-GreatCircleR * GreatCircleR)
+    else
+      uSPert = FT(0.0)
+    end
+    uS = uS + uSPert
+    w = FT(0)
+
+    E = Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Grav * Z
+    return (Rho,uS,vS,w,Th,E)
   end
   return local_profile
 end

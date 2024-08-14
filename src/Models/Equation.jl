@@ -30,7 +30,7 @@ function (::Dry)(Phys)
   end
   @inline function dPresdRhoTh(RhoTh)
     dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
-    return dpdTRhoh
+    return dpdRhoTh
   end  
   return Pressure,dPresdRhoTh
 end 

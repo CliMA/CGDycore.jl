@@ -7,7 +7,7 @@ julia --project Examples/testNHCart.jl \
   --NumTr=0 \
   --RefProfile=false \
   --Equation="CompressibleShallow" \
-  --State="DryEnergy" \
+  --State="Dry" \
   --Buoyancy=true \
   --Coriolis=false \
   --Curl=true \

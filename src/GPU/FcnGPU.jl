@@ -181,6 +181,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  Proc = Global.ParallelCom.Proc
   Force = Global.Model.Force
   Damp = Global.Model.Damp
   EDMF = Global.Model.EDMF
@@ -522,9 +523,9 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
 
   if State == "Dry"
-    KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob,ndrange=ndrangeI)
+    KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   elseif State == "DryEnergy"
-    KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob,ndrange=ndrangeI)
+    KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end
   KernelAbstractions.synchronize(backend)
 

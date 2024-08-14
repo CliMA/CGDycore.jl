@@ -104,7 +104,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     # For time measuring  
     RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
     @time begin
-      for i=1:nIter
+      for i=2:nIter
         Δt = @elapsed begin
           RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
           time[1] += dtau

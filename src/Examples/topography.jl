@@ -3,7 +3,7 @@ abstract type Topography end
 Base.@kwdef struct AgnesiHill{T} <: Topography 
   x0C::T = 0
   aC::T = 1000
-  hC::T = 0
+  hC::T = 400
 end
 
 function (profile::AgnesiHill)()

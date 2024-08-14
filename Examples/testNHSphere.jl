@@ -223,6 +223,7 @@ Model.SurfaceFlux = SurfaceFlux
 Model.SurfaceFluxMom = SurfaceFluxMom
 Model.Curl = Curl
 Model.ModelType = ModelType
+Model.State = State
 Model.Stretch = Stretch
 Model.StretchType = StretchType
 Model.HyperVisc = HyperVisc
@@ -312,8 +313,13 @@ end
 
 # Pressure
 if State == "Dry"
-  Pressure = Models.Dry()(Phys)
+  Pressure, dPresdRhoTh = Models.Dry()(Phys)
   Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "DryEnergy"
+  Pressure, dPresdRhoTh = Models.DryEnergy()(Phys)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "Moist"
   Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos,Model.RhoCPos)
@@ -399,7 +405,7 @@ Global.Output.nPanel = nPanel
 Global.Output.RadPrint = H
 Global.Output.H = H
 if ModelType == "VectorInvariant" || ModelType == "Advection"
-  if State == "Dry"  
+  if State == "Dry" || State == "DryEnergy"
     Global.Output.cNames = [
       "Rho",
       "u",

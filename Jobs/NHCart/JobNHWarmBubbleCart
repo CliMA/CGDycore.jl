@@ -9,7 +9,7 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --ProfTheta="WarmBubble2DX" \
   --ProfVel="Const" \
   --Equation="CompressibleShallow" \
-  --State="DryEnergy" \
+  --State="Dry" \
   --Damping=false \
   --Upwind=true \
   --BoundaryWE="Period" \

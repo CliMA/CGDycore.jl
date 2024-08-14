@@ -12,7 +12,11 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   group = (Nz, NG)
   ndrange = (Nz, NumG)
   dPresdRhoTh = Global.Model.dPresdRhoTh
-  @views p = Cache.AuxG[:,:,1]
+  if Global.Model.State == "Dry"
+    @views p = Cache.AuxG[:,:,4]  
+  elseif Global.Model.State == "DryEnergy"  
+    @views p = Cache.AuxG[:,:,1]
+  end  
 
   KJacSchurKernel! = JacSchurKernel!(backend,group)
 
