@@ -126,7 +126,7 @@ elseif JuliaDevice == "GPU"
     CUDA.allowscalar(false)
     if machine == "levante"
     else
-       CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+       CUDA.device!(Proc-1)
     end
   elseif JuliaGPU == "AMD"
     backend = ROCBackend()

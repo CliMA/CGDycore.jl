@@ -1,0 +1,9 @@
+GPU                        Time
+A100  @atomic :monotonic   0.571892 seconds (12.27 k allocations: 596.422 KiB)
+A100  @atomic              0.549637 seconds (12.20 k allocations: 590.625 KiB)
+A100                       2.012861 seconds (12.20 k allocations: 590.625 KiB)    
+MI250 @atomic :monotonic   1.624508 seconds (18.00 k allocations: 842.188 KiB)
+MI250 @atomic             97.542512 seconds (18.04 k allocations: 842.750 KiB)
+MI250                      1.433613 seconds (18.00 k allocations: 842.188 KiB)
+
+

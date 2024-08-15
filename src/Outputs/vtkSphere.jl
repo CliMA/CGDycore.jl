@@ -261,8 +261,8 @@ function vtkInit2D(OrdPrint::Int,Trans,CG,Metric,Global)
       ksi1=ksi0+dd;
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
-          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),CG.xw,i)*
-                DG.Lagrange(0.5*(eta0+eta1),CG.xw,j)
+          vtkInter[iRef,jRef,i,j] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),CG.xwCPU,i)*
+                DG.Lagrange(0.5*(eta0+eta1),CG.xwCPU,j)
         end
       end
       ksi0 = ksi1

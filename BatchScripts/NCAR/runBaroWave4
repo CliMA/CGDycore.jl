@@ -4,7 +4,7 @@
 #PBS -q main
 #PBS -m n
 #PBS -l walltime=01:00:00
-#PBS -l select=1:ncpus=64:mpiprocs=1:mem=480GB:ngpus=4
+#PBS -l select=1:ncpus=64:mpiprocs=4:mem=480GB:ngpus=4
 #PBS -o BaroWave4
 
 # Use scratch for temporary files to avoid space limits in /tmp

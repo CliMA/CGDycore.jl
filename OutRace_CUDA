@@ -1,0 +1,36 @@
+Compute process 0 on l40366.lvt.dkrz.de
+  0.571892 seconds (12.27 k allocations: 596.422 KiB)
+  0.549637 seconds (12.20 k allocations: 590.625 KiB)
+  2.012861 seconds (12.20 k allocations: 590.625 KiB)
+
+********************************************************************************
+*                                                                              *
+*  This is the automated job summary provided by DKRZ.                         *
+*  If you encounter problems, need assistance or have any suggestion, please   *
+*  write an email to                                                           *
+*                                                                              *
+*  --  support@dkrz.de --                                                      *
+*                                                                              *
+*                       We hope you enjoyed the DKRZ supercomputer LEVANTE ... *
+*
+* JobID            : 11848337
+* JobName          : my_gpu_job
+* Account          : bb1143_gpu
+* User             : b383021 (202155), bb1143 (1630)
+* Partition        : gpu
+* QOS              : normal
+* Nodelist         : l40366 (1)
+* Submit date      : 2024-08-13T10:35:10
+* Start time       : 2024-08-13T10:58:45
+* End time         : 2024-08-13T10:59:19
+* Elapsed time     : 00:00:34 (Timelimit=00:30:00)
+* Command          : /work/bb1143/b383021/GitHub/CGDycore.jl/BatchScripts/
+*                    levante/TestRace.sh
+* WorkDir          : /work/bb1143/b383021/GitHub/CGDycore.jl
+*
+* StepID | JobName      NodeHours    MaxRSS [Byte] (@task)
+* ------------------------------------------------------------------------------
+* 0      | gpu_wrapper.    0.0089             1041132K (0)
+* batch  | batch           0.0094
+* extern | extern          0.0094                2204K (0)
+* ------------------------------------------------------------------------------

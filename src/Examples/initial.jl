@@ -399,7 +399,7 @@ function (profile::BaroWaveExample)(Param,Phys)
     uS = uS + uSPert
     w = FT(0)
 
-    E = Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Grav * Z
+    E = Phys.Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
     return (Rho,uS,vS,w,Th,E)
   end
   return local_profile

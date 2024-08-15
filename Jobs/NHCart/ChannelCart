@@ -2,12 +2,12 @@
 julia --project Examples/testNHCart.jl \
   --Problem="HillAgnesiXCart" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float64" \
+  --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
   --RefProfile=false \
   --Equation="CompressibleShallow" \
-  --State="Dry" \
+  --State="DryEnergy" \
   --Buoyancy=true \
   --Coriolis=false \
   --Curl=true \
