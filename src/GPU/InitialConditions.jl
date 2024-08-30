@@ -40,7 +40,7 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
-  if State == "Dry" || State == "Moist"
+  if State == "Dry" || State == "Moist" || State == "ShallowWater"
     KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   elseif State == "DryEnergy" || State == "MoistEnergy"

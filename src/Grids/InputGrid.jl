@@ -25,6 +25,9 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
   xVertex = ncread(filename, "xVertex")
   yVertex = ncread(filename, "yVertex")
   zVertex = ncread(filename, "zVertex")
+  xCell = ncread(filename, "xCell")
+  yCell = ncread(filename, "yCell")
+  zCell = ncread(filename, "zCell")
 
   verticesOnEdge = ncread(filename, "verticesOnEdge")
   edgesOnCell = ncread(filename, "edgesOnCell")
@@ -35,6 +38,8 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
   Type = Polygonal()
   Form = "Sphere"
   NumNodes=size(xVertex,1)
+  NumNodesB=0
+  NumNodesG=0
   Nodes = map(1:NumNodes) do i
     Node()
   end
@@ -51,25 +56,33 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
   end
   EdgeNumber = 1
   for i = 1 : NumEdges
-    Edges[EdgeNumber] = Edge(verticesOnEdge[:,i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
+    Edges[EdgeNumber] = Edge(verticesOnEdge[:,i],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber;Rad=Rad)
     EdgeNumber += 1
   end
   NumFaces = size(edgesOnCell,2)
+  NumFacesB = 0
+  NumFacesG = 0
   Faces = map(1:NumFaces) do i
     Face()
   end
   FaceNumber = 1
   e = zeros(Int,size(edgesOnCell,1))
+  MidFace = Point()
   for i = 1 : NumFaces
     e .= edgesOnCell[:,i]  
-   (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;P=zeros(Float64,0,0));
+    MidFace.x = xCell[i]
+    MidFace.y = yCell[i]
+    MidFace.z = zCell[i]
+   (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;
+     P=zeros(Float64,0,0), MidFace = MidFace,Rad=Rad,Form="Sphere");
     FaceNumber += 1
   end
-  NumEdgesI = size(Edges,1)
-
+  NumEdges = size(Edges,1)
   NumEdgesB = 0
+  NumEdgesG = 0
 
   FacesInNodes!(Nodes,Faces)
+  SortFacesInNodes!(Nodes,Faces)
 
   for iE = 1 : NumEdges
     if Edges[iE].F[2] == 0
@@ -84,11 +97,9 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
-  colors=[[]]
   NumGhostFaces = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
-  NumBoundaryFaces = 0
   AdaptGrid = ""
 
   return GridStruct{FT,
@@ -99,22 +110,23 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
     dzeta,
     H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesB,
+    NumFacesG,
     Faces,
     NumEdges,
+    NumEdgesB,
+    NumEdgesG,
     Edges,
     NumNodes,
+    NumNodesB,
+    NumNodesB,
     Nodes,
     Form,
     Type,
     Dim,
     Rad,
-    NumEdgesI,
-    NumEdgesB,
     nBar3,
     nBar,
-    colors,
-    NumBoundaryFaces,
     AdaptGrid,
     )                 
 end

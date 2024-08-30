@@ -74,6 +74,9 @@ Table = parsed_args["Table"]
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
 RefineLevel = parsed_args["RefineLevel"]
+nLon = parsed_args["nLon"]
+nLat = parsed_args["nLat"]
+LatB = parsed_args["LatB"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
@@ -250,7 +253,7 @@ elseif Equation == "CompressibleDeep"
   Model.Equation = Models.CompressibleDeep()  
 end  
 
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,nLon,nLat,LatB,GridType,Decomp,RadEarth,Model,ParallelCom)
 
 
 Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
@@ -442,8 +445,8 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
   elseif State == "ShallowWater"  
     Global.Output.cNames = [
       "Rho",
-#     "u",
-#     "v",
+      "u",
+      "v",
       "Th",
       "Vort",
 #     "Pres",

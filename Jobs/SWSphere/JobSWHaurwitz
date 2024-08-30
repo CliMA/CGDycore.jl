@@ -25,7 +25,7 @@ julia --project Examples/testNHSphere.jl \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
-  --GridType="HealPix" \
+  --GridType="CubedSphere" \
   --nz=1 \
   --nPanel=50 \
   --H=300.0 \

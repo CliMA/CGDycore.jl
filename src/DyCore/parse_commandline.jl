@@ -382,6 +382,21 @@ function parse_commandline()
     arg_type = Int
     default = 0
 
+    "--nLon"
+    help = "Number of grid cells in longitudidal direction"
+    arg_type = Int
+    default = 1
+
+    "--nLat"
+    help = "Number of grid cells in latitudidal direction"
+    arg_type = Int
+    default = 1
+
+    "--LatB"
+    help = "Pol cap"
+    arg_type = Float64
+    default = 8 / 9 * 0.5 * pi
+
     "--Lx"
     help = "Length in [m] in x-direction"
     arg_type = Float64

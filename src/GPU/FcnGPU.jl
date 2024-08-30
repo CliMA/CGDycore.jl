@@ -21,8 +21,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   NumV  = Global.Model.NumV
   NumTr  = Global.Model.NumTr
   Temp1 = Cache.Temp1
-  @views qMin = Cache.qMin[:,:,1:NumTr]
-  @views qMax = Cache.qMax[:,:,1:NumTr]
+  @views q = Cache.q[:,:,1:2*NumTr]
 
 # State vector
   @views Rho = U[:,:,1]
@@ -44,7 +43,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   groupL = (Nz, NFG, 1)
   ndrangeL = (Nz, NF, NumTr)
   NF = Global.Grid.NumFaces
-  NBF = Global.Grid.NumBoundaryFaces
+  NBF = Global.Grid.NumFacesB
   ndrangeB = (N, N, Nz, NBF)
   ndrangeI = (N, N, Nz, NF-NBF)
 
@@ -65,10 +64,10 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   KDivRhoTrViscUpwind3LimKernel! = DivRhoTrViscUpwind3LimKernel!(backend, group)
 
   if Global.Model.HorLimit
-    @views KLimitKernel!(DoF,qMin,qMax,U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
+    @views KLimitKernel!(DoF,q[:,:,nT],q[:,:,nT+1:2*nT],U[:,:,NumV+1:NumV+NumTr],Rho,Glob,ndrange=ndrangeL)
     KernelAbstractions.synchronize(backend)
-    Parallels.ExchangeDataFSendGPU(qMin,qMax,Exchange)
-    Parallels.ExchangeDataFRecvGPU!(qMin,qMax,Exchange)  
+    Parallels.ExchangeDataFSendGPU(q,Exchange)
+    Parallels.ExchangeDataFRecvGPU!(q,Exchange)  
   end
 
 
@@ -97,7 +96,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
 
   if Global.Model.HorLimit
     @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
-      dXdxI,J,M,Glob,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil,ndrange=ndrangeB)
+      dXdxI,J,M,Glob,dtau,ww,q[:,:,1],q[:,:,nT+1],Stencil,ndrange=ndrangeB)
     KernelAbstractions.synchronize(backend)  
   else
     @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI,J,M,Glob,
@@ -119,7 +118,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
 
   if Global.Model.HorLimit
     @views KDivRhoTrUpwind3LimKernel!(F[:,:,1+NumV],U[:,:,1+NumV],U,DS,
-      dXdxI_I,J_I,M,Glob_I,dtau,ww,qMin[:,:,1],qMax[:,:,1],Stencil_I,ndrange=ndrangeI)
+      dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,1],q[:,:,nT+1],Stencil_I,ndrange=ndrangeI)
     KernelAbstractions.synchronize(backend)
   else
     @views KHyperViscTracerKoeffKernel!(F[:,:,1+NumV],CacheTr,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
@@ -148,6 +147,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   DW = FE.DW
   M = FE.M
   Stencil = FE.Stencil
+  BoundaryDoF  = FE.BoundaryDoF 
   dXdxI = Metric.dXdxI
   nS = Metric.nS
   nSS = Metric.nSS
@@ -156,7 +156,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   N = FE.OrdPoly+1
   ww = FE.w
   NF = Global.Grid.NumFaces
-  NBF = Global.Grid.NumBoundaryFaces
+  NBF = Global.Grid.NumFacesB
   @views dXdxI_B = dXdxI[:,:,:,:,:,1:NBF]
   @views nS_B = nS[:,:,1:NBF]
   @views J_B = J[:,:,:,1:NBF]
@@ -300,7 +300,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KGradKernel! = GradKernel!(backend,group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
-  if State == "Dry"
+  if State == "Dry" || State == "ShallowWater"
     KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
   elseif State == "DryEnergy"
     KDivRhoKEUpwind3Kernel! = DivRhoKEUpwind3Kernel!(backend, group)
@@ -313,12 +313,13 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KDivRhoTrUpwind3LimKernel! = DivRhoTrUpwind3LimKernel!(backend, groupTr)
   KLimitKernel! = LimitKernel!(backend, groupL)
 
+# BoundaryValues
+  @. @views U[:,BoundaryDoF,vPos] = FT(0.0)
+
   if HorLimit
-    @views qMin = Cache.qMin[:,:,1:NumTr]
-    @views qMax = Cache.qMax[:,:,1:NumTr]
-    @views KLimitKernel!(DoF,qMin,qMax,UTr,Rho,Glob,ndrange=ndrangeL)
+    @views KLimitKernel!(DoF,q,UTr,Rho,Glob,ndrange=ndrangeL)
     KernelAbstractions.synchronize(backend)
-    Parallels.ExchangeDataFSendGPU(qMin,qMax,Exchange)
+    Parallels.ExchangeDataFSendGPU(q,Exchange)
   end
 
 
@@ -361,7 +362,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end    
 
   if HorLimit
-    Parallels.ExchangeDataFRecvGPU!(qMin,qMax,Exchange)  
+    Parallels.ExchangeDataFRecvGPU!(q,Exchange)  
   end  
   @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,1:LenTemp1],Exchange)
 
@@ -415,7 +416,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   else  
     for iT = 1 : NumTr
       @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-         dXdxI,J,M,Glob,dtau,ww,qMin[:,:,iT],qMax[:,:,iT],Stencil,ndrange=ndrangeB)
+         dXdxI,J,M,Glob,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
     end  
   end  
   if TkePos > 0
@@ -446,7 +447,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KernelAbstractions.synchronize(backend)
   KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  if State == "Dry"
+  if State == "Dry" || State == "ShallowWater"
     KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   elseif State == "DryEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
@@ -490,7 +491,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   else  
     for iT = 1 : NumTr
       @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-        dXdxI_I,J_I,M,Glob_I,dtau,ww,qMin[:,:,iT],qMax[:,:,iT],Stencil_I,ndrange=ndrangeI)
+        dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil_I,ndrange=ndrangeI)
       KernelAbstractions.synchronize(backend)
     end  
   end  
@@ -522,7 +523,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
 
-  if State == "Dry"
+  if State == "Dry" || State == "ShallowWater"
     KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   elseif State == "DryEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -625,7 +626,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   X = Metric.X
   J = Metric.J
   NF = Global.Grid.NumFaces
-  NBF = Global.Grid.NumBoundaryFaces
+  NBF = Global.Grid.NumFacesB
   @views dXdxI_B = dXdxI[:,:,:,:,:,1:NBF]
   @views J_B = J[:,:,:,1:NBF]
   @views X_B = X[:,:,:,:,1:NBF]

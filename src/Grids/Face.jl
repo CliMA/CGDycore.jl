@@ -45,7 +45,8 @@ function Face()
   )
 end  
 
-function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",Rad=1.0,P::Array{Float64,2}=[],ChangeOrient=3)
+function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",Rad=1.0,
+  P::Array{Float64,2}=[],ChangeOrient=3,MidFace=nothing)
   F = Face()
   if EdgesF[1]==0
     return (F,Edges)
@@ -110,10 +111,16 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",
     PT=PT+cross(F.P[nE],F.P[1]);
     F.Area = 0.5*norm(PT);
   end
-  @inbounds for i=1:nE
-    F.Mid=F.Mid+F.P[i];
-  end
-  F.Mid=F.Mid/Float64(nE);
+  if MidFace === nothing
+    @inbounds for i=1:nE
+      F.Mid = F.Mid + F.P[i]
+    end
+    F.Mid = F.Mid / Float64(nE)
+  else
+    F.Mid.x = MidFace.x
+    F.Mid.y = MidFace.y
+    F.Mid.z = MidFace.z
+  end  
   if Form == "Sphere"
     F.Mid = F.Mid / norm(F.Mid) * Rad
   end  
@@ -121,6 +128,7 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",
     F.Radius = Rad
   else
   end    
+
 
   NumE=size(EdgesF,1);
   F.n=cross(F.P[NumE],F.P[1]);

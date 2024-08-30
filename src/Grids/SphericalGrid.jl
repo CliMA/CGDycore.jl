@@ -8,6 +8,7 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
   Form="Sphere";
   
   NumNodes = nLon * (nLat + 1)
+  NumNodesB = nLon * 2
   Nodes = map(1:NumNodes) do i
     Node()
   end
@@ -30,7 +31,11 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
     Lon = 0.0
     for j = 1 : nLon
       PP = sphere2cart(Lon,Lat,Rad)
-      Nodes[NodeNumber] = Node(Point(PP),NodeNumber)
+      if i == 1 || i == nLat + 1
+        Nodes[NodeNumber] = Node(Point(PP),NodeNumber,'B')
+      else  
+        Nodes[NodeNumber] = Node(Point(PP),NodeNumber,' ')
+      end  
       NodeNumber += 1
       Lon += dLon
     end
@@ -53,7 +58,7 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
   N2=nLon+1
   @inbounds for iLat=1:nLat
     @inbounds for iLon=1:nLon
-      Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"Lat",EdgeNumberLat)
+      Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumberLat)
       EdgeNumber=EdgeNumber+1
       EdgeNumberLat=EdgeNumberLat+1
       N1=N1+1
@@ -62,8 +67,12 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
   end
   N1=1
   N2=2
-  TypeE = "Lon"
   @inbounds for iLat=1:nLat+1
+    if iLat == 1 || iLat == nLat+1
+      TypeE = "B"  
+    else
+      TypeE = ""
+    end  
     @inbounds for iLon=1:nLon
       if iLon == nLon 
         Edges[EdgeNumber] = Edge([N1,1+(iLat-1)*nLon],Nodes,EdgeNumber,EdgeNumber,TypeE,EdgeNumberLon)
@@ -125,13 +134,14 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
-  colors=[[]]
-  NumGhostFaces = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   NumBoundaryFaces = 0
-  NumEdgesI = 0
+  NumFacesB = 0
+  NumFacesG = 0
   NumEdgesB = 0
+  NumEdgesG = 0
+  NumNodesG = 0
   AdaptGrid = ""
   return GridStruct{FT,
                     typeof(z)}(
@@ -141,22 +151,23 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
     dzeta,
     H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesB,
+    NumFacesG,
     Faces,
     NumEdges,
+    NumEdgesB,
+    NumEdgesG,
     Edges,
     NumNodes,
+    NumNodesB,
+    NumNodesG,
     Nodes,
     Form,
     Type,
     Dim,
     Rad,
-    NumEdgesI,
-    NumEdgesB,
     nBar3,
     nBar,
-    colors,
-    NumBoundaryFaces,
     AdaptGrid,
     )
 

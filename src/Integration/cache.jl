@@ -23,8 +23,7 @@ fRhoS::AT3
 VS::AT4
 RhoS::AT3
 f::AT4
-qMin::AT3
-qMax::AT3
+q::AT3
 #EDMF variables
 RhoEDMF::AT3
 end
@@ -51,8 +50,7 @@ fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
-qMin=KernelAbstractions.zeros(backend,FT,0,0,0)
-qMax=KernelAbstractions.zeros(backend,FT,0,0,0)
+q=KernelAbstractions.zeros(backend,FT,0,0,0)
 RhoEDMF=KernelAbstractions.zeros(backend,FT,0,0,0)
 return CacheStruct{FT,
                    typeof(KE),
@@ -79,8 +77,7 @@ return CacheStruct{FT,
   VS,
   RhoS,
   f,
-  qMin,
-  qMax,
+  q,
   RhoEDMF
 )
 end
@@ -111,8 +108,7 @@ fRhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 VS=KernelAbstractions.zeros(backend,FT,0,0,0,0)
 RhoS=KernelAbstractions.zeros(backend,FT,0,0,0)
 f=KernelAbstractions.zeros(backend,FT,0,0,0,0)
-qMin=KernelAbstractions.zeros(backend,FT,nz,NF+NGF,NumTr+1)
-qMax=KernelAbstractions.zeros(backend,FT,nz,NF+NGF,NumTr+1)
+q=KernelAbstractions.zeros(backend,FT,nz,NF+NGF,2*(NumTr+1))
 if ND > 0
   RhoEDMF=KernelAbstractions.zeros(backend,FT,nz,NumG,ND)
 else  
@@ -143,8 +139,7 @@ return CacheStruct{FT,
   VS,
   RhoS,
   f,
-  qMin,
-  qMax,
+  q,
   RhoEDMF
 )
 end

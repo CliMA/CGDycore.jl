@@ -16,14 +16,14 @@ function vtkStruct{FT}(backend) where FT<:AbstractFloat
   )
 end
 
-function vtkStruct{FT}(backend,Grid) where FT<:AbstractFloat
+function vtkStruct{FT}(backend,Grid,NumFaces,Flat) where FT<:AbstractFloat
 
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   celltype = VTKCellTypes.VTK_POLYGON
   cells = MeshCell[]
   NumNodes = 0
 
-  for iF in 1 : Grid.NumFaces
+  for iF in 1 : NumFaces
     inds = Vector(1 : length(Grid.Faces[iF].N)) .+ NumNodes
     push!(cells, MeshCell(celltype, inds))
     NumNodes += length(Grid.Faces[iF].N)
@@ -31,10 +31,9 @@ function vtkStruct{FT}(backend,Grid) where FT<:AbstractFloat
 
   pts = Array{Float64,2}(undef,3,NumNodes)
   NumNodes = 0
-  Flat = true
   dTol = 2*pi / 30
   if Flat
-    for iF in 1 : Grid.NumFaces
+    for iF in 1 : NumFaces
       lam = zeros(length(Grid.Faces[iF].N))
       theta = zeros(length(Grid.Faces[iF].N))
       NumNodesLoc = 0
@@ -60,7 +59,7 @@ function vtkStruct{FT}(backend,Grid) where FT<:AbstractFloat
       end
     end
   else    
-    for iF in 1 : Grid.NumFaces
+    for iF in 1 : NumFaces
       for iN in Grid.Faces[iF].N  
         NumNodes += 1  
         pts[1,NumNodes] = Grid.Nodes[iN].P.x  
@@ -341,6 +340,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global, part::Int, 
     elseif  str == "v" 
       vPos = Global.Model.vPos
       vCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @. @views U[:,CG.BoundaryDoF,vPos] = FTB(0.0)
       @views InterpolateGPU!(cCell,U[:,:,vPos],vtkInter,CG.Glob)
       @views copyto!(vCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["v", VTKCellData()] = vCell

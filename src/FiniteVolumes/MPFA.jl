@@ -62,19 +62,20 @@ function GradMPFA1(KiteGrid,Grid)
   Grad = sparse(RowInd, ColInd, Val)
 end
 
-function GradMPFA(backend,FT,Grid)
+function GradMPFA(backend,FT,Grid,Proc)
 
   Nodes = Grid.Nodes
   Edges = Grid.Edges
   Faces = Grid.Faces
-  @show length(Faces)
   NumNodes = Grid.NumNodes
+  NumFaces = Grid.NumFaces
 
   RowInd = Int64[]
   ColInd = Int64[]
   Val = Float64[]
   Shift = Grid.NumNodes + Grid.NumEdges
   for iN = 1 : NumNodes
+    NG = Grid.Nodes[iN].NG  
     EdgesInNode = Int64[]
     NumF = length(Nodes[iN].F) 
     I = zeros(2 * NumF +1,2 * NumF +1)
@@ -120,15 +121,20 @@ function GradMPFA(backend,FT,Grid)
       c = I \ b
       for j = 1 : NumF
         jF = Nodes[iN].F[j]  
+        FG = Faces[iF].FG
         jE = Faces[jF].E[EdgesInNode[j]]
-        Temp = -sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) * Faces[jF].OrientE[EdgesInNode[j]]
-        push!(RowInd,jE)
-        push!(ColInd,iF)
-        push!(Val,Temp)
+        EG = Edges[jE].EG
+#       if jE <= Grid.NumEdges
+          Temp = -sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) * Faces[jF].OrientE[EdgesInNode[j]]
+          push!(RowInd,jE)
+          push!(ColInd,iF)
+          push!(Val,Temp)
+#       end    
       end  
     end  
   end  
   Grad = sparse(RowInd, ColInd, Val)
+  return Grad[1:Grid.NumEdges,:]
 end
 
 function LocalInterpolation1!(ILoc,Face,Grid)

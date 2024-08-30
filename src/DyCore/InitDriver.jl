@@ -37,7 +37,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProf
   # Output Orography
   Global.Output.dTol = 2*pi / 30
 # Global.Output.dTol = 1.e-8
-  Output.Flat=true
+# Output.Flat=true
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
   vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Grids.TransSphereX!,CG,Metric,Global)

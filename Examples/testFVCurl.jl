@@ -140,19 +140,19 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-#=
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
 RadEarth = 1.0
 dtau = 6
+#=
 nAdveVel = 5000
-=#
 Problem = "LinearBlob"
 Fac = 1.0
 RadEarth = 1.0 * Fac
 dtau = 0.0001 * Fac
 nAdveVel = 16000
 PrintStp = 800
+=#
 Flat = false
 
 
@@ -171,15 +171,22 @@ OrdPoly = 1
 #TRI
 #GridType = "TriangularSphere"
 #GridType = "DelaunaySphere"
-#GridType = "CubedSphere"
-GridType = "MPAS"
+GridType = "CubedSphere"
+#GridType = "MPAS"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
 Grids.TestGrid(Grid)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+KiteFaces = FiniteVolumes.MatrixTangential(FiniteVolumes.JacobiSphere,Grid)
+for i = 1 : size(KiteFaces[1].MatTan,1)
+  @show KiteFaces[1].MatTan[i,:]
+end  
+@show KiteFaces[1].LocGlob
+@show KiteFaces[1].KiteVol
 
-#MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid)
+
+MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid)
 
 
 #Div = FiniteVolumes.Divergence(backend,FTB,MetricFV,Grid)
@@ -213,7 +220,57 @@ VelSp = zeros(Grid.NumFaces,2)
 FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
 FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
+uCurlN = zeros(FTB,Grid.NumNodes)
+@show maximum(MetricFV.DualVolume)
+@show minimum(MetricFV.DualVolume)
+FiniteVolumes.Curl!(uCurlN,Uu,MetricFV,Grid)
+@show minimum(uCurlN)
+@show maximum(uCurlN)
 
+function MaxVector(u)
+maxu = -1.e-40
+iMax = 0
+for i = 1 : length(u)
+  if maxu < u[i]
+    maxu = u[i]  
+    iMax = i
+  end
+end
+return iMax,maxu
+end
+
+#iMax,maxCurl = MaxVector(uCurlN)
+#@show iMax,maxCurl
+#@show uCurlN[iMax]
+#for iF in Grid.Nodes[iMax].F
+#  for iN in Grid.Faces[iF].N
+#    @show iF,iN,uCurlN[iN]  
+#  end
+#end  
+
+function F5(Grid)
+  iF5 = []
+  for iF = 1 : Grid.NumFaces
+    if length(Grid.Faces[iF].N) == 5
+      push!(iF5,iF)  
+    end
+  end  
+  return iF5
+end
+
+iF5 = F5(Grid)
+@show iF5
+
+uCurl = zeros(FTB,Grid.NumFaces)
+for iF = 1 : Grid.NumFaces
+   for iN in Grid.Faces[iF].N
+     uCurl[iF] += uCurlN[iN] / length(Grid.Faces[iF].N)
+   end
+end   
+
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVCurl"*"$RefineLevel", Proc, ProcNumber, [uCurl VelSp], 0)
+stop
+pNeu = zeros(FTB,Grid.NumFaces)
 
 time = 0.0
 Parallels.ExchangeDataFSendGPU(reshape(Up,1,length(Up),1),Exchange)

@@ -24,7 +24,7 @@ mutable struct FaceT
  P4::Grids.Point
 end
 
-function DivDiv(F,LocGlob,fDiv!,Ord)
+function DivDiv(F,LocGlob,fDiv!,Ord,Rad,Jacobi)
   w,xw = GaussLobatto(Ord)
   W = zeros(length(w)^2,1)
   ksi = zeros(2,length(w)^2)
@@ -48,7 +48,7 @@ function DivDiv(F,LocGlob,fDiv!,Ord)
   for iF = 1 : NumF
     @. SLoc = 0
     for iw = 1 : length(W)
-      dXdx,J,dXdxIT = Jacobi(F[iF],ksi[1,iw],ksi[2,iw])
+      dXdx,J,dXdxIT = Jacobi(F[iF],ksi[1,iw],ksi[2,iw],Rad)
       for i = 1 : 4
         for j = 1 : 4
           SLoc[i,j] = SLoc[i,j] + W[iw]*J*fDivLoc[i,iw] * fDivLoc[j,iw]
@@ -133,7 +133,7 @@ function CG1Grad!(f,ksi1,ksi2)
   @. f = f * (3/4)
 end
 
-function WeakVort(F,LocGlob,IC,fGrad!,fu!,Ord)
+function WeakVort(F,LocGlob,IC,fGrad!,fu!,Ord,Rad,Jacobi)
   w,xw = GaussLobatto(Ord)
   W = zeros(length(w)^2,1)
   ksi = zeros(2,length(w)^2)
@@ -164,10 +164,10 @@ function WeakVort(F,LocGlob,IC,fGrad!,fu!,Ord)
     SLoc = zeros(4)
     i = IC[iF]
     for iw = 1 : length(W)
-      dXdx,J,dXdxIT = Jacobi(F[iF],ksi[1,iw],ksi[2,iw])
+      dXdx,J,dXdxIT,k = Jacobi(F[iF],ksi[1,iw],ksi[2,iw],Rad)
       uT = dXdxIT * fGradLoc[:,i,iw]
       # Rotate
-      uTR = [uT[2];-uT[1]]
+      uTR = cross(uT,k)
       for j = 1 : 4
         SLoc[j] = SLoc[j] - W[iw] * uTR'*(dXdx*fuLoc[:,j,iw])*e[j]
       end
@@ -259,7 +259,7 @@ function LocalGrid(Face,Grid)
     PE5 = 0.5 * (P5 + P6)
     PE6 = 0.5 * (P6 + P1)
     PC = 1/6 * (P1 + P2 + P3 + P4 + P5 + P6)
-    LocGlob = zeros(Int,4,4)
+    LocGlob = zeros(Int,4,6)
     IC = zeros(Int,6)
 
     F[1] = FaceT(P1,PE1,PC,PE6)
@@ -290,7 +290,7 @@ function LocalGrid(Face,Grid)
   return F,LocGlob,IC
 end
 
-function Jacobi(F,ksi1,ksi2);
+function JacobiCart(F,ksi1,ksi2,Rad);
   dXdx = zeros(2,2)
   dXdx[1,1] = 0.25 * (-F.P1.x * (1 - ksi2) + F.P2.x * (1 - ksi2) + 
     F.P3.x * (1 + ksi2) - F.P4.x * (1+ksi2))
@@ -301,9 +301,94 @@ function Jacobi(F,ksi1,ksi2);
     F.P3.x * (1 + ksi1) + F.P4.x * (1 - ksi1));
   dXdx[2,2] = 0.25 * (-F.P1.y * (1 - ksi1) - F.P2.y * (1 + ksi1) +
     F.P3.y * (1 + ksi1) + F.P4.y * (1 - ksi1));
-  J = det(dXdx)
-  dXdxIT = inv(dXdx')
-  return dXdx,J,dXdxIT
+  J = [dXdx 
+       0.0 0.0]
+  @views detJLoc = det(J[:,1],J[:,2])
+  detJ = detJLoc
+  pinvJ  = pinv(J)
+  k = SVector{3}(0.0,0.0,1.0)
+  return J,detJ,pinvJ,k
+end
+
+
+@inline function JacobiSphere(F,ksi1,ksi2,Rad)
+
+  XT1 =  0.25*(F.P1.x*(1-ksi1)*(1-ksi2)+
+            F.P2.x*(1+ksi1)*(1-ksi2)+
+            F.P3.x*(1+ksi1)*(1+ksi2)+
+            F.P4.x*(1-ksi1)*(1+ksi2))
+    
+  XT2 =  0.25*(F.P1.y*(1-ksi1)*(1-ksi2)+
+            F.P2.y*(1+ksi1)*(1-ksi2)+
+            F.P3.y*(1+ksi1)*(1+ksi2)+
+            F.P4.y*(1-ksi1)*(1+ksi2))
+           
+  XT3 =  0.25*(F.P1.z*(1-ksi1)*(1-ksi2)+
+           F.P2.z*(1+ksi1)*(1-ksi2)+
+            F.P3.z*(1+ksi1)*(1+ksi2)+
+            F.P4.z*(1-ksi1)*(1+ksi2))
+    
+  XLoc = SVector{3}(XT1,XT2,XT3)
+  JP = @SArray[F.P1.x F.P2.x F.P3.x F.P4.x;
+               F.P1.y F.P2.y F.P3.y F.P4.y;
+               F.P1.z F.P2.z F.P3.z F.P4.z]
+
+  J3 = @SArray([-0.25 + 0.25*ksi2  -0.25 + 0.25*ksi1
+                 0.25 - 0.25*ksi2  -0.25 - 0.25*ksi1
+                 0.25 + 0.25*ksi2   0.25 + 0.25*ksi1
+                -0.25 - 0.25*ksi2   0.25 - 0.25*ksi1])
+
+
+  f = Rad *(XT1^2 + XT2^2 + XT3^2)^(-3/2)
+  dX1dXT1 = f * (XT2^2 + XT3^2)
+  dX1dXT2= -f * XT1 * XT2 
+  dX1dXT3= -f * XT1 * XT3
+  dX2dXT1 = dX1dXT2 
+  dX2dXT2 = f * (XT1^2+XT3^2)
+  dX2dXT3 = -f * XT2 * XT3
+  dX3dXT1 = dX1dXT3 
+  dX3dXT2 = dX2dXT3 
+  dX3dXT3 = f*(XT1^2+XT2^2)
+
+  J1  =   @SArray([dX1dXT1    dX1dXT2     dX1dXT3   
+                dX2dXT1     dX2dXT2     dX2dXT3
+                dX3dXT1     dX3dXT2     dX3dXT3])   
+  J   =   J1*JP*J3
+
+  @views detJLoc = det(J[:,1],J[:,2])
+  detJ = detJLoc
+  pinvJ  = pinv(J)
+  X = XLoc / norm(XLoc) 
+  return J,detJ,pinvJ,X
+end
+
+@inline function det(a,b)
+
+  d = (a[2] * b[3] - a[3] * b[2])^2 +
+      (a[1] * b[3] - a[3] * b[1])^2 +
+      (a[1] * b[2] - a[2] * b[1])^2
+  d = sqrt(d)
+end
+
+@inline function pinv(J)
+  g11 = J[1,1] * J[1,1] + J[2,1] * J[2,1] + J[3,1] * J[3,1]
+  g12 = J[1,1] * J[1,2] + J[2,1] * J[2,2] + J[3,1] * J[3,2]
+  g22 = J[1,2] * J[1,2] + J[2,2] * J[2,2] + J[3,2] * J[3,2]
+  det = g11 * g22 - g12^2
+  i11 = g22 / det
+  i21 = -g12 / det
+  i12 = -g12 / det
+  i22 = g11 / det
+  pJ11 = J[1,1] * i11 + J[1,2] * i21
+  pJ12 = J[1,1] * i12 + J[1,2] * i22
+  pJ21 = J[2,1] * i11 + J[2,2] * i21
+  pJ22 = J[2,1] * i12 + J[2,2] * i22
+  pJ31 = J[3,1] * i11 + J[3,2] * i21
+  pJ32 = J[3,1] * i12 + J[3,2] * i22
+  @SArray([pJ11 pJ12
+          pJ21 pJ22
+          pJ31 pJ32])
+
 end
 
 function GaussLobatto(Ord)
@@ -340,7 +425,7 @@ end
 function HCurlHDiv()
 end
 
-function TangentialDiv(F,LocGlob,fu!,Ord)
+function TangentialDiv(F,LocGlob,fu!,Ord,Rad,Jacobi)
   w,xw = GaussLobatto(Ord)
   fuLocB = zeros(2,4,length(w),4)
   for iw = 1 : length(w)
@@ -359,45 +444,48 @@ function TangentialDiv(F,LocGlob,fu!,Ord)
     e[2] = Grids.norm(F[iF].P2-F[iF].P3)
     e[3] = Grids.norm(F[iF].P3-F[iF].P4)
     e[4] = Grids.norm(F[iF].P4-F[iF].P1)
+    ss = 0.0
     for iw = 1 : length(w)
       # edge 1
       ie = 1
       t = [1;0]
-      dXdx,J,dXdxIT = Jacobi(F[iF],xw[iw],-1)
+      dXdx,J,dXdxIT = Jacobi(F[iF],xw[iw],-1,Rad)
+      ss = ss + w[iw] * norm((dXdx * t))
       for j = 1 : 4
-        SLoc[ie,j] = SLoc[ie,j] + w[iw] / e[1] * (dXdx * t)' * 
-          (dXdx * fuLocB[:,j,iw,1]) * e[j]
+        SLoc[ie,j] = SLoc[ie,j] + w[iw]  * (dXdx * t)' * 
+          (dXdx * fuLocB[:,j,iw,1]) / J
       end  
       # edge 2
       ie = 2
       t = [0;1]
-      dXdx,J,dXdxIT = Jacobi(F[iF],1,xw[iw])
+      dXdx,J,dXdxIT = Jacobi(F[iF],1,xw[iw],Rad)
       for j = 1 : 4
-        SLoc[ie,j] = SLoc[ie,j] + w[iw] / e[2] * (dXdx * t)' * 
-          (dXdx * fuLocB[:,j,iw,2]) * e[j]
+        SLoc[ie,j] = SLoc[ie,j] + w[iw]  * (dXdx * t)' * 
+          (dXdx * fuLocB[:,j,iw,2]) / J
       end
       # edge 3
       t = [1;0]
       ie = 3
-      dXdx,J,dXdxIT = Jacobi(F[iF],xw[iw],1)
+      dXdx,J,dXdxIT = Jacobi(F[iF],xw[iw],1,Rad)
       for j = 1 : 4
-        SLoc[ie,j] = SLoc[ie,j] + w[iw] / e[3] * (dXdx * t)' * 
-          (dXdx * fuLocB[:,j,iw,3]) * e[j]
+        SLoc[ie,j] = SLoc[ie,j] + w[iw]  * (dXdx * t)' * 
+          (dXdx * fuLocB[:,j,iw,3]) / J
       end
       t = [0;1]
       ie = 4
-      dXdx,J,dXdxIT = Jacobi(F[iF],-1,xw[iw])
+      dXdx,J,dXdxIT = Jacobi(F[iF],-1,xw[iw],Rad)
       for j = 1 : 4
-        SLoc[ie,j] = SLoc[ie,j] + w[iw] / e[4] * (dXdx * t)' *
-          (dXdx * fuLocB[:,j,iw,4]) * e[j]
+        SLoc[ie,j] = SLoc[ie,j] + w[iw] * (dXdx * t)' *
+          (dXdx * fuLocB[:,j,iw,4]) / J
        end
     end
+    @show ss,e[1]
     NVal[LocGlob[:,iF],LocGlob[:,iF]] = NVal[LocGlob[:,iF],LocGlob[:,iF]] + SLoc
   end
   return NVal
 end
 
-function MatrixTangential(Grid)
+function MatrixTangential(Jacobi,Grid)
   NumFaces = Grid.NumFaces
 
   KiteFaces=map(1:NumFaces) do i
@@ -409,18 +497,32 @@ function MatrixTangential(Grid)
     NumF = length(F)
 
     Ord = 4;
-    SDiv = FiniteVolumes.DivDiv(F,LocGlob,FiniteVolumes.DivRT0!,Ord);
-    SDivV = FiniteVolumes.WeakVort(F,LocGlob,IC,FiniteVolumes.CG1Grad!,FiniteVolumes.RT0!,Ord);
+    SDiv = FiniteVolumes.DivDiv(F,LocGlob,FiniteVolumes.DivRT0!,Ord,Grid.Rad,Jacobi);
+    SDivV = FiniteVolumes.WeakVort(F,LocGlob,IC,FiniteVolumes.CG1Grad!,FiniteVolumes.RT0!,
+      Ord,Grid.Rad,Jacobi);
     SSDiv=[SDiv;SDivV]
 
+    for i = 1 : size(SSDiv,1)
+      @show SSDiv[i,:]
+    end  
     uB = zeros(NumF,NumF)
     for i = 1 : NumF
-      uB[i,i] = 1;
+      uB[i,i] = .5;
     end
     uI = -SSDiv[NumF+1:end,NumF+1:end] \ (SSDiv[NumF+1:end,1:NumF] * uB)
-    NVal = TangentialDiv(F,LocGlob,FiniteVolumes.RT0!,Ord)
+    for i = 1 : size(uI,1)
+      @show uI[i,:]
+    end  
+    NVal = TangentialDiv(F,LocGlob,FiniteVolumes.RT0!,Ord,Grid.Rad,Jacobi)
+    for i = 1 : size(NVal,1)
+      @show NVal[i,:]
+    end  
     U = [uB;uI]
     T = NVal * U
+    @. T[NumF+1:end,:] *= 0.5
+    for i = 1 : size(T,1)
+      @show T[i,:]
+    end  
     KiteFaces[iF].MatTan = T
     LocGlob = zeros(Int,length(Grid.Faces[iF].E))
     @. LocGlob = Grid.Faces[iF].E
@@ -431,6 +533,7 @@ function MatrixTangential(Grid)
         Grids.AreaSphericalTriangle(F[i].P2,F[i].P3,F[i].P4)) * Grid.Rad^2
     end  
     KiteFaces[iF].KiteVol = KiteVol
+    stop
   end    
   return KiteFaces
 end    

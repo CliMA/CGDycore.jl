@@ -132,7 +132,7 @@ Proc = MPI.Comm_rank(comm) + 1
 ProcNumber = MPI.Comm_size(comm)
 ParallelCom = DyCore.ParallelComStruct()
 ParallelCom.Proc = Proc
-ParallelCom.ProcNumber  = ProcNumber
+ParallelCom.ProcNumber = ProcNumber
 
 # Physical parameters
 Phys = DyCore.PhysParameters{FTB}()
@@ -140,32 +140,78 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 1
-RadEarth = Phys.RadEarth
-nz = 1
-nPanel = 8
-nQuad = 3
-OrdPoly = 1
-nx = 5
-ny = 5
-Lx = 5.0
-Ly = 5.0
-x0 = 0.0
-y0 = 0.0
-Boundary = Grids.Boundary()
-Boundary.WE = "Period"
-Boundary.SN = "Period"
-Decomp = ""
-Decomp = "EqualArea"
+#=
 Problem = "GalewskiSphere"
-#Problem = "LinearBlob"
+RadEarth = Phys.RadEarth
+RadEarth = 1.0
+dtau = 6
+nAdveVel = 5000
+=#
+Problem = "LinearBlob"
+Fac = 10.0
+RadEarth = 1.0 * Fac
+dtau = 0.0001 * Fac
+nAdveVel = 16000
+PrintStp = 800
+Flat = false
+
+
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
-GridType = "Sphere"
 
-Grid = Grids.QuadGrid(backend,FTB,10.0)
-F,LocGlob,IC = FiniteVolumes.LocalGrid(Grid.Faces[1],Grid)
-KiteFaces = FiniteVolumes.MatrixTangential(FiniteVolumes.JacobiCart,Grid)
+RefineLevel = 7
+nz = 1
+nPanel = 20
+nQuad = 10
+Decomp = ""
+Decomp = "EqualArea"
+Model.HorLimit = true
+OrdPoly = 1
+
+#TRI
+#GridType = "TriangularSphere"
+#GridType = "DelaunaySphere"
+GridType = "CubedSphere"
+#GridType = "MPAS"
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
+  Model,ParallelComorder=false)
+Grids.TestGrid(Grid)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+
+  Stencil=zeros(Int,Grid.NumFaces,13)
+
+  for iF=1:Grid.NumFaces
+    Stencil[iF,:] .= iF
+    StencilLoc=zeros(Int, 16,1)
+    StencilLoc[:] .= iF
+    iS=0
+    for i = 1 : length(Grid.Faces[iF].N)
+      iN=Grid.Faces[iF].N[i]
+      for j=1:size(Grid.Nodes[iN].F,1)
+        jF=Grid.Nodes[iN].F[j]
+        inside=false
+        for jS=1:iS
+          if StencilLoc[jS]==jF
+            inside=true
+            break
+          end
+        end
+        if !inside
+          iS=iS+1
+          StencilLoc[iS]=jF
+        end
+      end
+    end
+    Stencil[iF,1:iS]=StencilLoc[1:iS]
+  end
 
 
+OrdPolynom = [0 0
+              1 0
+              0 1
+              2 0
+              0 2
+              1 1]
 
+FiniteVolumes.Interpolation(Grid.Faces[1],[12;3],Grid,2)

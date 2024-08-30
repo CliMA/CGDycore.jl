@@ -103,6 +103,30 @@ function NumberingFemCGQuad(Grid,PolyOrd)
     GlobLoc=GlobLoc[Per]
     Glob[:,iF]=GlobLoc
   end
+  # Boundary list 
+  BoundaryDoF = zeros(Int,0)
+  for iN = 1 : Grid.NumNodes
+    if Grid.Nodes[iN].Type == 'B'  
+      push!(BoundaryDoF,Grid.Nodes[iN].N)
+    end  
+  end  
+  for iF = 1 : Grid.NumFaces
+    Face = Grid.Faces[iF]
+    for i = 1 : size(Face.E,1)
+      iE = Face.E[i]
+      if Grid.Edges[iE].Type == "B"
+        if Grid.Edges[iE].N[1]==Face.N[i] 
+          for j = 1 : PolyOrd - 1
+            push!(BoundaryDoF,(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN)
+          end
+        else
+          for j = PolyOrd - 1 : -1 : 1
+            push!(BoundaryDoF,(Grid.Edges[Face.E[i]].E-1)*(PolyOrd-1)+j+NumGlobN)
+          end
+        end
+      end
+    end
+  end  
 
   NumG=NumGlobN+NumGlobE+NumGlobF;
   NumI=NumG;
@@ -154,7 +178,7 @@ function NumberingFemCGQuad(Grid,PolyOrd)
     end
   end  
     
-  return (Glob,NumG,NumI,Stencil,MasterSlave)
+  return (Glob,NumG,NumI,Stencil,MasterSlave,BoundaryDoF)
 end
 
 function NumberingFemRT0(Grid,PolyOrd)

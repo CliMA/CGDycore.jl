@@ -10,8 +10,7 @@ end
 
 function ProjectEdge!(backend,FTB,u,Grid,F)
   x = zeros(3)
-    k = zeros(3)
-    t = zeros(3)
+  n = zeros(3)
   VelSp = zeros(3)  
   for iE = 1 : Grid.NumEdges
     x[1] = Grid.Edges[iE].Mid.x
@@ -20,14 +19,9 @@ function ProjectEdge!(backend,FTB,u,Grid,F)
     _,VelSp[1],VelSp[2],VelSp[3], = F(x,0.0)
     lon,lat,r = Grids.cart2sphere(x[1],x[2],x[3])
     VelCa = VelSphere2Cart(VelSp,lon,lat)
-    k[1] = Grid.Edges[iE].Mid.x
-    k[2] = Grid.Edges[iE].Mid.y
-    k[3] = Grid.Edges[iE].Mid.z
-    k = k / norm(k)
-    t[1] = Grid.Edges[iE].t.x
-    t[2] = Grid.Edges[iE].t.y
-    t[3] = Grid.Edges[iE].t.z
-    n = cross(k,t) 
+    n[1] = Grid.Edges[iE].n.x
+    n[2] = Grid.Edges[iE].n.y
+    n[3] = Grid.Edges[iE].n.z
     u[iE] = n[1] * VelCa[1] + n[2] * VelCa[2] + n[3] * VelCa[3]
   end
 end

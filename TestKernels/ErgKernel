@@ -1,0 +1,10 @@
+lumi
+34.625012 seconds (1.60 k allocations: 90.625 KiB)
+ 19.289631 seconds (1.60 k allocations: 95.312 KiB)
+ 27.592771 seconds (1.50 k allocations: 59.375 KiB)
+ 23.649569 seconds (1.80 k allocations: 73.438 KiB)
+
+76.184198 seconds (3.40 k allocations: 187.531 KiB)
+ 44.042494 seconds (3.40 k allocations: 196.906 KiB)
+ 60.395369 seconds (3.20 k allocations: 125.031 KiB)
+ 51.840444 seconds (3.80 k allocations: 153.156 KiB) 

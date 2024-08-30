@@ -15,7 +15,9 @@ function (::ShallowWaterState)(Phys)
   @inline function Pressure(U,wL,wR,z)
     FT = eltype(U)
     p = FT(0.5) * Phys.Grav * U[5]^2
-    return p
+    T = FT(0.0)
+    PotT = U[5] / U[1]
+    return p, T, PotT
   end
   return Pressure
 end 

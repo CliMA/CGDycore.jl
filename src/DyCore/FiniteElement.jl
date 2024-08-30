@@ -27,7 +27,7 @@ mutable struct CGQuad{FT<:AbstractFloat,
     S::Array{FT, 2}
     M::AT3
     MMass::AT2
-    Boundary::Array{Int, 1}
+    BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
 end
 
@@ -85,7 +85,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   (DWZ,DSZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
   DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
   copyto!(DSZ,DSZCPU)
-  (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU) =
+  (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
     NumberingFemCGQuad(Grid,OrdPoly)  
 
   Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
@@ -93,9 +93,12 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   copyto!(Stencil,StencilCPU)
   MasterSlave = KernelAbstractions.zeros(backend,Int,size(MasterSlaveCPU))
   copyto!(MasterSlave,MasterSlaveCPU)
+  BoundaryDoF = KernelAbstractions.zeros(backend,Int,size(BoundaryDoFCPU))
+  copyto!(BoundaryDoF,BoundaryDoFCPU)
 
 
 # Boundary nodes
+#=
   Boundary = zeros(Int,0)
   for iF = 1 : Grid.NumFaces
     Side = 0
@@ -123,6 +126,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
        end  
     end
   end  
+=#  
   copyto!(Glob,GlobCPU)
   M = KernelAbstractions.zeros(backend,FT,nz,NumG,2)
   MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
@@ -155,7 +159,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     S,
     M,
     MMass,
-    Boundary,
+    BoundaryDoF,
     MasterSlave,
  )
 end

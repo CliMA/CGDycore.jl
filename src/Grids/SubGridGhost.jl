@@ -9,11 +9,13 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
   FaceNumbersI = zeros(Int,0)
   FaceNumbersB = zeros(Int,0)
   FaceNumbersG = zeros(Int,0)
-  GhostFaceNumbers = zeros(Int,0)
   EdgeNumbers = zeros(Int,0)
+  EdgeNumbersG = zeros(Int,0)
   NodeNumbers = zeros(Int,0)
-  NumBoundaryFaces = 0
-  NumInteriorFaces = 0
+  NodeNumbersG = zeros(Int,0)
+
+  NumFacesB = 0
+  NumFacesI = 0
   @inbounds for iF = 1 : GlobalGrid.NumFaces
     if Proc[iF] == ProcNumber
       Inner = true  
@@ -28,35 +30,57 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
             iFG = N.F[j]
             push!(FaceNumbersG,N.F[j])
             for k = 1 : length(GlobalGrid.Faces[iFG].N)
-              push!(EdgeNumbers,GlobalGrid.Faces[iFG].E[k])
-              push!(NodeNumbers,GlobalGrid.Faces[iFG].N[k])
+              push!(EdgeNumbersG,GlobalGrid.Faces[iFG].E[k])
+              push!(NodeNumbersG,GlobalGrid.Faces[iFG].N[k])
             end  
           end
         end  
       end
       if Inner 
-        NumInteriorFaces += 1  
+        NumFacesI += 1  
         push!(FaceNumbersI,iF)
       else
-        NumBoundaryFaces += 1  
+        NumFacesB += 1  
         push!(FaceNumbersB,iF)
       end  
     end
   end
   FaceNumbersG = unique(FaceNumbersG)
+  NumFacesG = length(FaceNumbersG)
+
+  NodeNumbers = unique(NodeNumbers)
+  NodeNumbersG = unique(NodeNumbersG)
+  NodeNumbersI = setdiff(NodeNumbers,NodeNumbersG)
+  NodeNumbersB = Base.intersect(NodeNumbers,NodeNumbersG)
+  NodeNumbersG = setdiff(NodeNumbersG,NodeNumbers)
+  NumNodesI = length(NodeNumbersI)
+  NumNodesB = length(NodeNumbersB)
+  NumNodesG = length(NodeNumbersG)
+  NumNodes = NumNodesI + NumNodesB
+
+  EdgeNumbers = unique(EdgeNumbers)
+  EdgeNumbersG = unique(EdgeNumbersG)
+  EdgeNumbersI = setdiff(EdgeNumbers,EdgeNumbersG)
+  EdgeNumbersB = Base.intersect(EdgeNumbers,EdgeNumbersG)
+  EdgeNumbersG = setdiff(EdgeNumbersG,EdgeNumbers)
+  NumEdgesI = length(EdgeNumbersI)
+  NumEdgesB = length(EdgeNumbersB)
+  NumEdgesG = length(EdgeNumbersG)
+  NumEdges = NumEdgesI + NumEdgesB
+
   FaceNumbers =[FaceNumbersB; FaceNumbersI; FaceNumbersG]
+  EdgeNumbers =[EdgeNumbersB; EdgeNumbersI; EdgeNumbersG]
+  NodeNumbers =[NodeNumbersB; NodeNumbersI; NodeNumbersG]
+
   for i = 1 : length(FaceNumbers)
      iF = FaceNumbers[i]
      DictF[iF] = i
   end   
-  EdgeNumbers = unique(EdgeNumbers)
-  NodeNumbers = unique(NodeNumbers)
 
-  NumNodes = size(NodeNumbers,1)
-  Nodes = map(1:NumNodes) do i
+  Nodes = map(1:NumNodes + NumNodesG) do i
     Node()
   end
-  @inbounds for i = 1:NumNodes
+  @inbounds for i = 1 : NumNodes + NumNodesG
     Nodes[i] = deepcopy(GlobalGrid.Nodes[NodeNumbers[i]])  
     GlobalGrid.Nodes[NodeNumbers[i]].N = i
     Nodes[i].NG = Nodes[i].N
@@ -74,16 +98,10 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
     end  
   end  
 
-  NumFacesG = length(FaceNumbersG)
-  @show FaceNumbersG
-  i = 1
-  NumGhostFaces = 0
-
-  NumEdges = size(EdgeNumbers,1)
-  Edges = map(1:NumEdges) do i
+  Edges = map(1 : NumEdges + NumEdgesG) do i
     Edge()
   end
-  @inbounds for i = 1:NumEdges
+  @inbounds for i = 1 : NumEdges + NumEdgesG
     Edges[i] = deepcopy(GlobalGrid.Edges[EdgeNumbers[i]])  
     GlobalGrid.Edges[EdgeNumbers[i]].E = i
     Edges[i].EG = Edges[i].E
@@ -122,21 +140,17 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
       Faces[i].N[j] = GlobalGrid.Nodes[Faces[i].N[j]].N
     end
   end
-  # Physischer Rand und Prozessor Rand 
-  @inbounds for i = 1:NumEdges
-    if Edges[i].F[1] > 0  
-      if Proc[Edges[i].F[1]] == ProcNumber  
-        Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
-      else
-        Edges[i].F[1] = 0  
-      end  
-    end
-    if Edges[i].F[2] > 0  
-      if Proc[Edges[i].F[2]] == ProcNumber  
-        Edges[i].F[2] = GlobalGrid.Faces[Edges[i].F[2]].F
-      else
-        Edges[i].F[2] = 0  
-      end  
+  # Physischer Rand und Prozessor Rand
+  @inbounds for i = 1 : NumEdges + NumEdgesG
+    if Edges[i].F[1] in FaceNumbers
+      Edges[i].F[1] = GlobalGrid.Faces[Edges[i].F[1]].F
+     else
+        Edges[i].F[1] = 0
+     end
+    if Edges[i].F[2] in FaceNumbers
+      Edges[i].F[2] = GlobalGrid.Faces[Edges[i].F[2]].F
+    else
+      Edges[i].F[2] = 0
     end
   end
 
@@ -146,7 +160,19 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
       Renumbering!(Edges,Faces);
     end  
   end
-  FacesInNodes!(Nodes,Faces)
+# FacesInNodes!(Nodes,Faces)
+  FG2F = Dict()
+  for iF = 1 : NumFaces + NumFacesG
+     iFG = Faces[iF].FG 
+     FG2F[iFG] = iF 
+  end
+  for iN = 1 : NumNodes
+    for iF = 1 : length(Nodes[iN].FG)
+      iFG = Nodes[iN].FG[iF]  
+      Nodes[iN].F[iF] = FG2F[iFG]
+    end
+  end  
+
   Form = GlobalGrid.Form
   Rad = GlobalGrid.Rad
 # Stencil  
@@ -175,31 +201,15 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
     Faces[iF].Stencil .= StencilLoc[1:iS]
   end
 
-# Add Ghost Faces
+  H = GlobalGrid.H
   nz = GlobalGrid.nz
   zP=zeros(nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
-  H = GlobalGrid.H
-  NumEdgesI = 0
-  NumEdgesB = 0
-  for iE = 1 : NumEdges
-    if Edges[iE].F[2] == 0
-      if ProcNumber == 2 && Edges[iE].Type == "B" 
-        NumEdgesB += 1
-      elseif ProcNumber == 2 && Edges[iE].Type == ""
-        NumEdgesI += 1
-      end
-    else
-      NumEdgesI += 1  
-    end  
-  end    
-  colors=[[]]
   nBar3=zeros(0,0)
   nBar=zeros(0,0)
   Type = GlobalGrid.Type
   AdaptGrid = GlobalGrid.AdaptGrid
-  stop
   return GridStruct{FT,
                     typeof(z)}(
     nz,
@@ -208,22 +218,23 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
     dzeta,
     H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesB,
+    NumFacesG,
     Faces,
     NumEdges,
+    NumEdgesB,
+    NumEdgesG,
     Edges,
     NumNodes,
+    NumNodesB,
+    NumNodesG,
     Nodes,
     Form,
     Type,
     Dim,
     Rad,
-    NumEdgesI,
-    NumEdgesB,
     nBar3,
     nBar,
-    colors,
-    NumBoundaryFaces,
     AdaptGrid,
     )
 end

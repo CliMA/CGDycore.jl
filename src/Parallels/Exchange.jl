@@ -1,24 +1,25 @@
 mutable struct ExchangeStruct{FT<:AbstractFloat,
                               IT1<:AbstractArray,
-                              AT3<:AbstractArray,
-                              AT4<:AbstractArray}
+                              AT3<:AbstractArray}
   IndSendBuffer::Dict{Int,IT1}
   IndSendBufferF::Dict{Int,IT1}
   IndRecvBuffer::Dict{Int,IT1}
   IndRecvBufferF::Dict{Int,IT1}
   NeiProc::Array{Int, 1}
+  GetProcF::Array{Int, 1}
+  SendProcF::Array{Int, 1}
   Proc::Int
   ProcNumber::Int
   InitSendBuffer::Bool
   InitSendBufferF::Bool
   SendBuffer::Dict
   SendBuffer3::Dict{Int,AT3}
-  SendBufferF::Dict{Int,AT4}
+  SendBufferF::Dict{Int,AT3}
   InitRecvBuffer::Bool
   InitRecvBufferF::Bool
   RecvBuffer::Dict
   RecvBuffer3::Dict{Int,AT3}
-  RecvBufferF::Dict{Int,AT4}
+  RecvBufferF::Dict{Int,AT3}
   sreq::MPI.UnsafeMultiRequest
   rreq::MPI.UnsafeMultiRequest
 end
@@ -29,6 +30,8 @@ function ExchangeStruct{FT}(backend) where FT<:AbstractFloat
   IndRecvBuffer = Dict()
   IndRecvBufferF = Dict()
   NeiProcN = zeros(Int,0)
+  GetProcF = zeros(Int,0)
+  SendProcF = zeros(Int,0)
   Proc = 0
   ProcNumber = 0
   InitSendBuffer = false
@@ -44,17 +47,17 @@ function ExchangeStruct{FT}(backend) where FT<:AbstractFloat
   sreq = MPI.UnsafeMultiRequest(0)
   rreq = MPI.UnsafeMultiRequest(0)
   AT3 = KernelAbstractions.zeros(backend,FT,0,0,0)
-  AT4 = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   IT1 = KernelAbstractions.zeros(backend,Int,0)
   return ExchangeStruct{FT,
                         typeof(IT1),
-                        typeof(AT3),
-                        typeof(AT4)}(
+                        typeof(AT3)}(
     IndSendBuffer,
     IndSendBufferF,
     IndRecvBuffer,
     IndRecvBufferF,
     NeiProcN,
+    GetProcF,
+    SendProcF,
     Proc,
     ProcNumber,
     InitSendBuffer,
@@ -246,6 +249,90 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
     end  
   end  
 
+  if HorLimit
+    GetFaces = zeros(Int,ProcNumber)  
+    SendFaces = zeros(Int,ProcNumber)  
+    GetProcF = zeros(Int,0)
+    SendProcF = zeros(Int,0)
+    for iF = SubGrid.NumFaces + 1 : SubGrid.NumFaces + SubGrid.NumFacesG  
+      iFG = SubGrid.Faces[iF].FG
+      GetFaces[CellToProc[iFG]] += 1  
+      push!(GetProcF,CellToProc[iFG])
+    end    
+    MPI.Alltoall!(GetFaces, SendFaces, 1, MPI.COMM_WORLD)
+    unique!(GetProcF)
+    GetBufferF = Dict()
+    for iP = 1 : ProcNumber
+      if SendFaces[iP] > 0
+        push!(SendProcF,iP)
+        GetBufferF[iP] = zeros(Int,SendFaces[iP])
+      end
+    end  
+    SendBufferF = Dict()
+    for iP in GetProcF
+      SendBufferF[iP] = zeros(Int,0)
+    end    
+    for iF = SubGrid.NumFaces + 1 : SubGrid.NumFaces + SubGrid.NumFacesG  
+      iFG = SubGrid.Faces[iF].FG
+      iP = CellToProc[iFG]  
+      push!(SendBufferF[iP],iFG)
+    end    
+    rreq = MPI.UnsafeMultiRequest(length(GetProcF))
+    for i in eachindex(GetProcF)
+      iP = GetProcF[i]  
+      tag = Proc + ProcNumber * iP
+      MPI.Irecv!(GetBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
+    end  
+    sreq = MPI.UnsafeMultiRequest(length(SendProcF))
+    for i in eachindex(SendProcF)
+      iP = SendProcF[i]  
+      tag =iP + ProcNumber*Proc
+      MPI.Isend(SendBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
+    end  
+    stats = MPI.Waitall(rreq)
+    stats = MPI.Waitall(sreq)
+    IndSendBufferF = Dict()
+    IndRecvBufferF = Dict()
+    for iP in GetProcF
+      IndRecvBufferF[iP] = zeros(Int,0)
+    end    
+    for iF = SubGrid.NumFaces + 1 : SubGrid.NumFaces + SubGrid.NumFacesG  
+      iFG = SubGrid.Faces[iF].FG
+      iP = CellToProc[iFG]  
+      push!(IndRecvBufferF[iP],iF)
+    end    
+    IndRecvBufferFGPU = Dict()
+    for iP in GetProcF
+      TempGPU  = KernelAbstractions.zeros(backend,Int,size(IndRecvBufferF[iP]))
+      copyto!(TempGPU,IndRecvBufferF[iP])
+      IndRecvBufferFGPU[iP] = TempGPU
+    end    
+    FG2F = Dict()
+    for iF = 1 : SubGrid.NumFaces
+      iFG = SubGrid.Faces[iF].FG
+      FG2F[iFG] = iF
+    end  
+    IndSendBufferFGPU = Dict()
+    for iP in SendProcF
+      Temp = zeros(Int,0)
+      for iFG in GetBufferF[iP]
+        iF = FG2F[iFG]  
+        push!(Temp,iF)
+      end    
+      TempGPU = KernelAbstractions.zeros(backend,Int,size(Temp))
+      copyto!(TempGPU,Temp)
+      IndSendBufferFGPU[iP] = TempGPU
+    end    
+  else
+    IndSendBufferFGPU = Dict()
+    IndRecvBufferFGPU = Dict()  
+    GetProcF = zeros(Int,0)
+    SendProcF = zeros(Int,0)
+  end    
+
+  
+
+#=
   if HorLimit 
 #   Ghost faces for horizontal limiter
     NumInBoundFaces = 0
@@ -344,6 +431,7 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
     IndSendBufferFGPU = Dict()
     IndRecvBufferFGPU=Dict()  
   end  
+=#  
 
   InitSendBuffer = true
   InitSendBufferF = true
@@ -353,19 +441,17 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
   for iP in eachindex(NeiProcN)
     SendBuffer[iP] = KernelAbstractions.zeros(backend,FT,0)
     SendBuffer3[iP] = KernelAbstractions.zeros(backend,FT,0,0,0)
-    SendBufferF[iP] = KernelAbstractions.zeros(backend,FT,0,0,0,0)
+    SendBufferF[iP] = KernelAbstractions.zeros(backend,FT,0,0,0)
   end
   InitRecvBuffer = true
   InitRecvBufferF = true
   RecvBuffer = Dict()
-# RecvBuffer3 = Dict{Int,Array{FT,3}}()
-# RecvBufferF = Dict{Int,Array{FT,4}}()
   RecvBuffer3 = Dict()
   RecvBufferF = Dict()
   for iP in NeiProcN
     RecvBuffer[iP] = KernelAbstractions.zeros(backend,FT,0)
     RecvBuffer3[iP] = KernelAbstractions.zeros(backend,FT,0,0,0)
-    RecvBufferF[iP] = KernelAbstractions.zeros(backend,FT,0,0,0,0)
+    RecvBufferF[iP] = KernelAbstractions.zeros(backend,FT,0,0,0)
   end
 
   sreq = MPI.UnsafeMultiRequest(length(NeiProcN))
@@ -373,7 +459,6 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
 
   # Copy from CPU to device
   AT3 = KernelAbstractions.zeros(backend,FT,0,0,0)
-  AT4 = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   IT1 = KernelAbstractions.zeros(backend,Int,0)
 
   for (key,) in SendBufferN
@@ -388,13 +473,14 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
 
   return ExchangeStruct{FT,
                         typeof(IT1),
-                        typeof(AT3),
-                        typeof(AT4)}(
+                        typeof(AT3)}(
     IndSendBuffer,
     IndSendBufferFGPU,
     IndRecvBuffer,
     IndRecvBufferFGPU,
     NeiProcN,
+    GetProcF,
+    SendProcF,
     Proc,
     ProcNumber,
     InitSendBuffer,
@@ -642,68 +728,24 @@ function ExchangeData3D!(U,Exchange)
   end
 end    
 
-function ExchangeDataFSend(cFMin,cFMax,Exchange)
+function ExchangeDataFSendGPU(cF,Exchange)
+  backend = get_backend(cF)
+  FT = eltype(cF)
   IndSendBufferF = Exchange.IndSendBufferF
   IndRecvBufferF = Exchange.IndRecvBufferF
-  NeiProc = Exchange.NeiProc
+  GetProcF = Exchange.GetProcF
+  SendProcF = Exchange.SendProcF
   Proc = Exchange.Proc
   ProcNumber = Exchange.ProcNumber
-  nz = size(cFMin,1)
-  nT = size(cFMin,3)
+  nz = size(cF,1)
+  nT = size(cF,3)
   if Exchange.InitRecvBufferF
-    for iP in NeiProc
-      Exchange.RecvBufferF[iP] = zeros(nz,length(IndRecvBufferF[iP]),2,nT)
-      Exchange.SendBufferF[iP] = zeros(nz,length(IndSendBufferF[iP]),2,nT)
+    for iP in GetProcF
+      a = KernelAbstractions.zeros(backend,FT,nz,length(IndRecvBufferF[iP]),nT)
+      Exchange.RecvBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndRecvBufferF[iP]),nT)
     end
-    RecvBufferF = Exchange.RecvBufferF
-    SendBufferF = Exchange.SendBufferF
-    Exchange.InitRecvBufferF = false
-    Exchange.InitSendBufferF = false
-    rreq = Exchange.rreq
-    sreq = Exchange.sreq
-  else
-    RecvBufferF = Exchange.RecvBufferF
-    SendBufferF = Exchange.SendBufferF
-    rreq = Exchange.rreq
-    sreq = Exchange.sreq
-  end
-
-  for iP in NeiProc
-    i = 0
-    @views for Ind in IndSendBufferF[iP]
-      i += 1
-      @views @. SendBufferF[iP][:,i,1,:] = cFMin[:,Ind,:]
-      @views @. SendBufferF[iP][:,i,2,:] = cFMax[:,Ind,:]
-    end
-  end
-  i = 0
-  for iP in NeiProc
-    tag = Proc + ProcNumber*iP
-    i += 1
-    @views MPI.Irecv!(RecvBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
-  end
-  i = 0
-  for iP in NeiProc
-    tag = iP + ProcNumber*Proc
-    i += 1
-    @views MPI.Isend(SendBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
-  end
-end
-
-function ExchangeDataFSendGPU(cFMin,cFMax,Exchange)
-  backend = get_backend(cFMin)
-  FT = eltype(cFMin)
-  IndSendBufferF = Exchange.IndSendBufferF
-  IndRecvBufferF = Exchange.IndRecvBufferF
-  NeiProc = Exchange.NeiProc
-  Proc = Exchange.Proc
-  ProcNumber = Exchange.ProcNumber
-  nz = size(cFMin,1)
-  nT = size(cFMin,3)
-  if Exchange.InitRecvBufferF
-    for iP in NeiProc
-      Exchange.RecvBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndRecvBufferF[iP]),2,nT)
-      Exchange.SendBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndSendBufferF[iP]),2,nT)
+    for iP in SendProcF
+      Exchange.SendBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndSendBufferF[iP]),nT)
     end
     RecvBufferF = Exchange.RecvBufferF
     SendBufferF = Exchange.SendBufferF
@@ -720,34 +762,26 @@ function ExchangeDataFSendGPU(cFMin,cFMax,Exchange)
 
   group = (nz,5,1)
   KExchangeDataFSendKernel! = ExchangeDataFSendKernel!(backend,group)
-  for iP in NeiProc
+  for iP in SendProcF
     ndrange = (nz,length(IndSendBufferF[iP]),nT)
-    KExchangeDataFSendKernel!(cFMin,cFMax,SendBufferF[iP],IndSendBufferF[iP],ndrange=ndrange)
+    KExchangeDataFSendKernel!(cF,SendBufferF[iP],IndSendBufferF[iP],ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   end
-#  for iP in NeiProc
-#    i = 0
-#    @views for Ind in IndSendBufferF[iP]
-#      i += 1
-#      @views @. SendBufferF[iP][:,i,1,:] = cFMin[:,Ind,:]
-#      @views @. SendBufferF[iP][:,i,2,:] = cFMax[:,Ind,:]
-#    end
-#  end
   i = 0
-  for iP in NeiProc
+  for iP in GetProcF
     tag = Proc + ProcNumber*iP
     i += 1
     @views MPI.Irecv!(RecvBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
   end
   i = 0
-  for iP in NeiProc
+  for iP in SendProcF
     tag = iP + ProcNumber*Proc
     i += 1
     @views MPI.Isend(SendBufferF[iP], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
   end
 end
 
-@kernel inbounds = true function ExchangeDataFSendKernel!(cFMin,cFMax,SendBufferF,IndSendBufferF)
+@kernel inbounds = true function ExchangeDataFSendKernel!(cF,SendBufferF,IndSendBufferF)
 
   Iz,I,IT = @index(Global, NTuple)
   NumInd = @uniform @ndrange()[2]
@@ -755,39 +789,40 @@ end
 
   if I <= NumInd && IT <= NT
     Ind = IndSendBufferF[I]    
-    SendBufferF[Iz,I,1,IT] = cFMin[Iz,Ind,IT]
-    SendBufferF[Iz,I,2,IT] = cFMax[Iz,Ind,IT]
+    SendBufferF[Iz,I,IT] = cF[Iz,Ind,IT]
   end  
 end
 
-function ExchangeDataFRecv!(cFMin,cFMax,Exchange)
+function ExchangeDataFRecvGPU!(cF,Exchange)
+  backend = get_backend(cF)
+  FT = eltype(cF)
 
   IndRecvBufferF = Exchange.IndRecvBufferF
-  NeiProc = Exchange.NeiProc
-  RecvBufferF = Exchange.RecvBufferF
-  rreq = Exchange.rreq
-  sreq = Exchange.sreq
-
-  stats = MPI.Waitall(rreq)
-  stats = MPI.Waitall(sreq)
-  MPI.Barrier(MPI.COMM_WORLD)
-  #Receive
-  for iP in NeiProc
-    i = 0
-    for Ind in IndRecvBufferF[iP]
-      i += 1
-      @views @. cFMin[:,Ind,:] = RecvBufferF[iP][:,i,1,:]
-      @views @. cFMax[:,Ind,:] = RecvBufferF[iP][:,i,2,:]
+  GetProcF = Exchange.GetProcF
+  SendProcF = Exchange.SendProcF
+  ProcNumber = Exchange.ProcNumber
+  nz = size(cF,1)
+  nT = size(cF,3)
+  if Exchange.InitRecvBufferF
+    for iP in GetProcF
+      Exchange.RecvBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndRecvBufferF[iP]),nT)
     end
+    for iP in SendProcF
+      Exchange.SendBufferF[iP] = KernelAbstractions.zeros(backend,FT,nz,length(IndSendBufferF[iP]),nT)
+    end
+    RecvBufferF = Exchange.RecvBufferF
+    SendBufferF = Exchange.SendBufferF
+    Exchange.InitRecvBufferF = false
+    Exchange.InitSendBufferF = false
+    rreq = Exchange.rreq
+    sreq = Exchange.sreq
+  else
+    RecvBufferF = Exchange.RecvBufferF
+    SendBufferF = Exchange.SendBufferF
+    rreq = Exchange.rreq
+    sreq = Exchange.sreq
   end
-end
 
-function ExchangeDataFRecvGPU!(cFMin,cFMax,Exchange)
-  backend = get_backend(cFMin)
-  FT = eltype(cFMin)
-
-  IndRecvBufferF = Exchange.IndRecvBufferF
-  NeiProc = Exchange.NeiProc
   RecvBufferF = Exchange.RecvBufferF
   rreq = Exchange.rreq
   sreq = Exchange.sreq
@@ -795,37 +830,27 @@ function ExchangeDataFRecvGPU!(cFMin,cFMax,Exchange)
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
   MPI.Barrier(MPI.COMM_WORLD)
-  Nz = size(cFMin,1)
-  nT = size(cFMin,4)
+  Nz = size(cF,1)
+  nT = size(cF,3)
   group = (Nz,5,1)
   KExchangeDataFRecvKernel! = ExchangeDataFRecvKernel!(backend,group)
 
   #Receive
-  for iP in NeiProc
+  for iP in GetProcF
     ndrange = (Nz,length(IndRecvBufferF[iP]),nT)
-    KExchangeDataFRecvKernel!(cFMin,cFMax,RecvBufferF[iP],IndRecvBufferF[iP],ndrange=ndrange)
+    KExchangeDataFRecvKernel!(cF,RecvBufferF[iP],IndRecvBufferF[iP],ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   end
-# #Receive
-# for iP in NeiProc
-#   i = 0
-#   for Ind in IndRecvBufferF[iP]
-#     i += 1
-#     @views @. cFMin[:,Ind,:] = RecvBufferF[iP][:,i,1,:]
-#     @views @. cFMax[:,Ind,:] = RecvBufferF[iP][:,i,2,:]
-#   end
-# end
 end
 
-@kernel inbounds = true function ExchangeDataFRecvKernel!(cFMin,cFMax,RecvBufferF,IndRecvBufferF)
+@kernel inbounds = true function ExchangeDataFRecvKernel!(cF,RecvBufferF,IndRecvBufferF)
 
   Iz,I,IT = @index(Global, NTuple)
   NumInd = @uniform @ndrange()[2]
   NT = @uniform @ndrange()[3]
   if I <= NumInd && IT <= NT
     Ind = IndRecvBufferF[I]    
-    cFMin[Iz,Ind,IT] = RecvBufferF[Iz,I,1,IT]
-    cFMax[Iz,Ind,IT] = RecvBufferF[Iz,I,2,IT]
+    cF[Iz,Ind,IT] = RecvBufferF[Iz,I,IT]
   end  
 end  
 

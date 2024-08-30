@@ -13,15 +13,19 @@ using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using DynamicPolynomials
+using FastGaussQuadrature
+using LinearAlgebra
 
 
 mutable struct MetricFiniteVolume{FT<:AbstractFloat,
-                        AT1<:AbstractArray} 
+                        AT1<:AbstractArray, 
+                        AT2<:AbstractArray} 
   PrimalVolume::AT1
   DualVolume::AT1
   PrimalEdge::AT1
   DualEdge::AT1
   DualEdgeVolume::AT1                      
+  PrimalNormal::AT2
 end
 
 include("Divergence.jl")
@@ -30,5 +34,7 @@ include("Project.jl")
 include("MetricFV.jl")
 include("MPFA.jl")
 include("TangentialRec.jl")
+include("Curl.jl")
+include("Advection.jl")
 
 end

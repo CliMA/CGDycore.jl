@@ -1,4 +1,4 @@
-function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,
+function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,nLon,nLat,LatB,GridType,Decomp,RadEarth,Model,
   ParallelCom;order=true,ChangeOrient=3)
 
   ProcNumber = ParallelCom.ProcNumber
@@ -23,6 +23,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/QU240.nc", Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "MPAS"
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/x4.163842.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
+  elseif GridType == "SphericalGrid"
+    Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz)
   else
     @show "False GridType"
   end
@@ -36,7 +38,7 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp
     CellToProc = ones(Int,Grid.NumFaces)
     println(" False Decomp method ")
   end
-  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc,order=order)
+  SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc,order=order)
 
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly-1,1,CellToProc,Proc,ProcNumber,Model.HorLimit)
   return SubGrid, Exchange
@@ -49,7 +51,7 @@ function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,Par
 
   Grid = Grids.CartGrid(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order)
   CellToProc = Grids.Decompose(Grid,ProcNumber)
-  SubGrid = Grids.ConstructSubGrid(Grid,CellToProc,Proc;order)
+  SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc;order)
   Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly-1,1,CellToProc,Proc,ProcNumber,Model.HorLimit)
 
   return SubGrid, Exchange

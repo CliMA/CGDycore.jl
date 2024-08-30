@@ -22,23 +22,23 @@ mutable struct GridStruct{FT<:AbstractFloat,
   dzeta::Array{FT, 1}
   H::FT
   NumFaces::Int
-  NumGhostFaces::Int
+  NumFacesB::Int
+  NumFacesG::Int
   Faces::Array{Face, 1}
   NumEdges::Int
+  NumEdgesB::Int
+  NumEdgesG::Int
   Edges::Array{Edge, 1}
   NumNodes::Int
+  NumNodesB::Int
+  NumNodesG::Int
   Nodes::Array{Node, 1}
   Form::String
   Type::ElementType
   Dim::Int
   Rad::FT
-  NumEdgesI::Int
-  NumEdgesB::Int
   nBar3::Array{FT, 2}
   nBar::Array{FT, 2}
-  colors::Array{Array{Int, 1}, 1}
-  NumBoundaryFaces::Int
   AdaptGrid::Any
-
 end
     

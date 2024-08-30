@@ -1,4 +1,4 @@
-function intersect(Face1, Grid1, Face2, Grid2, pointsSameEPS)
+function intersectFace(Face1, Grid1, Face2, Grid2, pointsSameEPS)
 
   intersector = Face1
   intersection = Face2
@@ -54,7 +54,7 @@ function clip!(Pg,C,pointsSameEPS)
       continue
     else
       segment = GreatCircle(Pg.P[i],Pg.P[in])  
-      ip = intersect(C,segment,pointsSameEPS)
+      ip = intersectCircle(C,segment,pointsSameEPS)
       if ip.x == 1 && ip.y == 1 && ip.z == 1
         # consider the segments parallel
         ClippedPg.size += 1
@@ -93,7 +93,7 @@ function clip!(Pg,C,pointsSameEPS)
   end  
 end
 
-function intersect(C1::GreatCircle,C2::GreatCircle,pointsSameEPS)
+function intersectCircle(C1::GreatCircle,C2::GreatCircle,pointsSameEPS)
   sp = cross(cross(C1.P1,C1.P2),cross(C2.P1,C2.P2))
   sp_norm = norm(sp)
   gcircles_distinct = sp_norm > EPS

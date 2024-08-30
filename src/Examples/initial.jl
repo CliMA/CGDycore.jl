@@ -248,7 +248,7 @@ function (profile::GalewskiExample)(Param,Phys)
     Omega=Phys.Omega
     (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
     r=Phys.RadEarth
-    Rho=(Grav*Param.H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG,Param)))/Grav +
+    Rho=(Grav*Param.H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG,Param,Phys)))/Grav +
       Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2.0)*exp(-((pi/4.0-lat)/Param.betaG)^2.0)
     Th = FT(1)   
     if (lat<=Param.lat0G) || (lat>=Param.lat1G)
@@ -511,8 +511,8 @@ function (profile::SchaerSphereExample)(Param,Phys)
   return local_profile
 end
 
-function integrandG(tau,RadEarth,Param)
-  f=2.0*Param.Omega*sin(tau)
+function integrandG(tau,RadEarth,Param,Phys)
+  f=2.0*Phys.Omega*sin(tau)
   if (tau<=Param.lat0G) || (tau>=Param.lat1G)
     uStart=0.0
   else
@@ -526,19 +526,19 @@ function integrandG(tau,RadEarth,Param)
   return intG
 end
 
-function simpson(x0,xN,r,dx,f,Param)
+function simpson(x0,xN,r,dx,f,Param,Phys)
   n=ceil(Int,(xN-x0)/dx) + 1
   h=(xN-x0)/n
-  res=0.5*(f(x0,r,Param)+f(xN,r,Param))
+  res=0.5*(f(x0,r,Param,Phys)+f(xN,r,Param,Phys))
   xi=x0
   for i=1:(n-1)
     xi=xi+h
-    res=res+f(xi,r,Param)
+    res=res+f(xi,r,Param,Phys)
   end
   xi=x0-0.5*h
   for i=1:n
     xi=xi+h
-    res=res+2.0*f(xi,r,Param)
+    res=res+2.0*f(xi,r,Param,Phys)
   end
   res=res*h/3.0
   return res

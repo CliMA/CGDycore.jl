@@ -446,7 +446,6 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
   NumEdges = size(Edges,1)
   NumFaces = size(Faces,1)
   NumEdgesI = size(Edges,1)
-  NumEdgesB = 0
 
   FacesInNodes!(Nodes,Faces)
 
@@ -454,11 +453,14 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
-  colors=[[]]
-  NumGhostFaces = 0
+  NumFacesB = 0
+  NumFacesG = 0
+  NumEdgesB = 0
+  NumEdgesG = 0
+  NumNodesB = 0
+  NumNodesG = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
-  NumBoundaryFaces = 0
   AdaptGrid = ""
 
   return GridStruct{FT,
@@ -469,22 +471,23 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
     dzeta,
     H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesB,
+    NumFacesG,
     Faces,
     NumEdges,
+    NumEdgesB,
+    NumEdgesG,
     Edges,
     NumNodes,
+    NumNodesB,
+    NumNodesG,
     Nodes,
     Form,
     Type,
     Dim,
     Rad,
-    NumEdgesI,
-    NumEdgesB,
     nBar3,
     nBar,
-    colors,
-    NumBoundaryFaces,
     AdaptGrid,
     )
 end
@@ -558,11 +561,14 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
-  colors=[[]]
-  NumGhostFaces = 0
+  NumFacesB = 0
+  NumFacesG = 0
+  NumEdgesB = 0
+  NumEdgesG = 0
+  NumNodesB = 0
+  NumNodesG = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
-  NumBoundaryFaces = 0
   AdaptGrid = ""
 
   return GridStruct{FT,
@@ -573,22 +579,23 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
     dzeta,
     H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesB,
+    NumFacesG,
     Faces,
     NumEdges,
+    NumEdgesB,
+    NumEdgesG,
     Edges,
     NumNodes,
+    NumNodesB,
+    NumNodesB,
     Nodes,
     Form,
     Type,
     Dim,
     Rad,
-    NumEdgesI,
-    NumEdgesB,
     nBar3,
     nBar,
-    colors,
-    NumBoundaryFaces,
     AdaptGrid,
     )
 
