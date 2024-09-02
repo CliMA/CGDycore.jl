@@ -48,8 +48,8 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdgesI + Grid.NumEdgesB
-  NumI = Grid.NumEdgesI
+  NumG = Grid.NumEdges 
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
@@ -109,8 +109,8 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdgesI + Grid.NumEdgesB
-  NumI = Grid.NumEdgesI
+  NumG = Grid.NumEdges
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
@@ -229,8 +229,8 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB + 4*Grid.NumFaces
-  NumI = Grid.NumEdgesI
+  NumG = 2*Grid.NumEdges + 4*Grid.NumFaces
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
@@ -328,8 +328,8 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB + 2*Grid.NumFaces
-  NumI = Grid.NumEdgesI
+  NumG = 2*Grid.NumEdges + 2*Grid.NumFaces
+  Num = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
       iE1 = Grid.Faces[iF].E[1]
       GlobCPU[1,iF] = 2*Grid.Edges[iE1].E - 1
@@ -437,8 +437,8 @@ function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdgesI + Grid.NumEdgesB
-  NumI = Grid.NumEdgesI
+  NumG = Grid.NumEdges
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
