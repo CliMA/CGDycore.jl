@@ -22,6 +22,29 @@ Base.@kwdef struct ParamLinearBlob
   Width = 0.8
 end
 
+Base.@kwdef struct ParamBaroWaveDryCart{FT}
+  lat0::FT = 0.5 * pi
+  RadEarth::FT = 6.37122e+6
+  Omega::FT = 2 * pi / 24.0 / 3600.0
+  f0::FT = 2.0 * Omega * sin(lat0)
+  beta0::FT = 0.0 #2.0 * Omega * cos(lat0) / RadEarth
+  Lx::FT = 40000 * 1000
+  Ly::FT = 6000 * 1000
+  NBr::FT = 0.014 
+  p0::FT = 1000 * 100
+  pTop::FT = 20 * 100
+  T0::FT = 288
+  TS::FT = 260
+  u0::FT = 35
+  up::FT = 1
+  Lp::FT = 600 * 1000
+  xC::FT = 2000 * 1000
+  yC::FT = 2500 * 1000
+  y0::FT = 0.5 * Ly
+  LapseRate::FT = 0.005
+  b::FT = 2
+end
+
 Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   T0E::FT = 310.0
   T0P::FT = 240.0
@@ -352,6 +375,8 @@ function Parameters(FT,Problem::String)
     Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
     @show Problem
     Param = ParamHeldSuarezDrySphere{FT}()
+  elseif Problem == "BaroWaveDryCart"
+    Param = ParamBaroWaveDryCart{FT}()
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()

@@ -11,18 +11,18 @@
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  Pres = @localmem eltype(F) (N,N,ColumnTilesDim+1)
+  pCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
   RhoCol = @localmem eltype(F) (N,N,ColumnTilesDim+1)
 
   ID = I + (J - 1) * N  
   ind = Glob[ID,IF]
 
   if Iz <= Nz
-    Pres[I,J,iz] = p[Iz,ind]
+    pCol[I,J,iz] = p[Iz,ind]
     RhoCol[I,J,iz] = U[Iz,ind,1]
   end
   if iz == ColumnTilesDim && Iz < Nz
-    Pres[I,J,iz+1] = p[Iz+1,ind]
+    pCol[I,J,iz+1] = p[Iz+1,ind]
     RhoCol[I,J,iz+1] = U[Iz+1,ind,1]
   end  
 
@@ -32,13 +32,13 @@
   ind = Glob[ID,IF]
 
   if Iz <= Nz
-    DXPres = D[I,1] * Pres[1,J,iz]
-    DYPres = D[J,1] * Pres[I,1,iz]
+    DXpCol = D[I,1] * pCol[1,J,iz]
+    DYpCol = D[J,1] * pCol[I,1,iz]
     for k = 2 : N
-      DXPres += D[I,k] * Pres[k,J,iz]
-      DYPres += D[J,k] * Pres[I,k,iz]
+      DXpCol += D[I,k] * pCol[k,J,iz]
+      DYpCol += D[J,k] * pCol[I,k,iz]
     end
-    @views Gradu, Gradv = Grad12(DXPres,DYPres,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
+    @views Gradu, Gradv = Grad12(DXpCol,DYpCol,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
 
     x = eltype(F)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
     y = eltype(F)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
@@ -53,7 +53,7 @@
   end  
 
   if Iz < Nz
-    GradZ = eltype(F)(0.5) * (Pres[I,J,iz+1] - Pres[I,J,iz])  
+    GradZ = eltype(F)(0.5) * (pCol[I,J,iz+1] - pCol[I,J,iz])  
     Gradw =  GradZ* (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF])
     x = eltype(F)(0.5) * (X[ID,2,1,Iz,IF] + X[ID,2,1,Iz+1,IF])
     y = eltype(F)(0.5) * (X[ID,2,2,Iz,IF] + X[ID,1,2,Iz+1,IF])

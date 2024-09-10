@@ -36,6 +36,9 @@ function InitialProfile!(Model,Problem,Param,Phys)
   elseif Problem == "WarmBubble2DXCart"
     Profile = Examples.WarmBubbleCartExample()(Param,Phys)
     Model.InitialProfile = Profile
+  elseif Problem == "BaroWaveDryCart"
+    Profile = Examples.BaroWaveDryCart()(Param,Phys)
+    Model.InitialProfile = Profile
   elseif Problem == "BryanFritschCart"
     ProfileBF = Models.TestRes(Phys)
     Profile = Examples.BryanFritsch(ProfileBF)(Param,Phys)

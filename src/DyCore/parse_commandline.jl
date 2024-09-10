@@ -135,7 +135,7 @@ function parse_commandline()
     "--CoriolisType"
     help = "Coriolis parameterization"
     arg_type = String
-    default = "Sphere"
+    default = "Shallow"
 
     "--Buoyancy"
     help = "Buoyancy "

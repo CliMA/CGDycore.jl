@@ -279,11 +279,8 @@ U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile
 
 #Coriolis
 if Coriolis
-  if Equation == "CompressibleShallow"
-    CoriolisFun = GPU.CoriolisShallow()(Phys)
-    Model.CoriolisFun = CoriolisFun
-  elseif Equation == "CompressibleDeep"
-    CoriolisFun = GPU.CoriolisDeep()(Phys)
+  if CoriolisType == "FPlane"
+    CoriolisFun = GPU.FPlane()(Param,Phys)
     Model.CoriolisFun = CoriolisFun
   else
     CoriolisFun = GPU.CoriolisNo()()

@@ -73,6 +73,7 @@ include("JacobiSphereDG3GPU.jl")
 include("Grid2KiteGrid.jl")
 include("GridLength.jl")
 include("QuadGrid.jl")
+include("HealpixGrid.jl")
 include("TestGrid.jl")
 
 end

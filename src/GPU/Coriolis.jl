@@ -1,5 +1,18 @@
 abstract type CoriolisType end
 
+Base.@kwdef struct FPlane <: CoriolisType end
+
+function (CoriolisFun::FPlane)(Param,Phys)
+  @inline function Coriolis(x,y,z,u,v,w1,w2)
+    FT = eltype(x)
+    W = Param.f0 + Param.beta0 * (y - Param.y0)
+    Fu = v * W
+    Fv = - u * W
+    return Fu,Fv,FT(0)
+  end
+  return Coriolis
+end  
+
 Base.@kwdef struct CoriolisShallow <: CoriolisType end
 
 function (CoriolisFun::CoriolisShallow)(Phys)
@@ -73,3 +86,4 @@ function (GravitationFun::GravitationNo)()
   end
   return Gravitation
 end
+

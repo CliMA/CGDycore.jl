@@ -490,7 +490,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    )
 end  
 
-mutable struct GlobalStruct{FT<:AbstractFloat}
+mutable struct GlobalStruct{FT<:AbstractFloat,
+                            AT2<:AbstractArray}
   Grid::Grids.GridStruct
   Model::ModelStruct{FT}
   ParallelCom::ParallelComStruct
@@ -504,8 +505,8 @@ mutable struct GlobalStruct{FT<:AbstractFloat}
   TBGrd::Array{Float64, 2}
   pBGrd::Array{Float64, 2}
   RhoBGrd::Array{Float64, 2}
-  UGeo::Array{Float64, 2}
-  VGeo::Array{Float64, 2}
+  UGeo::AT2
+  VGeo::AT2
 end
 function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
                 Model::ModelStruct,
@@ -519,11 +520,12 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
   TBGrd = zeros(0,0)
   pBGrd = zeros(0,0)
   RhoBGrd = zeros(0,0)
-  UGeo = zeros(0,0)
-  VGeo = zeros(0,0)
+  UGeo = KernelAbstractions.zeros(backend,FT,0,0)
+  VGeo = KernelAbstractions.zeros(backend,FT,0,0)
   SurfaceData = Surfaces.SurfaceData{FT}(backend,0)
   LandUseData = Surfaces.LandUseData{FT}(backend,00)
-  return GlobalStruct{FT}(
+  return GlobalStruct{FT,
+                      typeof(UGeo)}(
     Grid,
     Model,
     ParallelCom,

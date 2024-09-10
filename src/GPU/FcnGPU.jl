@@ -275,6 +275,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views CacheF = Temp1[:,:,1:5]
   @views p = Cache.AuxG[:,:,1]
 
+
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
   group = (N, N, NzG, 1)

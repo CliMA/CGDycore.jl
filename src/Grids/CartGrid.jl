@@ -44,10 +44,15 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
     x=x0
     if iy==ny+1 && Boundary.SN == "Period"
     else
+      if iy == 1 || iy == ny + 1  
+        TypeN = 'B'
+      else
+        TypeN = ' '  
+      end  
       @inbounds for ix=1:nx+1
         if ix==nx+1 && Boundary.WE == "Period"
         else
-          Nodes[NodeNumber]=Node(Point([x,y,0.0]),NodeNumber,' ')
+          Nodes[NodeNumber]=Node(Point([x,y,0.0]),NodeNumber,TypeN)
           NodeNumber=NodeNumber+1
         end
         x=x+dx
@@ -117,6 +122,11 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   @inbounds for iy=1:ny+1
     if iy==ny+1 && Boundary.SN == "Period"
     else
+      if iy==1 || iy==ny+1  
+        TypeE="B"
+      else
+        TypeE="X"  
+      end
       @inbounds for ix=1:nx
         if ix==nx && Boundary.WE == "Period"
           Edges[EdgeNumber]=Edge([N1,1+(iy-1)*nx],Nodes,EdgeNumber,EdgeNumber,TypeE,EdgeNumberX)
@@ -143,7 +153,7 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   Faces=map(1:NumFaces) do i
      Face()
   end
-  if Boundary.WE == "Period" && Boundary.SN == "Period"
+  if Boundary.WE == "Period" 
     E1=nx*ny+1
     E3=nx*ny+1+nx
   else
