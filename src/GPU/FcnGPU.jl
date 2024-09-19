@@ -298,6 +298,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   ndrangeL = (Nz, NF, NumTr)
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
+  KGradFullKernel! = GradFullKernel!(backend,group)
   KGradKernel! = GradKernel!(backend,group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
@@ -442,11 +443,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
       KernelAbstractions.synchronize(backend)
     end
   end  
-  KGradKernel!(F,U,p,DS,dXdxI,J,X,M,Glob,GravitationFun,ndrange=ndrangeB)
-  KernelAbstractions.synchronize(backend)
+# KGradKernel!(F,U,p,DS,dXdxI,J,X,M,Glob,GravitationFun,ndrange=ndrangeB)
+# KernelAbstractions.synchronize(backend)
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
-  KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+# KRhoGradKinKernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+  KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,ndrange=ndrangeB)
   KernelAbstractions.synchronize(backend)
   if State == "Dry" || State == "ShallowWater"
     KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
@@ -517,11 +519,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     end  
   end  
 
-  KGradKernel!(F,U,p,DS,dXdxI_I,J_I,X_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
-  KernelAbstractions.synchronize(backend)
+# KGradKernel!(F,U,p,DS,dXdxI_I,J_I,X_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
+# KernelAbstractions.synchronize(backend)
   KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
-  KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+# KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+  KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
   KernelAbstractions.synchronize(backend)
 
   if State == "Dry" || State == "ShallowWater"

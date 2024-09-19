@@ -14,7 +14,7 @@ using MPI
 FT = Float32
 Phys = DyCore.PhysParameters{FT}()
 
-TestIter = 1
+TestIter = 200
 
 NF = 5400 # 30*30*6
 NumG = 48602 
@@ -30,8 +30,8 @@ read!("TestKernels/GlobInd",GlobCPU)
 
 
 
-backend = CPU()
-#backend = CUDABackend()
+#backend = CPU()
+backend = CUDABackend()
 #backend = ROCBackend()
 NzG = min(div(NumberThreadGPU,DoF),Nz)
 group = (Ord, Ord, NzG, 1)
@@ -62,14 +62,18 @@ GravitationFun = GPU.GravitationShallow()(Phys)
 KMomentumVectorInvariantCoriolisKernel! = GPU.MomentumVectorInvariantCoriolisKernel!(backend,group)
 KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
+@show "Momentum"
 @time for iter = 1 : TestIter
   KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
+@show CUDA.@profile trace=true CUDA.@sync KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
+KernelAbstractions.synchronize(backend)
 
 KGradKernel! = GPU.GradKernel!(backend,group)
 KGradKernel!(F,U,p,D,dXdxI,J,X,M,Glob,GravitationFun,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
+@show "Gradient"
 @time for iter = 1 : TestIter
   KGradKernel!(F,U,p,D,dXdxI,J,X,M,Glob,GravitationFun,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
@@ -78,6 +82,7 @@ end
 KDivRhoThUpwind3Kernel! = GPU.DivRhoThUpwind3Kernel!(backend,group)
 KDivRhoThUpwind3Kernel!(F,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
+@show "Upwind"
 @time for iter = 1 : TestIter
   KDivRhoThUpwind3Kernel!(F,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
@@ -86,6 +91,7 @@ end
 KHyperViscKoeffKernel! = GPU.HyperViscKoeffKernel!(backend,group)
 KHyperViscKoeffKernel!(F,U,CacheF,D,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
+@show "HyperVisc"
 @time for iter = 1 : TestIter
   KHyperViscKoeffKernel!(F,U,CacheF,D,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)

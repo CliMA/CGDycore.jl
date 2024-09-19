@@ -19,7 +19,7 @@ julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=1 \
+  --SimDays=2 \
   --SimHours=0 \
   --SimSeconds=0 \
   --PrintSeconds=0 \

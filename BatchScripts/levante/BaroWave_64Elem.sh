@@ -1,7 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=my_gpu_job      # Specify job name
 #SBATCH --partition=gpu            # Specify partition name
-#SBATCH --gpus=8
+#SBATCH --gpus=4
+#SBATCH --nodes=1   # -> 8GPUs
+#SBATCH --tasks-per-node=4
+#SBATCH --cpus-per-task=64
 #SBATCH --exclusive
 #SBATCH --mem=0                    # Request all memory available on all nodes
 #SBATCH --time=00:30:00            # Set a limit on the total run time
@@ -21,4 +24,5 @@ ulimit -s 204800
 export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
 export UCX_ERROR_SIGNALS=""
-srun -n 8 gpu_wrapper.sh -n 8 -e "./Jobs/NHSphere/BaroWaveDrySphere_64Elem"
+export machine="levante"
+srun -n 4 gpu_wrapper.sh -n 4 -e "./Jobs/NHSphere/BaroWaveDrySphere_64Elem"

@@ -40,6 +40,6 @@ julia --project Examples/testNHSphere.jl \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=7.8125e12 \
-  --HyperDGrad=7.8125e12 \
-  --HyperDDiv=7.8125e12 \
+  --HyperDCurl=1.8125e12 \
+  --HyperDGrad=1.8125e12 \
+  --HyperDDiv=1.8125e12 \

@@ -2,7 +2,7 @@
 #SBATCH --job-name=my_gpu_job      # Specify job name
 #SBATCH --partition=gpu            # Specify partition name
 #SBATCH --gpus-per-node=4
-#SBATCH --nodes=2   # -> 8GPUs
+#SBATCH --nodes=4   # -> 8GPUs
 #SBATCH --tasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --exclusive
@@ -25,4 +25,4 @@ export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
 export machine="levante"
 export UCX_ERROR_SIGNALS=""
-srun -n 8 gpu_wrapper.sh -n 8 -e "./Jobs/NHSphere/BaroWaveDrySphere_128Elem"
+srun -n 16 gpu_wrapper.sh -n 16 -e "./Jobs/NHSphere/BaroWaveDrySphere_128Elem"
