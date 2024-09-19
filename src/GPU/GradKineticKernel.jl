@@ -47,18 +47,6 @@
   ID = I + (J - 1) * N
   ind = Glob[ID,IF]
 
-  if Iz < Nz
-    GradZ = eltype(F)(0.5) * (pCol[I,J,iz+1] - pCol[I,J,iz])
-    Gradw =  GradZ* (dXdxI[3,3,2,ID,Iz,IF] + dXdxI[3,3,1,ID,Iz+1,IF])
-    x = eltype(F)(0.5) * (X[ID,2,1,Iz,IF] + X[ID,2,1,Iz+1,IF])
-    y = eltype(F)(0.5) * (X[ID,2,2,Iz,IF] + X[ID,1,2,Iz+1,IF])
-    z = eltype(F)(0.5) * (X[ID,2,3,Iz,IF] + X[ID,1,3,Iz+1,IF])
-    Grav = Gravitation(x,y,z)
-    @atomic :monotonic F[Iz,ind,4] += -(Gradw +
-      Grav * (RhoCol[I,J,iz] * JJ[ID,2,Iz,IF] + RhoCol[I,J,iz+1] * JJ[ID,1,Iz+1,IF])) /
-      (RhoCol[I,J,iz] * M[Iz,ind,2] + RhoCol[I,J,iz+1] * M[Iz+1,ind,1])
-  end
-
   if Iz <= Nz
     DXpCol = D[I,1] * pCol[1,J,iz]
     DYpCol = D[J,1] * pCol[I,1,iz]
