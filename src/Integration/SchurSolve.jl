@@ -43,23 +43,6 @@ end
 end
 
 @kernel inbounds = true function TriDiagKernel!(tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
-
-  IC, = @index(Global, NTuple)
-
-  NumG = @uniform @ndrange()[1]
-
-  invfac = 1 / fac
-  invfac2 = invfac / fac
-  if IC <= NumG
-    @views @. tri[1,:,IC] = 0
-    @views @. tri[2,:,IC] = invfac2
-    @views @. tri[3,:,IC] = 0
-    @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
-    @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
-  end    
-end
-
-@kernel inbounds = true function TriDiagKernel1!(tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
   Iz,IC, = @index(Global, NTuple)
   NumG = @uniform @ndrange()[2]
   Nz = @uniform @ndrange()[1]
@@ -193,22 +176,16 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   ndrangeTri = (NumG)
 
   if J.CompTri
-# KSchurSolveFacKernel! = SchurSolveFacKernel!(backend,groupTri)
-# KSchurSolveFacKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)
-    KTriDiagKernel! = TriDiagKernel1!(backend,groupTriDiag)
+    KTriDiagKernel! = TriDiagKernel!(backend,groupTriDiag)
     KTriDiagKernel!(J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTriDiag)
-    KernelAbstractions.synchronize(backend)
     J.CompTri = false
   end  
   KSchurSolveKernelF! = SchurSolveKernelF!(backend,group)
   KSchurSolveKernelF!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
   KSchurSolveKernel! = SchurSolveKernel!(backend,groupTri)
   KSchurSolveKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)
-  KernelAbstractions.synchronize(backend)
   KSchurSolveKernelB! = SchurSolveKernelB!(backend,group)
   KSchurSolveKernelB!(NumVTr,k,v,J.JRhoW,J.JRhoThW,fac,ndrange=ndrange)
-
 end
 
 function SchurSolve!(k,v,J,fac,Cache,Global)

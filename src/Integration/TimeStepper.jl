@@ -107,7 +107,6 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
       for i=2:nIter
         Δt = @elapsed begin
           RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
-          @show sum(abs.(U))
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
