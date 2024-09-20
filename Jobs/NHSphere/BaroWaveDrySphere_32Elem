@@ -36,7 +36,7 @@ julia --project Examples/testNHSphere.jl \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
-  --nPanel=32 \
+  --nPanel=8 \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \

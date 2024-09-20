@@ -68,15 +68,17 @@ end
   invfac2 = invfac / fac
   if IC <= NumG
     if Iz == 1  
-      tri[2,Iz,IC] = invfac2  - JWRho[2,Iz,IC] * JRhoW[1,Iz,IC] - JWRho[1,Iz,IC] * JRhoW[2,Iz,IC] -
-        JWRhoTh[2,1,IC] * JRhoThW[1,Iz,IC] - JWRhoTh[1,Iz,IC] * JRhoThW[2,Iz,IC]
-      tri[3,Iz,IC] = - JWRho[2,Iz,IC] * JRhoW[2,Iz,IC] -
-        JWRhoTh[2,2,IC] * JRhoThW[2,Iz,IC]
+      tri[1,Iz,IC] = eltype(JRhoW)(0)
+      tri[2,Iz,IC] = invfac2  - JWRho[2,Iz+1,IC] * JRhoW[1,Iz,IC] - JWRho[1,Iz,IC] * JRhoW[2,Iz,IC] -
+        JWRhoTh[2,Iz,IC] * JRhoThW[1,Iz,IC] - JWRhoTh[1,Iz,IC] * JRhoThW[2,Iz,IC]
+      tri[3,Iz,IC] = - JWRho[2,Iz+1,IC] * JRhoW[2,Iz,IC] -
+        JWRhoTh[2,Iz+1,IC] * JRhoThW[2,Iz,IC]
     elseif Iz == Nz  
       tri[1,Iz,IC] = - JWRho[1,Iz-1,IC] * JRhoW[1,Iz,IC] -
         JWRhoTh[1,Iz-1,IC] * JRhoThW[1,Iz,IC]
       tri[2,Iz,IC] = invfac2 - JWRho[2,Iz,IC] * JRhoW[1,Iz,IC] - JWRho[1,Iz,IC] * JRhoW[2,Iz,IC] -
         JWRhoTh[2,Iz,IC] * JRhoThW[1,Iz,IC] - JWRhoTh[1,Iz,IC] * JRhoThW[2,Iz,IC]
+      tri[3,Iz,IC] = eltype(JRhoW)(0)
     else  
       tri[1,Iz,IC] = - JWRho[1,Iz-1,IC] * JRhoW[1,Iz,IC] -
         JWRhoTh[1,Iz-1,IC] * JRhoThW[1,Iz,IC]
@@ -191,6 +193,8 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   ndrangeTri = (NumG)
 
   if J.CompTri
+# KSchurSolveFacKernel! = SchurSolveFacKernel!(backend,groupTri)
+# KSchurSolveFacKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)
     KTriDiagKernel! = TriDiagKernel1!(backend,groupTriDiag)
     KTriDiagKernel!(J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTriDiag)
     KernelAbstractions.synchronize(backend)
