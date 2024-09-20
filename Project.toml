@@ -1,6 +1,6 @@
+authors = ["Charles Kawczynski <kawczynski.charles@gmail.com>"]
 name = "CGDycore"
 uuid = "110386ce-a5d9-49ed-97cd-70eaac72bd66"
-authors = ["Charles Kawczynski <kawczynski.charles@gmail.com>"]
 version = "0.1.0"
 
 [deps]
@@ -33,6 +33,7 @@ MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 MultivariatePolynomials = "102ac46a-7ee4-5c85-9060-abc95bfdeaa3"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
+NVTX = "5da4648a-3479-48b8-97b9-01cb529c0a1f"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
 PairedLinkedLists = "7a42b37b-ed3b-477a-9848-3661f53bb718"
@@ -54,4 +55,5 @@ VTKBase = "4004b06d-e244-455f-a6ce-a5f9919cc534"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
 [extras]
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
