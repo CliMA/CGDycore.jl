@@ -129,7 +129,7 @@ end
   NumG = @uniform @ndrange()[2]
   Nz = @uniform @ndrange()[1]
   if IC <= NumG
-    if Iz <= Nz
+    if Iz < Nz
       v[Iz,IC,4] = v[Iz,IC,4] / fac + JWRho[2,Iz,IC] * v[Iz,IC,1] + JWRho[1,Iz,IC] * v[Iz+1,IC,1] +
         JWRhoTh[2,Iz,IC] * v[Iz,IC,5] + JWRhoTh[1,Iz,IC] * v[Iz+1,IC,5]          
     else
@@ -147,34 +147,20 @@ end
     if Iz == 1
       v[Iz,IC,1] += JRhoW[1,Iz,IC] * k[Iz,IC,4] 
       v[Iz,IC,5] += JRhoThW[1,Iz,IC] * k[Iz,IC,4] 
-      k[Iz,IC,1] = fac * v[Iz,IC,1]
-      k[Iz,IC,2] = fac * v[Iz,IC,2]
-      k[Iz,IC,3] = fac * v[Iz,IC,3]
-      k[Iz,IC,5] = fac * v[Iz,IC,5]
-      for iT = 6 : NumVTr
-        k[Iz,IC,iT] = fac * v[Iz,IC,iT]
-      end
-    elseif Iz == Nz  
+    elseif Iz == Nz - 1  
       v[Iz,IC,1] += JRhoW[2,Iz,IC] * k[Iz,IC,4] 
       v[Iz,IC,5] += JRhoThW[2,Iz,IC] * k[Iz,IC,4] 
-      k[Iz,IC,1] = fac * v[Iz,IC,1]
-      k[Iz,IC,2] = fac * v[Iz,IC,2]
-      k[Iz,IC,3] = fac * v[Iz,IC,3]
-      k[Iz,IC,5] = fac * v[Iz,IC,5]
-      for iT = 6 : NumVTr
-        k[Iz,IC,iT] = fac * v[Iz,IC,iT]
-      end
-    else  
+    elseif Iz < Nz - 1  
       v[Iz,IC,1] += JRhoW[1,Iz,IC] * k[Iz,IC,4] + JRhoW[2,Iz-1,IC] *  k[Iz-1,IC,4] 
       v[Iz,IC,5] += JRhoThW[1,Iz,IC] * k[Iz,IC,4] + JRhoThW[2,Iz-1,IC] *  k[Iz-1,IC,4] 
-      k[Iz,IC,1] = fac * v[Iz,IC,1]
-      k[Iz,IC,2] = fac * v[Iz,IC,2]
-      k[Iz,IC,3] = fac * v[Iz,IC,3]
-      k[Iz,IC,5] = fac * v[Iz,IC,5]
-      for iT = 6 : NumVTr
-        k[Iz,IC,iT] = fac * v[Iz,IC,iT]
-      end
     end  
+    k[Iz,IC,1] = fac * v[Iz,IC,1]
+    k[Iz,IC,2] = fac * v[Iz,IC,2]
+    k[Iz,IC,3] = fac * v[Iz,IC,3]
+    k[Iz,IC,5] = fac * v[Iz,IC,5]
+    for iT = 6 : NumVTr
+      k[Iz,IC,iT] = fac * v[Iz,IC,iT]
+    end
   end
 end
 
@@ -198,13 +184,15 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
 
   group = (Nz,10)
   ndrange = (Nz,NumG)
+  groupTriDiag = (Nz-1,10)
+  ndrangeTriDiag = (Nz-1,NumG)
 # group = (1024)
   groupTri = (64)
   ndrangeTri = (NumG)
 
   if J.CompTri
-    KTriDiagKernel! = TriDiagKernel1!(backend,group)
-    KTriDiagKernel!(J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
+    KTriDiagKernel! = TriDiagKernel1!(backend,groupTriDiag)
+    KTriDiagKernel!(J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTriDiag)
     KernelAbstractions.synchronize(backend)
     J.CompTri = false
   end  
