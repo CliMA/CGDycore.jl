@@ -78,6 +78,47 @@ end
     end 
   end    
 end
+@kernel inbounds = true function SchurSolveKernelF!(k,v,@Const(JWRho),@Const(JWRhoTh),fac)
+  Iz,IC, = @index(Global, NTuple)
+  NumG = @uniform @ndrange()[2]
+  Nz = @uniform @ndrange()[1]
+  if IC <= NumG
+    if Iz <= Nz
+      v[Iz,IC,4] = v[Iz,IC,4] / fac + JWRho[2,Iz,IC] * v[Iz,IC,1] + JWRho[1,Iz,IC] * v[Iz+1,IC,1] +
+        JWRhoTh[2,Iz,IC] * v[Iz,IC,5] + JWRhoTh[1,Iz,IC] * v[Iz+1,IC,5]          
+    else
+      k[Iz,IC,4] = 0
+    end    
+  end  
+end
+
+#=
+@kernel inbounds = true function SchurSolveKernelTri!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
+  IC, = @index(Global, NTuple)
+  if IC <= NumG
+    @views sw=k[1:Nz-1,IC,4]
+    @views rw=v[1:Nz-1,IC,4]
+    @views triSolve!(sw,tri[:,:,IC],rw)
+  end  
+end
+@kernel inbounds = true function SchurSolveKernelB!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
+  IC, = @index(Global, NTuple)
+  if IC <= NumG
+    @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
+    @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
+
+    for iz = 1 : Nz
+      k[iz,IC,1] = fac * v[iz,IC,1]
+      k[iz,IC,2] = fac * v[iz,IC,2]
+      k[iz,IC,3] = fac * v[iz,IC,3]
+      k[iz,IC,5] = fac * v[iz,IC,5]
+      for iT = 6 : NumVTr
+        k[iz,IC,iT] = fac * v[iz,IC,iT]
+      end
+    end
+  end
+end
+=#
 
 @kernel inbounds = true function SchurSolveKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
   IC, = @index(Global, NTuple)
@@ -85,16 +126,16 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    invfac=1/fac
-    invfac2=invfac/fac
+#   invfac=1/fac
+#   invfac2=invfac/fac
     @views rRho=v[:,IC,1]
     @views rTh=v[:,IC,5]
     @views rw=v[1:Nz-1,IC,4]
     @views sw=k[1:Nz-1,IC,4]
-    k[end,IC,4] = 0
-    @. rw = invfac * rw
-    @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
-    @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
+#   k[end,IC,4] = 0
+#   @. rw = invfac * rw
+#   @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
+#   @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
     @views triSolve!(sw,tri[:,:,IC],rw)
     @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
     @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
@@ -119,17 +160,22 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   NumG = size(k,2)
   NumVTr = size(k,3) 
 
+  group = (Nz,10)
+  ndrange = (Nz,NumG)
 # group = (1024)
-  group = (64)
-  ndrange = (NumG)
+  groupTri = (64)
+  ndrangeTri = (NumG)
 
   if J.CompTri
-    KSchurSolveFacKernel! = SchurSolveFacKernel!(backend,group)
-    KSchurSolveFacKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
+    KSchurSolveFacKernel! = SchurSolveFacKernel!(backend,groupTri)
+    KSchurSolveFacKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)
     KernelAbstractions.synchronize(backend)
   else
-    KSchurSolveKernel! = SchurSolveKernel!(backend,group)
-    KSchurSolveKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrange)
+    KSchurSolveKernelF! = SchurSolveKernelF!(backend,group)
+    KSchurSolveKernelF!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+    KSchurSolveKernel! = SchurSolveKernel!(backend,groupTri)
+    KSchurSolveKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)
     KernelAbstractions.synchronize(backend)
   end
   J.CompTri = false
