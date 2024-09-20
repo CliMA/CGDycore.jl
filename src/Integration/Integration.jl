@@ -6,6 +6,7 @@ import ..Parallels
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using NVTX
 
 include("JacStruc.jl")
 include("LinIMEXMethod.jl")
