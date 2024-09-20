@@ -177,7 +177,7 @@ end
   end
 end
 
-function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+NVTX.@annotate function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   backend = get_backend(U)
   dXdxI = Metric.dXdxI
   X = Metric.X

@@ -10,6 +10,7 @@ using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras
+using NVTX
 
 include("OperatorKernel.jl")
 include("FcnGPU.jl")

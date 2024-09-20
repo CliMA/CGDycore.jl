@@ -174,7 +174,7 @@ end
   end    
 end
 
-function SchurSolveGPU!(k,v,J,fac,Cache,Global)
+NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   backend = get_backend(k)
   FT = eltype(k)
 
