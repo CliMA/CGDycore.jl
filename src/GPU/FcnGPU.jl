@@ -330,7 +330,7 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
 ####
   Temp1 .= FT(0)
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
-  KernelAbstractions.synchronize(backend)
+# KernelAbstractions.synchronize(backend)
   if ~HorLimit
     for iT = 1 : NumTr
       @views KHyperViscTracerKernel!(CacheTr[:,:,iT],UTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
