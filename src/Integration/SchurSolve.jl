@@ -129,19 +129,27 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
 
   Nz = size(k,1)
   NumG = size(k,2)
-  NumVTr = size(k,3) 
+  NumVTr = size(k,3)
 
+  group = (Nz,10)
+  ndrange = (Nz,NumG)
+  groupTriDiag = (Nz-1,10)
+  ndrangeTriDiag = (Nz-1,NumG)
+# group = (1024)
   groupTri = (64)
   ndrangeTri = (NumG)
 
   if J.CompTri
-    KSchurSolveFacKernel! = SchurSolveFacKernel!(backend,groupTri)
-    KSchurSolveFacKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)  
-  else  
-    KSchurSolveKernel! = SchurSolveKernel!(backend,groupTri)
-    KSchurSolveKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)  
-  end  
-  J.CompTri = false
+    KTriDiagKernel! = TriDiagKernel!(backend,groupTriDiag)
+    KTriDiagKernel!(J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTriDiag)
+    J.CompTri = false
+  end
+  KSchurSolveKernelF! = SchurSolveKernelF!(backend,group)
+  KSchurSolveKernelF!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
+  KSchurSolveTriKernel! = SchurSolveTriKernel!(backend,groupTri)
+  KSchurSolveTriKernel!(Nz,k,v,J.tri,ndrange=ndrangeTri)
+  KSchurSolveBKernel! = SchurSolveBKernel!(backend,group)
+  KSchurSolveBKernel!(NumVTr,k,v,J.JRhoW,J.JRhoThW,fac,ndrange=ndrange)
 end
 
 function SchurSolve!(k,v,J,fac,Cache,Global)
