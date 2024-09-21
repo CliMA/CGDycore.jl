@@ -51,3 +51,4 @@ LocalPreferences.toml
 list1
 TestScore_P.jl
 OutRace
+src/Integration/SchurSolve.jl_Ori

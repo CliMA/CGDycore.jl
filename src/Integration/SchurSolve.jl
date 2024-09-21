@@ -73,74 +73,6 @@ end
   end
 end
 
-@kernel inbounds = true function SchurSolveFacKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
-  IC, = @index(Global, NTuple)
-
-  NumG = @uniform @ndrange()[1]
-
-  invfac = 1 / fac
-  invfac2 = invfac / fac
-
-  if IC <= NumG
-    @views rRho=v[:,IC,1]
-    @views rTh=v[:,IC,5]
-    @views rw=v[1:Nz-1,IC,4]
-    @views sw=k[1:Nz-1,IC,4]
-    k[end,IC,4] = 0
-    @views @. tri[1,:,IC] = 0
-    @views @. tri[2,:,IC] = invfac2
-    @views @. tri[3,:,IC] = 0
-    @views mulUL!(tri[:,:,IC],JWRho[:,:,IC],JRhoW[:,:,IC])
-    @views mulUL!(tri[:,:,IC],JWRhoTh[:,:,IC],JRhoThW[:,:,IC])
-    @. rw = invfac * rw
-    @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
-    @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
-    @views triSolve!(sw,tri[:,:,IC],rw)
-    @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
-    @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
-    for iz = 1 : Nz
-      k[iz,IC,1] = fac * v[iz,IC,1]
-      k[iz,IC,2] = fac * v[iz,IC,2]
-      k[iz,IC,3] = fac * v[iz,IC,3]
-      k[iz,IC,5] = fac * v[iz,IC,5]
-      for iT = 6 : NumVTr
-        k[iz,IC,iT] = fac * v[iz,IC,iT]
-      end
-    end 
-  end    
-end
-
-@kernel inbounds = true function SchurSolveKernel!(NumVTr,Nz,k,v,tri,@Const(JRhoW),@Const(JWRho),@Const(JWRhoTh),@Const(JRhoThW),fac)
-  IC, = @index(Global, NTuple)
-
-  NumG = @uniform @ndrange()[1]
-
-  invfac = 1 / fac
-  invfac2 = invfac / fac
-  if IC <= NumG
-    @views rRho=v[:,IC,1]
-    @views rTh=v[:,IC,5]
-    @views rw=v[1:Nz-1,IC,4]
-    @views sw=k[1:Nz-1,IC,4]
-    k[end,IC,4] = 0
-    @. rw = invfac * rw
-    @views mulbiUv!(rw,JWRho[:,:,IC],rRho)
-    @views mulbiUv!(rw,JWRhoTh[:,:,IC],rTh)
-    @views triSolve!(sw,tri[:,:,IC],rw)
-    @views mulbiLv!(rRho,JRhoW[:,:,IC],sw)
-    @views mulbiLv!(rTh,JRhoThW[:,:,IC],sw)
-    for iz = 1 : Nz
-      k[iz,IC,1] = fac * v[iz,IC,1]
-      k[iz,IC,2] = fac * v[iz,IC,2]
-      k[iz,IC,3] = fac * v[iz,IC,3]
-      k[iz,IC,5] = fac * v[iz,IC,5]
-      for iT = 6 : NumVTr
-        k[iz,IC,iT] = fac * v[iz,IC,iT]
-      end
-    end 
-  end    
-end
-
 @kernel inbounds = true function SchurSolveFKernel!(k,v,@Const(JWRho),@Const(JWRhoTh),fac)
   Iz,IC, = @index(Global, NTuple)
   NumG = @uniform @ndrange()[2]
@@ -181,7 +113,7 @@ end
   end
 end
 
-@kernel inbounds = true function SchurSolveTriKernel!(k,v,@Const(tri))
+@kernel inbounds = true function SchurSolveTriKernel!(Nz,k,v,@Const(tri))
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
@@ -210,35 +142,6 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
     KSchurSolveKernel!(NumVTr,Nz,k,v,J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTri)  
   end  
   J.CompTri = false
-end
-
-NVTX.@annotate function SchurSolveGPU1!(k,v,J,fac,Cache,Global)
-  backend = get_backend(k)
-  FT = eltype(k)
-
-  Nz = size(k,1)
-  NumG = size(k,2)
-  NumVTr = size(k,3) 
-
-  group = (Nz,10)
-  ndrange = (Nz,NumG)
-  groupTriDiag = (Nz-1,10)
-  ndrangeTriDiag = (Nz-1,NumG)
-# group = (1024)
-  groupTri = (64)
-  ndrangeTri = (NumG)
-
-  if J.CompTri
-    KTriDiagKernel! = TriDiagKernel!(backend,groupTriDiag)
-    KTriDiagKernel!(J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTriDiag)
-    J.CompTri = false
-  end  
-  KSchurSolveKernelF! = SchurSolveKernelF!(backend,group)
-  KSchurSolveKernelF!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
-  KSchurSolveTriKernel! = SchurSolveTriKernel!(backend,groupTri)
-  KSchurSolveTriKernel!(k,v,J.tri,ndrange=ndrangeTri)
-  KSchurSolveBKernel! = SchurSolveBKernel!(backend,group)
-  KSchurSolveBKernel!(NumVTr,k,v,J.JRhoW,J.JRhoThW,fac,ndrange=ndrange)
 end
 
 function SchurSolve!(k,v,J,fac,Cache,Global)
