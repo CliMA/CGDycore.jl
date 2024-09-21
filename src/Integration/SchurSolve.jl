@@ -144,8 +144,8 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
     KTriDiagKernel!(J.tri,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,fac,ndrange=ndrangeTriDiag)
     J.CompTri = false
   end
-  KSchurSolveKernelF! = SchurSolveKernelF!(backend,group)
-  KSchurSolveKernelF!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
+  KSchurSolveFKernel! = SchurSolveFKernel!(backend,group)
+  KSchurSolveFKernel!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
   KSchurSolveTriKernel! = SchurSolveTriKernel!(backend,groupTri)
   KSchurSolveTriKernel!(Nz,k,v,J.tri,ndrange=ndrangeTri)
   KSchurSolveBKernel! = SchurSolveBKernel!(backend,group)
