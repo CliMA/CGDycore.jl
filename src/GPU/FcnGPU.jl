@@ -523,10 +523,10 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
 
 # KGradKernel!(F,U,p,DS,dXdxI_I,J_I,X_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
 # KernelAbstractions.synchronize(backend)
-  @time KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
 # KernelAbstractions.synchronize(backend)
 # KRhoGradKinKernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-  @time KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
+  KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
 # KernelAbstractions.synchronize(backend)
 
   if State == "Dry" || State == "ShallowWater"
