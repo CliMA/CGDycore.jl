@@ -52,7 +52,7 @@ end
   if IC <= NumG
     if Iz == 1  
       tri[1,Iz,IC] = eltype(JRhoW)(0)
-      tri[2,Iz,IC] = invfac2  - JWRho[2,Iz+1,IC] * JRhoW[1,Iz,IC] - JWRho[1,Iz,IC] * JRhoW[2,Iz,IC] -
+      tri[2,Iz,IC] = invfac2  - JWRho[2,Iz,IC] * JRhoW[1,Iz,IC] - JWRho[1,Iz,IC] * JRhoW[2,Iz,IC] -
         JWRhoTh[2,Iz,IC] * JRhoThW[1,Iz,IC] - JWRhoTh[1,Iz,IC] * JRhoThW[2,Iz,IC]
       tri[3,Iz,IC] = - JWRho[2,Iz+1,IC] * JRhoW[2,Iz,IC] -
         JWRhoTh[2,Iz+1,IC] * JRhoThW[2,Iz,IC]
@@ -132,10 +132,10 @@ end
     if Iz == 1
       v[Iz,IC,1] += JRhoW[1,Iz,IC] * k[Iz,IC,4] 
       v[Iz,IC,5] += JRhoThW[1,Iz,IC] * k[Iz,IC,4] 
-    elseif Iz == Nz - 1  
-      v[Iz,IC,1] += JRhoW[2,Iz,IC] * k[Iz,IC,4] 
-      v[Iz,IC,5] += JRhoThW[2,Iz,IC] * k[Iz,IC,4] 
-    elseif Iz < Nz - 1  
+    elseif Iz == Nz  
+      v[Iz,IC,1] += JRhoW[2,Iz-1,IC] * k[Iz-1,IC,4] 
+      v[Iz,IC,5] += JRhoThW[2,Iz-1,IC] * k[Iz-1,IC,4] 
+    else    
       v[Iz,IC,1] += JRhoW[1,Iz,IC] * k[Iz,IC,4] + JRhoW[2,Iz-1,IC] *  k[Iz-1,IC,4] 
       v[Iz,IC,5] += JRhoThW[1,Iz,IC] * k[Iz,IC,4] + JRhoThW[2,Iz-1,IC] *  k[Iz-1,IC,4] 
     end  

@@ -1,7 +1,7 @@
 #!/bin/bash
 julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveDrySphere" \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --NumV=5 \
   --NumTr=0 \
