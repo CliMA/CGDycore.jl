@@ -123,7 +123,7 @@ end
   end    
 end
 
-@kernel inbounds = true function SchurSolveTriKernel!(Nz,k,@Const(v),@Const(tri))
+@kernel inbounds = true function SchurSolveTriKernel!(::Val{Nz},k,@Const(v),@Const(tri)) where {Nz}
   IG,   = @index(Local, NTuple)
   IC, = @index(Global, NTuple)
 
@@ -170,7 +170,7 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   KSchurSolveFKernel! = SchurSolveFKernel!(backend,group)
   KSchurSolveFKernel!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
   KSchurSolveTriKernel! = SchurSolveTriKernel!(backend,groupTri)
-  @views KSchurSolveTriKernel!(Nz-1,k[Nz-1,:,4],v[Nz-1,:,4],J.tri,ndrange=ndrangeTri)
+  @views KSchurSolveTriKernel!(Val(Nz-1),k[1:Nz-1,:,4],v[1:Nz-1,:,4],J.tri,ndrange=ndrangeTri)
   KSchurSolveBKernel! = SchurSolveBKernel!(backend,group)
   KSchurSolveBKernel!(NumVTr,k,v,J.JRhoW,J.JRhoThW,fac,ndrange=ndrange)
 end
