@@ -73,8 +73,10 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
     MidFace.x = xCell[i]
     MidFace.y = yCell[i]
     MidFace.z = zCell[i]
+#  (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;
+#    P=zeros(Float64,0,0), MidFace = MidFace,Rad=Rad,Form="Sphere");
    (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;
-     P=zeros(Float64,0,0), MidFace = MidFace,Rad=Rad,Form="Sphere");
+     P=zeros(Float64,0,0),Rad=Rad,Form="Sphere");
     FaceNumber += 1
   end
   NumEdges = size(Edges,1)

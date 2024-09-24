@@ -113,7 +113,7 @@ end
   end
 end
 
-@kernel inbounds = true function SchurSolveTriKernel!(Nz,k,v,@Const(tri))
+@kernel inbounds = true function SchurSolveTriKernel1!(Nz,k,v,@Const(tri))
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
@@ -121,6 +121,29 @@ end
   if IC <= NumG
     @views triSolve!(k[1:Nz-1,IC,4],tri[:,:,IC],v[1:Nz-1,IC,4])
   end    
+end
+
+@kernel inbounds = true function SchurSolveTriKernel!(Nz,k,@Const(v),@Const(tri))
+  IG,   = @index(Local, NTuple)
+  IC, = @index(Global, NTuple)
+
+  TilesDim = @uniform @groupsize()[1]
+  NumG = @uniform @ndrange()[1]
+
+  triCol = @localmem eltype(v) (3,Nz-1,TilesDim)
+  vCol = @localmem eltype(v) (Nz-1,TilesDim)
+  kCol = @localmem eltype(v) (Nz-1,TilesDim)
+
+  if IC <= NumG
+    @. @views triCol[:,:,IG] = tri[:,:,IC]
+    @. @views vCol[:,IG] = v[1:Nz-1,IC,4]
+  end
+  if IC <= NumG
+    @views triSolve!(kCol[:,IG],triCol[:,:,IG],vCol[:,IG])
+  end
+  if IC <= NumG
+    @. @views k[1:Nz-1,IC,4] = kCol[:,IG]
+  end
 end
 
 NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
@@ -136,7 +159,7 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   groupTriDiag = (Nz-1,10)
   ndrangeTriDiag = (Nz-1,NumG)
 # group = (1024)
-  groupTri = (64)
+  groupTri = (32)
   ndrangeTri = (NumG)
 
   if J.CompTri

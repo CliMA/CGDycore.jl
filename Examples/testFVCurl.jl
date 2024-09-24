@@ -65,6 +65,10 @@ Table = parsed_args["Table"]
 # Grid
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+RefineLevel = parsed_args["RefineLevel"]
+nLon = parsed_args["nLon"]
+nLat = parsed_args["nLat"]
+LatB = parsed_args["LatB"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
@@ -142,7 +146,6 @@ Model = DyCore.ModelStruct{FTB}()
 
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
-RadEarth = 1.0
 dtau = 6
 #=
 nAdveVel = 5000
@@ -170,21 +173,18 @@ OrdPoly = 1
 
 #TRI
 #GridType = "TriangularSphere"
-#GridType = "DelaunaySphere"
-GridType = "CubedSphere"
+GridType = "DelaunaySphere"
+#GridType = "CubedSphere"
 #GridType = "MPAS"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,nLon,nLat,LatB,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
+@show Grid.NumFaces
+
+
 Grids.TestGrid(Grid)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
-KiteFaces = FiniteVolumes.MatrixTangential(FiniteVolumes.JacobiSphere,Grid)
-for i = 1 : size(KiteFaces[1].MatTan,1)
-  @show KiteFaces[1].MatTan[i,:]
-end  
-@show KiteFaces[1].LocGlob
-@show KiteFaces[1].KiteVol
-
+#KiteFaces = FiniteVolumes.MatrixTangential(FiniteVolumes.JacobiSphere,Grid)
 
 MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid)
 
@@ -223,7 +223,7 @@ Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelC
 uCurlN = zeros(FTB,Grid.NumNodes)
 @show maximum(MetricFV.DualVolume)
 @show minimum(MetricFV.DualVolume)
-FiniteVolumes.Curl!(uCurlN,Uu,MetricFV,Grid)
+FiniteVolumes.CurlNode!(uCurlN,Uu,MetricFV,Grid)
 @show minimum(uCurlN)
 @show maximum(uCurlN)
 
@@ -268,9 +268,11 @@ for iF = 1 : Grid.NumFaces
    end
 end   
 
+@show GridType*"FVCurl"*"$RefineLevel"
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVCurl"*"$RefineLevel", Proc, ProcNumber, [uCurl VelSp], 0)
 stop
 pNeu = zeros(FTB,Grid.NumFaces)
+stop
 
 time = 0.0
 Parallels.ExchangeDataFSendGPU(reshape(Up,1,length(Up),1),Exchange)

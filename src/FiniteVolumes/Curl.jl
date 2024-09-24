@@ -1,3 +1,18 @@
+function CurlNode!(c,uN,Metric,Grid)
+
+  FT = eltype(c)
+  t = zeros(FT,3)
+  for iE = 1 : Grid.NumEdges
+    N1 =  Grid.Edges[iE].N[1]
+    c[N1] += Metric.DualEdge[iE]*uN[iE] 
+    N2 =  Grid.Edges[iE].N[2]
+    c[N2] -= Metric.DualEdge[iE]*uN[iE]
+  end  
+  @. c /= Metric.DualVolume
+  @show maximum(Metric.DualEdge)
+  @show maximum(Metric.DualVolume)
+end  
+
 function Curl1!(c,uN,Metric,Grid)
 
   FT = eltype(c)
