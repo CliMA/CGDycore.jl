@@ -271,11 +271,15 @@ function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
-  colors=[[]]
   NumGhostFaces = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
-  NumBoundaryFaces = 0
+  NumFacesB = 0
+  NumFacesG = 0
+  NumEdgesB = 0
+  NumEdgesG = 0
+  NumNodesB = 0
+  NumNodesG = 0
   AdaptGrid = ""
 
   return GridStruct{FT,
@@ -286,22 +290,23 @@ function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
     dzeta,
     H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesG,
+    NumFacesB,
     Faces,
     NumEdges,
+    NumEdgesG,
+    NumEdgesB,
     Edges,
     NumNodes,
+    NumNodesG,
+    NumNodesB,
     Nodes,
     Form,
     Type,
     Dim,
     Rad,
-    NumEdgesI,
-    NumEdgesB,
     nBar3,
     nBar,
-    colors,
-    NumBoundaryFaces,
     AdaptGrid,
     )
 end
@@ -687,11 +692,14 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
-  colors=[[]]
-  NumGhostFaces = 0
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
-  NumBoundaryFaces = 0
+  NumFacesG = 0
+  NumFacesB = 0
+  NumEdgesG = 0
+  NumEdgesB = 0
+  NumNodesG = 0
+  NumNodesB = 0
   AdaptGrid = ""
 
   return GridStruct{FT,
@@ -702,22 +710,23 @@ function InputGridMsh(backend,FT,filename,OrientFace,Rad,nz)
     dzeta,
     H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesG,
+    NumFacesB,
     Faces,
     NumEdges,
+    NumEdgesG,
+    NumEdgesB,
     Edges,
     NumNodes,
+    NumNodesG,
+    NumNodesB,
     Nodes,
     Form,
     Type,
     Dim,
     Rad,
-    NumEdgesI,
-    NumEdgesB,
     nBar3,
     nBar,
-    colors,
-    NumBoundaryFaces,
     AdaptGrid,
     )
 

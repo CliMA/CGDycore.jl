@@ -29,53 +29,87 @@ backend = CPU()
 nz = 1
 Rad = 1.0
 RefineLevel = 6
+ns=50
 OrdPoly = 3
-nPanel = 10
+nPanel = 20
 RadEarth = 1.0
 Decomp = "EqualArea"
+nLon = 100
+nLat = 50
+LatB = 0.4 * pi
+Flat = false
 
 FileNumber = 1
 GridType = "MPAS"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
 
-@show "MPASO"
+GridType = "CubedSphere"
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
+
 GridType = "MPASO"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, c, FileNumber)
 
 GridType = "Msh"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
 
 GridType = "DelaunaySphere"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
 
 GridType = "TriangularSphere"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
 
 GridType = "SQuadGen"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
 
 GridType = "HealPix"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
-c = ones(FTB,Grid.NumFaces) * Proc
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
+
+GridType = "SphericalGrid"
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
+c = ones(FTB,Grid.NumFaces,1) * Proc
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber , c, FileNumber)
 
 

@@ -1,4 +1,4 @@
-function DivMPFA(backend,FT,Grid)
+function DivMPFA(backend,FT,Metric,Grid)
   RowInd = Int64[]
   ColInd = Int64[]
   Val = Float64[]
@@ -8,7 +8,7 @@ function DivMPFA(backend,FT,Grid)
       iE = Grid.Faces[iF].E[i] 
       push!(RowInd,Grid.Faces[iF].F)
       push!(ColInd,Grid.Edges[iE].E)
-      push!(Val,Grid.Faces[iF].OrientE[i] * Grid.Edges[iE].a / Grid.Faces[iF].Area)
+      push!(Val,Grid.Faces[iF].OrientE[i] * Metric.PrimalEdge[iE] / Metric.PrimalVolume[iF])
     end  
   end    
   Div = sparse(RowInd, ColInd, Val)
@@ -62,7 +62,7 @@ function GradMPFA1(KiteGrid,Grid)
   Grad = sparse(RowInd, ColInd, Val)
 end
 
-function GradMPFA(backend,FT,Grid,Proc)
+function GradMPFA(backend,FT,Grid)
 
   Nodes = Grid.Nodes
   Edges = Grid.Edges
@@ -73,6 +73,7 @@ function GradMPFA(backend,FT,Grid,Proc)
   RowInd = Int64[]
   ColInd = Int64[]
   Val = Float64[]
+  ValGrad = Float64[]
   Shift = Grid.NumNodes + Grid.NumEdges
   for iN = 1 : NumNodes
     NG = Grid.Nodes[iN].NG  
@@ -109,7 +110,7 @@ function GradMPFA(backend,FT,Grid,Proc)
       P2 = Edges[iE2].Mid
       P3 = Nodes[iN].P
       P4 = Edges[iE3].Mid
-      @views LocalInterpolation!(ILoc[:,:,i],P1,P2,P3,P4,Grid.Rad)
+      @views LocalInterpolationGrad!(ILoc[:,:,i],P1,P2,P3,P4,Grid.Rad)
       @views @. I[GlobLoc[:,i],GlobLoc[:,i]] += ILoc[:,:,i]
     end
     @. I[end,1:NumF] = 1
@@ -124,17 +125,18 @@ function GradMPFA(backend,FT,Grid,Proc)
         FG = Faces[iF].FG
         jE = Faces[jF].E[EdgesInNode[j]]
         EG = Edges[jE].EG
-#       if jE <= Grid.NumEdges
-          Temp = -sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) * Faces[jF].OrientE[EdgesInNode[j]]
-          push!(RowInd,jE)
-          push!(ColInd,iF)
-          push!(Val,Temp)
-#       end    
+        TempGrad = -sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) * Faces[jF].OrientE[EdgesInNode[j]]
+        Temp = 0.5 * c[GlobLoc[2,j]] 
+        push!(RowInd,jE)
+        push!(ColInd,iF)
+        push!(ValGrad,TempGrad)
+        push!(Val,Temp)
       end  
     end  
   end  
-  Grad = sparse(RowInd, ColInd, Val)
-  return Grad[1:Grid.NumEdges,:]
+  Grad = sparse(RowInd, ColInd, ValGrad)
+  Inter = sparse(RowInd, ColInd, Val)
+  return Grad[1:Grid.NumEdges,:],Inter[1:Grid.NumEdges,:]
 end
 
 function LocalInterpolation1!(ILoc,Face,Grid)
@@ -209,7 +211,7 @@ function LocalInterpolation1!(ILoc,Face,Grid)
   ILoc[4,4] = eInv * (pinvDF * n)' * (pinvDF * grad)
 end
 
-function LocalInterpolation!(ILoc,P1,P2,P3,P4,Rad)
+function LocalInterpolationGrad!(ILoc,P1,P2,P3,P4,Rad)
 
   grad = zeros(2)
   n = zeros(2)

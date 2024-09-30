@@ -1,11 +1,3 @@
-Rad = 1.0
-
-#struct Point{FT}
-#  x::FT
-#  y::FT
-#  z::FT
-#end 
-
 function Norm(P::Point)
   sqrt(P.x * P.x + P.y * P.y + P.z * P.z)
 end  
@@ -17,7 +9,7 @@ end
 function MidPoint(P1::Point,P2::Point)
   P = Point(0.5 * (P1.x + P2.x),
     0.5 * (P1.y + P2.y), 0.5 * (P1.z + P2.z))
-  M = Div(P, Norm(P) / Rad)
+  M = Div(P, Norm(P) )
 end  
 
 mutable struct NodeTri_T
@@ -379,7 +371,28 @@ function MidPoint(Face)
   else
     P = P + Face.data.Edge3.data.Node2.data.P
   end
-  M = Div(P, Norm(P) / (Rad))
+  M = Div(P, Norm(P) )
+end
+
+function CircumCenterPoint(Face)
+
+  P = Point()
+  if Face.data.OrientE1 == 1
+    P1 = Face.data.Edge1.data.Node1.data.P
+  else
+    P1 = Face.data.Edge1.data.Node2.data.P
+  end
+  if Face.data.OrientE2 == 1
+    P2 = Face.data.Edge2.data.Node1.data.P
+  else
+    P2 = Face.data.Edge2.data.Node2.data.P
+  end
+  if Face.data.OrientE3 == 1
+    P3 = Face.data.Edge3.data.Node1.data.P
+  else
+    P3 = Face.data.Edge3.data.Node2.data.P
+  end
+  M = CircumCenter(P1,P2,P3)
 end
 
 function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
@@ -510,7 +523,12 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   NumNodes = 0
   while ~attail(FaceL)
     NumNodes += 1
-    Nodes[NumNodes] = Node(Rad*MidPoint(FaceL),NumNodes,'N')
+    PM = MidPoint(FaceL)
+    PC = CircumCenterPoint(FaceL)
+    if dot(PM,PC) < 0
+      PC = -PC
+    end  
+    Nodes[NumNodes] = Node(Rad*PC,NumNodes,'N')
     FaceL = FaceL.next
   end
 

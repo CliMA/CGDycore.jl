@@ -24,8 +24,20 @@ mutable struct MetricFiniteVolume{FT<:AbstractFloat,
   DualVolume::AT1
   PrimalEdge::AT1
   DualEdge::AT1
-  DualEdgeVolume::AT1                      
+  DualEdgeVolume::AT2                      
   PrimalNormal::AT2
+end
+
+mutable struct CacheFV
+  CurlUu::Array{Float64, 1} 
+  TangUu::Array{Float64, 1}
+  hE::Array{Float64, 1}
+  K::Array{Float64, 1}
+  Grad
+  Inter
+  Div
+  Curl
+  Tang
 end
 
 include("Divergence.jl")
@@ -36,5 +48,6 @@ include("MPFA.jl")
 include("TangentialRec.jl")
 include("Curl.jl")
 include("Advection.jl")
+include("FcnFV.jl")
 
 end

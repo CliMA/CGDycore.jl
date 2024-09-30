@@ -276,7 +276,7 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
     n2 = el_vid[el,2]
     if n1 < n2
       e = [n1,n2]  
-      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
+      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber,Form=Form,Rad=Rad)
       EdgeNumber += 1
     end  
     # Edge 2
@@ -284,7 +284,7 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
     n2 = el_vid[el,3]
     if n1 < n2
       e = [n1,n2]  
-      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
+      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber,Form=Form,Rad=Rad)
       EdgeNumber += 1
     end  
     # Edge 3
@@ -292,7 +292,7 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
     n2 = el_vid[el,4]
     if n1 < n2
       e = [n1,n2]  
-      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
+      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber,Form=Form,Rad=Rad)
       EdgeNumber += 1
     end  
     # Edge 4
@@ -300,7 +300,7 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
     n2 = el_vid[el,1]
     if n1 < n2
       e = [n1,n2]  
-      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber)
+      Edges[EdgeNumber]=Edge(e,Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber,Form=Form,Rad=Rad)
       EdgeNumber += 1
     end  
   end

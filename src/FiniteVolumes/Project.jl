@@ -8,6 +8,16 @@ function ProjectFace!(backend,FTB,p,Grid,F)
   end
 end
 
+function ProjectEdgeScalar!(backend,FTB,p,Grid,F)
+  x = zeros(3)
+  for iF = 1 : Grid.NumEdges
+    x[1] = Grid.Edges[iF].Mid.x
+    x[2] = Grid.Edges[iF].Mid.y
+    x[3] = Grid.Edges[iF].Mid.z
+    p[iF], = F(x,0.0)
+  end
+end
+
 function ProjectEdge!(backend,FTB,u,Grid,F)
   x = zeros(3)
   n = zeros(3)
@@ -49,6 +59,28 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Grid)
   end
 end
 
+function ConvertVelocityTCart!(backend,FTB,VelCa,VelT,Grid)
+  for iF = 1 : Grid.NumFaces
+    T = zeros(length(Grid.Faces[iF].E)+1,3)
+    Rhs = zeros(length(Grid.Faces[iF].E)+1)
+    k = zeros(3)
+    for i = 1 : length(Grid.Faces[iF].E)
+      iE = Grid.Faces[iF].E[i]
+      T[i,1] = Grid.Edges[iE].t.x
+      T[i,2] = Grid.Edges[iE].t.y
+      T[i,3] = Grid.Edges[iE].t.z
+      Rhs[i] = VelT[iE]
+    end
+    k[1] = Grid.Faces[iF].Mid.x
+    k[2] = Grid.Faces[iF].Mid.y
+    k[3] = Grid.Faces[iF].Mid.z
+    k = k / norm(k)
+    T[length(Grid.Faces[iF].E)+1,:] = k
+    Rhs[length(Grid.Faces[iF].E)+1] = 0
+    VelCa[iF,:] = T \ Rhs
+  end
+end
+
 function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Grid)
   for iF = 1 : Grid.NumFaces
     N = zeros(length(Grid.Faces[iF].E)+1,3)
@@ -68,6 +100,32 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Grid)
     N[length(Grid.Faces[iF].E)+1,:] = k
     Rhs[length(Grid.Faces[iF].E)+1] = 0
     VelCa = N \ Rhs
+    lon,lat,_ = Grids.cart2sphere(Grid.Faces[iF].Mid.x,Grid.Faces[iF].Mid.y,Grid.Faces[iF].Mid.z)
+    VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
+    VelSp[iF,1] = VelSpLoc[1]
+    VelSp[iF,2] = VelSpLoc[2]
+  end
+end
+
+function ConvertVelocityTSp!(backend,FTB,VelSp,VelT,Grid)
+  for iF = 1 : Grid.NumFaces
+    T = zeros(length(Grid.Faces[iF].E)+1,3)
+    Rhs = zeros(length(Grid.Faces[iF].E)+1)
+    k = zeros(3)
+    for i = 1 : length(Grid.Faces[iF].E)
+      iE = Grid.Faces[iF].E[i]
+      T[i,1] = Grid.Edges[iE].t.x
+      T[i,2] = Grid.Edges[iE].t.y
+      T[i,3] = Grid.Edges[iE].t.z
+      Rhs[i] = VelT[iE]
+    end
+    k[1] = Grid.Faces[iF].Mid.x
+    k[2] = Grid.Faces[iF].Mid.y
+    k[3] = Grid.Faces[iF].Mid.z
+    k = k / norm(k)
+    T[length(Grid.Faces[iF].E)+1,:] = k
+    Rhs[length(Grid.Faces[iF].E)+1] = 0
+    VelCa = T \ Rhs
     lon,lat,_ = Grids.cart2sphere(Grid.Faces[iF].Mid.x,Grid.Faces[iF].Mid.y,Grid.Faces[iF].Mid.z)
     VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
     VelSp[iF,1] = VelSpLoc[1]

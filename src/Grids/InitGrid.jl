@@ -1,4 +1,4 @@
-function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,nLon,nLat,LatB,GridType,Decomp,RadEarth,Model,
+function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,Model,
   ParallelCom;order=true,ChangeOrient=3)
 
   ProcNumber = ParallelCom.ProcNumber
@@ -7,7 +7,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,nLon,nLat,LatB,
   if GridType == "HealPix"
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
   # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-    Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
+  # Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
+    Grid = Grids.HealpixGrid(backend,FT,ns,RadEarth,nz)
   elseif GridType == "SQuadGen"
     Grid = Grids.InputGrid(backend,FT,"Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "Msh"
@@ -23,6 +24,7 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,nLon,nLat,LatB,
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/QU240.nc", Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "MPAS"
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/x4.163842.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
+#   Grid=Grids.InputGridMPASO(backend,FT,"Grid/x1.40962.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "SphericalGrid"
     Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz)
   else

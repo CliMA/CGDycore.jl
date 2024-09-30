@@ -9,7 +9,7 @@ function MetricFiniteVolume(backend,FT,Grid)
   PrimalVolume = KernelAbstractions.zeros(backend,FT,NumFaces)
   DualVolume = KernelAbstractions.zeros(backend,FT,NumNodes)
   DualVolumeCPU = KernelAbstractions.zeros(backend,FT,NumNodes)
-  DualEdgeVolume = KernelAbstractions.zeros(backend,FT,NumEdges)
+  DualEdgeVolume = KernelAbstractions.zeros(backend,FT,2,NumEdges)
   PrimalEdge = KernelAbstractions.zeros(backend,FT,NumEdges)
   DualEdge = KernelAbstractions.zeros(backend,FT,NumEdges)
 
@@ -65,16 +65,14 @@ function MetricFiniteVolume(backend,FT,Grid)
       PrimalCircum[iF] = Faces[iF].Mid
     end  
   end
-  DualEdgeVolumeCPU = zeros(FT,NumEdges)
+  DualEdgeVolumeCPU = zeros(FT,2,NumEdges)
   for iE = 1 : NumEdges
     P1 = Nodes[Edges[iE].N[1]].P
     P2 = Nodes[Edges[iE].N[2]].P
-    PC1 = PrimalCircum[Edges[iE].F[1]]
-    PC2 = PrimalCircum[Edges[iE].F[2]]
     PC1 = Faces[Edges[iE].F[1]].Mid
     PC2 = Faces[Edges[iE].F[2]].Mid
-    DualEdgeVolumeCPU[iE] = (Grids.AreaSphericalTriangle(P1,P2,PC1) +
-      Grids.AreaSphericalTriangle(P1,P2,PC2)) * Grid.Rad^2
+    DualEdgeVolumeCPU[1,iE] = Grids.AreaSphericalTriangle(P1,P2,PC1) * Grid.Rad^2
+    DualEdgeVolumeCPU[2,iE] = Grids.AreaSphericalTriangle(P1,P2,PC2) * Grid.Rad^2
   end
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].N)
@@ -106,4 +104,17 @@ function MetricFiniteVolume(backend,FT,Grid)
     DualEdgeVolume,
     n,
     )
+end
+
+function KineticEnergy(K,uN,Metric,Grid)
+
+  @. K = 0
+  @inbounds for iE = 1 : Grid.NumEdges
+    iF1  = Grid.Edges[iE].F[1]
+    iF2  = Grid.Edges[iE].F[2]
+    KLoc  = uN[iE] * uN[iE] 
+    K[iF1] += KLoc * Metric.DualEdgeVolume[1,iE]
+    K[iF2] += KLoc * Metric.DualEdgeVolume[2,iE]
+  end    
+  @. K /= Metric.PrimalVolume
 end
