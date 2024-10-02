@@ -305,7 +305,7 @@ function JacobiCart(F,ksi1,ksi2,Rad);
        0.0 0.0]
   @views detJLoc = det(J[:,1],J[:,2])
   detJ = detJLoc
-  pinvJ  = pinv(J)
+  pinvJ  = pinvJac(J)
   k = SVector{3}(0.0,0.0,1.0)
   return J,detJ,pinvJ,k
 end
@@ -357,7 +357,7 @@ end
 
   @views detJLoc = det(J[:,1],J[:,2])
   detJ = detJLoc
-  pinvJ  = pinv(J)
+  pinvJ  = pinvJac(J)
   X = XLoc / norm(XLoc) 
   return J,detJ,pinvJ,X
 end
@@ -370,7 +370,7 @@ end
   d = sqrt(d)
 end
 
-@inline function pinv(J)
+@inline function pinvJac(J)
   g11 = J[1,1] * J[1,1] + J[2,1] * J[2,1] + J[3,1] * J[3,1]
   g12 = J[1,1] * J[1,2] + J[2,1] * J[2,2] + J[3,1] * J[3,2]
   g22 = J[1,2] * J[1,2] + J[2,2] * J[2,2] + J[3,2] * J[3,2]

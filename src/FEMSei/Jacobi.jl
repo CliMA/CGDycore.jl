@@ -42,7 +42,53 @@
   J .= J1 * JP * J3      
   @views detJLoc = det(J[:,1],J[:,2])
   detJ .= detJLoc
-  pinvJ  .= pinv(J)
+  pinvJ  .= pinvJac(J)
+  X .= XLoc / norm(XLoc) * Rad
+end
+
+@inline function Jacobi!(J,detJ,pinvJ,X,::Grids.Tri,ksi1,ksi2,P1,P2,P3,Rad)
+
+  XT1 = 0.5 * (P1.x*(-ksi1 - ksi2)+
+        P2.x * (1 + ksi1) +
+        P3.x * (1 + ksi2))
+
+  XT2 = 0.5 * (P1.y*(-ksi1 - ksi2)+
+        P2.y * (1 + ksi1) +
+        P3.y * (1 + ksi2))
+       
+  XT3 = 0.5 * (P1.z * (-ksi1 - ksi2)+
+        P2.z * (1 + ksi1) +
+        P3.z * (1 + ksi2))
+
+  XLoc = SVector{3}(XT1,XT2,XT3)
+
+  JP = @SArray[P1.x P2.x P3.x;
+               P1.y P2.y P3.y;
+               P1.z P2.z P3.z]
+
+  J3 = @SArray([-1/2 -1/2;
+                 1/2   0;
+                  0   1/2])
+
+
+  f=Rad*(XT1^2+XT2^2+XT3^2)^(-3/2)
+  dX1dXT1=f*(XT2^2+XT3^2)
+  dX1dXT2=-f*XT1*XT2 
+  dX1dXT3=-f*XT1*XT3
+  dX2dXT1=dX1dXT2 
+  dX2dXT2=f*(XT1^2+XT3^2)
+  dX2dXT3=-f*XT2*XT3
+  dX3dXT1=dX1dXT3 
+  dX3dXT2=dX2dXT3 
+  dX3dXT3  =f*(XT1^2+XT2^2)
+
+  J1 = @SArray([dX1dXT1    dX2dXT1     dX3dXT1   
+                dX1dXT2     dX2dXT2     dX3dXT2
+                dX1dXT3     dX2dXT3     dX3dXT3])   
+  J .= J1 * JP * J3      
+  @views detJLoc = det(J[:,1],J[:,2])
+  detJ .= detJLoc
+  pinvJ  .= pinvJac(J)
   X .= XLoc / norm(XLoc) * Rad
 end
 
@@ -94,7 +140,7 @@ end
 
   @views detJLoc = det(J[:,1],J[:,2])
   detJ .= detJLoc
-  pinvJ  .= pinv(J)
+  pinvJ  .= pinvJac(J)
   X .= XLoc / norm(XLoc) * Rad
 end
 
@@ -145,7 +191,7 @@ function JacobiQuad!(J,detJ,pinvJ,X,ksi1,ksi2,F,Grid)
 
   @views detJLoc = det(J[:,1],J[:,2])
   detJ .= detJLoc
-  pinvJ  .= pinv(J)
+  pinvJ  .= pinvJac(J)
   X .= XLoc / norm(XLoc) * Rad
 end
 
@@ -195,7 +241,7 @@ end
 
   @views detJLoc = det(J[:,1],J[:,2])
   detJ .= detJLoc
-  pinvJ  .= pinv(J)
+  pinvJ  .= pinvJac(J)
   X .= XLoc / norm(XLoc) * Rad
 end
 
@@ -231,7 +277,7 @@ function JacobiCart!(J,detJ,pinvJ,X,::Grids.Quad,ksi1,ksi2,F,Grid)
 
   @views detJLoc = det(J[:,1],J[:,2])
   detJ .= detJLoc
-  pinvJ  .= pinv(J)
+  pinvJ  .= pinvJac(J)
   X .= XLoc 
 end
 
@@ -243,7 +289,7 @@ end
   d = sqrt(d)
 end  
 
-@inline function pinv(J)
+@inline function pinvJac(J)
   g11 = J[1,1] * J[1,1] + J[2,1] * J[2,1] + J[3,1] * J[3,1]
   g12 = J[1,1] * J[1,2] + J[2,1] * J[2,2] + J[3,1] * J[3,2]
   g22 = J[1,2] * J[1,2] + J[2,2] * J[2,2] + J[3,2] * J[3,2]

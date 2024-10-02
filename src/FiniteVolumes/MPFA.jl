@@ -126,6 +126,81 @@ function GradMPFA(backend,FT,Grid)
         jE = Faces[jF].E[EdgesInNode[j]]
         EG = Edges[jE].EG
         TempGrad = -sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) * Faces[jF].OrientE[EdgesInNode[j]]
+#       TempGrad = -sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) 
+        Temp = 0.5 * c[GlobLoc[2,j]] 
+        push!(RowInd,jE)
+        push!(ColInd,iF)
+        push!(ValGrad,TempGrad)
+        push!(Val,Temp)
+      end  
+    end  
+  end  
+  Grad = sparse(RowInd, ColInd, ValGrad)
+  Inter = sparse(RowInd, ColInd, Val)
+  return Grad[1:Grid.NumEdges,:],Inter[1:Grid.NumEdges,:]
+end
+function GradMPFATri(backend,FT,Grid)
+
+  Nodes = Grid.Nodes
+  Edges = Grid.Edges
+  Faces = Grid.Faces
+  NumNodes = Grid.NumNodes
+  NumFaces = Grid.NumFaces
+
+  RowInd = Int64[]
+  ColInd = Int64[]
+  Val = Float64[]
+  ValGrad = Float64[]
+  Shift = Grid.NumNodes + Grid.NumEdges
+  for iN = 1 : NumNodes
+    NG = Grid.Nodes[iN].NG  
+    EdgesInNode = Int64[]
+    NumF = length(Nodes[iN].F) 
+    I = zeros(2 * NumF,2 * NumF)
+    ILoc = zeros(3,3,NumF)
+    GlobLoc = zeros(Int,3,NumF)
+    b = zeros(2 * NumF)
+    c = zeros(2 * NumF)
+    for i = 1 : NumF
+      iF = Nodes[iN].F[i]
+      iE2 = 0
+      iE3 = 0
+      # Find Node in Face
+      for j = 1 : length(Faces[iF].N)
+        if iN == Faces[iF].N[j]
+          if j == 1
+            iE2 = Faces[iF].E[end]
+            push!(EdgesInNode,length(Faces[iF].N))
+          else
+            iE2 = Faces[iF].E[j-1]
+            push!(EdgesInNode,j-1)
+          end  
+          iE3 =  Faces[iF].E[j]
+          exit
+        end  
+      end
+      GlobLoc[:,i] = [i,NumF + i,NumF + i - 1]  
+      if i == 1
+        GlobLoc[3,i] = 2 * NumF  
+      end  
+      P1 = Faces[iF].Mid
+      P2 = Edges[iE2].Mid
+#     P3 = Nodes[iN].P
+      P3 = Edges[iE3].Mid
+      @views LocalInterpolationGradTri!(ILoc[:,:,i],P1,P2,P3,Grid.Rad)
+      @views @. I[GlobLoc[:,i],GlobLoc[:,i]] += ILoc[:,:,i]
+    end
+    for i = 1 : NumF
+      iF = Nodes[iN].F[i]  
+      @. b = 0
+      b[i] = 1
+      c = I \ b
+      for j = 1 : NumF
+        jF = Nodes[iN].F[j]  
+        FG = Faces[iF].FG
+        jE = Faces[jF].E[EdgesInNode[j]]
+        EG = Edges[jE].EG
+        TempGrad = -0.5 * sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) * Faces[jF].OrientE[EdgesInNode[j]]
         Temp = 0.5 * c[GlobLoc[2,j]] 
         push!(RowInd,jE)
         push!(ColInd,iF)
@@ -247,7 +322,7 @@ function LocalInterpolationGrad!(ILoc,P1,P2,P3,P4,Rad)
   X = zeros(3)
   FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
 
-  eInv = detDF[1] / (Grids.SizeGreatCircle(P2,P3) * Rad)
+  eInv = 1 / norm(pinvDF * n) 
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
   ILoc[2,1] = eInv * (pinvDF * n)' * (pinvDF * grad)
@@ -265,7 +340,7 @@ function LocalInterpolationGrad!(ILoc,P1,P2,P3,P4,Rad)
   n[1] = 0.0
   n[2] = 1.0
   FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
-  eInv = detDF[1] / (Grids.SizeGreatCircle(P3,P4) * Rad)
+  eInv = 1 / norm(pinvDF * n) 
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
   ILoc[4,1] = eInv * (pinvDF * n)' * (pinvDF * grad)
@@ -278,4 +353,63 @@ function LocalInterpolationGrad!(ILoc,P1,P2,P3,P4,Rad)
   grad[1] = gradphi4x(ksi1,ksi2) 
   grad[2] = gradphi4y(ksi1,ksi2) 
   ILoc[4,4] = eInv * (pinvDF * n)' * (pinvDF * grad)
+end
+function LocalInterpolationGradTri!(ILoc,P1,P2,P3,Rad)
+
+  grad = zeros(2)
+  n = zeros(2)
+  @polyvar x y ksi eta
+  nu1 = -1.0*ksi - 1.0*eta + 1.0
+  nu2 = 1.0*ksi + 0.0*eta + 0.0
+  nu3 = 0.0*ksi + 1.0*eta + 0.0
+  phi1 = subs(nu1, ksi => (x+1)/2, eta => (y+1)/2)
+  phi2 = subs(nu2, ksi => (x+1)/2, eta => (y+1)/2)
+  phi3 = subs(nu3, ksi => (x+1)/2, eta => (y+1)/2)
+
+  gradphi1x = differentiate(phi1,x)
+  gradphi1y = differentiate(phi1,y)
+  gradphi2x = differentiate(phi2,x)
+  gradphi2y = differentiate(phi2,y)
+  gradphi3x = differentiate(phi3,x)
+  gradphi3y = differentiate(phi3,y)
+  @. ILoc = 0
+  # Pointwise interpolation
+  ILoc[1,1] = 1
+  #First gradient
+
+  ksi1 = 1.0
+  ksi2 = -1.0
+  n[1] = 1.0
+  n[2] = 0.0
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+
+  eInv = 1 / norm(pinvDF * n) 
+  grad[1] = gradphi1x(ksi1,ksi2) 
+  grad[2] = gradphi1y(ksi1,ksi2) 
+  ILoc[2,1] = eInv * (pinvDF * n)' * (pinvDF * grad)
+  grad[1] = gradphi2x(ksi1,ksi2) 
+  grad[2] = gradphi2y(ksi1,ksi2) 
+  ILoc[2,2] = eInv * (pinvDF * n)' * (pinvDF * grad)
+  grad[1] = gradphi3x(ksi1,ksi2) 
+  grad[2] = gradphi3y(ksi1,ksi2) 
+  ILoc[2,3] = eInv * (pinvDF * n)' * (pinvDF * grad)
+  ksi1 = -1.0
+  ksi2 = 1.0
+  n[1] = 0.0
+  n[2] = 1.0
+  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+  eInv = 1 / norm(pinvDF * n) 
+  grad[1] = gradphi1x(ksi1,ksi2) 
+  grad[2] = gradphi1y(ksi1,ksi2) 
+  ILoc[3,1] = eInv * (pinvDF * n)' * (pinvDF * grad)
+  grad[1] = gradphi2x(ksi1,ksi2) 
+  grad[2] = gradphi2y(ksi1,ksi2) 
+  ILoc[3,2] = eInv * (pinvDF * n)' * (pinvDF * grad)
+  grad[1] = gradphi3x(ksi1,ksi2) 
+  grad[2] = gradphi3y(ksi1,ksi2) 
+  ILoc[3,3] = eInv * (pinvDF * n)' * (pinvDF * grad)
 end

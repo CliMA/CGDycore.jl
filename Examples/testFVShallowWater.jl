@@ -145,7 +145,7 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 Problem = "GalewskiSphere"
-Problem = "HaurwitzSphere"
+#Problem = "HaurwitzSphere"
 RadEarth = Phys.RadEarth
 dtau = 6
 nAdveVel = 16000
@@ -220,6 +220,14 @@ time = 0.0
 nAdveVel = 12000
 dtau = 20.0
 PrintStp = 500
+FiniteVolumes.FcnFV1!(r,U,MetricFV,Grid,Cache,Phys)
+FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,ru,Grid)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
+FileNumber += 1
+FiniteVolumes.FcnFV2!(r,U,MetricFV,Grid,Cache,Phys)
+FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,ru,Grid)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
+stop
 for i = 1 : nAdveVel
   FiniteVolumes.FcnFV!(r,U,MetricFV,Grid,Cache,Phys)
   @. UNew = U + 0.5 * dtau * r  

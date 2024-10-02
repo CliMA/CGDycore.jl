@@ -118,3 +118,17 @@ function KineticEnergy(K,uN,Metric,Grid)
   end    
   @. K /= Metric.PrimalVolume
 end
+
+function KineticEnergy(K,uN,uT,Metric,Grid)
+
+  @. K = 0
+  @inbounds for iE = 1 : Grid.NumEdges
+    iF1  = Grid.Edges[iE].F[1]
+    iF2  = Grid.Edges[iE].F[2]
+    KLoc  = 0.5 *(uN[iE] * uN[iE] + uT[iE] * uT[iE])
+    K[iF1] += KLoc * Metric.DualEdgeVolume[1,iE]
+    K[iF2] += KLoc * Metric.DualEdgeVolume[2,iE]
+  end
+  @. K /= Metric.PrimalVolume
+end
+

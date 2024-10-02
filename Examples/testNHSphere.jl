@@ -253,7 +253,8 @@ elseif Equation == "CompressibleDeep"
   Model.Equation = Models.CompressibleDeep()  
 end  
 
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,nLon,nLat,LatB,GridType,Decomp,RadEarth,Model,ParallelCom)
+ns=50
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,Model,ParallelCom)
 
 
 Topography = (TopoS=TopoS,H=H,Rad=RadEarth)

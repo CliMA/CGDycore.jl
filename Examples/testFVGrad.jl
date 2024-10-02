@@ -146,6 +146,7 @@ Model = DyCore.ModelStruct{FTB}()
 
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
+RadEarth = 300.0
 dtau = 6
 #=
 nAdveVel = 5000
@@ -181,36 +182,13 @@ GridType = "CubedSphere"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
   Model,ParallelCom;order=false)
 
-#=
-for iE = 1 : Grid.NumEdges
-  iF1 = Grid.Edges[iE].F[1]
-  for j = 1 : length(Grid.Faces[iF1].E)
-    jE = Grid.Faces[iF1].E[j]  
-    if jE == iE
-      if Grid.Faces[iF1].OrientE[j] == -1
-        Grid.Edges[iE].F[1] = Grid.Edges[iE].F[2]
-        Grid.Edges[iE].F[2] = iF1
-      end  
-    end  
-  end  
-end  
-
-@show Grid.NumFaces
-=#
-
-
 Grids.TestGrid(Grid)
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Grid.NumFacesG,Flat)
-#KiteFaces = FiniteVolumes.MatrixTangential(FiniteVolumes.JacobiSphere,Grid)
 
 MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid)
 
-#Div = FiniteVolumes.Divergence(backend,FTB,MetricFV,Grid)
-#GradFV = FiniteVolumes.Gradient(backend,FTB,MetricFV,Grid)
 Grad,Inter = FiniteVolumes.GradMPFATri(backend,FTB,Grid)
-GradQuad,InterQuad = FiniteVolumes.GradMPFA(backend,FTB,Grid)
-Div = FiniteVolumes.DivMPFA(backend,FTB,MetricFV,Grid)
 
 
 pPosS = 1
@@ -230,114 +208,43 @@ UNew = similar(U)
 @views UNewp = UNew[pPosS:pPosE]
 @views UNewpI = UNew[pPosS:pPosEI]
 @views UNewu = UNew[uPosS:uPosE]
-FiniteVolumes.ProjectFace!(backend,FTB,UpI,Grid,Model.InitialProfile)
-FiniteVolumes.ProjectEdge!(backend,FTB,Uu,Grid,Model.InitialProfile)
-FileNumber = 0
-VelCa = zeros(Grid.NumFaces,Grid.Dim)
+
+h = zeros(FTB,Grid.NumFaces)
+hGrad = zeros(FTB,Grid.NumEdges)
+hGradE = zeros(FTB,Grid.NumEdges)
 VelSp = zeros(Grid.NumFaces,2)
-FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
-uCurlN = zeros(FTB,Grid.NumNodes)
-uTan = zeros(FTB,Grid.NumEdges)
-K = zeros(FTB,Grid.NumFaces)
-Curl = FiniteVolumes.CurlNodeMatrix(MetricFV,Grid)
-Tang = FiniteVolumes.TagentialVelocityMatrix(MetricFV,Grid)
-mul!(uCurlN,Curl,Uu)
-mul!(uTan,Tang,Uu)
-FiniteVolumes.TagentialVelocity2(uTan,Uu,MetricFV,Grid)
-FiniteVolumes.KineticEnergy(K,Uu,MetricFV,Grid)
-FiniteVolumes.KineticEnergy(K,Uu,uTan,MetricFV,Grid)
-FiniteVolumes.ConvertVelocityTCart!(backend,FTB,VelCa,uTan,Grid)
-FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSp,uTan,Grid)
-
-uCurl = zeros(FTB,Grid.NumFaces)
-DualVolume = zeros(FTB,Grid.NumFaces)
+VelSpE = zeros(Grid.NumFaces,2)
 for iF = 1 : Grid.NumFaces
-   for iN in Grid.Faces[iF].N
-     uCurl[iF] += uCurlN[iN] * MetricFV.DualVolume[iN]
-     DualVolume[iF] += MetricFV.DualVolume[iN]
-   end
-end   
-@. uCurl /= DualVolume
-
-@show GridType*"FVCurl"*"$RefineLevel"
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVCurl", Proc, ProcNumber, [uCurl K VelSp], 0)
-
-hE = zeros(FTB,Grid.NumEdges)
-mul!(hE,Grad,Up)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,hE,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVCurl", Proc, ProcNumber, [uCurl K VelSp], 1)
-
-
-hEExact = zeros(FTB,Grid.NumEdges)
-hR = zeros(FTB,Grid.NumFaces)
-mul!(hE,Inter,Up)
-FiniteVolumes.ProjectEdgeScalar!(backend,FTB,hEExact,Grid,Model.InitialProfile)
-for iF = 1 : Grid.NumFaces
-   for iE in Grid.Faces[iF].E
-     if Grid.Edges[iE].F[1] == iF  
-       hR[iF] += (hE[iE] - hEExact[iE]) * MetricFV.DualEdgeVolume[1,iE] / MetricFV.PrimalVolume[iF]
-     else  
-       hR[iF] += (hE[iE] - hEExact[iE]) * MetricFV.DualEdgeVolume[2,iE] / MetricFV.PrimalVolume[iF]
-     end  
-   end
-end
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVCurl", Proc, ProcNumber, [hR K VelSp], 2)
-stop
-#@. Uu = Uu * hE
-mul!(hR,Div,Uu)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVCurl", Proc, ProcNumber, [hR K VelSp], 3)
-stop
-pNeu = zeros(FTB,Grid.NumFaces)
+  x = Grid.Faces[iF].Mid.x  
+  y = Grid.Faces[iF].Mid.y  
+  z = Grid.Faces[iF].Mid.z  
+  h[iF] = 3*x^4 + 4*y^3 + 5 * z^2  
+# h[iF] = 3*x^2 
+end  
+for iE = 1 : Grid.NumEdges
+  x = Grid.Edges[iE].Mid.x  
+  y = Grid.Edges[iE].Mid.y  
+  z = Grid.Edges[iE].Mid.z  
+# h[iF] = 3*x^4 + 4*y^3 + 5 * z^2  
+  hGradx = 12 * x^3
+  hGrady = 12 * y^2
+  hGradz = 10 * z
+# h[iF] = 3*x^2 
+# hGradx = 6 * x
+# hGrady = 0.0
+# hGradz = 0.0
+  hGradE[iE] = hGradx * Grid.Edges[iE].n.x +
+               hGrady * Grid.Edges[iE].n.y
+               hGradz * Grid.Edges[iE].n.z
+end               
+mul!(hGrad,Grad,h)
+FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,hGrad,Grid)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp], 0)
+FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSpE,hGradE,Grid)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSpE], 1)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp-VelSpE], 2)
 stop
 
-time = 0.0
-Parallels.ExchangeDataFSendGPU(reshape(Up,1,length(Up),1),Exchange)
-Parallels.ExchangeDataFRecvGPU!(reshape(Up,1,length(Up),1),Exchange)
-Outputs.vtkSkeleton!(vtkSkeletonMeshGhost, GridType*"FVG", Proc, ProcNumber, [Up Up] , FileNumber)
 
 
-@show dtau,nAdveVel
-for i = 1 : nAdveVel
-  if Proc == 1  
-    @show i  
-  end  
-  Parallels.ExchangeDataFSendGPU(reshape(Up,1,length(Up),1),Exchange)
-  Parallels.ExchangeDataFRecvGPU!(reshape(Up,1,length(Up),1),Exchange)
-  mul!(rpI,Div,Uu)
-  mul!(ru,Grad,Up)
-  @. ru = -ru
-  @. UNew = U + 0.5 * dtau * r  
 
-  Parallels.ExchangeDataFSendGPU(reshape(UNewp,1,length(Up),1),Exchange)
-  Parallels.ExchangeDataFRecvGPU!(reshape(UNewp,1,length(Up),1),Exchange)
-  mul!(rpI,Div,UNewu)
-  mul!(ru,Grad,UNewp)
-  @. ru = -ru
-  @. U = U + dtau * r  
-  
-  if mod(i,PrintStp) == 0
-    global FileNumber += 1
-    FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
-    FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
-    MPI.Barrier(comm)
-  end  
-
-  #time = time + dtau
-end
-
-
-FileNumber += 1
-FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,Uu,Grid)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
-
-
-#= ToDO
-Gleichungen testen mit @show
-mehr Quadraturregeln für Dreiecke höhere ordnungen
-RT1, DG1
-Wiki von github
-=#
