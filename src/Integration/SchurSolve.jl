@@ -159,7 +159,7 @@ NVTX.@annotate function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   groupTriDiag = (Nz-1,10)
   ndrangeTriDiag = (Nz-1,NumG)
 # group = (1024)
-  groupTri = (64)
+  groupTri = (32)
   ndrangeTri = (NumG)
 
   if J.CompTri
