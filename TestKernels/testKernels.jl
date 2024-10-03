@@ -129,6 +129,7 @@ RhoVPos,RhoCPos,RelCloud,Rain)
 KMicrophysicsKernel! = GPU.MicrophysicsKernel!(backend, groupG)
 KMicrophysicsKernel!(MicrophysicsSource,F,U,p,ndrange=ndrangeG)
 KernelAbstractions.synchronize(backend)
+@show "MicroPhysics"
 @time for iter = 1 : TestIter
   KMicrophysicsKernel!(MicrophysicsSource,F,U,p,ndrange=ndrangeG)
   KernelAbstractions.synchronize(backend)
@@ -140,8 +141,9 @@ _, Force = Examples.HeldSuarezDryExample()(Param,Phys)
 KForceKernel! = GPU.ForceKernel!(backend, groupG)
 KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)
 KernelAbstractions.synchronize(backend)
+@show "HeldSuarez"
 @time for iter = 1 : TestIter
   KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)
   KernelAbstractions.synchronize(backend)
 end  
-stop
+@show "Ende"
