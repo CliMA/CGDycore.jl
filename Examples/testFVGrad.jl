@@ -250,26 +250,26 @@ Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h Ve
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp-VelSpE], 2)
 
 # Test tangential
-VelCart=zeros(3)
-VelSphere=zeros(3)
 for iE = 1 : Grid.NumEdges
-  x = Grid.Edges[iF].Mid.x
-  y = Grid.Edges[iF].Mid.y
-  z = Grid.Edges[iF].Mid.z
-  (lon,lat,r)= Grids.cart2sphere(x,y,z)
-  VelSphere[1] 3*lon^4 + 4*lat^3 
+  VelCart = zeros(3)
+  VelSphere = zeros(3)
+  x = Grid.Edges[iE].Mid.x
+  y = Grid.Edges[iE].Mid.y
+  z = Grid.Edges[iE].Mid.z
+  lon,lat,_= Grids.cart2sphere(x,y,z)
+  VelSphere[1] = 3*lon^4 + 4*lat^3 
   VelSphere[2] = 4*lon^3 + 5 * lat^2
 # dulondlon = 12*lon^3
 # dulatdlat = 10*lat
-  VelCart = VelSphere2Cart(VelSphere,lon,lat)
+  VelCart = FiniteVolumes.VelSphere2Cart(VelSphere,lon,lat)
   n1 = Grid.Edges[iE].n.x
   n2 = Grid.Edges[iE].n.y
   n3 = Grid.Edges[iE].n.z
-  uN[iE] = n1 * VelCa[1] + n2 * VelCa[2] + n3 * VelCa[3]
+  uN[iE] = n1 * VelCart[1] + n2 * VelCart[2] + n3 * VelCart[3]
   t1 = Grid.Edges[iE].t.x
   t2 = Grid.Edges[iE].t.y
   t3 = Grid.Edges[iE].t.z
-  uTEx[iE] = t1 * VelCa[1] + t2 * VelCa[2] + t3 * VelCa[3]
+  uTEx[iE] = t1 * VelCart[1] + t2 * VelCart[2] + t3 * VelCart[3]
 end
 mul!(uT,Tang,uN)
 FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSpE,uTEx,Grid)

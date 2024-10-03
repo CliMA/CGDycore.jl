@@ -3,7 +3,7 @@ abstract type Example end
 Base.@kwdef struct DivergentSphereExample <: Example end
 
 function (profile::DivergentSphereExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     Rho = FT(1)
     Lon,Lat,R = Grids.cart2sphere(x[1],x[2],x[3])
@@ -39,7 +39,7 @@ end
 Base.@kwdef struct RotationalCartExample <: Example end
 
 function (profile::RotationalCartExample)(Param,Phys)
-    function local_profile(x,time)
+    @inline function local_profile(x,time)
       FT = eltype(x)
       Rho = FT(1)
       u = Param.uMax
@@ -61,7 +61,7 @@ end
 Base.@kwdef struct AdvectionSphereDCMIP <: Example end
 
 function (profile::AdvectionSphereDCMIP)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
     Z=max(R-Phys.RadEarth,FT(0))
@@ -100,7 +100,7 @@ end
 Base.@kwdef struct LimAdvectionCartExample <: Example end
 
 function (profile::LimAdvectionCartExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     Rho = FT(1)
     rd1 = sqrt((x[1] - Param.centers1xC)^2 +
@@ -140,7 +140,7 @@ end
 
 function (profile::BryanFritsch)(Param,Phys)
   ( ProfileBF) = profile
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     z = x[3]
     @views zP = ProfileBF[:,1]
@@ -178,7 +178,7 @@ end
 Base.@kwdef struct WarmBubbleCartExample <: Example end
 
 function (profile::WarmBubbleCartExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     u = Param.uMax
     v = Param.vMax
@@ -214,7 +214,7 @@ end
 Base.@kwdef struct StratifiedExample <: Example end
 
 function (profile::StratifiedExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     z = x[3]
     u = Param.uMax
@@ -242,7 +242,7 @@ end
 Base.@kwdef struct GalewskiExample <: Example end
 
 function (profile::GalewskiExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     Grav=Phys.Grav 
     Omega=Phys.Omega
@@ -268,7 +268,7 @@ end
 Base.@kwdef struct HaurwitzExample <: Example end
 
 function (profile::HaurwitzExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     g = Phys.Grav
     Ω = Phys.Omega
@@ -309,7 +309,7 @@ end
 Base.@kwdef struct LinearBlob <: Example end
 
 function (profile::LinearBlob)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
     d = acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0))
@@ -330,7 +330,7 @@ end
 Base.@kwdef struct BaroWaveDryCart <: Example end
 
 function (profile::BaroWaveDryCart)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     u0 = Param.u0
     Ly = Param.Ly
@@ -364,7 +364,7 @@ end
 Base.@kwdef struct BaroWaveExample <: Example end
 
 function (profile::BaroWaveExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R - Phys.RadEarth, FT(0))
@@ -442,7 +442,7 @@ end
 Base.@kwdef struct HeldSuarezDryExample <: Example end
 
 function (::HeldSuarezDryExample)(Param,Phys)
-  function profile(x,time)
+  @inline function profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z=max(R-Phys.RadEarth,FT(0))
@@ -456,7 +456,7 @@ function (::HeldSuarezDryExample)(Param,Phys)
     w = FT(0)
     return (Rho,uS,vS,w,Th,qv)
   end
-  function Force(F,U,p,lat)
+  @inline function Force(F,U,p,lat)
     FT = eltype(U)
     Sigma = p / Phys.p0
     SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
@@ -482,7 +482,7 @@ end
 Base.@kwdef struct HeldSuarezMoistExample <: Example end
 
 function (profile::HeldSuarezMoistExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z=max(R-Phys.RadEarth,FT(0))
@@ -502,7 +502,7 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     qc = FT(0)
     return (Rho,uS,vS,w,Th,qv,qc)
   end
-  function Force(U,p,lat)
+  @inline function Force(U,p,lat)
     FT = eltype(U)
     Sigma = p / Phys.p0
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
@@ -520,7 +520,7 @@ function (profile::HeldSuarezMoistExample)(Param,Phys)
     FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
     return FT(0),Fu,Fv,FT(0),FRhoTh
   end
-  function TSurf(x)
+  @inline function TSurf(x)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     TS = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
@@ -531,7 +531,7 @@ end
 Base.@kwdef struct SchaerSphereExample <: Example end
 
 function (profile::SchaerSphereExample)(Param,Phys)
-  function local_profile(x,time)
+  @inline function local_profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z = max(FT(0), R - Phys.RadEarth / Param.X)
@@ -547,7 +547,7 @@ function (profile::SchaerSphereExample)(Param,Phys)
   return local_profile
 end
 
-function integrandG(tau,RadEarth,Param,Phys)
+@inline function integrandG(tau,RadEarth,Param,Phys)
   f=2.0*Phys.Omega*sin(tau)
   if (tau<=Param.lat0G) || (tau>=Param.lat1G)
     uStart=0.0
@@ -562,7 +562,7 @@ function integrandG(tau,RadEarth,Param,Phys)
   return intG
 end
 
-function simpson(x0,xN,r,dx,f,Param,Phys)
+@inline function simpson(x0,xN,r,dx,f,Param,Phys)
   n=ceil(Int,(xN-x0)/dx) + 1
   h=(xN-x0)/n
   res=0.5*(f(x0,r,Param,Phys)+f(xN,r,Param,Phys))
@@ -580,7 +580,7 @@ function simpson(x0,xN,r,dx,f,Param,Phys)
   return res
 end
 
-function GeoPotentialDeviation(y,Param)
+@inline function GeoPotentialDeviation(y,Param)
 
   u0 = Param.u0
   f0 = Param.f0
@@ -594,7 +594,7 @@ function GeoPotentialDeviation(y,Param)
 
 end
 
-function GeoPotentialMean(eta,Param,Phys)
+@inline function GeoPotentialMean(eta,Param,Phys)
   T0 = Param.T0
   LapseRate = Param.LapseRate
   Grav = Phys.Grav
@@ -603,7 +603,7 @@ function GeoPotentialMean(eta,Param,Phys)
   T0 * Grav / LapseRate * (1 - eta^(Rd * LapseRate / Grav))
 end  
 
-function GeoPotentialBaroWaveCart(x,y,eta,Param,Phys)
+@inline function GeoPotentialBaroWaveCart(x,y,eta,Param,Phys)
   b = Param.b
 
   GeoM = GeoPotentialMean(eta,Param,Phys)
@@ -612,7 +612,7 @@ function GeoPotentialBaroWaveCart(x,y,eta,Param,Phys)
   G = GeoM + GeoD * log(eta) * exp(-(log(eta) / b)^2)
 end
 
-function TemperatureMean(eta,Param,Phys)
+@inline function TemperatureMean(eta,Param,Phys)
   T0 = Param.T0
   LapseRate = Param.LapseRate
   Grav = Phys.Grav
@@ -621,7 +621,7 @@ function TemperatureMean(eta,Param,Phys)
   T0 * eta^(Rd * LapseRate / Grav)
 end
 
-function TemperatureBaroWaveCart(x,y,eta,Param,Phys)
+@inline function TemperatureBaroWaveCart(x,y,eta,Param,Phys)
   Rd = Phys.Rd
   b = Param.b
 
@@ -631,7 +631,7 @@ function TemperatureBaroWaveCart(x,y,eta,Param,Phys)
   T = TMean + GeoD / Rd *(2 / b^2 * log(eta)^2 - 1) * exp(-(log(eta) / b)^2)
 end  
 
-function z2Eta(x,y,z,Param,Phys)
+@inline function z2Eta(x,y,z,Param,Phys)
 
   Eta = 1.e-2
   for i = 1 : 10
@@ -646,4 +646,4 @@ end
 
 # we may be hitting a slow path:
 # https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
-fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
+@inline fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
