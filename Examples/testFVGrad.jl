@@ -248,9 +248,9 @@ for iE = 1 : Grid.NumEdges
   x = Grid.Edges[iF].Mid.x
   y = Grid.Edges[iF].Mid.y
   z = Grid.Edges[iF].Mid.z
-  u = 3*x^4 + 4*y^3 + 5 * z^2
-  v = 3*x^4 + 4*y^3 + 5 * z^2
-  w = 3*x^4 + 4*y^3 + 5 * z^2
+  (lon,lat,r)= Grids.cart2sphere(x,y,z)
+  uS = 3*lon^4 + 4*lat^3 
+  vS = 4*lon^3 + 5 * lat^2
 end
 stop
 

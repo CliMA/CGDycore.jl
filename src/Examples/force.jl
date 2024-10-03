@@ -6,19 +6,22 @@ function (Force::HeldSuarezForcing)(Param,Phys)
   function local_force(U,p,lat)
     FT = eltype(U)
     Sigma = p / Phys.p0
+    SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
+    coslat = cos(lat)
+    sinlat = sin(lat)
     Fu = -(Param.k_f * height_factor) * U[2]
     Fv = -(Param.k_f * height_factor) * U[3]
     if Sigma < FT(0.7)
-      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * cos(lat) * cos(lat) * cos(lat) * cos(lat)
+      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
     else
       kT = FT(0)
     end  
-    Teq = (Param.T_equator - Param.DeltaT_y * sin(lat) * sin(lat) - 
-      Param.DeltaTh_z * log(Sigma) * cos(lat) * cos(lat)) * Sigma^Phys.kappa
+    Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat - 
+      Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
     DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
-    FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
+    FRhoTh  = -U[1] * DeltaT / SigmaPowKappa
     return FT(0),Fu,Fv,FT(0),FRhoTh  
   end  
   return local_force
