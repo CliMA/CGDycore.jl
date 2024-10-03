@@ -755,12 +755,12 @@ end
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    FRho,Fu,Fv,Fw,FRhoTh = Force(view(U,Iz,IC,1:5),p[Iz,IC],xS[2,IC])
-    F[Iz,IC,1] += FRho
-    F[Iz,IC,2] += Fu
-    F[Iz,IC,3] += Fv
-    F[Iz,IC,4] += Fw
-    F[Iz,IC,5] += FRhoTh
+    Force(view(F,Iz,IC,:),view(U,Iz,IC,:),p[Iz,IC],xS[2,IC])
+#   F[Iz,IC,1] += FRho
+#   F[Iz,IC,2] += Fu
+#   F[Iz,IC,3] += Fv
+#   F[Iz,IC,4] += Fw
+#   F[Iz,IC,5] += FRhoTh
   end
 end  
 

@@ -213,10 +213,16 @@ UNew = similar(U)
 @views UNewu = UNew[uPosS:uPosE]
 
 h = zeros(FTB,Grid.NumFaces)
+Div = zeros(FTB,Grid.NumFaces)
+DivEx = zeros(FTB,Grid.NumFaces)
+uN = zeros(FTB,Grid.NumEdges)
+uT = zeros(FTB,Grid.NumEdges)
+uTEx = zeros(FTB,Grid.NumEdges)
 hGrad = zeros(FTB,Grid.NumEdges)
-hGradE = zeros(FTB,Grid.NumEdges)
+hGradEx = zeros(FTB,Grid.NumEdges)
 VelSp = zeros(Grid.NumFaces,2)
 VelSpE = zeros(Grid.NumFaces,2)
+
 # Test gradient
 for iF = 1 : Grid.NumFaces
   x = Grid.Faces[iF].Mid.x  
@@ -232,28 +238,50 @@ for iE = 1 : Grid.NumEdges
   hGradx = 12 * x^3
   hGrady = 12 * y^2
   hGradz = 10 * z
-  hGradE[iE] = hGradx * Grid.Edges[iE].n.x +
+  hGradEx[iE] = hGradx * Grid.Edges[iE].n.x +
                hGrady * Grid.Edges[iE].n.y
                hGradz * Grid.Edges[iE].n.z
 end               
 mul!(hGrad,Grad,h)
 FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,hGrad,Grid)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp], 0)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSpE,hGradE,Grid)
+FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSpE,hGradEx,Grid)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSpE], 1)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp-VelSpE], 2)
 
-# Test divergence
+# Test tangential
+VelCart=zeros(3)
+VelSphere=zeros(3)
 for iE = 1 : Grid.NumEdges
   x = Grid.Edges[iF].Mid.x
   y = Grid.Edges[iF].Mid.y
   z = Grid.Edges[iF].Mid.z
   (lon,lat,r)= Grids.cart2sphere(x,y,z)
-  uS = 3*lon^4 + 4*lat^3 
-  vS = 4*lon^3 + 5 * lat^2
+  VelSphere[1] 3*lon^4 + 4*lat^3 
+  VelSphere[2] = 4*lon^3 + 5 * lat^2
+# dulondlon = 12*lon^3
+# dulatdlat = 10*lat
+  VelCart = VelSphere2Cart(VelSphere,lon,lat)
+  n1 = Grid.Edges[iE].n.x
+  n2 = Grid.Edges[iE].n.y
+  n3 = Grid.Edges[iE].n.z
+  uN[iE] = n1 * VelCa[1] + n2 * VelCa[2] + n3 * VelCa[3]
+  t1 = Grid.Edges[iE].t.x
+  t2 = Grid.Edges[iE].t.y
+  t3 = Grid.Edges[iE].t.z
+  uTEx[iE] = t1 * VelCa[1] + t2 * VelCa[2] + t3 * VelCa[3]
 end
+mul!(uT,Tang,uN)
+FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSpE,uTEx,Grid)
+FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSp,uT,Grid)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp], 3)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSpE], 4)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp-VelSpE], 5)
 stop
 
+# theta lat 
+# phi   lon
+# Div = 1/sin(theta)*d/dtheta(sin(theta)*u_theta) + 1/sin(theta)*d/dphi(u_phi)
 
 
 

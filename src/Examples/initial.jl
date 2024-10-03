@@ -456,23 +456,25 @@ function (::HeldSuarezDryExample)(Param,Phys)
     w = FT(0)
     return (Rho,uS,vS,w,Th,qv)
   end
-  function Force(U,p,lat)
+  function Force(F,U,p,lat)
     FT = eltype(U)
     Sigma = p / Phys.p0
+    SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
-    Fu = -(Param.k_f * height_factor) * U[2]
-    Fv = -(Param.k_f * height_factor) * U[3]
+    coslat = cos(lat)
+    sinlat = sin(lat)
+    F[2] += -(Param.k_f * height_factor) * U[2]
+    F[3] += -(Param.k_f * height_factor) * U[3]
     if Sigma < FT(0.7)
-      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * cos(lat) * cos(lat) * cos(lat) * cos(lat)
+      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
     else
       kT = FT(0)
     end
-    Teq = (Param.T_equator - Param.DeltaT_y * sin(lat) * sin(lat) -
-      Param.DeltaTh_z * log(Sigma) * cos(lat) * cos(lat)) * Sigma^Phys.kappa
+    Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
+      Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
     DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
-    FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
-    return FT(0),Fu,Fv,FT(0),FRhoTh
+    F[5]  += -U[1] * DeltaT / SigmaPowKappa
   end
   return profile,Force
 end
@@ -641,3 +643,7 @@ function z2Eta(x,y,z,Param,Phys)
   return Eta
 
 end
+
+# we may be hitting a slow path:
+# https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
+fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))
