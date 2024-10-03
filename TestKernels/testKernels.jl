@@ -90,8 +90,6 @@ KernelAbstractions.synchronize(backend)
   KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
-@show CUDA.@profile trace=true CUDA.@sync KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
-KernelAbstractions.synchronize(backend)
 
 KGradKernel! = GPU.GradKernel!(backend,group)
 KGradKernel!(F,U,p,D,dXdxI,J,X,M,Glob,GravitationFun,ndrange=ndrange)
