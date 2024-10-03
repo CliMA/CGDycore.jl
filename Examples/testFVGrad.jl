@@ -189,6 +189,9 @@ vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Gri
 MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid)
 
 Grad,Inter = FiniteVolumes.GradMPFATri(backend,FTB,Grid)
+Div = FiniteVolumes.DivMPFA(backend,FTB,MetricFV,Grid)
+Curl = FiniteVolumes.CurlNodeMatrix(MetricFV,Grid)
+Tang = FiniteVolumes.TagentialVelocityMatrix(MetricFV,Grid)
 
 
 pPosS = 1
@@ -214,12 +217,12 @@ hGrad = zeros(FTB,Grid.NumEdges)
 hGradE = zeros(FTB,Grid.NumEdges)
 VelSp = zeros(Grid.NumFaces,2)
 VelSpE = zeros(Grid.NumFaces,2)
+# Test gradient
 for iF = 1 : Grid.NumFaces
   x = Grid.Faces[iF].Mid.x  
   y = Grid.Faces[iF].Mid.y  
   z = Grid.Faces[iF].Mid.z  
   h[iF] = 3*x^4 + 4*y^3 + 5 * z^2  
-# h[iF] = 3*x^2 
 end  
 for iE = 1 : Grid.NumEdges
   x = Grid.Edges[iE].Mid.x  
@@ -229,10 +232,6 @@ for iE = 1 : Grid.NumEdges
   hGradx = 12 * x^3
   hGrady = 12 * y^2
   hGradz = 10 * z
-# h[iF] = 3*x^2 
-# hGradx = 6 * x
-# hGrady = 0.0
-# hGradz = 0.0
   hGradE[iE] = hGradx * Grid.Edges[iE].n.x +
                hGrady * Grid.Edges[iE].n.y
                hGradz * Grid.Edges[iE].n.z
@@ -243,6 +242,16 @@ Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h Ve
 FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSpE,hGradE,Grid)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSpE], 1)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp-VelSpE], 2)
+
+# Test divergence
+for iE = 1 : Grid.NumEdges
+  x = Grid.Edges[iF].Mid.x
+  y = Grid.Edges[iF].Mid.y
+  z = Grid.Edges[iF].Mid.z
+  u = 3*x^4 + 4*y^3 + 5 * z^2
+  v = 3*x^4 + 4*y^3 + 5 * z^2
+  w = 3*x^4 + 4*y^3 + 5 * z^2
+end
 stop
 
 

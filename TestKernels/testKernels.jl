@@ -28,11 +28,34 @@ GlobCPU = zeros(Int,DoF,NF)
 
 read!("TestKernels/GlobInd",GlobCPU)
 
+JuliaDevice = get(ENV, "JuliaDevice", "CPU")
+JuliaGPU = get(ENV, "JuliaGPU", "CUDA")
+machine = get(ENV, "machine", "")
+
+if JuliaDevice == "CPU"
+  backend = CPU()
+elseif JuliaDevice == "GPU"
+  if JuliaGPU == "CUDA"
+    backend = CUDABackend()
+    CUDA.allowscalar(false)
+    if machine == "levante"
+    else
+       CUDA.device!(Proc-1)
+    end
+  elseif JuliaGPU == "AMD"
+    backend = ROCBackend()
+    AMDGPU.allowscalar(false)
+  elseif JuliaGPU == "Metal"
+    backend = MetalBackend()
+    Metal.allowscalar(true)
+  end
+else
+  backend = CPU()
+end
 
 
-#backend = CPU()
-backend = CUDABackend()
-#backend = ROCBackend()
+
+
 NzG = min(div(NumberThreadGPU,DoF),Nz)
 group = (Ord, Ord, NzG, 1)
 ndrange = (Ord, Ord, Nz, NF)

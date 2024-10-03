@@ -9,7 +9,7 @@
 #SBATCH --mem=0
 #SBATCH --exclusive
 #SBATCH --partition=dev-g
-#SBATCH --output=ErgKernelAMD
+#SBATCH --output=BaroWave_32Elem
 # dev-g max 56 cpus per task
 
 #module load CrayEnv rocm
@@ -29,5 +29,5 @@ chmod +x ./select_gpu
 echo '####'
 
 #CPU_BIND="map_cpu:49,57"
-srun --cpu-bind=cores --unbuffered  ./select_gpu julia --project TestKernels/testKernels.jl
-~
+srun --cpu-bind=cores --unbuffered  ./select_gpu ./Jobs/NHSphere/BaroWaveDrySphere_32Elem
+
