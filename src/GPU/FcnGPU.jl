@@ -408,9 +408,11 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrangeB)
+  end  
   if KoeffDivW > 0
     KHyperViscWKoeffKernel! = HyperViscWKoeffKernel!(backend, groupTr)
     @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI,J,M,Glob,KoeffDivW,ndrange=ndrangeB)
+  end  
   if EDMF
     KHyperViscWKoeffEDMFKernel! = HyperViscWKoeffEDMFKernel!(backend, groupTr)
     @views KHyperViscWKoeffEDMFKernel!(FwEDMF,CachewEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDivW,ndrange=ndrangeBEDMF)
