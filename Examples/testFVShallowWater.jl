@@ -164,7 +164,7 @@ Flat = false
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-RefineLevel = 7
+RefineLevel = 6
 nz = 1
 nPanel = 160
 nQuad = 10
@@ -176,8 +176,8 @@ OrdPoly = 1
 
 #TRI
 #GridType = "TriangularSphere"
-#GridType = "DelaunaySphere"
-GridType = "CubedSphere"
+GridType = "DelaunaySphere"
+#GridType = "CubedSphere"
 #GridType = "HealPix"
 #GridType = "MPAS"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
@@ -217,9 +217,9 @@ FileNumber += 1
 
 time = 0.0
 
-nAdveVel = 17280
-dtau = 30.0
-PrintStp = 1440
+nAdveVel = 17280/2
+dtau = 60.0
+PrintStp = 1440/2
 for i = 1 : nAdveVel
   FiniteVolumes.FcnFV!(r,U,MetricFV,Grid,Cache,Phys)
   @. UNew = U + 1/3 * dtau * r  

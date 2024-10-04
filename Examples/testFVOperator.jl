@@ -176,8 +176,8 @@ OrdPoly = 1
 
 #TRI
 #GridType = "TriangularSphere"
-GridType = "DelaunaySphere"
-#GridType = "CubedSphere"
+#GridType = "DelaunaySphere"
+GridType = "CubedSphere"
 #GridType = "HealPix"
 #GridType = "MPAS"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
