@@ -20,10 +20,10 @@ julia --project Examples/testNHSphere.jl \
   --SimDays=365 \
   --SimHours=0 \
   --SimSeconds=0 \
-  --PrintSeconds=0 \
+  --PrintSeconds=150 \
   --PrintMinutes=0 \
   --PrintHours=0 \
-  --PrintDays=50 \
+  --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \
@@ -35,7 +35,7 @@ julia --project Examples/testNHSphere.jl \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=32 \
-  --H=55000.0 \
+  --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \
