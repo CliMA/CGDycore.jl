@@ -10,6 +10,7 @@ using StaticArrays
 using ArgParse
 using LinearAlgebra
 
+function TestOperators()
 # Model
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
@@ -163,7 +164,7 @@ Flat = false
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-RefineLevel = 5
+RefineLevel = 6
 nz = 1
 nPanel = 60
 nQuad = 10
@@ -175,8 +176,8 @@ OrdPoly = 1
 
 #TRI
 #GridType = "TriangularSphere"
-#GridType = "DelaunaySphere"
-GridType = "CubedSphere"
+GridType = "DelaunaySphere"
+#GridType = "CubedSphere"
 #GridType = "HealPix"
 #GridType = "MPAS"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
@@ -189,8 +190,8 @@ vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Gri
 MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid)
 
 Grad,Inter = FiniteVolumes.GradMPFATri(backend,FTB,Grid)
-Div = FiniteVolumes.DivMPFA(backend,FTB,MetricFV,Grid)
-Curl = FiniteVolumes.CurlNodeMatrix(MetricFV,Grid)
+DivMatrix = FiniteVolumes.DivMPFA(backend,FTB,MetricFV,Grid)
+CurlMatrix = FiniteVolumes.CurlNodeMatrix(MetricFV,Grid)
 Tang = FiniteVolumes.TagentialVelocityMatrix(MetricFV,Grid)
 
 
@@ -213,8 +214,15 @@ UNew = similar(U)
 @views UNewu = UNew[uPosS:uPosE]
 
 h = zeros(FTB,Grid.NumFaces)
+hEx = zeros(FTB,Grid.NumFaces)
+hEdge = zeros(FTB,Grid.NumEdges)
+hEdgeEx = zeros(FTB,Grid.NumEdges)
 Div = zeros(FTB,Grid.NumFaces)
 DivEx = zeros(FTB,Grid.NumFaces)
+CurlN = zeros(FTB,Grid.NumNodes)
+CurlNEx = zeros(FTB,Grid.NumNodes)
+Curl = zeros(FTB,Grid.NumFaces)
+CurlEx = zeros(FTB,Grid.NumFaces)
 uN = zeros(FTB,Grid.NumEdges)
 uT = zeros(FTB,Grid.NumEdges)
 uTEx = zeros(FTB,Grid.NumEdges)
@@ -222,6 +230,8 @@ hGrad = zeros(FTB,Grid.NumEdges)
 hGradEx = zeros(FTB,Grid.NumEdges)
 VelSp = zeros(Grid.NumFaces,2)
 VelSpE = zeros(Grid.NumFaces,2)
+VelCart = zeros(3)
+VelSphere = zeros(3)
 
 # Test gradient
 for iF = 1 : Grid.NumFaces
@@ -244,23 +254,19 @@ for iE = 1 : Grid.NumEdges
 end               
 mul!(hGrad,Grad,h)
 FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,hGrad,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp], 0)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h VelSp], 0)
 FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSpE,hGradEx,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSpE], 1)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp-VelSpE], 2)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h VelSpE], 1)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h VelSp-VelSpE], 2)
 
 # Test tangential
 for iE = 1 : Grid.NumEdges
-  VelCart = zeros(3)
-  VelSphere = zeros(3)
   x = Grid.Edges[iE].Mid.x
   y = Grid.Edges[iE].Mid.y
   z = Grid.Edges[iE].Mid.z
   lon,lat,_= Grids.cart2sphere(x,y,z)
-  VelSphere[1] = 3*lon^4 + 4*lat^3 
-  VelSphere[2] = 4*lon^3 + 5 * lat^2
-# dulondlon = 12*lon^3
-# dulatdlat = 10*lat
+  VelSphere[1] = sin(lon)^4 * cos(lat)^3 
+  VelSphere[2] = sin(lon)^3 * cos(lat)^2
   VelCart = FiniteVolumes.VelSphere2Cart(VelSphere,lon,lat)
   n1 = Grid.Edges[iE].n.x
   n2 = Grid.Edges[iE].n.y
@@ -274,14 +280,108 @@ end
 mul!(uT,Tang,uN)
 FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSpE,uTEx,Grid)
 FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSp,uT,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp], 3)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSpE], 4)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVGrad", Proc, ProcNumber, [h VelSp-VelSpE], 5)
-stop
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h VelSp], 3)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h VelSpE], 4)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h VelSp-VelSpE], 5)
+
+# Test Divergence 
+for iF = 1 : Grid.NumFaces
+  x = Grid.Faces[iF].Mid.x
+  y = Grid.Faces[iF].Mid.y
+  z = Grid.Faces[iF].Mid.z
+  lon,lat,_= Grids.cart2sphere(x,y,z)
+  if abs(cos(lat)) == 0
+    if lat > 0
+      lat -= 1.e-4
+    else  
+      lat += 1.e-4
+    end
+  end  
+  uS = sin(lon)^4 * cos(lat)^3 
+  vS = sin(lon)^3 * cos(lat)^2
+  duSdlon = 4 * sin(lon)^3 * cos(lon) * cos(lat)^3
+  duSdlat = -3 * sin(lon)^4 * cos(lat)^2 * sin(lat)
+  dvSdlon = 3 * sin(lon)^2 * cos(lon) * cos(lat)^2
+  dvSdlat = -2 * sin(lon)^3 * cos(lat) * sin(lat)
+  DivEx[iF] = -1/cos(lat) * (-sin(lat)*vS + cos(lat) * dvSdlat + duSdlon) / RadEarth
+end  
+mul!(Div,DivMatrix,uN)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [DivEx VelSp], 6)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [Div VelSp], 7)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [DivEx-Div VelSp], 8)
+
+# Test Rotation
+for iN = 1 : Grid.NumNodes
+  x = Grid.Nodes[iN].P.x
+  y = Grid.Nodes[iN].P.y
+  z = Grid.Nodes[iN].P.z
+  lon,lat,_= Grids.cart2sphere(x,y,z)
+  if abs(cos(lat)) == 0
+    if lat > 0
+      lat -= 1.e-4
+    else
+      lat += 1.e-4
+    end
+  end
+  uS = sin(lon)^4 * cos(lat)^3
+  vS = sin(lon)^3 * cos(lat)^2
+  duSdlon = 4 * sin(lon)^3 * cos(lon) * cos(lat)^3
+  duSdlat = -3 * sin(lon)^4 * cos(lat)^2 * sin(lat)
+  dvSdlon = 3 * sin(lon)^2 * cos(lon) * cos(lat)^2
+  dvSdlat = -2 * sin(lon)^3 * cos(lat) * sin(lat)
+  CurlNEx[iN] = -1/cos(lat) * (-sin(lat) * uS + cos(lat) * duSdlat - dvSdlon) / RadEarth
+end
+mul!(CurlN,CurlMatrix,uN)
+DualVolume = zeros(FTB,Grid.NumFaces)
+for iF = 1 : Grid.NumFaces
+   for iN in Grid.Faces[iF].N
+     Curl[iF] += CurlN[iN] * MetricFV.DualVolume[iN]
+     CurlEx[iF] += CurlNEx[iN] * MetricFV.DualVolume[iN]
+     DualVolume[iF] += MetricFV.DualVolume[iN]
+   end
+end
+@. Curl /= DualVolume
+@. CurlEx /= DualVolume
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [CurlEx VelSp], 9)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [Curl VelSp], 10)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [CurlEx-Curl VelSp], 11)
+
+# Test interpolation
+for iF = 1 : Grid.NumFaces
+  x = Grid.Faces[iF].Mid.x
+  y = Grid.Faces[iF].Mid.y
+  z = Grid.Faces[iF].Mid.z
+  hEx[iF] = 3*x^4 + 4*y^3 + 5 * z^2
+end
+for iE = 1 : Grid.NumEdges
+  x = Grid.Edges[iE].Mid.x
+  y = Grid.Edges[iE].Mid.y
+  z = Grid.Edges[iE].Mid.z
+  hEdgeEx[iE] = 3*x^4 + 4*y^3 + 5 * z^2
+end
+mul!(hEdge,Inter,hEx)
+@. h = 0
+for iE = 1 : Grid.NumEdges
+  iF1 = Grid.Edges[iE].F[1]  
+  iF2 = Grid.Edges[iE].F[2]  
+  h[iF1] += hEdge[iE] * MetricFV.DualEdgeVolume[1,iE]
+  h[iF2] += hEdge[iE] * MetricFV.DualEdgeVolume[2,iE]
+end  
+@. h /= MetricFV.PrimalVolume
+
+
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [hEx VelSp], 12)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h VelSp], 13)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVOperator", Proc, ProcNumber, [h - hEx VelSp], 14)
+return 
+end
+
+
 
 # theta lat 
 # phi   lon
-# Div = 1/sin(theta)*d/dtheta(sin(theta)*u_theta) + 1/sin(theta)*d/dphi(u_phi)
+# Div = 1/cos(theta)*d/dtheta(cos(theta)*u_theta) + 1/cos(theta)*d/dphi(u_phi)
+# Curl = 1/cos(theta)*(d/dtheta(cos(theta)*u_phi) - d/dphi(u_theta))
 
 
 

@@ -152,6 +152,8 @@ function GradMPFATri(backend,FT,Grid)
   Val = Float64[]
   ValGrad = Float64[]
   Shift = Grid.NumNodes + Grid.NumEdges
+  n1 = zeros(3)
+  n2 = zeros(3)
   for iN = 1 : NumNodes
     NG = Grid.Nodes[iN].NG  
     EdgesInNode = Int64[]
@@ -185,9 +187,15 @@ function GradMPFATri(backend,FT,Grid)
       end  
       P1 = Faces[iF].Mid
       P2 = Edges[iE2].Mid
+      n1[1] = Edges[iE2].n.x
+      n1[2] = Edges[iE2].n.y
+      n1[3] = Edges[iE2].n.z
 #     P3 = Nodes[iN].P
       P3 = Edges[iE3].Mid
-      @views LocalInterpolationGradTri!(ILoc[:,:,i],P1,P2,P3,Grid.Rad)
+      n2[1] = Edges[iE3].n.x
+      n2[2] = Edges[iE3].n.y
+      n2[3] = Edges[iE3].n.z
+      @views LocalInterpolationGradTri!(ILoc[:,:,i],P1,P2,P3,n1,n2,Grid.Rad)
       @views @. I[GlobLoc[:,i],GlobLoc[:,i]] += ILoc[:,:,i]
     end
     for i = 1 : NumF
@@ -200,7 +208,7 @@ function GradMPFATri(backend,FT,Grid)
         FG = Faces[iF].FG
         jE = Faces[jF].E[EdgesInNode[j]]
         EG = Edges[jE].EG
-        TempGrad = -0.5 * sum(ILoc[2,:,j] .* c[GlobLoc[:,j]]) * Faces[jF].OrientE[EdgesInNode[j]]
+        TempGrad = 0.5 * sum(ILoc[2,:,j] .* c[GlobLoc[:,j]])  #* Faces[jF].OrientE[EdgesInNode[j]]
         Temp = 0.5 * c[GlobLoc[2,j]] 
         push!(RowInd,jE)
         push!(ColInd,iF)
@@ -354,7 +362,65 @@ function LocalInterpolationGrad!(ILoc,P1,P2,P3,P4,Rad)
   grad[2] = gradphi4y(ksi1,ksi2) 
   ILoc[4,4] = eInv * (pinvDF * n)' * (pinvDF * grad)
 end
-function LocalInterpolationGradTri!(ILoc,P1,P2,P3,Rad)
+
+function LocalInterpolationGradTri!(ILoc,P1,P2,P3,n1,n2,Rad)
+
+  grad = zeros(2)
+  n = zeros(2)
+  @polyvar x y ksi eta
+  nu1 = -1.0*ksi - 1.0*eta + 1.0
+  nu2 = 1.0*ksi + 0.0*eta + 0.0
+  nu3 = 0.0*ksi + 1.0*eta + 0.0
+  phi1 = subs(nu1, ksi => (x+1)/2, eta => (y+1)/2)
+  phi2 = subs(nu2, ksi => (x+1)/2, eta => (y+1)/2)
+  phi3 = subs(nu3, ksi => (x+1)/2, eta => (y+1)/2)
+
+  gradphi1x = differentiate(phi1,x)
+  gradphi1y = differentiate(phi1,y)
+  gradphi2x = differentiate(phi2,x)
+  gradphi2y = differentiate(phi2,y)
+  gradphi3x = differentiate(phi3,x)
+  gradphi3y = differentiate(phi3,y)
+  @. ILoc = 0
+  # Pointwise interpolation
+  ILoc[1,1] = 1
+  #First gradient
+
+  ksi1 = 1.0
+  ksi2 = -1.0
+  n[1] = 0.0
+  n[2] = 1.0
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+
+  grad[1] = gradphi1x(ksi1,ksi2) 
+  grad[2] = gradphi1y(ksi1,ksi2) 
+  ILoc[2,1] = n1' * (pinvDF * grad)
+  grad[1] = gradphi2x(ksi1,ksi2) 
+  grad[2] = gradphi2y(ksi1,ksi2) 
+  ILoc[2,2] = n1' * (pinvDF * grad)
+  grad[1] = gradphi3x(ksi1,ksi2) 
+  grad[2] = gradphi3y(ksi1,ksi2) 
+  ILoc[2,3] = n1' * (pinvDF * grad)
+  ksi1 = -1.0
+  ksi2 = 1.0
+  n[1] = 1.0
+  n[2] = 0.0
+  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+  grad[1] = gradphi1x(ksi1,ksi2) 
+  grad[2] = gradphi1y(ksi1,ksi2) 
+  ILoc[3,1] = -n2' * (pinvDF * grad)
+  grad[1] = gradphi2x(ksi1,ksi2) 
+  grad[2] = gradphi2y(ksi1,ksi2) 
+  ILoc[3,2] = -n2' * (pinvDF * grad)
+  grad[1] = gradphi3x(ksi1,ksi2) 
+  grad[2] = gradphi3y(ksi1,ksi2) 
+  ILoc[3,3] = -n2' * (pinvDF * grad)
+end
+function LocalInterpolationGradTriOld!(ILoc,P1,P2,P3,Rad)
 
   grad = zeros(2)
   n = zeros(2)

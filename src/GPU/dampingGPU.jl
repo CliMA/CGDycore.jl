@@ -3,7 +3,7 @@ abstract type DampingValue end
 Base.@kwdef struct DampingW <: DampingValue end
 
 function (::DampingW)(H,StrideDamp,Relax,wPos)
-  function Damping(z,U)
+  @inline function Damping(z,U)
     FT = eltype(z)
     if z>=H-StrideDamp
       Damp = Relax *

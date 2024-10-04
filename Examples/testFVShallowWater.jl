@@ -166,7 +166,7 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 RefineLevel = 7
 nz = 1
-nPanel = 160
+nPanel = 120
 nQuad = 10
 ns = 120
 Decomp = ""
@@ -217,19 +217,13 @@ FileNumber += 1
 
 time = 0.0
 
-nAdveVel = 12000
-dtau = 20.0
-PrintStp = 500
-FiniteVolumes.FcnFV1!(r,U,MetricFV,Grid,Cache,Phys)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,ru,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
-FileNumber += 1
-FiniteVolumes.FcnFV2!(r,U,MetricFV,Grid,Cache,Phys)
-FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,ru,Grid)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber)
-stop
+nAdveVel = 17280
+dtau = 30.0
+PrintStp = 1440
 for i = 1 : nAdveVel
   FiniteVolumes.FcnFV!(r,U,MetricFV,Grid,Cache,Phys)
+  @. UNew = U + 1/3 * dtau * r  
+  FiniteVolumes.FcnFV!(r,UNew,MetricFV,Grid,Cache,Phys)
   @. UNew = U + 0.5 * dtau * r  
   FiniteVolumes.FcnFV!(r,UNew,MetricFV,Grid,Cache,Phys)
   @. U = U + dtau * r  
