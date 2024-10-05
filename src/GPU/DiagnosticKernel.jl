@@ -220,6 +220,7 @@ NVTX.@annotate function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Pa
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
     Surfaces.SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
+    (U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)
   end  
   if !Global.Model.Turbulence
     if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom

@@ -63,9 +63,15 @@ function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
     Rm  = Phys.Rd * RhoD + Phys.Rv * RhoV
     kappaM = Rm / Cpml
     p = (Phys.Rd * U[ThPos] / Phys.p0^kappaM)^(FT(1) / (FT(1) - kappaM))
-    return p
+    T = p / Rm
+    PotT = (Phys.p0/p)^kappaM * T
+    return p, T, PotT
   end
-  return Pressure
+  @inline function dPresdRhoTh(RhoTh)
+    dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
+    return dpdRhoTh
+  end  
+  return Pressure,dPresdRhoTh
 end
 
 # we may be hitting a slow path:

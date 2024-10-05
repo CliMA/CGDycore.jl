@@ -443,20 +443,6 @@ Base.@kwdef struct HeldSuarezDryExample <: Example end
 
 function (::HeldSuarezDryExample)(Param,Phys)
   @inline function profile(x,time)
-#=
-    FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    z=max(R-Phys.RadEarth,FT(0))
-    temp = Param.T_Init + Param.LapseRate * z #+ rand(FT) * FT(0.1) * (z < FT(5000))
-    pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
-    Rho = pres / Phys.Rd / temp
-    Th = temp * (Phys.p0 / pres)^Phys.kappa
-    qv = FT(0)
-    uS = FT(0)
-    vS = FT(0)
-    w = FT(0)
-    return (Rho,uS,vS,w,Th,qv)
-=#    
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R - Phys.RadEarth, FT(0))
@@ -529,51 +515,82 @@ end
 
 Base.@kwdef struct HeldSuarezMoistExample <: Example end
 
-function (profile::HeldSuarezMoistExample)(Param,Phys)
-  @inline function local_profile(x,time)
+function (::HeldSuarezMoistExample)(Param,Phys)
+  @inline function profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    z=max(R-Phys.RadEarth,FT(0))
-    temp = Param.T_Init + Param.LapseRate * z + rand(FT) * FT(0.01) * (z < FT(5000))
-    pres = Phys.p0 * (FT(1) + Param.LapseRate / Param.T_Init * z)^(-Phys.Grav / Phys.Rd / Param.LapseRate)
-    Rho = pres / Phys.Rd / temp
-    Th = temp * (Phys.p0 / pres)^Phys.kappa
-    uS = FT(0)
-    vS = FT(0)
-    w = FT(0)
-    if z <= FT(1000)
-      qv = FT(1.e-2)
+    Z = max(R - Phys.RadEarth, FT(0))
+    T0 = FT(0.5) * (Param.T0E + Param.T0P)
+    ConstA = FT(1.0) / Param.LapseRate
+    ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
+    ConstC = FT(0.5) * (Param.K + FT(2.0)) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
+    ConstH = Phys.Rd * T0 / Phys.Grav
+    ScaledZ = Z / (Param.B * ConstH)
+    Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
+    ConstB * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    Tau2 = ConstC * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    IntTau1 = ConstA * (exp(Param.LapseRate / T0 * Z) - FT(1.0)) +
+    ConstB * Z * exp(-ScaledZ * ScaledZ)
+    IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
+    if Param.Deep
+      RRatio = R / Phys.RadEarth
     else
-      qv = FT(1.e-8)
-    end  
+      RRatio = FT(1.0)
+    end
+    InteriorTerm = (RRatio * cos(Lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
+    Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
+      (IntTau1 - IntTau2 * InteriorTerm))
+    Rho = Pressure / (Phys.Rd * Temperature)
+    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
+
+    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(Lat))^(Param.K + FT(1.0))
+    BigU = Phys.Grav / Phys.RadEarth * Param.K *
+      IntTau2 * InteriorTermU * Temperature
+    if Param.Deep
+      RCosLat = R * cos(Lat)
+    else
+      RCosLat =Phys.RadEarth * cos(Lat)
+    end
+    OmegaRCosLat = Phys.Omega*RCosLat
+
+    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                         _EXCEPTIONT("Negative discriminant detected.")
+    #                 }
+
+    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    vS = 0
+    w = FT(0)
+
     qv = FT(0)
     qc = FT(0)
     return (Rho,uS,vS,w,Th,qv,qc)
   end
-  @inline function Force(U,p,lat)
+  @inline function Force(F,U,p,lat)
     FT = eltype(U)
     Sigma = p / Phys.p0
+    SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
-    Fu = -(Param.k_f * height_factor) * U[2]
-    Fv = -(Param.k_f * height_factor) * U[3]
-    if Sigma < FT(0.7)
-      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * cos(lat) * cos(lat) * cos(lat) * cos(lat)
-    else
-      kT = FT(0)
-    end
-    Teq = (Param.T_equator - Param.DeltaT_y * sin(lat) * sin(lat) -
-      Param.DeltaTh_z * log(Sigma) * cos(lat) * cos(lat)) * Sigma^Phys.kappa
+    coslat = cos(lat)
+    sinlat = sin(lat)
+    F[2] += -(Param.k_f * height_factor) * U[2]
+    F[3] += -(Param.k_f * height_factor) * U[3]
+    kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
+    Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
+      Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
-    DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
-    FRhoTh  = -U[1] * DeltaT / Sigma^Phys.kappa
-    return FT(0),Fu,Fv,FT(0),FRhoTh
+    T = p / (U[1] * Phys.Rd)
+    DeltaT =  kT * (T - Teq)
+    F[5]  += - U[5] / T * DeltaT 
   end
   @inline function TSurf(x)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     TS = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
   end
-  return local_profile,Force,TSurf
+  return profile, Force, TSurf
 end
 
 Base.@kwdef struct SchaerSphereExample <: Example end

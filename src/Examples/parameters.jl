@@ -140,6 +140,41 @@ Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
   H_t::FT = 8.e3
   q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
   q_t::FT = 1e-12
+  T0E::FT = 315.0
+  T0P::FT = 240.0
+  B::FT = 2.0
+  K::FT = 3.0
+  LapseRate::FT = 0.005
+  DeltaTS::FT = 29.0
+  TSMin::FT = 271.0
+  DeltaLat::FT = 26.0 * pi / 180.0
+  uMax::FT = 0.0
+  vMax::FT = 0.0
+  CMom::FT = 1.e-3
+  Deep::Bool = false
+  T_Init::FT = 300.0
+end
+Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
+  day::FT = 3600.0 * 24.0
+  k_a::FT= 1.0 / (40.0 * day)
+  k_f::FT = 1.0 / day
+  k_s::FT = 1.0 / (4.0 * day)
+  DeltaT_y::FT = 65.0
+  DeltaTh_z::FT = 10.0
+  T_equator::FT = 294.0
+  T_min::FT = 200.0
+  sigma_b::FT = 7.0/10.0
+  CM::FT  = 0.01 #0.0044
+  CE::FT  = 0.0044
+  CH::FT = 0.0044
+  CTr::FT = 0.004
+  p_pbl::FT = 85000.0
+  p_strato::FT = 10000.0
+  T_virt_surf::FT = 290.0
+  T_min_ref::FT = 220.0
+  H_t::FT = 8.e3
+  q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
+  q_t::FT = 1e-12
   T0E::FT = 310.0
   T0P::FT = 240.0
   B::FT = 2.0
@@ -371,10 +406,12 @@ function Parameters(FT,Problem::String)
   elseif Problem == "LinearBlob"
     @show Problem
     Param = ParamLinearBlob()
-  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" || 
-    Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
+  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
     @show Problem
     Param = ParamHeldSuarezDrySphere{FT}()
+  elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
+    @show Problem
+    Param = ParamHeldSuarezMoistSphere{FT}()
   elseif Problem == "BaroWaveDryCart"
     Param = ParamBaroWaveDryCart{FT}()
   elseif Problem == "HillSchaerCart"
@@ -413,10 +450,12 @@ function Parameters(FT,Problem::String)
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()
-  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" || 
-    Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
+  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
     @show Problem
     Param = ParamHeldSuarezDrySphere{FT}()
+  elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
+    @show Problem
+    Param = ParamHeldSuarezMoistSphere{FT}()
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()

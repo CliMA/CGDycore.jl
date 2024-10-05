@@ -325,9 +325,10 @@ elseif State == "DryEnergy"
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "Moist"
-  Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
+  Pressure, dPresdRhoTh = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos,Model.RhoCPos)
   Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "ShallowWater"
   Pressure = Models.ShallowWaterState()(Phys)
   Model.Pressure = Pressure

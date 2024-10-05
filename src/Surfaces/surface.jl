@@ -91,7 +91,7 @@ end
   end
 end
 
-function SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)
+function SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)
   TS = SurfaceData.TS
   uStar = SurfaceData.uStar
   CM = SurfaceData.CM
