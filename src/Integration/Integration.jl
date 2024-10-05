@@ -3,6 +3,7 @@ module Integration
 import ..Grids
 import ..Outputs
 import ..Parallels
+import ..Statistics
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
