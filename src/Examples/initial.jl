@@ -443,6 +443,7 @@ Base.@kwdef struct HeldSuarezDryExample <: Example end
 
 function (::HeldSuarezDryExample)(Param,Phys)
   @inline function profile(x,time)
+#=
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z=max(R-Phys.RadEarth,FT(0))
@@ -455,6 +456,56 @@ function (::HeldSuarezDryExample)(Param,Phys)
     vS = FT(0)
     w = FT(0)
     return (Rho,uS,vS,w,Th,qv)
+=#    
+    FT = eltype(x)
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    Z = max(R - Phys.RadEarth, FT(0))
+    T0 = FT(0.5) * (Param.T0E + Param.T0P)
+    ConstA = FT(1.0) / Param.LapseRate
+    ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
+    ConstC = FT(0.5) * (Param.K + FT(2.0)) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
+    ConstH = Phys.Rd * T0 / Phys.Grav
+    ScaledZ = Z / (Param.B * ConstH)
+    Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
+    ConstB * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    Tau2 = ConstC * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    IntTau1 = ConstA * (exp(Param.LapseRate / T0 * Z) - FT(1.0)) +
+    ConstB * Z * exp(-ScaledZ * ScaledZ)
+    IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
+    if Param.Deep
+      RRatio = R / Phys.RadEarth
+    else
+      RRatio = FT(1.0)
+    end
+    InteriorTerm = (RRatio * cos(Lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
+    Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
+      (IntTau1 - IntTau2 * InteriorTerm))
+    Rho = Pressure / (Phys.Rd * Temperature)
+    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
+
+    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(Lat))^(Param.K + FT(1.0))
+    BigU = Phys.Grav / Phys.RadEarth * Param.K *
+      IntTau2 * InteriorTermU * Temperature
+    if Param.Deep
+      RCosLat = R * cos(Lat)
+    else
+      RCosLat =Phys.RadEarth * cos(Lat)
+    end
+    OmegaRCosLat = Phys.Omega*RCosLat
+
+    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                         _EXCEPTIONT("Negative discriminant detected.")
+    #                 }
+
+    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    vS = 0
+    w = FT(0)
+
+    E = Phys.Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
+    return (Rho,uS,vS,w,Th,E)
   end
   @inline function Force(F,U,p,lat)
     FT = eltype(U)
@@ -465,16 +516,13 @@ function (::HeldSuarezDryExample)(Param,Phys)
     sinlat = sin(lat)
     F[2] += -(Param.k_f * height_factor) * U[2]
     F[3] += -(Param.k_f * height_factor) * U[3]
-    if Sigma < FT(0.7)
-      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
-    else
-      kT = FT(0)
-    end
+    kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
     Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
       Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
-    DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
-    F[5]  += -U[1] * DeltaT / SigmaPowKappa
+    T = p / (U[1] * Phys.Rd)
+    DeltaT =  kT * (T - Teq)
+    F[5]  += - U[5] / T * DeltaT 
   end
   return profile,Force
 end

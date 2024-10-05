@@ -35,7 +35,7 @@ julia --project Examples/testNHSphere.jl \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=32 \
-  --H=30000.0 \
+  --H=55000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \

@@ -10,7 +10,7 @@
 #SBATCH --time=01:00:00            # Set a limit on the total run time
 #SBATCH --mail-type=FAIL           # Notify user by email in case of job failure
 #SBATCH --account=bb1143           # Charge resources on this project account
-#SBATCH --output=HeldSuarezdrySphere_32Elem   # File name for standard output
+#SBATCH --output=HeldSuarezDrySphere_32Elem   # File name for standard output
 
 set -e
 ulimit -s 204800
