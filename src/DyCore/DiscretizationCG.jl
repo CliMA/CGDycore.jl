@@ -184,7 +184,7 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    fac = eltype(nS)(1) / (nS[1,IC]^2 + nS[2,IC]^2 + nS[3,IC]^2)
+    fac = eltype(nS)(1) / sqrt(nS[1,IC]^2 + nS[2,IC]^2 + nS[3,IC]^2)
     nS[1,IC] *= fac
     nS[2,IC] *= fac
     nS[3,IC] *= fac

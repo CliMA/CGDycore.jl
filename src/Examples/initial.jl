@@ -561,7 +561,7 @@ function (::HeldSuarezMoistExample)(Param,Phys)
     #                 }
 
     uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
-    vS = 0
+    vS = FT(0)
     w = FT(0)
 
     qv = FT(0)

@@ -26,11 +26,11 @@ julia --project Examples/testNHSphere.jl \
   --SimDays=365 \
   --SimHours=0 \
   --SimSeconds=0 \
-  --PrintSeconds=0 \
+  --PrintSeconds=1500 \
   --PrintMinutes=0 \
   --PrintHours=0 \
-  --PrintDays=50 \
-  --StartAverageDays=100 \
+  --PrintDays=0 \
+  --StartAverageDays=1 \
   --Flat=true \
   --dtau=150 \
   --IntMethod="Rosenbrock" \

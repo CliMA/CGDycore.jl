@@ -2,7 +2,6 @@ abstract type SurfaceValues end
 
 Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
-
 function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceValues(xS,U,p)
     FT = eltype(xS)
@@ -55,7 +54,7 @@ end
     (v2 - nS[2] * nU) * (v2 - nS[2] * nU) +
     (wC - nS[3] * nU) * (wC - nS[3] * nU))
   uStar = max(uStar, 0.1)
-
+  return uStar
 end
 
 Base.@kwdef struct MOSurface <: SurfaceValues end
