@@ -53,7 +53,7 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   LapseRate::FT = 0.005
   U0::FT = -0.5
   PertR::FT = 1.0/6.0
-  Up::FT = 1.0
+  Up::FT = 0.0
   PertExpR::FT = 0.1
   PertLon::FT = pi/9.0
   PertLat::FT = 2.0 * pi / 9.0
@@ -155,6 +155,36 @@ Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
   T_Init::FT = 300.0
 end
 Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
+  T0E::FT = 310.0
+  T0P::FT = 240.0
+  B::FT = 2.0
+  K::FT = 3.0
+  LapseRate::FT = 0.005
+  U0::FT = -0.5
+  PertR::FT = 1.0/6.0
+  Up::FT = 1.0
+  PertExpR::FT = 0.1
+  PertLon::FT = pi/9.0
+  PertLat::FT = 2.0 * pi / 9.0
+  PertZ::FT = 15000.0
+  NBr::FT = 1.e-2
+  DeltaT::FT = 1
+  ExpDist::FT = 5
+  T0::FT = 300
+  TEq::FT = 300
+  T_init::FT  = 315
+  lapse_rate::FT  = -0.008
+  Deep::Bool = false
+  pert::FT = 0.1
+  uMax::FT = 1.0
+  vMax::FT = 0.0
+
+  sigma_b::FT = 7/10
+  z_D::FT = 20.0e3
+  #      Moist
+  q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
+  q_t::FT = 1.0e-12
+
   day::FT = 3600.0 * 24.0
   k_a::FT= 1.0 / (40.0 * day)
   k_f::FT = 1.0 / day
@@ -163,7 +193,6 @@ Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
   DeltaTh_z::FT = 10.0
   T_equator::FT = 294.0
   T_min::FT = 200.0
-  sigma_b::FT = 7.0/10.0
   CM::FT  = 0.01 #0.0044
   CE::FT  = 0.0044
   CH::FT = 0.0044
@@ -173,20 +202,10 @@ Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
   T_virt_surf::FT = 290.0
   T_min_ref::FT = 220.0
   H_t::FT = 8.e3
-  q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
-  q_t::FT = 1e-12
-  T0E::FT = 310.0
-  T0P::FT = 240.0
-  B::FT = 2.0
-  K::FT = 3.0
-  LapseRate::FT = 0.005
   DeltaTS::FT = 29.0
   TSMin::FT = 271.0
   DeltaLat::FT = 26.0 * pi / 180.0
-  uMax::FT = 0.0
-  vMax::FT = 0.0
   CMom::FT = 1.e-3
-  Deep::Bool = false
   T_Init::FT = 300.0
 end
 

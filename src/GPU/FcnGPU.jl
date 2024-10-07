@@ -302,9 +302,9 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   KGradKernel! = GradKernel!(backend,group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
-  if State == "Dry" || State == "ShallowWater"
+  if State == "Dry" || State == "ShallowWater" || State == "Moist"
     KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-  elseif State == "DryEnergy"
+  elseif State == "DryEnergy" || State == "MoistEnergy"
     KDivRhoKEUpwind3Kernel! = DivRhoKEUpwind3Kernel!(backend, group)
   end
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
@@ -421,9 +421,9 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   end  
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeB)
   KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,ndrange=ndrangeB)
-  if State == "Dry" || State == "ShallowWater"
+  if State == "Dry" || State == "ShallowWater" || State == "Moist"
     KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
-  elseif State == "DryEnergy"
+  elseif State == "DryEnergy" || State == "MoistEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end
   if TkePos > 0
@@ -480,7 +480,7 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
 
-  if State == "Dry" || State == "ShallowWater"
+  if State == "Dry" || State == "ShallowWater" || State == "Moist"
     KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   elseif State == "DryEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)

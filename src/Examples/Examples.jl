@@ -18,7 +18,6 @@ function InitialProfile!(Model,Problem,Param,Phys)
   elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere"
     Profile = Examples.BaroWaveExample()(Param,Phys)
     Model.InitialProfile = Profile
-    Model.Force = Force
   elseif Problem == "SchaerSphericalSphere"
     Profile = Examples.SchaerSphereExample()(Param,Phys)
     Model.InitialProfile = Profile
