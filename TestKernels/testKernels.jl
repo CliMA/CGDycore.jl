@@ -53,11 +53,9 @@ else
   backend = CPU()
 end
 
-
-
-
 NzG = min(div(NumberThreadGPU,DoF),Nz)
 group = (Ord, Ord, NzG, 1)
+@show group
 ndrange = (Ord, Ord, Nz, NF)
 NumGG = min(div(NumberThreadGPU,Nz),NumG)
 groupG = (Nz, NumGG)
@@ -68,8 +66,11 @@ F = KernelAbstractions.ones(backend,FT,Nz,NumG,NumV + NumTr)
 CacheF = KernelAbstractions.ones(backend,FT,Nz,NumG,NumV + NumTr)
 U = KernelAbstractions.ones(backend,FT,Nz,NumG,NumV + NumTr)
 @. U = abs(rand()) + 1
+@. U[end,:,4] = 0.0
 @views Th = U[:,:,5]
 @views Rho = U[:,:,1]
+@views Tr = U[:,:,NumV+1:NumV+NumTr]
+@views FTr = F[:,:,NumV+1:NumV+NumTr]
 D = KernelAbstractions.ones(backend,FT,4,4)
 DW = KernelAbstractions.ones(backend,FT,4,4)
 dXdxI = KernelAbstractions.ones(backend,FT,3,3,2,DoF,Nz,NF)
@@ -117,12 +118,39 @@ KernelAbstractions.synchronize(backend)
   KernelAbstractions.synchronize(backend)
 end  
 
+@show "Upwind Tracer"
+@. FTh = 0.0
 KDivRhoTrUpwind3Kernel! = GPU.DivRhoTrUpwind3Kernel!(backend,group)
 KDivRhoTrUpwind3Kernel!(FTh,Th,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+@show sum(abs.(FTh))
 KernelAbstractions.synchronize(backend)
-@show "Upwind Tracer"
 @time for iter = 1 : TestIter
   KDivRhoTrUpwind3Kernel!(FTh,Th,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end  
+
+@show "Upwind Tracer New"
+@. FTh = 0.0
+KDivRhoTrUpwind3NewKernel! = GPU.DivRhoTrUpwind3NewKernel!(backend,group)
+KDivRhoTrUpwind3NewKernel!(FTh,Th,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+@show sum(abs.(FTh))
+KernelAbstractions.synchronize(backend)
+@time for iter = 1 : TestIter
+  KDivRhoTrUpwind3NewKernel!(FTh,Th,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end  
+
+@show "Upwind Tracer New1"
+@. FTr = 0
+@. Tr[:,:,1] = Th
+@. Tr[:,:,2] = Th
+KDivRhoTrUpwind3New1Kernel! = GPU.DivRhoTrUpwind3New1Kernel!(backend,group)
+KDivRhoTrUpwind3New1Kernel!(FTr,Tr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+KernelAbstractions.synchronize(backend)
+@show sum(abs.(FTr[:,:,1]))
+@show sum(abs.(FTr[:,:,2]))
+@time for iter = 1 : TestIter
+  KDivRhoTrUpwind3New1Kernel!(FTr,Tr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
 
