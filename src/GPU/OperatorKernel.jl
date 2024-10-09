@@ -782,10 +782,52 @@ end
   NumG = @uniform @ndrange()[2]
 
   if Iz < Nz && IC <= NumG
+    dzT = dz[Iz+1,IC]   
+    dzB = dz[Iz,IC]   
     grad = eltype(FTr)(2) * K[Iz,IC] * (Tr[Iz+1,IC] / Rho[Iz+1,IC] - 
-      Tr[Iz,IC] / Rho[Iz,IC]) / (dz[Iz+1,IC] + dz[Iz,IC])
-    @atomic :monotonic FTr[Iz,IC] +=  grad / dz[Iz,IC]
-    @atomic :monotonic FTr[Iz+1,IC] +=  -grad / dz[Iz+1,IC]
+      Tr[Iz,IC] / Rho[Iz,IC]) / (dzT + dzB)
+    @atomic :monotonic FTr[Iz,IC] +=  grad / dzB
+    @atomic :monotonic FTr[Iz+1,IC] +=  -grad / dzT
+  end  
+end  
+
+@kernel inbounds = true function VerticalDiffusionScalarNewKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),
+  @Const(dz))
+  iz,iC = @index(Local, NTuple)
+  Iz,IC = @index(Global, NTuple)
+
+  nz = @uniform @groupsize()[1]
+  NodeTiles = @uniform @groupsize()[2]
+  Nz = @uniform @ndrange()[1]
+  NumG = @uniform @ndrange()[2]
+
+  qLoc = @localmem eltype(FTr) (nz,NodeTiles)
+  dzLoc = @localmem eltype(FTr) (nz,NodeTiles)
+  KLoc = @localmem eltype(FTr) (nz,NodeTiles)
+  if Iz <= Nz && IC <= NumG
+    qLoc[iz,iC] = Tr[Iz,IC] / Rho[Iz,IC]
+    dzLoc[iz,iC] = dz[Iz,iC]
+  end  
+  if Iz < Nz && IC <= NumG
+    KLoc[iz,iC] = K[Iz,IC]
+  end  
+
+  @synchronize
+
+  if IC <= NumG
+    if Iz < Nz  
+      gradT = eltype(FTr)(2) * KLoc[iz,iC] * (qLoc[iz+1,iC] - 
+        qLoc[iz,iC]) / (dzLoc[iz+1,iC] + dzLoc[iz,iC])
+    else
+      gradT = eltype(FTr)(0)  
+    end    
+    if Iz > 1  
+      gradB = eltype(FTr)(2) * KLoc[iz-1,iC] * (qLoc[iz,iC] - 
+        qLoc[iz-1,iC]) / (dzLoc[iz,iC] + dzLoc[iz-1,iC])
+    else
+      gradB = eltype(FTr)(0)  
+    end    
+    FTr[Iz,IC]  += (gradT - gradB) / dzLoc[iz,iC]
   end  
 end  
 

@@ -14,7 +14,7 @@ using MPI
 FT = Float32
 Phys = DyCore.PhysParameters{FT}()
 
-TestIter = 200
+TestIter = 2
 
 NF = 5400 # 30*30*6
 NumG = 48602 
@@ -64,8 +64,12 @@ groupG = (Nz, NumGG)
 ndrangeG = (Nz, NumG) 
 
 F = KernelAbstractions.ones(backend,FT,Nz,NumG,NumV + NumTr)
+@views FTh = F[:,:,5]
 CacheF = KernelAbstractions.ones(backend,FT,Nz,NumG,NumV + NumTr)
 U = KernelAbstractions.ones(backend,FT,Nz,NumG,NumV + NumTr)
+@. U = abs(rand()) + 1
+@views Th = U[:,:,5]
+@views Rho = U[:,:,1]
 D = KernelAbstractions.ones(backend,FT,4,4)
 DW = KernelAbstractions.ones(backend,FT,4,4)
 dXdxI = KernelAbstractions.ones(backend,FT,3,3,2,DoF,Nz,NF)
@@ -81,6 +85,10 @@ Glob = KernelAbstractions.zeros(backend,Int,DoF,NF)
 copyto!(Glob,GlobCPU)
 CoriolisFun = GPU.CoriolisShallow()(Phys)
 GravitationFun = GPU.GravitationShallow()(Phys)
+KV = KernelAbstractions.ones(backend,FT,Nz,NumG)
+KV = abs(rand()) + 1
+dz = KernelAbstractions.ones(backend,FT,Nz,NumG)
+dz = abs(rand()) + 100
 
 KMomentumVectorInvariantCoriolisKernel! = GPU.MomentumVectorInvariantCoriolisKernel!(backend,group)
 KMomentumVectorInvariantCoriolisKernel!(F,U,D,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrange)
@@ -115,6 +123,28 @@ KernelAbstractions.synchronize(backend)
 @show "HyperVisc"
 @time for iter = 1 : TestIter
   KHyperViscKoeffKernel!(F,U,CacheF,D,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end  
+
+@show "Diffusion Scalar"
+@. F = 0
+KVerticalDiffusionScalarKernel! = GPU.VerticalDiffusionScalarKernel!(backend,groupG)
+KVerticalDiffusionScalarKernel!(FTh,Th,Rho,KV,dz,ndrange=ndrangeG)
+KernelAbstractions.synchronize(backend)
+@show sum(abs.(F))
+@time for iter = 1 : TestIter
+  KVerticalDiffusionScalarKernel!(FTh,Th,Rho,KV,dz,ndrange=ndrangeG)
+  KernelAbstractions.synchronize(backend)
+end  
+
+@show "DiffusionNew Scalar"
+@. F = 0
+KVerticalDiffusionScalarNewKernel! = GPU.VerticalDiffusionScalarNewKernel!(backend,groupG)
+KVerticalDiffusionScalarNewKernel!(FTh,Th,Rho,KV,dz,ndrange=ndrangeG)
+KernelAbstractions.synchronize(backend)
+@show sum(abs.(F))
+@time for iter = 1 : TestIter
+  KVerticalDiffusionScalarNewKernel!(FTh,Th,Rho,KV,dz,ndrange=ndrangeG)
   KernelAbstractions.synchronize(backend)
 end  
 
