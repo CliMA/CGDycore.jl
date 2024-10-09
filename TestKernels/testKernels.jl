@@ -111,9 +111,18 @@ end
 KDivRhoThUpwind3Kernel! = GPU.DivRhoThUpwind3Kernel!(backend,group)
 KDivRhoThUpwind3Kernel!(F,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
-@show "Upwind"
+@show "UpwindRho and RhoTh"
 @time for iter = 1 : TestIter
   KDivRhoThUpwind3Kernel!(F,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end  
+
+KDivRhoTrUpwind3Kernel! = GPU.DivRhoTrUpwind3Kernel!(backend,group)
+KDivRhoTrUpwind3Kernel!(FTh,Th,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+KernelAbstractions.synchronize(backend)
+@show "Upwind Tracer"
+@time for iter = 1 : TestIter
+  KDivRhoTrUpwind3Kernel!(FTh,Th,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
 
