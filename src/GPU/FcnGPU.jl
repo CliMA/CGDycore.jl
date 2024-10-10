@@ -312,6 +312,7 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
+  KDivRhoTrUpwind3New2Kernel! = DivRhoTrUpwind3New2Kernel!(backend, groupTr)
   KDivRhoTrUpwind3LimKernel! = DivRhoTrUpwind3LimKernel!(backend, groupTr)
   KLimitKernel! = LimitKernel!(backend, groupL)
 
@@ -396,8 +397,8 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
     for iT = 1 : NumTr
       @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,
         KoeffDiv,ndrange=ndrangeB)
-      @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-        dXdxI,J,M,Glob,ndrange=ndrangeB)
+#     @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+#       dXdxI,J,M,Glob,ndrange=ndrangeB)
     end  
   else  
     for iT = 1 : NumTr
@@ -408,6 +409,7 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrangeB)
+    @views KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS, dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
   if KoeffDivW > 0
     KHyperViscWKoeffKernel! = HyperViscWKoeffKernel!(backend, groupTr)
@@ -422,13 +424,11 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeB)
   KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,ndrange=ndrangeB)
   if State == "Dry" || State == "ShallowWater" || State == "Moist"
-    KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+#   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   elseif State == "DryEnergy" || State == "MoistEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end
-  if TkePos > 0
-    @views KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS, dXdxI,J,M,Glob,ndrange=ndrangeB)
-  end  
   if EDMF
     KMomentumCoriolisDraftKernel! = MomentumVectorInvariantCoriolisDraftKernel!(backend,group)  
     KMomentumCoriolisDraftKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeBEDMF)
@@ -450,10 +450,10 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
       @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
         KoeffDiv,ndrange=ndrangeI)
     end  
-    for iT = 1 : NumTr
-      @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-        dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-    end  
+#   for iT = 1 : NumTr
+#     @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+#       dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+#   end  
   else  
     for iT = 1 : NumTr
       @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
@@ -463,6 +463,7 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
       KoeffDiv,ndrange=ndrangeI)
+    KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if KoeffDivW > 0
     @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffDivW,ndrange=ndrangeI)
@@ -481,14 +482,12 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist"
-    KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+#   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   elseif State == "DryEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end
 
-  if TkePos > 0
-    KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-  end  
   if EDMF
     KMomentumCoriolisDraftKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeIEDMF)
     KRhoGradKinEDMFKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMF)

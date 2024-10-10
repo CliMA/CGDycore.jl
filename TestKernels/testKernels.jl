@@ -154,6 +154,21 @@ KernelAbstractions.synchronize(backend)
   KernelAbstractions.synchronize(backend)
 end  
 
+@show "Upwind Tracer New2"
+@. F = 0
+@. Tr[:,:,1] = Th
+@. Tr[:,:,2] = Th
+KDivRhoTrUpwind3New2Kernel! = GPU.DivRhoTrUpwind3New2Kernel!(backend,group)
+KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+KernelAbstractions.synchronize(backend)
+@show sum(abs.(FTr[:,:,1]))
+@show sum(abs.(FTr[:,:,2]))
+@show sum(abs.(F[:,:,5]))
+@time for iter = 1 : TestIter
+  KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end  
+
 KHyperViscKoeffKernel! = GPU.HyperViscKoeffKernel!(backend,group)
 KHyperViscKoeffKernel!(F,U,CacheF,D,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
