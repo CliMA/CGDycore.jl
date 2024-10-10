@@ -145,12 +145,12 @@ end
 @. Tr[:,:,1] = Th
 @. Tr[:,:,2] = Th
 KDivRhoTrUpwind3New1Kernel! = GPU.DivRhoTrUpwind3New1Kernel!(backend,group)
-KDivRhoTrUpwind3New1Kernel!(FTr,Tr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+KDivRhoTrUpwind3New1Kernel!(FTr,Tr,NumTr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
 KernelAbstractions.synchronize(backend)
 @show sum(abs.(FTr[:,:,1]))
 @show sum(abs.(FTr[:,:,2]))
 @time for iter = 1 : TestIter
-  KDivRhoTrUpwind3New1Kernel!(FTr,Tr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
+  KDivRhoTrUpwind3New1Kernel!(FTr,Tr,NumTr,U,D,dXdxI,J,M,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end  
 
