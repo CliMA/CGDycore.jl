@@ -696,7 +696,7 @@ end
       (-abs(wCon) + wCon) * cFR)
     @atomic :monotonic F[Iz,ind,5] += -Flux / MCCol[I,J,iz]
     @atomic :monotonic F[Iz+1,ind,5] += Flux / MCCol[I,J,iz+1]
-    Flux = wCon
+    Flux = eltype(F)(0.5)*wCon
     @atomic :monotonic F[Iz,ind,1] += -Flux / MCCol[I,J,iz]
     @atomic :monotonic F[Iz+1,ind,1] += Flux / MCCol[I,J,iz+1]
   end 
@@ -719,7 +719,7 @@ end
     @atomic :monotonic F[Iz,ind,1] += DivRho / MCCol[I,J,iz]
   end
 
-  for iT = NumV+1 : NumV + NumTr
+  for iT = NumV + 1 : NumV + NumTr
 #   Second tracer  
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
