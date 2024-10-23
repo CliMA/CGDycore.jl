@@ -1245,10 +1245,8 @@ function DivMomentumScalar!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,cDG,FeDG::
   cDGLocLeft = zeros(FeDG.DoF)
   cDGLocRight = zeros(FeDG.DoF)
 
-  uuDGLoc = zeros(1,1)
-  uuGradDGLoc = zeros(1,2)
-  uuHDivLoc = zeros(2,1)
-  uuDivHDivLoc = 0.0
+  uuGradDGLoc = zeros(2)
+  uuHDivLoc = zeros(2)
  
   DF = zeros(3,2)
   detDF = zeros(1)
@@ -1268,35 +1266,27 @@ function DivMomentumScalar!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,cDG,FeDG::
     @. RhsLoc = 0.0
 
     for iQ = 1 : NumQuad
-      #computation of Jacobi
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
-      detDFLoc = detDF[1]
-
       #computation of local variables in a quadrature point
-      @.uuDGLoc = 0.0
+      uuDGLoc = 0.0
+      @. uuGradDGLoc = 0.0
       for iD = 1 : FeDG.DoF
-        uuDGLoc += cDGLoc[iD] * fuDG[iD,:,iQ] #1x1
-        @views @. uuGradDGLoc[:,:] += fuGradDG[iD,:,:,iQ] #1x2
+        uuDGLoc += cDGLoc[iD] * fuDG[iD,1,iQ] 
+        @views @. uuGradDGLoc += cDGLoc[iD] * fuGradDG[iD,1,:,iQ] 
       end
+      uuDivHDivLoc = 0.0
+      @. uuHDivLoc = 0.0
       for iD = 1 : FeHDiv.DoF
-        uuDivHDivLoc += fuDivHDiv[iD,iQ] #1x1
-        uuHDivLoc[1,1] += uHDivLoc[iD] * fuHDiv[iD,1,iQ]
-        uuHDivLoc[2,1] += uHDivLoc[iD] * fuHDiv[iD,2,iQ]  #2x1
+        uuDivHDivLoc += uHDivLoc[iD] * fuDivHDiv[iD,iQ] 
+        uuHDivLoc[1] += uHDivLoc[iD] * fuHDiv[iD,1,iQ]
+        uuHDivLoc[2] += uHDivLoc[iD] * fuHDiv[iD,2,iQ] 
       end
-      #set all components together
-      GradDGHDiv = zeros(1,1)
-      innersum = zeros(1,1)
-      DGDivHDiv = zeros(1,1)
-      #product
-      GradDGHDiv = uuGradDGLoc * uuHDivLoc
+      GradDGHDiv = uuGradDGLoc' * uuHDivLoc
       DGDivHDiv = uuDivHDivLoc * uuDGLoc
-    
-      #innersum
-      @. innersum = (1/detDFLoc) * Grid.Faces[iF].Orientation * (DGDivHDiv + GradDGHDiv)
+      innersum = Grid.Faces[iF].Orientation * (DGDivHDiv + GradDGHDiv)
       #product incoming functions and test function
       for iD = 1 : FeT.DoF
-        product = innersum * reshape(fuT[iD,:,iQ],1)
-        RhsLoc[iD] += product[1]
+        product = innersum * fuT[iD,1,iQ]
+        RhsLoc[iD] += product
       end 
     end
 

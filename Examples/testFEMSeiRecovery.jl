@@ -191,7 +191,7 @@ elseif  a == 4
     RadEarth = 1.0
     dtau = 2*pi*RadEarth/4/nPanel/Param.uMax*0.7
     @show dtau  # 0.0004581489286485114 #in s = 2*pi*Rad / 4*nPanel / param.uMax * cFL (ca. 0.7) bei RK2 (RK3 1.7)
-    nAdveVel = 2000
+    nAdveVel = 1000
     nprint = 50
     GridTypeOut = GridType*"Advec"
     @show nAdveVel
@@ -212,7 +212,7 @@ end
 #finite elements
 VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
 DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
 VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!) 
