@@ -349,6 +349,14 @@ Base.@kwdef struct ParamAdvectionSphereDCMIP{FT}
   TimeDependent::Bool = true
 end
 
+
+Base.@kwdef struct ParamAdvectionSphereSpherical{FT}
+  uMax::FT = 30.0
+  lat0 = -4.0*atan(1.0)
+  lon0 = 0.0 #-2.0*atan(1.0)
+  Width = 0.8
+end
+
 Base.@kwdef struct ParamAdvectionCubeCart
   StreamFun::Bool = false
   uMax::Float64 = 1.0
@@ -448,6 +456,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "AdvectionSphereDCMIP"
     @show Problem
     Param = ParamAdvectionSphereDCMIP{FT}()
+  elseif Problem == "AdvectionSphereSpherical"
+    @show Problem
+    Param = ParamAdvectionSphereSpherical{FT}()  
   elseif Problem == "AdvectionSphereGaussian"
     @show Problem
     Param = ParamAdvectionSphereGaussian()

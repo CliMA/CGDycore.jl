@@ -206,7 +206,6 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
   end    
   colors=[[]]
   nBar3=zeros(0,0)
-  nBar=zeros(0,0)
   Type = GlobalGrid.Type
   AdaptGrid = GlobalGrid.AdaptGrid
   return GridStruct{FT,
@@ -230,7 +229,7 @@ function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
     NumEdgesI,
     NumEdgesB,
     nBar3,
-    nBar,
+    GlobalGrid.nBar,
     colors,
     NumBoundaryFaces,
     AdaptGrid,

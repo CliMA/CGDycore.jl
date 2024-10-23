@@ -104,6 +104,12 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
   NumEdgesB = 0
   NumBoundaryFaces = 0
   z = Grid.z
+  NumNodesB = 0
+  NumNodesG = 0
+  NumEdgesB = 0
+  NumEdgesG = 0
+  NumFacesB = 0
+  NumFacesG = 0
   return GridStruct{FT,
                     typeof(z)}(
     Grid.nz,
@@ -112,22 +118,23 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
     Grid.dzeta,
     Grid.H,
     NumFaces,
-    NumGhostFaces,
+    NumFacesB,
+    NumFacesG,
     Faces,
     NumEdges,
+    NumEdgesB,
+    NumEdgesG,
     Edges,
     NumNodes,
+    NumNodesB,
+    NumNodesG,
     Nodes,
     Grid.Form,
     Type,
     Grid.Dim,
     Grid.Rad,
-    NumEdgesI,
-    NumEdgesB,
     Grid.nBar3,
     Grid.nBar,
-    colors,
-    NumBoundaryFaces,
     Grid.AdaptGrid,
     )
 end

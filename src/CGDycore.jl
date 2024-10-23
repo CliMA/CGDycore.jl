@@ -30,6 +30,7 @@ include("GPU/GPU.jl")
 include("FiniteElements/FiniteElements.jl")
 include("FEMSei/FEMSei.jl")
 include("FiniteVolumes/FiniteVolumes.jl")
+include("CDO/CDO.jl")
 
 OOP = 5
 

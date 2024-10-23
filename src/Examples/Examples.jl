@@ -15,6 +15,12 @@ function InitialProfile!(Model,Problem,Param,Phys)
   elseif Problem == "LinearBlob"
     Profile = Examples.LinearBlob()(Param,Phys)
     Model.InitialProfile = Profile
+  elseif Problem == "Advection"
+    Profile = Examples.Advec()(Param,Phys)
+    Model.InitialProfile = Profile
+  elseif Problem == "AdvectionSphereSpherical"
+    Profile = Examples.AdvectionSphereSpherical()(Param,Phys)
+    Model.InitialProfile = Profile
   elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere"
     Profile = Examples.BaroWaveExample()(Param,Phys)
     Model.InitialProfile = Profile
@@ -35,9 +41,6 @@ function InitialProfile!(Model,Problem,Param,Phys)
     @show "Stratified"
   elseif Problem == "WarmBubble2DXCart"
     Profile = Examples.WarmBubbleCartExample()(Param,Phys)
-    Model.InitialProfile = Profile
-  elseif Problem == "BaroWaveDryCart"
-    Profile = Examples.BaroWaveDryCart()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "BryanFritschCart"
     ProfileBF = Models.TestRes(Phys)

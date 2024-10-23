@@ -27,6 +27,7 @@ MAXSIZE::Int = 10
 
 abstract type ElementType end
 struct Tri <: ElementType end
+struct TriPlanar <: ElementType end
 struct Quad <: ElementType end
 struct QuadPrimal <: ElementType end
 struct QuadDual <: ElementType end

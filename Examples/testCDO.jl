@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes, CDO
 using MPI
 using Base
 using CUDA
@@ -112,7 +112,7 @@ elseif Device == "GPU"
 #   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
     backend = ROCBackend()
-    AMCG1KitePPU.allowscalar(false)
+    AMDGPU.allowscalar(false)
   elseif GPUType == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
@@ -136,7 +136,7 @@ Proc = MPI.Comm_rank(comm) + 1
 ProcNumber = MPI.Comm_size(comm)
 ParallelCom = DyCore.ParallelComStruct()
 ParallelCom.Proc = Proc
-ParallelCom.ProcNumber  = ProcNumber
+ParallelCom.ProcNumber = ProcNumber
 
 # Physical parameters
 Phys = DyCore.PhysParameters{FTB}()
@@ -144,69 +144,26 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 5
-RadEarth = 1.0
-nz = 1
-nPanel = 80
-nQuad = 1
-Decomp = "EqualArea"
-Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
-dtau = 20
-nAdveVel = ceil(Int,1.0*3600/dtau)
-nAdveVel = 8000
-nAdveVel = 100
-@show nAdveVel
-#Problem = "LinearBlob"
-#RadEarth = 1.0
-#dtau = 0.00025
-#nAdveVel = 6000
-Param = Examples.Parameters(FTB,Problem)
-Examples.InitialProfile!(Model,Problem,Param,Phys)
-
-#Tri
-GridType = "CubedSphere"
-#GridType = "TriangularSphere"
-ns=50
-ChangeOrient=2
-if GridType == "TriangularSphere"
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,RefineLevel,GridType,Decomp,
-    RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
-else  
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,RefineLevel,GridType,Decomp,
-    RadEarth,Model,ParallelCom;order=false)
-end  
-
-Grid = Grids.Grid2KiteGrid(backend,FTB,GridC,Grids.OrientFaceSphere)
 Flat = false
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+RefineLevel = 5
+nz = 1
+nPanel = 1
+nQuad = 10
+ns = 120
+Decomp = ""
+Decomp = "EqualArea"
+Model.HorLimit = true
+OrdPoly = 1
 
-CG1KiteP = FEMSei.CG1KitePrimalStruct{FTB}(Grids.Quad(),backend,Grid)
-CG1KiteDHDiv = FEMSei.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
-CG1KiteDHCurl = FEMSei.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,Grid)
+#TRI
+#GridType = "TriangularSphere"
+#GridType = "DelaunaySphere"
+GridType = "CubedSphere"
+#GridType = "HealPix"
+#GridType = "MPAS"
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
+  Model,ParallelCom;order=false)
 
-nQuadM = 5
-nQuadS = 5
-ModelFEM = FEMSei.ModelFEM(backend,FTB,CG1KiteDHCurl,CG1KiteDHDiv,CG1KiteP,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
-
-
-pPosS = ModelFEM.pPosS
-pPosE = ModelFEM.pPosE
-uPosS = ModelFEM.uPosS
-uPosE = ModelFEM.uPosE
-U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
-@views Up = U[pPosS:pPosE]
-@views Uu = U[uPosS:uPosE]
-UNew = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
-@views UNewp = U[pPosS:pPosE]
-@views UNewu = U[uPosS:uPosE]
-F = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
-@views Fp = F[pPosS:pPosE]
-@views Fu = F[uPosS:uPosE]
-
-FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-
-
-FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,GridType*"Kite",Proc,ProcNumber)
-
+@show Grid.nz
+GridCDO = CDO.InitGridCDO(FTB,Grid)

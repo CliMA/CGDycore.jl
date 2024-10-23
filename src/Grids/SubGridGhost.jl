@@ -207,7 +207,6 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   nBar3=zeros(0,0)
-  nBar=zeros(0,0)
   Type = GlobalGrid.Type
   AdaptGrid = GlobalGrid.AdaptGrid
   return GridStruct{FT,
@@ -234,7 +233,7 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
     Dim,
     Rad,
     nBar3,
-    nBar,
+    GlobalGrid.nBar,
     AdaptGrid,
     )
 end

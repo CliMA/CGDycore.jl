@@ -72,6 +72,7 @@ function DivMatrix(backend,FTB,FeF::HDivConfElement,FeT::ScalarElement,Grid,Quad
     DivLoc .= 0
     for i = 1 : length(Weights)
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+      @show detDF
       detDFLoc = detDF[1]
       DivLoc += Grid.Faces[iF].Orientation * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
     end
@@ -218,7 +219,7 @@ function GradRhs!(backend,FTB,Grad,h,hFeF::ScalarElement,FeT::HDivConfElement,Gr
     end
   end
 end
-
+#HDiv->HCurl
 function CurlMatrix(backend,FTB,FeF::HCurlConfElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,length(Weights))
@@ -641,7 +642,7 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfEl
     end  
   end
 end
-
+#! heißt drin berechnet
 function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDElement,
   FeT::HDivKiteDElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -1088,4 +1089,328 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
   end
 end
 
+#vector field
+function DivMomentumVector!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,uVecDG,FeVecDG::VectorElement,FeTHDiv::HDivElement,Grid,
+  ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
+  fuHDiv  = zeros(FeHDiv.DoF,FeTHDiv.Comp,NumQuad)
+  fuVecDG  = zeros(FeVecDG.DoF,3,NumQuad)
+  fuTHDiv  = zeros(FeTHDiv.DoF,FeTHDiv.Comp,NumQuad)
+  fuDivHDiv = zeros(FeHDiv.DoF,NumQuad)
+  fuGradVecDG = zeros(FeVecDG.DoF,3,2,NumQuad)
+
+  #computation of the ansatz functions in the quadrature points
+  for iQ = 1 : NumQuad
+    for iComp = 1 : FeTHDiv.Comp
+      for iD = 1 : FeTHDiv.DoF
+        fuTHDiv[iD,iComp,iQ] = FeTHDiv.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+    for iComp = 1 : FeTHDiv.Comp
+      for iD = 1 : FeHDiv.DoF
+        fuHDiv[iD,iComp,iQ] = FeHDiv.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+    for iD = 1 : FeVecDG.DoF
+      fuVecDG[iD,1,iQ] = FeVecDG.phi[iD,1](Points[iQ,1],Points[iQ,2])
+      fuVecDG[iD,2,iQ] = FeVecDG.phi[iD,2](Points[iQ,1],Points[iQ,2])
+      fuVecDG[iD,3,iQ] = FeVecDG.phi[iD,3](Points[iQ,1],Points[iQ,2])
+    end
+    for iD = 1 : FeHDiv.DoF
+      fuDivHDiv[iD,iQ] = FeHDiv.Divphi[iD,1](Points[iQ,1],Points[iQ,2])
+    end
+    
+    for iD = 1 : FeVecDG.DoF
+      fuGradVecDG[iD,1,1,iQ] = FeVecDG.Gradphi[iD,1,1](Points[iQ,1],Points[iQ,2])
+      fuGradVecDG[iD,1,2,iQ] = FeVecDG.Gradphi[iD,1,2](Points[iQ,1],Points[iQ,2])
+      fuGradVecDG[iD,2,1,iQ] = FeVecDG.Gradphi[iD,2,1](Points[iQ,1],Points[iQ,2])
+      fuGradVecDG[iD,2,2,iQ] = FeVecDG.Gradphi[iD,2,2](Points[iQ,1],Points[iQ,2])
+      fuGradVecDG[iD,3,1,iQ] = FeVecDG.Gradphi[iD,3,1](Points[iQ,1],Points[iQ,2])
+      fuGradVecDG[iD,3,2,iQ] = FeVecDG.Gradphi[iD,3,2](Points[iQ,1],Points[iQ,2])
+    end
+  end
+
+
+  #local variables
+  uVecDGLoc = zeros(FeVecDG.DoF)
+  uHDivLoc = zeros(FeHDiv.DoF)
+  RhsLoc = zeros(FeTHDiv.DoF)
+
+  uuVecDGLoc = zeros(3,1)
+  uuGradVecDGLoc = zeros(3,2)
+  uuHDivLoc = zeros(2,1)
+  uuDivHDivLoc = 0.0
+
+
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+
+
+  for iF = 1 : Grid.NumFaces
+    #copy from global variables to local variables  
+    for iD = 1 : FeVecDG.DoF
+      ind = FeVecDG.Glob[iD,iF]  
+      uVecDGLoc[iD] = uVecDG[ind]
+    end  
+    for iD = 1 : FeHDiv.DoF
+      ind = FeHDiv.Glob[iD,iF]  
+      uHDivLoc[iD] = uHDiv[ind]
+    end  
+    @. RhsLoc = 0.0
+
+    for iQ = 1 : NumQuad
+      #computation of Jacobi
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      detDFLoc = detDF[1]
+      @.uuVecDGLoc = 0.0
+      #computation of local variables in a quadrature point
+      for iD = 1 : FeVecDG.DoF
+          uuVecDGLoc += uVecDGLoc[iD] * fuVecDG[iD,:,iQ] #3x1
+          @views @. uuGradVecDGLoc[:,:] += fuGradVecDG[iD,:,:,iQ] #3x2
+      end
+      for iD = 1 : FeHDiv.DoF
+          uuDivHDivLoc += fuDivHDiv[iD,iQ] #1x1
+          uuHDivLoc[1,1] += uHDivLoc[iD] * fuHDiv[iD,1,iQ]
+          uuHDivLoc[2,1] += uHDivLoc[iD] * fuHDiv[iD,2,iQ]  #2x1
+      end
+
+      #set all components together
+      GradVecDGHDiv = zeros(3,1)
+      innersum = zeros(1,3)
+
+      #product
+      GradVecDGHDiv = uuGradVecDGLoc * uuHDivLoc
+      VecDGDivHDiv = uuDivHDivLoc * uuVecDGLoc
+     
+      #innersum
+      @. innersum = (1/detDFLoc) * Grid.Faces[iF].Orientation * ((VecDGDivHDiv)' + (GradVecDGHDiv)')
+  
+      #product incoming functions and test function
+      for iD = 1 : FeTHDiv.DoF
+        product = innersum * (DF * reshape(fuTHDiv[iD,:,iQ],2))
+        RhsLoc[iD] += product[1]
+      end 
+    end
+    #save the new 
+    for iD = 1 : FeTHDiv.DoF
+      ind = FeTHDiv.Glob[iD,iF] 
+      Rhs[ind] += RhsLoc[iD]
+    end  
+  end  
+end
+
+#scalar variant
+function DivMomentumScalar!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,cDG,FeDG::ScalarElement,FeT::ScalarElement,Grid,
+  ElemType::Grids.ElementType,QuadOrd,Jacobi)
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
+  fuHDiv  = zeros(FeHDiv.DoF,FeHDiv.Comp,NumQuad) #4x1
+  fuDG  = zeros(FeDG.DoF,FeDG.DoF,NumQuad) #1x1
+  fuT  = zeros(FeT.DoF,FeT.Comp,NumQuad) #1x1
+  fuDivHDiv = zeros(FeHDiv.DoF,NumQuad) 
+  fuGradDG = zeros(FeDG.DoF,FeDG.DoF,2,NumQuad) #1x2
+
+  #computation of the ansatz functions in the quadrature points
+  for iQ = 1 : NumQuad
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeT.DoF
+        fuT[iD,iComp,iQ] = FeT.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeHDiv.DoF
+        fuHDiv[iD,iComp,iQ] = FeHDiv.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+    for iD = 1 : FeDG.DoF
+      fuGradDG[iD,1,1,iQ] = FeDG.Gradphi[iD,1,1](Points[iQ,1],Points[iQ,2])
+      fuGradDG[iD,1,2,iQ] = FeDG.Gradphi[iD,1,2](Points[iQ,1],Points[iQ,2])
+    end
+    for iD = 1 : FeDG.DoF
+      fuDG[iD,1,iQ] = FeDG.phi[iD,1](Points[iQ,1],Points[iQ,2])
+    end
+    for iD = 1 : FeHDiv.DoF
+      fuDivHDiv[iD,iQ] = FeHDiv.Divphi[iD,1](Points[iQ,1],Points[iQ,2])
+    end
+  end
+
+  #local variables
+  cDGLoc = zeros(FeDG.DoF)
+  uHDivLoc = zeros(FeHDiv.DoF)
+  RhsLoc = zeros(FeT.DoF)
+  uHDivLocLeft = zeros(FeHDiv.DoF)
+  uHDivLocRight = zeros(FeHDiv.DoF)
+  cDGLocLeft = zeros(FeDG.DoF)
+  cDGLocRight = zeros(FeDG.DoF)
+
+  uuDGLoc = zeros(1,1)
+  uuGradDGLoc = zeros(1,2)
+  uuHDivLoc = zeros(2,1)
+  uuDivHDivLoc = 0.0
+ 
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+ 
+  #copy from global variables to local variables  
+  for iF = 1 : Grid.NumFaces
+    for iD = 1 : FeDG.DoF
+      ind = FeDG.Glob[iD,iF]  
+      cDGLoc[iD] = cDG[ind]
+    end 
+    for iD = 1 : FeHDiv.DoF
+      ind = FeHDiv.Glob[iD,iF]  
+      uHDivLoc[iD] = uHDiv[ind]
+    end  
+    @. RhsLoc = 0.0
+
+    for iQ = 1 : NumQuad
+      #computation of Jacobi
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      detDFLoc = detDF[1]
+
+      #computation of local variables in a quadrature point
+      @.uuDGLoc = 0.0
+      for iD = 1 : FeDG.DoF
+        uuDGLoc += cDGLoc[iD] * fuDG[iD,:,iQ] #1x1
+        @views @. uuGradDGLoc[:,:] += fuGradDG[iD,:,:,iQ] #1x2
+      end
+      for iD = 1 : FeHDiv.DoF
+        uuDivHDivLoc += fuDivHDiv[iD,iQ] #1x1
+        uuHDivLoc[1,1] += uHDivLoc[iD] * fuHDiv[iD,1,iQ]
+        uuHDivLoc[2,1] += uHDivLoc[iD] * fuHDiv[iD,2,iQ]  #2x1
+      end
+      #set all components together
+      GradDGHDiv = zeros(1,1)
+      innersum = zeros(1,1)
+      DGDivHDiv = zeros(1,1)
+      #product
+      GradDGHDiv = uuGradDGLoc * uuHDivLoc
+      DGDivHDiv = uuDivHDivLoc * uuDGLoc
+    
+      #innersum
+      @. innersum = (1/detDFLoc) * Grid.Faces[iF].Orientation * (DGDivHDiv + GradDGHDiv)
+      #product incoming functions and test function
+      for iD = 1 : FeT.DoF
+        product = innersum * reshape(fuT[iD,:,iQ],1)
+        RhsLoc[iD] += product[1]
+      end 
+    end
+
+    #save the new without upwind 
+    for iD = 1 : FeT.DoF
+      ind = FeT.Glob[iD,iF] 
+      Rhs[ind] += RhsLoc[iD]
+    end  
+  end 
+
+  #UPWIND on Edges
+  NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
+  uFFRef  = zeros(FeHDiv.DoF, FeHDiv.Comp,NumQuadL,4)
+  hFFRef  = zeros(FeDG.DoF,FeDG.DoF,NumQuadL,4)
+  fTRef  = zeros(FeT.DoF,FeT.Comp,NumQuadL,4)
+  uFFLocL = zeros(FeHDiv.DoF)
+  uFFLocR = zeros(FeHDiv.DoF)
+
+  #testfunctions DG scalar 
+  for iQ = 1 : NumQuadL 
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeT.DoF
+        fTRef[iD,iComp,iQ,1] = FeT.phi[iD,iComp](PointsL[iQ],-1.0)
+        fTRef[iD,iComp,iQ,2] = FeT.phi[iD,iComp](1.0,PointsL[iQ])
+        fTRef[iD,iComp,iQ,3] = FeT.phi[iD,iComp](PointsL[iQ],1.0)
+        fTRef[iD,iComp,iQ,4] = FeT.phi[iD,iComp](-1.0,PointsL[iQ])
+      end
+    end
+    #uf RT UHDiv
+    for iComp = 1 : FeHDiv.Comp
+      for iD = 1 : FeHDiv.DoF
+        uFFRef[iD,iComp,iQ,1] = FeHDiv.phi[iD,iComp](PointsL[iQ],-1.0)
+        uFFRef[iD,iComp,iQ,2] = FeHDiv.phi[iD,iComp](1.0,PointsL[iQ])
+        uFFRef[iD,iComp,iQ,3] = FeHDiv.phi[iD,iComp](PointsL[iQ],1.0)
+        uFFRef[iD,iComp,iQ,4] = FeHDiv.phi[iD,iComp](-1.0,PointsL[iQ])
+      end
+    end
+    #hf
+    for iComp = 1 : FeDG.Comp
+      for iD = 1 : FeDG.DoF
+        hFFRef[iD,iComp,iQ,1] = FeDG.phi[iD,iComp](PointsL[iQ],-1.0)
+        hFFRef[iD,iComp,iQ,2] = FeDG.phi[iD,iComp](1.0,PointsL[iQ])
+        hFFRef[iD,iComp,iQ,3] = FeDG.phi[iD,iComp](PointsL[iQ],1.0)
+        hFFRef[iD,iComp,iQ,4] = FeDG.phi[iD,iComp](-1.0,PointsL[iQ])
+      end
+    end
+  end
+  for iE in 1:Grid.NumEdges
+    Edge = Grid.Edges[iE]
+    if length(Edge.F) > 1
+      iFL = Edge.F[1]
+      EdgeTypeL = Edge.FE[1]
+      iFR = Edge.F[2]
+      EdgeTypeR = Edge.FE[2]
+      #computation normales of edges
+      nBarLocL = Grid.nBar[:, EdgeTypeL]
+      nBarLocR = Grid.nBar[:, EdgeTypeR]
+      #gamma upwind value
+      uE = 0.0 
+      for iD = 1 : FeHDiv.DoF
+        ind = FeHDiv.Glob[iD,iFL]  
+        uHDivLocLeft[iD] = uHDiv[ind]
+        ind = FeHDiv.Glob[iD,iFR]  
+        uHDivLocRight[iD] = uHDiv[ind]
+      end 
+      for iD = 1 : FeDG.DoF
+        ind = FeDG.Glob[iD,iFL]  
+        cDGLocLeft[iD] = cDG[ind]
+        ind = FeDG.Glob[iD,iFR]  
+        cDGLocRight[iD] = cDG[ind]
+      end 
+      for iQ = 1:length(WeightsL)
+        for iD = 1 : FeHDiv.DoF
+          uE += WeightsL[iQ]*(uHDivLocLeft[iD]*(uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL))
+        end
+      end
+      #upwind value
+      gammaU = 0.5
+      gammaLoc = uE > 0 ? gammaU : -gammaU
+
+      #allocation Mloc
+      MLoc11 = zeros(FeT.DoF, FeHDiv.DoF)
+      MLoc12 = zeros(FeT.DoF, FeHDiv.DoF)
+      MLoc21 = zeros(FeT.DoF, FeHDiv.DoF)
+      MLoc22 = zeros(FeT.DoF, FeHDiv.DoF)
+
+      for iQ in 1:length(WeightsL)
+        fTLocL = fTRef[:,:,iQ,EdgeTypeL]
+        fTLocR = fTRef[:,:,iQ,EdgeTypeR]
+        for iD in 1:FeHDiv.DoF
+          uFFLocL[iD] = uFFRef[iD,:,iQ,EdgeTypeL]' * nBarLocL
+          uFFLocR[iD] = uFFRef[iD,:,iQ,EdgeTypeR]' * nBarLocR
+        end
+        hFFL = 0.0
+        hFFR = 0.0
+        for iD in 1:FeDG.DoF
+          hFFL += hFFRef[iD,1,iQ,EdgeTypeL] * cDGLocLeft[iD]
+          hFFR += hFFRef[iD,1,iQ,EdgeTypeR] * cDGLocRight[iD]
+        end
+        MLoc11 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeL] * hFFL) * uFFLocL'
+        MLoc12 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeR] * hFFR) * uFFLocR'
+        MLoc21 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeL] * hFFL) * uFFLocL'
+        MLoc22 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeR] * hFFR) * uFFLocR'
+      end
+      
+      #all together over edges
+      for iD = 1 : FeT.DoF
+        indL = FeT.Glob[iD,iFL] 
+        Rhs[indL] += (+0.5 - gammaLoc) * MLoc11[iD,:]' * uHDivLocLeft
+        Rhs[indL] += (-0.5 + gammaLoc) * MLoc12[iD,:]' * uHDivLocRight
+        indR = FeT.Glob[iD,iFR] 
+        Rhs[indR] += (+0.5 + gammaLoc) * MLoc21[iD,:]' * uHDivLocLeft
+        Rhs[indR] += (-0.5 - gammaLoc) * MLoc22[iD,:]' * uHDivLocRight
+      end
+    end
+  end
+end

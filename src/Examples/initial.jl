@@ -58,6 +58,28 @@ function (profile::RotationalCartExample)(Param,Phys)
     return local_profile
 end
 
+Base.@kwdef struct AdvectionSphereSpherical <: Example end
+
+function (profile::AdvectionSphereSpherical)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    (Lon,Lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
+    Z = max(R-Phys.RadEarth,FT(0))
+    uS = Param.uMax * cos(Lat)
+    vS = 0.0
+    w = 0.0
+    RhoZ = 1.0
+    d = acos(sin(Param.lat0)*sin(Lat)+cos(Param.lat0)*cos(Lat)*cos(Lon-Param.lon0))
+    if abs(d) <= Param.Width
+      Tr1 = cos(pi*d/Param.Width/2)^2 + 1.0
+    else
+      Tr1 = 0.0 + 1.0
+    end
+    return (RhoZ,uS,vS,w,Tr1)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct AdvectionSphereDCMIP <: Example end
 
 function (profile::AdvectionSphereDCMIP)(Param,Phys)

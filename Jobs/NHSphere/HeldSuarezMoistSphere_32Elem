@@ -11,7 +11,7 @@ julia --project Examples/testNHSphere.jl \
   --State="Moist" \
   --Buoyancy=true \
   --Coriolis=true \
-  --Damping=false \
+  --Damping=true \
   --StrideDamp=20000 \
   --Relax=1.0e-3 \
   --VerticalDiffusion=true \

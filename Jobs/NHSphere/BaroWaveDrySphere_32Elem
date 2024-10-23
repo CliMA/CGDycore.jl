@@ -26,11 +26,11 @@ julia --project Examples/testNHSphere.jl \
   --Decomp="EqualArea" \
   --SimDays=0 \
   --SimHours=0 \
-  --SimSeconds=300 \
+  --SimSeconds=0 \
   --PrintSeconds=150 \
   --PrintMinutes=0 \
   --PrintHours=0 \
-  --PrintDays=0 \
+  --PrintDays=8 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \

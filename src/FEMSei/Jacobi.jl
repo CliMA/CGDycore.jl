@@ -1,4 +1,37 @@
 #TriSphere   
+@inline function Jacobi!(J,detJ,pinvJ,X,::Grids.TriPlanar,ksi1,ksi2,F,Grid)
+  Rad =   Grid.Rad
+
+  XT1 = 0.5 * (Grid.Nodes[F.N[1]].P.x*(-ksi1 - ksi2)+
+        Grid.Nodes[F.N[2]].P.x * (1 + ksi1) +
+        Grid.Nodes[F.N[3]].P.x * (1 + ksi2))
+
+  XT2 = 0.5 * (Grid.Nodes[F.N[1]].P.y*(-ksi1 - ksi2)+
+        Grid.Nodes[F.N[2]].P.y * (1 + ksi1) +
+        Grid.Nodes[F.N[3]].P.y * (1 + ksi2))
+       
+  XT3 = 0.5 * (Grid.Nodes[F.N[1]].P.z * (-ksi1 - ksi2)+
+        Grid.Nodes[F.N[2]].P.z * (1 + ksi1) +
+        Grid.Nodes[F.N[3]].P.z * (1 + ksi2))
+
+  XLoc = SVector{3}(XT1,XT2,XT3)
+
+  JP = @SArray[Grid.Nodes[F.N[1]].P.x Grid.Nodes[F.N[2]].P.x Grid.Nodes[F.N[3]].P.x;
+               Grid.Nodes[F.N[1]].P.y Grid.Nodes[F.N[2]].P.y Grid.Nodes[F.N[3]].P.y;
+               Grid.Nodes[F.N[1]].P.z Grid.Nodes[F.N[2]].P.z Grid.Nodes[F.N[3]].P.z]
+
+  J3 = @SArray([-1/2 -1/2;
+                 1/2   0;
+                  0   1/2])
+
+
+  J .= JP * J3      
+  @views detJLoc = det(J[:,1],J[:,2])
+  detJ .= detJLoc
+  pinvJ  .= pinvJac(J)
+  X .= XLoc 
+end
+
 @inline function Jacobi!(J,detJ,pinvJ,X,::Grids.Tri,ksi1,ksi2,F,Grid)
   Rad =   Grid.Rad
 

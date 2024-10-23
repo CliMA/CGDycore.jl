@@ -6,7 +6,8 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   uPosE = Model.uPosE
   @views Up = U[pPosS:pPosE]
   @views Uu = U[uPosS:uPosE]
-  vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+  Flat = false
+  vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
   
   FileNumber = 0
   UCache = similar(U)
@@ -33,7 +34,7 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
     @. UNew = U + 1/2 * dtau * F
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
     @. U = U + dtau * F
-    if mod(i,120) == 0
+    if mod(i,1) == 0
       @views Curl!(backend,FTB,uCurl,Model.DG,Uu,Model.RT,Model.ND,Grid,Jacobi!,nQuadM,
         Model.Curl,UCache[uPosS:uPosE])
       ConvertScalar!(backend,FTB,pC,uCurl,Model.DG,Grid,Jacobi)
