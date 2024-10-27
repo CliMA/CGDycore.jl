@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -142,10 +142,9 @@ Model = DyCore.ModelStruct{FTB}()
 
 RefineLevel = 6
 nz = 1
-nPanel =  40
-nQuad = 4
-nQuadM = 4 #2
-nQuadS = 4 #3
+nQuad = 3
+nQuadM = 3 #2
+nQuadS = 3 #3
 Decomp = "EqualArea"
 nLat = 0
 nLon = 0
@@ -153,6 +152,9 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
+nPanel =  120
+#GridType = "HealPix"
+ns = 10
 
 print("Which Problem do you want so solve? \n")
 print("1 - GalewskiSphere\n\
@@ -191,8 +193,8 @@ elseif  a == 4
     RadEarth = 1.0
     dtau = 2*pi*RadEarth/4/nPanel/Param.uMax*0.7
     @show dtau  # 0.0004581489286485114 #in s = 2*pi*Rad / 4*nPanel / param.uMax * cFL (ca. 0.7) bei RK2 (RK3 1.7)
-    nAdveVel = 1000
-    nprint = 50
+    nAdveVel = 100
+    nprint = 10
     GridTypeOut = GridType*"Advec"
     @show nAdveVel
 else 
@@ -202,17 +204,17 @@ println("The chosen Problem is ")
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Grid construction
-ns = 50
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLat,nLon,LatB,GridType,Decomp,RadEarth,
   Model,ParallelCom)
 for iE = 1 : Grid.NumEdges
   Grids.PosEdgeInFace!(Grid.Edges[iE],Grid.Edges,Grid.Faces)
 end
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
 VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
 DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
 VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!) 
@@ -236,7 +238,6 @@ h = zeros(FTB,DG.NumG)
 #velocity field in HDiv-Form
 hu = zeros(FTB,RT.NumG)
 u = zeros(FTB,RT.NumG)
-uDG = zeros(FTB,VecDG.NumG) 
 
 #calculation of u
 FEMSei.Project!(backend,FTB,u,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
@@ -246,12 +247,12 @@ FEMSei.ProjectTr!(backend,FTB,cDG,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProf
 FEMSei.Project!(backend,FTB,h,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi!)
 #print cDG and u
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 FileNumber=0
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [cDG VelSp], FileNumber)
 #runge-kutta steps
 time = 0.0
 cDGNew = similar(cDG)
+
 for i = 1 : nAdveVel
   @show i  
   @. Rhs = 0

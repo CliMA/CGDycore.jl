@@ -72,7 +72,6 @@ function DivMatrix(backend,FTB,FeF::HDivConfElement,FeT::ScalarElement,Grid,Quad
     DivLoc .= 0
     for i = 1 : length(Weights)
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
-      @show detDF
       detDFLoc = detDF[1]
       DivLoc += Grid.Faces[iF].Orientation * Weights[i] * (fTRef[:,:,i]' * fFRef[:,:,i])
     end
@@ -1286,7 +1285,7 @@ function DivMomentumScalar!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,cDG,FeDG::
       #product incoming functions and test function
       for iD = 1 : FeT.DoF
         product = innersum * fuT[iD,1,iQ]
-        RhsLoc[iD] += product
+        RhsLoc[iD] += Weights[iQ] * product
       end 
     end
 

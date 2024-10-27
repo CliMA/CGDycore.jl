@@ -327,7 +327,6 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
   dzeta=zeros(nz)
   H=0.0
   nBar3 = zeros(0,0)
-  nBar = zeros(0,0)
   NumNodesB = 0
   NumNodesG = 0
   NumEdgesB = 0

@@ -93,7 +93,7 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
     end
   end  
 
-  Orientation!(Edges,Faces)
+# Orientation!(Edges,Faces)
 # Renumbering!(Edges,Faces)
   FacesInNodes!(Nodes,Faces)
   SortFacesInNodes!(Nodes,Faces)

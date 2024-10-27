@@ -36,6 +36,7 @@ end
 
 function QuadRule(type::Grids.Line,n)
   x, w = gausslobatto(n+1)
+# x, w = gausslegendre(n+1)
   NumQuad = (n+1)
   Weights = zeros(NumQuad)
   Points = zeros(NumQuad)
@@ -50,7 +51,8 @@ end
 
 
 function QuadRule(type::Grids.Quad,n)
-    x, w = gausslobatto(n+1)
+  x, w = gausslobatto(n+1)
+# x, w = gausslegendre(n+1)
     NumQuad = (n+1)*(n+1)
     Weights = zeros(NumQuad)
     Points = zeros(NumQuad,2)

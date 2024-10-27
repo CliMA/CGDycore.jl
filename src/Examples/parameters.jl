@@ -351,7 +351,7 @@ end
 
 
 Base.@kwdef struct ParamAdvectionSphereSpherical{FT}
-  uMax::FT = 30.0
+  uMax::FT = 1.0
   lat0 = -4.0*atan(1.0)
   lon0 = 0.0 #-2.0*atan(1.0)
   Width = 0.8

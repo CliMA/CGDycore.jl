@@ -111,9 +111,11 @@ function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
       _,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
       lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
       VelCa = VelSphere2Cart(VelSp,lon,lat)
-      pLoc += Grid.Faces[iF].Orientation * Weights[i] * (fRef[:,:,i]' * (DF' * VelCa))
+      for iD = 1 : Fe.DoF
+        pLoc[iD] += Grid.Faces[iF].Orientation * Weights[i] * (fRef[:,iD,i]' * (DF' * VelCa))
+      end  
     end
-    @. p[Fe.Glob[:,iF]] += pLoc[:]
+    @views @. p[Fe.Glob[:,iF]] += pLoc
   end
   ldiv!(Fe.LUM,p)
 end
@@ -529,6 +531,5 @@ function ProjectScalar!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
     end
     @. p[Fe.Glob[:,iF]] += pLoc[:]
   end
-  @show size(Fe.M), size(p)
   ldiv!(Fe.LUM,p)
 end

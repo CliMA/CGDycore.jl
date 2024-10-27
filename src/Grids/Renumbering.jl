@@ -82,9 +82,11 @@ if length(Face.N) == 4
   Face.OrientE = Vector{Int}(undef, 0)
   for i=1:4
     if Edges[Face.E[i]].N[1]==Face.N[i]
-      push!(Face.OrientE, 1*OrientL[i]);
+#     push!(Face.OrientE, 1*OrientL[i]); #OSWALD
+      push!(Face.OrientE, 1);
     else
-      push!(Face.OrientE, -1*OrientL[i]);
+#     push!(Face.OrientE, -1*OrientL[i]); #OSWALD
+      push!(Face.OrientE, -1);
     end
   end
 end

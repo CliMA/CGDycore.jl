@@ -155,7 +155,7 @@ RadEarth = Phys.RadEarth
 dtau = 20
 nAdveVel = ceil(Int,1.0*3600/dtau)
 nAdveVel = 8000
-nAdveVel = 100
+nAdveVel = 1
 @show nAdveVel
 #Problem = "LinearBlob"
 #RadEarth = 1.0
@@ -166,18 +166,20 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Tri
 GridType = "CubedSphere"
-#GridType = "TriangularSphere"
+GridType = "DelaunaySphere"
 ns=50
 ChangeOrient=2
 if GridType == "TriangularSphere"
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,RefineLevel,GridType,Decomp,
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,
     RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
 else  
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,RefineLevel,GridType,Decomp,
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,
     RadEarth,Model,ParallelCom;order=false)
 end  
 
+@show "vor KiteGrid"
 Grid = Grids.Grid2KiteGrid(backend,FTB,GridC,Grids.OrientFaceSphere)
+@show "nach KiteGrid"
 Flat = false
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
