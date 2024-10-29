@@ -152,7 +152,7 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
-nPanel =  120
+nPanel =  60
 #GridType = "HealPix"
 ns = 10
 
@@ -213,8 +213,8 @@ vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
 VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
-DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
 VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!) 

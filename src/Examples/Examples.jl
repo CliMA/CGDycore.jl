@@ -53,8 +53,6 @@ include("parameters.jl")
 include("initial.jl")
 include("force.jl")
 include("topography.jl")
-include("PerturbProfile.jl")
-include("eddy.jl")
-include("Turbulence.jl")
+include("InitProfileBryanFritsch.jl")
 
 end

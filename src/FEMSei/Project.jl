@@ -31,7 +31,7 @@ end
 function Project!(backend,FTB,p,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
   NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
-
+  p=zeros(Fe.NumG)
   for i = 1 : length(Weights)
     for iComp = 1 : Fe.Comp
       for iD = 1 : Fe.DoF
@@ -152,6 +152,61 @@ function Project!(backend,FTB,p,Fe::HCurlElement,Grid,QuadOrd,Jacobi,F)
   ldiv!(Fe.LUM,p)
 end
 
+#projection of scalar to scalar, i.e. CG1->DG1
+function ProjectScalarScalar!(backend,FTB,cP,FeP::ScalarElement,c,Fe::ScalarElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
+  fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+  fPRef  = zeros(FeP.Comp,FeP.DoF,length(Weights))
+
+  @. cP = 0
+  @inbounds for i = 1 : length(Weights)
+    @inbounds for iComp = 1 : Fe.Comp
+      @inbounds for iD = 1 : Fe.DoF
+        fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  @inbounds for i = 1 : length(Weights)
+    @inbounds for iComp = 1 : FeP.Comp
+      @inbounds for iD = 1 : FeP.DoF
+        fPRef[iComp,iD,i] = FeP.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  cPLoc = zeros(Fe.DoF)
+  cc = zeros(Fe.DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+
+
+  @inbounds for iF = 1 : Grid.NumFaces
+    @. cPLoc = 0
+    for iDoF = 1 : FeP.DoF
+      ind = FeP.Glob[iDoF,iF]  
+      cc[iDoF] = c[ind]
+    end  
+    for iQ = 1 : length(Weights)
+      fPRefLoc = 0.0
+      for iDoF = 1 : FeP.DoF
+        fPRefLoc += fPRef[1,iDoF,iQ] * cc[iDoF]  
+      end  
+      #determinant
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      detDFLoc = detDF[1]
+      for iDoF = 1 : Fe.DoF
+        cPLoc[iDoF] +=  (1/detDFLoc)*Weights[iQ] * (fRef[1,iDoF,iQ] * fPRefLoc)
+      end  
+    end
+    for iDoF = 1 : Fe.DoF
+      ind = Fe.Glob[iDoF,iF]  
+      cP[ind] += cPLoc[iDoF]
+    end  
+  end
+  ldiv!(FeP.LUM,cP)
+end
+
 function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
   uDiv,FeF::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
@@ -201,6 +256,7 @@ function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
   end
   ldiv!(Fe.LUM,uCurl)
 end
+
 
 function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
   h,hFeF::ScalarElement,uDiv,uFeF::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)

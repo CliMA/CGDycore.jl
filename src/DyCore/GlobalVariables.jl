@@ -183,6 +183,7 @@ struct PhysParameters{FT<:AbstractFloat}
   T00::FT
   Cd::FT # Dissipation Koefficient
   PrTke::FT # Prandtl number for Tke
+  Karm::FT
 end
 function PhysParameters{FT}() where FT<:AbstractFloat
   RadEarth = 6.37122e+6
@@ -204,6 +205,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   T00 = 273.15 -35.0
   Cd = 0.125
   PrTke = 1.0
+  Karm = 0.4
  return PhysParameters{FT}(
   RadEarth,
   Grav,
@@ -223,6 +225,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   T00,
   Cd,
   PrTke,
+  Karm,
   )
 end 
 
