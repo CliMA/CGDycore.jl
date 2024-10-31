@@ -16,17 +16,28 @@ function vtkStruct{FT}(backend) where FT<:AbstractFloat
   )
 end
 
-function vtkStruct{FT}(backend,Grid,NumFaces,Flat) where FT<:AbstractFloat
+function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFloat
 
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0)
   celltype = VTKCellTypes.VTK_POLYGON
+  celltypeQ = VTKCellTypes.VTK_QUAD
   cells = MeshCell[]
   NumNodes = 0
 
-  for iF in 1 : NumFaces
-    inds = Vector(1 : length(Grid.Faces[iF].N)) .+ NumNodes
-    push!(cells, MeshCell(celltype, inds))
-    NumNodes += length(Grid.Faces[iF].N)
+  if Refine == 0
+    for iF in 1 : NumFaces
+      inds = Vector(1 : length(Grid.Faces[iF].N)) .+ NumNodes
+      push!(cells, MeshCell(celltype, inds))
+      NumNodes += length(Grid.Faces[iF].N)
+    end
+  elseif Refine == 1
+    for iF in 1 : NumFaces
+      for i in 1 : length(Grid.Faces[iF].N)  
+        inds = Vector(1 : 4) .+ NumNodes
+        push!(cells, MeshCell(celltypeQ, inds))
+        NumNodes += 4
+      end  
+    end
   end
 
   pts = Array{Float64,2}(undef,3,NumNodes)
@@ -59,14 +70,43 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat) where FT<:AbstractFloat
       end
     end
   else    
-    for iF in 1 : NumFaces
-      for iN in Grid.Faces[iF].N  
-        NumNodes += 1  
-        pts[1,NumNodes] = Grid.Nodes[iN].P.x  
-        pts[2,NumNodes] = Grid.Nodes[iN].P.y  
-        pts[3,NumNodes] = Grid.Nodes[iN].P.z  
+    if Refine == 0  
+      for iF in 1 : NumFaces
+        for iN in Grid.Faces[iF].N  
+          NumNodes += 1  
+          pts[1,NumNodes] = Grid.Nodes[iN].P.x  
+          pts[2,NumNodes] = Grid.Nodes[iN].P.y  
+          pts[3,NumNodes] = Grid.Nodes[iN].P.z  
+        end  
+      end
+    elseif Refine == 1  
+      for iF in 1 : NumFaces
+        for i in 1 : length(Grid.Faces[iF].E)  
+          iE1 = Grid.Faces[iF].E[i]  
+          if i == length(Grid.Faces[iF].E)
+            iE2 = Grid.Faces[iF].E[1]
+          else
+            iE2 = Grid.Faces[iF].E[i+1]  
+          end  
+          NumNodes += 1  
+          pts[1,NumNodes] = Grid.Faces[iF].Mid.x  
+          pts[2,NumNodes] = Grid.Faces[iF].Mid.y  
+          pts[3,NumNodes] = Grid.Faces[iF].Mid.z  
+          NumNodes += 1  
+          pts[1,NumNodes] = Grid.Edges[iE1].Mid.x  
+          pts[2,NumNodes] = Grid.Edges[iE1].Mid.y  
+          pts[3,NumNodes] = Grid.Edges[iE1].Mid.z  
+          NumNodes += 1  
+          pts[1,NumNodes] = Grid.Nodes[iE].P.x  
+          pts[2,NumNodes] = Grid.Nodes[iE].P.y  
+          pts[3,NumNodes] = Grid.Nodes[iE].P.z  
+          NumNodes += 1  
+          pts[1,NumNodes] = Grid.Edges[iE2].Mid.x  
+          pts[2,NumNodes] = Grid.Edges[iE2].Mid.y  
+          pts[3,NumNodes] = Grid.Edges[iE2].Mid.z  
+        end  
       end  
-    end
+    end  
   end  
 
   return vtkStruct{FT,

@@ -152,7 +152,7 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
-nPanel =  60
+nPanel =  80
 #GridType = "HealPix"
 ns = 10
 
@@ -213,14 +213,17 @@ vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
 VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
-DG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+CG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
 VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!) 
 VecDG.LUM = lu(VecDG.M)
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
 DG.LUM = lu(DG.M)
+CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,FEMSei.Jacobi!)
+CG.LUM = lu(CG.M)
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
 RT.LUM = lu(RT.M)
 
@@ -234,11 +237,17 @@ cDG = zeros(FTB,DG.NumG)
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
 #scalar heightmap
-h = zeros(FTB,DG.NumG)
+h = zeros(FTB,DG.NumG) #size 38400
 #velocity field in HDiv-Form
-hu = zeros(FTB,RT.NumG)
 u = zeros(FTB,RT.NumG)
 
+QuadOrd=2
+hCG = zeros(FTB,CG.NumG)
+#calculation of hCG
+FEMSei.Project!(backend,FTB,hCG,CG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+#projection from CG1 to DG1
+FEMSei.ProjectScalarScalar!(backend,FTB,cDG,DG,hCG,CG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+stop
 #calculation of u
 FEMSei.Project!(backend,FTB,u,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 #calculation of Tracer

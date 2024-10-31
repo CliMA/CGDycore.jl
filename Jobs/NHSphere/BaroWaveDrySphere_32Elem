@@ -24,13 +24,13 @@ julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=0 \
+  --SimDays=8 \
   --SimHours=0 \
   --SimSeconds=0 \
-  --PrintSeconds=150 \
+  --PrintSeconds=0 \
   --PrintMinutes=0 \
   --PrintHours=0 \
-  --PrintDays=8 \
+  --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \
