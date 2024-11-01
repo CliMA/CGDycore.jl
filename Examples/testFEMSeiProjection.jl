@@ -212,7 +212,7 @@ end
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
-DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
 CG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
@@ -233,6 +233,9 @@ FEMSei.ProjectTr!(backend,FTB,cCG,CG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProf
 FEMSei.ProjectScalarScalar!(backend,FTB,cDG,DG,cCG,CG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
 @show maximum(cDG)
 stop
+
+
+
 #calculation of u
 FEMSei.Project!(backend,FTB,u,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 #calculation of Tracer
