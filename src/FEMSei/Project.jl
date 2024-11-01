@@ -84,6 +84,7 @@ function ProjectTr!(backend,FTB,p,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
     @. p[Fe.Glob[:,iF]] += pLoc[Fe.Comp,:]
   end
   ldiv!(Fe.LUM,p)
+  @show size(p), size(Fe.LUM)
 end
 
 function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
@@ -118,6 +119,7 @@ function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
     @views @. p[Fe.Glob[:,iF]] += pLoc
   end
   ldiv!(Fe.LUM,p)
+  @show size(Fe.LUM), size(p), "Project!"
 end
 
 function Project!(backend,FTB,p,Fe::HCurlElement,Grid,QuadOrd,Jacobi,F)
@@ -196,7 +198,7 @@ function ProjectScalarScalar!(backend,FTB,cP,FeP::ScalarElement,c,Fe::ScalarElem
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
       for iDoF = 1 : Fe.DoF
-        cPLoc[iDoF] +=  (1/detDFLoc)*Weights[iQ] * (fRef[1,iDoF,iQ] * fPRefLoc)
+        cPLoc[iDoF] +=  (1/detDFLoc) * Weights[iQ] * (fRef[1,iDoF,iQ] * fPRefLoc)
       end  
     end
     for iDoF = 1 : Fe.DoF
@@ -204,6 +206,7 @@ function ProjectScalarScalar!(backend,FTB,cP,FeP::ScalarElement,c,Fe::ScalarElem
       cP[ind] += cPLoc[iDoF]
     end  
   end
+  @show size(cP), size(FeP.LUM)
   ldiv!(FeP.LUM,cP)
 end
 
