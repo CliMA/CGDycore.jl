@@ -175,7 +175,7 @@ function ProjectScalarScalar!(backend,FTB,cP,FeP::ScalarElement,c,Fe::ScalarElem
       end
     end
   end
-  cPLoc = zeros(Fe.DoF)
+  cPLoc = zeros(FeP.DoF)
   cc = zeros(Fe.DoF)
   DF = zeros(3,2)
   detDF = zeros(1)
@@ -185,28 +185,27 @@ function ProjectScalarScalar!(backend,FTB,cP,FeP::ScalarElement,c,Fe::ScalarElem
 
   @inbounds for iF = 1 : Grid.NumFaces
     @. cPLoc = 0
-    for iDoF = 1 : FeP.DoF
-      ind = FeP.Glob[iDoF,iF]  
+    for iDoF = 1 : Fe.DoF
+      ind = Fe.Glob[iDoF,iF]  
       cc[iDoF] = c[ind]
     end  
     for iQ = 1 : length(Weights)
-      fPRefLoc = 0.0
-      for iDoF = 1 : FeP.DoF
-        fPRefLoc += fPRef[1,iDoF,iQ] * cc[iDoF]  
+      fRefLoc = 0.0
+      for iDoF = 1 : Fe.DoF
+        fRefLoc += fRef[1,iDoF,iQ] * cc[iDoF]  
       end  
       #determinant
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
-      for iDoF = 1 : Fe.DoF
-        cPLoc[iDoF] +=  (1/detDFLoc) * Weights[iQ] * (fRef[1,iDoF,iQ] * fPRefLoc)
+      for iDoF = 1 : FeP.DoF
+        cPLoc[iDoF] +=  detDFLoc * Weights[iQ] * (fPRef[1,iDoF,iQ] * fRefLoc)
       end  
     end
-    for iDoF = 1 : Fe.DoF
-      ind = Fe.Glob[iDoF,iF]  
+    for iDoF = 1 : FeP.DoF
+      ind = FeP.Glob[iDoF,iF]  
       cP[ind] += cPLoc[iDoF]
     end  
   end
-  @show size(cP), size(FeP.LUM)
   ldiv!(FeP.LUM,cP)
 end
 

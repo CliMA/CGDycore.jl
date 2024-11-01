@@ -212,38 +212,20 @@ end
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
-VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
-DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
 CG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
-VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!) 
-VecDG.LUM = lu(VecDG.M)
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
 DG.LUM = lu(DG.M)
 CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,FEMSei.Jacobi!)
 CG.LUM = lu(CG.M)
-RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
-RT.LUM = lu(RT.M)
 
 #stiffmatrix
-Rhs = zeros(FTB,DG.NumG)
-uHDiv = zeros(FTB,RT.NumG)
-uVecDG = zeros(FTB,VecDG.NumG)
 cDG = zeros(FTB,DG.NumG)
 cCG = zeros(FTB,CG.NumG)
 
-#variables for edges
-VelCa = zeros(Grid.NumFaces,Grid.Dim)
-VelSp = zeros(Grid.NumFaces,2)
-#scalar heightmap
-h = zeros(FTB,DG.NumG) #size 38400
-#velocity field in HDiv-Form
-u = zeros(FTB,RT.NumG)
-
 QuadOrd=3
-hCG = zeros(FTB,CG.NumG)
 #calculation of cCG
 FEMSei.ProjectTr!(backend,FTB,cCG,CG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 @show maximum(cCG)

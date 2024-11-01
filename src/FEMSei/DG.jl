@@ -114,10 +114,10 @@ function DG1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   phi = Array{Polynomial,2}(undef,DoF,Comp)
 #  Divphi = Array{Polynomial,2}(undef,DoF,1)
   
-  phi[1,1] = (1.0-1.0*x1) * (1.0-1.0*x2)
-  phi[2,1] = (1.0+1.0*x1) * (1.0-1.0*x2)
-  phi[3,1] = (1.0+1.0*x1) * (1.0+1.0*x2)
-  phi[4,1] = (1.0-1.0*x1) * (1.0+1.0*x2)
+  phi[1,1] = 0.5 * (1.0-1.0*x1) * (1.0-1.0*x2)
+  phi[2,1] = 0.5 * (1.0+1.0*x1) * (1.0-1.0*x2)
+  phi[3,1] = 0.5 * (1.0+1.0*x1) * (1.0+1.0*x2)
+  phi[4,1] = 0.5 * (1.0-1.0*x1) * (1.0+1.0*x2)
   
 #  for i = 1 : DoF
 #    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,1],x2)
