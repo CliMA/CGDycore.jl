@@ -1,11 +1,11 @@
 #!/bin/bash
 #PBS -A UCIT0011
-#PBS -N gpu_BaroWave1
+#PBS -N gpu_BaroWave_32Elem
 #PBS -q main
 #PBS -m n
 #PBS -l walltime=00:10:00
 #PBS -l select=1:ncpus=64:mpiprocs=4:ngpus=4:mem=400GB
-#PBS -o BaroWave1
+#PBS -o BaroWave_32Elem
 
 # Use scratch for temporary files to avoid space limits in /tmp
 
