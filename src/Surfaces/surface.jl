@@ -38,7 +38,39 @@ function (::HeldSuarezDrySurface)(Phys,Param,uPos,vPos,wPos)
     CM = FT(Param.CM)
     CT = FT(Param.CE)
     CH = FT(0)
+    RiBSurf = FT(0)
     return uStar, CM, CT, CH
+  end
+  return SurfaceValues, SurfaceFluxValues
+end
+
+Base.@kwdef struct FriersonSurface <: SurfaceValues end
+
+function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
+  @inline function SurfaceValues(x,U,p)
+    FT = eltype(x)
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
+    return TSurf, FT(0)
+  end
+  @inline function SurfaceFluxValues(z,U,p,nS,TS,z0M,z0H,LandClass)
+    FT = eltype(U)
+    norm_uh = U[uPos]^2 + U[vPos]^2
+    Th = U[ThPos] / U[RhoPos]
+    RiBSurf = Phys.Grav * z * (Th - TS) / TS / norm_uh
+    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    if RiBSurf < FT(0)
+      CM = Phys.Karman^2 / log(z / Param.z_0)^2  
+    elseif RiBSurf < Param.Ri_C
+      CM = Phys.Karman^2 / log(z / Param.z_0)^2 * (FT(1) - RiBSurf / Param.Ri_C)
+    else
+      CM = FT(0)
+    end  
+
+    CT = CM
+    CH = CM
+
+    return uStar, CM, CT, CH, RiBSurf
   end
   return SurfaceValues, SurfaceFluxValues
 end

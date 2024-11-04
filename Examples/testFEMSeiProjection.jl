@@ -212,17 +212,21 @@ end
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
-DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
+DG0 = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+DG1 = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
 CG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
-DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
-DG.LUM = lu(DG.M)
+DG0.M = FEMSei.MassMatrix(backend,FTB,DG0,Grid,nQuadM,FEMSei.Jacobi!)
+DG0.LUM = lu(DG0.M)
+DG1.M = FEMSei.MassMatrix(backend,FTB,DG1,Grid,nQuadM,FEMSei.Jacobi!)
+DG1.LUM = lu(DG1.M)
 CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,FEMSei.Jacobi!)
 CG.LUM = lu(CG.M)
 
 #stiffmatrix
-cDG = zeros(FTB,DG.NumG)
+cDG0 = zeros(FTB,DG0.NumG)
+cDG1 = zeros(FTB,DG1.NumG)
 cCG = zeros(FTB,CG.NumG)
 
 QuadOrd=3
@@ -230,8 +234,11 @@ QuadOrd=3
 FEMSei.ProjectTr!(backend,FTB,cCG,CG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 @show maximum(cCG)
 #projection from CG1 to DG1
-FEMSei.ProjectScalarScalar!(backend,FTB,cDG,DG,cCG,CG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-@show maximum(cDG)
+FEMSei.ProjectScalarScalar!(backend,FTB,cDG1,DG1,cCG,CG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+@show maximum(cDG1)
+#projection from DG1 to DG0 for output
+FEMSei.ProjectScalarScalar!(backend,FTB,cDG0,DG0,cDG1,DG1,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+@show maximum(cDG0)
 stop
 
 

@@ -212,49 +212,49 @@ end
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
-VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
-DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+DG0 = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+DGR = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
 CG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
-VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!) 
-VecDG.LUM = lu(VecDG.M)
-DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
-DG.LUM = lu(DG.M)
+DG0.M = FEMSei.MassMatrix(backend,FTB,DG0,Grid,nQuadM,FEMSei.Jacobi!)
+DG0.LUM = lu(DG0.M)
+DGR.M = FEMSei.MassMatrix(backend,FTB,DGR,Grid,nQuadM,FEMSei.Jacobi!)
+DGR.LUM = lu(DGR.M)
 CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,FEMSei.Jacobi!)
 CG.LUM = lu(CG.M)
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
 RT.LUM = lu(RT.M)
 
 #stiffmatrix
-Rhs = zeros(FTB,DG.NumG)
+Rhs = zeros(FTB,CG.NumG)
 uHDiv = zeros(FTB,RT.NumG)
-uVecDG = zeros(FTB,VecDG.NumG)
-cDG = zeros(FTB,DG.NumG)
+cDGR = zeros(FTB,DRG.NumG)
 
 #variables for edges
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
-#scalar heightmap
-h = zeros(FTB,DG.NumG) #size 38400
 #velocity field in HDiv-Form
 u = zeros(FTB,RT.NumG)
 
 QuadOrd=2
 hCG = zeros(FTB,CG.NumG)
+cCG = zeros(FTB,CG.NumG)
+cDGR = zeros(FTB,DGR.NumG)
+cDG0 = zeros(FTB,DG0.NumG)
 #calculation of hCG
 FEMSei.Project!(backend,FTB,hCG,CG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-#projection from CG1 to DG1
-FEMSei.ProjectScalarScalar!(backend,FTB,cDG,DG,hCG,CG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-stop
+#calculation of Tracer
+FEMSei.ProjectTr!(backend,FTB,cCG,CG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 #calculation of u
 FEMSei.Project!(backend,FTB,u,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-#calculation of Tracer
-FEMSei.ProjectTr!(backend,FTB,cDG,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 #calculation of h
 FEMSei.Project!(backend,FTB,h,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi!)
+#projection from CG1 to DG0
+FEMSei.ProjectScalarScalar!(backend,FTB,cDG0,DG0,cCG,CG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+stop
 #print cDG and u
 FileNumber=0
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [cDG VelSp], FileNumber)

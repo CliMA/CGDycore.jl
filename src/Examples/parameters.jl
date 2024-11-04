@@ -119,7 +119,11 @@ Base.@kwdef struct ParamBaroWaveHillDrySphere{FT}
   CMom::FT = 1.e-3
 end
 
+
 Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
+  z_0::FT = 3.21e-5
+  Ri_C::FT = 1
+  f_b::FT = 0.1
   day::FT = 3600.0 * 24.0
   k_a::FT= 1.0 / (40.0 * day)
   k_f::FT = 1.0 / day
@@ -433,7 +437,8 @@ function Parameters(FT,Problem::String)
   elseif Problem == "LinearBlob"
     @show Problem
     Param = ParamLinearBlob()
-  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
+  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" ||
+    Problem == "FriersonSphere" 
     @show Problem
     Param = ParamHeldSuarezDrySphere{FT}()
   elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
@@ -480,12 +485,6 @@ function Parameters(FT,Problem::String)
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart()
-  elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"
-    @show Problem
-    Param = ParamHeldSuarezDrySphere{FT}()
-  elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
-    @show Problem
-    Param = ParamHeldSuarezMoistSphere{FT}()
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()

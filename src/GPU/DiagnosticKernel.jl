@@ -177,7 +177,7 @@ end
   end
 end
 
-NVTX.@annotate function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   backend = get_backend(U)
   dXdxI = Metric.dXdxI
   X = Metric.X
@@ -215,7 +215,6 @@ NVTX.@annotate function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Pa
 
   KPressureKernel! = PressureKernel!(backend,group)
   KPressureKernel!(Pressure,p,T,PotT,U,nSS,zP,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
@@ -226,7 +225,6 @@ NVTX.@annotate function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Pa
       if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom 
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
         KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeG)
-        KernelAbstractions.synchronize(backend)
       else    
         NFG = min(div(NumberThreadGPU,N*N),NumF)
         Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
@@ -234,7 +232,6 @@ NVTX.@annotate function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Pa
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
         @show "EddyCoefficientKernel",groupK,ndrangeK
         KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeG)
-        KernelAbstractions.synchronize(backend)
       end
     end  
   end

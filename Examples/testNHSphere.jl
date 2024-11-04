@@ -354,10 +354,13 @@ Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
 @. Global.LandUseData.z0M = 0.01
 @. Global.LandUseData.z0H = 0.01
 @. Global.LandUseData.LandClass = 5
+@show Model.SurfaceFlux,SurfaceScheme
 if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
   if SurfaceScheme == ""
+    @show Problem  
+    @show Problem == "FriersonSphere"
     if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" ||
-     Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
+      Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
@@ -365,6 +368,13 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezDrySurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
+    elseif Problem == "FriersonSphere" 
+      @show Problem  
+      SurfaceValues, SurfaceFluxValues = Surfaces.FriersonSurface()(Phys,Param,Model.RhoPos,Model.uPos,
+        Model.vPos,Model.wPos,Model.ThPos)
+      Model.SurfaceValues = SurfaceValues
+      Model.SurfaceFluxValues = SurfaceFluxValues
+      stop
     end  
   elseif SurfaceScheme == "MOST"
     SurfaceValues, SurfaceFluxValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,

@@ -136,7 +136,7 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   @views Parallels.ExchangeData3DRecvGPU!(F[:,:,1:1+NumV],Exchange)
 end
 
-NVTX.@annotate function FcnGPUOld!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
+function FcnGPUOld!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -549,7 +549,7 @@ NVTX.@annotate function FcnGPUOld!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Para
 
 end
 
-NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
+function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -734,7 +734,6 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
 
   if HorLimit
     @views KLimitKernel!(DoF,q,UTr,Rho,Glob,ndrange=ndrangeL)
-    KernelAbstractions.synchronize(backend)
     Parallels.ExchangeDataFSendGPU(q,Exchange)
   end
 
@@ -773,7 +772,6 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
   if HorLimit
     Parallels.ExchangeDataFRecvGPU!(q,Exchange)  
   end  
-  KernelAbstractions.synchronize(backend)
   @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,1:LenTemp1],Exchange)
 
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -792,7 +790,6 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
     ndrangeIEDMF = (N, N, Nz, NF-NBF, ND)
     @views KHyperViscWEDMFKernel!(CachewEDMF,wEDMF,aRhoEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMF)
     @views KHyperViscTracerEDMFKernel!(CacheThEDMF,ThEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMF)
-    KernelAbstractions.synchronize(backend)
     if NumTr > 0
       ndrangeIEDMFTr = (N, N, Nz, NF-NBF, ND*NumTr)
       @views KHyperViscTracerEDMFKernel!(CacheTrEDMF,TrEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMFTr)
@@ -854,7 +851,6 @@ NVTX.@annotate function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,E
     end  
   end    
 
-  KernelAbstractions.synchronize(backend)
   Parallels.ExchangeData3DSendGPU(F,Exchange)
 
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)

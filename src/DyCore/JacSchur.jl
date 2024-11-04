@@ -19,9 +19,7 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   end  
 
   KJacSchurKernel! = JacSchurKernel!(backend,group)
-
   KJacSchurKernel!(dPresdRhoTh,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,p,Metric.dz,Phys,Param,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
 
 end
 
