@@ -116,7 +116,7 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    uStar[IC], CM[IC], CT[IC], CH[IC] = SurfaceFluxValues(dz[1,IC],
+    uStar[IC], CM[IC], CT[IC], CH[IC], RiBSurf[iC] = SurfaceFluxValues(dz[1,IC],
       view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
       TS[IC],z0M[IC],z0H[IC],LandClass[IC])
   end
@@ -128,6 +128,7 @@ function SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,Number
   CM = SurfaceData.CM
   CT = SurfaceData.CT
   CH = SurfaceData.CH
+  RiBSurf = SurfaceData.RiBSurf
   z0M = LandUseData.z0M
   z0H = LandUseData.z0H
   LandClass = LandUseData.LandClass
@@ -136,7 +137,7 @@ function SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,Number
   groupS = (max(div(NumG,NumberThreadGPU),1))
   ndrangeS = (NumG)
   KSurfaceFluxDataKernel! = SurfaceFluxDataKernel!(backend,groupS)
-  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,uStar,CM,CT,CH,U,p,dz,nSS,TS,
+  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,uStar,CM,CT,CH,RiBSurf,U,p,dz,nSS,TS,
     z0M,z0H,LandClass,ndrange=ndrangeS)
   KernelAbstractions.synchronize(backend)
 end

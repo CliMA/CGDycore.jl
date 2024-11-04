@@ -53,7 +53,7 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   LapseRate::FT = 0.005
   U0::FT = -0.5
   PertR::FT = 1.0/6.0
-  Up::FT = 0.0
+  Up::FT = 1.0
   PertExpR::FT = 0.1
   PertLon::FT = pi/9.0
   PertLat::FT = 2.0 * pi / 9.0
