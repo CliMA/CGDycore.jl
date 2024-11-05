@@ -27,10 +27,10 @@ function CG1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   nu = Array{Polynomial,2}(undef,DoF,Comp)
   phi = Array{Polynomial,2}(undef,DoF,Comp)
   @polyvar x1 x2 ksi1 ksi2
-  nu[1,1] = 1.0*ksi1*ksi2 - 1.0*ksi1 - 1.0*ksi2 + 1.0
-  nu[2,1] = 1.0*ksi1 * (1.0 - 1.0*ksi2)
-  nu[3,1] = 1.0*ksi2 * (1.0 - 1.0*ksi1)
-  nu[4,1] = 1.0*ksi1*ksi2 + 0.0
+  nu[1,1] = ksi1 * ksi2 - ksi1 - ksi2 + 1.0
+  nu[2,1] = ksi1 * (1.0 - ksi2)
+  nu[3,1] = ksi1 * ksi2  + 0.0
+  nu[4,1] = ksi2 * (1.0 - ksi1)
   
   for s = 1 : DoF
     for t = 1 : 1

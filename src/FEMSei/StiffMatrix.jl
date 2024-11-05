@@ -1499,8 +1499,8 @@ function DivMomentumScalar!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,cDG,FeDG::
           hFFR += hFFRef[iD,1,iQ,EdgeTypeR] * cDGLocRight[iD]
         end
         MLoc11 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeL] * hFFL) * uFFLocL'
-        MLoc12 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeR] * hFFR) * uFFLocR'
-        MLoc21 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeL] * hFFL) * uFFLocL'
+        MLoc12 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeL] * hFFR) * uFFLocR'
+        MLoc21 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeR] * hFFL) * uFFLocL'
         MLoc22 += Weights[iQ] * (fTRef[:,1,iQ,EdgeTypeR] * hFFR) * uFFLocR'
       end
       

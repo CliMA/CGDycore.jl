@@ -1,3 +1,19 @@
+function Interpolate!(backend,FTB,uN,Fe::HDivConfElement,Grid,QuadOrd,Jacobi,F)
+  NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
+  X = zeros(3)
+  VelSp = zeros(3)
+  for iE = 1 : Grid.NumEdges
+    X[1] = Grid.Edges[iE].Mid.x  
+    X[2] = Grid.Edges[iE].Mid.y  
+    X[3] = Grid.Edges[iE].Mid.z  
+    _,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
+    lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
+    VelCa = VelSphere2Cart(VelSp,lon,lat)
+    uN[iE] = Grid.Edges[iE].a * (Grid.Edges[iE].n.x * VelCa[1] +   
+      Grid.Edges[iE].n.y * VelCa[2] + Grid.Edges[iE].n.z * VelCa[3])  
+  end  
+end
+
 function Project(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi,F)
   NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))

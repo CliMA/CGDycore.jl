@@ -357,7 +357,6 @@ Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
 @show Model.SurfaceFlux,SurfaceScheme
 if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
   if SurfaceScheme == ""
-    @show Problem  
     @show Problem == "FriersonSphere"
     if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" ||
       Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
@@ -369,12 +368,10 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     elseif Problem == "FriersonSphere" 
-      @show Problem  
       SurfaceValues, SurfaceFluxValues = Surfaces.FriersonSurface()(Phys,Param,Model.RhoPos,Model.uPos,
         Model.vPos,Model.wPos,Model.ThPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
-      stop
     end  
   elseif SurfaceScheme == "MOST"
     SurfaceValues, SurfaceFluxValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
@@ -395,10 +392,13 @@ end
 if Model.VerticalDiffusion || Model.VerticalDiffusionMom
   if Model.Turbulence
     Model.Eddy = Examples.TkeKoefficient()(Param,Phys,TkePos,Model.RhoPos)
+  elseif Problem == "FriersonSphere"   
+    Model.Eddy = Examples.FriersonKoefficient()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
   else  
     Model.Eddy = Examples.SimpleKoefficient()(Param,Phys)
   end
 end  
+stop
 
 #Turbulence
 if Model.Turbulence

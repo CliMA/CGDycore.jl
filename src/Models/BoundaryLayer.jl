@@ -64,7 +64,7 @@ Base.@kwdef struct FriersonKoefficient{FT} <: EddyKoefficient
   Ri_C = FT(1)
 end
 
-function (profile::FriersonKoefficient)(Param,Phys,TkePos,RhoPos)
+function (profile::FriersonKoefficient)(Param,Phys,RhoPos,uPos,vPos,ThPos)
   @inline function Eddy(U,CM,uStar,RiBSurf,hBL,ThS,p,z,dz,LenScale)
     FT = eltype(U)
     norm_uh = U[uPos]^2 + U[vPos]^2
