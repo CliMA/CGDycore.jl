@@ -35,9 +35,9 @@ abstract type EddyKoefficient end
 
 Base.@kwdef struct SimpleKoefficient <: EddyKoefficient end
 
-function (profile::SimpleKoefficient)(Param,Phys)
-  @inline function Eddy(U,uStar,p,dz,LenScale)
-    K = Param.CE * uStar * dz / 2
+function (profile::SimpleKoefficient)(Param,Phys,uStar)
+  @inline function Eddy(U,Surf,p,dz,LenScale)
+    K = Param.CE * Surf[uStar] * dz / 2
     if p < Param.p_pbl
       dpR = (Param.p_pbl - p) / Param.p_strato
       K = K * exp(-dpR * dpR)
@@ -58,36 +58,32 @@ function (profile::TkeKoefficient)(Param,Phys,TkePos,RhoPos)
   return Eddy
 end  
 
-Base.@kwdef struct FriersonKoefficient{FT} <: EddyKoefficient 
-  f_b = FT(0.1)
-  z0 = FT(3.21e-5)
-  Ri_C = FT(1)
-end
+Base.@kwdef struct FriersonKoefficient <: EddyKoefficient end
 
-function (profile::FriersonKoefficient)(Param,Phys,RhoPos,uPos,vPos,ThPos)
-  @inline function Eddy(U,CM,uStar,RiBSurf,hBL,ThS,p,z,dz,LenScale)
+function (profile::FriersonKoefficient)(Param,Phys,RhoPos,uPos,vPos,ThPos,TS,hBL,uStar,CM,RiBSurf)
+  @inline function Eddy(U,Surf,p,dz)
     FT = eltype(U)
     norm_uh = U[uPos]^2 + U[vPos]^2
     Th = U[ThPos] / U[RhoPos]
-    Ri = Phys.Grav * z[iz] * (Th - ThS) / ThS / norm_uh
-    zbl = f_b * hBL
+    Ri = Phys.Grav * z[iz] * (Th - Surf[TS]) / Surf[TS] / norm_uh
+    zbl = Param.f_b * Surf[hBL]
     if z < zbl
-      if RiBSurf < FT(0)
-        K = Phys.Karm * uStar * sqrt(CM) * z  
+      if Surf[RiBSurf] < FT(0)
+        K = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * z  
       else
-        K = Phys.Karm * uStar * sqrt(CM) * z /
-          (FT(1) + Ri / Ri_C * log(z / zM) / (FT(1) - Ri / Ri_C))
+        K = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * z /
+          (FT(1) + Ri / Param.Ri_C * log(z / Param.zM) / (FT(1) - Ri / Param.Ri_C))
       end    
     elseif z < hBL  
-      if RiBSurf < FT(0)
-        Kb = Phys.Karm * uStar * sqrt(CM) * zbl  
+      if Surf[RiBSurf] < FT(0)
+        Kb = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * zbl  
       else
-        Kb = Phys.Karm * uStar * sqrt(CM) * zbl /
-          (FT(1) + Ri / Ri_C * log(zbl / zM) / (FT(1) - Ri / Ri_C))
+        Kb = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * zbl /
+          (FT(1) + Ri / Param.Ri_C * log(zbl / zM) / (FT(1) - Ri / Param.Ri_C))
       end    
       K = Kb * z / zbl * (FT(1) - (z - zbl) / (h - zbl))^2
     end    
-    return K 
+    return K * U[RhoPos]
   end
   return Eddy
 end  

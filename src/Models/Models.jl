@@ -10,5 +10,6 @@ include("Equation.jl")
 include("Pressure.jl")
 include("Microphysics.jl")
 include("Turbulence.jl")
+include("BoundaryLayer.jl")
 
 end

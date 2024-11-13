@@ -953,27 +953,27 @@ function ExchangeData3DSendGPU(U,Exchange)
 
   group = (Nz,5,1)
   KExchangeData3DSendKernel! = ExchangeData3DSendKernel!(backend,group)
-  for iP in NeiProc
+  @inbounds for iP in NeiProc
     ndrange = (Nz,length(IndSendBuffer[iP]),nT)
     KExchangeData3DSendKernel!(U,SendBuffer3[iP],IndSendBuffer[iP],ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   end
 
   i = 0
-  for iP in NeiProc
+  @inbounds for iP in NeiProc
     tag = Proc + ProcNumber*iP
     i += 1
     @views MPI.Irecv!(RecvBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, rreq[i])
   end  
   i = 0
-  for iP in NeiProc
+  @inbounds for iP in NeiProc
     tag = iP + ProcNumber*Proc
     i += 1
     @views MPI.Isend(SendBuffer3[iP][:,:,1:nT], iP - 1, tag, MPI.COMM_WORLD, sreq[i])
   end
 end
 
-@kernel inbounds = true function ExchangeData3DSendKernel!(U,SendBuffer,IndSendBuffer)
+@kernel inbounds = true function ExchangeData3DSendKernel!(@Const(U),SendBuffer,@Const(IndSendBuffer))
 
   Iz,I,IT = @index(Global, NTuple)
   NumInd = @uniform @ndrange()[2]
@@ -998,9 +998,9 @@ function ExchangeData3DRecv!(U,p,Exchange)
   stats = MPI.Waitall(sreq)
   MPI.Barrier(MPI.COMM_WORLD)
   #Receive
-  for iP in NeiProc
+  @inbounds for iP in NeiProc
     i = 0
-    for Ind in IndRecvBuffer[iP]
+    @inbounds for Ind in IndRecvBuffer[iP]
       i += 1
       @views @. U[:,Ind,:] += RecvBuffer3[iP][:,i,1:nT]
       @views @. p[:,Ind] += RecvBuffer3[iP][:,i,nT+1]
@@ -1022,9 +1022,9 @@ function ExchangeData3DRecv!(U,Exchange)
   stats = MPI.Waitall(sreq)
   MPI.Barrier(MPI.COMM_WORLD)
   #Receive
-  for iP in NeiProc
+  @inbounds for iP in NeiProc
     i = 0
-    for Ind in IndRecvBuffer[iP]
+    @inbounds for Ind in IndRecvBuffer[iP]
       i += 1
       @views @. U[1:nz,Ind,:] += RecvBuffer3[iP][1:nz,i,1:nT]
     end
@@ -1052,14 +1052,14 @@ function ExchangeData3DRecvGPU!(U,Exchange)
   KExchangeData3DRecvKernel! = ExchangeData3DRecvKernel!(backend,group)
 
   #Receive
-  for iP in NeiProc
+  @inbounds for iP in NeiProc
     ndrange = (Nz,length(IndRecvBuffer[iP]),nT)
     KExchangeData3DRecvKernel!(U,RecvBuffer3[iP],IndRecvBuffer[iP],ndrange=ndrange)
     KernelAbstractions.synchronize(backend)
   end
 end  
 
-@kernel inbounds = true function ExchangeData3DRecvKernel!(U,RecvBuffer,IndRecvBuffer)
+@kernel inbounds = true function ExchangeData3DRecvKernel!(U,@Const(RecvBuffer),@Const(IndRecvBuffer))
 
   Iz,I,IT = @index(Global, NTuple)
   NumInd = @uniform @ndrange()[2]

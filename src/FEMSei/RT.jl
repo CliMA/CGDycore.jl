@@ -1,5 +1,6 @@
 mutable struct RT0Struct{FT<:AbstractFloat,
                       IT2<:AbstractArray} <: HDivConfElement
+  Order::Int                    
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -59,8 +60,10 @@ function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
+  Order = 0
   return RT0Struct{FT,
                   typeof(Glob)}( 
+  Order,                
   Glob,
   DoF,
   Comp,
@@ -120,8 +123,10 @@ function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
+  Order = 0
   return RT0Struct{FT,
                   typeof(Glob)}( 
+    Order,              
     Glob,
     DoF,
     Comp,
@@ -137,6 +142,7 @@ end
 
 mutable struct RT1Struct{FT<:AbstractFloat,
                       IT2<:AbstractArray} <: HDivConfElement
+  Order::Int                    
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -246,8 +252,10 @@ function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
+  Order = 1
   return RT1Struct{FT,
                   typeof(Glob)}( 
+    Order,              
     Glob,
     DoF,
     Comp,
@@ -329,6 +337,7 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = 2*Grid.NumEdges + 2*Grid.NumFaces
+  NumI = NumG
   Num = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
       iE1 = Grid.Faces[iF].E[1]
@@ -346,8 +355,10 @@ function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
+  Order = 1
   return RT1Struct{FT,
                   typeof(Glob)}( 
+    Order,              
     Glob,
     DoF,
     Comp,

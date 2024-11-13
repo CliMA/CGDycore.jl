@@ -46,33 +46,30 @@ end
 
 Base.@kwdef struct FriersonSurface <: SurfaceValues end
 
-function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
-  @inline function SurfaceValues(x,U,p)
-    FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
-    return TSurf, FT(0)
+function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos,TS,RhoVS,CM,CT,CH,RibSurf)
+  @inline function SurfaceValues!(SD,xS,U,p)
+    FT = eltype(SD)
+    Lat = xS[2] 
+    SD[TS] = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
+    SD[RhoVS] = FT(0)
   end
-  @inline function SurfaceFluxValues(z,U,p,nS,TS,z0M,z0H,LandClass)
+  @inline function SurfaceFluxValues!(SD,z,U,p,nS,TS,z0M,z0H,LandClass)
     FT = eltype(U)
     norm_uh = U[uPos]^2 + U[vPos]^2
     Th = U[ThPos] / U[RhoPos]
-    RiBSurf = Phys.Grav * z * (Th - TS) / TS / norm_uh
+    SD[RiBSurf] = Phys.Grav * z * (Th - SD[TS]) / SD[TS] / norm_uh
     uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     if RiBSurf < FT(0)
-      CM = Phys.Karman^2 / log(z / Param.z_0)^2  
+      SD[CM] = Phys.Karman^2 / log(z / Param.z_0)^2  
     elseif RiBSurf < Param.Ri_C
-      CM = Phys.Karman^2 / log(z / Param.z_0)^2 * (FT(1) - RiBSurf / Param.Ri_C)
+      SD[CM] = Phys.Karman^2 / log(z / Param.z_0)^2 * (FT(1) - SD[RiBSurf] / Param.Ri_C)
     else
-      CM = FT(0)
+      SD[CM] = FT(0)
     end  
-
-    CT = CM
-    CH = CM
-
-    return uStar, CM, CT, CH, RiBSurf
+    SD[CT] = SD[CM]
+    SD[CH] = SD[CM]
   end
-  return SurfaceValues, SurfaceFluxValues
+  return SurfaceValues!, SurfaceFluxValues!
 end
 
 
@@ -108,60 +105,52 @@ end
 
 
 
-@kernel inbounds = true function SurfaceFluxDataKernel!(SurfaceFluxValues,uStar,CM,CT,CH,@Const(U),@Const(p),@Const(dz),
-  @Const(nSS),@Const(TS),@Const(z0M),@Const(z0H),@Const(LandClass))
+@kernel inbounds = true function SurfaceFluxDataKernel!(SurfaceFluxValues!,SurfaceData,@Const(U),@Const(p),@Const(dz),
+  @Const(nSS),@Const(z0M),@Const(z0H),@Const(LandClass))
 
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    uStar[IC], CM[IC], CT[IC], CH[IC], RiBSurf[iC] = SurfaceFluxValues(dz[1,IC],
+    SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
       view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
-      TS[IC],z0M[IC],z0H[IC],LandClass[IC])
+      z0M[IC],z0H[IC],LandClass[IC])
   end
 end
 
 function SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)
-  TS = SurfaceData.TS
-  uStar = SurfaceData.uStar
-  CM = SurfaceData.CM
-  CT = SurfaceData.CT
-  CH = SurfaceData.CH
-  RiBSurf = SurfaceData.RiBSurf
   z0M = LandUseData.z0M
   z0H = LandUseData.z0H
   LandClass = LandUseData.LandClass
-  backend = get_backend(TS)
-  NumG, = size(TS)
+  backend = get_backend(U)
+  NumG = size(U,2)
   groupS = (max(div(NumG,NumberThreadGPU),1))
   ndrangeS = (NumG)
   KSurfaceFluxDataKernel! = SurfaceFluxDataKernel!(backend,groupS)
-  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,uStar,CM,CT,CH,RiBSurf,U,p,dz,nSS,TS,
+  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,SurfaceData,U,p,dz,nSS,TS,
     z0M,z0H,LandClass,ndrange=ndrangeS)
   KernelAbstractions.synchronize(backend)
 end
 
-@kernel inbounds = true function SurfaceDataKernel!(SurfaceValues,TS,RhoVS,@Const(U),@Const(p),@Const(xS),@Const(Glob))
+@kernel inbounds = true function SurfaceDataKernel!(SurfaceValues!,SurfaceData,@Const(U),@Const(p),@Const(xS),@Const(Glob))
 
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    TS[IC], RhoVS[IC] =  SurfaceValues(view(xS,:,IC),view(U,1,IC,:),p[1,IC])
+    SurfaceValues!(view(SurfaceData,:,IC),view(xS,:,IC),view(U,1,IC,:),p[1,IC])
   end
 end
 
 function SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)
-  TS = SurfaceData.TS
-  RhoVS = SurfaceData.RhoVS
-  backend = get_backend(TS)
-  NumG, = size(TS)
+  backend = get_backend(U)
+  NumG = size(U,2)
   groupS = (max(div(NumG,NumberThreadGPU),1))
   ndrangeS = (NumG)
   KSurfaceDataKernel! = SurfaceDataKernel!(backend,groupS)
-  KSurfaceDataKernel!(Model.SurfaceValues,TS,RhoVS,U,p,xS,Glob,ndrange=ndrangeS)
+  KSurfaceDataKernel!(Model.SurfaceValues,SurfaceData,U,p,xS,Glob,ndrange=ndrangeS)
   KernelAbstractions.synchronize(backend)
 end
 

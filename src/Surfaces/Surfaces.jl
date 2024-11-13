@@ -34,35 +34,38 @@ function LandUseData{FT}(backend,NumG) where FT<:AbstractFloat
 end  
 
 mutable struct SurfaceData{FT<:AbstractFloat,
-                           AT1<:AbstractArray}
-  TS::AT1
-  RhoVS::AT1
-  uStar::AT1
-  CM::AT1
-  CT::AT1
-  CH::AT1
-  RiBS::AT1
-  hBL::AT1
+                           AT2<:AbstractArray}
+  Data::AT2                         
+  TS::Int
+  RhoVS::Int
+  uStar::Int
+  CM::Int
+  CT::Int
+  CH::Int
+  RiBSurf::Int
+  hBL::Int
 end
 
 function SurfaceData{FT}(backend,NumG) where FT<:AbstractFloat
-  TS = KernelAbstractions.zeros(backend,FT,NumG)
-  RhoVS = KernelAbstractions.zeros(backend,FT,NumG)
-  uStar = KernelAbstractions.zeros(backend,FT,NumG)
-  CM = KernelAbstractions.zeros(backend,FT,NumG)
-  CT = KernelAbstractions.zeros(backend,FT,NumG)
-  CH = KernelAbstractions.zeros(backend,FT,NumG)
-  RiBS = KernelAbstractions.zeros(backend,FT,NumG)
-  hBL = KernelAbstractions.zeros(backend,FT,NumG)
+  Data = KernelAbstractions.zeros(backend,FT,8,NumG)
+  TS = 1
+  RhoVS = 2
+  uStar = 3
+  CM = 4
+  CT = 5
+  CH = 6
+  RiBSurf = 7
+  hBL = 8
   return SurfaceData{FT,
-                     typeof(TS)}(
+                     typeof(Data)}(
+    Data,                 
     TS,
     RhoVS,
     uStar,
     CM,
     CT,
     CH,
-    RiBS,
+    RiBSurf,
     hBL,
   )
 end  

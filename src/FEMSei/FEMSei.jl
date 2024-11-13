@@ -53,6 +53,7 @@ include("ConvertVelocity.jl")
 include("ModelFEM.jl")
 include("Fcn.jl")
 include("TimestepperFEM.jl")
+include("ConstructFEM.jl")
 
 
 

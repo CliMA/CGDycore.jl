@@ -144,7 +144,8 @@ end
   end
 end
 
-@kernel inbounds = true function EddyCoefficientKernel!(Eddy,K,@Const(U),@Const(uStar),@Const(p),@Const(dz),@Const(Glob))
+@kernel inbounds = true function EddyCoefficientKernel!(Eddy,K,@Const(U),@Const(Surf),@Const(p),
+  @Const(dz),@Const(Glob))
   Iz,IC = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[1]
@@ -152,7 +153,7 @@ end
 
   if IC <= NumG
     LenScale = 100.0  
-    @views K[Iz,IC] = Eddy(U[Iz,IC,:],uStar[IC],p[Iz,IC],dz[1,IC],LenScale) 
+    @views K[Iz,IC] = Eddy(U[Iz,IC,:],Surf[:,IC],p[Iz,IC],dz[1,IC],LenScale) 
   end
 end
 
@@ -208,7 +209,6 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   zP = Metric.zP
   Eddy = Global.Model.Eddy
   SurfaceData = Global.SurfaceData
-  uStar = SurfaceData.uStar
   LandUseData = Global.LandUseData
   Model = Global.Model
   Pressure = Global.Model.Pressure
@@ -217,7 +217,7 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   KPressureKernel!(Pressure,p,T,PotT,U,nSS,zP,ndrange=ndrange)
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
-    Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
+    Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  
     Surfaces.SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
   end  
   if !Global.Model.Turbulence

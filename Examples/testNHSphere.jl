@@ -350,14 +350,13 @@ end
 
 # Surface flux
 Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.NumG)
+SD = Global.SurfaceData
 Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
 @. Global.LandUseData.z0M = 0.01
 @. Global.LandUseData.z0H = 0.01
 @. Global.LandUseData.LandClass = 5
-@show Model.SurfaceFlux,SurfaceScheme
 if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
   if SurfaceScheme == ""
-    @show Problem == "FriersonSphere"
     if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" ||
       Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
@@ -369,7 +368,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
       Model.SurfaceFluxValues = SurfaceFluxValues
     elseif Problem == "FriersonSphere" 
       SurfaceValues, SurfaceFluxValues = Surfaces.FriersonSurface()(Phys,Param,Model.RhoPos,Model.uPos,
-        Model.vPos,Model.wPos,Model.ThPos)
+        Model.vPos,Model.wPos,Model.ThPos,SD.TS,SD.RhoVS,SD.CM,SD.CT,SD.CH,SD.RiBSurf)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     end  
@@ -391,14 +390,14 @@ end
 #Vertical Diffusion
 if Model.VerticalDiffusion || Model.VerticalDiffusionMom
   if Model.Turbulence
-    Model.Eddy = Examples.TkeKoefficient()(Param,Phys,TkePos,Model.RhoPos)
+    Model.Eddy = Models.TkeKoefficient()(Param,Phys,TkePos,Model.RhoPos)
   elseif Problem == "FriersonSphere"   
-    Model.Eddy = Examples.FriersonKoefficient()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
+    Model.Eddy = Models.FriersonKoefficient()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.ThPos,SD.TS,SD.hBL,SD.uStar,SD.CM,SD.RiBSurf)
   else  
-    Model.Eddy = Examples.SimpleKoefficient()(Param,Phys)
+    Model.Eddy = Models.SimpleKoefficient()(Param,Phys)
   end
 end  
-stop
 
 #Turbulence
 if Model.Turbulence
