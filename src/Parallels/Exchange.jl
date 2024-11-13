@@ -839,7 +839,6 @@ function ExchangeDataFRecvGPU!(cF,Exchange)
   for iP in GetProcF
     ndrange = (Nz,length(IndRecvBufferF[iP]),nT)
     KExchangeDataFRecvKernel!(cF,RecvBufferF[iP],IndRecvBufferF[iP],ndrange=ndrange)
-    KernelAbstractions.synchronize(backend)
   end
 end
 
@@ -1055,7 +1054,6 @@ function ExchangeData3DRecvGPU!(U,Exchange)
   @inbounds for iP in NeiProc
     ndrange = (Nz,length(IndRecvBuffer[iP]),nT)
     KExchangeData3DRecvKernel!(U,RecvBuffer3[iP],IndRecvBuffer[iP],ndrange=ndrange)
-    KernelAbstractions.synchronize(backend)
   end
 end  
 
