@@ -92,15 +92,14 @@ function BDMHDiv0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB
-  NumI = Grid.NumEdgesI
+  NumG = 2*Grid.NumEdges + 2*Grid.NumEdgesB
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
       GlobCPU[2*i-1,iF] = 2*Grid.Edges[iE].E - 1
       GlobCPU[2*i,iF] = 2*Grid.Edges[iE].E 
     end
-    @show Grid.Edges[iF].F
   end
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])

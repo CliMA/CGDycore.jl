@@ -80,6 +80,30 @@ function (profile::AdvectionSphereSpherical)(Param,Phys)
   return local_profile
 end
 
+#
+Base.@kwdef struct AdvectionVelocity<: Example end
+
+function (profile::AdvectionVelocity)(Param,Phys)
+  function local_profile(x,time)
+    FT = eltype(x)
+    (Lon,Lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
+    Z = max(R-Phys.RadEarth,FT(0))
+    uS = Param.uMax * cos(Lat)
+    vS = 0.0
+    w = 0.0
+    RhoZ = 1.0
+    d = acos(sin(Param.lat0)*sin(Lat)+cos(Param.lat0)*cos(Lat)*cos(Lon-Param.lon0))
+    if abs(d) <= Param.Width
+      uS = cos(pi*d/Param.Width/2)^2 
+    else
+      uS = 0.0 
+    end
+    vS = 0.0
+    return (0.0,uS,vS,0.0)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct AdvectionSphereDCMIP <: Example end
 
 function (profile::AdvectionSphereDCMIP)(Param,Phys)

@@ -154,7 +154,7 @@ LatB = 0.0
 GridType = "CubedSphere"
 nPanel =  80
 #GridType = "HealPix"
-ns = 10
+ns = 57
 
 print("Which Problem do you want so solve? \n")
 print("1 - GalewskiSphere\n\
@@ -191,10 +191,10 @@ elseif  a == 4
     Problem = "AdvectionSphereSpherical"
     Param = Examples.Parameters(FTB,Problem)
     RadEarth = 1.0
-    dtau = 2*pi*RadEarth/4/nPanel/Param.uMax*0.7
+    dtau = 2*pi*RadEarth/4/nPanel/Param.uMax*0.6
     @show dtau  # 0.0004581489286485114 #in s = 2*pi*Rad / 4*nPanel / param.uMax * cFL (ca. 0.7) bei RK2 (RK3 1.7)
-    nAdveVel = 100
-    nprint = 10
+    nAdveVel = 200
+    nprint = 20
     GridTypeOut = GridType*"Advec"
     @show nAdveVel
 else 
@@ -202,6 +202,7 @@ else
 end
 println("The chosen Problem is ") 
 Examples.InitialProfile!(Model,Problem,Param,Phys)
+ProfileUTR = Examples.AdvectionVelocity()(Param,Phys)
 
 #Grid construction
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLat,nLon,LatB,GridType,Decomp,RadEarth,
@@ -213,69 +214,70 @@ vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
 VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
-DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
-CG = FEMSei.CG1Struct{FTB}(Grids.Quad(),backend,Grid)
+RTTR = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
 RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
 
 #massmatrix und LU-decomposition
-VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!) 
+VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!)
 VecDG.LUM = lu(VecDG.M)
-DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
-DG.LUM = lu(DG.M)
-CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,FEMSei.Jacobi!)
-CG.LUM = lu(CG.M)
+RTTR.M = FEMSei.MassMatrix(backend,FTB,RTTR,Grid,nQuadM,FEMSei.Jacobi!)
+RTTR.LUM = lu(RTTR.M)
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
 RT.LUM = lu(RT.M)
 
 #stiffmatrix
-Rhs = zeros(FTB,DG.NumG)
-uHDiv = zeros(FTB,RT.NumG)
-uVecDG = zeros(FTB,VecDG.NumG)
-cDG = zeros(FTB,DG.NumG)
+cVecDG = zeros(FTB,VecDG.NumG)
+cRT = zeros(FTB,RTTR.NumG)
 
-#variables for edges
-VelCa = zeros(Grid.NumFaces,Grid.Dim)
-VelSp = zeros(Grid.NumFaces,2)
-#vector heightmap
-h = zeros(FTB,DG.NumG)
-#velocity field in HDiv-Form
+QuadOrd=3
+#calculation of cRT
+#FEMSei.Project!(backend,FTB,cRT,RTTR,Grid,nQuad,FEMSei.Jacobi!,ProfileUTR)
+FEMSei.Interpolate!(backend,FTB,cRT,RTTR,Grid,nQuad,FEMSei.Jacobi!,ProfileUTR)
+#projection from 
+FEMSei.ProjectVecDGHDiv!(backend,FTB,cVecDG,VecDG,cRT,RTTR,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+
+#h = zeros(FTB,DG.NumG)
 u = zeros(FTB,RT.NumG)
+VelSp = zeros(Grid.NumFaces,2)
 
-#calculation of u
+#calculation of L²-Projektion u, error occurs at the adhesive points of the cubed sphere, therefore "Fortin"
 #FEMSei.Project!(backend,FTB,u,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 
-#calculation of h
-FEMSei.ProjectScalar!(backend,FTB,uHDiv,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,h,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-
+#Fortin-Interpolation
+FEMSei.Interpolate!(backend,FTB,u,RT,Grid,QuadOrd,FEMSei.Jacobi!,Model.InitialProfile)
+#FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi!)
 #calculation of Tracer
-FEMSei.ProjectVectorScalarVectorHDiv(backend,FTB,uVecDG,VecDG,h,DG,uHDiv,RT,Grid,Grids.Quad(),nQuadS,FEMSei.Jacobi!)
-
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uVecDG,VecDG,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,uVecDG,VecDG,Grid,FEMSei.Jacobi!)
-
+#FEMSei.ProjectTr!(backend,FTB,cDG,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+#calculation of h
+#FEMSei.Project!(backend,FTB,h,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 #print cDG and u
-FileNumber=1000
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [h VelCa VelSp], FileNumber)
-stop
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,cRT,RTTR,Grid,FEMSei.Jacobi!)
+
+FileNumber=0
+Outputs.vtkSkeleton!(vtkSkeletonMesh, "Proj_Recov", Proc, ProcNumber, VelSp, FileNumber)
+
 #runge-kutta steps
 time = 0.0
-cDGNew = similar(cDG)
+cRTNew = similar(cRT)
+Rhs = zeros(FTB,RT.NumG)
 
 for i = 1 : nAdveVel
   @show i  
   @. Rhs = 0
-  FEMSei.DivMomentumVector!(backend,FTB,Rhs,u,RT,cDG,DG,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  ldiv!(DG.LUM,Rhs)
-  @. cDGNew = cDG + 0.5 * dtau * Rhs
+  FEMSei.ProjectVecDGHDiv!(backend,FTB,cVecDG,VecDG,cRT,RTTR,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Rhs,u,RT,cVecDG,VecDG,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  ldiv!(RTTR.LUM,Rhs)
+  @. cRTNew = cRT + 0.5 * dtau * Rhs
   @. Rhs = 0
-  FEMSei.DivMomentumScalar!(backend,FTB,Rhs,u,RT,cDGNew,DG,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  ldiv!(DG.LUM,Rhs)
-  @. cDG = cDG + dtau * Rhs
+  #CG nach vorn nach RHs sezten
+  FEMSei.ProjectVecDGHDiv!(backend,FTB,cVecDG,VecDG,cRTNew,RTTR,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Rhs,u,RT,cVecDG,VecDG,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  ldiv!(RTTR.LUM,Rhs)
+  @. cRT = cRT + dtau * Rhs
   if mod(i,nprint) == 0 
+    FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,cRT,RTTR,Grid,FEMSei.Jacobi!)
     global FileNumber += 1
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [cDG VelSp], FileNumber)
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, "Proj_Recov", Proc, ProcNumber,VelSp, FileNumber)
   end
 end
 @show "finished"
-

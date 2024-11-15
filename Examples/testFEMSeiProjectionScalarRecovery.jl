@@ -231,17 +231,16 @@ cCG = zeros(FTB,CG.NumG)
 QuadOrd=3
 #calculation of cCG
 FEMSei.ProjectTr!(backend,FTB,cCG,CG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-@show maximum(cCG)
 #projection from CG1 to DG1
 FEMSei.ProjectScalarScalar!(backend,FTB,cDG,DG,cCG,CG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-@show maximum(cDG)
-
 h = zeros(FTB,DG.NumG)
 u = zeros(FTB,RT.NumG)
 VelSp = zeros(Grid.NumFaces,2)
 
-#calculation of u
+#calculation of L²-Projektion u, error occurs at the adhesive points of the cubed sphere, therefore "Fortin"
 #FEMSei.Project!(backend,FTB,u,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+
+#Fortin-Interpolation
 FEMSei.Interpolate!(backend,FTB,u,RT,Grid,QuadOrd,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi!)
 #calculation of Tracer
@@ -249,7 +248,7 @@ FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi!)
 #calculation of h
 FEMSei.Project!(backend,FTB,h,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 #print cDG and u
-FileNumber=4000
+FileNumber=0
 Outputs.vtkSkeleton!(vtkSkeletonMesh, "Proj_Recov", Proc, ProcNumber, [cDG VelSp], FileNumber)
 
 #runge-kutta steps
@@ -277,42 +276,3 @@ for i = 1 : nAdveVel
   end
 end
 @show "finished"
-
-
-#=
-#Berechnung von hu
-FEMSei.ProjecthScalaruHDivHDiv!(backend,FTB,hu,RT,h,DG,u,RT,Grid,Grids.Quad(),nQuadS,FEMSei.Jacobi!)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,hu,RT,Grid,FEMSei.Jacobi!)
-#Ausgabe von hu
-FileNumber=1001
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [h VelSp], FileNumber)
-
-FEMSei.ProjectVectorScalarVectorHDiv(backend,FTB,uDG,VecDG,h,DG,hu,RT,Grid,Grids.Quad(),nQuadS,FEMSei.Jacobi!)
-
-FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,uDG,VecDG,Grid,FEMSei.Jacobi!)
-
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uDG,VecDG,Grid,FEMSei.Jacobi!) 
-
-#Ausgabe von uDG
-#Ausgabeliste 
-FileNumber=1002
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [h VelCa VelSp], FileNumber)
-
-FEMSei.DivMomentumScalar!(backend,FTB,Rhs,uHDiv,RT,cDG,DG,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-
-stop
-ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
-
-pPosS = ModelFEM.pPosS
-pPosE = ModelFEM.pPosE
-uPosS = ModelFEM.uPosS
-uPosE = ModelFEM.uPosE
-U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
-@views Up = U[pPosS:pPosE]
-@views Uu = U[uPosS:uPosE]
-
-FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-
-FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,GridTypeOut,Proc,ProcNumber)
-=#
