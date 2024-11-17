@@ -180,6 +180,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   NumTr  = Global.Model.NumTr 
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
+  @views q = Cache.q[:,:,1:2*NumTr]
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Proc = Global.ParallelCom.Proc
   Force = Global.Model.Force
@@ -320,7 +321,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @. @views U[:,BoundaryDoF,vPos] = FT(0.0)
 
   if HorLimit
-    @views KLimitKernel!(DoF,q,UTr,Rho,Glob,ndrange=ndrangeL)
+    @views KLimitKernel!(DoF,q[:,:,1:NumTr],q[:,:,NumTr+1:2*NumTr],UTr,
+      Rho,Glob,ndrange=ndrangeL)
     Parallels.ExchangeDataFSendGPU(q,Exchange)
   end
 

@@ -218,20 +218,20 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  
-    Surfaces.SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
+    Surfaces.SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData.Data,LandUseData,Model,NumberThreadGPU)  
   end  
   if !Global.Model.Turbulence
     if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom
       if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom 
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
-        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeG)
+        KEddyCoefficientKernel!(Eddy,KV,U,SurfaceData.Data,p,dz,Glob,ndrange=ndrangeG)
       else    
         NFG = min(div(NumberThreadGPU,N*N),NumF)
         Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
         Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
         @show "EddyCoefficientKernel",groupK,ndrangeK
-        KEddyCoefficientKernel!(Eddy,KV,U,uStar,p,dz,Glob,ndrange=ndrangeG)
+        KEddyCoefficientKernel!(Eddy,KV,U,SurfaceData.Data,p,dz,Glob,ndrange=ndrangeG)
       end
     end  
   end

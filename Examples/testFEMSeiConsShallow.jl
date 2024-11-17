@@ -205,25 +205,9 @@ VecDG.LUM = lu(VecDG.M)
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
 RT.LUM = lu(RT.M)
 
-uVecDG = zeros(FTB,VecDG.NumG)
-uRT = zeros(FTB,RT.NumG)
-h = zeros(FTB,DG.NumG)
-
-FEMSei.InterpolateCons!(backend,FTB,uRT,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,h,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uVecDG,VecDG,h,DG,uRT,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-
-# Output of the initial values
-FileNumber=0
-VelSp = zeros(Grid.NumFaces,2)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uRT,RT,Grid,FEMSei.Jacobi!)
-@show sum(abs.(h))
-Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [h VelSp] ,FileNumber)
 
 #Runge-Kutta steps
 time = 0.0
-cRTNew = similar(cRT)
-Rhs = zeros(FTB,RT.NumG)
 
 hPosS = 1
 hPosE = DG.NumG
@@ -231,32 +215,56 @@ huPosS = DG.NumG + 1
 huPosE = DG.NumG + RT.NumG
 
 U = zeros(FTB,DG.NumG+RT.NumG)
-UNew = zeros(FTB,DG.NumG+RT.NumG)
 @views Uh = U[hPosS:hPosE]  
 @views Uhu = U[huPosS:huPosE]  
+UNew = zeros(FTB,DG.NumG+RT.NumG)
+@views UNewh = UNew[hPosS:hPosE]  
+@views UNewhu = UNew[huPosS:huPosE]  
 F = zeros(FTB,DG.NumG+RT.NumG)
 @views Fh = F[hPosS:hPosE]  
 @views Fhu = F[huPosS:huPosE]  
 uRec = zeros(FTB,VecDG.NumG)
 
+FEMSei.InterpolateCons!(backend,FTB,Uhu,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Project!(backend,FTB,Uh,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uVecDG,VecDG,h,DG,Uhu,RT,Grid,Grids.Quad(),
+  nQuad,FEMSei.Jacobi!)
+# Output of the initial values
+FileNumber=0
+VelSp = zeros(Grid.NumFaces,2)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uhu,RT,Grid,FEMSei.Jacobi!)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [Uh VelSp] ,FileNumber)
+
 for i = 1 : nAdveVel
   @. F = 0  
   # Tendency h
-  FEMSei.DivRhs!(backend,FTB,Fh,Uhu,RT,DG,Grid,DG.Type,QuadOrdS,Jacobi)
+  FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
   ldiv!(DG.LUM,Fh)
   # Tendency hu
-  FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.DivMomentumVector!(backend,FTB,Fhu,u,RT,cVecDG,VecDG,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-# grad h^2
-# Omega x hu
+  FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
+    Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  ldiv!(RT.LUM,Fhu)
   @. UNew = U + 0.5 * dtau * F
+  @. F = 0  
+  # Tendency h
+  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  ldiv!(DG.LUM,Fh)
+  # Tendency hu
+  FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
+    Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  ldiv!(RT.LUM,Fhu)
+  @. U = U + dtau * F
 
-#=
   if mod(i,nprint) == 0 
-    FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,cRT,RTTR,Grid,FEMSei.Jacobi!)
     global FileNumber += 1
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, "Proj_Recov", Proc, ProcNumber,VelSp, FileNumber)
+    FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,hu,RT,Grid,FEMSei.Jacobi!)
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [h VelSp] ,FileNumber)
   end
-=#  
 end
 @show "finished"

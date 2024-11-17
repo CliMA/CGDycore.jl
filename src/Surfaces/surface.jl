@@ -2,22 +2,22 @@ abstract type SurfaceValues end
 
 Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
-function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
-  @inline function SurfaceValues(xS,U,p)
+function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos,TS,RhoVS,CM,CT,CH)
+  @inline function SurfaceValues(SD,xS,U,p)
     FT = eltype(xS)
     Lon = xS[1]
     Lat = xS[2]
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     p_vs = Thermodynamics.fpvs(TSurf,Phys.T0)
-    RhoVSurf = p_vs / (Phys.Rv * TSurf)
-    return TSurf, RhoVSurf
+    SD[RhoVS] = p_vs / (Phys.Rv * TSurf)
+    SD[TS] = TSurf
   end  
-  @inline function SurfaceFluxValues(z,U,p,nS,TS,z0M,z0H,LandClass)
+  @inline function SurfaceFluxValues(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
     uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
-    CM = FT(Param.CM)
-    CT = FT(Param.CE)
-    CH = FT(Param.CH)
+    SD[CM] = FT(Param.CM)
+    SD[CT] = FT(Param.CE)
+    SD[CH] = FT(Param.CH)
     return uStar, CM, CT, CH
   end
   return SurfaceValues, SurfaceFluxValues
@@ -53,7 +53,7 @@ function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos,TS,RhoVS,CM,
     SD[TS] = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     SD[RhoVS] = FT(0)
   end
-  @inline function SurfaceFluxValues!(SD,z,U,p,nS,TS,z0M,z0H,LandClass)
+  @inline function SurfaceFluxValues!(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
     norm_uh = U[uPos]^2 + U[vPos]^2
     Th = U[ThPos] / U[RhoPos]
@@ -128,7 +128,7 @@ function SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,Number
   groupS = (max(div(NumG,NumberThreadGPU),1))
   ndrangeS = (NumG)
   KSurfaceFluxDataKernel! = SurfaceFluxDataKernel!(backend,groupS)
-  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,SurfaceData,U,p,dz,nSS,TS,
+  KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,SurfaceData,U,p,dz,nSS,
     z0M,z0H,LandClass,ndrange=ndrangeS)
   KernelAbstractions.synchronize(backend)
 end

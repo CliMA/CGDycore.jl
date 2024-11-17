@@ -133,34 +133,36 @@ function LaplMatrix(backend,FTB,FeF::ScalarElement,FeT::ScalarElement,Grid,QuadO
   return Lapl
 end
 
-function DivRhs!(backend,FTB,Div,u,uFeF::HDivConfElement,FeT::ScalarElement,Grid,ElemType::Grids.ElementType,
-  QuadOrd,Jacobi)
+function DivRhs!(backend,FTB,Div,FeT::ScalarElement,u,uFeF::HDivConfElement,
+  Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   uFRef  = zeros(FeT.Comp,uFeF.DoF,length(Weights))
   fTRef  = zeros(FeT.Comp,FeT.DoF,length(Weights))
 
-  for i = 1 : length(Weights)
+  for iQ = 1 : NumQuad
     for iComp = 1 : FeT.Comp
       for iDoF = 1 : FeT.DoF
-        fTRef[iComp,iDoF,i] = FeT.phi[iDoF,iComp](Points[i,1],Points[i,2])
+        fTRef[iComp,iDoF,iQ] = FeT.phi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
     for iComp = 1 : FeT.Comp
       for iDoF = 1 : uFeF.DoF
-        uFRef[iComp,iDoF,i] = uFeF.Divphi[iDoF,iComp](Points[i,1],Points[i,2])
+        uFRef[iComp,iDoF,iQ] = uFeF.Divphi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
   end
   DivLoc = zeros(FeT.DoF)
   uLoc = zeros(uFeF.DoF)
 
+  @show sum(abs.(u))
   @inbounds for iF = 1 : Grid.NumFaces
     DivLoc .= 0
     for iDoF  = 1 : uFeF.DoF
       ind = uFeF.Glob[iDoF,iF]
       uLoc[iDoF] = u[ind]
     end
-    for iQ = 1 : length(Weights)
+    for iQ = 1 : NumQuad
       uFRefLoc = 0.0
       for iDoF = 1 : uFeF.DoF
         uFRefLoc += uFRef[1,iDoF,iQ] * uLoc[iDoF]  
@@ -174,6 +176,7 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivConfElement,FeT::ScalarElement,Grid
       Div[ind] += DivLoc[iDoF]
     end
   end
+  @show sum(abs.(Div))
 end
 
 function GradRhs!(backend,FTB,Grad,h,hFeF::ScalarElement,FeT::HDivConfElement,Grid,ElemType::Grids.ElementType,
@@ -570,6 +573,53 @@ function GradMatrix(backend,FTB,FeF::ScalarElement,FeT::HDivKiteDElement,Grid,Qu
   return Grad
 end
 
+function GradHeightSquared!(backend,FTB,Rhs,FeT::HDivConfElement,h,hFeF::ScalarElement,
+  Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+
+  Grav = 9.81
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
+  hFRef  = zeros(hFeF.Comp,hFeF.DoF,length(Weights))
+  DivfTRef  = zeros(hFeF.Comp,FeT.DoF,length(Weights))
+
+
+  @inbounds for iQ = 1 : NumQuad
+    for iComp = 1 : hFeF.Comp
+      for iD = 1 : FeT.DoF
+        DivfTRef[iComp,iD,iQ] = FeT.Divphi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+    for iComp = 1 : hFeF.Comp
+      for iD = 1 : hFeF.DoF
+        hFRef[iComp,iD,iQ] = hFeF.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+  end
+  GradLoc = zeros(FeT.DoF)
+  hLoc = zeros(hFeF.DoF)
+
+  @inbounds for iF = 1 : Grid.NumFaces
+    GradLoc .= 0
+    for iDoF = 1 : hFeF.DoF
+      ind = hFeF.Glob[iDoF,iF]  
+      hLoc[iDoF] = h[ind]
+    end  
+    for iQ = 1 : NumQuad
+      hhLoc = 0.0
+      for iDoF = 1 : hFeF.DoF
+        hhLoc += hFRef[1,iDoF,iQ] * hLoc[iDoF]
+      end  
+      for iDoF = 1 : FeT.DoF
+        GradLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[iQ] * DivfTRef[1,iDoF,iQ] * hhLoc^2
+      end  
+    end
+    for iDoF = 1 : FeT.DoF
+      ind = FeT.Glob[iDoF,iF]  
+      Rhs[ind] += GradLoc[iDoF]
+    end  
+  end
+  @. Rhs *= 0.5 * Grav
+end
+
 function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfElement,
   FeT::HDivConfElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -641,6 +691,7 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfEl
     end  
   end
 end
+
 #! heißt drin berechnet
 function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDElement,
   FeT::HDivKiteDElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
@@ -1008,6 +1059,71 @@ function GradRhs!(backend,FTB,Grad,h,hFeF::ScalarElement,u,uFeF::HDivKiteDElemen
   end
 end
 
+function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
+  ElemType::Grids.ElementType,QuadOrd,Jacobi)
+
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
+  fTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
+
+  for iQ = 1 : NumQuad
+    for iComp = 1 : FeT.Comp
+      for iD = 1 : FeT.DoF
+        fTRef[iComp,iD,iQ] = FeT.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+  end
+  uFFRef = fTRef
+
+  CrossLoc = zeros(FeT.DoF)
+  uLoc = zeros(uFeF.DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  detDFLoc = zeros(NumQuad)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  Omega = 2 * pi / 24.0 / 3600.0
+
+  @time @inbounds for iF = 1 : Grid.NumFaces
+    @. CrossLoc = 0
+    for iDoF = 1 : uFeF.DoF
+      ind = uFeF.Glob[iDoF,iF]  
+      uLoc[iDoF] = u[ind]
+    end  
+    for iQ = 1 : NumQuad
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      detDFLoc[iQ] = detDF[1]
+      uFLoc1 = 0.0
+      uFLoc2 = 0.0
+      for iDoF = 1 : uFeF.DoF
+        uFLoc1 += uFFRef[1,iDoF,iQ] * uLoc[iDoF]
+        uFLoc2 += uFFRef[2,iDoF,iQ] * uLoc[iDoF]
+      end
+      u1 = (DF[1,1] * uFLoc1 + DF[1,2] * uFLoc2) 
+      u2 = (DF[2,1] * uFLoc1 + DF[2,2] * uFLoc2)
+      u3 = (DF[3,1] * uFLoc1 + DF[3,2] * uFLoc2)
+      Rad = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
+      k1 = X[1] / Rad
+      k2 = X[2] / Rad
+      k3 = X[3] / Rad
+      kcru1 = k2 * u3 - k3 * u2
+      kcru2 = -(k1 * u3 - k3 * u1)
+      kcru3 = k1 * u2 - k2 * u1
+      cu1 = (DF[1,1] * kcru1 + DF[2,1] * kcru2 + DF[3,1] * kcru3)
+      cu2 = (DF[1,2] * kcru1 + DF[2,2] * kcru2 + DF[3,2] * kcru3)
+      sinlat = k3
+      qFLoc = 2 * Omega * sinlat
+      for iDoF = 1 : FeT.DoF
+        CrossLoc[iDoF] -=  Weights[iQ] * qFLoc * (fTRef[1,iDoF,iQ] * cu1 +
+          fTRef[2,iDoF,iQ] * cu2) / detDFLoc[iQ]
+      end    
+    end  
+    for iDoF = 1 : FeT.DoF
+      ind = FeT.Glob[iDoF,iF]
+      Cross[ind] += CrossLoc[iDoF]
+    end
+  end
+end
+
 function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,FeT::HDivElement,Grid,
   ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
@@ -1089,8 +1205,9 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
 end
 
 #vector field uHDiv entpsricht Vel Matlab, uVecDG entspricht cW
-function DivMomentumVector!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,uVecDG,FeVecDG::VectorElement,
-  FeTHDiv::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::HDivElement,
+  uVecDG,FeVecDG::VectorElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   fuHDiv  = zeros(FeHDiv.DoF,FeHDiv.Comp,NumQuad)
   fuVecDG  = zeros(FeVecDG.DoF,FeVecDG.DoF,NumQuad)

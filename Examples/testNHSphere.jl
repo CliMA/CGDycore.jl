@@ -359,7 +359,8 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   if SurfaceScheme == ""
     if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" ||
       Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
-      SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)
+      SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,
+        Model.vPos,Model.wPos,SD.TS,SD.RhoVS,SD.CM,SD.CT,SD.CH)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
@@ -395,7 +396,7 @@ if Model.VerticalDiffusion || Model.VerticalDiffusionMom
     Model.Eddy = Models.FriersonKoefficient()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
       Model.ThPos,SD.TS,SD.hBL,SD.uStar,SD.CM,SD.RiBSurf)
   else  
-    Model.Eddy = Models.SimpleKoefficient()(Param,Phys)
+    Model.Eddy = Models.SimpleKoefficient()(Param,Phys,SD.uStar)
   end
 end  
 

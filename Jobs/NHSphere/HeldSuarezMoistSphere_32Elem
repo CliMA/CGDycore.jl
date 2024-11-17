@@ -22,7 +22,7 @@ julia --project Examples/testNHSphere.jl \
   --TypeMicrophysics="SimpleMicrophysics" \
   --RelCloud=1.e-3 \
   --Upwind=true \
-  --HorLimit=false \
+  --HorLimit=true \
   --Decomp="EqualArea" \
   --SimDays=365 \
   --SimHours=0 \
