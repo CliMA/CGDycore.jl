@@ -533,7 +533,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     TSurf = Global.SurfaceData.TS
     RhoVSurf = Global.SurfaceData.RhoVS
     SurfaceFluxRhs! = Global.Model.SurfaceFluxRhs
-    KSurfaceFluxScalarsKernel!(SurfaceFluxRhs!,F,U,p,TSurf,RhoVSurf,uStar,CT,CH,dz,ndrange=ndrangeS)
+    KSurfaceFluxScalarsKernel!(SurfaceFluxRhs!,F,U,p,Global.SurfaceData.Data,dz,ndrange=ndrangeS)
   end
   if Global.Model.Forcing
     KForceKernel! = ForceKernel!(backend, groupG)
@@ -549,7 +549,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KDampKernel! = DampKernel!(backend, groupG)
     KDampKernel!(Damp,F,U,zP,ndrange=ndrangeG)
   end  
-
 end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleDeep)

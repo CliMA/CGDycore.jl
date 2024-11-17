@@ -385,7 +385,8 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   end  
 end
 if Model.SurfaceFlux
-  Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos,Model.RhoVPos)  
+  Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos,Model.RhoVPos,
+    SD.uStar,SD.CT,SD.CH,SD.TS,SD.RhoVS)  
 end  
 
 #Vertical Diffusion

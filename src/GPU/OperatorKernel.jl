@@ -1147,7 +1147,7 @@ end
 end  
 
 @kernel inbounds = true function SurfaceFluxScalarsKernel!(SurfaceFluxRhs!,F,@Const(U),@Const(p),
-  @Const(TSurf),@Const(RhoVSurf),@Const(uStar),@Const(CT),@Const(CH),@Const(dz))
+  @Const(SurfaceData),@Const(dz))
 
   IC, = @index(Global, NTuple)
 
@@ -1155,7 +1155,7 @@ end
 
   if IC <= NumG
     SurfaceFluxRhs!(view(F,1,IC,:),view(U,1,IC,:),p[1,IC],dz[1,IC],
-      uStar[IC],CT[IC],CH[IC],TSurf[IC],RhoVSurf[IC])  
+      view(SurfaceData,:,IC))
   end  
 end
 

@@ -154,8 +154,8 @@ function SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)
   KernelAbstractions.synchronize(backend)
 end
 
-function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos)
-  @inline function SurfaceFlux!(FU,U,p,dz,uStar,CT,CH,TSurf,RhoVSurf)
+function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos,uStar,CT,CH,TSurf,RhoVSurf)
+  @inline function SurfaceFlux!(FU,U,p,dz,SD)
     FT = eltype(U)
     Rho = U[RhoPos]
     RhoTh = U[ThPos]
@@ -164,8 +164,8 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos)
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
     T = p / Rm
-    LatFlux = -CT * uStar * (RhoV - RhoVSurf)
-    SensFlux = -CH * uStar * (T - TSurf)
+    LatFlux = -SD[CT] * SD[uStar] * (RhoV - SD[RhoVSurf])
+    SensFlux = -SD[CH] * SD[uStar] * (T - SD[TSurf])
     FRho = LatFlux
     FRhoV = LatFlux
     PrePi=(p / Phys.p0)^(Rm / Cpml)
