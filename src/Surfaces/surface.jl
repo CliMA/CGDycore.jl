@@ -2,7 +2,7 @@ abstract type SurfaceValues end
 
 Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
-function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos,TS,RhoVS,CM,CT,CH)
+function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos,TS,RhoVS,CM,CT,CH,uStar)
   @inline function SurfaceValues(SD,xS,U,p)
     FT = eltype(xS)
     Lon = xS[1]
@@ -14,11 +14,10 @@ function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos,TS,RhoVS,CM,CT,CH)
   end  
   @inline function SurfaceFluxValues(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    SD[uStar] = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     SD[CM] = FT(Param.CM)
     SD[CT] = FT(Param.CE)
     SD[CH] = FT(Param.CH)
-    return uStar, CM, CT, CH
   end
   return SurfaceValues, SurfaceFluxValues
 end  

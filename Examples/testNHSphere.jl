@@ -360,7 +360,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
     if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" ||
       Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,
-        Model.vPos,Model.wPos,SD.TS,SD.RhoVS,SD.CM,SD.CT,SD.CH)
+        Model.vPos,Model.wPos,SD.TS,SD.RhoVS,SD.CM,SD.CT,SD.CH,SD.uStar)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
