@@ -54,6 +54,7 @@ function CG1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
       GlobCPU[i,iF] = Grid.Nodes[iN].N
     end  
   end  
+
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
@@ -102,16 +103,17 @@ function CG1Struct{FT}(Type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
   end
 
 
-  Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumNodes)
-  GlobCPU = zeros(Int,DoF,Grid.NumNodes)
+  Glob = KernelAbstractions.zeros(backend,Int,DoF,2*Grid.NumNodes)
+  GlobCPU = zeros(Int,DoF,2*Grid.NumNodes)
   NumG = Grid.NumNodes
   NumI = Grid.NumNodes
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].N)
       iN = Grid.Faces[iF].N[i]
-      GlobCPU[i,iF] = Grid.Nodes[iE].N
+      GlobCPU[i,iF] = Grid.Nodes[iN].N
     end  
   end  
+
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)

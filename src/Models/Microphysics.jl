@@ -8,8 +8,8 @@ function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
     FT = eltype(U)
     Rho = U[RhoPos]
     RhoTh = U[ThPos]
-    RhoV = max(U[RhoVPos], FT(0))
-    RhoC = max(U[RhoCPos], FT(0))
+    RhoV = U[RhoVPos]
+    RhoC = U[RhoCPos]
     RhoD = Rho - RhoV - RhoC
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV + Phys.Cpl * RhoC
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV

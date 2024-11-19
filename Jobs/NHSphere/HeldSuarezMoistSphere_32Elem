@@ -27,10 +27,10 @@ julia --project Examples/testNHSphere.jl \
   --SimDays=365 \
   --SimHours=0 \
   --SimSeconds=0 \
-  --PrintSeconds=0 \
+  --PrintSeconds=900 \
   --PrintMinutes=0 \
   --PrintHours=0 \
-  --PrintDays=50 \
+  --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \

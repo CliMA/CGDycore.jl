@@ -396,8 +396,8 @@ function CircumCenterPoint(Face)
 end
 
 function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
-  nBar=[ 0  1   0   1
-             -1  0  -1   0]
+  nBar=[ 0  -1  1
+        -1  -1  0]
   Dim = 3
   Type = Tri()
   Form = "Sphere"
@@ -473,7 +473,6 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
   NumNodesB = 0
   NumNodesG = 0
   nBar3 = zeros(0,0)
-  nBar = zeros(0,0)
   AdaptGrid = ""
 
   return GridStruct{FT,

@@ -396,13 +396,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     for iT = 1 : NumTr
       @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,
         KoeffDiv,ndrange=ndrangeB)
-#     @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-#       dXdxI,J,M,Glob,ndrange=ndrangeB)
-    end  
-  else  
-    for iT = 1 : NumTr
-      @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-         dXdxI,J,M,Glob,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
     end  
   end  
   if TkePos > 0
@@ -423,8 +416,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeB)
   KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,ndrange=ndrangeB)
   if State == "Dry" || State == "ShallowWater" || State == "Moist"
-#   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
-    KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    if HorLimit  
+      KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+      for iT = 1 : NumTr
+        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+          dXdxI,J,M,Glob,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
+      end  
+    else  
+      KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    end 
   elseif State == "DryEnergy" || State == "MoistEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end
@@ -447,15 +447,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     for iT = 1 : NumTr
       @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
         KoeffDiv,ndrange=ndrangeI)
-    end  
-#   for iT = 1 : NumTr
-#     @views KDivRhoTrUpwind3Kernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-#       dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-#   end  
-  else  
-    for iT = 1 : NumTr
-      @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-        dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil_I,ndrange=ndrangeI)
     end  
   end  
   if TkePos > 0
@@ -480,8 +471,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist"
-#   KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-    KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    if HorLimit  
+      KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+      for iT = 1 : NumTr
+        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
+          dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil_I,ndrange=ndrangeI)
+      end  
+    else  
+      KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    end  
   elseif State == "DryEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end
