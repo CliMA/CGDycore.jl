@@ -112,8 +112,8 @@ end
     JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
     cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
     Flux = eltype(FTr)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
-    @atomic :monotonic FTr[Iz,ind] += -Flux / M[Iz,ind]
-    @atomic :monotonic FTr[Iz+1,ind] += Flux / M[Iz+1,ind]
+    @atomic :monotonic FTr[Iz,ind] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[Iz+1,ind] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
   end 
 
   if Iz <= Nz
@@ -191,7 +191,7 @@ end
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
     @atomic :monotonic FTr[Iz,ind] += (q[I,J,iz] * RhoColS[I,J,iz] - Tr[Iz,ind]) *
-      (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / dt / M[Iz,ind]
+      (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / dt / (M[Iz,ind,1] + M[Iz,ind,2]) 
   end  
 end
 
