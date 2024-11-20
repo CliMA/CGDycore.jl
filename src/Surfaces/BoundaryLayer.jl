@@ -35,9 +35,9 @@ abstract type EddyKoefficient end
 
 Base.@kwdef struct SimpleKoefficient <: EddyKoefficient end
 
-function (profile::SimpleKoefficient)(Param,Phys,uStar)
+function (profile::SimpleKoefficient)(Param,Phys)
   @inline function Eddy(U,Surf,p,dz,LenScale)
-    K = Param.CE * Surf[uStar] * dz / 2
+    K = Param.CE * Surf[uStarPos] * dz / 2
     if p < Param.p_pbl
       dpR = (Param.p_pbl - p) / Param.p_strato
       K = K * exp(-dpR * dpR)
@@ -60,7 +60,7 @@ end
 
 Base.@kwdef struct FriersonKoefficient <: EddyKoefficient end
 
-function (profile::FriersonKoefficient)(Param,Phys,RhoPos,uPos,vPos,ThPos,TS,hBL,uStar,CM,RiBSurf)
+function (profile::FriersonKoefficient)(Param,Phys,RhoPos,uPos,vPos,ThPos,TS,hBL,CM,RiBSurf)
   @inline function Eddy(U,Surf,p,dz)
     FT = eltype(U)
     norm_uh = U[uPos]^2 + U[vPos]^2
@@ -69,16 +69,16 @@ function (profile::FriersonKoefficient)(Param,Phys,RhoPos,uPos,vPos,ThPos,TS,hBL
     zbl = Param.f_b * Surf[hBL]
     if z < zbl
       if Surf[RiBSurf] < FT(0)
-        K = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * z  
+        K = Phys.Karm * Surf[uStarPos] * sqrt(Surf[CM]) * z  
       else
-        K = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * z /
+        K = Phys.Karm * Surf[uStarPos] * sqrt(Surf[CM]) * z /
           (FT(1) + Ri / Param.Ri_C * log(z / Param.zM) / (FT(1) - Ri / Param.Ri_C))
       end    
     elseif z < hBL  
       if Surf[RiBSurf] < FT(0)
-        Kb = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * zbl  
+        Kb = Phys.Karm * Surf[uStarPos] * sqrt(Surf[CM]) * zbl  
       else
-        Kb = Phys.Karm * Surf[uStar] * sqrt(Surf[CM]) * zbl /
+        Kb = Phys.Karm * Surf[uStarPos] * sqrt(Surf[CM]) * zbl /
           (FT(1) + Ri / Param.Ri_C * log(zbl / zM) / (FT(1) - Ri / Param.Ri_C))
       end    
       K = Kb * z / zbl * (FT(1) - (z - zbl) / (h - zbl))^2

@@ -10,6 +10,17 @@ include("solver.jl")
 include("wrfscheme.jl")
 include("functions.jl")
 include("surface.jl")
+include("BoundaryLayer.jl")
+
+TSurfPos = 1
+RhoVSurfPos = 2
+uStarPos = 3
+CMPos = 4
+CTPos = 5
+CHPos = 6
+RiBSurfPos = 7
+hBLPos = 8
+LenSurfaceData = 8
 
 
 mutable struct LandUseData{FT<:AbstractFloat,
@@ -36,37 +47,13 @@ end
 mutable struct SurfaceData{FT<:AbstractFloat,
                            AT2<:AbstractArray}
   Data::AT2                         
-  TS::Int
-  RhoVS::Int
-  uStar::Int
-  CM::Int
-  CT::Int
-  CH::Int
-  RiBSurf::Int
-  hBL::Int
 end
 
 function SurfaceData{FT}(backend,NumG) where FT<:AbstractFloat
-  Data = KernelAbstractions.zeros(backend,FT,8,NumG)
-  TS = 1
-  RhoVS = 2
-  uStar = 3
-  CM = 4
-  CT = 5
-  CH = 6
-  RiBSurf = 7
-  hBL = 8
+  Data = KernelAbstractions.zeros(backend,FT,LenSurfaceData,NumG)
   return SurfaceData{FT,
                      typeof(Data)}(
     Data,                 
-    TS,
-    RhoVS,
-    uStar,
-    CM,
-    CT,
-    CH,
-    RiBSurf,
-    hBL,
   )
 end  
 end

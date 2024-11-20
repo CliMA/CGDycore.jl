@@ -525,11 +525,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end
   if Global.Model.SurfaceFlux
     KSurfaceFluxScalarsKernel! = SurfaceFluxScalarsKernel!(backend,groupS)
-    CT = Global.SurfaceData.CT
-    CH = Global.SurfaceData.CH
-    uStar = Global.SurfaceData.uStar
-    TSurf = Global.SurfaceData.TS
-    RhoVSurf = Global.SurfaceData.RhoVS
     SurfaceFluxRhs! = Global.Model.SurfaceFluxRhs
     KSurfaceFluxScalarsKernel!(SurfaceFluxRhs!,F,U,p,Global.SurfaceData.Data,dz,ndrange=ndrangeS)
   end

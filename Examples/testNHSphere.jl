@@ -360,7 +360,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
     if Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro" ||
       Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
       SurfaceValues, SurfaceFluxValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,
-        Model.vPos,Model.wPos,SD.TS,SD.RhoVS,SD.CM,SD.CT,SD.CH,SD.uStar)
+        Model.vPos,Model.wPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro"   
@@ -369,7 +369,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
       Model.SurfaceFluxValues = SurfaceFluxValues
     elseif Problem == "FriersonSphere" 
       SurfaceValues, SurfaceFluxValues = Surfaces.FriersonSurface()(Phys,Param,Model.RhoPos,Model.uPos,
-        Model.vPos,Model.wPos,Model.ThPos,SD.TS,SD.RhoVS,SD.CM,SD.CT,SD.CH,SD.RiBSurf)
+        Model.vPos,Model.wPos,Model.ThPos)
       Model.SurfaceValues = SurfaceValues
       Model.SurfaceFluxValues = SurfaceFluxValues
     end  
@@ -385,8 +385,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   end  
 end
 if Model.SurfaceFlux
-  Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos,Model.RhoVPos,
-    SD.uStar,SD.CT,SD.CH,SD.TS,SD.RhoVS)  
+  Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos,Model.RhoVPos)  
 end  
 
 #Vertical Diffusion
@@ -394,10 +393,10 @@ if Model.VerticalDiffusion || Model.VerticalDiffusionMom
   if Model.Turbulence
     Model.Eddy = Models.TkeKoefficient()(Param,Phys,TkePos,Model.RhoPos)
   elseif Problem == "FriersonSphere"   
-    Model.Eddy = Models.FriersonKoefficient()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
-      Model.ThPos,SD.TS,SD.hBL,SD.uStar,SD.CM,SD.RiBSurf)
+    Model.Eddy = Surfaces.FriersonKoefficient()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.ThPos)
   else  
-    Model.Eddy = Models.SimpleKoefficient()(Param,Phys,SD.uStar)
+    Model.Eddy = Surfaces.SimpleKoefficient()(Param,Phys)
   end
 end  
 

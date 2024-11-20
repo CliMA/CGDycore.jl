@@ -227,10 +227,9 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
         KEddyCoefficientKernel!(Eddy,KV,U,SurfaceData.Data,p,dz,Glob,ndrange=ndrangeG)
       else    
         NFG = min(div(NumberThreadGPU,N*N),NumF)
-        Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)  
-        Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData,LandUseData,Model,NumberThreadGPU)  
+        Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  
+        Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData.Data,LandUseData,Model,NumberThreadGPU)  
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
-        @show "EddyCoefficientKernel",groupK,ndrangeK
         KEddyCoefficientKernel!(Eddy,KV,U,SurfaceData.Data,p,dz,Glob,ndrange=ndrangeG)
       end
     end  

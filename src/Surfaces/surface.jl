@@ -2,22 +2,22 @@ abstract type SurfaceValues end
 
 Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
-function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos,TS,RhoVS,CM,CT,CH,uStar)
+function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceValues(SD,xS,U,p)
     FT = eltype(xS)
     Lon = xS[1]
     Lat = xS[2]
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     p_vs = Thermodynamics.fpvs(TSurf,Phys.T0)
-    SD[RhoVS] = p_vs / (Phys.Rv * TSurf)
-    SD[TS] = TSurf
+    SD[RhoVSurfPos] = p_vs / (Phys.Rv * TSurf)
+    SD[TSurfPos] = TSurf
   end  
   @inline function SurfaceFluxValues(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
-    SD[uStar] = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
-    SD[CM] = FT(Param.CM)
-    SD[CT] = FT(Param.CE)
-    SD[CH] = FT(Param.CH)
+    SD[uStarPos] = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    SD[CMPos] = FT(Param.CM)
+    SD[CTPos] = FT(Param.CE)
+    SD[CHPos] = FT(Param.CH)
   end
   return SurfaceValues, SurfaceFluxValues
 end  
@@ -45,28 +45,28 @@ end
 
 Base.@kwdef struct FriersonSurface <: SurfaceValues end
 
-function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos,TS,RhoVS,CM,CT,CH,RibSurf)
+function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
   @inline function SurfaceValues!(SD,xS,U,p)
     FT = eltype(SD)
     Lat = xS[2] 
-    SD[TS] = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
-    SD[RhoVS] = FT(0)
+    SD[TSurfPos] = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
+    SD[RhoVSurfPos] = FT(0)
   end
   @inline function SurfaceFluxValues!(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
     norm_uh = U[uPos]^2 + U[vPos]^2
     Th = U[ThPos] / U[RhoPos]
-    SD[RiBSurf] = Phys.Grav * z * (Th - SD[TS]) / SD[TS] / norm_uh
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    SD[RiBSurfPos] = Phys.Grav * z * (Th - SD[TS]) / SD[TS] / norm_uh
+    SD[uStarPos] = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     if RiBSurf < FT(0)
-      SD[CM] = Phys.Karman^2 / log(z / Param.z_0)^2  
+      SD[CMPos] = Phys.Karman^2 / log(z / Param.z_0)^2  
     elseif RiBSurf < Param.Ri_C
-      SD[CM] = Phys.Karman^2 / log(z / Param.z_0)^2 * (FT(1) - SD[RiBSurf] / Param.Ri_C)
+      SD[CMPos] = Phys.Karman^2 / log(z / Param.z_0)^2 * (FT(1) - SD[RiBSurf] / Param.Ri_C)
     else
-      SD[CM] = FT(0)
+      SD[CMPos] = FT(0)
     end  
-    SD[CT] = SD[CM]
-    SD[CH] = SD[CM]
+    SD[CTPos] = SD[CMPos]
+    SD[CHPos] = SD[CMPos]
   end
   return SurfaceValues!, SurfaceFluxValues!
 end
@@ -153,7 +153,7 @@ function SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)
   KernelAbstractions.synchronize(backend)
 end
 
-function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos,uStar,CT,CH,TSurf,RhoVSurf)
+function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos)
   @inline function SurfaceFlux!(FU,U,p,dz,SD)
     FT = eltype(U)
     Rho = U[RhoPos]
@@ -163,8 +163,8 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos,uStar,CT,CH,TSurf,RhoVSurf)
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
     T = p / Rm
-    LatFlux = -SD[CT] * SD[uStar] * (RhoV - SD[RhoVSurf])
-    SensFlux = -SD[CH] * SD[uStar] * (T - SD[TSurf])
+    LatFlux = -SD[CTPos] * SD[uStarPos] * (RhoV - SD[RhoVSurfPos])
+    SensFlux = -SD[CHPos] * SD[uStarPos] * (T - SD[TSurfPos])
     FRho = LatFlux
     FRhoV = LatFlux
     PrePi=(p / Phys.p0)^(Rm / Cpml)
@@ -177,7 +177,7 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos,uStar,CT,CH,TSurf,RhoVSurf)
   return SurfaceFlux!
 end     
 function SurfaceFlux(Phys,Param,ThPos,RhoPos)
-  @inline function SurfaceFlux!(FU,U,p,dz,uStar,CT,CH,TSurf,RhoVSurf)
+  @inline function SurfaceFlux!(FU,U,p,dz,SD)
     FT = eltype(U)
     Rho = U[RhoPos]
     RhoTh = U[ThPos]
@@ -185,7 +185,7 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos)
     Rm = Phys.Rd * RhoD 
     Cpml = Phys.Cpd * RhoD 
     T = p / Rm
-    SensFlux = -CH * uStar * (T - TSurf)
+    SensFlux = -CH * SD[uStarPos] * (T - TSurf)
     PrePi=(p / Phys.p0)^(Rm / Cpml)
     FRhoTh = RhoTh * SensFlux / T 
     FU[ThPos] += FRhoTh  / dz
