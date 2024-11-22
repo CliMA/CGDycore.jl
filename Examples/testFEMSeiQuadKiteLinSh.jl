@@ -141,17 +141,24 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 RefineLevel = 5
-RadEarth = 1.0
 nz = 1
-nPanel = 40
+nPanel = 80
+nLat = 0
+nLon = 0
+LatB = 0.0
+ns = 40
 nQuadM = 4 #2
 nQuadS = 4 #3
+nQuad = 4 #3
 Decomp = "EqualArea"
 Problem = "LinearBlob"
 RadEarth = 1.0
-dtau = 0.00025
-nAdveVel = 100
-@show nAdveVel
+uMax = 1.0
+dtau = 2*pi*RadEarth/4/nPanel/uMax*0.1
+EndTime = 2 * pi
+nAdveVel = ceil(EndTime / dtau)
+nAdveVel = 1000
+@show dtau,nAdveVel
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
@@ -160,15 +167,15 @@ GridType = "CubedSphere"
 #GridType = "TriangularSphere"
 ChangeOrient=2
 if GridType == "TriangularSphere"
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,
-    RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLat,nLon,LatB,
+    RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
 else  
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,
-    RadEarth,Model,ParallelCom;order=false)
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLat,nLon,LatB,
+    RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom;order=false)
 end  
 
 Grid = Grids.Grid2KiteGrid(backend,FTB,GridC,Grids.OrientFaceSphere)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 CG1KiteP = FEMSei.CG1KitePrimalStruct{FTB}(Grids.Quad(),backend,Grid)
 CG1KiteDHDiv = FEMSei.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)

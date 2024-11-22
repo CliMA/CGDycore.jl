@@ -631,12 +631,7 @@ function (::HeldSuarezMoistExample)(Param,Phys)
     DeltaT =  kT * (T - Teq)
     F[5]  += - U[5] / T * DeltaT 
   end
-  @inline function TSurf(x)
-    FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    TS = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
-  end
-  return profile, Force, TSurf
+  return profile, Force
 end
 
 Base.@kwdef struct SchaerSphereExample <: Example end

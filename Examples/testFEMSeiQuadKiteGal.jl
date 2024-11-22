@@ -166,7 +166,7 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Tri
 GridType = "CubedSphere"
-GridType = "DelaunaySphere"
+#GridType = "DelaunaySphere"
 ns=50
 ChangeOrient=2
 if GridType == "TriangularSphere"

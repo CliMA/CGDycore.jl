@@ -12,15 +12,15 @@ include("functions.jl")
 include("surface.jl")
 include("BoundaryLayer.jl")
 
-TSurfPos = 1
-RhoVSurfPos = 2
-uStarPos = 3
-CMPos = 4
-CTPos = 5
-CHPos = 6
-RiBSurfPos = 7
-hBLPos = 8
-LenSurfaceData = 8
+global const TSurfPos = 1
+global const RhoVSurfPos = 2
+global const uStarPos = 3
+global const CMPos = 4
+global const CTPos = 5
+global const CHPos = 6
+global const RiBSurfPos = 7
+global const hBLPos = 8
+global const LenSurfaceData = 8
 
 
 mutable struct LandUseData{FT<:AbstractFloat,

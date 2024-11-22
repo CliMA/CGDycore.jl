@@ -163,8 +163,8 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos)
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
     T = p / Rm
-    LatFlux = -SD[CTPos] * SD[uStarPos] * (RhoV - SD[RhoVSurfPos])
-    SensFlux = -SD[CHPos] * SD[uStarPos] * (T - SD[TSurfPos])
+    LatFlux = -SD[CHPos] * SD[uStarPos] * (RhoV - SD[RhoVSurfPos])
+    SensFlux = -SD[CTPos] * SD[uStarPos] * (T - SD[TSurfPos])
     FRho = LatFlux
     FRhoV = LatFlux
     PrePi=(p / Phys.p0)^(Rm / Cpml)
@@ -185,7 +185,7 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos)
     Rm = Phys.Rd * RhoD 
     Cpml = Phys.Cpd * RhoD 
     T = p / Rm
-    SensFlux = -CH * SD[uStarPos] * (T - TSurf)
+    SensFlux = -SD[CTPos] * SD[uStarPos] * (T - SD[TSurfPos])
     PrePi=(p / Phys.p0)^(Rm / Cpml)
     FRhoTh = RhoTh * SensFlux / T 
     FU[ThPos] += FRhoTh  / dz
