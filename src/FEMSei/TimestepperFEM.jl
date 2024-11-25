@@ -15,12 +15,10 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   VelSp = zeros(Grid.NumFaces,2)
   pC = zeros(Grid.NumFaces)
   uCurl = zeros(Model.DG.NumG)
-  @show typeof(Model.DG)
   ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi!)
   ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
   ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!)
   Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
-  stop
 
   time = 0.0
   UNew = similar(U)
@@ -30,6 +28,12 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   for i = 1 : nAdveVel
     @show i,time  
     Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
+      ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi!)
+      ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi)
+      ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi)
+      FileNumber += 1
+      Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
+      stop
     @. UNew = U + 1/3 * dtau * F
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
     @. UNew = U + 1/2 * dtau * F

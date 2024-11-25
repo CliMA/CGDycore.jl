@@ -178,7 +178,6 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   xP, w = gaussradau(2)
   xP .= -xP
-  @show xP
   lx0 = (x - xP[2])/(xP[1] - xP[2])
   lx1 = (x - xP[1])/(xP[2] - xP[1])
   ly0 = (y - xP[2])/(xP[1] - xP[2])

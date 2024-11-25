@@ -141,6 +141,10 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 RefineLevel = 6
+nLon = 0
+nLat = 0
+LatB = 0
+ns = 20
 RadEarth = 1.0
 nz = 1
 nPanel = 80
@@ -160,15 +164,15 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 #Tri
 GridType = "CubedSphere"
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
-  Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,
+  RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 
 
-DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
-ND = FEMSei.Nedelec1Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
+ND = FEMSei.Nedelec0Struct{FTB}(Grids.Quad(),backend,Grid)
 
-ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,FEMSei.Jacobi!)
+ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,nQuad,FEMSei.Jacobi!)
 
 
 pPosS = ModelFEM.pPosS
@@ -179,9 +183,20 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
 
-FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Interpolate!(backend,FTB,Uu,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Project!(backend,FTB,Up,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+
+FEMSei.CurlVel(Up,DG,Uu,RT,nQuad,Grids.Quad(),Grid)
+@show sum(abs.(Uu))
+@show sum(abs.(Up))
+VelSp = zeros(Grid.NumFaces,2)
+Flat = false
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, "CurlDirekt", Proc, ProcNumber, [Up VelSp], 200)
+stop
 
 
+@show "Hallo"
 FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.Fcn2!,ModelFEM,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!,nAdveVel,GridType,Proc,ProcNumber)
 

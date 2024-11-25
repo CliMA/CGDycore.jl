@@ -50,6 +50,8 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
     Grid,RT.Type,QuadOrdM,Jacobi)
   mul!(UCachep,Curl,UCacheu)
   ldiv!(DG.LUM,UCachep)
+  @. Up = UCachep
+  return
   CrossRhs!(backend,FTB,Fu,UCachep,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
   GradKinHeight!(backend,FTB,Fu,Up,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
   ldiv!(RT.LUM,Fu)

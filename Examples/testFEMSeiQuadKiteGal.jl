@@ -147,15 +147,15 @@ Model = DyCore.ModelStruct{FTB}()
 RefineLevel = 5
 RadEarth = 1.0
 nz = 1
-nPanel = 80
-nQuad = 1
+nPanel = 40
+nQuad = 4
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
 RadEarth = Phys.RadEarth
-dtau = 20
+dtau = 40
 nAdveVel = ceil(Int,1.0*3600/dtau)
 nAdveVel = 8000
-nAdveVel = 1
+nAdveVel = 10
 @show nAdveVel
 #Problem = "LinearBlob"
 #RadEarth = 1.0
@@ -170,16 +170,14 @@ GridType = "CubedSphere"
 ns=50
 ChangeOrient=2
 if GridType == "TriangularSphere"
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,
-    RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,
+    RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom;order=false,ChangeOrient=2)
 else  
-  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,
-    RadEarth,Model,ParallelCom;order=false)
+  GridC, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,
+    RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom;order=false)
 end  
 
-@show "vor KiteGrid"
 Grid = Grids.Grid2KiteGrid(backend,FTB,GridC,Grids.OrientFaceSphere)
-@show "nach KiteGrid"
 Flat = false
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 

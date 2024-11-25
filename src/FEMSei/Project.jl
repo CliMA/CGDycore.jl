@@ -9,7 +9,7 @@ function Interpolate!(backend,FTB,uN,Fe::HDivConfElement,Grid,QuadOrd,Jacobi,F)
     _,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
     lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
     VelCa = VelSphere2Cart(VelSp,lon,lat)
-    uN[iE] = Grid.Edges[iE].a * (Grid.Edges[iE].n.x * VelCa[1] +   
+    uN[iE] = 0.5 * Grid.Edges[iE].a * (Grid.Edges[iE].n.x * VelCa[1] +   
       Grid.Edges[iE].n.y * VelCa[2] + Grid.Edges[iE].n.z * VelCa[3])  
   end  
 end
@@ -375,19 +375,19 @@ end
 
 function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
   uDiv,FeF::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
+  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   fFRef  = zeros(FeF.Comp,FeF.DoF,length(Weights))
 
   @. uCurl = 0
-  @inbounds for i = 1 : length(Weights)
+  @inbounds for i = 1 : NumQuad
     @inbounds for iComp = 1 : Fe.Comp
       @inbounds for iD = 1 : Fe.DoF
         fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
       end
     end
   end
-  @inbounds for i = 1 : length(Weights)
+  @inbounds for i = 1 : NumQuad
     @inbounds for iComp = 1 : FeF.Comp
       @inbounds for iD = 1 : FeF.DoF
         fFRef[iComp,iD,i] = FeF.phi[iD,iComp](Points[i,1],Points[i,2])
@@ -399,23 +399,23 @@ function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
 
   @inbounds for iF = 1 : Grid.NumFaces
     @. uCurlLoc = 0
-    for iDoF = 1 : FeF.DoF
+    @inbounds for iDoF = 1 : FeF.DoF
       ind = FeF.Glob[iDoF,iF]  
       uuF[iDoF] = uDiv[ind]
     end  
-    for i = 1 : length(Weights)
+    @inbounds for i = 1 : length(Weights)
       fFRefLoc1 = 0.0
       fFRefLoc2 = 0.0
-      for iDoF = 1 : FeF.DoF
+      @inbounds for iDoF = 1 : FeF.DoF
         fFRefLoc1 += fFRef[1,iDoF,i] * uuF[iDoF]  
         fFRefLoc2 += fFRef[2,iDoF,i] * uuF[iDoF]  
       end  
-      for iDoF = 1 : Fe.DoF
+      @inbounds for iDoF = 1 : Fe.DoF
         uCurlLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[i] * (fRef[1,iDoF,i] * fFRefLoc1 +
           fRef[2,iDoF,i] * fFRefLoc2)
       end  
     end
-    for iDoF = 1 : Fe.DoF
+    @inbounds for iDoF = 1 : Fe.DoF
       ind = Fe.Glob[iDoF,iF]  
       uCurl[ind] += uCurlLoc[iDoF]
     end  
@@ -460,7 +460,7 @@ function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  @time @inbounds for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     @. huDivLoc = 0
     for iDoF = 1 : uFeF.DoF
       ind = uFeF.Glob[iDoF,iF]  
@@ -685,7 +685,7 @@ function ProjectVectorScalarVectorHDiv(backend,FTB,u,Fe::VectorElement,
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  @time @inbounds for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     @. uLoc = 0
     for iDoF = 1 : huFeF.DoF
       ind = huFeF.Glob[iDoF,iF]  

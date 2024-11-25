@@ -630,19 +630,19 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfEl
   DivfTRef  = zeros(hFeF.Comp,FeT.DoF,length(Weights))
 
 
-  for iQ = 1 : NumQuad
-    for iComp = 1 : hFeF.Comp
-      for iD = 1 : FeT.DoF
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iComp = 1 : hFeF.Comp
+      @inbounds for iD = 1 : FeT.DoF
         DivfTRef[iComp,iD,iQ] = FeT.Divphi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
-    for iComp = 1 : uFeF.Comp
-      for iD = 1 : uFeF.DoF
+    @inbounds for iComp = 1 : uFeF.Comp
+      @inbounds for iD = 1 : uFeF.DoF
         uFRef[iComp,iD,iQ] = uFeF.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
-    for iComp = 1 : hFeF.Comp
-      for iD = 1 : hFeF.DoF
+    @inbounds for iComp = 1 : hFeF.Comp
+      @inbounds for iD = 1 : hFeF.DoF
         hFRef[iComp,iD,iQ] = hFeF.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
@@ -657,20 +657,20 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfEl
 
   @inbounds for iF = 1 : Grid.NumFaces
     GradLoc .= 0
-    for iDoF = 1 : uFeF.DoF
+    @inbounds for iDoF = 1 : uFeF.DoF
       ind = uFeF.Glob[iDoF,iF]  
       uLoc[iDoF] = u[ind]
     end  
-    for iDoF = 1 : hFeF.DoF
+    @inbounds for iDoF = 1 : hFeF.DoF
       ind = hFeF.Glob[iDoF,iF]  
       hLoc[iDoF] = h[ind]
     end  
-    for iQ = 1 : length(Weights)
+    @inbounds for iQ = 1 : NumQuad
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
       u1 = 0.0
       u2 = 0.0
-      for iDoF = 1 : uFeF.DoF
+      @inbounds for iDoF = 1 : uFeF.DoF
         u1 += uFRef[1,iDoF,iQ] * uLoc[iDoF]
         u2 += uFRef[2,iDoF,iQ] * uLoc[iDoF]
       end  
@@ -678,14 +678,14 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfEl
       uLoc2 = 1 / detDFLoc * (DF[2,1] * u1 + DF[2,2] * u2)
       uLoc3 = 1 / detDFLoc * (DF[3,1] * u1 + DF[3,2] * u2)
       hhLoc = 0.5 * (uLoc1 * uLoc1 + uLoc2 * uLoc2 + uLoc3 * uLoc3)
-      for iDoF = 1 : hFeF.DoF
+      @inbounds for iDoF = 1 : hFeF.DoF
         hhLoc += hFRef[1,iDoF,iQ] * Grav * hLoc[iDoF]
       end  
-      for iDoF = 1 : FeT.DoF
+      @inbounds for iDoF = 1 : FeT.DoF
         GradLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[iQ] * DivfTRef[1,iDoF,iQ] * hhLoc
       end  
     end
-    for iDoF = 1 : FeT.DoF
+    @inbounds for iDoF = 1 : FeT.DoF
       ind = FeT.Glob[iDoF,iF]  
       Rhs[ind] += GradLoc[iDoF]
     end  
@@ -702,7 +702,7 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDE
   fTRef  = zeros(hFeF.Comp,FeT.DoF,length(Weights))
   uFRef  = zeros(uFeF.Comp,uFeF.DoF,length(Weights))
 
-  for iQ = 1 : length(Weights)
+  for iQ = 1 : NumQuad
     for iComp = 1 : hFeF.Comp
       for iDoF = 1 : FeT.DoF
         fTRef[iComp,iDoF,iQ] = FeT.Divphi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
@@ -726,7 +726,7 @@ function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDE
   hFRefY  = zeros(hFeF.Comp,hFeF.DoF,length(WeightsL))
   uFRefX  = zeros(uFeF.Comp,uFeF.DoF,length(WeightsL))
   uFRefY  = zeros(uFeF.Comp,uFeF.DoF,length(WeightsL))
-  for iQ = 1 : length(WeightsL)
+  for iQ = 1 : NumQuadL
     for iComp = 1 : hFeF.Comp
       for iDoF = 1 : hFeF.DoF
         hFRefX[iComp,iDoF,iQ] = hFeF.phi[iDoF,iComp](-1.0,PointsL[iQ])
@@ -880,7 +880,7 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,
   hFLocX = zeros(NumQuadL)
   hFLocY = zeros(NumQuadL)
 
-  @time for iF = 1 : Grid.NumFaces
+  for iF = 1 : Grid.NumFaces
     @. uFLoc = 0 
     @. uFLocX = 0 
     @. uFLocY = 0 
@@ -1065,6 +1065,7 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   fTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
 
+  @show "CrossRhs 2"
   for iQ = 1 : NumQuad
     for iComp = 1 : FeT.Comp
       for iD = 1 : FeT.DoF
@@ -1083,7 +1084,7 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
   X = zeros(3)
   Omega = 2 * pi / 24.0 / 3600.0
 
-  @time @inbounds for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     @. CrossLoc = 0
     for iDoF = 1 : uFeF.DoF
       ind = uFeF.Glob[iDoF,iF]  
@@ -1130,14 +1131,14 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
   qFFRef  = zeros(qFeF.Comp,qFeF.DoF,NumQuad)
   fTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
 
-  for iQ = 1 : NumQuad
-    for iComp = 1 : FeT.Comp
-      for iD = 1 : FeT.DoF
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iComp = 1 : FeT.Comp
+      @inbounds for iD = 1 : FeT.DoF
         fTRef[iComp,iD,iQ] = FeT.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
-    for iComp = 1 : qFeF.Comp
-      for iD = 1 : qFeF.DoF
+    @inbounds for iComp = 1 : qFeF.Comp
+      @inbounds for iD = 1 : qFeF.DoF
         qFFRef[iComp,iD,iQ] = qFeF.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
@@ -1158,20 +1159,20 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
 
   @inbounds for iF = 1 : Grid.NumFaces
     @. CrossLoc = 0
-    for iDoF = 1 : uFeF.DoF
+    @inbounds for iDoF = 1 : uFeF.DoF
       ind = uFeF.Glob[iDoF,iF]  
       uLoc[iDoF] = u[ind]
     end  
-    for iDoF = 1 : qFeF.DoF
+    @inbounds for iDoF = 1 : qFeF.DoF
       ind = qFeF.Glob[iDoF,iF]  
       qLoc[iDoF] = q[ind]
     end  
-    for iQ = 1 : NumQuad
+    @inbounds for iQ = 1 : NumQuad
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc[iQ] = detDF[1]
       uFLoc1 = 0.0
       uFLoc2 = 0.0
-      for iDoF = 1 : uFeF.DoF
+      @inbounds for iDoF = 1 : uFeF.DoF
         uFLoc1 += uFFRef[1,iDoF,iQ] * uLoc[iDoF]
         uFLoc2 += uFFRef[2,iDoF,iQ] * uLoc[iDoF]
       end
@@ -1189,15 +1190,15 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
       cu2 = (DF[1,2] * kcru1 + DF[2,2] * kcru2 + DF[3,2] * kcru3)
       sinlat = k3
       qFLoc = 2 * Omega * sinlat
-      for iDoF = 1 : qFeF.DoF
+      @inbounds for iDoF = 1 : qFeF.DoF
         qFLoc += qFFRef[1,iDoF,iQ] * qLoc[iDoF]
       end
-      for iDoF = 1 : FeT.DoF
+      @inbounds for iDoF = 1 : FeT.DoF
         CrossLoc[iDoF] -=  Weights[iQ] * qFLoc * (fTRef[1,iDoF,iQ] * cu1 +
           fTRef[2,iDoF,iQ] * cu2) / detDFLoc[iQ]
       end    
     end  
-    for iDoF = 1 : FeT.DoF
+    @inbounds for iDoF = 1 : FeT.DoF
       ind = FeT.Glob[iDoF,iF]
       Cross[ind] += CrossLoc[iDoF]
     end

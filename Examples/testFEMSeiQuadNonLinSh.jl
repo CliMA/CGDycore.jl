@@ -140,6 +140,10 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
+nLon = 0
+nLat = 0
+LatB = 0
+ns = 20
 RefineLevel = 6
 nz = 1
 nPanel = 40
@@ -184,13 +188,13 @@ println("The chosen Problem is ")
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,GridType,Decomp,RadEarth,
-  Model,ParallelCom)
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,
+  RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
 
 
-DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
-ND = FEMSei.Nedelec1Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
+ND = FEMSei.Nedelec0Struct{FTB}(Grids.Quad(),backend,Grid)
 
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
 
@@ -202,7 +206,10 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
 
-FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+#FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.Interpolate!(backend,FTB,Uu,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
+@show sum(abs.(Up))
+@show sum(abs.(Uu))
 
 FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,GridTypeOut,Proc,ProcNumber)
