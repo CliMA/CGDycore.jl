@@ -17,5 +17,6 @@ export LD_PRELOAD=/opt/cray/pe/mpich/8.1.29/gtl/lib/libmpi_gtl_cuda.so.0
 
 export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
+export machine="derecho"
 
-mpiexec -n 1  ./Jobs/NHSphere/BaroWaveDrySphere_32Elem
+mpiexec -n 2 -ppn 2 set_gpu_rank ./Jobs/NHSphere/BaroWaveDrySphere_32Elem
