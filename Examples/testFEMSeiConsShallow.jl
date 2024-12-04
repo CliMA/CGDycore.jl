@@ -166,10 +166,17 @@ if  a == 1
     Problem = "GalewskiSphere"
     Param = Examples.Parameters(FTB,Problem)
     RadEarth = Phys.RadEarth
-    dtau = 30
-    nAdveVel = 100 #ceil(Int,6*24*3600/dtau)
+    GridLength = Grids.GridLength(Grid)
+    cS = sqrt(Phys.Grav * Param.H0G)
+    dtau = GridLength / cS * 0.1
+    EndTime = 24 * 3600 # One day
+    nAdveVel = round(EndTime / dtau)
+    dtau = EndTime / nAdveVel
+    nprint = ceil(nAdveVel/50)
     GridTypeOut = GridType*"NonLinShallowGal"
     @show nAdveVel
+    @show dtau
+    @show nprint
 elseif  a == 2
     Problem = "HaurwitzSphere"
     Param = Examples.Parameters(FTB,Problem)
@@ -187,9 +194,6 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 #Grid construction
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLat,nLon,LatB,GridType,Decomp,RadEarth,
   Model,ParallelCom)
-for iE = 1 : Grid.NumEdges
-  Grids.PosEdgeInFace!(Grid.Edges[iE],Grid.Edges,Grid.Faces)
-end
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #finite elements
@@ -227,15 +231,15 @@ uRec = zeros(FTB,VecDG.NumG)
 
 FEMSei.InterpolateCons!(backend,FTB,Uhu,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.Project!(backend,FTB,Uh,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uVecDG,VecDG,h,DG,Uhu,RT,Grid,Grids.Quad(),
-  nQuad,FEMSei.Jacobi!)
 # Output of the initial values
 FileNumber=0
 VelSp = zeros(Grid.NumFaces,2)
-FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uhu,RT,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [Uh VelSp] ,FileNumber)
 
+nprint = 10
 for i = 1 : nAdveVel
+  @show i,(i-1)*dtau/3600  
   @. F = 0  
   # Tendency h
   FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
@@ -263,8 +267,8 @@ for i = 1 : nAdveVel
 
   if mod(i,nprint) == 0 
     global FileNumber += 1
-    FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,hu,RT,Grid,FEMSei.Jacobi!)
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [h VelSp] ,FileNumber)
+    FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [Uh VelSp] ,FileNumber)
   end
 end
 @show "finished"

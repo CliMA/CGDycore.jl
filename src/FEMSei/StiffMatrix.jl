@@ -878,7 +878,7 @@ function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,
   hFLocX = zeros(NumQuadL)
   hFLocY = zeros(NumQuadL)
 
-  @time for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     @. uFLoc = 0 
     @. uFLocX = 0 
     @. uFLocY = 0 
@@ -1081,7 +1081,7 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
   X = zeros(3)
   Omega = 2 * pi / 24.0 / 3600.0
 
-  @time @inbounds for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     @. CrossLoc = 0
     for iDoF = 1 : uFeF.DoF
       ind = uFeF.Glob[iDoF,iF]  
@@ -1412,7 +1412,8 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       end 
       @inbounds for iQ = 1:length(WeightsL)
         @inbounds for iD = 1 : FeHDiv.DoF
-          @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*(uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL)+uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR))
+          @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*(uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL) +
+            uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR))
         end
       end
       #upwind value
@@ -1469,11 +1470,11 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       #all together over edges
       @inbounds for iD = 1 : FeTHDiv.DoF
         indL = FeTHDiv.Glob[iD,iFL] 
-        @views Rhs[indL] += (+0.5 - gammaLoc) * MLoc11[iD,:]' * uHDivLocLeft
+        @views Rhs[indL] += (-0.5 - gammaLoc) * MLoc11[iD,:]' * uHDivLocLeft
         @views Rhs[indL] += (-0.5 + gammaLoc) * MLoc12[iD,:]' * uHDivLocRight
         indR = FeTHDiv.Glob[iD,iFR] 
         @views Rhs[indR] += (+0.5 + gammaLoc) * MLoc21[iD,:]' * uHDivLocLeft
-        @views Rhs[indR] += (-0.5 - gammaLoc) * MLoc22[iD,:]' * uHDivLocRight
+        @views Rhs[indR] += (+0.5 - gammaLoc) * MLoc22[iD,:]' * uHDivLocRight
       end
     end
   end

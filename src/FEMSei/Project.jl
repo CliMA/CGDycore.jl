@@ -116,7 +116,7 @@ function InterpolateCons!(backend,FTB,uN,Fe::HDivConfElement,Grid,QuadOrd,Jacobi
     h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
     lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
     VelCa = VelSphere2Cart(VelSp,lon,lat) * h
-    uN[iE] = Grid.Edges[iE].a * (Grid.Edges[iE].n.x * VelCa[1] +   
+    uN[iE] = -0.5 * Grid.Edges[iE].a * (Grid.Edges[iE].n.x * VelCa[1] +   
       Grid.Edges[iE].n.y * VelCa[2] + Grid.Edges[iE].n.z * VelCa[3])  
   end  
 end

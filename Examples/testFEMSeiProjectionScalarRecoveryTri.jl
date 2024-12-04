@@ -152,7 +152,7 @@ LatB = 0.0
 
 #Quad
 GridType = "TriangularSphere"
-GridType = "CubedSphere"
+#GridType = "CubedSphere"
 nPanel =  80
 #GridType = "HealPix"
 ns = 57

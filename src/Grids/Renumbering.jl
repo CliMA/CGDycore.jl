@@ -8,7 +8,6 @@ function Reordering!(Grid)
 end
 
 function Renumbering!(Edges,Faces)
-  @show "Renumbering"
   for iF = 1 : size(Faces,1)
     RenumberingFace4!(Faces[iF],Edges)
   end
