@@ -1,6 +1,6 @@
 Base.@kwdef struct ParamGalewskiSphere
   H0G = 10000.0
-  hH = 120.0
+  hH = 0.0 #120.0 OSWALD
   alphaG = 1.0/3.0
   betaG = 1.0/15.0
   lat0G = pi/7.0

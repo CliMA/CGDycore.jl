@@ -396,8 +396,8 @@ function CircumCenterPoint(Face)
 end
 
 function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
-  nBar=[ 0  -1  1
-        -1  -1  0]
+  nBar=[ 0  1  1
+        -1  1  0]
   Dim = 3
   Type = Tri()
   Form = "Sphere"
@@ -620,13 +620,15 @@ end
 
 function TriangularGrid(backend,FT,RefineLevel,RadEarth,nz;ChangeOrient=3)
 
-  IcosahedronGrid = Grids.CreateIcosahedronGrid()
+  IcosahedronGrid = CreateIcosahedronGrid()
   for iRef = 1 : RefineLevel
-    Grids.RefineEdgeTriangularGrid!(IcosahedronGrid)
-    Grids.RefineFaceTriangularGrid!(IcosahedronGrid)
+    RefineEdgeTriangularGrid!(IcosahedronGrid)
+    RefineFaceTriangularGrid!(IcosahedronGrid)
   end
-  Grids.NumberingTriangularGrid!(IcosahedronGrid)
-  Grids.TriangularGridToGrid(backend,FT,IcosahedronGrid,RadEarth,nz;ChangeOrient=ChangeOrient)
+  NumberingTriangularGrid!(IcosahedronGrid)
+  Grid = TriangularGridToGrid(backend,FT,IcosahedronGrid,RadEarth,nz;ChangeOrient=ChangeOrient)
+# OrientTriangle(Grid)
+  return Grid
 end  
 
 function DelaunayGrid(backend,FT,RefineLevel,RadEarth,nz)

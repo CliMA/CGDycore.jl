@@ -147,7 +147,7 @@ LatB = 0
 ns = 20
 RadEarth = 1.0
 nz = 1
-nPanel = 80
+nPanel = 160
 nQuad = 4
 Decomp = "EqualArea"
 Problem = "GalewskiSphere"
@@ -198,9 +198,9 @@ end
 
 
 
-DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
-ND = FEMSei.Nedelec0Struct{FTB}(Grids.Quad(),backend,Grid)
+DG = FEMSei.DG1Struct{FTB}(Grids.Quad(),backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grids.Quad(),backend,Grid)
+ND = FEMSei.Nedelec1Struct{FTB}(Grids.Quad(),backend,Grid)
 
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuad,nQuad,FEMSei.Jacobi!)
 
@@ -214,21 +214,13 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Uu = U[uPosS:uPosE]
 
 FEMSei.Interpolate!(backend,FTB,Uu,RT,Grids.Quad(),Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-#FEMSei.Project!(backend,FTB,Uu,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.Project!(backend,FTB,Up,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 
-#FEMSei.CurlVelFun(Up,DG,Uu,RT,0,Grids.Quad(),Grid,Model.InitialProfile)
-#FEMSei.CurlVelSimple(Up,DG,Uu,RT,0,Grids.Quad(),Grid,Model.InitialProfile)
-FEMSei.CurlVel(Up,DG,Uu,RT,nQuad,Grids.Quad(),Grid)
-@show sum(abs.(Uu))
-@show sum(abs.(Up))
 VelSp = zeros(Grid.NumFaces,2)
 VelCa = zeros(Grid.NumFaces,3)
 Flat = false
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
 FEMSei.ConvertVelocityCart!(backend,FTB,VelCa,Uu,RT,Grid,FEMSei.Jacobi!)
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, "CurlDirekt", Proc, ProcNumber, [Up VelCa], 200)
 
 UCacheu = zeros(ND.NumG)
 UCachep = zeros(DG.NumG)

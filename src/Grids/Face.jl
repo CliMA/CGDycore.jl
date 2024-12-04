@@ -159,8 +159,10 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",
     iE = F.E[i]  
     if Edges[iE].N[1] == F.N[i]
       F.OrientE[i] = F.Orientation
+      F.OrientE[i] = 1
     else
       F.OrientE[i] = -F.Orientation
+      F.OrientE[i] = -1
     end  
   end  
   return F, Edges

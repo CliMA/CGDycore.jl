@@ -1,4 +1,4 @@
-function GridLength(Grid,::Grids.Quad) 
+function GridLength(Grid) 
   Faces = Grid.Faces
   LengthLoc = 0
   for iF = 1 : Grid.NumFaces

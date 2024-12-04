@@ -76,5 +76,6 @@ include("GridLength.jl")
 include("QuadGrid.jl")
 include("HealpixGrid.jl")
 include("TestGrid.jl")
+include("OrientTriangle.jl")
 
 end

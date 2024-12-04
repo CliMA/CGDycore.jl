@@ -1,4 +1,5 @@
 function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
+  @show "ConstructSubGridGhost"
   backend = get_backend(GlobalGrid.z)
   FT = eltype(GlobalGrid.z)
 
@@ -199,6 +200,9 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
     end
     Faces[iF].Stencil = zeros(Int,iS)
     Faces[iF].Stencil .= StencilLoc[1:iS]
+  end
+  for iE = 1 : length(Edges)
+    PosEdgeInFace!(Edges[iE],Edges,Faces)
   end
 
   H = GlobalGrid.H

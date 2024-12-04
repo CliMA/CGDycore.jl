@@ -1,4 +1,5 @@
 function ConstructSubGrid(GlobalGrid,Proc,ProcNumber;order=true)
+  @show "ConstructSubGrid"
   backend = get_backend(GlobalGrid.z)
   FT = eltype(GlobalGrid.z)
 

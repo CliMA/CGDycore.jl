@@ -127,7 +127,7 @@ elseif JuliaDevice == "GPU"
   if JuliaGPU == "CUDA"
     backend = CUDABackend()
     CUDA.allowscalar(false)
-    if machine == "levante"
+    if machine == "levante" || machine == "derecho"
     else
        CUDA.device!(Proc-1)
     end

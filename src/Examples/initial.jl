@@ -75,6 +75,7 @@ function (profile::AdvectionSphereSpherical)(Param,Phys)
     else
       Tr1 = 0.0 + 1.0
     end
+#   Tr1 = 1.0
     return (RhoZ,uS,vS,w,Tr1)
   end
   return local_profile

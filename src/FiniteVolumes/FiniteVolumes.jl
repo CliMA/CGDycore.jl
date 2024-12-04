@@ -49,5 +49,6 @@ include("TangentialRec.jl")
 include("Curl.jl")
 include("Advection.jl")
 include("FcnFV.jl")
+include("AdvectionUpwind.jl")
 
 end

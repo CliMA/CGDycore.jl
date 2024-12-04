@@ -85,7 +85,7 @@ function Edge(NodesE,Nodes,PosG,PosI,Type,PosT=nothing;Form="Cart",Rad=1.0)
   t[1] = E.t.x
   t[2] = E.t.y
   t[3] = E.t.z
-  n = LinearAlgebra.cross(k,t)
+  n = LinearAlgebra.cross(t,k)
   E.n.x = n[1]
   E.n.y = n[2]
   E.n.z = n[3]
