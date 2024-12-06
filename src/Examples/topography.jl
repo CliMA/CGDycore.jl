@@ -1,9 +1,29 @@
 abstract type Topography end
 
+Base.@kwdef struct MountFuji{T} <: Topography
+  x0C::T = 0
+  y0C::T = 0
+  axC::T = 40000
+  ayC::T = 40000
+  hC::T = 3776
+end
+
+function (profile::MountFuji)()
+  (; x0C, y0C, axC, ayC, hC) = profile
+  function local_profile(x)
+    FT = eltype(x)
+    h = hC / (((x[1]  -x0C) / axC)^2 + ((x[2]  -y0C) / ayC)^2 + FT(1));
+    return h
+  end
+  return local_profile
+end
+
+
+
 Base.@kwdef struct AgnesiHill{T} <: Topography 
   x0C::T = 0
   aC::T = 1000
-  hC::T = 0
+  hC::T = 400
 end
 
 function (profile::AgnesiHill)()

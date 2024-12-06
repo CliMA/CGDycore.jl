@@ -1,5 +1,4 @@
 function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
-  @show "ConstructSubGridGhost"
   backend = get_backend(GlobalGrid.z)
   FT = eltype(GlobalGrid.z)
 

@@ -31,17 +31,19 @@ function PosEdgeInFace!(Edge,Edges,Faces)
   end
   if size(Edge.F,1)>1
     iF = Edge.F[1]  
-    EdgeType = Edge.FE[1]  
-    if Faces[iF].Orientation * Faces[iF].OrientE[EdgeType] == -1
-      iTemp = Edge.FE[1]
-      Edge.FE[1] = Edge.FE[2]
-      Edge.FE[2] = iTemp
-      iTemp = Edge.F[1]
-      Edge.F[1] = Edge.F[2]
-      Edge.F[2] = iTemp
-      iTemp = Edge.FG[1]
-      Edge.FG[1] = Edge.FG[2]
-      Edge.FG[2] = iTemp
+    if iF > 0
+      EdgeType = Edge.FE[1]  
+      if Faces[iF].Orientation * Faces[iF].OrientE[EdgeType] == -1
+        iTemp = Edge.FE[1]
+        Edge.FE[1] = Edge.FE[2]
+        Edge.FE[2] = iTemp
+        iTemp = Edge.F[1]
+        Edge.F[1] = Edge.F[2]
+        Edge.F[2] = iTemp
+        iTemp = Edge.FG[1]
+        Edge.FG[1] = Edge.FG[2]
+        Edge.FG[2] = iTemp
+      end
     end
   end
 end

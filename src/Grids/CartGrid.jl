@@ -226,6 +226,7 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   AdaptGrid = ""
+  Rad = 1.0
   return GridStruct{FT,
                     typeof(z)}(
     nz,

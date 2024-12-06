@@ -152,9 +152,14 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
-nPanel =  40
+nPanel =  80
 #GridType = "HealPix"
 ns = 57
+
+#Grid construction
+RadEarth = Phys.RadEarth
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
+  nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom)
 
 print("Which Problem do you want so solve? \n")
 print("1 - GalewskiSphere\n\
@@ -165,38 +170,45 @@ a = parse(Int,text)
 if  a == 1
     Problem = "GalewskiSphere"
     Param = Examples.Parameters(FTB,Problem)
-    RadEarth = Phys.RadEarth
-    GridLength = Grids.GridLength(Grid)
+    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
     cS = sqrt(Phys.Grav * Param.H0G)
-    dtau = GridLength / cS * 0.1
+    dtau = GridLengthMin / cS / sqrt(2) * .5 
     EndTime = 24 * 3600 # One day
+    PrintTime = 3600
     nAdveVel = round(EndTime / dtau)
     dtau = EndTime / nAdveVel
-    nprint = ceil(nAdveVel/50)
+    nprint = ceil(PrintTime/dtau)
     GridTypeOut = GridType*"NonLinShallowGal"
+    @show GridLengthMin,GridLengthMax
     @show nAdveVel
     @show dtau
     @show nprint
 elseif  a == 2
     Problem = "HaurwitzSphere"
     Param = Examples.Parameters(FTB,Problem)
-    RadEarth = Phys.RadEarth
-    dtau = 30 #g=9.81, H=8000
-    nAdveVel = ceil(Int,6*24*3600/dtau)
+    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+    cS = sqrt(Phys.Grav * Param.h0)
+    dtau = GridLengthMin / cS / sqrt(2) * .3 
+    EndTime = 24 * 3600 # One day
+    PrintTime = 3600
+    nAdveVel = round(EndTime / dtau)
+    dtau = EndTime / nAdveVel
+    nprint = ceil(PrintTime/dtau)
     GridTypeOut = GridType*"NonLinShallowHaurwitz"
+    @show GridLengthMin,GridLengthMax
     @show nAdveVel
+    @show dtau
+    @show nprint
 else 
     print("Error")
 end
 println("The chosen Problem is ") 
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-#Grid construction
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLat,nLon,LatB,GridType,Decomp,RadEarth,
-  Model,ParallelCom)
+#Output
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
-#finite elements
+#Finite elements
 DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
 VecDG = FEMSei.VecDG0Struct{FTB}(Grids.Quad(),backend,Grid)
 RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
@@ -235,9 +247,8 @@ FEMSei.Project!(backend,FTB,Uh,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile
 FileNumber=0
 VelSp = zeros(Grid.NumFaces,2)
 FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [Uh VelSp] ,FileNumber)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [Uh VelSp] ,FileNumber)
 
-nprint = 10
 for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600  
   @. F = 0  
@@ -250,6 +261,18 @@ for i = 1 : nAdveVel
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
   FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  ldiv!(RT.LUM,Fhu)
+  @. UNew = U + 1 / 3 * dtau * F
+  @. F = 0  
+  # Tendency h
+  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  ldiv!(DG.LUM,Fh)
+  # Tendency hu
+  FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
+    Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 0.5 * dtau * F
   @. F = 0  
@@ -268,7 +291,7 @@ for i = 1 : nAdveVel
   if mod(i,nprint) == 0 
     global FileNumber += 1
     FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, "ConsShallow", Proc, ProcNumber, [Uh VelSp] ,FileNumber)
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [Uh VelSp] ,FileNumber)
   end
 end
 @show "finished"
