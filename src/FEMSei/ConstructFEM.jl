@@ -1,3 +1,4 @@
+#=
 function ConstructFEM(k)
 
 
@@ -18,6 +19,7 @@ k = 1
 DoF = 2 * (k + 1) * (k + 2) / 2 + (k + 1)
 
 end
+=#
 
 function ConstructRT_k(k)
 
@@ -152,10 +154,36 @@ function InterpolateRT!(u,FE,Jacobi,Grid,F)
 
   k = FE.Order
   DoF = FE.DoF
+  s = @polyvar x[1:2]
+
+  P_km1 = Polynomial_k(k,s)
+  H_km1 = HomegenuousPolynomial(k,s)
+
+  lP_km1 = length(P_km1)
+  lH_km1 = length(H_km1)
+  DoF = 2 * lP_km1 + lH_km1
+
+  phi = Array{Polynomial,2}(undef,DoF,2)
+  phiB = Array{Polynomial,2}(undef,DoF,2)
+  iDoF = 1
+  for i = 1 : lP_km1
+    phi[iDoF,1] = P_km1[i]
+    phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+    iDoF += 1
+    phi[iDoF,2] = P_km1[i]
+    phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
+    iDoF += 1
+  end
+  for i = 1 : lH_km1
+    phi[iDoF,1] = H_km1[i] * x[1]
+    phi[iDoF,2] = H_km1[i] * x[2]
+    iDoF += 1
+  end
   @polyvar t
   phiL = CGLine(k,t)
   QuadOrd = 3
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Tri(),QuadOrd)
   uLoc = zeros(DoF)
   DF = zeros(3,2)
   detDF = zeros(1)
@@ -163,8 +191,10 @@ function InterpolateRT!(u,FE,Jacobi,Grid,F)
   X = zeros(3)
   uP = zeros(2)
   VelSp = zeros(3)
+  @show phi
   for iF = 1 : Grid.NumFaces
     iDoF = 1
+    rDoF = 1
     # Compute functional over edges
     # Edge 1  
     @. uLoc = 0
@@ -203,30 +233,27 @@ function InterpolateRT!(u,FE,Jacobi,Grid,F)
       end
     end
     iDoF += k + 1
-    if Grid.Faces[iF].E[1] == 1
-      @show uLoc[1],Grid.Faces[iF].OrientE[1],Grid.Faces[iF].Orientation   
-    elseif Grid.Faces[iF].E[2] == 1
-      @show uLoc[2],Grid.Faces[iF].OrientE[2],Grid.Faces[iF].Orientation   
-    elseif Grid.Faces[iF].E[3] == 1
-      @show uLoc[3],Grid.Faces[iF].OrientE[3],Grid.Faces[iF].Orientation   
-    end  
+#   if Grid.Faces[iF].E[1] == 1
+#     @show uLoc[1],Grid.Faces[iF].OrientE[1],Grid.Faces[iF].Orientation   
+#   elseif Grid.Faces[iF].E[2] == 1
+#     @show uLoc[2],Grid.Faces[iF].OrientE[2],Grid.Faces[iF].Orientation   
+#   elseif Grid.Faces[iF].E[3] == 1
+#     @show uLoc[3],Grid.Faces[iF].OrientE[3],Grid.Faces[iF].Orientation   
+#   end  
+# Interior  
+    rDoF += k + 1
+    for iQ = 1 : NumQuadT
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,PointsT[iQ,1],PointsT[iQ,2],Grid.Faces[iF], Grid)
+       _,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
+      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
+      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      uP .= detDF[1] * pinvDF' * VelCa
+      for i = 0 : 2 * (k - 1)
+        phiLoc = phi[i+1](PointsT[iQ,1],PointsT[iQ,2])  
+        uLoc[rDoF+i] += -Grid.Faces[iF].Orientation * uP[1] * phiLoc * WeightsT[iQ]
+        uLoc[rDoF+i+1] += -Grid.Faces[iF].Orientation * uP[2] * phiLoc * WeightsT[iQ]
+      end
+    end
     @. u[FE.Glob[:,iF]] = uLoc
   end  
-#=
-  rDoF += k + 1
-  NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Tri(),QuadOrd)
-# Interior  
-  for iDoF = 1 : DoF
-    phiI1 = phi[iDoF,1]  
-    phiI2 = phi[iDoF,2]  
-    for i = 0 : 2 * (k - 1)
-      for iQ = 1 : NumQuadT
-        I[rDoF+i,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
-        I[rDoF+i+1,iDoF] += 0.25 * phiI2(PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
-      end
-      phiI1 = phiI1 * x[1]
-      phiI2 = phiI2 * x[2]
-    end
-  end
- =#
 end

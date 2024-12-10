@@ -152,7 +152,7 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
-nPanel =  80
+nPanel =  30
 #GridType = "HealPix"
 ns = 57
 
@@ -173,7 +173,7 @@ if  a == 1
     GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
     cS = sqrt(Phys.Grav * Param.H0G)
     dtau = GridLengthMin / cS / sqrt(2) * .5 
-    EndTime = 24 * 3600 # One day
+    EndTime = 24 * 3600 * 4# One day
     PrintTime = 3600
     nAdveVel = round(EndTime / dtau)
     dtau = EndTime / nAdveVel
@@ -253,38 +253,38 @@ for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600  
   @. F = 0  
   # Tendency h
-  FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(DG.LUM,Fh)
   # Tendency hu
   FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
-    Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+    Grid.Type,nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 1 / 3 * dtau * F
   @. F = 0  
   # Tendency h
-  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(DG.LUM,Fh)
   # Tendency hu
   FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
     Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 0.5 * dtau * F
   @. F = 0  
   # Tendency h
-  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(DG.LUM,Fh)
   # Tendency hu
   FEMSei.ProjectScalarHDivVecDG1!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
     Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
-  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grids.Quad(),nQuad,FEMSei.Jacobi!)
+  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
   @. U = U + dtau * F
 
