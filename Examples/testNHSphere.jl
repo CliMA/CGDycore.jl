@@ -407,9 +407,10 @@ if Model.Turbulence
 end  
 
 # HyperViscosity
-  GridLength = Grids.GridLength(Grid,Grid.Type)
+  MinGridLength, MaxGridLength = Grids.GridLength(Grid)
   if ParallelCom.Proc == 1
-    @show GridLength
+    @show MinGridLength
+    @show MaxGridLength
   end  
 
 # Output

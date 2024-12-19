@@ -1,4 +1,4 @@
-function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
+function InitialConditions(backend,FTB,CG::DyCore.CGQuad,Metric,Phys,Global,Profile,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
@@ -64,6 +64,77 @@ function InitialConditions(backend,FTB,CG,Metric,Phys,Global,Profile,Param)
     @views @. U[:,:,Model.TkePos] = U[:,:,Model.RhoPos] * 1.e-2 
   end  
 
+  return U
+end  
+
+function InitialConditions(backend,FTB,DG::DyCore.DGQuad,Metric,Phys,Global,Profile,Param)
+  Model = Global.Model
+  Nz = Global.Grid.nz
+  NF = Global.Grid.NumFaces
+  NumV = Model.NumV
+  NumTr = Model.NumTr
+  State = Model.State
+  N = DG.OrdPoly + 1
+  M = DG.OrdPolyZ + 1
+  Glob = DG.Glob
+  X = Metric.X
+  time = 0
+
+
+  # Ranges
+  NzG = min(div(256,N*N),Nz)
+  group = (N * N, M, NzG, 1)
+  ndrange = (N * N, M, Nz, NF)
+  lengthU = NumV
+  if Model.TkePos > 0
+    lengthU += 1
+  end  
+  if NumTr > 0
+    lengthU += NumTr  
+  end
+  if Model.EDMF
+    ND = Model.NDEDMF  
+    lengthU += ND*(1 + 1 + 1 + NumTr)
+  end    
+
+  U = KernelAbstractions.zeros(backend,FTB,Nz,M,DG.NumG,lengthU)
+  @views Rho = U[:,:,:,Model.RhoPos]
+  @views u = U[:,:,:,Model.uPos]
+  @views v = U[:,:,:,Model.vPos]
+  @views w = U[:,:,:,Model.wPos]
+  @views RhoTh = U[:,:,:,Model.ThPos]
+  KRhoFunCKernel! = RhoFunCDGKernel!(backend, group)
+  KuvwFunCKernel! = uvwFunCDGKernel!(backend, group)
+
+  KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
+  @show Rho[:,:,1]
+  @show Rho[:,:,end]
+  KernelAbstractions.synchronize(backend)
+  KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+  if State == "Dry" || State == "Moist" || State == "ShallowWater"
+    KRhoThFunCKernel! = RhoThFunCDGKernel!(backend, group)
+    KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+  elseif State == "DryEnergy" || State == "MoistEnergy"
+    KRhoEFunCKernel! = RhoEFunCDGKernel!(backend, group)
+    KRhoEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+  end
+  KernelAbstractions.synchronize(backend)
+  if Model.RhoVPos > 0
+    @views RhoV = U[:,:,Model.RhoVPos]
+    KRhoVFunCKernel! = RhoVFunCDGKernel!(backend, group)
+    KRhoVFunCKernel!(Profile,RhoV,time,Glob,X,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+  end  
+  if Model.RhoCPos > 0
+    @views RhoC = U[:,:,Model.RhoCPos]
+    KRhoCFunCKernel! = RhoCFunCDGKernel!(backend, group)
+    KRhoCFunCKernel!(Profile,RhoC,time,Glob,X,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+  end  
+  if Model.TkePos > 0
+    @views @. U[:,:,:,Model.TkePos] = U[:,:,:,Model.RhoPos] * 1.e-2 
+  end  
   return U
 end  
 

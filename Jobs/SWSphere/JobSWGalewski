@@ -29,7 +29,7 @@ julia --project Examples/testNHSphere.jl \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
-  --GridType="SphericalGrid" \
+  --GridType="CubedSphere" \
   --nz=1 \
   --nPanel=32 \
   --nLon=120 \

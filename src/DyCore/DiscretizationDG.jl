@@ -1,189 +1,201 @@
-mutable struct DGStruct
-    OrdPoly::Int
-    OrdPolyZ::Int
-    Glob::Array{Int, 3}
-    Stencil::Array{Int, 2}
-    NumG::Int
-    NumI::Int
-    w::Array{Float64, 1}
-    xw::Array{Float64, 1}
-    xwZ::Array{Float64, 1}
-    DW::Array{Float64, 2}
-    DWT::Array{Float64, 2}
-    DS::Array{Float64, 2}
-    DST::Array{Float64, 2}
-    M::Array{Float64, 2}
-    MMass::Array{Float64, 2}
-    MW::Array{Float64, 2}
-    Boundary::Array{Int, 1}
-    MasterSlave::Array{Int, 1}
-end
-function DGStruct()
- OrdPoly=0
-OrdPolyZ=0
-Glob=zeros(0,0,0)
-Stencil=zeros(0,0)
-NumG=0
-NumI=0
-w=zeros(0)
-xw=zeros(0)
-xwZ=zeros(0)
-DW=zeros(0,0)
-DWT=zeros(0,0)
-DS=zeros(0,0)
-DST=zeros(0,0)
-M=zeros(0,0)
-MMass=zeros(0,0)
-MW=zeros(0,0)
-Boundary=zeros(0)
-MasterSlave = zeros(0)
- return DGStruct(
-    OrdPoly,
-    OrdPolyZ,
-    Glob,
-    Stencil,
-    NumG,
-    NumI,
-    w,
-    xw,
-    xwZ,
-    DW,
-    DWT,
-    DS,
-    DST,
-    M,
-    MMass,
-    MW,
-    Boundary,
-    MasterSlave,
- )
-end 
-
-function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global)
-  Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zeros(OrdPoly+1,OrdPoly+1,Global.Grid.NumFaces))
-end  
-
-function Discretization(OrdPoly,OrdPolyZ,Jacobi,Global,zs)
+function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs)
 # Discretization
   Grid = Global.Grid
-  OP=OrdPoly+1
-  OPZ=OrdPolyZ+1
-  nz=Grid.nz;
-  NF=Grid.NumFaces
+  OP=DG.OrdPoly+1
+  OPZ=DG.OrdPolyZ+1
+  DoF = DG.DoF
+  NumG = DG.NumG
+  nz = Grid.nz;
+  NF = Grid.NumFaces
+  NE = Grid.NumEdges
 
-  DG = DGStruct()
-  DG.OrdPoly=OrdPoly;
-  DG.OrdPolyZ=OrdPolyZ;
-
-  (DG.xw,DG.w)=gausslobatto(DG.OrdPoly+1)
-  (DG.xwZ,wZ)=gausslobatto(DG.OrdPolyZ+1)
-  (DG.DW,DG.DS)=DerivativeMatrixSingle(DG.OrdPoly);
-  DG.DST=DG.DS'
-  DG.DWT=DG.DW'
-  (DG.Glob,DG.NumG,DG.NumI,DG.Stencil,DG.MasterSlave) =
-    NumberingFemDG(Grid,OrdPoly);
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
 
 
-  dXdxIF = Global.Metric.dXdxIF
-  dXdxIC = Global.Metric.dXdxIC
-  nS = Global.Metric.nS
-  Global.Metric.dz = zeros(nz,DG.NumG)
-  Global.Metric.zP = zeros(nz,DG.NumG)
-  dz = Global.Metric.dz
-  zP = Global.Metric.zP
-  J = Global.Metric.J;
-  JC = Global.Metric.JC;
-  JF = Global.Metric.JF;
-  lat = Global.Metric.lat;
-  X = Global.Metric.X;
-  dXdx   = zeros(OP,OP,OPZ,nz,3,3,NF)
-  dXdxI  = zeros(OP,OP,OPZ,nz,3,3,NF)
-
-  for iF=1:Grid.NumFaces
-    for iz=1:nz
-      zI=[Grid.z[iz],Grid.z[iz+1]];
-      (X_Fz,J_Fz,dXdx_Fz,dXdxI_Fz,lat_Fz)=Jacobi(DG,Grid.Faces[iF],zI,Topo,Grid.Topography,zs[:,:,iF]);
-      X[:,:,:,:,iz,iF]=X_Fz;
-      J[:,:,:,iz,iF]=J_Fz;
-      dXdx[:,:,:,iz,:,:,iF]=reshape(dXdx_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
-      dXdxI[:,:,:,iz,:,:,iF]=reshape(dXdxI_Fz,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,1,3,3);
-      lat[:,:,iF]=lat_Fz;
-    end
-#   Surface normal
-    @views @. nS[:,:,1,iF] = dXdxI[:,:,1,1,3,1,iF] / sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
-      dXdxI[:,:,1,1,3,2,iF] * dXdxI[:,:,1,1,3,2,iF] + dXdxI[:,:,1,1,3,3,iF] * dXdxI[:,:,1,1,3,3,iF])
-    @views @. nS[:,:,2,iF] = dXdxI[:,:,1,1,3,2,iF] / sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
-      dXdxI[:,:,1,1,3,2,iF] * dXdxI[:,:,1,1,3,2,iF] + dXdxI[:,:,1,1,3,3,iF] * dXdxI[:,:,1,1,3,3,iF])
-    @views @. nS[:,:,3,iF] = dXdxI[:,:,1,1,3,3,iF] / sqrt(dXdxI[:,:,1,1,3,1,iF] * dXdxI[:,:,1,1,3,1,iF] +
-      dXdxI[:,:,1,1,3,2,iF] * dXdxI[:,:,1,1,3,2,iF] + dXdxI[:,:,1,1,3,3,iF] * dXdxI[:,:,1,1,3,3,iF])
-  end
-  @views @. JC=0.5*(J[:,:,2,:,:] + J[:,:,1,:,:])
-  @views @. JF[:,:,1,:] = J[:,:,1,1,:]
-  @views @. JF[:,:,2:nz,:] = 0.5*(J[:,:,2,1:nz-1,:] + J[:,:,1,2:nz,:])
-  @views @. JF[:,:,nz+1,:] = J[:,:,2,nz,:]
-
-  AverageFB!(JF,J);
-  dXdxIC .= 0;
-  dXdxIF .= 0;
-  for i=1:3
-    for j=1:3
-      @views @. dXdxIC[:,:,:,i,j,:] = 0.5*(dXdxI[:,:,1,:,i,j,:] + dXdxI[:,:,2,:,i,j,:])
-      @views @. dXdxIF[:,:,1,i,j,:] = dXdxI[:,:,1,1,i,j,:]
-      @views @. dXdxIF[:,:,2:nz,i,j,:] = 0.5*(dXdxI[:,:,2,1:nz-1,i,j,:] + dXdxI[:,:,1,2:nz,i,j,:])
-      @views @. dXdxIF[:,:,nz+1,i,j,:] = dXdxI[:,:,2,nz,i,j,:]
-    end
-  end
-
-  (DG.M,DG.MW,DG.MMass)=MassDG(DG,Global);
-  Global.latN=zeros(DG.NumG);
-  lat = Global.Metric.lat
-  latN = Global.latN
-  OP=DG.OrdPoly+1;
-  for iF=1:NF
-    for jP=1:OP
-      for iP=1:OP
-        ind=DG.Glob[iP,jP,iF]
-        latN[ind] = latN[ind] + lat[iP,jP,iF] * JC[iP,jP,1,iF] / DG.M[1,ind]
-        @views @. dz[:,ind] += 2.0 * JC[iP,jP,:,iF] * JC[iP,jP,:,iF] / dXdxIC[iP,jP,:,3,3,iF] / DG.M[:,ind]
-        @inbounds for iz=1:nz
-          if Global.Grid.Form == "Sphere"
-            r = norm(0.5 .* (X[iP,jP,1,:,iz,iF] .+ X[iP,jP,2,:,iz,iF]))
-            zP[iz,ind] += max(r-Global.Grid.Rad, 0.0) * JC[iP,jP,iz,iF] / DG.M[iz,ind]
-          else
-            zP[iz,ind] += 0.5*(X[iP,jP,1,3,iz,iF] + X[iP,jP,2,3,iz,iF])* JC[iP,jP,iz,iF] / DG.M[iz,ind]
-          end
-        end
-      end
-    end
-  end
-  ExchangeData!(dz,Global.Exchange)
-  ExchangeData!(latN,Global.Exchange)
-  ExchangeData!(zP,Global.Exchange)
-# Boundary nodes
+  nQuad = OP * OP
+  Metric = MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
+  F = zeros(4,3,NF)
+  FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
   for iF = 1 : NF
-    Side = 0
-    for iE in Grid.Faces[iF].E
-       Side += 1 
-       if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-         if Side == 1
-           for i in DG.Glob[1:OP-1,1,iF]   
-             push!(DG.Boundary,i)
-           end
-         elseif Side == 2  
-           for i in DG.Glob[OP,1:OP-1,iF]
-             push!(DG.Boundary,i)
-           end
-         elseif Side == 3  
-           for i in DG.Glob[2:OP,OP,iF]
-             push!(DG.Boundary,i)
-           end
-         elseif Side == 4  
-           for i in DG.Glob[1,2:OP,iF]
-             push!(DG.Boundary,i)
-           end
-         end  
-       end  
-    end
+    F[1,1,iF] = Grid.Faces[iF].P[1].x
+    F[1,2,iF] = Grid.Faces[iF].P[1].y
+    F[1,3,iF] = Grid.Faces[iF].P[1].z
+    F[2,1,iF] = Grid.Faces[iF].P[2].x
+    F[2,2,iF] = Grid.Faces[iF].P[2].y
+    F[2,3,iF] = Grid.Faces[iF].P[2].z
+    F[3,1,iF] = Grid.Faces[iF].P[3].x
+    F[3,2,iF] = Grid.Faces[iF].P[3].y
+    F[3,3,iF] = Grid.Faces[iF].P[3].z
+    F[4,1,iF] = Grid.Faces[iF].P[4].x
+    F[4,2,iF] = Grid.Faces[iF].P[4].y
+    F[4,3,iF] = Grid.Faces[iF].P[4].z
+  end
+  copyto!(FGPU,F)
+  if Global.Grid.Form == "Sphere"
+#   Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,
+#     Grid.z,zs,Grid.Rad,Global.Model.Equation)
+    Grids.JacobiDG3GPU!(Grids.XSphereDG3Loc!,Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+  else
+    Grids.JacobiDG3GPU!(XCartDG3Loc!,Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+#   Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+  end
+
+  EFCPU = zeros(Int,2,NE)
+  FECPU = zeros(Int,2,NE)
+  for iE = 1 : NE
+    EFCPU[:,iE] = Grid.Edges[iE].F  
+    FECPU[:,iE] = Grid.Edges[iE].FE  
   end  
-  return (DG,Global)
+  Grid.EF = KernelAbstractions.zeros(backend,Int,2,NE)
+  Grid.FE = KernelAbstractions.zeros(backend,Int,2,NE)
+  copyto!(Grid.EF,EFCPU)
+  copyto!(Grid.FE,FECPU)
+
+  NzG = min(div(NumberThreadGPU,OP*OPZ),nz)
+  group = (OPZ,OP,NzG)
+  ndrange = (OPZ,OP,nz,NE)
+  KNormalTangentHKernel! = NormalTangentHKernel!(backend,group)
+  Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,OPZ,OP,nz,NE)
+  Metric.NH = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
+  Metric.T1H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
+  Metric.T2H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
+  KNormalTangentHKernel!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
+    Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
+
+  NzG = min(div(NumberThreadGPU,DoF),nz+1)
+  group = (OP,OP,NzG)
+  ndrange = (DoF,nz+1,NF)
+  KNormalTangentVKernel! = NormalTangentVKernel!(backend,group)
+  Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,DoF,nz+1,NF)
+  Metric.NV = KernelAbstractions.zeros(backend,FT,3,DoF,nz+1,NF)
+  Metric.T1V = KernelAbstractions.zeros(backend,FT,3,DoF,nz+1,NF)
+  Metric.T2V = KernelAbstractions.zeros(backend,FT,3,DoF,nz+1,NF)
+  KNormalTangentVKernel!(Metric.VolSurfV,Metric.NV,Metric.T1V,Metric.T2V,OPZ,Metric.dXdxI,ndrange=ndrange)
+  return DG,Metric
+end
+
+@kernel inbounds = true function NormalTangentHKernel!(VolSurfH,NH,T1H,T2H,
+  @Const(dXdxI),@Const(EF),@Const(FE))
+
+# Normal NH(3,I,K,iz,IE)
+# Normal TH1(3,I,K,iz,IE)
+# Normal TH2(3,I,K,iz,IE)
+
+  K,I,Iz,IE = @index(Global, NTuple)
+
+  NE = @uniform @ndrange()[4]
+  NZ = @uniform @ndrange()[3]
+  N = @uniform @ndrange()[2]
+
+  if IE <= NE && Iz <= NZ
+    IS = FE[1,IE]  
+    IF = EF[1,IE]
+    if IS == 1
+      ID = I  
+      nSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
+      nSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
+      nSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
+      tSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
+      tSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
+      tSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
+    elseif IS == 2
+      ID = N + (I - 1) * N  
+      nSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
+      nSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
+      nSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
+      tSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
+      tSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
+      tSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
+    elseif IS == 3
+      ID = I + (N - 1) * N  
+      nSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
+      nSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
+      nSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
+      tSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
+      tSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
+      tSLoc3 = dXdxI[3,3,K,ID,Iz,IF]
+    elseif IS == 4
+      ID = 1 + (I - 1) * N  
+      nSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
+      nSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
+      nSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
+      tSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
+      tSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
+      tSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
+    end  
+    n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
+    nSLoc1 = nSLoc1 / n1Norm
+    nSLoc2 = nSLoc2 / n1Norm
+    nSLoc3 = nSLoc3 / n1Norm
+    VolSurfH[K,I,Iz,IE] = n1Norm
+    n1t1 = nSLoc1 * tSLoc1 + nSLoc2 * tSLoc2 + nSLoc3 * tSLoc3
+    tSLoc1 = tSLoc1 - n1t1 * nSLoc1
+    tSLoc2 = tSLoc2 - n1t1 * nSLoc2
+    tSLoc3 = tSLoc3 - n1t1 * nSLoc3
+    t1Norm = sqrt(tSLoc1 * tSLoc1 + tSLoc2 * tSLoc2 + tSLoc3 * tSLoc3)
+    tSLoc1 = tSLoc1 / t1Norm
+    tSLoc2 = tSLoc2 / t1Norm
+    tSLoc3 = tSLoc3 / t1Norm
+    NH[1,K,I,Iz,IE] = nSLoc1
+    NH[2,K,I,Iz,IE] = nSLoc2
+    NH[3,K,I,Iz,IE] = nSLoc3
+    T1H[1,K,I,Iz,IE] = tSLoc1
+    T1H[2,K,I,Iz,IE] = tSLoc2
+    T1H[3,K,I,Iz,IE] = tSLoc3
+    T2H[1,K,I,Iz,IE] = nSLoc2 * tSLoc3 - nSLoc3 * tSLoc2
+    T2H[2,K,I,Iz,IE] = nSLoc3 * tSLoc1 - nSLoc1 * tSLoc3
+    T2H[3,K,I,Iz,IE] = nSLoc1 * tSLoc2 - nSLoc2 * tSLoc1
+  end
+end
+
+@kernel inbounds = true function NormalTangentVKernel!(VolSurfV,NV,T1V,T2V,M,@Const(dXdxI))
+
+  # Normal NV(3,I,J,2,iz,IF)
+  # Normal TV1(3,I,J,2,iz,IF)
+  # Normal TV2(3,I,J,2,iz,IF)
+
+  ID,Iz,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[3]
+  NZ = @uniform @ndrange()[2]
+
+  if IF <= NF && Iz <= NZ
+    if Iz < NZ  
+      nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
+      nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
+      nSLoc3 = dXdxI[3,3,1,ID,Iz,IF]
+      tSLoc1 = dXdxI[1,1,1,ID,Iz,IF]
+      tSLoc2 = dXdxI[1,2,1,ID,Iz,IF]
+      tSLoc3 = dXdxI[1,3,1,ID,Iz,IF]
+    else
+      nSLoc1 = dXdxI[3,1,M,ID,Iz-1,IF]
+      nSLoc2 = dXdxI[3,2,M,ID,Iz-1,IF]
+      nSLoc3 = dXdxI[3,3,M,ID,Iz-1,IF]
+      tSLoc1 = dXdxI[1,1,M,ID,Iz-1,IF]
+      tSLoc2 = dXdxI[1,2,M,ID,Iz-1,IF]
+      tSLoc3 = dXdxI[1,3,M,ID,Iz-1,IF]
+    end  
+    n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
+    nSLoc1 = nSLoc1 / n1Norm
+    nSLoc2 = nSLoc2 / n1Norm
+    nSLoc3 = nSLoc3 / n1Norm
+    VolSurfV[ID,Iz,IF] = n1Norm
+    n1t1 = nSLoc1 * tSLoc1 + nSLoc2 * tSLoc2 + nSLoc3 * tSLoc3
+    tSLoc1 = tSLoc1 - n1t1 * nSLoc1
+    tSLoc2 = tSLoc2 - n1t1 * nSLoc2
+    tSLoc3 = tSLoc3 - n1t1 * nSLoc3
+    t1Norm = sqrt(tSLoc1 * tSLoc1 + tSLoc2 * tSLoc2 + tSLoc3 * tSLoc3)
+    tSLoc1 = tSLoc1 / t1Norm
+    tSLoc2 = tSLoc2 / t1Norm
+    tSLoc3 = tSLoc3 / t1Norm
+    NV[1,ID,Iz,IF] = nSLoc1
+    NV[2,ID,Iz,IF] = nSLoc2
+    NV[3,ID,Iz,IF] = nSLoc3
+    T1V[1,ID,Iz,IF] = tSLoc1
+    T1V[2,ID,Iz,IF] = tSLoc2
+    T1V[3,ID,Iz,IF] = tSLoc3
+    T2V[1,ID,Iz,IF] = nSLoc2 * tSLoc3 - nSLoc3 * tSLoc2
+    T2V[2,ID,Iz,IF] = nSLoc3 * tSLoc1 - nSLoc1 * tSLoc3
+    T2V[3,ID,Iz,IF] = nSLoc1 * tSLoc2 - nSLoc2 * tSLoc1
+  end
 end

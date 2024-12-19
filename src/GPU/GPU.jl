@@ -5,6 +5,7 @@ import ..Models
 import ..Grids
 import ..Thermodynamics
 import ..Surfaces
+import ..DyCore
 
 using StaticArrays
 using KernelAbstractions
@@ -24,5 +25,6 @@ include("ViscKernel.jl")
 include("GradKineticKernel.jl")
 include("GradPressureKernel.jl")
 include("Coriolis.jl")
+include("Riemann.jl")
 
 end

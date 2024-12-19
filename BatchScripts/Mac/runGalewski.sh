@@ -1,2 +1,2 @@
 export JuliaDevice="CPU"
-mpirun -n 6 ./Jobs/SWSphere/JobSWGalewski
+mpirun -n 1 ./Jobs/SWSphere/JobSWGalewski

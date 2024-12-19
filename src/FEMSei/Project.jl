@@ -152,7 +152,6 @@ function Project!(backend,FTB,p,Fe::HCurlElement,Grid,QuadOrd,Jacobi,F)
   ldiv!(Fe.LUM,p)
 end
 
-#projection of scalar to scalar, i.e. CG1->DG1
 function ProjectScalarScalar!(backend,FTB,cP,FeP::ScalarElement,c,Fe::ScalarElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
@@ -269,7 +268,8 @@ function ProjectScalarHDivVecDG1!(backend,FTB,uP,uFeP::VectorElement,h,hFe::Scal
       hfRefLoc += hfRef[1,iDoF] * h[ind]
     end  
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,0.0,0.0,Grid.Faces[iF], Grid)
-    uPLoc = 1 / detDF[1] * (DF * ufRefLoc) / hfRefLoc
+    detDFLoc = detDF[1] * Grid.Faces[iF].Orientation
+    uPLoc = 1 / detDFLoc * (DF * ufRefLoc) / hfRefLoc
     @inbounds for iDoF = 1 : uFeP.DoF
       ind = uFeP.Glob[iDoF,iF]  
       uP[ind] += uPLoc[iDoF]

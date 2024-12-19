@@ -98,8 +98,8 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
 
 # Print initial conditions
   FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
-  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
-
+  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
+  stop
   if IntMethod == "Rosenbrock"
     # For time measuring  
     RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
@@ -109,7 +109,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
           end
           if time[1] >= StartAverageTime && StartAverageTime >= 0.0
             Statistics.AverageInTime!(UAver,U,iAv)
@@ -122,8 +122,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
         end  
       end
     end
-    Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
-    @show sum(abs.(U))
+    Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
   elseif IntMethod == "RosenbrockAMD"
     @time begin
       for i=1:nIter
@@ -214,7 +213,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
           @time RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Cache,Phys,Global,Proc,ProcNumber)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
           end
         end
         percent = i/nIter*100

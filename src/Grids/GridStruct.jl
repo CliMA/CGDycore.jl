@@ -15,6 +15,7 @@ function Boundary()
 end  
 
 mutable struct GridStruct{FT<:AbstractFloat,
+                          IT2<:AbstractArray,
                           AT1<:AbstractArray}
   nz::Int
   zP::Array{FT, 1}
@@ -40,5 +41,7 @@ mutable struct GridStruct{FT<:AbstractFloat,
   nBar3::Array{FT, 2}
   nBar::Array{FT, 2}
   AdaptGrid::Any
+  EF::IT2
+  FE::IT2
 end
     

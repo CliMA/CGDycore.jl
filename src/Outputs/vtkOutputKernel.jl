@@ -48,26 +48,30 @@ end
 
 @kernel inbounds = true function InterpolateKernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
-  I, J, iz   = @index(Local,  NTuple)
-  _,_,Iz,IF = @index(Global,  NTuple)
+  I, J, K, iz   = @index(Local,  NTuple)
+  _,_,_,Iz,IF = @index(Global,  NTuple)
 
 
   ColumnTilesDim = @uniform @groupsize()[3]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[4]
+  NF = @uniform @ndrange()[5]
 
   @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  @uniform N = size(Inter,3)
+  @uniform N = size(Inter,4)
+  @uniform M = size(Inter,6)
 
+  @show size(Inter)
   
   if Iz <= Nz
-    cCell[I,J,Iz,IF] = eltype(cCell)(0)
-    iD = 0
-    for jP = 1 : N
-      for iP = 1 : N
-        iD += 1  
-        ind = Glob[iD,IF]
-         cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * c[Iz,ind]
+    cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
+    for kP = 1 : M
+      iD = 0
+      for jP = 1 : N
+        for iP = 1 : N
+          iD += 1  
+          ind = Glob[iD,IF]
+          cCell[I,J,K,Iz,IF] += Inter[I,J,K,iP,jP,kP] * c[Iz,kP,ind]
+        end
       end
     end
   end
@@ -217,20 +221,24 @@ function InterpolateGPU!(cCell,c,Inter,Glob)
   backend = get_backend(c)
   FT = eltype(c)
 
+  @show size(c)
   OrdPrint = size(Inter,1)
+  OrdPrintZ = size(Inter,3)
   NF = size(Glob,2)
   Nz = size(c,1)
+  @show OrdPrint
+  @show OrdPrintZ
 
 # Ranges
-  NzG = min(div(256,OrdPrint*OrdPrint),Nz)
-  group = (OrdPrint, OrdPrint, NzG, 1)
-  ndrange = (OrdPrint, OrdPrint, Nz, NF)
-
+  NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
+  group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
+  ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
   KInterpolateKernel! = InterpolateKernel!(backend,group)
   KInterpolateKernel!(cCell,c,Inter,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
 end
+
 
 function InterpolateCGDim2GPU!(cCell,c,Inter,Glob)
 
