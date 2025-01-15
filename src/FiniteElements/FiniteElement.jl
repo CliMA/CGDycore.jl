@@ -182,6 +182,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     xwCPU::Array{FT, 1}
     xe::Array{FT, 1}
     IntXE2F::Array{FT, 2}
+    wZ::AT1
     xwZ::AT1
     xwZCPU::Array{FT, 1}
     IntZE2F::Array{FT, 2}
@@ -190,6 +191,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     DS::AT2
     DST::Array{FT, 2}
     DSZ::AT2
+    DWZ::AT2
     S::Array{FT, 2}
     BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
@@ -246,9 +248,11 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
-  (DWZ,DSZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
+  (DWZCPU,DSZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
   DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
   copyto!(DSZ,DSZCPU)
+  DWZ = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
+  copyto!(DWZ,DWZCPU)
   (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
     NumberingFemDGQuad(Grid,OrdPoly)  
 
@@ -310,6 +314,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     xwCPU,
     xe,
     IntXE2F,
+    wZ,
     xwZ,
     xwZCPU,
     IntZE2F,
@@ -318,6 +323,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     DS,
     DST,
     DSZ,
+    DWZ,
     S,
     BoundaryDoF,
     MasterSlave,

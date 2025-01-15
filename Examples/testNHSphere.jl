@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Grids, Surfaces, Models, Outputs, Integration,  GPU, DyCore
+  Examples, Parallels, Grids, FiniteElements, Surfaces, Models, Outputs, Integration,  GPU, DyCore
 using MPI
 using Base
 using CUDA
@@ -320,8 +320,8 @@ if State == "Dry"
   Pressure, dPresdRhoTh = Models.Dry()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
-elseif State == "DryEnergy"
-  Pressure, dPresdRhoTh = Models.DryEnergy()(Phys)
+elseif State == "DryTotalEnergy"
+  Pressure, dPresdRhoTh = Models.DryTotalEnergy()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "Moist"
@@ -421,7 +421,7 @@ Global.Output.nPanel = nPanel
 Global.Output.RadPrint = H
 Global.Output.H = H
 if ModelType == "VectorInvariant" || ModelType == "Advection"
-  if State == "Dry" || State == "DryEnergy"
+  if State == "Dry" || State == "DryTotalEnergy"
     Global.Output.cNames = [
       "Rho",
       "u",

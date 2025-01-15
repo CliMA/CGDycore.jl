@@ -87,14 +87,14 @@ end
 
 function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
   NumQuad,Weights,Points = QuadRule(Fe.Type,QuadOrd)
-  fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+  fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
   @. p = 0
   VelSp = zeros(3)
-  for i = 1 : length(Weights)
+  for iQ = 1 : NumQuad
     for iComp = 1 : Fe.Comp
       for iD = 1 : Fe.DoF
-        fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
+        fRef[iComp,iD,iQ] = Fe.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
   end
@@ -104,20 +104,19 @@ function Project!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
   X = zeros(3)
   for iF = 1 : Grid.NumFaces
     pLoc = zeros(Fe.DoF)
-    for i = 1 : length(Weights)
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+    for iQ = 1 : NumQuad
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
       _,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
       lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
       VelCa = VelSphere2Cart(VelSp,lon,lat)
       for iD = 1 : Fe.DoF
-        pLoc[iD] += Grid.Faces[iF].Orientation * Weights[i] * (fRef[:,iD,i]' * (DF' * VelCa))
+        pLoc[iD] += Grid.Faces[iF].Orientation * Weights[iQ] * (fRef[:,iD,iQ]' * (DF' * VelCa))
       end  
     end
     @views @. p[Fe.Glob[:,iF]] += pLoc
   end
   ldiv!(Fe.LUM,p)
-  @show size(Fe.LUM), size(p), "Project!"
 end
 
 function Project!(backend,FTB,p,Fe::HCurlElement,Grid,QuadOrd,Jacobi,F)

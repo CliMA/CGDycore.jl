@@ -313,13 +313,21 @@ if State == "Dry"
   Pressure, dPresdRhoTh = Models.Dry()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
-elseif State == "DryEnergy"
-  Pressure, dPresdRhoTh = Models.DryEnergy()(Phys)
+elseif State == "DryInternalEnergy"
+  Pressure, dPresdRhoTh = Models.DryInternalEnergy()(Phys)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "DryTotalEnergy"
+  Pressure, dPresdRhoTh = Models.DryTotalEnergy()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "Moist"
-  Pressure = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
-    Model.RhoVPos+NumV,Model.RhoCPos+NumV)
+  Pressure, dPresdRhoTh = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoVPos,Model.RhoCPos)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "ShallowWater"
+  Pressure = Models.ShallowWaterState()(Phys)
   Model.Pressure = Pressure
 end
 
@@ -388,7 +396,7 @@ Global.Output.vtk=0
   Global.Output.Flat=true
   Global.Output.H=H
   if ModelType == "VectorInvariant" || ModelType == "Advection"
-    if State == "Dry" || State == "DryEnergy"
+    if State == "Dry" || State == "DryInternalEnergy" || State == "DryTotalEnergy"
       Global.Output.cNames = [
         "Rho",
         "u",

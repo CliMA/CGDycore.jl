@@ -9,7 +9,8 @@ abstract type State end
 struct ShallowWaterState  <: State  end
 struct Dry  <: State  end
 struct Moist  <: State end
-struct DryEnergy  <: State  end
+struct DryTotalEnergy  <: State  end
+struct DryInternalEnergy  <: State  end
   
 function (::ShallowWaterState)(Phys)
   @inline function Pressure(U,wL,wR,z)
@@ -37,7 +38,7 @@ function (::Dry)(Phys)
   return Pressure,dPresdRhoTh
 end 
 
-function (::DryEnergy)(Phys)
+function (::DryTotalEnergy)(Phys)
   @inline function Pressure(U,wL,wR,z)
     FT = eltype(U)
     KE = FT(0.5) * (U[2]^2 + U[3]^2 + FT(0.5) * (wL^2 + wR^2))
@@ -52,6 +53,21 @@ function (::DryEnergy)(Phys)
   end  
   return Pressure,dPresdRhoE
 end 
+
+function (::DryInternalEnergy)(Phys)
+  @inline function Pressure(U,wL,wR,z)
+    FT = eltype(U)
+    p = (Phys.Rd / Phys.Cvd) * U[5] 
+    T = p / (Phys.Rd * U[1])
+    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    return p, T, PotT
+  end
+  @inline function dPresdRhoIE(RhoE)
+    dpdRhoE = Phys.Rd / Phys.Cvd
+    return dpdRhoE
+  end
+  return Pressure,dPresdRhoIE
+end
 
 function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
   @inline function Pressure(U,wL,wR,z)

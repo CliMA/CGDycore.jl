@@ -114,6 +114,28 @@ end
   end
 end
 
+
+@kernel inbounds = true function PressureKernelDG!(Pressure,p,T,PotT,@Const(U),@Const(nS),@Const(zP))
+  Iz,K,IC = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[1]
+  NumG = @uniform @ndrange()[3]
+
+  if IC <= NumG
+    if Iz == 1 && K == 1
+      wL = wCol = -(nS[1,Iz] * U[Iz,K,IC,2] + nS[1,Iz] * U[Iz,K,IC,3]) / nS[3,Iz]
+    else
+      wL = U[Iz,K,IC,4]
+    end
+    if Iz == Nz
+      wR = eltype(U)(0)
+    else
+      wR = U[Iz+1,k,IC,4] 
+    end  
+    p[Iz,K,IC], T[Iz,K,IC], PotT[Iz,K,IC] = Pressure(view(U,Iz,K,IC,:),wL,wR,zP[Iz,IC])
+  end
+end
+
 @kernel inbounds = true function PressureCKernel!(Pressure,p,@Const(U),@Const(Glob),@Const(JJ),@Const(M))
   ID,Iz,IF = @index(Global, NTuple)
 

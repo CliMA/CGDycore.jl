@@ -86,7 +86,7 @@ end
       dXdx[I,J,K,2,2,iz] += D[J,k] * XLoc[I,k,K,2,iz]
       dXdx[I,J,K,3,2,iz] += D[J,k] * XLoc[I,k,K,3,iz]
     end
-    for k = 2 : 2
+    for k = 2 : L
       dXdx[I,J,K,1,3,iz] += DZ[K,k] * XLoc[I,J,k,1,iz]
       dXdx[I,J,K,2,3,iz] += DZ[K,k] * XLoc[I,J,k,2,iz]
       dXdx[I,J,K,3,3,iz] += DZ[K,k] * XLoc[I,J,k,3,iz]
@@ -112,6 +112,8 @@ end
       dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,2,1,iz])
     dXdxI[3,3,K,ID,Iz,IF] = dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,2,2,iz] -
       dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,2,1,iz]
+    @show reshape(dXdxI[:,:,K,ID,Iz,IF],3,3) * reshape(dXdx[I,J,K,:,:,iz],3,3)  
+    stop
   end
 end  
 

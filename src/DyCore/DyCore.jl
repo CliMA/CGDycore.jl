@@ -8,6 +8,7 @@ import ..Surfaces
 import ..Grids
 import ..Outputs
 import ..Integration
+import ..FiniteElements
 
 using MPI
 using LinearAlgebra
@@ -19,11 +20,9 @@ using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
-using FastGaussQuadrature
 
 export parse_commandline 
 
-include("FiniteElement.jl")
 include("Average.jl")
 include("AverageFB.jl")
 include("Damping.jl")
@@ -31,8 +30,6 @@ include("DiscretizationCG.jl")
 include("DiscretizationDG.jl")
 include("JacSchur.jl")
 include("MassCG.jl")
-include("NumberingFem.jl")
-include("NumberingFemDG.jl")
 include("Project.jl")
 include("ProjectW.jl")
 include("ProjectVec.jl")

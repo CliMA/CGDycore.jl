@@ -1,4 +1,4 @@
-function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs) 
+function DiscretizationCG(backend,FT,Jacobi,CG::FiniteElements.CGQuad,Exchange,Global,zs) 
 # Discretization
   Grid = Global.Grid
   OP = CG.OrdPoly+1
@@ -31,7 +31,8 @@ function DiscretizationCG(backend,FT,Jacobi,CG::CGQuad,Exchange,Global,zs)
     Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,
       Grid.z,zs,Grid.Rad,Global.Model.Equation)
   else
-    Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
+#   Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
+    Grids.JacobiCartDG3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
   end  
 
   MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)

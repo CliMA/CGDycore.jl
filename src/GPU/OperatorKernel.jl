@@ -1,3 +1,50 @@
+@kernel inbounds = true function SourceIntEnergyKernel!(F,@Const(U),@Const(p),@Const(D),@Const(dXdxI),
+  @Const(M),@Const(Glob))
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N
+  ind = Glob[ID,IF]
+
+  pCol = @localmem eltype(F) (N,N, ColumnTilesDim+1)
+  uConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  vConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  if Iz <= Nz
+    @views (uCon, vCon) = Contra12(U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    uConCol[I,J,iz] = uCon
+    vConCol[I,J,iz] = vCon
+    pCol[I,J,iz] = p[Iz,ind]
+  end
+  if iz == ColumnTilesDim && Iz < Nz 
+    pCol[I,J,iz+1] = p[Iz+1,ind]   
+  end  
+
+  @synchronize
+
+  ID = I + (J - 1) * N
+  ind = Glob[ID,IF]
+  if Iz <= Nz
+    Div = D[I,1] * uConCol[1,J,iz] + D[J,1] * vConCol[I,1,iz]
+    for k = 2 : N
+      Div += D[I,k] * uConCol[k,J,iz] + D[J,k] * vConCol[I,k,iz]
+    end
+    @atomic :monotonic F[Iz,ind] += -Div * pCol[I,J,iz] / (M[Iz,ind,1] + M[Iz,ind,2])
+  end
+  if Iz < Nz
+    @views wCon = Contra3(U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
+      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+    Flux = eltype(F)(0.5) * wCon
+    @atomic :monotonic F[Iz,ind] += -Flux * pCol[I,J,iz] / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[Iz+1,ind] += +Flux * pCol[I,J,iz+1] / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
+  end  
+end
+
 @kernel inbounds = true function DivRhoGradKernel!(F,@Const(U),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 

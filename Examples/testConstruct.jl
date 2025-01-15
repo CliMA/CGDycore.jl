@@ -44,21 +44,23 @@ RadEarth = 1.0
 ns = 10
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLat,nLon,LatB,GridType,Decomp,RadEarth,
   Model,ParallelCom)
-RT = FEMSei.RT0Struct{FTB}(Grids.Tri(),backend,Grid)
+RT = FEMSei.RT1Struct{FTB}(Grids.Tri(),backend,Grid)
 @show RT.phi
 print(RT.phi)
 s = @polyvar x[1:2]
-phi,PRT = FEMSei.ConstructRT_k(0)
+phi,PRT = FEMSei.ConstructRT_k(1)
 u = zeros(RT.NumG)
 uN = zeros(RT.NumG)
+uN1 = zeros(RT.NumG)
 
 Problem = "AdvectionSphereSpherical"
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 QuadOrd = 3
-FEMSei.Interpolate!(backend,FTB,uN,RT,Grid,QuadOrd,FEMSei.Jacobi!,Model.InitialProfile)
+#FEMSei.Interpolate!(backend,FTB,uN,RT,Grid.Type,Grid,QuadOrd,FEMSei.Jacobi!,Model.InitialProfile)
+
+#FEMSei.InterpolateCons!(backend,FTB,uN1,RT,Grid,QuadOrd,FEMSei.Jacobi!,Model.InitialProfile)
 
 FEMSei.InterpolateRT!(u,RT,FEMSei.Jacobi!,Grid,Model.InitialProfile)
-@show minimum(uN),maximum(uN)
 @show minimum(u),maximum(u)
 

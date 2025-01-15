@@ -39,7 +39,7 @@
     temp = RotLoc[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     for j = 1 : size(Inter,1) 
       for i = 1 : size(Inter,2) 
-        @atomic :monotonic Rot[i,j,Iz,IF] += Inter[i,j,I,J] * temp
+        @atomic :monotonic Rot[i,j,Iz,IF] += Inter[i,j,1,I,J,1] * temp
       end    
     end    
   end    
@@ -60,8 +60,6 @@ end
   @uniform N = size(Inter,4)
   @uniform M = size(Inter,6)
 
-  @show size(Inter)
-  
   if Iz <= Nz
     cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
     for kP = 1 : M
@@ -144,9 +142,9 @@ end
       for iP = 1 : N
         iD += 1
         ind = Glob[iD,IF]
-        w0 = -(u[Iz,ind] * dXdxI[3,1,1,iD,Iz,IF] +
-          v[Iz,ind] * dXdxI[3,2,1,iD,Iz,IF]) / dXdxI[3,3,1,iD,Iz,IF]
-         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w0)
+        w0 = -(u[Iz,1,ind] * dXdxI[3,1,1,iD,Iz,IF] +
+          v[Iz,1,ind] * dXdxI[3,2,1,iD,Iz,IF]) / dXdxI[3,3,1,iD,Iz,IF]
+         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w0)
       end
     end
   elseif Iz <= Nz
@@ -156,32 +154,34 @@ end
       for iP = 1 : N
         iD += 1
         ind = Glob[iD,IF]
-         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,iP,jP] * (w[Iz,ind] + w[Iz-1,ind])
+         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w[Iz-1,1,ind])
       end
     end
   end
 end
 @kernel inbounds = true function InterpolateThEKernel!(cCell,@Const(RhoTh),@Const(Rho),@Const(RhoV),@Const(RhoC),@Const(Inter),@Const(Glob),@Const(Phys))
-  I, J, iz   = @index(Local,  NTuple)
-  _,_,Iz,IF = @index(Global,  NTuple)
+  I, J, K, iz   = @index(Local,  NTuple)
+  _,_,_,Iz,IF = @index(Global,  NTuple)
 
 
-  ColumnTilesDim = @uniform @groupsize()[3]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  Nz = @uniform @ndrange()[4]
+  NF = @uniform @ndrange()[5]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  @uniform N = size(Inter,3)
+  @uniform N = size(Inter,4)
+  @uniform M = size(Inter,6)
 
   if Iz <= Nz
-    cCell[I,J,Iz,IF] = eltype(cCell)(0)
-    iD = 0
-    for jP = 1 : N
-      for iP = 1 : N
-        iD += 1
-        ind = Glob[iD,IF]
-        cLoc = Thermodynamics.fThE(Rho[Iz,ind],RhoV[Iz,ind],RhoC[Iz,ind],RhoTh[Iz,ind],Phys)
-         cCell[I,J,Iz,IF] += Inter[I,J,iP,jP] * cLoc
+    cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
+    for kP = 1 : M
+      iD = 0
+      for jP = 1 : N
+        for iP = 1 : N
+          iD += 1
+          ind = Glob[iD,IF]
+          cLoc = Thermodynamics.fThE(Rho[Iz,kP,ind],RhoV[Iz,kP,ind],RhoC[Iz,kP,ind],
+            RhoTh[Iz,kP,ind],Phys)
+          cCell[I,J,K,Iz,IF] += Inter[I,J,K,iP,jP,kP] * cLoc
+        end
       end
     end
   end    
@@ -221,14 +221,10 @@ function InterpolateGPU!(cCell,c,Inter,Glob)
   backend = get_backend(c)
   FT = eltype(c)
 
-  @show size(c)
   OrdPrint = size(Inter,1)
   OrdPrintZ = size(Inter,3)
   NF = size(Glob,2)
   Nz = size(c,1)
-  @show OrdPrint
-  @show OrdPrintZ
-
 # Ranges
   NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
   group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
@@ -246,12 +242,13 @@ function InterpolateCGDim2GPU!(cCell,c,Inter,Glob)
   FT = eltype(c)
 
   OrdPrint = size(Inter,1)
+  OrdPrintZ = size(Inter,3)
   NF = size(Glob,2)
-
+  Nz = size(c,1)
 # Ranges
-  NFG = min(div(256,OrdPrint*OrdPrint),NF)
-  group = (OrdPrint, OrdPrint, NFG)
-  ndrange = (OrdPrint, OrdPrint, NF)
+  NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
+  group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
+  ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
 
   KInterpolateCGDim2Kernel! = InterpolateCGDim2Kernel!(backend,group)
   KInterpolateCGDim2Kernel!(cCell,c,Inter,Glob,ndrange=ndrange)
@@ -304,12 +301,13 @@ function InterpolateThEGPU!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys)
   FT = eltype(cCell)
 
   OrdPrint = size(Inter,1)
+  OrdPrintZ = size(Inter,3)
   NF = size(Glob,2)
   Nz = size(RhoTh,1)
-  # Ranges
-  NzG = min(div(256,OrdPrint*OrdPrint),Nz)
-  group = (OrdPrint, OrdPrint, NzG, 1)
-  ndrange = (OrdPrint, OrdPrint, Nz, NF)
+# Ranges
+  NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
+  group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
+  ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
 
   KInterpolateThEKernel! = InterpolateThEKernel!(backend,group)
   KInterpolateThEKernel!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys,ndrange=ndrange)

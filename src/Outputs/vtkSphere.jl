@@ -194,13 +194,13 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,CG::DyCore.CGStruct,Metric,Gl
   end
 
   vtkInter = zeros(Float64,OrdPrint,OrdPrint,1,OrdPoly+1,OrdPoly+1,1)
-  dd=2/OrdPrint;
-  eta0=-1;
+  dd=2/OrdPrint
+  eta0=-1
   for jRef=1:OrdPrint
-    ksi0=-1;
-    eta1=eta0+dd;
+    ksi0=-1
+    eta1=eta0+dd
     for iRef=1:OrdPrint
-      ksi1=ksi0+dd;
+      ksi1=ksi0+dd
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
           vtkInter[iRef,jRef,1,i,j,1] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),CG.xwCPU,i)*
@@ -305,30 +305,51 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,FE,Metric,Global) where FT<:A
     push!(cells, MeshCell(celltype, inds))
   end
 
-  vtkInter = zeros(Float64,OrdPrint,OrdPrint,OrdPrintZ,OrdPoly+1,OrdPoly+1,OrdPolyZ+1)
-  zeta0 = -1.0
-  for kRef = 1 : OrdPrintZ
-    eta0=-1.0;
-    zeta1=zeta0+ddZ;
+  if typeof(FE) <: FiniteElements.CGQuad
+    vtkInter = zeros(Float64,OrdPrint,OrdPrint,1,OrdPoly+1,OrdPoly+1,1)
+    eta0=-1.0
+    zeta1=zeta0+ddZ
     for jRef=1:OrdPrint
-      ksi0=-1.0;
-      eta1=eta0+dd;
+      ksi0=-1.0
+      eta1=eta0+dd
       for iRef=1:OrdPrint
-        ksi1=ksi0+dd;
-        for k=1:OrdPolyZ+1
-          for j=1:OrdPoly+1
-            for i=1:OrdPoly+1
-              vtkInter[iRef,jRef,kRef,i,j,k] = DG.Lagrange(0.5*(ksi0+ksi1),FE.xwCPU,i)*
-                  DG.Lagrange(0.5*(eta0+eta1),FE.xwCPU,j) *
-                  DG.Lagrange(0.5*(zeta0+zeta1),FE.xwZCPU,k) 
-            end
+        ksi1=ksi0+dd
+        for j=1:OrdPoly+1
+          for i=1:OrdPoly+1
+            vtkInter[iRef,jRef,1,i,j,1] = DG.Lagrange(0.5*(ksi0+ksi1),FE.xwCPU,i)*
+                DG.Lagrange(0.5*(eta0+eta1),FE.xwCPU,j) 
           end
         end
         ksi0 = ksi1
       end
       eta0 = eta1
     end
-    zeta0 = zeta1
+  else    
+    vtkInter = zeros(Float64,OrdPrint,OrdPrint,OrdPrintZ,OrdPoly+1,OrdPoly+1,OrdPolyZ+1)
+    zeta0 = -1.0
+    for kRef = 1 : OrdPrintZ
+      eta0=-1.0
+      zeta1=zeta0+ddZ
+      for jRef=1:OrdPrint
+        ksi0=-1.0
+        eta1=eta0+dd
+        for iRef=1:OrdPrint
+          ksi1=ksi0+dd
+          for k=1:OrdPolyZ+1
+            for j=1:OrdPoly+1
+              for i=1:OrdPoly+1
+                vtkInter[iRef,jRef,kRef,i,j,k] = DG.Lagrange(0.5*(ksi0+ksi1),FE.xwCPU,i)*
+                    DG.Lagrange(0.5*(eta0+eta1),FE.xwCPU,j) *
+                    DG.Lagrange(0.5*(zeta0+zeta1),FE.xwZCPU,k) 
+              end
+            end
+          end
+          ksi0 = ksi1
+        end
+        eta0 = eta1
+      end
+      zeta0 = zeta1
+    end
   end
   dvtkInter = KernelAbstractions.zeros(backend,FT,size(vtkInter))
   copyto!(dvtkInter,vtkInter)
@@ -410,13 +431,13 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   end
 
   vtkInter = zeros(Float64,OrdPrint,OrdPrint,1,OrdPoly+1,OrdPoly+1,1)
-  dd=2/OrdPrint;
-  eta0=-1;
+  dd=2/OrdPrint
+  eta0=-1
   for jRef=1:OrdPrint
-    ksi0=-1;
-    eta1=eta0+dd;
+    ksi0=-1
+    eta1=eta0+dd
     for iRef=1:OrdPrint
-      ksi1=ksi0+dd;
+      ksi1=ksi0+dd
       for j=1:OrdPoly+1
         for i=1:OrdPoly+1
           vtkInter[iRef,jRef,1,i,j,1] = DG.Lagrange(0.5*(ksi0+ksi1),FE.xwCPU,i)*
@@ -437,19 +458,19 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   )  
 end
 
-function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber)
+function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber, cName)
   cells = vtkCache.cells
   pts = vtkCache.pts
 
   step = FileNumber
   stepS = "$step"
-  vtk_filename_noext = pwd()*"/output/VTK/" * filename * stepS;
+  vtk_filename_noext = pwd()*"/output/VTK/" * filename * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
-  cName=["Height","uC","vC","wC","uS","vS"]
-  for iC = 1 : size(c,2)
+#  cName=["Height","uC","vC","wC","uS","vS"]
+  for iC = 1 : length(cName)
     vtk[cName[iC], VTKCellData()] = c[:,iC]
   end
-  outfiles = vtk_save(vtk);
+  outfiles = vtk_save(vtk)
   return nothing
 end  
 
@@ -472,7 +493,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
 
   step = Global.Output.vtk
   stepS="$step"
-  vtk_filename_noext = filename * stepS;
+  vtk_filename_noext = filename * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
 
   backend = get_backend(U)				      
@@ -516,6 +537,13 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
       vCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views Interpolate!(vCell,UR[:,:,:,vPos],UR[:,:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       vtk["v", VTKCellData()] = vCell
+    elseif  str == "wDG" 
+      wPos = Global.Model.wPos
+      wCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
+      @. @views UR[:,:,CG.BoundaryDoF,wPos] = FTB(0.0)
+      @views InterpolateGPU!(cCell,UR[:,:,:,wPos],vtkInter,CG.Glob)
+      @views copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      vtk["wDG", VTKCellData()] = wCell
     elseif  str == "w" 
       uPos = Global.Model.uPos
       vPos = Global.Model.uPos
@@ -535,20 +563,12 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
       @views copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
-      if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
-        @views Pres = Cache.AuxG[:,:,1]  
-        RhoPos = Global.Model.RhoPos
-        ThCell = zeros(OrdPrint*OrdPrint*nz*NF)  
-        @views InterpolateTh!(ThCell,Pres,UR[:,:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
-        vtk["Th", VTKCellData()] = ThCell 
-      else
-        ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
-        @views PotT = reshape(Cache.AuxG[:,:,3],size(Cache.AuxG[:,:,3],1),1,
-          size(Cache.AuxG[:,:,3],2))
-        InterpolateGPU!(cCell,PotT,vtkInter,CG.Glob)
-        copyto!(ThCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
-        vtk["Th", VTKCellData()] = ThCell
-      end
+      ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views PotT = reshape(Cache.AuxG[:,:,3],size(Cache.AuxG[:,:,3],1),1,
+        size(Cache.AuxG[:,:,3],2))
+      InterpolateGPU!(cCell,PotT,vtkInter,CG.Glob)
+      copyto!(ThCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+      vtk["Th", VTKCellData()] = ThCell
     elseif str == "ThE"  
       ThECell = zeros(OrdPrint*OrdPrint*nz*NF)  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
@@ -632,7 +652,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
       vtk["Vort", VTKCellData()] = VortCell
     end   
   end   
-  outfiles=vtk_save(vtk);
+  outfiles=vtk_save(vtk)
   Global.Output.vtk = Global.Output.vtk + 1
   return outfiles::Vector{String}
 end
@@ -896,7 +916,7 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   PartitionCell = zeros(NF)
   PartitionCell .= part
   vtk["Part", VTKCellData()] = PartitionCell
-  outfiles=vtk_save(vtk);
+  outfiles=vtk_save(vtk)
   return outfiles::Vector{String}
 end
 
@@ -919,6 +939,6 @@ function unstructured_vtkOrography(Height,vtkGrid, NF, CG,  part::Int, nparts::I
   InterpolateCGDim2GPU!(cCell,Height,vtkInter,CG.Glob)
   copyto!(HeightCell,cCell)
   vtk["Height", VTKCellData()] = HeightCell
-  outfiles=vtk_save(vtk);
+  outfiles=vtk_save(vtk)
   return outfiles::Vector{String}
 end  

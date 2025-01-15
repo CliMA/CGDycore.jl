@@ -1,4 +1,4 @@
-function JacobiDG3GPU!(XDG3Loc,AdaptGrid,X,dXdxI,J,FE,F,z,zs)
+function JacobiCartDG3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -14,7 +14,7 @@ function JacobiDG3GPU!(XDG3Loc,AdaptGrid,X,dXdxI,J,FE,F,z,zs)
 
   KJacobiDG3Kernel! = JacobiDG3Kernel!(backend,group)
 
-  KJacobiDG3Kernel!(XDG3Loc,AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,ndrange=ndrange)
+  KJacobiDG3Kernel!(XCartDG3Loc!,AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,ndrange=ndrange)
 end
 
 @kernel inbounds = true function JacobiDG3Kernel!(XDG3Loc!,AdaptGrid,X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),

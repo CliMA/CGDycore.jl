@@ -1,7 +1,6 @@
-mpirun -n 6 julia --project Examples/testNHCart.jl \
+#!/bin/bash
+julia --project Examples/testNHCart.jl \
   --Problem="WarmBubble2DXCart" \
-  --Device="CPU" \
-  --GPUType="CUDA" \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
@@ -9,14 +8,14 @@ mpirun -n 6 julia --project Examples/testNHCart.jl \
   --ProfTheta="WarmBubble2DX" \
   --ProfVel="Const" \
   --Equation="CompressibleShallow" \
-  --State="Dry" \
+  --State="DryInternalEnergy" \
   --Damping=false \
   --Upwind=true \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=100 \
+  --PrintTime=10 \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --dtau=.2 \

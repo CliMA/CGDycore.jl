@@ -227,7 +227,10 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   nBar = zeros(0,0)
   AdaptGrid = ""
   Rad = 1.0
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
   return GridStruct{FT,
+                    typeof(EF),
                     typeof(z)}(
     nz,
     zP,
@@ -253,6 +256,8 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
     nBar3,
     nBar,
     AdaptGrid,
+    EF,
+    FE,
     )
 
 end

@@ -9,7 +9,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProf
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr)
-  CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+  CG = FiniteElements.CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
 
   if Model.Stretch
     if Model.StretchType == "ICON"
@@ -67,7 +67,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfil
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr)
-  CG = CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+  CG = FiniteElements.CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
 
   if Model.Stretch
     if Model.StretchType == "ICON"

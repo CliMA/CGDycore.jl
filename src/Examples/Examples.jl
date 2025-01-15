@@ -3,6 +3,13 @@ module Examples
 import ..Grids
 import ..Thermodynamics
 
+using NLsolve
+
+include("parameters.jl")
+include("initial.jl")
+include("force.jl")
+include("topography.jl")
+include("InitProfileBryanFritsch.jl")
 
 function InitialProfile!(Model,Problem,Param,Phys)
   # Initial values
@@ -44,16 +51,11 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Profile = Examples.WarmBubbleCartExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "BryanFritschCart"
-    ProfileBF = Models.TestRes(Phys)
-    Profile = Examples.BryanFritsch(ProfileBF)(Param,Phys)
+    ProfileBF = TestRes(Phys)
+    Profile = Examples.BryanFritsch()(Param,Phys,ProfileBF)
     Model.InitialProfile = Profile
   end
 end
 
-include("parameters.jl")
-include("initial.jl")
-include("force.jl")
-include("topography.jl")
-include("InitProfileBryanFritsch.jl")
 
 end

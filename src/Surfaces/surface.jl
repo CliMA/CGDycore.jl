@@ -8,7 +8,7 @@ function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
     Lon = xS[1]
     Lat = xS[2]
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
-    p_vs = Thermodynamics.fpvs(TSurf,Phys.T0)
+    p_vs = Thermodynamics.fpws(TSurf,Phys.T0)
     SD[RhoVSurfPos] = p_vs / (Phys.Rv * TSurf)
     SD[TSurfPos] = TSurf
   end  

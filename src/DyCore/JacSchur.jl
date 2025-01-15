@@ -14,7 +14,7 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   dPresdRhoTh = Global.Model.dPresdRhoTh
   if Global.Model.State == "Dry" || Global.Model.State == "Moist"
     @views p = Cache.AuxG[:,:,4]  
-  elseif Global.Model.State == "DryEnergy"  
+  elseif Global.Model.State == "DryTotalEnergy"  
     @views p = Cache.AuxG[:,:,1]
   end  
 

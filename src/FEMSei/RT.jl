@@ -1,379 +1,283 @@
-mutable struct RT0Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivConfElement
-  Order::Int                    
-  Glob::IT2
-  DoF::Int
-  Comp::Int                      
-  phi::Array{Polynomial,2}  
-  Divphi::Array{Polynomial,2}                       
-  NumG::Int
-  NumI::Int
-  Type::Grids.ElementType
-  M::AbstractSparseMatrix
-  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
+#generating the different polynomial spaces for the RT elements
+
+function CGLine(k,x)
+  phi = Array{Polynomial,1}(undef,k+1)
+  for i = 0 : k
+    phi[i+1] = 0.5^k * (1.0-x)^(k-i)*(1.0+x)^i
+  end  
+  return phi
 end
 
-#RT0 Quad
+function Polynomial_1D(k,x,l)
+  phi = Array{Polynomial,1}(undef,k+1)
+  phi[1] = 0.0 * x[1][1] + 0.0 * x[1][2] + 1.0 
+  for i = 1 : k
+    phi[i+1] = x[1][l] * phi[i]
+  end  
+  return phi
+end
 
-function RT0Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
-  Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  Type = Grids.Quad()
-  DoF = 4
-  Comp = 2
-  @polyvar x1 x2 ksi1 ksi2
-  phi = Array{Polynomial,2}(undef,DoF,Comp)
-  nu = Array{Polynomial,2}(undef,DoF,Comp)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
+function HomegenuousPolynomial(k,x)
+  phi = Array{Polynomial,1}(undef,k+1)
+  for i = 0 : k
+    phi[i+1] = x[1][1]^(k-i) * x[1][2]^i + 0.0 
+  end  
+  return phi
+end  
 
-  nu[1,1] = 0.0*ksi1 + 0.0*ksi2
-  nu[1,2] = 0.0*ksi1 + 1.0 - 1.0*ksi2
-
-  nu[2,1] = -1.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[3,1] = 0.0*ksi1 + 0.0*ksi2
-  nu[3,2] = 0.0*ksi1 + 1.0*ksi2
-
-  nu[4,1] = 1.0*ksi1 -1.0 + 0.0*ksi2
-  nu[4,2] = 0.0*ksi1 + 0.0*ksi2
-
-  for s = 1 : DoF
-    for t = 1 : 2
-      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
+function Polynomial_k(k,x)
+  DoF::Int = (k + 1) *(k + 2) / 2
+  phi = Array{Polynomial,1}(undef,DoF)
+  iDoF = 1
+  for i = 0 : k
+    for j = 0 : i  
+      phi[iDoF] = x[1][1]^(i-j) * x[1][2]^j + 0.0 
+      iDoF += 1
     end
   end
+  return phi
+end
 
+#constructing the RT elements for the Triangular grid
+function ConstructRT(k,ElemType::Grids.Tri)
+  s = @polyvar x[1:2]
+
+  P_km1 = Polynomial_k(k,s)
+  H_km1 = HomegenuousPolynomial(k,s)
+
+  lP_km1 = length(P_km1)
+  lH_km1 = length(H_km1)
+  DoF = 2 * lP_km1 + lH_km1
+  DoFE = k + 1
+  DoFF = DoF - 3 * DoFE
+  phi = Array{Polynomial,2}(undef,DoF,2)
+  phiB = Array{Polynomial,2}(undef,DoF,2)
+  rounded_poly = Array{Polynomial,2}(undef,DoF,2)
+  Divphi = Array{Polynomial,2}(undef,DoF,1)
+  rounded_Divphi = Array{Polynomial,2}(undef,DoF,1) 
+  iDoF = 1 
+  for i = 1 : lP_km1
+    phi[iDoF,1] = P_km1[i]  
+    phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+    iDoF += 1
+    phi[iDoF,2] = P_km1[i]  
+    phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
+    iDoF += 1
+  end  
+  for i = 1 : lH_km1
+    phi[iDoF,1] = H_km1[i] * x[1]
+    phi[iDoF,2] = H_km1[i] * x[2]
+    iDoF += 1
+  end  
+  @polyvar t
+  phiL = CGLine(k,t)
+  QuadOrd = 3
+  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  I = zeros(DoF,DoF)
+  rDoF = 1
+# Compute functional over edges
+  # Edge 1 (-1,-1) -> (1,-1)
+  for iDoF = 1 : DoF
+    phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
+    for i = 0 : k
+      for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+  end
+  rDoF += k + 1
+  # Edge 2 (1,-1) -> (-1,1)
+  for iDoF = 1 : DoF
+    phiE1 = subs(phi[iDoF,1], x[1] => -t, x[2] => t)
+    phiE2 = subs(phi[iDoF,2], x[1] => -t, x[2] => t)
+    for i = 0 : k
+      for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += -0.5 * (phiE1(PointsL[iQ]) + phiE2(PointsL[iQ])) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ] 
+      end
+    end
+  end
+  rDoF += k + 1
+# Edge 3 (-1,1) -> (-1,-1)
+  for iDoF = 1 : DoF
+    phiE1 = subs(phi[iDoF,1], x[1] => -1, x[2] => -t)
+    for i = 0 : k
+      for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+      end  
+    end  
+  end  
+  rDoF += k + 1
+  NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Tri(),QuadOrd)
+# Interior  
+  for iDoF = 1 : DoF
+    phiI1 = phi[iDoF,1]  
+    phiI2 = phi[iDoF,2]  
+    for i = 0 : 2 * (k - 1)
+      for iQ = 1 : NumQuadT
+        I[rDoF+i,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+        I[rDoF+i+1,iDoF] += 0.25 * phiI2(PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+      end
+      phiI1 = phiI1 * x[1]
+      phiI2 = phiI2 * x[2]
+    end
+  end
+  for iDoF = 1 : DoF  
+    for jDoF = 1 : DoF  
+      if abs(I[iDoF,jDoF]) < 1.e-12
+        I[iDoF,jDoF] = 0
+      end
+    end
+  end  
+  r = zeros(DoF)
+  for iDoF = 1 : DoF  
+    r[iDoF] = 1
+    c = I \ r
+    phiB[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
+    phiB[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+    for jDoF = 1 : DoF  
+      phiB[iDoF,:] += c[jDoF] * phi[jDoF,:]
+    end  
+    phiB[iDoF,1] = round.(phiB[iDoF,1], digits=5)
+    phiB[iDoF,2] = round.(phiB[iDoF,2], digits=5)
+    r[iDoF] = 0
+  end  
+  Divphi = Array{Polynomial,2}(undef,DoF,1)
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
   end
-
-  Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
-  GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdges 
-  NumI = Grid.NumEdges
-  for iF = 1 : Grid.NumFaces
-    for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
-      GlobCPU[i,iF] = Grid.Edges[iE].E
-    end
-  end
-  copyto!(Glob,GlobCPU)
-  M = sparse([1],[1],[1.0])
-  LUM = lu(M)
-  Order = 0
-  return RT0Struct{FT,
-                  typeof(Glob)}( 
-  Order,                
-  Glob,
-  DoF,
-  Comp,
-  phi,                      
-  Divphi,
-  NumG,
-  NumI,
-  Type,
-  M,
-  LUM,
-    )
-  end
-
-#RT0 Tri
-
-function RT0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
-  Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  Type = Grids.Tri()
-  DoF = 3
-  Comp = 2
-  phi = Array{Polynomial,2}(undef,DoF,Comp) #base function of our used reference element
-  nu = Array{Polynomial,2}(undef,DoF,Comp) #base function of standard reference element see defelement.com
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
-  @polyvar x1 x2 ksi1 ksi2
-
-
-  nu[1,1] = -1.0*ksi1 + 0.0*ksi2
-  nu[1,2] = 0.0*ksi1 - 1.0*ksi2 + 1.0
-
-  nu[2,1] = -1.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 0.0*ksi1 - 1.0*ksi2
-
-  nu[3,1] = 1.0*ksi1 + 0.0*ksi2 - 1.0
-  nu[3,2] = 0.0*ksi1 + 1.0*ksi2
-
-  for s = 1 : DoF
-    for t = 1 : 2
-      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
-    end
-  end
-
-  for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
-  end
-
-
-  Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
-  GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdges
-  NumI = Grid.NumEdges
-  for iF = 1 : Grid.NumFaces
-    for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
-      GlobCPU[i,iF] = Grid.Edges[iE].E
-    end
-  end
-  copyto!(Glob,GlobCPU)
-  M = sparse([1],[1],[1.0])
-  LUM = lu(M)
-  Order = 0
-  return RT0Struct{FT,
-                  typeof(Glob)}( 
-    Order,              
-    Glob,
-    DoF,
-    Comp,
-    phi,
-    Divphi,                      
-    NumG,
-    NumI,
-    Type,
-    M,
-    LUM,
-      )
+  return DoF, DoFE, DoFF, phiB, Divphi
 end
 
-mutable struct RT1Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivConfElement
-  Order::Int                    
-  Glob::IT2
-  DoF::Int
-  Comp::Int                      
-  phi::Array{Polynomial,2}  
-  Divphi::Array{Polynomial,2}                       
-  NumG::Int
-  NumI::Int
-  Type::Grids.ElementType
-  M::AbstractSparseMatrix
-  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
-end
+#constructing the RT elements for the Quadrilateral grid
+function ConstructRT(k,ElemType::Grids.Quad)
 
-#RT1 Quad
-#=
-__6__7_
-|  11  |
-3 9 10 5
-|  8   |
-2      4
-|_0__1_|
-
-New
-__6__5_
-|  12  |
-7 10 11 4
-|  9   |
-8      3
-|_1__2_|
-
-=#
-
-function RT1Struct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
-  Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  Type = Grids.Quad()
-  DoF = 12
-  Comp = 2
-  phi = Array{Polynomial,2}(undef,DoF,Comp) 
-  nu = Array{Polynomial,2}(undef,DoF,Comp)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
-  @polyvar x1 x2 ksi1 ksi2
-
-#RT1 DEFelement
-
-  nu[1,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[1,2] = -18*ksi1*ksi2^2 + 24*ksi1*ksi2 - 6*ksi1 + 12*ksi2^2 - 16*ksi2 + 4
-
-  nu[2,1] = 0.0*ksi1 + 0.0*ksi2
-  nu[2,2] = 18*ksi1*ksi2^2 - 24*ksi1*ksi2 + 6*ksi1 - 6*ksi2^2 + 8*ksi2 - 2
-
-  nu[3,1] = 2.0*ksi1 * (9.0*ksi1*ksi2 - 6.0*ksi1 - 6.0*ksi2 + 4.0)
-  nu[3,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[4,1] = 2.0*ksi1 * (-9.0*ksi1*ksi2 + 3.0*ksi1 + 6.0*ksi2 - 2.0)
-  nu[4,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[5,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[5,2] = 2.0*ksi2 * (-9.0*ksi1*ksi2 + 6.0*ksi1 + 6.0*ksi2 - 4.0)
-
-  nu[6,1] = 0.0*ksi1 + 0.0*ksi2 
-  nu[6,2] = 2.0*ksi2 * (9.0*ksi1*ksi2 - 6.0*ksi1 - 3.0*ksi2 + 2.0)
-
-  nu[7,1] = 18*ksi1^2*ksi2 - 12.0*ksi1^2 - 24.0*ksi1*ksi2 + 16.0*ksi1 + 6.0*ksi2 - 4.0
-  nu[7,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[8,1] = -18.0*ksi1^2*ksi2 + 6.0*ksi1^2 + 24.0*ksi1*ksi2 - 8.0*ksi1 - 6.0*ksi2 + 2.0
-  nu[8,2] = 0.0*ksi1 + 0.0*ksi2
-
-  nu[9,1] = 36*ksi1^2*ksi2 - 24*ksi1^2 - 36*ksi1*ksi2 + 24*ksi1
-  nu[9,2] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
-
-  nu[10,1] = 0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
-  nu[10,2] =  36*ksi1*ksi2^2 - 36*ksi1*ksi2 - 24*ksi2^2 + 24*ksi2
-
-  nu[11,1] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
-  nu[11,2] =  -36*ksi1*ksi2^2 + 36*ksi1*ksi2 + 12*ksi2^2 - 12*ksi2
-
-  nu[12,1] =  -36*ksi1^2*ksi2 + 12*ksi1^2 + 36*ksi1*ksi2 - 12*ksi1
-  nu[12,2] =  0.0 + 0.0*ksi1 + 0.0*ksi2 + 0.0*ksi1^2 + 0.0*ksi2^2 + 0.0*ksi1^2*ksi2 + 0.0*ksi1*ksi2^2 + 0.0*ksi1*ksi2
-
-
-  for s = 1 : DoF
-    for t = 1 : 2
-      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
-    end
-  end
+  s = @polyvar x[1:2]
+  P_kp1x1 = Polynomial_1D(k+1,s,1)
+  P_kx1 = Polynomial_1D(k,s,1)
+  P_kp1x2 = Polynomial_1D(k+1,s,2)
+  P_kx2 = Polynomial_1D(k,s,2)
+  if k > 0
+    P_km1x2 = Polynomial_1D(k-1,s,2)
+    P_km1x1 = Polynomial_1D(k-1,s,1)
+  end  
   
-  for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
-  end
+  DoF = 2 * (k+2) * (k+1)
+  DoFE = k + 1
+  DoFF = DoF - 4 * DoFE
 
-  Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
-  GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = 2*Grid.NumEdges + 4*Grid.NumFaces
-  NumI = Grid.NumEdges
-  for iF = 1 : Grid.NumFaces
-    for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
-      GlobCPU[2*i-1,iF] = 2*Grid.Edges[iE].E - 1
-      GlobCPU[2*i,iF] = 2*Grid.Edges[iE].E 
-    
-    end
-    GlobCPU[9,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F - 3
-    GlobCPU[10,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F - 2
-    GlobCPU[11,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F - 1
-    GlobCPU[12,iF] = 2*Grid.NumEdges + 4*Grid.Faces[iF].F
-  end
-  copyto!(Glob,GlobCPU)
-  M = sparse([1],[1],[1.0])
-  LUM = lu(M)
-  Order = 1
-  return RT1Struct{FT,
-                  typeof(Glob)}( 
-    Order,              
-    Glob,
-    DoF,
-    Comp,
-    phi,                      
-    Divphi,
-    NumG,
-    NumI,
-    Type,
-    M,
-    LUM,
-      )
-  end
-
-#RT1 Tri
-#=Numbering
-
-| \
-4  2
-| 8 \
-3 7  1
-|_5_6_\
-
-New
-| \
-5  4
-| 8 \
-6 7  3
-|_1_2_\
-
-
-=#
-
-function RT1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
-  Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  Type = Grids.Tri()
-  DoF = 8
-  Comp = 2
-  phi = Array{Polynomial,2}(undef,DoF,Comp) #base function of our reference triangle
-  nu = Array{Polynomial,2}(undef,DoF,Comp) #base function of standard reference element
+  phi = Array{Polynomial,2}(undef,DoF,2)
+  phiB = Array{Polynomial,2}(undef,DoF,2)
+  rounded_poly = Array{Polynomial,2}(undef,DoF,2)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
-  @polyvar x1 x2 ksi1 ksi2
-
-  nu[1,1] = 2.0*ksi1 * (4.0*ksi1 + 4.0*ksi2 - 3.0)
-  nu[1,2] = 8.0*ksi1*ksi2 - 6.0*ksi1 + 8.0*ksi2*ksi2 - 12.0*ksi2 + 4.0
-
-  nu[2,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2
-  nu[2,2] = -8.0*ksi1*ksi2 + 6.0*ksi1 + 2.0*ksi2 - 2.0
-
-  nu[3,1] = 4.0*ksi1 * (1.0 - 2.0*ksi1) + 0.0*ksi2 
-  nu[3,2] = 2.0*ksi2 * (1.0 - 4.0*ksi1)
-
-  nu[4,1] = 2.0*ksi1 * (1.0 - 4.0*ksi2) 
-  nu[4,2] = 4.0*ksi2 * (1.0 - 2.0*ksi2) + 0.0*ksi1
-
-  nu[5,1] = 8.0*ksi1*ksi2 -2.0*ksi1 - 6.0*ksi2 + 2.0
-  nu[5,2] = 4.0*ksi2 * (2.0*ksi2 - 1.0) + 0.0*ksi1
-
-  nu[6,1] = -8.0*ksi1*ksi1 - 8.0*ksi1*ksi2 + 12.0*ksi1 + 6.0*ksi2 - 4.0
-  nu[6,2] = 2.0*ksi2 * (-4.0*ksi1 - 4.0*ksi2 + 3.0)
-
-  #non-normal
-
-  nu[7,1] = 8.0*ksi1 * (-2.0*ksi1 - 1.0*ksi2 + 2.0)
-  nu[7,2] = 8.0*ksi2 * (-2.0*ksi1 - 1.0*ksi2 + 1.0)
-
-  nu[8,1] = 8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
-  nu[8,2] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
-
-  for s = 1 : DoF
-    for t = 1 : 2
-      phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
+  rounded_Divphi = Array{Polynomial,2}(undef,DoF,1)
+  iDoF = 1 
+  for i = 1 : k+2
+    for j = 1 : k+1
+      phi[iDoF,1] = P_kp1x1[i] * P_kx2[j] 
+      phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+      iDoF += 1
+      phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
+      phi[iDoF,2] = P_kp1x2[i] * P_kx1[j] 
+      iDoF += 1
     end
   end
-
+  @polyvar t
+  phiL = CGLine(k,t)
+  QuadOrd = 3
+  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  I = zeros(DoF,DoF)
+  rDoF = 1
+# Compute functional over edges
+  # Edge 1 (-1,-1) -> (1,-1)
+  for iDoF = 1 : DoF
+    phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
+    for i = 0 : k
+      for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+  end
+  rDoF += k + 1
+  # Edge 2 (1,-1) -> (1,1)
+  for iDoF = 1 : DoF
+    phiE1 = subs(phi[iDoF,1], x[1] => 1.0, x[2] => t)
+    for i = 0 : k
+      for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+      end  
+    end  
+  end 
+  rDoF += k + 1
+  # Edge 3 (1,1) -> (-1,1)
+  for iDoF = 1 : DoF
+    phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => 1.0)
+    for i = 0 : k
+      for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+  end
+  rDoF += k + 1
+  # Edge 4 (-1,1) -> (-1,-1)
+  for iDoF = 1 : DoF
+    phiE1 = subs(phi[iDoF,1], x[1] => -1.0, x[2] => t)
+    for i = 0 : k
+      for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+      end  
+    end  
+  end  
+  rDoF += k + 1
+  NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Quad(),QuadOrd)
+# Interior  
+  for i = 1 : k+1
+    for j = 1 : k
+      for iDoF = 1 : DoF
+        phiI1 = phi[iDoF,1]  
+        phiI2 = phi[iDoF,2]  
+      
+        for iQ = 1 : NumQuadT
+          I[rDoF,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * 
+          P_km1x1[j](PointsT[iQ,1],PointsT[iQ,2]) * P_kx2[i](PointsT[iQ,1],PointsT[iQ,2]) * 
+          WeightsT[iQ]
+          I[rDoF+1,iDoF] += 0.25 * phiI2(PointsT[iQ,1],PointsT[iQ,2]) * 
+          P_kx1[i](PointsT[iQ,1],PointsT[iQ,2]) * P_km1x2[j](PointsT[iQ,1],PointsT[iQ,2]) * 
+          WeightsT[iQ] 
+        end
+      end
+      rDoF += 2
+    end
+  end
+  for iDoF = 1 : DoF  
+    for jDoF = 1 : DoF  
+      if abs(I[iDoF,jDoF]) < 1.e-12
+        I[iDoF,jDoF] = 0
+      end
+    end
+  end  
+  r = zeros(DoF)
+  for iDoF = 1 : DoF  
+    r[iDoF] = 1
+    c = I \ r
+    phiB[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
+    phiB[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+    for jDoF = 1 : DoF  
+      phiB[iDoF,:] += c[jDoF] * phi[jDoF,:]
+    end  
+    phiB[iDoF,1] = round.(phiB[iDoF,1], digits=5)
+    phiB[iDoF,2] = round.(phiB[iDoF,2], digits=5)
+    r[iDoF] = 0
+  end  
+  Divphi = Array{Polynomial,2}(undef,DoF,1)
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
+    Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
   end
+  return DoF, DoFE, DoFF, phiB, Divphi
+end
 
-  Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
-  GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = 2*Grid.NumEdges + 2*Grid.NumFaces
-  NumI = NumG
-  Num = Grid.NumEdges
-  for iF = 1 : Grid.NumFaces
-      iE1 = Grid.Faces[iF].E[1]
-      GlobCPU[1,iF] = 2*Grid.Edges[iE1].E - 1
-      GlobCPU[2,iF] = 2*Grid.Edges[iE1].E
-      iE2 = Grid.Faces[iF].E[2]
-      GlobCPU[3,iF] = 2*Grid.Edges[iE2].E - 1 
-      GlobCPU[4,iF] = 2*Grid.Edges[iE2].E 
-      iE3 = Grid.Faces[iF].E[3]
-      GlobCPU[5,iF] = 2*Grid.Edges[iE3].E 
-      GlobCPU[6,iF] = 2*Grid.Edges[iE3].E - 1
-    GlobCPU[7,iF] = 2*Grid.NumEdges + 2*Grid.Faces[iF].F - 1
-    GlobCPU[8,iF] = 2*Grid.NumEdges + 2*Grid.Faces[iF].F
-  end
-  copyto!(Glob,GlobCPU)
-  M = sparse([1],[1],[1.0])
-  LUM = lu(M)
-  Order = 1
-  return RT1Struct{FT,
-                  typeof(Glob)}( 
-    Order,              
-    Glob,
-    DoF,
-    Comp,
-    phi,
-    Divphi,                      
-    NumG,
-    NumI,
-    Type, 
-    M,
-    LUM,
-      )
-  end
-
-mutable struct RT2Struct{FT<:AbstractFloat,
-                      IT2<:AbstractArray} <: HDivConfElement
+mutable struct RTStruct{FT<:AbstractFloat,
+                        IT2<:AbstractArray} <: HDivConfElement
+  Order::Int                    
   Glob::IT2
   DoF::Int
   Comp::Int                      
@@ -386,81 +290,36 @@ mutable struct RT2Struct{FT<:AbstractFloat,
   LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
-#RT2 Tri
-#todo
-function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
+function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:AbstractFloat
+  @polyvar x[1:2]
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  Type = Grids.Tri()
-  DoF = 15
+  DoF, DoFE, DoFF, phi, Divphi = FEMSei.ConstructRT(k,ElemType)
   Comp = 2
-  phi = Array{Polynomial,2}(undef,DoF,Comp)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
-  @polyvar x1 x2
-    
-  phi[1,1] = -45*x1^3/16 - 45*x1^2/16 + 9*x1/16 + 9/16
-  phi[1,2] = -45*x1^2*x2/16 - 45*x1^2/16 - 15*x1*x2/8 - 15*x1/8 + 3*x2/16 + 3/16
-    
-  phi[2,1] = -45*x1*x2^2/16 - 15*x1*x2/8 + 3*x1/16 - 45*x2^2/16 - 15*x2/8 + 3/16
-  phi[2,2] = -45*x2^3/16 - 45*x2^2/16 + 9*x2/16 + 9/16
-    
-  phi[3,1] = -45*x1^3/64 - 45*x1^2*x2/16 - 165*x1^2/64 - 45*x1*x2^2/64 - 135*x1*x2/32 - 39*x1/16 - 45*x2^2/64 - 45*x2/32 - 9/16
-  phi[3,2] = -45*x1^2*x2/64 - 45*x1^2/64 - 45*x1*x2^2/16 - 135*x1*x2/32 - 45*x1/32 - 45*x2^3/64 - 165*x2^2/64 - 39*x2/16 - 9/16
-    
-  phi[4,1] = 45*x1^3/16 + 45*x1^2*x2/8 + 45*x1^2/16 + 45*x1*x2^2/16 + 15*x1*x2/8 - 3*x1/2 - 15*x2^2/16 - 9*x2/4 - 3/4
-  phi[4,2] = 45*x1^2*x2/16 + 45*x1^2/16 + 45*x1*x2^2/8 + 75*x1*x2/8 + 15*x1/4 + 45*x2^3/16 + 105*x2^2/16 + 9*x2/2 + 3/4
-    
-  phi[5,1] = 45*x1*x2^2/16 + 15*x1*x2/8 - 3*x1/16 - 15*x2^2/16 + 3*x2/8 + 9/16
-  phi[5,2] = 45*x2^3/16 + 45*x2^2/16 - 9*x2/16 - 9/16
-    
-  phi[6,1] = 45*x1^3/64 - 45*x1^2*x2/32 - 75*x1^2/64 - 45*x1*x2^2/32 - 15*x1*x2/16 - 39*x1/64 + 15*x2^2/32 + 15*x2/32 + 9/64
-  phi[6,2] = 45*x1^2*x2/64 + 45*x1^2/64 - 45*x1*x2^2/32 - 45*x1*x2/32 - 45*x2^3/32 - 75*x2^2/32 - 69*x2/64 - 9/64
-
-  phi[7,1] = -45*x1^3/16 - 45*x1^2*x2/8 - 105*x1^2/16 - 45*x1*x2^2/16 - 75*x1*x2/8 - 9*x1/2 - 45*x2^2/16 - 15*x2/4 - 3/4
-  phi[7,2] = -45*x1^2*x2/16 + 15*x1^2/16 - 45*x1*x2^2/8 - 15*x1*x2/8 + 9*x1/4 - 45*x2^3/16 - 45*x2^2/16 + 3*x2/2 + 3/4
-    
-  phi[8,1] = -45*x1^3/16 - 45*x1^2/16 + 9*x1/16 + 9/16
-  phi[8,2] = -45*x1^2*x2/16 + 15*x1^2/16 - 15*x1*x2/8 - 3*x1/8 + 3*x2/16 - 9/16
-
-  phi[9,1] = 45*x1^3/32 + 45*x1^2*x2/32 + 75*x1^2/32 - 45*x1*x2^2/64 + 45*x1*x2/32 + 69*x1/64 - 45*x2^2/64 + 9/64
-  phi[9,2] = 45*x1^2*x2/32 - 15*x1^2/32 + 45*x1*x2^2/32 + 15*x1*x2/16 - 15*x1/32 - 45*x2^3/64 + 75*x2^2/64 + 39*x2/64 - 9/64
-
-  phi[10,1] = 135*x1^3/8 + 45*x1^2*x2/2 + 135*x1^2/8 + 45*x1*x2^2/8 + 75*x1*x2/4 - 15*x1/4 + 45*x2^2/8 - 15*x2/4 - 15/4
-  phi[10,2] = 135*x1^2*x2/8 + 135*x1^2/8 + 45*x1*x2^2/2 + 165*x1*x2/4 + 75*x1/4 + 45*x2^3/8 + 165*x2^2/8 + 75*x2/4 + 15/4
-
-  phi[11,1] = 45*x1^3/8 + 45*x1^2*x2/2 + 165*x1^2/8 + 135*x1*x2^2/8 + 165*x1*x2/4 + 75*x1/4 + 135*x2^2/8 + 75*x2/4 + 15/4
-  phi[11,2] = 45*x1^2*x2/8 + 45*x1^2/8 + 45*x1*x2^2/2 + 75*x1*x2/4 - 15*x1/4 + 135*x2^3/8 + 135*x2^2/8 - 15*x2/4 - 15/4
-
-  phi[12,1] = -135*x1^3/8 - 45*x1^2*x2/4 - 135*x1^2/8 - 15*x1*x2 + 15*x1/8 - 15*x2/4 + 15/8
-  phi[12,2] = -135*x1^2*x2/8 - 135*x1^2/8 - 45*x1*x2^2/4 - 105*x1*x2/4 - 15*x1 - 15*x2^2/2 - 75*x2/8 - 15/8
-
-  phi[13,1] = -45*x1^3/4 - 45*x1^2*x2/2 - 105*x1^2/4 - 30*x1*x2 - 75*x1/4 - 15*x2/2 - 15/4
-  phi[13,2] = -45*x1^2*x2/4 - 45*x1^2/4 - 45*x1*x2^2/2 - 45*x1*x2/2 - 15*x2^2 - 45*x2/4 + 15/4
-
-  phi[14,1] = -45*x1^2*x2/2 - 15*x1^2 - 45*x1*x2^2/4 - 45*x1*x2/2 - 45*x1/4 - 45*x2^2/4 + 15/4
-  phi[14,2] = -45*x1*x2^2/2 - 30*x1*x2 - 15*x1/2 - 45*x2^3/4 - 105*x2^2/4 - 75*x2/4 - 15/4
-
-  phi[15,1] = -45*x1^2*x2/4 - 15*x1^2/2 - 135*x1*x2^2/8 - 105*x1*x2/4 - 75*x1/8 - 135*x2^2/8 - 15*x2 - 15/8
-  phi[15,2] = -45*x1*x2^2/4 - 15*x1*x2 - 15*x1/4 - 135*x2^3/8 - 135*x2^2/8 + 15*x2/8 + 15/8
-       
-  for i = 1 : DoF
-    Divphi[i,1] = differentiate(phi[i,1],x1) + differentiate(phi[i,2],x2)
-  end
-
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdges
-  NumI = Grid.NumEdges
+  NumG = Grid.NumEdges * DoFE + Grid.NumFaces * DoFF
+  NumI = NumG
   for iF = 1 : Grid.NumFaces
+    iGlob = 1  
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
-      GlobCPU[i,iF] = Grid.Edges[iE].E
+      for j = 1 : DoFE
+        GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
+        iGlob += 1
+      end
     end
-  end
+    for j = 1 : DoFF
+      GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+      iGlob += 1
+    end
+  end  
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
-  return RT2Struct{FT,
+  Order = k
+  return RTStruct{FT,
                   typeof(Glob)}( 
+    Order,              
     Glob,
     DoF,
     Comp,
@@ -468,8 +327,8 @@ function RT2Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloat
     Divphi,                      
     NumG,
     NumI,
-    Type,
+    ElemType,
     M,
     LUM,
       )
-  end
+end

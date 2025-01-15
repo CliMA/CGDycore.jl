@@ -34,9 +34,10 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs)
   if Global.Grid.Form == "Sphere"
 #   Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,
 #     Grid.z,zs,Grid.Rad,Global.Model.Equation)
-    Grids.JacobiDG3GPU!(Grids.XSphereDG3Loc!,Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+#   Grids.JacobiDG3GPU!(Grids.XSphereDG3Loc!,Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+    Grids.JacobiSphere3DGGPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs,Grid.Rad)
   else
-    Grids.JacobiDG3GPU!(XCartDG3Loc!,Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+    Grids.JacobiCartDG3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
 #   Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
   end
 
@@ -92,36 +93,36 @@ end
     IF = EF[1,IE]
     if IS == 1
       ID = I  
+      nSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
+      nSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
+      nSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
+      tSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
+      tSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
+      tSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
+    elseif IS == 2
+      ID = N + (I - 1) * N  
       nSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
       nSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
       nSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
       tSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
       tSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
       tSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
-    elseif IS == 2
-      ID = N + (I - 1) * N  
+    elseif IS == 3
+      ID = I + (N - 1) * N  
       nSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
       nSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
       nSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
       tSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
       tSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
       tSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
-    elseif IS == 3
-      ID = I + (N - 1) * N  
+    elseif IS == 4
+      ID = 1 + (I - 1) * N  
       nSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
       nSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
       nSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
       tSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
       tSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
-      tSLoc3 = dXdxI[3,3,K,ID,Iz,IF]
-    elseif IS == 4
-      ID = 1 + (I - 1) * N  
-      nSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
-      nSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
-      nSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
-      tSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
-      tSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
-      tSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
+      tSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
     end  
     n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
     nSLoc1 = nSLoc1 / n1Norm

@@ -1,5 +1,6 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
+  Examples, Parallels, Models, Grids, FiniteElements, Outputs, Integration, GPU, 
+  DyCore, FEMSei, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -95,7 +96,7 @@ FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 MPI.Init()
-Flat = false #testen
+Flat = true #testen
 Device = "CPU"
 FloatTypeBackend = "Float64"
 
@@ -152,17 +153,17 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
-nPanel = 30
+nPanel = 20
 #GridType = "HealPix"
 ns = 57
 OrdPoly = 3
-OrdPolyZ = 2
+OrdPolyZ = 1
 
 #Grid construction
 RadEarth = Phys.RadEarth
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom)
-H = 20000.0
+H = 1000.0
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,"Sleve",FTB(H))
 
 print("Which Problem do you want so solve? \n")
@@ -172,7 +173,10 @@ print("1 - GalewskiSphere\n\
 #text = readline() 
 #a = parse(Int,text)
 a = 1
-if  a == 1
+if a == 0
+    Problem = "LinearBlob"
+    Param = Examples.Parameters(FTB,Problem)
+elseif  a == 1
     Problem = "GalewskiSphere"
     Param = Examples.Parameters(FTB,Problem)
     GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
@@ -208,6 +212,7 @@ else
     print("Error")
 end
 println("The chosen Problem is ") 
+Model.State = "ShallowWater"
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 nz = Grid.nz
@@ -221,14 +226,13 @@ DoF = (OrdPoly + 1) * (OrdPoly + 1)
 Global = DyCore.GlobalStruct{FTB}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
   Model.NumV,Model.NumTr)
 
-DG = DyCore.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,Global.Grid)
-
+DG = FiniteElements.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,Global.Grid)
 
 zS = zeros(1)
 Grids.AddVerticalGrid!(Grid,nz,H)
 DG, Metric = DyCore.DiscretizationDG(backend,FTB,Grids.JacobiSphere3,DG,Exchange,Global,zS)
 
-Global.Output.Flat = true
+Global.Output.Flat = Flat
 Global.Output.OrdPrint = OrdPoly
 Global.Output.OrdPrintZ = OrdPolyZ
 Global.Output.RadPrint = H
@@ -239,6 +243,7 @@ Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Grids.Tr
 OP = OrdPoly + 1
 OPZ = OrdPolyZ + 1
 NE = Grid.NumEdges
+NF = Grid.NumFaces
 Model.NumV = 5
 Model.RhoPos = 1
 Model.uPos = 2
@@ -257,18 +262,162 @@ Global.Output.cNames =
       "Rho",
       "u",
       "v",
+      "wDG",
 #     "wB",
 #     "Th",
 #     "Pres",
       ]
-Outputs.unstructured_vtkSphere(U,Grids.TransSphereX,DG,Metric,Phys,Global,Proc,ProcNumber)      
+
+
+
 
 F = similar(U)
-NzG = min(div(NumberThreadGPU,OP*OPZ),nz)
-group = (OPZ,OP,NzG)
-ndrange = (OPZ,OP,nz,NE)
-KRiemannNonLinH! = GPU.RiemannNonLinH!(backend,group)
+F = similar(U)
+F1 = similar(U)
+F2 = similar(U)
+F3 = similar(U)
+@. F = 0
+@. F1 = 0
+@. F2 = 0
+@. F3 = 0
+@views u = U[:,:,:,2]
+@views v = U[:,:,:,3]
+@views w = U[:,:,:,4]
+UNew = similar(U)
+p = similar(U[:,:,:,1])
+T = similar(U[:,:,:,1])
+PotT = similar(U[:,:,:,1])
+NumG = DG.NumG
+NumGG = min(div(NumberThreadGPU,OPZ*nz),NumG)
+#Pressure 
+Pressure = Models.ShallowWaterState()(Phys)
+#Coriolis
+CoriolisFun = GPU.CoriolisShallowDG()(Phys)
+Model.CoriolisFun = CoriolisFun
 
-KRiemannNonLinH!(F,U,Metric.NH,Metric.T1H,Metric.T1H,Metric.VolSurfH,
-  Grid.EF,Grid.FE,DG.Glob,ndrange=ndrange)
+
+
+global dtau = 30.0
+nIter = 3
+@. U[:,:,:,1] = 1.e5
+@. u = 0
+@. v = 0
+@. w = 0
+@. U[:,:,:,5] = 1.e5
+@. UNew = U
+Outputs.unstructured_vtkSphere(U,Grids.TransSphereX,DG,Metric,Phys,Global,Proc,ProcNumber)      
+for iTer = 1 : nIter
+
+  @show iTer,dtau
+  group = (nz,OPZ,NumGG)
+  ndrange = (nz,OPZ,NumG)
+  KPressureKernel! = GPU.PressureKernelDG!(backend,group)
+  KPressureKernel!(Pressure,p,T,PotT,U,Metric.nS,Metric.zP,ndrange=ndrange)
+  @show maximum(p)
+
+  @. F = 0
+  NzG = min(div(NumberThreadGPU,OP*OPZ),nz)
+  group = (OPZ,OP,NzG)
+  ndrange = (OPZ,OP,nz,NE)
+  KRiemannNonLinH! = GPU.RiemannNonLinH!(backend,group)
+  KRiemannNonLinH!(F,U,p,Metric.NH,Metric.T1H,Metric.T2H,Metric.VolSurfH,
+    DG.w[1],Metric.J,Grid.EF,Grid.FE,DG.Glob,ndrange=ndrange)
+  @show minimum(F[:,:,:,2]./U[:,:,:,1]),maximum(F[:,:,:,2]./U[:,:,:,1])
+  @show minimum(F[:,:,:,3]./U[:,:,:,1]),maximum(F[:,:,:,3]./U[:,:,:,1])
+  @show minimum(F[:,:,:,4]./U[:,:,:,1]),maximum(F[:,:,:,4]./U[:,:,:,1])
+
+  NzG = min(div(NumberThreadGPU,OP*OP),nz+1)
+  group = (OP*OP,NzG)
+  ndrange = (OP*OP,nz+1,NF)
+  KRiemannNonLinV! = GPU.RiemannNonLinV!(backend,group)
+  KRiemannNonLinV!(F,U,p,OrdPolyZ+1,Metric.NV,Metric.T1V,Metric.T2V,Metric.VolSurfV,DG.wZ[1],
+    Metric.J,DG.Glob,ndrange=ndrange)
+  @show minimum(F[:,:,:,2]./U[:,:,:,1]),maximum(F[:,:,:,2]./U[:,:,:,1])
+  @show minimum(F[:,:,:,3]./U[:,:,:,1]),maximum(F[:,:,:,3]./U[:,:,:,1])
+  @show minimum(F[:,:,:,4]./U[:,:,:,1]),maximum(F[:,:,:,4]./U[:,:,:,1])
+
+  group = (OPZ,OP,OP)
+  ndrange = (OPZ,OP,OP,nz,NF)
+  KVolumeNonLin! = GPU.VolumeNonLin!(backend,group)
+  KVolumeNonLin!(F,U,p,DG.DW,DG.DWZ,Metric.dXdxI,Metric.J,Metric.X,DG.Glob,CoriolisFun,ndrange=ndrange)
+
+  group = (nz,OPZ,NumGG)
+  ndrange = (nz,OPZ,NumG)
+  KPressureKernel! = GPU.PressureKernelDG!(backend,group)
+  KPressureKernel!(Pressure,p,T,PotT,UNew,Metric.nS,Metric.zP,ndrange=ndrange)
+  group = (OPZ,OP,OP)
+  ndrange = (OPZ,OP,OP,nz,NF)
+  KVolumeNonLin! = GPU.VolumeNonLin!(backend,group)
+  KVolumeNonLin!(F1,UNew,p,DG.DS,DG.DSZ,Metric.dXdxI,Metric.J,Metric.X,DG.Glob,CoriolisFun,ndrange=ndrange)
+  @show minimum(F[:,:,:,2]./U[:,:,:,1]),maximum(F[:,:,:,2]./U[:,:,:,1])
+  @show minimum(F[:,:,:,3]./U[:,:,:,1]),maximum(F[:,:,:,3]./U[:,:,:,1])
+  @show minimum(F[:,:,:,4]./U[:,:,:,1]),maximum(F[:,:,:,4]./U[:,:,:,1])
+
+  @. U = U + dtau * F
+  Outputs.unstructured_vtkSphere(U,Grids.TransSphereX,DG,Metric,Phys,Global,Proc,ProcNumber)
+  @. UNew = UNew + dtau * F1
+  Outputs.unstructured_vtkSphere(UNew,Grids.TransSphereX,DG,Metric,Phys,Global,Proc,ProcNumber)
+
+  #=
+  group = (nz,OPZ,NumGG)
+  ndrange = (nz,OPZ,NumG)
+  KPressureKernel! = GPU.PressureKernelDG!(backend,group)
+  KPressureKernel!(Pressure,p,T,PotT,UNew,Metric.nS,Metric.zP,ndrange=ndrange)
+
+  @. F = 0
+  NzG = min(div(NumberThreadGPU,OP*OPZ),nz)
+  group = (OPZ,OP,NzG)
+  ndrange = (OPZ,OP,nz,NE)
+  KRiemannNonLinH! = GPU.RiemannNonLinH!(backend,group)
+  KRiemannNonLinH!(F,UNew,p,Metric.NH,Metric.T1H,Metric.T2H,Metric.VolSurfH,
+    DG.w[1],Metric.J,Grid.EF,Grid.FE,DG.Glob,ndrange=ndrange)
+
+  NzG = min(div(NumberThreadGPU,OP*OP),nz+1)
+  group = (OP*OP,NzG)
+  ndrange = (OP*OP,nz+1,NF)
+  KRiemannNonLinV! = GPU.RiemannNonLinV!(backend,group)
+  KRiemannNonLinV!(F,UNew,p,OrdPolyZ+1,Metric.NV,Metric.T1V,Metric.T2V,Metric.VolSurfV,DG.wZ[1],
+    Metric.J,DG.Glob,ndrange=ndrange)
+
+  group = (OPZ,OP,OP)
+  ndrange = (OPZ,OP,OP,nz,NF)
+  KVolumeNonLin! = GPU.VolumeNonLin!(backend,group)
+  KVolumeNonLin!(F,UNew,p,DG.DW,DG.DWZ,Metric.dXdxI,Metric.J,Metric.X,DG.Glob,CoriolisFun,ndrange=ndrange)
+
+  @. UNew = U + 0.5 * dtau * F
+  Outputs.unstructured_vtkSphere(UNew,Grids.TransSphereX,DG,Metric,Phys,Global,Proc,ProcNumber)
+
+  group = (nz,OPZ,NumGG)
+  ndrange = (nz,OPZ,NumG)
+  KPressureKernel! = GPU.PressureKernelDG!(backend,group)
+  KPressureKernel!(Pressure,p,T,PotT,UNew,Metric.nS,Metric.zP,ndrange=ndrange)
+
+  @. F = 0
+  NzG = min(div(NumberThreadGPU,OP*OPZ),nz)
+  group = (OPZ,OP,NzG)
+  ndrange = (OPZ,OP,nz,NE)
+  KRiemannNonLinH! = GPU.RiemannNonLinH!(backend,group)
+  KRiemannNonLinH!(F,UNew,p,Metric.NH,Metric.T1H,Metric.T2H,Metric.VolSurfH,
+    DG.w[1],Metric.J,Grid.EF,Grid.FE,DG.Glob,ndrange=ndrange)
+
+  NzG = min(div(NumberThreadGPU,OP*OP),nz+1)
+  group = (OP*OP,NzG)
+  ndrange = (OP*OP,nz+1,NF)
+  KRiemannNonLinV! = GPU.RiemannNonLinV!(backend,group)
+  KRiemannNonLinV!(F,UNew,p,OrdPolyZ+1,Metric.NV,Metric.T1V,Metric.T2V,Metric.VolSurfV,DG.wZ[1],
+    Metric.J,DG.Glob,ndrange=ndrange)
+
+  group = (OPZ,OP,OP)
+  ndrange = (OPZ,OP,OP,nz,NF)
+  KVolumeNonLin! = GPU.VolumeNonLin!(backend,group)
+  KVolumeNonLin!(F,UNew,p,DG.DW,DG.DWZ,Metric.dXdxI,Metric.J,Metric.X,DG.Glob,CoriolisFun,ndrange=ndrange)
+
+  @. UNew = U + dtau * F
+  Outputs.unstructured_vtkSphere(UNew,Grids.TransSphereX,DG,Metric,Phys,Global,Proc,ProcNumber)
+  =#
+end
+
+
+
+
 A = 3

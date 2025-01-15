@@ -1,4 +1,4 @@
-function InitialConditions(backend,FTB,CG::DyCore.CGQuad,Metric,Phys,Global,Profile,Param)
+function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Global,Profile,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
@@ -43,7 +43,10 @@ function InitialConditions(backend,FTB,CG::DyCore.CGQuad,Metric,Phys,Global,Prof
   if State == "Dry" || State == "Moist" || State == "ShallowWater"
     KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
-  elseif State == "DryEnergy" || State == "MoistEnergy"
+  elseif State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+    KRhoIEFunCKernel! = RhoIEFunCKernel!(backend, group)
+    KRhoIEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+  elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"
     KRhoEFunCKernel! = RhoEFunCKernel!(backend, group)
     KRhoEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   end
@@ -67,7 +70,7 @@ function InitialConditions(backend,FTB,CG::DyCore.CGQuad,Metric,Phys,Global,Prof
   return U
 end  
 
-function InitialConditions(backend,FTB,DG::DyCore.DGQuad,Metric,Phys,Global,Profile,Param)
+function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Global,Profile,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
@@ -107,15 +110,16 @@ function InitialConditions(backend,FTB,DG::DyCore.DGQuad,Metric,Phys,Global,Prof
   KuvwFunCKernel! = uvwFunCDGKernel!(backend, group)
 
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
-  @show Rho[:,:,1]
-  @show Rho[:,:,end]
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
+  @. u *= Rho
+  @. v *= Rho
+  @. w *= Rho
   KernelAbstractions.synchronize(backend)
-  if State == "Dry" || State == "Moist" || State == "ShallowWater"
+  if State == "Dry" || State == "Moist" || State == "ShallowWater"  
     KRhoThFunCKernel! = RhoThFunCDGKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
-  elseif State == "DryEnergy" || State == "MoistEnergy"
+  elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"
     KRhoEFunCKernel! = RhoEFunCDGKernel!(backend, group)
     KRhoEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   end

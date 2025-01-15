@@ -210,6 +210,28 @@ end
   end
 end
 
+@kernel inbounds = true function RhoIEFunCKernel!(Profile,RhoIE,time,@Const(Glob),@Const(X))
+
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz
+    ind = Glob[I,IF]
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    xS = SVector{3}(x1, x2 ,x3)
+    RhoP,_,_,_ ,_,_,IEP = Profile(xS,time)
+    RhoIE[Iz,ind] = RhoP * IEP
+    @show IEP
+  end
+end
+
 @kernel inbounds = true function RhoVFunCKernel!(Profile,RhoV,time,@Const(Glob),@Const(X))
 
   I, iz   = @index(Local, NTuple)

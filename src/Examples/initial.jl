@@ -181,12 +181,9 @@ function (profile::LimAdvectionCartExample)(Param,Phys)
   return local_profile
 end
 
-Base.@kwdef struct BryanFritsch <: Example 
-  ProfileBF::Array{Float32,2}
-end
+Base.@kwdef struct BryanFritsch <: Example end
 
-function (profile::BryanFritsch)(Param,Phys)
-  ( ProfileBF) = profile
+function (profile::BryanFritsch)(Param,Phys,ProfileBF)
   @inline function local_profile(x,time)
     FT = eltype(x)
     z = x[3]
@@ -252,8 +249,9 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     T = pLoc / (Rd * Rho)
     E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
+    IE = Cvd * T 
 
-    return (Rho,u,v,w,Th,E)
+    return (Rho,u,v,w,Th,E,IE)
   end
   return local_profile
 end
@@ -481,7 +479,8 @@ function (profile::BaroWaveExample)(Param,Phys)
     w = FT(0)
 
     E = Phys.Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
-    return (Rho,uS,vS,w,Th,E)
+    IE = Phys.Cvd * Temperature 
+    return (Rho,uS,vS,w,Th,E,IE)
   end
   return local_profile
 end
@@ -538,7 +537,8 @@ function (::HeldSuarezDryExample)(Param,Phys)
     w = FT(0)
 
     E = Phys.Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
-    return (Rho,uS,vS,w,Th,E)
+    IE = Phys.Cvd * Temperature
+    return (Rho,uS,vS,w,Th,E,IE)
   end
   @inline function Force(F,U,p,lat)
     FT = eltype(U)

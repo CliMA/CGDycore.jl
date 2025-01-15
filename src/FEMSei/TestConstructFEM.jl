@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -8,7 +8,7 @@ using Metal
 using KernelAbstractions
 using StaticArrays
 using ArgParse
-using MPI
+using LinearAlgebra
 
 # Model
 parsed_args = DyCore.parse_commandline()
@@ -25,9 +25,9 @@ RhoRPos = parsed_args["RhoRPos"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
-Geos = parsed_args["Geos"]
 Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
+Geos = parsed_args["Geos"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
@@ -79,6 +79,7 @@ HyperDCurl = parsed_args["HyperDCurl"]
 HyperDGrad = parsed_args["HyperDGrad"]
 HyperDRhoDiv = parsed_args["HyperDRhoDiv"]
 HyperDDiv = parsed_args["HyperDDiv"]
+HyperDDivW = parsed_args["HyperDDivW"]
 # Output
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
@@ -94,13 +95,16 @@ FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 MPI.Init()
+Flat = false #testen
+Device = "CPU"
+FloatTypeBackend = "Float64"
 
 if Device == "CPU" 
   backend = CPU()
 elseif Device == "GPU" 
   if GPUType == "CUDA"
     backend = CUDABackend()
-    CUDA.allowscalar(false)
+    CUDA.allowscalar(true)
 #   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
   elseif GPUType == "AMD"
     backend = ROCBackend()
@@ -122,41 +126,73 @@ else
   stop
 end
 
-KernelAbstractions.synchronize(backend)
-
-
+MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+ParallelCom = DyCore.ParallelComStruct()
+ParallelCom.Proc = Proc
+ParallelCom.ProcNumber  = ProcNumber
 
 # Physical parameters
 Phys = DyCore.PhysParameters{FTB}()
 
-RhoV = 0.0
-RhoC = 0.0
-RhoI = 0.0
+#ModelParameters
+Model = DyCore.ModelStruct{FTB}()
 
-Rho = 1.0
-RhoT = 1.e-2
-RhoIE = 1.0e4
-T = 270.0
+RefineLevel = 5
+nz = 1
+nQuad = 5
+nQuadM = 5 #2
+nQuadS = 5 #3
+Decomp = "EqualArea"
+nLat = 0
+nLon = 0
+LatB = 0.0
 
-(RhoV,RhoC,T) = Models.SaturationAdjustmentIEW(Rho,RhoIE,RhoT,T,Phys)
-@show T,RhoV,RhoC
+#Quad
+GridType = "TriangularSphere"
+#GridType = "CubedSphere"
+nPanel =  80
+#GridType = "HealPix"
+ns = 57
 
-Rho = 1.0
-RhoT = 1.e-2
-RhoIE = 1.0e4
-T = 270.0
-(RhoV,RhoC,RhoI,T) = Models.SaturationAdjustmentIEI(Rho,RhoIE,RhoT,T,Phys)
-@show T,RhoV,RhoC,RhoI
+#Grid construction
+RadEarth = Phys.RadEarth
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
+  nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom)
 
-RhoIE = 0.99e4
-(RhoV,RhoC,RhoI,T) = Models.SaturationAdjustmentIEI(Rho,RhoIE,RhoT,T,Phys)
-@show T,RhoV,RhoC,RhoI
+Problem = "GalewskiSphere"
+Param = Examples.Parameters(FTB,Problem)
+Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-global TStart = 240.0
-TT = zeros(100)
-ff = zeros(100)
-for i = 1 : 100
-  TT[i] = TStart 
-  ff[i], = Models.InternalEnergyI(TStart,Rho,RhoT,Phys)
-  global TStart += 1.0
-end  
+
+RT = FEMSei.RTStruct{FTB}(backend,1,Grid.Type,Grid)
+RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
+RT.LUM = lu(RT.M)
+
+#for i = 1 : RT.DoF
+#  @show i  
+#  @show RT.phi[i,:]
+#  @show RT.Divphi[i]
+#end
+
+
+Flat = false
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+
+
+u = zeros(RT.NumG)
+FEMSei.InterpolateRT!(u,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
+VelSp = zeros(Grid.NumFaces,2)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi!)
+@show minimum(u),maximum(u)
+FileNumber=0
+Outputs.vtkSkeleton!(vtkSkeletonMesh, "InterpolateRT1", Proc, ProcNumber, VelSp, FileNumber, cName)
+
+uP = zeros(RT.NumG)
+FEMSei.Project!(backend,FTB,uP,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uP,RT,Grid,FEMSei.Jacobi!)
+@show minimum(uP),maximum(uP)
+FileNumber=1
+Outputs.vtkSkeleton!(vtkSkeletonMesh, "InterpolateRT1", Proc, ProcNumber, VelSp, FileNumber, cName)

@@ -1,11 +1,11 @@
 function  LLv(T,Phys)
 
-  Phys.L00 -(Phys.Cpl - Phys.Cpv) *(T - Phys.T0)
+  Phys.L0V -(Phys.Cpl - Phys.Cpv) *(T - Phys.T0)
 end
 
 function  SatVap(T,Phys)
   Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
-    exp((Phys.L00 / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
+    exp((Phys.L0V / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
 # T_C = T - 273.15
 # 611.2 * exp(17.62 * T_C / (243.12 + T_C))  
 end
@@ -26,7 +26,7 @@ function ResMoisture(z::FT,y::Array{FT,1},yPrime::Array{FT,1},Phys) where {FT<:R
   rho_d=rho / (1 + r_t)
   p_d=Phys.Rd*rho_d*T
   Δcp=Phys.Cpv-Phys.Cpl
-  p_vs=Thermodynamics.fpvs(T,Phys.T0)
+  p_vs=Thermodynamics.fpws(T,Phys)
   L=LLv(T,Phys)
   F[1]=pPrime+Phys.Grav*rho
   F[2]=p-(Phys.Rd*rho_d+Phys.Rv*rho_v)*T
@@ -160,7 +160,7 @@ function PerturbMoistProfile(x, Rho, RhoTheta, RhoV, RhoC, Phys, Param)
       while true 
         T_loc = Theta_loc * (p_loc / Phys.p0)^Phys.kappa
         # SaturVapor
-        pvs = fpvs(T_loc,Phys)
+        pvs = Thermodynamics.fpws(T_loc,Phys)
         Rho_d_new = (p_loc - pvs) / (Phys.Rd * T_loc)
         rvs = pvs / (Phys.Rv * Rho_d_new * T_loc)
         Theta_new = Theta_dens_new * (1 + rt) / (1 + (Phys.Rv / Phys.Rd) * rvs)

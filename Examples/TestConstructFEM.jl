@@ -167,17 +167,13 @@ Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 P, ConRT = FEMSei.ConstructRT_k(1)
 
-
-for i = 1 : size(ConRT,1)
-  @show i  
-  @show ConRT[i,:]
-end
-
 RT = FEMSei.RT1Struct{FTB}(Grids.Tri(),backend,Grid)
 for i = 1 : size(RT.phi,1)
   @show i  
+  @show ConRT[i,:]
   @show RT.phi[i,:]
 end
+stop
 
 u = zeros(RT.NumG)
 FEMSei.InterpolateRT!(u,RT,FEMSei.Jacobi!,Grid,Model.InitialProfile)

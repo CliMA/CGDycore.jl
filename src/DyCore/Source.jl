@@ -101,7 +101,7 @@ function SourceMicroPhysics(F,U,Pres,CG,Phys,Global,iG)
      kappaM = Rm / Cpml
      p = Pres[i]
      T = p / Rm
-     p_vs = Models.fpvs(T,Phys.T0)
+     p_vs = Models.fpws(T,Phys.T0)
      a = p_vs / (Rv * T) - RhoV
      b = RhoC
      FPh = 0.5 * RelCloud * (a + b - sqrt(a * a + b * b))

@@ -199,9 +199,12 @@ struct PhysParameters{FT<:AbstractFloat}
   Cpv::FT
   Cvv::FT
   Cpl::FT
+  Cpi::FT
   Rd::FT
   Rv::FT
-  L00::FT
+  L0V::FT
+  L0S::FT
+  L0F::FT
   p0::FT
   Gamma::FT
   kappa::FT
@@ -220,10 +223,13 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   Cpv = 1885.0
   Cvv = 1424.0
   Cpl = 4186.0
+  Cpi = 2110.0
   Rd = Cpd - Cvd
   Rv = Cpv - Cvv
 # L00 = 2.5000e6 + (Cpl - Cpv) * 273.15
-  L00 =  2.5000e6 
+  L0V =  2.5000e6 
+  L0S =  2.834e6
+  L0F =  L0S - L0V
   p0 = 1.0e5
   Gamma = Cpd / Cvd
   kappa = Rd / Cpd
@@ -241,9 +247,12 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   Cpv,
   Cvv,
   Cpl,
+  Cpi,
   Rd,
   Rv,
-  L00,
+  L0V,
+  L0S,
+  L0F,
   p0,
   Gamma,
   kappa,

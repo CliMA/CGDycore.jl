@@ -1,4 +1,5 @@
-mpirun -n 6 julia --project Examples/testNHSphere.jl \
+#!/bin/bash
+julia --project Examples/testNHSphere.jl \
   --Problem="BaroWaveHillDrySphere" \
   --Device="CPU" \
   --GPUType="Metal" \
@@ -37,11 +38,11 @@ mpirun -n 6 julia --project Examples/testNHSphere.jl \
   --AdaptGridType="Sleve" \
   --GridType="CubedSphere" \
   --nz=30 \
-  --nPanel=60 \
+  --nPanel=64 \
   --H=31000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=1.e14 \
-  --HyperDGrad=1.e14 \
-  --HyperDDiv=1.e14 \
+  --HyperDCurl=1.25e14 \
+  --HyperDGrad=1.25e14 \
+  --HyperDDiv=1.25e14 
   --HyperDDivW=0.e15

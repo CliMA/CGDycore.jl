@@ -2,6 +2,7 @@ module Outputs
 
 import ..DG
 import ..Grids
+import ..FiniteElements
 import ..Thermodynamics
 
 #using WriteVTK
