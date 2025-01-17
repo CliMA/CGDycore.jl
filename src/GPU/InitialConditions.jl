@@ -51,6 +51,12 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
     KRhoEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   end
   KernelAbstractions.synchronize(backend)
+  if Model.RhoTPos > 0
+    @views RhoT = U[:,:,Model.RhoTPos]
+    KRhoTFunCKernel! = RhoTFunCKernel!(backend, group)
+    KRhoTFunCKernel!(Profile,RhoT,time,Glob,X,ndrange=ndrange)
+    KernelAbstractions.synchronize(backend)
+  end  
   if Model.RhoVPos > 0
     @views RhoV = U[:,:,Model.RhoVPos]
     KRhoVFunCKernel! = RhoVFunCKernel!(backend, group)

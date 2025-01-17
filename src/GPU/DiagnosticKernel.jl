@@ -110,7 +110,7 @@ end
     else
       wR = U[Iz+1,IC,4] 
     end  
-    p[Iz,IC], T[Iz,IC], PotT[Iz,IC] = Pressure(view(U,Iz,IC,:),wL,wR,zP[Iz,IC])
+    p[Iz,IC], T[Iz,IC], PotT[Iz,IC] = Pressure(view(U,Iz,IC,:),wL,wR,zP[Iz,IC];T=T[Iz,IC])
   end
 end
 
@@ -237,6 +237,7 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
 
   KPressureKernel! = PressureKernel!(backend,group)
   KPressureKernel!(Pressure,p,T,PotT,U,nSS,zP,ndrange=ndrange)
+  @show sum(abs.(p))
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  

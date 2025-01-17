@@ -167,7 +167,8 @@ Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)
 
 
-RT = FEMSei.RTStruct{FTB}(backend,1,Grid.Type,Grid)
+RT = FEMSei.RTStruct{FTB}(backend,2,Grid.Type,Grid)
+@show RT.phi
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
 RT.LUM = lu(RT.M)
 
@@ -182,6 +183,7 @@ Flat = false
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 
+cName = ["uS";"vS"]
 u = zeros(RT.NumG)
 FEMSei.InterpolateRT!(u,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 VelSp = zeros(Grid.NumFaces,2)

@@ -42,13 +42,18 @@ end
 function ConstructRT(k,ElemType::Grids.Tri)
   s = @polyvar x[1:2]
 
-  P_km1 = Polynomial_k(k,s)
+  P_k = Polynomial_k(k,s)
+  lP_k = length(P_k)
+  if k > 0
+    P_km1 = Polynomial_k(k-1,s)
+    lP_km1 = length(P_km1)
+  else
+    lP_km1 = 0  
+  end  
   H_km1 = HomegenuousPolynomial(k,s)
-
-  lP_km1 = length(P_km1)
   lH_km1 = length(H_km1)
-  DoF = 2 * lP_km1 + lH_km1
-  DoFE = k + 1
+  DoF = 2 * lP_k + lH_km1
+  DoFE = lH_km1
   DoFF = DoF - 3 * DoFE
   phi = Array{Polynomial,2}(undef,DoF,2)
   phiB = Array{Polynomial,2}(undef,DoF,2)
@@ -56,11 +61,11 @@ function ConstructRT(k,ElemType::Grids.Tri)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   rounded_Divphi = Array{Polynomial,2}(undef,DoF,1) 
   iDoF = 1 
-  for i = 1 : lP_km1
-    phi[iDoF,1] = P_km1[i]  
+  for i = 1 : lP_k
+    phi[iDoF,1] = P_k[i]  
     phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
     iDoF += 1
-    phi[iDoF,2] = P_km1[i]  
+    phi[iDoF,2] = P_k[i]  
     phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
     iDoF += 1
   end  
@@ -109,17 +114,16 @@ function ConstructRT(k,ElemType::Grids.Tri)
   rDoF += k + 1
   NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Tri(),QuadOrd)
 # Interior  
-  for iDoF = 1 : DoF
-    phiI1 = phi[iDoF,1]  
-    phiI2 = phi[iDoF,2]  
-    for i = 0 : 2 * (k - 1)
+  @show rDoF,lP_km1
+  for i = 1 : lP_km1
+    for iDoF = 1 : DoF
       for iQ = 1 : NumQuadT
-        I[rDoF+i,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
-        I[rDoF+i+1,iDoF] += 0.25 * phiI2(PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+        Fac = P_km1[i](PointsT[iQ,1],PointsT[iQ,2])  
+        I[rDoF,iDoF] += 0.25 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
+        I[rDoF+1,iDoF] += 0.25 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
       end
-      phiI1 = phiI1 * x[1]
-      phiI2 = phiI2 * x[2]
     end
+    rDoF += 2
   end
   for iDoF = 1 : DoF  
     for jDoF = 1 : DoF  
@@ -235,7 +239,6 @@ function ConstructRT(k,ElemType::Grids.Quad)
       for iDoF = 1 : DoF
         phiI1 = phi[iDoF,1]  
         phiI2 = phi[iDoF,2]  
-      
         for iQ = 1 : NumQuadT
           I[rDoF,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * 
           P_km1x1[j](PointsT[iQ,1],PointsT[iQ,2]) * P_kx2[i](PointsT[iQ,1],PointsT[iQ,2]) * 

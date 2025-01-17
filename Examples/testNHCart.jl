@@ -20,6 +20,7 @@ PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
+RhoTPos = parsed_args["RhoTPos"]
 RhoVPos = parsed_args["RhoVPos"]
 RhoCPos = parsed_args["RhoCPos"]
 RhoIPos = parsed_args["RhoIPos"]
@@ -186,6 +187,7 @@ Model.uPos=2
 Model.vPos=3
 Model.wPos=4
 Model.ThPos=5
+Model.RhoTPos  = RhoTPos
 Model.RhoVPos  = RhoVPos
 Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
@@ -326,6 +328,16 @@ elseif State == "Moist"
     Model.RhoVPos,Model.RhoCPos)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "MoistInternalEnergy"
+  Pressure, dPresdRhoTh = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoTPos)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "IceInternalEnergy"
+  Pressure, dPresdRhoTh = Models.IceInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoTPos)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "ShallowWater"
   Pressure = Models.ShallowWaterState()(Phys)
   Model.Pressure = Pressure
@@ -411,17 +423,16 @@ Global.Output.vtk=0
       if VerticalDiffusion
         push!(Global.Output.cNames,"DiffKoeff")
       end
-    elseif State == "Moist"
+    elseif State == "Moist" || State == "MoistInternalEnergy"
       Global.Output.cNames = [
         "Rho",
         "u",
         "v",
-        "wB",
+#       "wB",
         "Th",
-        "ThE",
+#       "ThE",
         "Pres",
         "Tr1",
-        "Tr2",
         ]
     end    
   elseif ModelType == "Conservative"

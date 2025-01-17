@@ -227,7 +227,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   Rd = Cpd - Cvd
   Rv = Cpv - Cvv
 # L00 = 2.5000e6 + (Cpl - Cpv) * 273.15
-  L0V =  2.5000e6 
+  L0V =  2.5000e6 # 2500800 
   L0S =  2.834e6
   L0F =  L0S - L0V
   p0 = 1.0e5
@@ -298,6 +298,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   vPos::Int
   wPos::Int
   ThPos::Int
+  RhoTPos::Int
   RhoVPos::Int
   RhoCPos::Int
   RhoIPos::Int
@@ -381,6 +382,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   vPos = 0
   wPos = 0
   ThPos = 0
+  RhoTPos = 0
   RhoVPos = 0
   RhoCPos = 0
   RhoIPos = 0
@@ -462,6 +464,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    vPos,
    wPos,
    ThPos,
+   RhoTPos,
    RhoVPos,
    RhoCPos,
    RhoIPos,

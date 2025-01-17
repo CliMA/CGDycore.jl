@@ -200,21 +200,27 @@ function (profile::BryanFritsch)(Param,Phys,ProfileBF)
     Theta_l = ProfileBF[iz,3]
     RhoV_l = ProfileBF[iz,4]
     RhoC_l = ProfileBF[iz,5]
+    p_l = ProfileBF[iz,6]
     z_r = zP[iz+1]
     Rho_r = ProfileBF[iz+1,2]
     Theta_r = ProfileBF[iz+1,3]
     RhoV_r = ProfileBF[iz+1,4]
     RhoC_r = ProfileBF[iz+1,5]
+    p_r = ProfileBF[iz+1,6]
     Rho = (Rho_r * (z - z_l) + Rho_l * (z_r - z)) / (z_r - z_l)
     Theta = (Theta_r * (z - z_l) + Theta_l * (z_r - z)) / (z_r - z_l)
     RhoV = (RhoV_r * (z - z_l) + RhoV_l * (z_r - z)) / (z_r - z_l)
     RhoC = (RhoC_r * (z - z_l) + RhoC_l * (z_r - z)) / (z_r - z_l)
+    pLoc = (p_r * (z - z_l) + p_l * (z_r - z)) / (z_r - z_l)
 
     Rho, Th, qV, qC = PerturbMoistProfile(x, Rho, Rho*Theta, RhoV, RhoC, Phys, Param)
     u = FT(0)
     v = FT(0)
     w = FT(0)
-    return (Rho,u,v,w,Th,qV,qC)
+    T = pLoc / (Rho * (Phys.Rd * (FT(1.0) - qV - qC) + Phys.Rv * qV))
+    IE = Thermodynamics.InternalEnergy(FT(1.0),qV,qC,T,Phys) 
+    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
+    return (Rho,u,v,w,Th,E,IE,qV,qC)
   end
   return local_profile
 end
@@ -231,6 +237,7 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     Grav = Phys.Grav
     p0 = Phys.p0
     Rd = Phys.Rd
+    Rv = Phys.Rv
     Cvd = Phys.Cvd
     kappa = Phys.kappa
     Th0 = Param.Th0

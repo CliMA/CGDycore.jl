@@ -84,6 +84,7 @@ end
 
 function CacheStruct{FT}(backend,DoF,NF,NGF,NumG,nz,NumV,NumTr,ND) where FT<:AbstractFloat
 AuxG=KernelAbstractions.zeros(backend,FT,nz,NumG,4)
+@. AuxG[:,:,2] = FT(250.0)
 KV=KernelAbstractions.zeros(backend,FT,nz,NumG)
 Aux2DG=zeros(FT,1,NumG,NumTr+1)
 Temp=zeros(FT,DoF,nz,NF)

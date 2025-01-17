@@ -226,9 +226,29 @@ end
     x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    RhoP,_,_,_ ,_,_,IEP = Profile(xS,time)
+    RhoP,_,_,_,_,_,IEP = Profile(xS,time)
     RhoIE[Iz,ind] = RhoP * IEP
-    @show IEP
+  end
+end
+
+@kernel inbounds = true function RhoTFunCKernel!(Profile,RhoV,time,@Const(Glob),@Const(X))
+
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz
+    ind = Glob[I,IF]
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    xS = SVector{3}(x1, x2 ,x3)
+    RhoP,_,_,_,_,_,_,QvP,QcP = Profile(xS,time)
+    RhoV[Iz,ind] = RhoP * (QvP + QcP)
   end
 end
 
@@ -248,7 +268,7 @@ end
     x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    RhoP,_,_,_,_,QvP = Profile(xS,time)
+    RhoP,_,_,_,_,_,_,QvP = Profile(xS,time)
     RhoV[Iz,ind] = RhoP * QvP
   end
 end
@@ -269,7 +289,7 @@ end
     x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    RhoP,_,_,_,_,_,QcP = Profile(xS,time)
+    RhoP,_,_,_,_,_,_,_,QcP = Profile(xS,time)
     RhoC[Iz,ind] = RhoP * QcP
   end
 end

@@ -84,7 +84,7 @@ function TestRes(Phys)
   res=nlsolve(F,y0)
   res.zero
 
-  Prof = zeros(1001,5)
+  Prof = zeros(1001,6)
   p = y0[1]
   Rho = y0[2]
   T = y0[3]
@@ -103,6 +103,7 @@ function TestRes(Phys)
   Prof[1,3] = ThetaV
   Prof[1,4] = RhoV
   Prof[1,5] = RhoC
+  Prof[1,6] = p
   dz=10.0
   for i=1:1000
     y0=deepcopy(res.zero)
@@ -127,6 +128,7 @@ function TestRes(Phys)
     Prof[i+1,3] = ThetaV
     Prof[i+1,4] = RhoV
     Prof[i+1,5] = RhoC
+    Prof[i+1,6] = p
 #   FB=FischerBurmeisterRhoTh(Rho,RhoV,RhoC,Rho*ThetaV,Phys)
 #   @show i,FB
 #   stop

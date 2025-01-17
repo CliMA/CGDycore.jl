@@ -11,6 +11,8 @@ struct Dry  <: State  end
 struct Moist  <: State end
 struct DryTotalEnergy  <: State  end
 struct DryInternalEnergy  <: State  end
+struct MoistInternalEnergy  <: State  end
+struct IceInternalEnergy  <: State  end
   
 function (::ShallowWaterState)(Phys)
   @inline function Pressure(U,wL,wR,z)
@@ -88,6 +90,26 @@ function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
     return dpdRhoTh
   end  
   return Pressure,dPresdRhoTh
+end
+
+function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
+  @inline function Pressure(U,wL,wR,z;T=300.0)
+    FT = eltype(U)
+    RhoV, RhoC, T = SaturationAdjustmentIEW(U[RhoPos],U[RhoIEPos],U[RhoTPos],T,Phys)
+    p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * T
+    if p < 0.0
+      @show RhoV, RhoC, T
+      @show U[RhoPos],U[RhoIEPos],U[RhoTPos]
+      stop
+    end  
+    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    return p, T, PotT, RhoV, RhoC
+  end
+  @inline function dPresdRhoIE(RhoE)
+    dpdRhoE = Phys.Rd / Phys.Cvd
+    return dpdRhoE
+  end
+  return Pressure,dPresdRhoIE
 end
 
 # we may be hitting a slow path:

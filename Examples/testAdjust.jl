@@ -138,25 +138,24 @@ RhoT = 1.e-2
 RhoIE = 1.0e4
 T = 270.0
 
+Rho = 0.9667062f0
+RhoIE = 22012.828f0
+RhoT = 0.018955024f0
+(Rho, RhoIE, RhoT, T) = (1.1674187f0, -45272.895f0, 0.022890564f0, 250.0)
+(Rho, RhoIE, RhoT, T) = (0.42690763955791644, -48235.43279928487, 0.00837073803054738, 226.46035379732774)
+
 (RhoV,RhoC,T) = Models.SaturationAdjustmentIEW(Rho,RhoIE,RhoT,T,Phys)
 @show T,RhoV,RhoC
 
-Rho = 1.0
-RhoT = 1.e-2
-RhoIE = 1.0e4
-T = 270.0
-(RhoV,RhoC,RhoI,T) = Models.SaturationAdjustmentIEI(Rho,RhoIE,RhoT,T,Phys)
-@show T,RhoV,RhoC,RhoI
-
-RhoIE = 0.99e4
-(RhoV,RhoC,RhoI,T) = Models.SaturationAdjustmentIEI(Rho,RhoIE,RhoT,T,Phys)
-@show T,RhoV,RhoC,RhoI
-
-global TStart = 240.0
+(Rho, RhoIE, RhoT, T) = (1.1674187f0, -45272.895f0, 0.022890564f0, 250.0)
+(Rho, RhoIE, RhoT, T) = (0.42690763955791644, -48235.43279928487, 0.00837073803054738, 226.46035379732774)
+T = 300.0f0
+global TStart = 200.0
 TT = zeros(100)
 ff = zeros(100)
 for i = 1 : 100
   TT[i] = TStart 
-  ff[i], = Models.InternalEnergyI(TStart,Rho,RhoT,Phys)
+  ff[i], = Models.InternalEnergyW(TStart,Rho,RhoT,Phys)
+  ff[i] -= RhoIE
   global TStart += 1.0
 end  

@@ -72,6 +72,11 @@ function parse_commandline()
     arg_type = String
     default = ""
 
+    "--RhoTPos"
+    help = "Position of total water in the tracer list"
+    arg_type = Int
+    default = 0
+
     "--RhoVPos"
     help = "Position of water vapor in the tracer list"
     arg_type = Int

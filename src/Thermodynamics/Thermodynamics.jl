@@ -105,11 +105,11 @@ end
 end
 
 @inline function SpIntEnergyDry(T,Phys)
-  Phys.Cvd * (T - Phys.T0) - Phys.Rd
+  Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0
 end  
 
 @inline function SpIntEnergyVap(T,Phys)
-  Phys.Cvv * (T - Phys.T0) + Phys.L0V - Phys.Rv
+  Phys.Cvv * (T - Phys.T0) + Phys.L0V - Phys.Rv * Phys.T0
 end  
 
 @inline function SpIntEnergyLiq(T,Phys)
@@ -172,6 +172,6 @@ end
   e = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) + 
    RhoV * SpIntEnergyVap(T,Phys) + 
    (RhoC + RhoR) * SpIntEnergyLiq(T,Phys) +   
-   (RhoI + RhoS) * SpIntEnergyLiq(T,Phys)   
+   (RhoI + RhoS) * SpIntEnergyIce(T,Phys)   
 end
 end
