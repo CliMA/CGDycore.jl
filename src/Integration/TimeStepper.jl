@@ -209,7 +209,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          @time RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+          RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)

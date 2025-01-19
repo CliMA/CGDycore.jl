@@ -423,7 +423,7 @@ Global.Output.vtk=0
       if VerticalDiffusion
         push!(Global.Output.cNames,"DiffKoeff")
       end
-    elseif State == "Moist" || State == "MoistInternalEnergy"
+    elseif State == "Moist" || State == "MoistInternalEnergy" || State == "IceInternalEnergy"
       Global.Output.cNames = [
         "Rho",
         "u",

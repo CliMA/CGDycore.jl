@@ -304,9 +304,11 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
-   State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+   State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
+   State == "IceInternalEnergy"
     KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-    if State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+    if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
+        State == "IceInternalEnergy"
       KSourceIntEnergyKernel! = SourceIntEnergyKernel!(backend, group)
     end  
   elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"
@@ -420,7 +422,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeB)
   KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,ndrange=ndrangeB)
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
-    State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+    State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
+    State == "IceInternalEnergy"
     if HorLimit  
       KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
       for iT = 1 : NumTr
@@ -430,10 +433,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     else  
       KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
     end 
-    if State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+    if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
+        State == "IceInternalEnergy"
       @views KSourceIntEnergyKernel!(F[:,:,ThPos],U,p,DS,dXdxI,M,Glob,ndrange=ndrangeB)
     end    
-  elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"
+  elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy" ||
+  State == "IceInternalEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end
   if EDMF
@@ -479,7 +484,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
-    State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+    State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
+    State == "IceInternalEnergy"
     if HorLimit  
       KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
       for iT = 1 : NumTr
@@ -489,7 +495,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     else  
       KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
     end  
-    if State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+    if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
+        State == "IceInternalEnergy"
       @views KSourceIntEnergyKernel!(F[:,:,ThPos],U,p,DS,dXdxI_I,M,Glob_I,ndrange=ndrangeI)
     end  
   elseif State == "DryTotalEnergy"

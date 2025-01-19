@@ -107,6 +107,22 @@ function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
   return Pressure,dPresdRhoIE
 end
 
+
+function (::IceInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
+  @inline function Pressure(U,wL,wR,z;T=300.0)
+    FT = eltype(U)
+    RhoV, RhoC, RhoI, T = SaturationAdjustmentIEI(U[RhoPos],U[RhoIEPos],U[RhoTPos],T,Phys)
+    p = ((U[RhoPos] - RhoV - RhoC - RhoI) * Phys.Rd + RhoV * Phys.Rv) * T
+    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    return p, T, PotT, RhoV, RhoC, RhoI
+  end
+  @inline function dPresdRhoIE(RhoE)
+    dpdRhoE = Phys.Rd / Phys.Cvd
+    return dpdRhoE
+  end
+  return Pressure,dPresdRhoIE
+end
+
 # we may be hitting a slow path:
 # https://stackoverflow.com/questions/14687665/very-slow-stdpow-for-bases-very-close-to-1
 @inline fast_powGPU(x::FT, y::FT) where {FT <: AbstractFloat} = exp(y * log(x))

@@ -129,26 +129,19 @@ KernelAbstractions.synchronize(backend)
 # Physical parameters
 Phys = DyCore.PhysParameters{FTB}()
 
-RhoV = 0.0
-RhoC = 0.0
-RhoI = 0.0
-
-Rho = 1.0
-RhoT = 1.e-2
-RhoIE = 1.0e4
-T = 270.0
-
-Rho = 0.9667062f0
-RhoIE = 22012.828f0
-RhoT = 0.018955024f0
-(Rho, RhoIE, RhoT, T) = (1.1674187f0, -45272.895f0, 0.022890564f0, 250.0)
 (Rho, RhoIE, RhoT, T) = (0.42690763955791644, -48235.43279928487, 0.00837073803054738, 226.46035379732774)
 
-(RhoV,RhoC,T) = Models.SaturationAdjustmentIEW1(Rho,RhoIE,RhoT,T,Phys)
+(RhoV,RhoC,T) = Models.SaturationAdjustmentIEW(Rho,RhoIE,RhoT,T,Phys)
 @show T,RhoV,RhoC
 T = 300.0
-(RhoV,RhoC,T) = Models.SaturationAdjustmentIEW1(Rho,RhoIE,RhoT,T,Phys)
+(RhoV,RhoC,T) = Models.SaturationAdjustmentIEW(Rho,RhoIE,RhoT,T,Phys)
 @show T,RhoV,RhoC
+
+(Rho, RhoIE, RhoT, T) = (0.42690763955791644, -48235.43279928487, 0.00837073803054738, 226.46035379732774)
+(RhoV,RhoC,T) = Models.SaturationAdjustmentIEI(Rho,RhoIE,RhoT,T,Phys)
+@show T,RhoV,RhoC,RhoI
+
+
 stop
 (RhoV,RhoC,T) = Models.SaturationAdjustmentIEW(Rho,RhoIE,RhoT,T,Phys)
 @show T,RhoV,RhoC

@@ -43,7 +43,8 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   if State == "Dry" || State == "Moist" || State == "ShallowWater"
     KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
-  elseif State == "DryInternalEnergy" || State == "MoistInternalEnergy"
+  elseif State == "DryInternalEnergy" || State == "MoistInternalEnergy" || 
+    State == "IceInternalEnergy"
     KRhoIEFunCKernel! = RhoIEFunCKernel!(backend, group)
     KRhoIEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"

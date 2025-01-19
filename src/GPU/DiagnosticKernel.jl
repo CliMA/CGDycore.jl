@@ -110,7 +110,7 @@ end
     else
       wR = U[Iz+1,IC,4] 
     end  
-    p[Iz,IC], T[Iz,IC], PotT[Iz,IC] = Pressure(view(U,Iz,IC,:),wL,wR,zP[Iz,IC];T=T[Iz,IC])
+    p[Iz,IC], T[Iz,IC], PotT[Iz,IC],_,_ = Pressure(view(U,Iz,IC,:),wL,wR,zP[Iz,IC];T=T[Iz,IC])
   end
 end
 
