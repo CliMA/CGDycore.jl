@@ -97,11 +97,6 @@ function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
     FT = eltype(U)
     RhoV, RhoC, T = SaturationAdjustmentIEW(U[RhoPos],U[RhoIEPos],U[RhoTPos],T,Phys)
     p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * T
-    if p < 0.0
-      @show RhoV, RhoC, T
-      @show U[RhoPos],U[RhoIEPos],U[RhoTPos]
-      stop
-    end  
     PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
     return p, T, PotT, RhoV, RhoC
   end

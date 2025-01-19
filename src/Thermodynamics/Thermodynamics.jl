@@ -60,7 +60,7 @@ end
   FT(611.2) * exp(FT(21.87) * T_C / (-FT(7.66) + T))
 end
 
-@inline function dfpws1dT(T,Phys)
+@inline function dfpwsdT(T,Phys)
   FT = eltype(T)
   # ClaudiusClapperon
   # Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
@@ -108,16 +108,32 @@ end
   Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0
 end  
 
+@inline function dSpIntEnergyDrydT(T,Phys)
+  Phys.Cvd 
+end  
+
 @inline function SpIntEnergyVap(T,Phys)
   Phys.Cvv * (T - Phys.T0) + Phys.L0V - Phys.Rv * Phys.T0
+end  
+
+@inline function dSpIntEnergyVapdT(T,Phys)
+  Phys.Cvv
 end  
 
 @inline function SpIntEnergyLiq(T,Phys)
   Phys.Cpl * (T - Phys.T0)
 end  
 
+@inline function dSpIntEnergyLiqdT(T,Phys)
+  Phys.Cpl
+end  
+
 @inline function SpIntEnergyIce(T,Phys)
   Phys.Cpi * (T - Phys.T0) - Phys.L0F
+end  
+
+@inline function dSpIntEnergyIcedT(T,Phys)
+  Phys.Cpi
 end  
 
 
@@ -162,14 +178,60 @@ end
   0.5 * (a + b - sqrt(a * a + b * b))
 end  
 
-@inline function InternalEnergy(Rho,RhoV,RhoC,T,Phys;RhoR=0.0)
+@inline function InternalEnergy(Rho,RhoT,T,Phys;RhoR=0.0)
+  pWS = Thermodynamics.fpws(T,Phys)
+  RhoS = pWS / (Phys.Rv * T)  
+  RhoV = min(RhoS,RhoT)
+  RhoC = RhoT - RhoV
   e = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) + 
    RhoV * SpIntEnergyVap(T,Phys) + 
    (RhoC + RhoR) * SpIntEnergyLiq(T,Phys)   
+  return e, RhoV, RhoC 
 end
 
-@inline function InternalEnergy(Rho,RhoV,RhoC,RhoI,T,Phys;RhoR=0.0,RhoS=0.0)
+@inline function InternalEnergyW(Rho,RhoV,RhoC,T,Phys;RhoR=0.0)
   e = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) + 
+   RhoV * SpIntEnergyVap(T,Phys) + 
+   (RhoC + RhoR) * SpIntEnergyLiq(T,Phys)   
+  return e
+end
+
+@inline function dInternalEnergyWdT(Rho,RhoT,T,Phys;RhoR=0.0)
+# e = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) + 
+#  RhoV * SpIntEnergyVap(T,Phys) + 
+#  (RhoC + RhoR) * SpIntEnergyLiq(T,Phys)   
+  pWS = Thermodynamics.fpws(T,Phys)
+  RhoS = pWS / (Phys.Rv * T)  
+  RhoV = min(RhoS,RhoT)
+  RhoC = RhoT - RhoV
+  dpWSdT = Thermodynamics.dfpwsdT(T,Phys)
+  dRhoSdT = (dpWSdT * Phys.Rv * T - pWS * Phys.Rv) / (Phys.Rv * T)^2 
+
+  e = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) + 
+   RhoV * SpIntEnergyVap(T,Phys) + 
+   (RhoC + RhoR) * SpIntEnergyLiq(T,Phys)   
+  de = (Rho - RhoV -RhoC) * dSpIntEnergyDrydT(T,Phys) + 
+   RhoV * dSpIntEnergyVapdT(T,Phys) + 
+   dRhoSdT * SpIntEnergyVap(T,Phys) + 
+   (RhoC + RhoR) * dSpIntEnergyLiqdT(T,Phys) +    
+   -dRhoSdT * SpIntEnergyLiq(T,Phys)    
+  return e, de, RhoV, RhoC 
+end
+
+@inline function InternalEnergyI(Rho,RhoV,RhoC,RhoI,T,Phys;RhoR=0.0,RhoS=0.0)
+  e = (Rho - RhoV -RhoC - RhoI) * SpIntEnergyDry(T,Phys) + 
+   RhoV * SpIntEnergyVap(T,Phys) + 
+   (RhoC + RhoR) * SpIntEnergyLiq(T,Phys) +   
+   (RhoI + RhoS) * SpIntEnergyIce(T,Phys)   
+end
+
+@inline function dInternalEnergydT(Rho,RhoV,RhoC,RhoI,T,Phys;RhoR=0.0,RhoS=0.0)
+  e = (Rho - RhoV -RhoC - RhoI) * SpIntEnergyDry(T,Phys) + 
+   RhoV * SpIntEnergyVap(T,Phys) + 
+   (RhoC + RhoR) * SpIntEnergyLiq(T,Phys) +   
+   (RhoI + RhoS) * SpIntEnergyIce(T,Phys)   
+
+  de = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) + 
    RhoV * SpIntEnergyVap(T,Phys) + 
    (RhoC + RhoR) * SpIntEnergyLiq(T,Phys) +   
    (RhoI + RhoS) * SpIntEnergyIce(T,Phys)   

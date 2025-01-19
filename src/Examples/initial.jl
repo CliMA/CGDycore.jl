@@ -218,7 +218,7 @@ function (profile::BryanFritsch)(Param,Phys,ProfileBF)
     v = FT(0)
     w = FT(0)
     T = pLoc / (Rho * (Phys.Rd * (FT(1.0) - qV - qC) + Phys.Rv * qV))
-    IE = Thermodynamics.InternalEnergy(FT(1.0),qV,qC,T,Phys) 
+    IE = Thermodynamics.InternalEnergyW(FT(1.0),qV,qC,T,Phys) 
     E = IE + FT(0.5) * (u * u + v * v) + Grav * z
     return (Rho,u,v,w,Th,E,IE,qV,qC)
   end

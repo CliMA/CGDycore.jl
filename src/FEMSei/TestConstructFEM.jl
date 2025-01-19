@@ -140,7 +140,7 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 5
+RefineLevel = 6
 nz = 1
 nQuad = 5
 nQuadM = 5 #2
