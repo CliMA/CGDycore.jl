@@ -162,6 +162,12 @@ Model = DyCore.ModelStruct{FTB}()
 # Initial conditions
 Model.NumV=NumV
 Model.NumTr=NumTr
+Model.NumAuxG = 4
+if State == "MoistInternalEnergy"
+  Model.NumAuxG +=2
+elseif State == "IceInternalEnergy"
+  Model.NumAuxG +=3
+end  
 Model.Problem=Problem
 if ProfRho == ""
   Model.ProfRho = Problem

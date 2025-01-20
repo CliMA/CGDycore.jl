@@ -1,2 +1,2 @@
 export JuliaDevice="CPU"
-mpirun -n 6 ./Jobs/NHCart/IceWarmBubbleIE
+mpirun -n 1 ./Jobs/NHCart/IceWarmBubbleIE

@@ -15,23 +15,27 @@ struct MoistInternalEnergy  <: State  end
 struct IceInternalEnergy  <: State  end
   
 function (::ShallowWaterState)(Phys)
-  @inline function Pressure(U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z)
     FT = eltype(U)
     p = FT(0.5) * Phys.Grav * U[5]^2
     T = FT(0.0)
     PotT = U[5] / U[1]
-    return p, T, PotT
+    Thermo[1] = p
+    Thermo[2] = T
+    Thermo[3] = PotT
   end
   return Pressure
 end 
 
 function (::Dry)(Phys)
-  @inline function Pressure(U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z)
     FT = eltype(U)
     p = Phys.p0 * fast_powGPU(Phys.Rd * U[5] / Phys.p0, FT(1) / (FT(1) - Phys.kappa))
     T = p / (Phys.Rd * U[1])
     PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
-    return p, T, PotT
+    Thermo[1] = p
+    Thermo[2] = T
+    Thermo[3] = PotT
   end
   @inline function dPresdRhoTh(RhoTh)
     dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
@@ -41,13 +45,15 @@ function (::Dry)(Phys)
 end 
 
 function (::DryTotalEnergy)(Phys)
-  @inline function Pressure(U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z)
     FT = eltype(U)
     KE = FT(0.5) * (U[2]^2 + U[3]^2 + FT(0.5) * (wL^2 + wR^2))
     p = (Phys.Rd / Phys.Cvd) * (U[5] - U[1] * (KE + Phys.Grav * z))
     T = p / (Phys.Rd * U[1])
     PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
-    return p, T, PotT
+    Thermo[1] = p
+    Thermo[2] = T
+    Thermo[3] = PotT
   end
   @inline function dPresdRhoE(RhoE)
     dpdRhoE = Phys.Rd / Phys.Cvd
@@ -57,12 +63,14 @@ function (::DryTotalEnergy)(Phys)
 end 
 
 function (::DryInternalEnergy)(Phys)
-  @inline function Pressure(U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z)
     FT = eltype(U)
     p = (Phys.Rd / Phys.Cvd) * U[5] 
     T = p / (Phys.Rd * U[1])
     PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
-    return p, T, PotT
+    Thermo[1] = p
+    Thermo[2] = T
+    Thermo[3] = PotT
   end
   @inline function dPresdRhoIE(RhoE)
     dpdRhoE = Phys.Rd / Phys.Cvd
@@ -72,7 +80,7 @@ function (::DryInternalEnergy)(Phys)
 end
 
 function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
-  @inline function Pressure(U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z)
     FT = eltype(U)
     RhoV = U[RhoVPos]
     RhoC = U[RhoCPos]
@@ -83,7 +91,9 @@ function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
     p = (Phys.Rd * U[ThPos] / Phys.p0^kappaM)^(FT(1) / (FT(1) - kappaM))
     T = p / Rm
     PotT = (Phys.p0/p)^kappaM * T
-    return p, T, PotT
+    Thermo[1] = p
+    Thermo[2] = T
+    Thermo[3] = PotT
   end
   @inline function dPresdRhoTh(RhoTh)
     dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
@@ -93,12 +103,17 @@ function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
 end
 
 function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
-  @inline function Pressure(U,wL,wR,z;T=300.0)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
     RhoV, RhoC, T = SaturationAdjustmentIEW(U[RhoPos],U[RhoIEPos],U[RhoTPos],T,Phys)
     p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * T
     PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
-    return p, T, PotT, RhoV, RhoC
+    Thermo[1] = p
+    Thermo[2] = T
+    Thermo[3] = PotT
+    Thermo[5] = RhoV
+    Thermo[6] = RhoC
+    Thermo[7] = RhoI
   end
   @inline function dPresdRhoIE(RhoE)
     dpdRhoE = Phys.Rd / Phys.Cvd
@@ -109,12 +124,17 @@ end
 
 
 function (::IceInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
-  @inline function Pressure(U,wL,wR,z;T=300.0)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
-    RhoV, RhoC, RhoI, T = SaturationAdjustmentIEI(U[RhoPos],U[RhoIEPos],U[RhoTPos],T,Phys)
+    @inbounds RhoV, RhoC, RhoI, T = SaturationAdjustmentIEI(U[RhoPos],U[RhoIEPos],U[RhoTPos],T,Phys)
     p = ((U[RhoPos] - RhoV - RhoC - RhoI) * Phys.Rd + RhoV * Phys.Rv) * T
     PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
-    return p, T, PotT, RhoV, RhoC, RhoI
+    @inbounds Thermo[1] = p
+    @inbounds Thermo[2] = T
+    @inbounds Thermo[3] = PotT
+    @inbounds Thermo[5] = RhoV
+    @inbounds Thermo[6] = RhoC
+    @inbounds Thermo[7] = RhoI
   end
   @inline function dPresdRhoIE(RhoE)
     dpdRhoE = Phys.Rd / Phys.Cvd
