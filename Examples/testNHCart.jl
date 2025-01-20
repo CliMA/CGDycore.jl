@@ -281,7 +281,7 @@ Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
 
 
 # Initial values
-Examples.InitialProfile!(Model,Problem,Param,Phys)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 

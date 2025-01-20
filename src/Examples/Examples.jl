@@ -4,6 +4,7 @@ import ..Grids
 import ..Thermodynamics
 
 using NLsolve
+using KernelAbstractions
 
 include("parameters.jl")
 include("initial.jl")
@@ -11,7 +12,7 @@ include("force.jl")
 include("topography.jl")
 include("InitProfileBryanFritsch.jl")
 
-function InitialProfile!(Model,Problem,Param,Phys)
+function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
   # Initial values
   if Problem == "GalewskiSphere"
     Profile = Examples.GalewskiExample()(Param,Phys)
@@ -51,7 +52,9 @@ function InitialProfile!(Model,Problem,Param,Phys)
     Profile = Examples.WarmBubbleCartExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "BryanFritschCart"
-    ProfileBF = TestRes(Phys)
+    ProfileBFCPU = TestRes(Phys)
+    ProfileBF = KernelAbstractions.zeros(backend,FTB,size(ProfileBFCPU))
+    copyto!(ProfileBF,ProfileBFCPU)
     Profile = Examples.BryanFritsch()(Param,Phys,ProfileBF)
     Model.InitialProfile = Profile
   end
