@@ -109,8 +109,8 @@ function Nedelec0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdgesI + Grid.NumEdgesB
-  NumI = Grid.NumEdgesI
+  NumG = Grid.NumEdges + Grid.NumEdgesB
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
@@ -309,11 +309,11 @@ function Nedelec1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
 
   #non-normal
 
-  nu[7,1] = 8.0*ksi2 * (-2.0*ksi1 - 1.0*ksi2 + 1.0)
-  nu[7,2] = -8.0*ksi1 * (-2.0*ksi1 - 1.0*ksi2 + 2.0)
+  nu[8,1] = -8.0*ksi2 * (-2.0*ksi1 - 1.0*ksi2 + 1.0)
+  nu[8,2] = 8.0*ksi1 * (-2.0*ksi1 - 1.0*ksi2 + 2.0)
 
-  nu[8,1] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
-  nu[8,2] = -8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
+  nu[7,1] = 8.0*ksi2 * (-1.0*ksi1 - 2.0*ksi2 + 2.0)
+  nu[7,2] = -8.0*ksi1 * (-1.0*ksi1 - 2.0*ksi2 + 1.0)
 
   for s = 1 : DoF
     for t = 1 : 2
@@ -327,8 +327,8 @@ function Nedelec1Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB + 2*Grid.NumFaces
-  NumI = Grid.NumEdgesI
+  NumG = 2*Grid.NumEdges + 2*Grid.NumEdgesB + 2*Grid.NumFaces
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
       iE1 = Grid.Faces[iF].E[1]
       GlobCPU[1,iF] = 2*Grid.Edges[iE1].E - 1

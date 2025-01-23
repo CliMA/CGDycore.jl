@@ -274,7 +274,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end  
       
   @views CacheF = Temp1[:,:,1:5]
-  @views p = Cache.AuxG[:,:,1]
+  Thermo = Cache.Thermod
+  @views p = Cache.Thermo[:,:,1]
 
 
 # Ranges
@@ -554,7 +555,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   if Global.Model.Microphysics
     KMicrophysicsKernel! = MicrophysicsKernel!(backend, groupG)
-    KMicrophysicsKernel!(MicrophysicsSource,F,U,p,ndrange=ndrangeG)
+    KMicrophysicsKernel!(MicrophysicsSource,F,U,Thermo,ndrange=ndrangeG)
   end
 
   if Global.Model.Damping
@@ -620,7 +621,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views CacheF = Temp1[:,:,1:5]
   @views CacheFF = Temp1[:,:,1:6+NumTr+1]
   @views Cachew = Temp1[:,:,6 + 1 + NumTr]  
-  @views p = Cache.AuxG[:,:,1]
+  @views p = Cache.Thermo[:,:,1]
   KV = Cache.KV
   TSurf = Cache.TSurf
   RhoVSurf = Cache.RhoVSurf
@@ -797,7 +798,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   if Global.Model.Microphysics
     KMicrophysicsKernel! = MicrophysicsKernel!(backend, groupG)
-    KMicrophysicsKernel!(MicrophysicsSource,F,U,p,ndrange=ndrangeG)
+    KMicrophysicsKernel!(MicrophysicsSource,F,U,Thermo,ndrange=ndrangeG)
     KernelAbstractions.synchronize(backend)
   end
 

@@ -564,8 +564,8 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
       vtk["w", VTKCellData()] = wCell
     elseif str == "Th"  
       ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views PotT = reshape(Cache.AuxG[:,:,3],size(Cache.AuxG[:,:,3],1),1,
-        size(Cache.AuxG[:,:,3],2))
+      @views PotT = reshape(Cache.Thermo[:,:,3],size(Cache.Thermo[:,:,3],1),1,
+        size(Cache.Thermo[:,:,3],2))
       InterpolateGPU!(cCell,PotT,vtkInter,CG.Glob)
       copyto!(ThCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["Th", VTKCellData()] = ThCell
@@ -590,7 +590,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
       end    
     elseif str == "ThDiff"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
-        @views Pres = Cache.AuxG[:,:,1]  
+        @views Pres = Cache.Thermo[:,:,1]  
         RhoPos = Global.Model.RhoPos
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)  
         @views InterpolateTh!(ThCell,Pres,UR[:,:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz,Global.Phys)
@@ -606,7 +606,7 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
         vtk["ThDiff", VTKCellData()] = ThCell
       end
     elseif str == "Pres"   
-      @views Pres = Cache.AuxG[:,:,1]  
+      @views Pres = Cache.Thermo[:,:,1]  
       pCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
 #     Interpolate!(pCell,Pres,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
       if length(size(Pres)) == 2

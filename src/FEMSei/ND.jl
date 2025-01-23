@@ -1,5 +1,5 @@
-#constructing the RT elements for the Triangular grid
-function ConstructRT(k,ElemType::Grids.Tri)
+#constructing the ND elements for the Triangular grid
+function ConstructND(k,ElemType::Grids.Tri)
   s = @polyvar x[1:2]
 
   P_k = Polynomial_k(k,s)
@@ -30,8 +30,8 @@ function ConstructRT(k,ElemType::Grids.Tri)
     iDoF += 1
   end  
   for i = 1 : lH_km1
-    phi[iDoF,1] = H_km1[i] * x[1]
-    phi[iDoF,2] = H_km1[i] * x[2]
+    phi[iDoF,1] = -H_km1[i] * x[2]
+    phi[iDoF,2] = H_km1[i] * x[1]
     iDoF += 1
   end  
   @polyvar t
@@ -43,10 +43,10 @@ function ConstructRT(k,ElemType::Grids.Tri)
 # Compute functional over edges
   # Edge 1 (-1,-1) -> (1,-1)
   for iDoF = 1 : DoF
-    phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
+    phiE1 = subs(phi[iDoF,1], x[1] => t, x[2] => -1.0)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+        I[rDoF+i,iDoF] += 0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
   end
@@ -57,17 +57,17 @@ function ConstructRT(k,ElemType::Grids.Tri)
     phiE2 = subs(phi[iDoF,2], x[1] => -t, x[2] => t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += -0.5 * (phiE1(PointsL[iQ]) + phiE2(PointsL[iQ])) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ] 
+        I[rDoF+i,iDoF] += -0.5 * (phiE1(PointsL[iQ]) - phiE2(PointsL[iQ])) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ] 
       end
     end
   end
   rDoF += k + 1
 # Edge 3 (-1,1) -> (-1,-1)
   for iDoF = 1 : DoF
-    phiE1 = subs(phi[iDoF,1], x[1] => -1, x[2] => -t)
+    phiE2 = subs(phi[iDoF,2], x[1] => -1, x[2] => -t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end  
@@ -78,8 +78,8 @@ function ConstructRT(k,ElemType::Grids.Tri)
     for iDoF = 1 : DoF
       for iQ = 1 : NumQuadT
         Fac = P_km1[i](PointsT[iQ,1],PointsT[iQ,2])  
-        I[rDoF,iDoF] += 0.5 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
-        I[rDoF+1,iDoF] += 0.5 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+        I[rDoF,iDoF] += 0.25 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
+        I[rDoF+1,iDoF] += 0.25 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
       end
     end
     rDoF += 2
@@ -112,8 +112,8 @@ function ConstructRT(k,ElemType::Grids.Tri)
   return DoF, DoFE, DoFF, phiB, Divphi
 end
 
-#constructing the RT elements for the Quadrilateral grid
-function ConstructRT(k,ElemType::Grids.Quad)
+#constructing the ND elements for the Quadrilateral grid
+function ConstructND(k,ElemType::Grids.Quad)
 
   s = @polyvar x[1:2]
   P_kp1x1 = Polynomial_1D(k+1,s,1)
@@ -238,7 +238,7 @@ function ConstructRT(k,ElemType::Grids.Quad)
   return DoF, DoFE, DoFF, phiB, Divphi
 end
 
-mutable struct RTStruct{FT<:AbstractFloat,
+mutable struct NDStruct{FT<:AbstractFloat,
                         IT2<:AbstractArray} <: HDivConfElement
   Order::Int                    
   Glob::IT2
@@ -253,10 +253,10 @@ mutable struct RTStruct{FT<:AbstractFloat,
   LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
-function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:AbstractFloat
+function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:AbstractFloat
   @polyvar x[1:2]
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  DoF, DoFE, DoFF, phi, Divphi = FEMSei.ConstructRT(k,ElemType)
+  DoF, DoFE, DoFF, phi, Divphi = FEMSei.ConstructND(k,ElemType)
   Comp = 2
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
@@ -280,7 +280,7 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
   Order = k
-  return RTStruct{FT,
+  return NDStruct{FT,
                   typeof(Glob)}( 
     Order,              
     Glob,

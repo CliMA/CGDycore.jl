@@ -48,12 +48,12 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
-  NumAuxG = Global.Model.NumAuxG
+  NumThermo = Global.Model.NumThermo
   ND = Global.Model.NDEDMF
   nz = Global.Grid.nz
   NumG = CG.NumG
   Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumFacesG,NumG,nz,
-    NumV,NumTr,ND,NumAuxG)
+    NumV,NumTr,ND,NumThermo)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockAMD"
     JCache = JStruct{FT}(backend,NumG,nz,NumTr)
@@ -265,13 +265,13 @@ function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,
 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
-  NumTr = Global.Model.NumAuxG
+  NumTr = Global.Model.NumThermo
   nz = Global.Grid.nz
   NumG = CG.NumG
   FT = eltype(U)
   backend = get_backend(U)
   Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumGhostFaces,NumG,nz,
-    NumV,NumTr,NumAuxG)
+    NumV,NumTr,NumThermo)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD"
     Global.J = JStruct(NumG,nz,NumTr)

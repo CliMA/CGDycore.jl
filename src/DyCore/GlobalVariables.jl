@@ -311,7 +311,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   ThEDMFPos::Int
   NumV::Int
   NumTr::Int
-  NumAuxG::Int
+  NumThermo::Int
   Equation::Models.EquationType
   Thermo::String
   ModelType::String
@@ -396,7 +396,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   ThEDMFPos = 0
   NumV = 0
   NumTr = 0
-  NumAuxG = 0
+  NumThermo = 0
   Equation = Models.CompressibleShallow()
   Thermo = ""
   ModelType = "VectorInvariant"
@@ -479,7 +479,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    ThEDMFPos,
    NumV,
    NumTr,
-   NumAuxG,
+   NumThermo,
    Equation,
    Thermo,
    ModelType,

@@ -19,8 +19,6 @@ function ConvertScalar!(backend,FTB,pC,p,Fe::ScalarElement,Grid,Jacobi)
   pinvDF = zeros(3,2)
   X = zeros(3)
   for iF = 1 : Grid.NumFaces
-    Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
-    detDFLoc = detDF[1]
     @views pC[iF]  = fRef[1, :]' * p[Fe.Glob[:,iF]]
   end
 end

@@ -13,9 +13,9 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   ndrange = (Nz, NumG)
   dPresdRhoTh = Global.Model.dPresdRhoTh
   if Global.Model.State == "Dry" || Global.Model.State == "Moist"
-    @views p = Cache.AuxG[:,:,4]  
+    @views p = Cache.Thermo[:,:,4]  
   elseif Global.Model.State == "DryTotalEnergy"  
-    @views p = Cache.AuxG[:,:,1]
+    @views p = Cache.Thermo[:,:,1]
   end  
 
   KJacSchurKernel! = JacSchurKernel!(backend,group)
@@ -96,7 +96,7 @@ function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
   K = J.CacheCol1
 
   for iC=1:nCol
-    @views Pres = Global.Cache.AuxG[:,iC,1]
+    @views Pres = Global.Cache.Thermo[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
     @views Th = U[:,iC,ThPos]
     @views Tr = U[:,iC,NumV+1:end]
@@ -147,7 +147,7 @@ function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
     end
     if Global.Model.VerticalDiffusion
       @views JDiff = J.JDiff[:,:,iC]
-      @views KV = Global.Cache.AuxG[:,iC,2]
+      @views KV = Global.Cache.Thermo[:,iC,2]
       # The Rho factor is already included in KV
       @views @. DF = - (KV[1:nz-1] + KV[2:nz]) / (dz[1:nz-1] + dz[2:nz])
       # J tridiagonal matrix

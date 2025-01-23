@@ -4,8 +4,9 @@ Base.@kwdef struct SimpleMicrophysics <: Microphysics end
 
 
 function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
-  @inline function Microphysics(F,U,p)
+  @inline function Microphysics(F,U,Thermo)
     FT = eltype(U)
+    p = Thermo[1]
     Rho = U[RhoPos]
     RhoTh = U[ThPos]
     RhoV = U[RhoVPos]
@@ -34,7 +35,7 @@ end
 #=
 Base.@kwdef struct OneMomentMicrophysics <: Microphysics end
 
-function (::OneMomentMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
+function (::OneMomentMicrophysicsEquil)(Phys,RhoPos,ThPos,RhoTPos,RhoRPos,RelCloud,Rain)
   @inline function Microphysics(F,U,p)
     FT = eltype(U)
     nz = size(U,1)

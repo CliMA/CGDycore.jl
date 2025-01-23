@@ -213,13 +213,13 @@ function (profile::BryanFritsch)(Param,Phys,ProfileBF)
     RhoC = (RhoC_r * (z - z_l) + RhoC_l * (z_r - z)) / (z_r - z_l)
     pLoc = (p_r * (z - z_l) + p_l * (z_r - z)) / (z_r - z_l)
 
-    Rho, Th, qV, qC = PerturbMoistProfile(x, Rho, Rho*Theta, RhoV, RhoC, Phys, Param)
+    Rho, Th, qV::FT, qC::FT = PerturbMoistProfile(x, Rho, Rho*Theta, RhoV, RhoC, Phys, Param)
     u = FT(0)
     v = FT(0)
     w = FT(0)
     T = pLoc / (Rho * (Phys.Rd * (FT(1.0) - qV - qC) + Phys.Rv * qV))
     IE = Thermodynamics.InternalEnergyW(FT(1.0),qV,qC,T,Phys) 
-    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
+    E = IE + FT(0.5) * (u * u + v * v) + Phys.Grav * z
     return (Rho,u,v,w,Th,E,IE,qV,qC)
   end
   return local_profile

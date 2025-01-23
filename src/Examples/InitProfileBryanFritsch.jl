@@ -136,7 +136,7 @@ function TestRes(Phys)
   return Prof
 end
 
-function PerturbMoistProfile(x, Rho, RhoTheta, RhoV, RhoC, Phys, Param)
+@inline function PerturbMoistProfile(x, Rho, RhoTheta, RhoV, RhoC, Phys, Param)
 
   xc = Param.xC0
   zc = Param.zC0

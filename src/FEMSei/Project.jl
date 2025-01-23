@@ -235,47 +235,6 @@ function ProjectHDivVecDG1!(backend,FTB,cP,FeP::VectorElement,c,Fe::HDivElement,
   end
 end
 
-function ProjectScalarHDivVecDG1!(backend,FTB,uP,uFeP::VectorElement,h,hFe::ScalarElement,u,uFe::HDivElement,Grid,
-  ElemType::Grids.ElementType,QuadOrd,Jacobi)
-  @. uP = 0
-  ufRef  = zeros(uFe.Comp,uFe.DoF)
-  hfRef  = zeros(hFe.Comp,hFe.DoF)
-  @inbounds for iComp = 1 : uFe.Comp
-    @inbounds for iD = 1 : uFe.DoF
-      ufRef[iComp,iD] = uFe.phi[iD,iComp](0.0,0.0)
-    end
-  end
-  @inbounds for iD = 1 : hFe.DoF
-    hfRef[1,iD] = hFe.phi[iD,1](0.0,0.0)
-  end
-
-  DF = zeros(3,2)
-  detDF = zeros(1)
-  pinvDF = zeros(3,2)
-  X = zeros(3)
-  cPLoc = zeros(uFeP.DoF)
-  ufRefLoc = zeros(2)
-  @inbounds for iF = 1 : Grid.NumFaces
-    @. ufRefLoc = 0
-    @inbounds for iDoF = 1 : uFe.DoF
-      ind = uFe.Glob[iDoF,iF]  
-      @views ufRefLoc += ufRef[:,iDoF] * u[ind]
-    end  
-    hfRefLoc = 0
-    @inbounds for iDoF = 1 : hFe.DoF
-      ind = hFe.Glob[iDoF,iF]  
-      hfRefLoc += hfRef[1,iDoF] * h[ind]
-    end  
-    Jacobi!(DF,detDF,pinvDF,X,Grid.Type,0.0,0.0,Grid.Faces[iF], Grid)
-    detDFLoc = detDF[1] * Grid.Faces[iF].Orientation
-    uPLoc = 1 / detDFLoc * (DF * ufRefLoc) / hfRefLoc
-    @inbounds for iDoF = 1 : uFeP.DoF
-      ind = uFeP.Glob[iDoF,iF]  
-      uP[ind] += uPLoc[iDoF]
-    end  
-  end
-end
-
 function ProjectHDivVecDG!(backend,FTB,cP,FeP::VectorElement,c,Fe::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)

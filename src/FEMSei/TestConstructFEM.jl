@@ -140,7 +140,7 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 6
+RefineLevel = 3
 nz = 1
 nQuad = 5
 nQuadM = 5 #2
@@ -153,7 +153,7 @@ LatB = 0.0
 #Quad
 GridType = "TriangularSphere"
 #GridType = "CubedSphere"
-nPanel =  80
+nPanel =  60
 #GridType = "HealPix"
 ns = 57
 
@@ -164,20 +164,44 @@ Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,
 
 Problem = "GalewskiSphere"
 Param = Examples.Parameters(FTB,Problem)
-Examples.InitialProfile!(Model,Problem,Param,Phys)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
+ND0 = FEMSei.NDStruct{FTB}(backend,0,Grid.Type,Grid)
+ND0Old = FEMSei.Nedelec0Struct{FTB}(Grids.Tri(),backend,Grid)
+for i = 1 : ND0.DoF
+  @show ND0.phi[i,:]  
+  @show ND0Old.phi[i,:]  
+end  
+ND1 = FEMSei.NDStruct{FTB}(backend,1,Grid.Type,Grid)
+ND1Old = FEMSei.Nedelec1Struct{FTB}(Grids.Tri(),backend,Grid)
+for i = 1 : ND1.DoF
+  @show ND1.phi[i,:]  
+  @show ND1Old.phi[i,:]  
+end  
+stop
 
-RT = FEMSei.RTStruct{FTB}(backend,2,Grid.Type,Grid)
+RT = FEMSei.RTStruct{FTB}(backend,1,Grid.Type,Grid)
 @show RT.phi
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
 RT.LUM = lu(RT.M)
+RT2 = FEMSei.RT1Struct{FTB}(Grid.Type,backend,Grid)
+
+
+for i = 1 : 8
+  @show i  
+  @show RT.phi[i,:]
+  #@show ConRT[i,:]
+  @show RT2.phi[i,:]
+  @show RT2.Divphi[i]
+  @show RT.Divphi[i]
+end
 
 #for i = 1 : RT.DoF
 #  @show i  
 #  @show RT.phi[i,:]
 #  @show RT.Divphi[i]
 #end
-
+stop
 
 Flat = false
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
@@ -190,11 +214,11 @@ VelSp = zeros(Grid.NumFaces,2)
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,u,RT,Grid,FEMSei.Jacobi!)
 @show minimum(u),maximum(u)
 FileNumber=0
-Outputs.vtkSkeleton!(vtkSkeletonMesh, "InterpolateRT1", Proc, ProcNumber, VelSp, FileNumber, cName)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, "InterpolateRT1Tri", Proc, ProcNumber, VelSp, FileNumber, cName)
 
 uP = zeros(RT.NumG)
 FEMSei.Project!(backend,FTB,uP,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uP,RT,Grid,FEMSei.Jacobi!)
 @show minimum(uP),maximum(uP)
 FileNumber=1
-Outputs.vtkSkeleton!(vtkSkeletonMesh, "InterpolateRT1", Proc, ProcNumber, VelSp, FileNumber, cName)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, "InterpolateRT1Tri", Proc, ProcNumber, VelSp, FileNumber, cName)

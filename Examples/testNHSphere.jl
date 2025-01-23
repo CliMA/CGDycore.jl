@@ -278,7 +278,7 @@ end
 # GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)
 
 # Initial values
-Examples.InitialProfile!(Model,Problem,Param,Phys)
+Examples.InitialProfile!(backend.FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 #Coriolis

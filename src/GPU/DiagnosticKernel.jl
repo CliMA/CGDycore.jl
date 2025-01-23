@@ -222,11 +222,11 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   NDoFG = min(div(NumberThreadGPU,Nz),NumG)
   groupG = (Nz, NDoFG)
   ndrangeG = (Nz, NumG)
-  Thermo = Cache.AuxG
-  @views p = Cache.AuxG[:,:,1]
-  @views T = Cache.AuxG[:,:,2]
-  @views PotT = Cache.AuxG[:,:,3]
-  @views RhoP = Cache.AuxG[:,:,5:end]
+  Thermo = Cache.Thermo
+  @views p = Cache.Thermo[:,:,1]
+  @views T = Cache.Thermo[:,:,2]
+  @views PotT = Cache.Thermo[:,:,3]
+  @views RhoP = Cache.Thermo[:,:,5:end]
   @views KV = Cache.KV
   @views Rho = U[:,:,1]
   dz = Metric.dz

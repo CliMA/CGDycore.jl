@@ -2,7 +2,7 @@ mutable struct CacheStruct{FT<:AbstractFloat,
                            AT2<:AbstractArray,
                            AT3<:AbstractArray,
                            AT4<:AbstractArray}
-AuxG::AT3
+Thermo::AT3
 KV::AT2
 Aux2DG::Array{FT, 3}
 Temp::Array{FT, 3}
@@ -29,7 +29,7 @@ RhoEDMF::AT3
 end
 
 function CacheStruct{FT}(backend) where FT<:AbstractFloat
-AuxG=KernelAbstractions.zeros(backend,FT,0,0,0)
+Thermo=KernelAbstractions.zeros(backend,FT,0,0,0)
 KV=KernelAbstractions.zeros(backend,FT,0,0)
 Aux2DG=zeros(FT,0,0,0)
 Temp=zeros(FT,0,0,0)
@@ -56,7 +56,7 @@ return CacheStruct{FT,
                    typeof(KE),
                    typeof(RhoS),
                    typeof(VS)}(
-  AuxG,
+  Thermo,
   KV,
   Aux2DG,
   Temp,
@@ -82,9 +82,9 @@ return CacheStruct{FT,
 )
 end
 
-function CacheStruct{FT}(backend,DoF,NF,NGF,NumG,nz,NumV,NumTr,ND,NumAuxG) where FT<:AbstractFloat
-AuxG=KernelAbstractions.zeros(backend,FT,nz,NumG,NumAuxG)
-@. AuxG[:,:,2] = FT(250.0)
+function CacheStruct{FT}(backend,DoF,NF,NGF,NumG,nz,NumV,NumTr,ND,NumThermo) where FT<:AbstractFloat
+Thermo=KernelAbstractions.zeros(backend,FT,nz,NumG,NumThermo)
+@. Thermo[:,:,2] = FT(250.0)
 KV=KernelAbstractions.zeros(backend,FT,nz,NumG)
 Aux2DG=zeros(FT,1,NumG,NumTr+1)
 Temp=zeros(FT,DoF,nz,NF)
@@ -119,7 +119,7 @@ return CacheStruct{FT,
                    typeof(KE),
                    typeof(RhoS),
                    typeof(VS)}(
-  AuxG,
+  Thermo,
   KV,
   Aux2DG,
   Temp,
