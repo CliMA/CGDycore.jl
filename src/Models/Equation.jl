@@ -80,7 +80,7 @@ function (::DryInternalEnergy)(Phys)
 end
 
 function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
-  @inline function Pressure(Thermo,U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
     RhoV = U[RhoVPos]
     RhoC = U[RhoCPos]
@@ -113,7 +113,6 @@ function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
     Thermo[3] = PotT
     Thermo[5] = RhoV
     Thermo[6] = RhoC
-    Thermo[7] = RhoI
   end
   @inline function dPresdRhoIE(RhoE)
     dpdRhoE = Phys.Rd / Phys.Cvd

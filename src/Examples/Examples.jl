@@ -29,7 +29,7 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
   elseif Problem == "AdvectionSphereSpherical"
     Profile = Examples.AdvectionSphereSpherical()(Param,Phys)
     Model.InitialProfile = Profile
-  elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere"
+  elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere" || Problem == "BaroWaveMoistSphere"
     Profile = Examples.BaroWaveExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "SchaerSphericalSphere"

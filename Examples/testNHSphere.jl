@@ -166,6 +166,12 @@ Model = DyCore.ModelStruct{FTB}()
 # Initial conditions
 Model.NumV=NumV
 Model.NumTr=NumTr
+Model.NumThermo = 4
+if State == "MoistInternalEnergy"
+  Model.NumThermo +=2
+elseif State == "IceInternalEnergy"
+  Model.NumThermo +=3
+end
 Model.Problem=Problem
 if ProfRho == ""
   Model.ProfRho = Problem
@@ -278,7 +284,7 @@ end
 # GridType,Topography,Decomp,Model,Phys,RadEarth,TopoProfile)
 
 # Initial values
-Examples.InitialProfile!(backend.FTB,Model,Problem,Param,Phys)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 #Coriolis

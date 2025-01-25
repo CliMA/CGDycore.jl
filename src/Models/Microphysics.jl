@@ -16,11 +16,11 @@ function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     kappaM = Rm / Cpml
     T = p / Rm
-    p_vs = Thermodynamics.fpws(T,Phys.T0)
+    p_vs = Thermodynamics.fpws(T,Phys)
     a = p_vs / (Phys.Rv * T) - RhoV
     b = RhoC
     FPh = FT(0.5) * RelCloud * (a + b - sqrt(a * a + b * b))
-    L = Thermodynamics.LatHeat(T,Phys.L00,Phys.Cpl,Phys.Cpv,Phys.T0)
+    L = Thermodynamics.LatHeatV(T,Phys)
     FR = -FPh * Rain
     FRhoTh = RhoTh*((-L/(Cpml*T) - log(p / Phys.p0) * (Rm / Cpml) * (Phys.Rv / Rm + 
       (Phys.Cpl - Phys.Cpv) / Cpml)  + Phys.Rv / Rm) * FPh +
@@ -32,43 +32,30 @@ function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
   end
   return Microphysics
 end
-#=
-Base.@kwdef struct OneMomentMicrophysics <: Microphysics end
 
-function (::OneMomentMicrophysicsEquil)(Phys,RhoPos,ThPos,RhoTPos,RhoRPos,RelCloud,Rain)
-  @inline function Microphysics(F,U,p)
+Base.@kwdef struct OneMomentMicrophysicsMoistEquil <: Microphysics end
+
+function (::OneMomentMicrophysicsMoistEquil)(Phys,RhoTPos,RhoRPos,TPos,RhoVPos,RhoCPos)
+  @inline function Microphysics(F,U,Thermo)
     FT = eltype(U)
     nz = size(U,1)
-    @views Rho = U[:,RhoPs]
-    @views RhoTh = U[:,ThPos]
-    @views RhoV = U[:,RhoVPos]
-    @views RhoC = U[:,RhoCPos]
-    @views RhoR = U[:,RhoRPos]
+    RhoT = U[RhoTPos]
+    T = Thermo[TPos]
+    RhoV = Thermo[RhoVPos]
+    RhoC = Thermo[RhoCPos]
+    RhoR = U[RhoRPos]
 
-    F[RhoPos] += -FR
-    F[ThPos] += FRhoTh
-    F[RhoVPos] += FPh
-    F[RhoCPos] += -FPh - FR
-    dt_max = dt
-    for k = 1 : nz
-      # Liquid water terminal velocity (m/s) following eq. A13
-      velqr = FT(36.34) *(RhoR[k] * FT(0.001))^0.1364 * sqrt(rho[1] / rho[k])
-      if velqr > FT(0)
-        dt_max = min(dt_max, FT(0.8) * (z[k+1]-z[k]) / velqr)
-      end
-    end
-    # Number of subcycles
-    rainsplit = ceiling(dt / dt_max)
-    dt0 = dt / real(rainsplit,8)
-    for i = 1 : rainsplit
-      velqrB = FT(36.34) *(RhoR[1] * FT(0.001))^0.1364   
-      for k = 1 : nz - 1
-        velqrT = FT(36.34) *(RhoR[1] * FT(0.001))^0.1364 * sqrt(rho[1] / rho[k])
-        sed = FT(0.001) * dt0*(r(k+1)*qr(k+1)*velqr(k+1)-r(k)*qr(k)*velqr(k))/(r(k)*(z(k+1)-z(k)))
-    end    
+    RhoVS = Thermodynamics.fpws(T,Phys) / (Phys.Rv * T)
+    SRhoR2RhoV =  (FT(3.86e-3) - FT(9.41e-5) * (T - Phys.T0)) * (FT(1) + FT(9.1) * RhoR^FT(3/16)) * 
+      (RhoVS - RhoV) * sqrt(RhoR)
+    SRhoCRhoR = FT(0.001) * max(RhoC,FT(0))  
+    SRhoCRhoRRhoR = FT(1.72) * RhoC * RhoR^FT(7/8)
+    F[RhoTPos] += +SRhoR2RhoV - SRhoCRhoR - SRhoCRhoRRhoR
+    F[RhoRPos] += -SRhoR2RhoV + SRhoCRhoR + SRhoCRhoRRhoR
   end
   return Microphysics
 end
+#=
 
 !-----------------------------------------------------------------------
 !

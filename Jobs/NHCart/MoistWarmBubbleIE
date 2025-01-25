@@ -3,12 +3,15 @@ julia --project Examples/testNHCart.jl \
   --Problem=""BryanFritschCart"" \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
-  --NumTr=1 \
-  --RhoTPos=6\
+  --NumTr=2 \
+  --RhoTPos=6 \
+  --RhoRPos=7 \
   --Equation="CompressibleShallow" \
   --State="MoistInternalEnergy" \
   --Damping=false \
   --Upwind=true \
+  --Microphysics=true \
+  --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \

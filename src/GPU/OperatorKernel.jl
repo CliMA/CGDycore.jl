@@ -1126,12 +1126,12 @@ end
   end
 end  
 
-@kernel inbounds = true function MicrophysicsKernel!(Source,F,U,p)
+@kernel inbounds = true function MicrophysicsKernel!(Source,F,U,Thermo)
   Iz,IC = @index(Global, NTuple)
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    Source(view(F,Iz,IC,:),view(U,Iz,IC,:),p[Iz,IC])
+    Source(view(F,Iz,IC,:),view(U,Iz,IC,:),view(Thermo,Iz,IC,:))
   end
 end  
 

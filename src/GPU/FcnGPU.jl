@@ -274,7 +274,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end  
       
   @views CacheF = Temp1[:,:,1:5]
-  Thermo = Cache.Thermod
+  Thermo = Cache.Thermo
   @views p = Cache.Thermo[:,:,1]
 
 

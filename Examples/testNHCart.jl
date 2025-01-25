@@ -162,11 +162,11 @@ Model = DyCore.ModelStruct{FTB}()
 # Initial conditions
 Model.NumV=NumV
 Model.NumTr=NumTr
-Model.NumAuxG = 4
+Model.NumThermo = 4
 if State == "MoistInternalEnergy"
-  Model.NumAuxG +=2
+  Model.NumThermo +=2
 elseif State == "IceInternalEnergy"
-  Model.NumAuxG +=3
+  Model.NumThermo +=3
 end  
 Model.Problem=Problem
 if ProfRho == ""
@@ -355,6 +355,13 @@ if Microphysics
     MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
       Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
+  elseif TypeMicrophysics == "OneMomentMicrophysicsMoistEquil"
+    T_TPos = 2
+    T_RhoVPos = 5
+    T_RhoCPos = 6
+    MicrophysicsSource  = Models.OneMomentMicrophysicsMoistEquil()(Phys,Model.RhoTPos,
+      Model.RhoRPos,T_TPos,T_RhoVPos,T_RhoCPos)
+    Model.MicrophysicsSource = MicrophysicsSource
   else
     @show "False Type Microphysics"
   end
@@ -434,11 +441,12 @@ Global.Output.vtk=0
         "Rho",
         "u",
         "v",
-#       "wB",
+        "wB",
         "Th",
 #       "ThE",
         "Pres",
         "Tr1",
+        "Tr2",
         ]
     end    
   elseif ModelType == "Conservative"

@@ -487,7 +487,9 @@ function (profile::BaroWaveExample)(Param,Phys)
 
     E = Phys.Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
     IE = Phys.Cvd * Temperature 
-    return (Rho,uS,vS,w,Th,E,IE)
+    qV = FT(1.e-2)
+    qC = FT(0)
+    return (Rho,uS,vS,w,Th,E,IE,qV,qC)
   end
   return local_profile
 end
