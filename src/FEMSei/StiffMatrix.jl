@@ -1320,20 +1320,18 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
         @inbounds for i = 1 : 3
           temp = 0.0  
           @inbounds for j = 1 : 2  
-            temp +=  DF[i,j] * fuTHDiv[iD,j,iQ]  
+            temp +=  DF[i,j] * fuTHDiv[iD,j,iQ] / detDFLoc 
           end  
           product += innersum[i] * temp
         end  
         RhsLoc[iD] += product * Weights[iQ]
       end 
     end
-    @show RhsLoc
     @inbounds for iD = 1 : FeTHDiv.DoF
       ind = FeTHDiv.Glob[iD,iF]
-      Rhs[ind] += RhsLoc[iD]
+      Rhs[ind] -= RhsLoc[iD]
     end  
   end 
-  stop
 
   #UPWIND on Edges
   NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)

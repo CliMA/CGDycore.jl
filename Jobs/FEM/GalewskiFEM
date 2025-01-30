@@ -8,5 +8,9 @@ julia --project Examples/ConsNonLinShallow.jl \
   --nPanel=32 \
   --RefineLevel=5 \
   --OrderFEM=1 \
-  --SimTime=1000 \
-  --PrintTime=10
+  --SimTime=0 \
+  --SimDays=1 \
+  --SimHours=0 \
+  --PrintHours=1 \
+  --PrintSeconds=0 \
+  --PrintTime=0

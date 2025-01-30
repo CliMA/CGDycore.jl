@@ -4,14 +4,14 @@ julia --project Examples/ConsNonLinShallow.jl \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
-  --GridType="CubedSphere" \
+  --GridType="TriangularSphere" \
   --nPanel=32 \
   --RefineLevel=5 \
-  --OrderFEM=0 \
+  --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=0 \
+  --SimDays=1 \
   --SimHours=1 \
-  --PrintHours=0 \
-  --PrintSeconds=1 \
+  --PrintHours=1 \
+  --PrintSeconds=0 \
   --PrintTime=0
 

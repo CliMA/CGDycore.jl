@@ -179,7 +179,7 @@ if Problem == "GalewskiSphere"
 elseif Problem == "HaurwitzSphere"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = sqrt(Phys.Grav * Param.h0)
-  dtau = GridLengthMin / cS / sqrt(2) * .3 / (k + 1)
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
@@ -272,10 +272,8 @@ for i = 1 : nAdveVel
   FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
-# @. UNew = U + 1 / 3 * dtau * F
-  @. U = U + dtau * F
+  @. UNew = U + 1 / 3 * dtau * F
 
-#=
   @. F = 0  
   # Tendency h
   FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
@@ -301,7 +299,6 @@ for i = 1 : nAdveVel
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
   @. U = U + dtau * F
- =# 
     
   # Output
   if mod(i,nprint) == 0 
