@@ -215,8 +215,8 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
       uP .= detDF[1] * pinvDF' * VelCa * h
       for i = 1 : lP_km1
         phiLoc =  ValP_km1[iQ,i]
-        uLoc[iDoF+2*i-1] += + 0.25 * Grid.Faces[iF].Orientation * uP[1] * phiLoc * WeightsT[iQ]
-        uLoc[iDoF+2*i] += + 0.25 * Grid.Faces[iF].Orientation * uP[2] * phiLoc * WeightsT[iQ] 
+        uLoc[iDoF+2*i-1] += + 0.5 * Grid.Faces[iF].Orientation * uP[1] * phiLoc * WeightsT[iQ]
+        uLoc[iDoF+2*i] += + 0.5 * Grid.Faces[iF].Orientation * uP[2] * phiLoc * WeightsT[iQ] 
       end
     end
     @. u[FE.Glob[:,iF]] = uLoc

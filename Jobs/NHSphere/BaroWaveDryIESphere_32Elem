@@ -1,49 +1,51 @@
 #!/bin/bash
-julia --project Examples/testNHSphere.jl \
-  --Problem="BaroWaveMoistSphere" \
+julia --project Examples/Driver.jl \
+  --Problem="BaroWaveDrySphere" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
+  `#Model `    \
   --NumV=5 \
   --NumTr=2 \
-  --TkePos=0 \
-  --RhoVPos=6 \
-  --RhoCPos=7 \
-  --ProfpBGrd="" \
-  --ProfRhoBGrd="" \
-  --Curl=false \
+  --RhoTPos=6 \
+  --RhoRPos=7 \
+  --Equation="CompressibleShallow" \
+  --State="DryInternalEnergy" \
   --ModelType="VectorInvariant" \
   --SurfaceScheme="" \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
-  --Equation="CompressibleShallow" \
-  --State="Moist" \
-  --Microphysics=true \
-  --TypeMicrophysics="SimpleMicrophysics" \
-  --Sedimentation=true \
+  --Microphysics=false \
+  --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
+  --Sedimentation=false \
   --Buoyancy=true \
   --Damping=true \
   --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \
-  --SimSeconds=0 \
-  --SimDays=10 \
-  --PrintSeconds=0 \
+  --SimSeconds=600 \
+  --SimDays=0 \
+  `#Output `        \
+  --PrintSeconds=150 \
   --PrintMinutes=0 \
-  --PrintHours=12 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  --TopoS="" \
+  `#Grid `        \
+  --GridForm="Spherical" \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=32 \
-  --H=45000.0 \
+  --H=30000.0 \
+  `#Topography `     \
+  --TopoS="" \
+  `#Discretization `     \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=2.e15 \

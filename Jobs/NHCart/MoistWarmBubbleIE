@@ -1,7 +1,8 @@
 #!/bin/bash
-julia --project Examples/testNHCart.jl \
+julia --project Examples/Driver.jl \
   --Problem=""BryanFritschCart"" \
   --FloatTypeBackend="Float32" \
+  `#Model `        \
   --NumV=5 \
   --NumTr=2 \
   --RhoTPos=6 \
@@ -12,17 +13,19 @@ julia --project Examples/testNHCart.jl \
   --Upwind=true \
   --Microphysics=true \
   --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
-  --BoundaryWE="Period" \
-  --BoundarySN="Period" \
-  --BoundaryBT="" \
+  --Sedimentation=true \
   --SimTime=1000 \
+  `#Output `        \
   --PrintTime=50.0 \
-  --Curl=false \
+  `#Integration `        \
   --dtau=.2 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
-  --TopoS="" \
-  `#Topography `        \
+  `#Grid       `        \
+  --GridForm="Cartesian" \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
   --H=10000.0 \
   --Lx=20000.0 \
   --Ly=2000.0 \
@@ -31,6 +34,9 @@ julia --project Examples/testNHCart.jl \
   --nz=80 \
   --nx=40 \
   --ny=2 \
+  `#Topography `        \
+  --TopoS="" \
+  `#Discretization `     \
   --OrdPoly=4 \
   --HyperVisc=true \
   --HyperDCurl=1.e7 \

@@ -13,7 +13,9 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   ndrange = (Nz, NumG)
   dPresdRhoTh = Global.Model.dPresdRhoTh
   if Global.Model.State == "Dry" || Global.Model.State == "Moist"
-    @views p = Cache.Thermo[:,:,4]  
+    @views p = Cache.Thermo[:,:,4]
+  elseif  Global.Model.State == "DryInternalEnergy" || Global.Model.State == "MoistInternalEnergy"  
+    @views p = Cache.Thermo[:,:,4]
   elseif Global.Model.State == "DryTotalEnergy"  
     @views p = Cache.Thermo[:,:,1]
   end  
@@ -69,12 +71,9 @@ end
     # Second row lower diagonal
     JRhoThW[1,Iz,IC] = -RhoThF / dzL
     JRhoThW[2,Iz,IC] = RhoThF / dzR
+
   end
 end
-
-#@inline function dPresdThGPU(RhoTh, Phys)
-#  dpdTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
-#end
 
 function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
   (  RhoPos,

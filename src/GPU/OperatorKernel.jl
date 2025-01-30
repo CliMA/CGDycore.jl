@@ -1135,6 +1135,15 @@ end
   end
 end  
 
+@kernel inbounds = true function SedimentationKernel!(Source,F,U,Thermo,dz)
+  IC, = @index(Global, NTuple)
+  NumG = @uniform @ndrange()[1]
+
+  if IC <= NumG
+    Source(view(F,:,IC,:),view(U,:,IC,:),view(Thermo,:,IC,:),view(dz,:,IC))
+  end
+end
+
 @kernel inbounds = true function VerticalDiffusionScalarKernel!(FTr,@Const(Tr),@Const(Rho),@Const(K),
   @Const(dz))
   iz, = @index(Local, NTuple)

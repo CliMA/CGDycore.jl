@@ -206,6 +206,7 @@ struct PhysParameters{FT<:AbstractFloat}
   L0S::FT
   L0F::FT
   p0::FT
+  Rho0::FT
   Gamma::FT
   kappa::FT
   Omega::FT
@@ -231,6 +232,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   L0S =  2.834e6
   L0F =  L0S - L0V
   p0 = 1.0e5
+  Rho0 = 1.41e0
   Gamma = Cpd / Cvd
   kappa = Rd / Cpd
   Omega = 2 * pi / 24.0 / 3600.0
@@ -254,6 +256,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   L0S,
   L0F,
   p0,
+  Rho0,
   Gamma,
   kappa,
   Omega,
@@ -337,6 +340,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Upwind::Bool
   HorLimit::Bool
   Microphysics::Bool
+  Sedimentation::Bool
   TypeMicrophysics::String
   RelCloud::FT
   Rain::FT
@@ -360,6 +364,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   CoriolisFun::Any
   GravitationFun::Any
   MicrophysicsSource::Any
+  SedimentationSource::Any
   TurbulenceSource::Any
   SurfaceFluxRhs::Any
   SurfaceValues::Any
@@ -422,6 +427,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Upwind = false
   HorLimit = false
   Microphysics = false
+  Sedimentation = false
   TypeMicrophysics = ""
   RelCloud = 0.0
   Rain = 0.0
@@ -445,6 +451,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   CoriolisFun = ""
   GravitationFun = ""
   MicrophysicsSource = ""
+  SedimentationSource = ""
   TurbulenceSource = ""
   SurfaceFluxRhs = ""
   SurfaceValues = ""
@@ -505,6 +512,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Upwind,
    HorLimit,
    Microphysics,
+   Sedimentation,
    TypeMicrophysics,
    RelCloud,
    Rain,
@@ -528,6 +536,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    CoriolisFun,
    GravitationFun,
    MicrophysicsSource,
+   SedimentationSource,
    TurbulenceSource,
    SurfaceFluxRhs,
    SurfaceValues,

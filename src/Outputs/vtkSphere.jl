@@ -527,10 +527,15 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
     elseif  str == "v" 
       vPos = Global.Model.vPos
       vCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
-      @. @views UR[:,:,CG.BoundaryDoF,vPos] = FTB(0.0)
       @views InterpolateGPU!(cCell,UR[:,:,:,vPos],vtkInter,CG.Glob)
       @views copyto!(vCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
       vtk["v", VTKCellData()] = vCell
+    elseif  str == "Thermo" 
+      ThPos = Global.Model.ThPos
+      ThermoCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
+      @views InterpolateGPU!(cCell,UR[:,:,:,ThPos],vtkInter,CG.Glob)
+      @views copyto!(ThermoCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      vtk["Thermo", VTKCellData()] = ThermoCell
     elseif  str == "Rhov" 
       vPos = Global.Model.vPos
       RhoPos = Global.Model.RhoPos

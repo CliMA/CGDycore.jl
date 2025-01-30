@@ -1,0 +1,12 @@
+#!/bin/bash
+julia --project Examples/ConsNonLinShallow.jl \
+  --Problem="GalewskiSphere" \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=512 \
+  --GridForm="Spherical" \
+  --GridType="CubedSphere" \
+  --nPanel=32 \
+  --RefineLevel=5 \
+  --OrderFEM=1 \
+  --SimTime=1000 \
+  --PrintTime=10

@@ -99,6 +99,11 @@ end
   (Phys.Rd * RhoThetaV / Phys.p0^Kappa)^(1.0 / (1.0 - Kappa)) / Rm
 end
 
+@inline function fTempIE(Rho,RhoIE,Phys)
+  #IE = Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0
+  T = (RhoIE / Rho + Phys.Rd * Phys.T0) / Phys.Cvd + Phys.T0
+  T = (RhoIE / Rho - Phys.Rd * Phys.T0) / Phys.Cvd + Phys.T0
+end
 
 @inline function LatHeatV(T,Phys)
   # Vaporization
@@ -117,6 +122,7 @@ end
 
 @inline function SpIntEnergyDry(T,Phys)
   Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0
+  Phys.Cvd * (T - Phys.T0) + Phys.Rd * Phys.T0
 end  
 
 @inline function dSpIntEnergyDrydT(T,Phys)

@@ -238,7 +238,14 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   Pressure = Global.Model.Pressure
 
   KPressureKernel! = PressureKernel!(backend,group)
+  @show "Call PressureKernel"
   KPressureKernel!(Pressure,Thermo,U,nSS,zP,ndrange=ndrange)
+  @show sum(abs.(Thermo[:,:,1]))
+  @show sum(abs.(U[:,:,1]))
+  @show sum(abs.(U[:,:,2]))
+  @show sum(abs.(U[:,:,3]))
+  @show sum(abs.(U[1,:,4]))
+  @show sum(abs.(U[end-1,:,4]))
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  

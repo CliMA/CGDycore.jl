@@ -154,40 +154,40 @@ function ConstructND(k,ElemType::Grids.Quad)
 # Compute functional over edges
   # Edge 1 (-1,-1) -> (1,-1)
   for iDoF = 1 : DoF
-    phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
+    phiE1 = subs(phi[iDoF,1], x[1] => t, x[2] => -1.0)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+        I[rDoF+i,iDoF] += 0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
   end
   rDoF += k + 1
   # Edge 2 (1,-1) -> (1,1)
   for iDoF = 1 : DoF
-    phiE1 = subs(phi[iDoF,1], x[1] => 1.0, x[2] => t)
+    phiE2 = subs(phi[iDoF,2], x[1] => 1.0, x[2] => t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] += -0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end 
   rDoF += k + 1
   # Edge 3 (1,1) -> (-1,1)
   for iDoF = 1 : DoF
-    phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => 1.0)
+    phiE1 = subs(phi[iDoF,1], x[1] => t, x[2] => 1.0)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+        I[rDoF+i,iDoF] += 0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
   end
   rDoF += k + 1
   # Edge 4 (-1,1) -> (-1,-1)
   for iDoF = 1 : DoF
-    phiE1 = subs(phi[iDoF,1], x[1] => -1.0, x[2] => t)
+    phiE2 = subs(phi[iDoF,2], x[1] => -1.0, x[2] => t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] += -0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end  

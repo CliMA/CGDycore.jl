@@ -1,0 +1,17 @@
+#!/bin/bash
+julia --project Examples/ConsNonLinShallow.jl \
+  --Problem="HaurwitzSphere" \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=512 \
+  --GridForm="Spherical" \
+  --GridType="CubedSphere" \
+  --nPanel=32 \
+  --RefineLevel=5 \
+  --OrderFEM=0 \
+  --SimTime=0 \
+  --SimDays=0 \
+  --SimHours=1 \
+  --PrintHours=0 \
+  --PrintSeconds=1 \
+  --PrintTime=0
+

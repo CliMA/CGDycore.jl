@@ -413,9 +413,90 @@ function (profile::BaroWaveDryCart)(Param,Phys)
   return local_profile
 end
 
-Base.@kwdef struct BaroWaveExample <: Example end
+Base.@kwdef struct BaroWaveDryExample <: Example end
 
-function (profile::BaroWaveExample)(Param,Phys)
+function (profile::BaroWaveDryExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    Z = max(R - Phys.RadEarth, FT(0))
+    T0 = FT(0.5) * (Param.T0E + Param.T0P)
+    ConstA = FT(1.0) / Param.LapseRate
+    ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
+    ConstC = FT(0.5) * (Param.K + FT(2.0)) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
+    ConstH = Phys.Rd * T0 / Phys.Grav
+    ScaledZ = Z / (Param.B * ConstH)
+    Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
+    ConstB * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    Tau2 = ConstC * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    IntTau1 = ConstA * (exp(Param.LapseRate / T0 * Z) - FT(1.0)) +
+    ConstB * Z * exp(-ScaledZ * ScaledZ)
+    IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
+    if Param.Deep
+      RRatio = R / Phys.RadEarth
+    else
+      RRatio = FT(1.0)
+    end
+    InteriorTerm = (RRatio * cos(Lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
+    Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
+      (IntTau1 - IntTau2 * InteriorTerm))
+    Rho = Pressure / (Phys.Rd * Temperature)
+    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
+
+    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(Lat))^(Param.K + FT(1.0))
+    BigU = Phys.Grav / Phys.RadEarth * Param.K *
+      IntTau2 * InteriorTermU * Temperature
+    if Param.Deep
+      RCosLat = R * cos(Lat)
+    else
+      RCosLat =Phys.RadEarth * cos(Lat)
+    end
+    OmegaRCosLat = Phys.Omega*RCosLat
+
+    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                         _EXCEPTIONT("Negative discriminant detected.")
+    #                 }
+
+    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    vS = 0
+    # Exponential perturbation
+    GreatCircleR = acos(sin(Param.PertLat) * sin(Lat) +
+      cos(Param.PertLat) * cos(Lat) * cos(Lon - Param.PertLon))
+
+    GreatCircleR = GreatCircleR / Param.PertExpR
+
+    # Tapered perturbation with height
+    if Z < Param.PertZ
+      PertTaper = FT(1.0) - FT(3.0) * Z * Z / (Param.PertZ * Param.PertZ) +
+         FT(2.0) * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
+    else
+      PertTaper = FT(0.0)
+    end
+
+    # Apply perturbation in zonal velocity
+    if GreatCircleR < FT(1.0)
+      uSPert = Param.Up * PertTaper * exp(-GreatCircleR * GreatCircleR)
+    else
+      uSPert = FT(0.0)
+    end
+    uS = uS + uSPert
+    uS = 0
+    w = FT(0)
+
+    qV = FT(0)
+    qC = FT(0)
+    IE = Thermodynamics.InternalEnergyW(FT(1),qV,qC,Temperature,Phys)
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
+    return (Rho,uS,vS,w,Th,E,IE,qV,qC)
+  end
+  return local_profile
+end
+Base.@kwdef struct BaroWaveMoistExample <: Example end
+
+function (profile::BaroWaveMoistExample)(Param,Phys)
   @inline function local_profile(x,time)
     FT = eltype(x)
     (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
@@ -485,10 +566,17 @@ function (profile::BaroWaveExample)(Param,Phys)
     uS = uS + uSPert
     w = FT(0)
 
-    E = Phys.Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
-    IE = Phys.Cvd * Temperature 
-    qV = FT(1.e-2)
+    eta = Pressure / Phys.p0
+    eta_crit = Param.p_w / Phys.p0
+    if eta > eta_crit
+      qV = Param.q_0 * exp(-(Lat / Param.lat_w)^4) * exp(-((eta-FT(1)) * p0 / Param.p_w)^2)
+    else
+      qV = Param.q_t  
+    end 
     qC = FT(0)
+
+    IE = Thermodynamics.InternalEnergyW(FT(1),qV,qC,Temperature,Phys)
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
     return (Rho,uS,vS,w,Th,E,IE,qV,qC)
   end
   return local_profile

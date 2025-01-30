@@ -28,13 +28,13 @@ function (::ShallowWaterState)(Phys)
 end 
 
 function (::Dry)(Phys)
-  @inline function Pressure(Thermo,U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
     p = Phys.p0 * fast_powGPU(Phys.Rd * U[5] / Phys.p0, FT(1) / (FT(1) - Phys.kappa))
-    T = p / (Phys.Rd * U[1])
-    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    TLoc = p / (Phys.Rd * U[1])
+    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*TLoc
     Thermo[1] = p
-    Thermo[2] = T
+    Thermo[2] = TLoc
     Thermo[3] = PotT
   end
   @inline function dPresdRhoTh(RhoTh)
@@ -63,13 +63,16 @@ function (::DryTotalEnergy)(Phys)
 end 
 
 function (::DryInternalEnergy)(Phys)
-  @inline function Pressure(Thermo,U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
-    p = (Phys.Rd / Phys.Cvd) * U[5] 
-    T = p / (Phys.Rd * U[1])
-    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    TLoc = Thermodynamics.fTempIE(U[1],U[5],Phys)
+    p = Phys.Rd * U[1] * TLoc
+    if p < 0.0
+      @show TLoc,U,z
+    end  
+    PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
     Thermo[1] = p
-    Thermo[2] = T
+    Thermo[2] = TLoc
     Thermo[3] = PotT
   end
   @inline function dPresdRhoIE(RhoE)
@@ -89,10 +92,10 @@ function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
     Rm  = Phys.Rd * RhoD + Phys.Rv * RhoV
     kappaM = Rm / Cpml
     p = (Phys.Rd * U[ThPos] / Phys.p0^kappaM)^(FT(1) / (FT(1) - kappaM))
-    T = p / Rm
-    PotT = (Phys.p0/p)^kappaM * T
+    TLoc = p / Rm
+    PotT = (Phys.p0/p)^kappaM * TLoc
     Thermo[1] = p
-    Thermo[2] = T
+    Thermo[2] = TLoc
     Thermo[3] = PotT
   end
   @inline function dPresdRhoTh(RhoTh)
@@ -105,11 +108,16 @@ end
 function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
   @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
-    RhoV, RhoC, T = SaturationAdjustmentIEW(U[RhoPos],U[RhoIEPos],U[RhoTPos],T,Phys)
-    p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * T
-    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    TLoc = T
+    RhoV, RhoC, TLoc = SaturationAdjustmentIEW(U[RhoPos],U[RhoIEPos],U[RhoTPos],TLoc,Phys)
+    p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * TLoc
+    if p < 0.0
+      @show RhoV, RhoC, U[RhoPos],U[RhoIEPos],U[RhoTPos],U[7],TLoc,z
+      @show p
+    end  
+    PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
     Thermo[1] = p
-    Thermo[2] = T
+    Thermo[2] = TLoc
     Thermo[3] = PotT
     Thermo[5] = RhoV
     Thermo[6] = RhoC

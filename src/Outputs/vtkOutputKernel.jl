@@ -51,12 +51,9 @@ end
   I, J, K, iz   = @index(Local,  NTuple)
   _,_,_,Iz,IF = @index(Global,  NTuple)
 
-
-  ColumnTilesDim = @uniform @groupsize()[3]
   Nz = @uniform @ndrange()[4]
   NF = @uniform @ndrange()[5]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
   @uniform N = size(Inter,4)
   @uniform M = size(Inter,6)
 
@@ -126,20 +123,17 @@ end
 end
 
 @kernel inbounds = true function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),@Const(Inter),@Const(dXdxI),@Const(Glob))
-  I, J, iz   = @index(Local,  NTuple)
-  _,_,Iz,IF = @index(Global,  NTuple)
+  I, J, K, iz   = @index(Local,  NTuple)
+  _,_,_,Iz,IF = @index(Global,  NTuple)
 
+  Nz = @uniform @ndrange()[4]
+  NF = @uniform @ndrange()[5]
 
-  ColumnTilesDim = @uniform @groupsize()[3]
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
-
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  @uniform N = size(Inter,3)
-
+  @uniform N = size(Inter,4)
+  @uniform M = size(Inter,6)
 
   if Iz == 1
-    cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
     iD = 0  
     for jP = 1 : N
       for iP = 1 : N
@@ -147,17 +141,17 @@ end
         ind = Glob[iD,IF]
         w0 = -(u[Iz,1,ind] * dXdxI[3,1,1,iD,Iz,IF] +
           v[Iz,1,ind] * dXdxI[3,2,1,iD,Iz,IF]) / dXdxI[3,3,1,iD,Iz,IF]
-         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w0)
+         cCell[I,J,K,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w0)
       end
     end
   elseif Iz <= Nz
-    cCell[I,J,Iz,IF] = eltype(cCell)(0)
+    cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
     iD = 0
     for jP = 1 : N
       for iP = 1 : N
         iD += 1
         ind = Glob[iD,IF]
-         cCell[I,J,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w[Iz-1,1,ind])
+         cCell[I,J,K,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w[Iz-1,1,ind])
       end
     end
   end
@@ -285,13 +279,13 @@ function InterpolateWBGPU!(cCell,u,v,w,Inter,dXdxI,Glob)
   FT = eltype(w)
 
   OrdPrint = size(Inter,1)
+  OrdPrintZ = size(Inter,3)
   NF = size(Glob,2)
-  Nz = size(w,1)
-
+  Nz = size(u,1)
 # Ranges
-  NzG = min(div(256,OrdPrint*OrdPrint),Nz)
-  group = (OrdPrint, OrdPrint, NzG, 1)
-  ndrange = (OrdPrint, OrdPrint, Nz, NF)
+  NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
+  group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
+  ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
 
   KInterpolateWBKernel! = InterpolateWBKernel!(backend,group)
   KInterpolateWBKernel!(cCell,u,v,w,Inter,dXdxI,Glob,ndrange=ndrange)

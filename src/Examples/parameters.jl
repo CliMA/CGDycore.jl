@@ -53,7 +53,7 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   LapseRate::FT = 0.005
   U0::FT = -0.5
   PertR::FT = 1.0/6.0
-  Up::FT = 1.0
+  Up::FT = 0.0 #1.0
   PertExpR::FT = 0.1
   PertLon::FT = pi/9.0
   PertLat::FT = 2.0 * pi / 9.0
@@ -76,6 +76,8 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   sigma_b::FT = 7/10
   z_D::FT = 20.0e3
   #      Moist
+  lat_w::FT = 2.0 * pi / 9.0
+  p_w::FT = 34.0e3
   q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
   q_t::FT = 1.0e-12
   # Surface flux

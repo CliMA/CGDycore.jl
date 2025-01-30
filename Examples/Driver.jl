@@ -65,8 +65,11 @@ SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
+GridForm = parsed_args["GridForm"]
 GridType = parsed_args["GridType"]
 AdaptGridType = parsed_args["AdaptGridType"]
+RadEarth = parsed_args["RadEarth"]
+ScaleFactor = parsed_args["ScaleFactor"]
 Coriolis = parsed_args["Coriolis"]
 CoriolisType = parsed_args["CoriolisType"]
 Buoyancy = parsed_args["Buoyancy"]
@@ -83,14 +86,20 @@ SurfaceScheme = parsed_args["SurfaceScheme"]
 nx = parsed_args["nx"]
 ny = parsed_args["ny"]
 nz = parsed_args["nz"]
+nPanel = parsed_args["nPanel"]
+RefineLevel = parsed_args["RefineLevel"]
+nLon = parsed_args["nLon"]
+nLat = parsed_args["nLat"]
+LatB = parsed_args["LatB"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
-OrdPoly = parsed_args["OrdPoly"]
 Lx = parsed_args["Lx"]
 Ly = parsed_args["Ly"]
 x0 = parsed_args["x0"]
+# CG Method
 y0 = parsed_args["y0"]
+OrdPoly = parsed_args["OrdPoly"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -232,28 +241,39 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
-
-
-
-Boundary = Grids.Boundary()
-Boundary.WE = BoundaryWE
-Boundary.SN = BoundarySN
-Boundary.BT = BoundaryBT
-Topography=(TopoS=TopoS,
-            H=H,
-            P1=P1,
-            P2=P2,
-            P3=P3,
-            P4=P4,
-            )
-
 # Equation
 if Equation == "CompressibleShallow"
   Model.Equation = Models.CompressibleShallow()
 elseif Equation == "CompressibleDeep"
   Model.Equation = Models.CompressibleDeep()
 end
-Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+
+# Grid
+if GridForm == "Cartesian"
+  Boundary = Grids.Boundary()
+  Boundary.WE = BoundaryWE
+  Boundary.SN = BoundarySN
+  Boundary.BT = BoundaryBT
+  Topography=(TopoS=TopoS,
+              H=H,
+              P1=P1,
+              P2=P2,
+              P3=P3,
+              P4=P4,
+              )
+  Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+else  
+  ns=50
+  if RadEarth == 0.0
+    RadEarth = Phys.RadEarth
+    if ScaleFactor != 0.0
+      RadEarth = RadEarth / ScaleFactor
+    end
+  end
+  Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
+    GridType,Decomp,RadEarth,Model,ParallelCom)
+  Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
+end  
 
 
 #Topography
@@ -261,35 +281,46 @@ if TopoS == "AgnesiHill"
   TopoProfile = Examples.AgnesiHill()()
 elseif TopoS == "SchaerHill"
   TopoProfile = Examples.SchaerHill()()
+elseif TopoS == "BaroWaveHill"
+  TopoProfile = Examples.BaroWaveHill()()
+elseif TopoS == "SchaerSphereCircle"
+  TopoProfile = Examples.SchaerSphereCircle()(Param,Phys)
 else
   TopoProfile = Examples.Flat()()  
 end  
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
 
-@show "InitCart"
-(CG, Metric, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
-  Phys,TopoProfile,Exchange,Grid,ParallelCom)
-
-# Initial values
-#if Problem == "Stratified" || Problem == "HillAgnesiXCart"
-#  Profile = Examples.StratifiedExample()(Param,Phys)
-#elseif Problem == "WarmBubble2DXCart"
-#  Profile = Examples.WarmBubbleCartExample()(Param,Phys)
-#elseif Problem == "BryanFritschCart"
-#  ProfileBF = Models.TestRes(Phys)
-#  Profile = Examples.BryanFritsch(ProfileBF)(Param,Phys)
-#end
-
+if GridForm == "Cartesian"
+  if ParallelCom.Proc == 1  
+    @show "InitCart"
+  end  
+  Trans = Grids.TransCartX!
+  (CG, Metric, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+    Phys,TopoProfile,Exchange,Grid,ParallelCom)
+else  
+  if ParallelCom.Proc == 1  
+    @show "InitSphere"
+  end  
+  Trans = Grids.TransSphereX!
+  (CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+    Phys,TopoProfile,Exchange,Grid,ParallelCom)
+end  
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
-
+@show minimum(U[:,:,1])
 
 #Coriolis
 if Coriolis
-  if CoriolisType == "FPlane"
+  if CoriolisType == "Shallow"
+    CoriolisFun = GPU.CoriolisShallow()(Phys)
+    Model.CoriolisFun = CoriolisFun
+  elseif CoriolisType == "Deep"
+    CoriolisFun = GPU.CoriolisDeep()(Phys)
+    Model.CoriolisFun = CoriolisFun
+  elseif CoriolisType == "FPlane"
     CoriolisFun = GPU.FPlane()(Param,Phys)
     Model.CoriolisFun = CoriolisFun
   else
@@ -337,6 +368,7 @@ elseif State == "Moist"
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "MoistInternalEnergy"
+  @show State
   Pressure, dPresdRhoTh = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoTPos)
   Model.Pressure = Pressure
@@ -364,7 +396,6 @@ if Microphysics
     MicrophysicsSource, SedimentationSource = Models.OneMomentMicrophysicsMoistEquil()(Phys,
       Model.RhoPos,Model.ThPos,Model.RhoTPos,Model.RhoRPos,T_TPos,T_RhoVPos,T_RhoCPos,Grid.nz)
     Model.MicrophysicsSource = MicrophysicsSource
-    @show MicrophysicsSource
     Model.SedimentationSource = SedimentationSource
   else
     @show "False Type Microphysics"
@@ -422,89 +453,90 @@ end
 # Output
 Global.Output.vtkFileName=string(Problem*"_")
 Global.Output.vtk=0
-  Global.Output.Flat=true
-  Global.Output.H=H
-  if ModelType == "VectorInvariant" || ModelType == "Advection"
-    if State == "Dry" || State == "DryInternalEnergy" || State == "DryTotalEnergy"
-      Global.Output.cNames = [
-        "Rho",
-        "u",
-        "v",
-        "wB",
-        "Th",
-        "Pres",
-        ]
-      if TkePos > 0
-        push!(Global.Output.cNames,"Tke")
-      end
-      if VerticalDiffusion
-        push!(Global.Output.cNames,"DiffKoeff")
-      end
-    elseif State == "Moist" || State == "MoistInternalEnergy" || State == "IceInternalEnergy"
-      Global.Output.cNames = [
-        "Rho",
-        "u",
-        "v",
-        "wB",
-        "Th",
-#       "ThE",
-        "Pres",
-        "Tr1",
-        "Tr2",
-        ]
-    end    
-  elseif ModelType == "Conservative"
+Global.Output.Flat=true
+Global.Output.H=H
+if ModelType == "VectorInvariant" || ModelType == "Advection"
+  if State == "Dry" || State == "DryInternalEnergy" || State == "DryTotalEnergy"
     Global.Output.cNames = [
       "Rho",
-      "Rhou",
-      "Rhov",
-      "w",
+      "u",
+      "v",
+      "wB",
       "Th",
-      "Vort",
+      "Thermo",
+      "Pres",
       ]
-  end
+    if TkePos > 0
+      push!(Global.Output.cNames,"Tke")
+    end
+    if VerticalDiffusion
+      push!(Global.Output.cNames,"DiffKoeff")
+    end
+  elseif State == "Moist" || State == "MoistInternalEnergy" || State == "IceInternalEnergy"
+    Global.Output.cNames = [
+      "Rho",
+      "u",
+      "v",
+      "wB",
+      "Th",
+      "ThE",
+      "Pres",
+      "Tr1",
+      "Tr2",
+      ]
+  end    
+elseif ModelType == "Conservative"
+  Global.Output.cNames = [
+    "Rho",
+    "Rhou",
+    "Rhov",
+    "w",
+    "Th",
+    "Vort",
+    ]
+end
 
-  Global.Output.PrintDays = PrintDays
-  Global.Output.PrintHours = PrintHours
-  Global.Output.PrintMinutes = PrintMinutes
-  Global.Output.PrintSeconds = PrintSeconds
-  Global.Output.PrintTime = PrintTime
-  Global.Output.PrintStartTime = PrintStartTime
-  if OrdPrint == 0
-    Global.Output.OrdPrint = CG.OrdPoly
-  else  
-    Global.Output.OrdPrint = OrdPrint
-  end  
-  Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Grids.TransCartX!,CG,Metric,Global)
+Global.Output.PrintDays = PrintDays
+Global.Output.PrintHours = PrintHours
+Global.Output.PrintMinutes = PrintMinutes
+Global.Output.PrintSeconds = PrintSeconds
+Global.Output.PrintTime = PrintTime
+Global.Output.PrintStartTime = PrintStartTime
+if OrdPrint == 0
+  Global.Output.OrdPrint = CG.OrdPoly
+else  
+  Global.Output.OrdPrint = OrdPrint
+end  
+Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Trans,CG,Metric,Global)
 
-  # TimeStepper
-  time=[0.0]
-  Global.TimeStepper.IntMethod = IntMethod
-  Global.TimeStepper.Table = Table
-  Global.TimeStepper.dtau = dtau
-  Global.TimeStepper.SimDays = SimDays
-  Global.TimeStepper.SimHours = SimHours
-  Global.TimeStepper.SimMinutes = SimMinutes
-  Global.TimeStepper.SimSeconds = SimSeconds
-  Global.TimeStepper.SimTime = SimTime
-  if ModelType == "VectorInvariant" || ModelType == "Advection"
-    DiscType = Val(:VectorInvariant)
-  elseif ModelType == "Conservative"
-    DiscType = Val(:Conservative)
-  end
 
-  if Device == "CPU"  || Device == "GPU"
+# TimeStepper
+time=[0.0]
+Global.TimeStepper.IntMethod = IntMethod
+Global.TimeStepper.Table = Table
+Global.TimeStepper.dtau = dtau
+Global.TimeStepper.SimDays = SimDays
+Global.TimeStepper.SimHours = SimHours
+Global.TimeStepper.SimMinutes = SimMinutes
+Global.TimeStepper.SimSeconds = SimSeconds
+Global.TimeStepper.SimTime = SimTime
+if ModelType == "VectorInvariant" || ModelType == "Advection"
+  DiscType = Val(:VectorInvariant)
+elseif ModelType == "Conservative"
+  DiscType = Val(:Conservative)
+end
+
+if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  @show "vor Timestepper"
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
-    Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
+    Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 else
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   @show "vor CPU Timestepper"
   Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
-    Grids.TransCartX,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
+    Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 end
 

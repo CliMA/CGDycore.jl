@@ -326,6 +326,10 @@ if State == "Dry"
   Pressure, dPresdRhoTh = Models.Dry()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "DryInternalEnergy"
+  Pressure, dPresdRhoTh = Models.DryInternalEnergy()(Phys)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "DryTotalEnergy"
   Pressure, dPresdRhoTh = Models.DryTotalEnergy()(Phys)
   Model.Pressure = Pressure
@@ -335,19 +339,41 @@ elseif State == "Moist"
     Model.RhoVPos,Model.RhoCPos)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "MoistInternalEnergy"
+  Pressure, dPresdRhoTh = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoTPos)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
+elseif State == "IceInternalEnergy"
+  Pressure, dPresdRhoTh = Models.IceInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoTPos)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "ShallowWater"
   Pressure = Models.ShallowWaterState()(Phys)
   Model.Pressure = Pressure
-end  
-# Microphysics
+end
+
+#Microphysics
 if Microphysics
   if TypeMicrophysics == "SimpleMicrophysics"
     MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
-      Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
+      Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
+  elseif TypeMicrophysics == "OneMomentMicrophysicsMoistEquil"
+    T_TPos = 2
+    T_RhoVPos = 5
+    T_RhoCPos = 6
+    MicrophysicsSource, SedimentationSource = Models.OneMomentMicrophysicsMoistEquil()(Phys,
+      Model.RhoPos,Model.ThPos,Model.RhoTPos,Model.RhoRPos,T_TPos,T_RhoVPos,T_RhoCPos,Grid.nz)
+    Model.MicrophysicsSource = MicrophysicsSource
+    @show MicrophysicsSource
+    Model.SedimentationSource = SedimentationSource
   else
+    @show "False Type Microphysics"
   end
-end  
+end
+
 # Damping
 if Damping
   Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)

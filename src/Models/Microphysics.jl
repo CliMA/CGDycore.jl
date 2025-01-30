@@ -35,10 +35,10 @@ end
 
 Base.@kwdef struct OneMomentMicrophysicsMoistEquil <: Microphysics end
 
-function (::OneMomentMicrophysicsMoistEquil)(Phys,RhoTPos,RhoRPos,TPos,RhoVPos,RhoCPos)
+function (::OneMomentMicrophysicsMoistEquil)(Phys,RhoPos,RhoIEPos,RhoTPos,RhoRPos,TPos,RhoVPos,RhoCPos,nz)
   @inline function Microphysics(F,U,Thermo)
     FT = eltype(U)
-    nz = size(U,1)
+    Rho = U[RhoPos]
     RhoT = U[RhoTPos]
     T = Thermo[TPos]
     RhoV = Thermo[RhoVPos]
@@ -49,11 +49,34 @@ function (::OneMomentMicrophysicsMoistEquil)(Phys,RhoTPos,RhoRPos,TPos,RhoVPos,R
     SRhoR2RhoV =  (FT(3.86e-3) - FT(9.41e-5) * (T - Phys.T0)) * (FT(1) + FT(9.1) * RhoR^FT(3/16)) * 
       (RhoVS - RhoV) * sqrt(RhoR)
     SRhoCRhoR = FT(0.001) * max(RhoC,FT(0))  
+
+
+    wSed = FT(36.34) * (RhoR * FT(0.001))^FT(0.1364) * sqrt(Phys.Rho0 / Rho)
     SRhoCRhoRRhoR = FT(1.72) * RhoC * RhoR^FT(7/8)
     F[RhoTPos] += +SRhoR2RhoV - SRhoCRhoR - SRhoCRhoRRhoR
-    F[RhoRPos] += -SRhoR2RhoV + SRhoCRhoR + SRhoCRhoRRhoR
+    F[RhoRPos] += -SRhoR2RhoV + SRhoCRhoR + SRhoCRhoRRhoR 
   end
-  return Microphysics
+  @inline function Sedimentation(F,U,Thermo,dz)
+    FT = eltype(U)
+    for iz = 2 : nz
+      Flux = FT(36.34) * (U[iz,RhoRPos] * FT(0.001))^FT(0.1364) * sqrt(Phys.Rho0 / U[iz,RhoPos]) *
+        U[iz,RhoRPos]
+      eFlux = Phys.Cpl * Thermo[iz,TPos] * Flux  
+      F[iz,RhoRPos] += -Flux / dz[iz] 
+      F[iz,RhoPos] += -Flux / dz[iz] 
+      F[iz,RhoIEPos] += -eFlux / dz[iz]
+      F[iz-1,RhoRPos] += Flux  / dz[iz-1]
+      F[iz-1,RhoPos] += Flux  / dz[iz-1]
+      F[iz-1,RhoIEPos] += eFlux / dz[iz-1]
+    end
+    Flux = FT(36.34) * (U[1,RhoRPos] * FT(0.001))^FT(0.1364) * sqrt(Phys.Rho0 / U[1,RhoPos]) *
+        U[1,RhoRPos]
+    eFlux = Phys.Cpl * Thermo[1,TPos] * Flux  
+    F[1,RhoRPos] += -Flux / dz[1]    
+    F[1,RhoPos] += -Flux / dz[1]    
+    F[1,RhoIEPos] += -Flux / dz[1]
+  end
+  return Microphysics, Sedimentation
 end
 #=
 

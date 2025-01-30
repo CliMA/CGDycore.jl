@@ -202,6 +202,11 @@ function parse_commandline()
     arg_type = Float64
     default = 0.0
 
+    "--Sedimentation"
+    help = "Sedimentation"
+    arg_type = Bool
+    default = false
+
     "--Source"
     help = "Source"
     arg_type = Bool
@@ -327,6 +332,11 @@ function parse_commandline()
     default = ""
 
 #   Grid
+    "--GridForm"
+    help = "Cartesain or Spherical"
+    arg_type = String
+    default = "Spherical"
+
     "--RadEarth"
     help = "Radius of sphere"
     arg_type = Float64
@@ -548,6 +558,13 @@ function parse_commandline()
      help = "Number of threads for GPU"
      arg_type = Int
      default = 256
+
+  # Finite elements     
+
+    "--OrderFEM"
+     help = "Order of finite elements"
+     arg_type = Int
+     default = 0
 
   end
   return parse_args(s)

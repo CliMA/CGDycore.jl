@@ -58,6 +58,7 @@ SimDays = parsed_args["SimDays"]
 SimHours = parsed_args["SimHours"]
 SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
+SimTime = parsed_args["SimTime"]
 StartAverageDays = parsed_args["StartAverageDays"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
@@ -65,6 +66,7 @@ Table = parsed_args["Table"]
 # Grid
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+RefineLevel = parsed_args["RefineLevel"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
@@ -85,6 +87,7 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
+PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
 
@@ -93,6 +96,9 @@ Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
+
+# Finite elements
+k = parsed_args["OrderFEM"]
 
 MPI.Init()
 Flat = false #testen
@@ -140,21 +146,12 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 5
 nz = 1
-nQuad = 3
-nQuadM = 3 #2
-nQuadS = 3 #3
 Decomp = "EqualArea"
 nLat = 0
 nLon = 0
 LatB = 0.0
 
-#Quad
-#GridType = "CubedSphere"
-GridType = "TriangularSphere"
-nPanel =  90
-#GridType = "HealPix"
 ns = 57
 
 #Grid construction
@@ -162,57 +159,66 @@ RadEarth = Phys.RadEarth
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
 
-print("Which Problem do you want so solve? \n")
-print("1 - GalewskiSphere\n\
-       2 - HaurwitzSphere\n")
+Param = Examples.Parameters(FTB,Problem)
 
-text = readline() 
-a = parse(Int,text)
-if  a == 1
-    Problem = "GalewskiSphere"
-    Param = Examples.Parameters(FTB,Problem)
-    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-    cS = sqrt(Phys.Grav * Param.H0G)
-    dtau = GridLengthMin / cS / sqrt(2) * .2
-    EndTime = 24 * 3600 * 6# One day
-    PrintTime = 3600
-    nAdveVel = round(EndTime / dtau)
-    dtau = EndTime / nAdveVel
-    nprint = ceil(PrintTime/dtau)
-    GridTypeOut = GridType*"NonLinShallowGal"
-    @show GridLengthMin,GridLengthMax
-    @show nAdveVel
-    @show dtau
-    @show nprint
-elseif  a == 2
-    Problem = "HaurwitzSphere"
-    Param = Examples.Parameters(FTB,Problem)
-    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-    cS = sqrt(Phys.Grav * Param.h0)
-    dtau = GridLengthMin / cS / sqrt(2) * .3 
-    EndTime = 24 * 3600 # One day
-    PrintTime = 3600
-    nAdveVel = round(EndTime / dtau)
-    dtau = EndTime / nAdveVel
-    nprint = ceil(PrintTime/dtau)
-    GridTypeOut = GridType*"NonLinShallowHaurwitz"
-    @show GridLengthMin,GridLengthMax
-    @show nAdveVel
-    @show dtau
-    @show nprint
+if Problem == "GalewskiSphere"
+  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+  cS = sqrt(Phys.Grav * Param.H0G)
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+  nAdveVel = round(EndTime / dtau)
+  dtau = EndTime / nAdveVel
+  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+  nprint = ceil(PrintT/dtau)
+  GridTypeOut = GridType*"NonLinShallowGal"
+  GridTypeOut = "Galewski/"*GridType*"NSGalewski"
+  @show GridLengthMin,GridLengthMax
+  @show nAdveVel
+  @show dtau
+  @show nprint
+elseif Problem == "HaurwitzSphere"
+  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+  cS = sqrt(Phys.Grav * Param.h0)
+  dtau = GridLengthMin / cS / sqrt(2) * .3 / (k + 1)
+  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+  nAdveVel = round(EndTime / dtau)
+  dtau = EndTime / nAdveVel
+  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+  nprint =ceil(PrintT/dtau)
+  GridTypeOut = "Haurwitz/"*GridType*"NSHaurwitz"
+  @show GridLengthMin,GridLengthMax
+  @show nAdveVel
+  @show dtau
+  @show nprint
 else 
     print("Error")
 end
-Examples.InitialProfile!(Model,Problem,Param,Phys)
+
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 #Output
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
+#Quadrature rules
+if Grid.Type == Grids.Quad()
+  nQuad = 3
+  nQuadM = 3
+  nQuadS = 3
+elseif Grid.Type == Grids.Tri()
+  nQuad = 5
+  nQuadM = 5
+  nQuadS = 5
+end  
+
 #Finite elements
-k = 1
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 VecDG = FEMSei.VecDGStruct{FTB}(backend,k,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
+
+@show DG.phi
+@show VecDG.phi
+@show RT.phi
+@show RT.Divphi
 
 #massmatrix und LU-decomposition
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
@@ -244,7 +250,6 @@ uRec = zeros(FTB,VecDG.NumG)
 cName = ["h";"uS";"vS"]
 
 FEMSei.InterpolateRT!(Uhu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
-#FEMSei.InterpolateCons!(backend,FTB,Uhu,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 FEMSei.Project!(backend,FTB,Uh,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
 # Output of the initial values
 FileNumber=0
@@ -261,15 +266,16 @@ for i = 1 : nAdveVel
   FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(DG.LUM,Fh)
   # Tendency hu
-  
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.Jacobi!)
-  
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
-  @. UNew = U + 1 / 3 * dtau * F
+# @. UNew = U + 1 / 3 * dtau * F
+  @. U = U + dtau * F
+
+#=
   @. F = 0  
   # Tendency h
   FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
@@ -277,16 +283,12 @@ for i = 1 : nAdveVel
   # Tendency hu
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.Jacobi!)
-  #FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uRec,VecDG,Grid,FEMSei.Jacobi!)
-  #Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
-  #stop
-
-
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 0.5 * dtau * F
+
   @. F = 0  
   # Tendency h
   FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
@@ -299,12 +301,8 @@ for i = 1 : nAdveVel
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
   @. U = U + dtau * F
-  #=
-  # Vorticity
-  FEMSei.CurlMatrix!(backend, FTB, Curl, RT, Grid, Grid.Type, nQuad, FEMSei.Jacobi!)
-  FEMSei.ProjectHDivHCurl!(backend, FTB, uCurl, Curl, UNewhu, RT, Grid, Grid.Type, nQuad, FEMSei.Jacobi!)
-  ldiv!(RT.LUM, uCurl)
-  =#
+ =# 
+    
   # Output
   if mod(i,nprint) == 0 
     global FileNumber += 1
@@ -314,3 +312,4 @@ for i = 1 : nAdveVel
   end
 end
 @show "finished"
+

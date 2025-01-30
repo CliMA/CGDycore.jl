@@ -124,9 +124,9 @@ function DGStruct{FT}(backend,k,Type::Grids.Tri,Grid) where FT<:AbstractFloat
     phi = Array{Polynomial,2}(undef,DoF,Comp)
     Gradphi = Array{Polynomial,3}(undef,DoF,Comp,2)
     @polyvar x1 x2 ksi1 ksi2
-    nu[1,1] = 0.0*ksi1 + 0.0*ksi2 + 2.0
-    nu[2,1] = 0.0*ksi1 + 1.0*ksi2 - 1.0/3.0
-    nu[3,1] = 1.0*ksi1 + 0.0*ksi2 - 1.0/3.0
+    nu[1,1] = -1.0*ksi1 + -1.0*ksi2 + 1.0
+    nu[2,1] = 1.0*ksi1 + 0.0*ksi2 + 0.0
+    nu[3,1] = 0.0*ksi1 + 1.0*ksi2 + 0.0
   
     for s = 1 : DoF
       for t = 1 : 1

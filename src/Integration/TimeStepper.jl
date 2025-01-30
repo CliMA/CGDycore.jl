@@ -103,6 +103,9 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
   if IntMethod == "Rosenbrock"
     # For time measuring  
     RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
+    if mod(1,PrintInt) == 0 && time[1] >= PrintStartTime
+      Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
+    end
     @time begin
       for i=2:nIter
         Δt = @elapsed begin

@@ -188,6 +188,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   EDMF = Global.Model.EDMF
   ND = Global.Model.NDEDMF
   MicrophysicsSource = Global.Model.MicrophysicsSource
+  SedimentationSource = Global.Model.SedimentationSource
   CoriolisFun = Global.Model.CoriolisFun
   GravitationFun = Global.Model.GravitationFun
   HorLimit = Global.Model.HorLimit
@@ -298,6 +299,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   NFG = min(div(NumberThreadGPU,Nz),NF)
   groupL = (Nz, NFG, 1)
   ndrangeL = (Nz, NF, NumTr)
+  groupC = 5
+  ndrangeC = NDoF
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
   KGradFullKernel! = GradFullKernel!(backend,group)
@@ -482,7 +485,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end  
 
   KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
+  @show "vor ",sum(abs.(F[1,:,4]))
+  @show "vor ",sum(abs.(U[1,:,1]))
+  @show "vor ",sum(abs.(p[1,:]))
+  @show "vor ",sum(abs.(p[2,:]))
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
+  @show "nach",sum(abs.(F[1,:,4]))
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
@@ -558,10 +566,17 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KMicrophysicsKernel!(MicrophysicsSource,F,U,Thermo,ndrange=ndrangeG)
   end
 
+  if Global.Model.Sedimentation
+    KSedimentationKernel! = SedimentationKernel!(backend, groupC)
+    KSedimentationKernel!(SedimentationSource,F,U,Thermo,dz,ndrange=ndrangeC)
+  end
+
+
   if Global.Model.Damping
     KDampKernel! = DampKernel!(backend, groupG)
     KDampKernel!(Damp,F,U,zP,ndrange=ndrangeG)
   end  
+  @show "Ende",sum(abs.(F[1,:,4]))
 end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleDeep)

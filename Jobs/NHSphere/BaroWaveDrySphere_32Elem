@@ -1,7 +1,7 @@
 #!/bin/bash
-julia --project Examples/testNHSphere.jl \
+julia --project Examples/Driver.jl \
   --Problem="BaroWaveDrySphere" \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --NumV=5 \
   --NumTr=0 \
@@ -24,16 +24,16 @@ julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=8 \
+  --SimDays=0 \
   --SimHours=0 \
-  --SimSeconds=0 \
-  --PrintSeconds=0 \
+  --SimSeconds=1 \
+  --PrintSeconds=1 \
   --PrintMinutes=0 \
   --PrintHours=0 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=150 \
+  --dtau=1 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -42,7 +42,7 @@ julia --project Examples/testNHSphere.jl \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=32 \
-  --H=55000.0 \
+  --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \
