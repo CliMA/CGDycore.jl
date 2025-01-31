@@ -310,7 +310,6 @@ end
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
-@show minimum(U[:,:,1])
 
 #Coriolis
 if Coriolis

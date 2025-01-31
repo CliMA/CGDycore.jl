@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/testNHSphere.jl \
+julia --project Examples/Driver.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float32" \
   --NumberThreadGPU=512 \
