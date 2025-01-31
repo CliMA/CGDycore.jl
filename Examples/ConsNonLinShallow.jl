@@ -201,9 +201,9 @@ vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
-  nQuad = 3
-  nQuadM = 3
-  nQuadS = 3
+  nQuad = 4
+  nQuadM = 4
+  nQuadS = 4
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
   nQuadM = 4
@@ -266,11 +266,52 @@ for i = 1 : nAdveVel
   FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(DG.LUM,Fh)
   # Tendency hu
+  FEMSei.ProjectHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
+    Grid.Type,nQuad,FEMSei.Jacobi!)
+  global FileNumber += 1
+  FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uRec,VecDG,Grid,FEMSei.Jacobi!)
+  FEMSei.ConvertScalar!(backend,FTB,hout,Fh,DG,Grid,FEMSei.Jacobi!)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.Jacobi!)
+  global FileNumber += 1
+  FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uRec,VecDG,Grid,FEMSei.Jacobi!)
+  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  ldiv!(RT.LUM,Fhu)
+
+  global FileNumber += 1
+  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
+  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+
+  @. F = 0
   FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  ldiv!(RT.LUM,Fhu)
+  global FileNumber += 1
+  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
+  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+
+  @. F = 0
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  ldiv!(RT.LUM,Fhu)
+  global FileNumber += 1
+  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
+  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+
+  @. F = 0
+  FEMSei.GradRhs!(backend,FTB,Fhu,Uh,DG,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+  ldiv!(RT.LUM,Fhu)
+  global FileNumber += 1
+  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
+  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+  stop
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 1 / 3 * dtau * F
 

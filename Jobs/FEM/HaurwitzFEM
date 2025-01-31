@@ -5,9 +5,9 @@ julia --project Examples/ConsNonLinShallow.jl \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
-  --nPanel=32 \
+  --nPanel=60 \
   --RefineLevel=5 \
-  --OrderFEM=0 \
+  --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=1 \
   --SimHours=0 \

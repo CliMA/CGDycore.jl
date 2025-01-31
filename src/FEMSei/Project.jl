@@ -297,6 +297,87 @@ function ProjectHDivVecDG!(backend,FTB,cP,FeP::VectorElement,c,Fe::HDivElement,G
   ldiv!(FeP.LUM,cP)
 end
 
+function ProjectHDivVecDG!(backend,FTB,cP,FeP::VectorElement,h,hFe::ScalarElement,
+  hu,Fe::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
+  fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
+  fPRef  = zeros(FeP.Comp,FeP.DoF,NumQuad)
+  hRef  = zeros(hFe.Comp,hFe.DoF,NumQuad)
+
+  @. cP = 0
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iComp = 1 : Fe.Comp
+      @inbounds for iD = 1 : Fe.DoF
+        fRef[iComp,iD,iQ] = Fe.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+  end
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iComp = 1 : hFe.Comp
+      @inbounds for iD = 1 : hFe.DoF
+        hRef[iComp,iD,iQ] = hFe.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+  end
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iComp = 1 : FeP.Comp
+      @inbounds for iD = 1 : FeP.DoF
+        fPRef[iComp,iD,iQ] = FeP.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+  end
+
+  cPLoc = zeros(FeP.DoF)
+  huLoc = zeros(Fe.DoF)
+  hLoc = zeros(hFe.DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  fRefLoc = zeros(2)
+  DFfRefLoc = zeros(3)
+
+  @inbounds for iF = 1 : Grid.NumFaces
+    @. cPLoc = 0
+    @inbounds for iDoF = 1 : Fe.DoF
+      ind = Fe.Glob[iDoF,iF]  
+      huLoc[iDoF] = hu[ind]
+    end  
+    @inbounds for iDoF = 1 : hFe.DoF
+      ind = hFe.Glob[iDoF,iF]  
+      hLoc[iDoF] = h[ind]
+    end  
+    @inbounds for iQ = 1 : NumQuad
+      @. fRefLoc = 0.0
+      @inbounds for iDoF = 1 : Fe.DoF
+        @inbounds for iComp = 1 : Fe.Comp
+          fRefLoc[iComp] += fRef[iComp,iDoF,iQ] * huLoc[iDoF]  
+        end  
+      end  
+      hfLoc = 0.0
+      @inbounds for iDoF = 1 : hFe.DoF
+        hfLoc += hRef[iDoF,iQ] * hLoc[iDoF]  
+      end  
+      #determinant
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      detDFLoc = detDF[1]
+      DFfRefLoc[1] = DF[1,1] * fRefLoc[1] + DF[1,2] * fRefLoc[2]
+      DFfRefLoc[2] = DF[2,1] * fRefLoc[1] + DF[2,2] * fRefLoc[2]
+      DFfRefLoc[3] = DF[3,1] * fRefLoc[1] + DF[3,2] * fRefLoc[2]
+      #DF=3x2 
+      @inbounds for iDoF = 1 : FeP.DoF
+        cPLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[iQ] * (DFfRefLoc[1] * fPRef[1,iDoF,iQ] +
+          DFfRefLoc[2] * fPRef[2,iDoF,iQ] + DFfRefLoc[3] * fPRef[3,iDoF,iQ]) / hfLoc
+      end  
+    end
+    @inbounds for iDoF = 1 : FeP.DoF
+      ind = FeP.Glob[iDoF,iF]  
+      cP[ind] += cPLoc[iDoF]
+    end  
+  end
+  ldiv!(FeP.LUM,cP)
+end
+
 function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
   uDiv,FeF::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)

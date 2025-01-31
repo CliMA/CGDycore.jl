@@ -485,12 +485,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end  
 
   KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
-  @show "vor ",sum(abs.(F[1,:,4]))
-  @show "vor ",sum(abs.(U[1,:,1]))
-  @show "vor ",sum(abs.(p[1,:]))
-  @show "vor ",sum(abs.(p[2,:]))
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
-  @show "nach",sum(abs.(F[1,:,4]))
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
@@ -576,7 +571,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KDampKernel! = DampKernel!(backend, groupG)
     KDampKernel!(Damp,F,U,zP,ndrange=ndrangeG)
   end  
-  @show "Ende",sum(abs.(F[1,:,4]))
 end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleDeep)

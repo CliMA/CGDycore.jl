@@ -1434,10 +1434,6 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
           @views uER += WeightsL[iQ]*uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR)
         end
       end
-      if abs(uE) > 10.0
-        @show uE,uER
-      end  
-      #upwind value
       gammaU = 0.5
       gammaLoc = uE > 0 ? gammaU : -gammaU
 

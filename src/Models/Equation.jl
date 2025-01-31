@@ -67,9 +67,6 @@ function (::DryInternalEnergy)(Phys)
     FT = eltype(U)
     TLoc = Thermodynamics.fTempIE(U[1],U[5],Phys)
     p = Phys.Rd * U[1] * TLoc
-    if p < 0.0
-      @show TLoc,U,z
-    end  
     PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
     Thermo[1] = p
     Thermo[2] = TLoc
@@ -111,10 +108,6 @@ function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
     TLoc = T
     RhoV, RhoC, TLoc = SaturationAdjustmentIEW(U[RhoPos],U[RhoIEPos],U[RhoTPos],TLoc,Phys)
     p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * TLoc
-    if p < 0.0
-      @show RhoV, RhoC, U[RhoPos],U[RhoIEPos],U[RhoTPos],U[7],TLoc,z
-      @show p
-    end  
     PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
     Thermo[1] = p
     Thermo[2] = TLoc
