@@ -123,7 +123,33 @@ function QuadRule(type::Grids.Tri,Ord)
       Points[i,1] = 2.0 * Points[i,1] - 1.0  
       Points[i,2] = 2.0 * Points[i,2] - 1.0  
     end  
- 
+  elseif Ord == 4
+    NumQuad = 6
+    Weights = zeros(NumQuad)
+    Points = zeros(NumQuad,2)
+    Weights[1] = 0.16666666666666666667
+    Weights[2] = 0.16666666666666666667
+    Weights[3] = 0.16666666666666666667
+    Weights[4] = 0.16666666666666666667
+    Weights[5] = 0.16666666666666666667
+    Weights[6] = 0.16666666666666666667
+    Points[1,1] = 0.659027622374092  
+    Points[1,2] = 0.231933368553031
+    Points[2,1] = 0.659027622374092  
+    Points[2,2] = 0.109039009072877
+    Points[3,1] = 0.231933368553031  
+    Points[3,2] = 0.659027622374092
+    Points[4,1] = 0.231933368553031  
+    Points[4,2] = 0.109039009072877
+    Points[5,1] = 0.109039009072877  
+    Points[5,2] = 0.659027622374092
+    Points[6,1] = 0.109039009072877  
+    Points[6,2] = 0.231933368553031
+    @. Weights = 4.0 * Weights
+    for i = 1 : NumQuad
+      Points[i,1] = 2.0 * Points[i,1] - 1.0  
+      Points[i,2] = 2.0 * Points[i,2] - 1.0  
+    end  
   elseif Ord == 5
     NumQuad = 6
     Weights = zeros(NumQuad)

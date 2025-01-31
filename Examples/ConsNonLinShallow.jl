@@ -179,7 +179,7 @@ if Problem == "GalewskiSphere"
 elseif Problem == "HaurwitzSphere"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = sqrt(Phys.Grav * Param.h0)
-  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  dtau = GridLengthMin / cS / sqrt(2) * .1 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
@@ -205,9 +205,9 @@ if Grid.Type == Grids.Quad()
   nQuadM = 3
   nQuadS = 3
 elseif Grid.Type == Grids.Tri()
-  nQuad = 5
-  nQuadM = 5
-  nQuadS = 5
+  nQuad = 4
+  nQuadM = 4
+  nQuadS = 4
 end  
 
 #Finite elements

@@ -7,11 +7,12 @@ julia --project Examples/ConsNonLinShallow.jl \
   --GridType="TriangularSphere" \
   --nPanel=32 \
   --RefineLevel=5 \
-  --OrderFEM=1 \
+  --OrderFEM=0 \
   --SimTime=0 \
   --SimDays=1 \
-  --SimHours=1 \
-  --PrintHours=1 \
+  --SimHours=0 \
+  --PrintHours=0 \
+  --PrintMinutes=10 \
   --PrintSeconds=0 \
   --PrintTime=0
 

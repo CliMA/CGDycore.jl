@@ -1149,7 +1149,6 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
   cu2 = zeros(NumQuad)
   DF = zeros(3,2)
   detDF = zeros(1)
-  detDFLoc = zeros(NumQuad)
   pinvDF = zeros(3,2)
   X = zeros(3)
   Omega = 2 * pi / 24.0 / 3600.0
@@ -1166,7 +1165,7 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
     end  
     for iQ = 1 : NumQuad
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
-      detDFLoc[iQ] = detDF[1]
+      detDFLoc = detDF[1]
       uFLoc1 = 0.0
       uFLoc2 = 0.0
       for iDoF = 1 : uFeF.DoF
@@ -1192,7 +1191,7 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
       end
       for iDoF = 1 : FeT.DoF
         CrossLoc[iDoF] -=  Weights[iQ] * qFLoc * (fTRef[1,iDoF,iQ] * cu1 +
-          fTRef[2,iDoF,iQ] * cu2) / detDFLoc[iQ]
+          fTRef[2,iDoF,iQ] * cu2) / detDFLoc
       end    
     end  
     for iDoF = 1 : FeT.DoF
@@ -1311,7 +1310,8 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
           GradVecDGHDiv[i] += uuGradVecDGLoc[i,j] * uuHDivLoc[j]
         end
       end  
-      @. innersum = Grid.Faces[iF].Orientation * (VecDGDivHDiv + GradVecDGHDiv)
+#     @. innersum = Grid.Faces[iF].Orientation * (VecDGDivHDiv + GradVecDGHDiv)
+      @. innersum = (VecDGDivHDiv + GradVecDGHDiv)
       #computation of Jacobi
       Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
@@ -1413,6 +1413,7 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       @views nBarLocR = Grid.nBar[:, EdgeTypeR]
       #gamma upwind value
       uE = 0.0 
+      uER = 0.0 
       @inbounds for iD = 1 : FeHDiv.DoF
         ind = FeHDiv.Glob[iD,iFL]  
         uHDivLocLeft[iD] = uHDiv[ind]
@@ -1427,10 +1428,15 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       end 
       @inbounds for iQ = 1:NumQuadL
         @inbounds for iD = 1 : FeHDiv.DoF
-          @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*(uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL) +
-            uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR))
+#         @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*(uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL) +
+#           uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR))
+          @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL) 
+          @views uER += WeightsL[iQ]*uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR)
         end
       end
+      if abs(uE) > 10.0
+        @show uE,uER
+      end  
       #upwind value
       gammaU = 0.5
       gammaLoc = uE > 0 ? gammaU : -gammaU
