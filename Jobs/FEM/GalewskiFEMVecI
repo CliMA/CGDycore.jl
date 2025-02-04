@@ -1,18 +1,16 @@
 #!/bin/bash
-julia --project Examples/ConsNonLinShallow.jl \
-  --Problem="AdvectionSphereSpherical" \
+julia --project Examples/FEMSei/VecINonLinShallow.jl \
+  --Problem="GalewskiSphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
   --nPanel=60 \
-  --RefineLevel=5 \
+  --RefineLevel=6 \
   --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=1 \
   --SimHours=0 \
-  --PrintHours=0 \
-  --PrintMinutes=10 \
+  --PrintHours=1 \
   --PrintSeconds=0 \
   --PrintTime=0
-

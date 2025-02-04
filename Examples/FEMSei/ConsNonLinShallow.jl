@@ -66,7 +66,11 @@ Table = parsed_args["Table"]
 # Grid
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+ns = parsed_args["ns"]
 RefineLevel = parsed_args["RefineLevel"]
+nLon = parsed_args["nLon"]
+nLat = parsed_args["nLat"]
+LatB = parsed_args["LatB"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
@@ -146,14 +150,6 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-nz = 1
-Decomp = "EqualArea"
-nLat = 0
-nLon = 0
-LatB = 0.0
-
-ns = 57
-
 #Grid construction
 RadEarth = Phys.RadEarth
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
@@ -170,8 +166,8 @@ if Problem == "GalewskiSphere"
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint = ceil(PrintT/dtau)
-  GridTypeOut = GridType*"NonLinShallowGal"
-  GridTypeOut = "Galewski/"*GridType*"NSGalewski"
+  FileNameOutput = GridType*"NonLinShallowGal"
+  FileNameOutput = "Galewski/"*GridType*"NSGalewski"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -185,7 +181,7 @@ elseif Problem == "HaurwitzSphere"
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint =ceil(PrintT/dtau)
-  GridTypeOut = "Haurwitz/"*GridType*"NSHaurwitz"
+  FileNameOutput = "Haurwitz/"*GridType*"NSHaurwitz"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -214,6 +210,7 @@ end
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 VecDG = FEMSei.VecDGStruct{FTB}(backend,k,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
+ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
 #massmatrix und LU-decomposition
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
@@ -222,6 +219,9 @@ VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!)
 VecDG.LUM = lu(VecDG.M)
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
 RT.LUM = lu(RT.M)
+ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuadM,FEMSei.Jacobi!)
+ND.LUM = lu(ND.M)
+Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuad,FEMSei.Jacobi!)
 
 
 #Runge-Kutta steps
@@ -242,17 +242,19 @@ F = zeros(FTB,DG.NumG+RT.NumG)
 @views Fh = F[hPosS:hPosE]  
 @views Fhu = F[huPosS:huPosE]  
 uRec = zeros(FTB,VecDG.NumG)
-cName = ["h";"uS";"vS"]
+cName = ["h";"Vort";"uS";"vS"]
 
-FEMSei.InterpolateRT!(Uhu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
+FEMSei.InterpolatehRT!(Uhu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 FEMSei.InterpolateDG!(Uh,DG,FEMSei.Jacobi!,Grid,Grid.Type,Model.InitialProfile)
 # Output of the initial values
 FileNumber=0
 VelSp = zeros(Grid.NumFaces,2)
 hout = zeros(Grid.NumFaces)
+Vort = zeros(Grid.NumFaces)
 FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
 FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp] ,FileNumber,cName)
 
 for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600 
@@ -300,7 +302,8 @@ for i = 1 : nAdveVel
     global FileNumber += 1
     FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
     FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+    FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp] ,FileNumber,cName)
   end
 end
 @show "finished"

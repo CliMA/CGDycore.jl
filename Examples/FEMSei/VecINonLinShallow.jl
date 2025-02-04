@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -58,6 +58,7 @@ SimDays = parsed_args["SimDays"]
 SimHours = parsed_args["SimHours"]
 SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
+SimTime = parsed_args["SimTime"]
 StartAverageDays = parsed_args["StartAverageDays"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
@@ -65,6 +66,11 @@ Table = parsed_args["Table"]
 # Grid
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+ns = parsed_args["ns"]
+RefineLevel = parsed_args["RefineLevel"]
+nLon = parsed_args["nLon"]
+nLat = parsed_args["nLat"]
+LatB = parsed_args["LatB"]
 H = parsed_args["H"]
 Stretch = parsed_args["Stretch"]
 StretchType = parsed_args["StretchType"]
@@ -85,6 +91,7 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
+PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
 
@@ -94,6 +101,8 @@ GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
+# Finite elements
+k = parsed_args["OrderFEM"]
 MPI.Init()
 
 Device = "CPU"
@@ -140,61 +149,66 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-nLon = 0
-nLat = 0
-LatB = 0
-ns = 20
-RefineLevel = 6
-nz = 1
-nPanel = 40
-nQuad = 4
-nQuadM = 4 #2
-nQuadS = 4 #3
-Decomp = "EqualArea"
+#Grid construction
+RadEarth = Phys.RadEarth
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
+  nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
 
-GridType = "CubedSphere"
+Param = Examples.Parameters(FTB,Problem)
 
-print("Which Problem do you want so solve? \n")
-print("1 - GalewskiSphere\n\
-       2 - HaurwitzSphere\n\
-       3 - LinearBlob\n")
-text = readline() 
-a = parse(Int,text)
-if  a == 1
-    Problem = "GalewskiSphere"
-    RadEarth = Phys.RadEarth
-    dtau = 30
-    nAdveVel = ceil(Int,6*24*3600/dtau)
-    GridTypeOut = GridType*"NonLinShallowGal"
-    @show nAdveVel
-elseif  a == 2
-    Problem = "HaurwitzSphere"
-    RadEarth = Phys.RadEarth
-    dtau = 60
-    nAdveVel = ceil(Int,6*24*3600/dtau)
-    GridTypeOut = GridType*"NonLinShallowHaurwitz"
-    @show nAdveVel
-elseif  a == 3
-    Problem = "LinearBlob"
-    RadEarth = 1.0
-    dtau = 0.00025
-    nAdveVel = 100
-    GridTypeOut = GridType*"NonLinShallowBlob"
-    @show nAdveVel
-else 
+if Problem == "GalewskiSphere"
+  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+  cS = sqrt(Phys.Grav * Param.H0G)
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+  nAdveVel::Int = round(EndTime / dtau)
+  dtau = EndTime / nAdveVel
+  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+  nprint::Int = ceil(PrintT/dtau)
+  FileNameOutput = GridType*"NonLinShallowGal"
+  FileNameOutput = "GalewskiVecI/"*GridType*"NSGalewski"
+  @show GridLengthMin,GridLengthMax
+  @show nAdveVel
+  @show dtau
+  @show nprint
+elseif Problem == "HaurwitzSphere"
+  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+  cS = sqrt(Phys.Grav * Param.h0)
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+  nAdveVel::Int = round(EndTime / dtau)
+  dtau = EndTime / nAdveVel
+  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+  nprint::Int =ceil(PrintT/dtau)
+  FileNameOutput = "HaurwitzVecI/"*GridType*"NSHaurwitz"
+  @show GridLengthMin,GridLengthMax
+  @show nAdveVel
+  @show dtau
+  @show nprint
+else
     print("Error")
 end
-println("The chosen Problem is ") 
-Param = Examples.Parameters(FTB,Problem)
-Examples.InitialProfile!(Model,Problem,Param,Phys)
 
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,ns,nLon,nLat,LatB,
-  RefineLevel,GridType,Decomp,RadEarth,Model,ParallelCom)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
+#Output
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
-DG = FEMSei.DG0Struct{FTB}(Grids.Quad(),backend,Grid)
-RT = FEMSei.RT0Struct{FTB}(Grids.Quad(),backend,Grid)
-ND = FEMSei.Nedelec0Struct{FTB}(Grids.Quad(),backend,Grid)
+#Quadrature rules
+if Grid.Type == Grids.Quad()
+  nQuad = 4
+  nQuadM = 4
+  nQuadS = 4
+elseif Grid.Type == Grids.Tri()
+  nQuad = 4
+  nQuadM = 4
+  nQuadS = 4
+end
+
+#Finite elements
+DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
+RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
+ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
 
@@ -206,10 +220,10 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
 
-#FEMSei.Project!(backend,FTB,Uu,ModelFEM.RT,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Interpolate!(backend,FTB,Uu,RT,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,Up,ModelFEM.DG,Grid,nQuad, FEMSei.Jacobi!,Model.InitialProfile)
-@show sum(abs.(Up))
-@show sum(abs.(Uu))
+FEMSei.InterpolateDG!(Up,DG,FEMSei.Jacobi!,Grid,Grid.Type,Model.InitialProfile)
+FEMSei.InterpolateRT!(Uu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
-FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,GridTypeOut,Proc,ProcNumber)
+cName = ["h";"Vort";"uS";"vS"]
+
+@show  nAdveVel
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName)

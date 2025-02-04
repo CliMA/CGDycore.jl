@@ -18,8 +18,8 @@ function ConstructND(k,ElemType::Grids.Tri)
   phi = Array{Polynomial,2}(undef,DoF,2)
   phiB = Array{Polynomial,2}(undef,DoF,2)
   rounded_poly = Array{Polynomial,2}(undef,DoF,2)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
-  rounded_Divphi = Array{Polynomial,2}(undef,DoF,1) 
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
+  rounded_Curlphi = Array{Polynomial,2}(undef,DoF,1) 
   iDoF = 1 
   for i = 1 : lP_k
     phi[iDoF,1] = P_k[i]  
@@ -105,11 +105,11 @@ function ConstructND(k,ElemType::Grids.Tri)
     phiB[iDoF,2] = round.(phiB[iDoF,2], digits=5)
     r[iDoF] = 0
   end  
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
+    Curlphi[i,1] = -differentiate(phiB[i,1],x[2]) + differentiate(phiB[i,2],x[1])
   end
-  return DoF, DoFE, DoFF, phiB, Divphi
+  return DoF, DoFE, DoFF, phiB, Curlphi
 end
 
 #constructing the ND elements for the Quadrilateral grid
@@ -132,8 +132,8 @@ function ConstructND(k,ElemType::Grids.Quad)
   phi = Array{Polynomial,2}(undef,DoF,2)
   phiB = Array{Polynomial,2}(undef,DoF,2)
   rounded_poly = Array{Polynomial,2}(undef,DoF,2)
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
-  rounded_Divphi = Array{Polynomial,2}(undef,DoF,1)
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
+  rounded_Curlphi = Array{Polynomial,2}(undef,DoF,1)
   iDoF = 1 
   for i = 1 : k+2
     for j = 1 : k+1
@@ -231,21 +231,21 @@ function ConstructND(k,ElemType::Grids.Quad)
     phiB[iDoF,2] = round.(phiB[iDoF,2], digits=5)
     r[iDoF] = 0
   end  
-  Divphi = Array{Polynomial,2}(undef,DoF,1)
+  Curlphi = Array{Polynomial,2}(undef,DoF,1)
   for i = 1 : DoF
-    Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
+    Curlphi[i,1] = -differentiate(phiB[i,1],x[2]) + differentiate(phiB[i,2],x[2])
   end
-  return DoF, DoFE, DoFF, phiB, Divphi
+  return DoF, DoFE, DoFF, phiB, Curlphi
 end
 
 mutable struct NDStruct{FT<:AbstractFloat,
-                        IT2<:AbstractArray} <: HDivConfElement
+                        IT2<:AbstractArray} <: HCurlConfElement
   Order::Int                    
   Glob::IT2
   DoF::Int
   Comp::Int                      
   phi::Array{Polynomial,2}  
-  Divphi::Array{Polynomial,2}                       
+  Curlphi::Array{Polynomial,2}                       
   NumG::Int
   NumI::Int
   Type::Grids.ElementType
@@ -256,7 +256,7 @@ end
 function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:AbstractFloat
   @polyvar x[1:2]
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  DoF, DoFE, DoFF, phi, Divphi = FEMSei.ConstructND(k,ElemType)
+  DoF, DoFE, DoFF, phi, Curlphi = FEMSei.ConstructND(k,ElemType)
   Comp = 2
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
@@ -266,8 +266,13 @@ function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
     iGlob = 1  
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
+      OrientE = Grid.Faces[iF].OrientE[i]
       for j = 1 : DoFE
-        GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
+        if OrientE > 0
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+        else
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1
+        end
         iGlob += 1
       end
     end
@@ -287,7 +292,7 @@ function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
     DoF,
     Comp,
     phi,
-    Divphi,                      
+    Curlphi,                      
     NumG,
     NumI,
     ElemType,

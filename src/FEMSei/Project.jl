@@ -428,6 +428,74 @@ function ProjectHDivHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
   ldiv!(Fe.LUM,uCurl)
 end
 
+function ProjectHDivScalarHCurl!(backend,FTB,uCurl,Fe::HCurlElement,
+  uDiv,FeF::HDivElement,h,hFE::ScalarElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
+  fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
+  fFRef  = zeros(FeF.Comp,FeF.DoF,NumQuad)
+  fhRef  = zeros(hFE.Comp,hFE.DoF,NumQuad)
+
+  @. uCurl = 0
+  @inbounds for i = 1 : NumQuad
+    @inbounds for iComp = 1 : Fe.Comp
+      @inbounds for iD = 1 : Fe.DoF
+        fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  @inbounds for i = 1 : NumQuad
+    @inbounds for iComp = 1 : FeF.Comp
+      @inbounds for iD = 1 : FeF.DoF
+        fFRef[iComp,iD,i] = FeF.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  @inbounds for i = 1 : NumQuad
+    @inbounds for iComp = 1 : hFE.Comp
+      @inbounds for iD = 1 : hFE.DoF
+        fhRef[iComp,iD,i] = hFE.phi[iD,iComp](Points[i,1],Points[i,2])
+      end
+    end
+  end
+  uCurlLoc = zeros(Fe.DoF)
+  uCurlLoc = zeros(Fe.DoF)
+  uuF = zeros(FeF.DoF)
+  hhF = zeros(hFE.DoF)
+
+  @inbounds for iF = 1 : Grid.NumFaces
+    @. uCurlLoc = 0
+    @inbounds for iDoF = 1 : FeF.DoF
+      ind = FeF.Glob[iDoF,iF]  
+      uuF[iDoF] = uDiv[ind]
+    end  
+    @inbounds for iDoF = 1 : hFE.DoF
+      ind = hFE.Glob[iDoF,iF]  
+      hhF[iDoF] = h[ind]
+    end  
+    @inbounds for i = 1 : length(Weights)
+      fFRefLoc1 = 0.0
+      fFRefLoc2 = 0.0
+      @inbounds for iDoF = 1 : FeF.DoF
+        fFRefLoc1 += fFRef[1,iDoF,i] * uuF[iDoF]  
+        fFRefLoc2 += fFRef[2,iDoF,i] * uuF[iDoF]  
+      end  
+      hFRefLoc = 0.0
+      @inbounds for iDoF = 1 : hFE.DoF
+        hFRefLoc += fhRef[1,iDoF,i] * hhF[iDoF]  
+      end
+      @inbounds for iDoF = 1 : Fe.DoF
+        uCurlLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[i] * (fRef[1,iDoF,i] * fFRefLoc1 +
+          fRef[2,iDoF,i] * fFRefLoc2) / hFRefLoc
+      end  
+    end
+    @inbounds for iDoF = 1 : Fe.DoF
+      ind = Fe.Glob[iDoF,iF]  
+      uCurl[ind] += uCurlLoc[iDoF]
+    end  
+  end
+  ldiv!(Fe.LUM,uCurl)
+end
+
 
 function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
   h,hFeF::ScalarElement,uDiv,uFeF::HDivElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)

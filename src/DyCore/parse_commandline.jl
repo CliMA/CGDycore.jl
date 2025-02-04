@@ -282,7 +282,7 @@ function parse_commandline()
     "--Decomp"
     help = "Domain decomposition method"
     arg_type = String
-    default = "Hilbert"
+    default = "EqualArea"
 
 #   Time integration            
     "--SimDays"
@@ -391,6 +391,11 @@ function parse_commandline()
     help = "Number of grid cells per panel for a cubed sphere grid"
     arg_type = Int
     default = 4
+
+    "--ns"
+    help = "Number of grid cells per healpix"
+    arg_type = Int
+    default = 60
 
     "--RefineLevel"
     help = "Number of refinement levels for a triangular grid"

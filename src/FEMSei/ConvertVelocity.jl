@@ -1,3 +1,25 @@
+function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,hu,uFE::HDivElement,h,
+  hFE::ScalarElement,ND::HCurlElement,Curl,Grid,ElemType,QuadOrd,Jacobi)
+  UCacheu = zeros(size(hu))
+  UCachep = zeros(VortFE.NumG)
+  ProjectHDivScalarHCurl!(backend,FTB,UCacheu,ND,hu,uFE,h,hFE,
+    Grid,ElemType,QuadOrd,Jacobi)
+  mul!(UCachep,Curl,UCacheu)
+  ldiv!(VortFE.LUM,UCachep)
+  ConvertScalar!(backend,FTB,Vort,UCachep,VortFE,Grid,Jacobi)
+end
+
+function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,hu,uFE::HDivElement,
+  ND::HCurlElement,Curl,Grid,ElemType,QuadOrd,Jacobi)
+  UCacheu = zeros(size(hu))
+  UCachep = zeros(VortFE.NumG)
+  ProjectHDivHCurl!(backend,FTB,UCacheu,ND,hu,uFE,
+    Grid,ElemType,QuadOrd,Jacobi)
+  mul!(UCachep,Curl,UCacheu)
+  ldiv!(VortFE.LUM,UCachep)
+  ConvertScalar!(backend,FTB,Vort,UCachep,VortFE,Grid,Jacobi)
+end
+
 function ConvertScalar!(backend,FTB,pC,p,Fe::ScalarElement,Grid,Jacobi)
   if Grid.Type == Grids.Tri()
     ksi1 = -1/3

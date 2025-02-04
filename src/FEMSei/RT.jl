@@ -3,11 +3,9 @@ function ConstructRT(k,ElemType::Grids.Tri)
   s = @polyvar x[1:2]
 
   P_k = Polynomial_k(k,s)
-  @show P_k
   lP_k = length(P_k)
   if k > 0
     P_km1 = Polynomial_k(k-1,s)
-    @show P_km1
     lP_km1 = length(P_km1)
   else
     lP_km1 = 0  
@@ -34,7 +32,6 @@ function ConstructRT(k,ElemType::Grids.Tri)
   for i = 1 : lH_km1
     phi[iDoF,1] = H_km1[i] * x[1]
     phi[iDoF,2] = H_km1[i] * x[2]
-    @show phi[iDoF,:]
     iDoF += 1
   end  
   @polyvar t

@@ -1,4 +1,4 @@
-function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,GridType,Proc,ProcNumber)
+function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,cName)
 
   pPosS = Model.pPosS
   pPosE = Model.pPosE
@@ -14,11 +14,13 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   VelCa = zeros(Grid.NumFaces,Grid.Dim)
   VelSp = zeros(Grid.NumFaces,2)
   pC = zeros(Grid.NumFaces)
+  Vort = zeros(Grid.NumFaces)
   uCurl = zeros(Model.DG.NumG)
   ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi!)
-  ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
   ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
+  Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi!)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[pC Vort VelSp],
+    FileNumber,cName)
 
   time = 0.0
   UNew = similar(U)
@@ -26,33 +28,30 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   time = 0.0
   nPrint = ceil(nAdveVel/10)
   for i = 1 : nAdveVel
-    @show i,time  
+    @show i  
     Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
-      ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi!)
-      ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi)
-      ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi)
-      FileNumber += 1
-      Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
-      stop
     @. UNew = U + 1/3 * dtau * F
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
     @. UNew = U + 1/2 * dtau * F
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
     @. U = U + dtau * F
     if mod(i,nPrint) == 0
+      @show "Druck ",i  
       ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi!)
-      ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi)
       ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi)
+      Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi!)
       FileNumber += 1
-      Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
+      Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[pC Vort VelSp],
+        FileNumber,cName)
     end  
     time += dtau
   end
   ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi!)
-  ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
   ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!)
+  Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi!)
   FileNumber += 1
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[pC Vort VelSp],
+    FileNumber,cName)
 end
 
 function TimeStepperEul(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,GridType,Proc,ProcNumber)

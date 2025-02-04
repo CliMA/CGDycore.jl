@@ -3,10 +3,10 @@ function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   DF  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 
-  for i = 1 : length(Weights)
+  for iQ = 1 : NumQuad
     for iComp = 1 : Fe.Comp
       for iD = 1 : Fe.DoF
-        fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
+        fRef[iComp,iD,iQ] = Fe.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
   end
@@ -22,14 +22,14 @@ function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
   X = zeros(3)
   for iF = 1 : Grid.NumFaces
     MLoc .= 0  
-    for i = 1 : length(Weights)
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+    for iQ = 1 : NumQuad
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
-      fLoc = pinvDF * fRef[:, :, i]
-      MLoc = MLoc + abs(detDFLoc) * Weights[i]*(fLoc'*fLoc)
+      fLoc = pinvDF * fRef[:, :, iQ]
+      MLoc = MLoc + abs(detDFLoc) * Weights[iQ]*(fLoc'*fLoc)
     end
-    for j = 1 : size(MLoc,2)
-      for i = 1 : size(MLoc,1)
+    for j = 1 : Fe.DoF
+      for i = 1 : Fe.DoF
         if abs(MLoc[i,j]) > 1.e-6 
           push!(RowInd,Fe.Glob[i,iF])
           push!(ColInd,Fe.Glob[j,iF])
@@ -44,8 +44,6 @@ end
 
 function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
-  @show Weights
-  @show NumQuad
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   DF  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 

@@ -1,6 +1,7 @@
 module Parallels
 
 using MPI
+using StaticArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 
