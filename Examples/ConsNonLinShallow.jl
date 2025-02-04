@@ -179,7 +179,7 @@ if Problem == "GalewskiSphere"
 elseif Problem == "HaurwitzSphere"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = sqrt(Phys.Grav * Param.h0)
-  dtau = GridLengthMin / cS / sqrt(2) * .1 / (k + 1)
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
@@ -215,11 +215,6 @@ DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 VecDG = FEMSei.VecDGStruct{FTB}(backend,k,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 
-@show DG.phi
-@show VecDG.phi
-@show RT.phi
-@show RT.Divphi
-
 #massmatrix und LU-decomposition
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
 DG.LUM = lu(DG.M)
@@ -250,15 +245,15 @@ uRec = zeros(FTB,VecDG.NumG)
 cName = ["h";"uS";"vS"]
 
 FEMSei.InterpolateRT!(Uhu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
-FEMSei.Project!(backend,FTB,Uh,DG,Grid,nQuad,FEMSei.Jacobi!,Model.InitialProfile)
+FEMSei.InterpolateDG!(Uh,DG,FEMSei.Jacobi!,Grid,Grid.Type,Model.InitialProfile)
 # Output of the initial values
 FileNumber=0
 VelSp = zeros(Grid.NumFaces,2)
 hout = zeros(Grid.NumFaces)
 FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
 FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
+
 for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600 
   @. F = 0  
@@ -266,52 +261,11 @@ for i = 1 : nAdveVel
   FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(DG.LUM,Fh)
   # Tendency hu
-  FEMSei.ProjectHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
-    Grid.Type,nQuad,FEMSei.Jacobi!)
-  global FileNumber += 1
-  FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uRec,VecDG,Grid,FEMSei.Jacobi!)
-  FEMSei.ConvertScalar!(backend,FTB,hout,Fh,DG,Grid,FEMSei.Jacobi!)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
-
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.Jacobi!)
-  global FileNumber += 1
-  FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,uRec,VecDG,Grid,FEMSei.Jacobi!)
-  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
-
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
-  ldiv!(RT.LUM,Fhu)
-
-  global FileNumber += 1
-  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
-
-  @. F = 0
   FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
-  ldiv!(RT.LUM,Fhu)
-  global FileNumber += 1
-  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
-
-  @. F = 0
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
-  ldiv!(RT.LUM,Fhu)
-  global FileNumber += 1
-  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
-
-  @. F = 0
-  FEMSei.GradRhs!(backend,FTB,Fhu,Uh,DG,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
-  ldiv!(RT.LUM,Fhu)
-  global FileNumber += 1
-  FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Fhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-  FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh, GridTypeOut, Proc, ProcNumber, [hout VelSp] ,FileNumber,cName)
-  stop
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 1 / 3 * dtau * F
 

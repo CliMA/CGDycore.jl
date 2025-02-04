@@ -3,9 +3,11 @@ function ConstructRT(k,ElemType::Grids.Tri)
   s = @polyvar x[1:2]
 
   P_k = Polynomial_k(k,s)
+  @show P_k
   lP_k = length(P_k)
   if k > 0
     P_km1 = Polynomial_k(k-1,s)
+    @show P_km1
     lP_km1 = length(P_km1)
   else
     lP_km1 = 0  
@@ -32,11 +34,12 @@ function ConstructRT(k,ElemType::Grids.Tri)
   for i = 1 : lH_km1
     phi[iDoF,1] = H_km1[i] * x[1]
     phi[iDoF,2] = H_km1[i] * x[2]
+    @show phi[iDoF,:]
     iDoF += 1
   end  
   @polyvar t
   phiL = CGLine(k,t)
-  QuadOrd = 3
+  QuadOrd = 5
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
@@ -67,22 +70,22 @@ function ConstructRT(k,ElemType::Grids.Tri)
     phiE1 = subs(phi[iDoF,1], x[1] => -1, x[2] => -t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] += - 0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end  
   rDoF += k + 1
+  QuadOrd = 4
   NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Tri(),QuadOrd)
 # Interior  
-  for i = 1 : lP_km1
-    for iDoF = 1 : DoF
+  for iDoF = 1 : DoF
+    for i = 1 : lP_km1
       for iQ = 1 : NumQuadT
         Fac = P_km1[i](PointsT[iQ,1],PointsT[iQ,2])  
-        I[rDoF,iDoF] += 0.5 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
-        I[rDoF+1,iDoF] += 0.5 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+        I[rDoF+2*i-2,iDoF] +=  0.5 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
+        I[rDoF+2*i-1,iDoF] +=  0.5 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
       end
     end
-    rDoF += 2
   end
 
   for iDoF = 1 : DoF  
@@ -266,8 +269,13 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
     iGlob = 1  
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
+      OrientE = Grid.Faces[iF].OrientE[i]
       for j = 1 : DoFE
-        GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
+        if OrientE > 0  
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
+        else
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1  
+        end  
         iGlob += 1
       end
     end
@@ -295,3 +303,4 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
     LUM,
       )
 end
+

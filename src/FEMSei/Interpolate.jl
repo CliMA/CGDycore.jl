@@ -1,3 +1,18 @@
+function InterpolateDG!(u,FE::DGStruct,Jacobi,Grid,ElemType,F)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  for iF = 1 : Grid.NumFaces
+    for iDoF = 1 : FE.DoF
+      Jacobi!(DF,detDF,pinvDF,X,ElemType,FE.points[iDoF,1],FE.points[iDoF,2],Grid.Faces[iF],Grid)  
+      h, = F(X,0.0)
+      ind = FE.Glob[iDoF,iF]
+      u[ind] = h
+    end    
+  end    
+end
+
 function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
@@ -57,7 +72,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
       VelCa = VelSphere2Cart(VelSp,lon,lat)
       uP .= detDF[1] * pinvDF' * VelCa * h
       for i = 0 : k
-        uLoc[iDoF+i] += - 0.5 * Grid.Faces[iF].Orientation * (uP[1] + uP[2]) * ValphiL[iQ,i+1] * WeightsL[iQ] 
+        uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * (uP[1] + uP[2]) * ValphiL[iQ,i+1] * WeightsL[iQ] 
       end
     end
     iDoF += k + 1
@@ -69,7 +84,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
       VelCa = VelSphere2Cart(VelSp,lon,lat)
       uP .= detDF[1] * pinvDF' * VelCa * h
       for i = 0 : k
-        uLoc[iDoF+i] += - 0.5 * Grid.Faces[iF].Orientation * uP[1] * ValphiL[iQ,i+1] * WeightsL[iQ]
+        uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * uP[1] * ValphiL[iQ,i+1] * WeightsL[iQ]
       end
     end
     iDoF += k 

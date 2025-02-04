@@ -44,6 +44,8 @@ end
 
 function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
+  @show Weights
+  @show NumQuad
   fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
   DF  = zeros(Fe.Comp,Fe.DoF,length(Weights))
 

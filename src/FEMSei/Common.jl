@@ -1,7 +1,9 @@
 function CGLine(k,x)
   phi = Array{Polynomial,1}(undef,k+1)
+# phi[1] = 1.0 + 0.0 * x
   for i = 0 : k
     phi[i+1] = 0.5^k * (1.0-x)^(k-i)*(1.0+x)^i
+#   phi[i+1] = phi[i] * x
   end  
   return phi
 end

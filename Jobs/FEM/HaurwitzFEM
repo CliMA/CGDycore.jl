@@ -12,7 +12,7 @@ julia --project Examples/ConsNonLinShallow.jl \
   --SimDays=1 \
   --SimHours=0 \
   --PrintHours=0 \
-  --PrintMinutes=10 \
+  --PrintMinutes=30 \
   --PrintSeconds=0 \
   --PrintTime=0
 

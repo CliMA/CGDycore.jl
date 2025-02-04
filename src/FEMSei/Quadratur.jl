@@ -145,7 +145,7 @@ function QuadRule(type::Grids.Tri,Ord)
     Points[5,2] = 0.659027622374092
     Points[6,1] = 0.109039009072877  
     Points[6,2] = 0.231933368553031
-    @. Weights = 4.0 * Weights
+    @. Weights = 2.0 * Weights
     for i = 1 : NumQuad
       Points[i,1] = 2.0 * Points[i,1] - 1.0  
       Points[i,2] = 2.0 * Points[i,2] - 1.0  
