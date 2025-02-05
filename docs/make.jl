@@ -14,7 +14,9 @@ makedocs(;
     checkdocs = :exports,
     pages = [
         "Home" => "index.md",
+        "New file" => "newfile.md",
+        "functions" => "api.md"
     ],
 )
 
-deploydocs(; repo = "github.com/CliMA/CGDycore.jl")
+deploydocs(; repo = "github.com/CliMA/CGDycore.jl", push_preview = true)
