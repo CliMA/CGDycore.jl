@@ -1,0 +1,6 @@
+[deps]
+CGDycore = "110386ce-a5d9-49ed-97cd-70eaac72bd66"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+Documenter = "1"
