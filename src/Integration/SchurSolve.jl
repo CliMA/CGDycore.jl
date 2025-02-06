@@ -173,7 +173,6 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   @views KSchurSolveTriKernel!(Val(Nz-1),k[1:Nz-1,:,4],v[1:Nz-1,:,4],J.tri,ndrange=ndrangeTri)
   KSchurSolveBKernel! = SchurSolveBKernel!(backend,group)
   KSchurSolveBKernel!(NumVTr,k,v,J.JRhoW,J.JRhoThW,fac,ndrange=ndrange)
-  KSchurSolveBKernel! = SchurSolveBKernel!(backend,group)
 end
 
 function SchurSolve!(k,v,J,fac,Cache,Global)

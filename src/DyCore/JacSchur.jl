@@ -12,6 +12,7 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   group = (Nz, NG)
   ndrange = (Nz, NumG)
   dPresdRhoTh = Global.Model.dPresdRhoTh
+  dPresdRho = Global.Model.dPresdRho
   if Global.Model.State == "Dry" || Global.Model.State == "Moist"
     @views p = Cache.Thermo[:,:,4]
   elseif  Global.Model.State == "DryInternalEnergy" || Global.Model.State == "MoistInternalEnergy"  
@@ -21,12 +22,12 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
   end  
 
   KJacSchurKernel! = JacSchurKernel!(backend,group)
-  KJacSchurKernel!(dPresdRhoTh,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,p,Metric.dz,Phys,Param,ndrange=ndrange)
+  KJacSchurKernel!(dPresdRhoTh,dPresdRho,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,p,Metric.dz,Phys,Param,ndrange=ndrange)
 
 end
 
 
-@kernel inbounds = true function JacSchurKernel!(dPresdRhoTh,JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(p),@Const(dz),Phys,Param)
+@kernel inbounds = true function JacSchurKernel!(dPresdRhoTh,dPresdRho,JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(p),@Const(dz),Phys,Param)
   iz, iC   = @index(Local, NTuple)
   Iz,IC = @index(Global, NTuple)
 
@@ -53,6 +54,8 @@ end
 
     dPdThL = dPresdRhoTh(RhoThL)
     dPdThR = dPresdRhoTh(RhoThR)
+    dPdRhoL = dPresdRho()
+    dPdRhoR = dPresdRho()
     # JWRhoTh upper bidiagonal matrix
     # First row upper diagonal
     # Second row diagonal
@@ -64,6 +67,8 @@ end
     # Second row diagonal
     JWRho[1,Iz,IC] = -Phys.Grav * dzR / RhoF / (dzL + dzR)
     JWRho[2,Iz,IC] = -Phys.Grav * dzL / RhoF / (dzL + dzR)
+    JWRho[1,Iz,IC] += -dPdRhoR / RhoF / ( eltype(dz)(0.5) * (dzL + dzR))
+    JWRho[2,Iz,IC] += dPdRhoL / RhoF / ( eltype(dz)(0.5) * (dzL + dzR))
 
     RhoThF = (RhoThL * dzL + RhoThR * dzR) / (dzL + dzR)
     # JRhoThW low bidiagonal matrix

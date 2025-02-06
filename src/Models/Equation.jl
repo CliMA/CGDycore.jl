@@ -41,7 +41,11 @@ function (::Dry)(Phys)
     dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
     return dpdRhoTh
   end  
-  return Pressure,dPresdRhoTh
+  @inline function dPresdRho()
+    dpdRho = eltype(Phys.Rd)(0)
+    return dpdRho
+  end
+  return Pressure,dPresdRhoTh,dPresdRho
 end 
 
 function (::DryTotalEnergy)(Phys)
@@ -67,6 +71,12 @@ function (::DryInternalEnergy)(Phys)
     FT = eltype(U)
     TLoc = Thermodynamics.fTempIE(U[1],U[5],Phys)
     p = Phys.Rd * U[1] * TLoc
+    if p < 0.0
+      @show p,T
+      @show Thermo
+      @show U
+      @show z
+    end  
     PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
     Thermo[1] = p
     Thermo[2] = TLoc
@@ -76,7 +86,11 @@ function (::DryInternalEnergy)(Phys)
     dpdRhoE = Phys.Rd / Phys.Cvd
     return dpdRhoE
   end
-  return Pressure,dPresdRhoIE
+  @inline function dPresdRho()
+    dpdRho = Phys.Rd * Phys.Cpd * Phys.T0 / Phys.Cvd 
+    return dpdRho
+  end
+  return Pressure,dPresdRhoIE,dPresdRho
 end
 
 function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
@@ -99,7 +113,11 @@ function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
     dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
     return dpdRhoTh
   end  
-  return Pressure,dPresdRhoTh
+  @inline function dPresdRho()
+    dpdRho = eltype(Phys.Rd)(0)
+    return dpdRho
+  end
+  return Pressure,dPresdRhoTh,dPresdRho
 end
 
 function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
@@ -119,7 +137,11 @@ function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
     dpdRhoE = Phys.Rd / Phys.Cvd
     return dpdRhoE
   end
-  return Pressure,dPresdRhoIE
+  @inline function dPresdRho()
+    dpdRho = Phys.Rd * Phys.Cpd * Phys.T0 / Phys.Cvd 
+    return dpdRho
+  end
+  return Pressure,dPresdRhoIE,dPresdRho
 end
 
 

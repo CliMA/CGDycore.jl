@@ -7,6 +7,7 @@ function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
   @inline function Microphysics(F,U,Thermo)
     FT = eltype(U)
     p = Thermo[1]
+    T = Thermo[2]
     Rho = U[RhoPos]
     RhoTh = U[ThPos]
     RhoV = U[RhoVPos]
@@ -14,8 +15,6 @@ function (::SimpleMicrophysics)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Rain)
     RhoD = Rho - RhoV - RhoC
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV + Phys.Cpl * RhoC
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
-    kappaM = Rm / Cpml
-    T = p / Rm
     p_vs = Thermodynamics.fpws(T,Phys)
     a = p_vs / (Phys.Rv * T) - RhoV
     b = RhoC

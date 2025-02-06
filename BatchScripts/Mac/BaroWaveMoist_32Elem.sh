@@ -1,2 +1,2 @@
 export JuliaDevice="CPU"
-mpirun -n 1 ./Jobs/NHSphere/BaroWaveMoistIESphere_32Elem
+mpirun -n 6 ./Jobs/NHSphere/BaroWaveMoistSphere_32Elem

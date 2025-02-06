@@ -2,12 +2,12 @@
 julia --project Examples/Driver.jl \
   --Problem="BaroWaveDrySphere" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float64" \
+  --FloatTypeBackend="Float32" \
   `#Model `    \
   --NumV=5 \
-  --NumTr=2 \
-  --RhoTPos=6 \
-  --RhoRPos=7 \
+  --NumTr=0 \
+  --RhoTPos=0 \
+  --RhoRPos=0 \
   --Equation="CompressibleShallow" \
   --State="DryInternalEnergy" \
   --ModelType="VectorInvariant" \
@@ -19,16 +19,16 @@ julia --project Examples/Driver.jl \
   --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
   --Sedimentation=false \
   --Buoyancy=true \
-  --Damping=true \
+  --Damping=false \
   --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \
-  --SimSeconds=600 \
-  --SimDays=0 \
+  --SimSeconds=0 \
+  --SimDays=1 \
   `#Output `        \
-  --PrintSeconds=150 \
+  --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=1 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
@@ -48,7 +48,7 @@ julia --project Examples/Driver.jl \
   `#Discretization `     \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=2.e15 \
-  --HyperDGrad=2.e15 \
-  --HyperDDiv=2.e15 \
+  --HyperDCurl=5.e14 \
+  --HyperDGrad=5.e14 \
+  --HyperDDiv=5.e14 \
   --HyperDDivW=0.e15

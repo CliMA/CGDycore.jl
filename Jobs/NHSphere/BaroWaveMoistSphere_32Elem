@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/testNHSphere.jl \
+julia --project Examples/Driver.jl \
   --Problem="BaroWaveMoistSphere" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
@@ -20,7 +20,8 @@ julia --project Examples/testNHSphere.jl \
   --State="Moist" \
   --Microphysics=true \
   --TypeMicrophysics="SimpleMicrophysics" \
-  --Sedimentation=true \
+  --Sedimentation=false \
+  --Rain=0.0 \
   --Buoyancy=true \
   --Damping=true \
   --StrideDamp=10000 \
@@ -46,7 +47,7 @@ julia --project Examples/testNHSphere.jl \
   --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=2.e15 \
-  --HyperDGrad=2.e15 \
-  --HyperDDiv=2.e15 \
+  --HyperDCurl=5.e14 \
+  --HyperDGrad=5.e14 \
+  --HyperDDiv=5.e14 \
   --HyperDDivW=0.e15

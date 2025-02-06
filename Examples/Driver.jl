@@ -354,28 +354,32 @@ end
 
 # Pressure
 if State == "Dry"
-  Pressure, dPresdRhoTh = Models.Dry()(Phys)
+  Pressure, dPresdRhoTh, dPresdRho = Models.Dry()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+  Model.dPresdRhoTh = dPresdRho
 elseif State == "DryInternalEnergy"
-  Pressure, dPresdRhoTh = Models.DryInternalEnergy()(Phys)
+  Pressure, dPresdRhoTh, dPresdRho = Models.DryInternalEnergy()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+  Model.dPresdRho = dPresdRho
 elseif State == "DryTotalEnergy"
   Pressure, dPresdRhoTh = Models.DryTotalEnergy()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
 elseif State == "Moist"
-  Pressure, dPresdRhoTh = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
+  Pressure, dPresdRhoTh, dPresdRho = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos,Model.RhoCPos)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+  Model.dPresdRho = dPresdRho
 elseif State == "MoistInternalEnergy"
   @show State
-  Pressure, dPresdRhoTh = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+  Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoTPos)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+  Model.dPresdRho = dPresdRho
 elseif State == "IceInternalEnergy"
   Pressure, dPresdRhoTh = Models.IceInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoTPos)
@@ -390,7 +394,7 @@ end
 if Microphysics
   if TypeMicrophysics == "SimpleMicrophysics"
     MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
-      Model.RhoVPos+NumV,Model.RhoCPos+NumV,Model.RelCloud,Model.Rain)
+      Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
   elseif TypeMicrophysics == "OneMomentMicrophysicsMoistEquil"
     T_TPos = 2

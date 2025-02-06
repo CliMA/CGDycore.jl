@@ -101,8 +101,9 @@ end
 
 @inline function fTempIE(Rho,RhoIE,Phys)
   #IE = Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0
-  T = (RhoIE / Rho + Phys.Rd * Phys.T0) / Phys.Cvd + Phys.T0
-  T = (RhoIE / Rho - Phys.Rd * Phys.T0) / Phys.Cvd + Phys.T0
+  #   = Phys.Cvd * T - Phys.Cvd * Phys.T0 - Phys.Rd * Phys.T0
+  #   = Phys.Cvd * T - Phys.Cpd * Phys.T0 
+  T = (RhoIE / Rho + Phys.Cpd * Phys.T0) / Phys.Cvd 
 end
 
 @inline function LatHeatV(T,Phys)
@@ -122,7 +123,6 @@ end
 
 @inline function SpIntEnergyDry(T,Phys)
   Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0
-  Phys.Cvd * (T - Phys.T0) + Phys.Rd * Phys.T0
 end  
 
 @inline function dSpIntEnergyDrydT(T,Phys)

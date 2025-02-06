@@ -483,7 +483,6 @@ function (profile::BaroWaveDryExample)(Param,Phys)
       uSPert = FT(0.0)
     end
     uS = uS + uSPert
-    uS = 0
     w = FT(0)
 
     qV = FT(0)
