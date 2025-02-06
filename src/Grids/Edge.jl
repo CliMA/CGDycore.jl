@@ -17,6 +17,11 @@ mutable struct Edge
   MasterSlave::Int
 end
 
+"""
+  Edge()
+
+This is my documentation
+"""
 function Edge()
   N=zeros(Int,2)
   E=0
