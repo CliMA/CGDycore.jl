@@ -234,6 +234,7 @@ function ConstructRT(k,ElemType::Grids.Quad)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   for i = 1 : DoF
     Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
+    @show "RT",phiB[i,:]
   end
   return DoF, DoFE, DoFF, phiB, Divphi
 end
@@ -266,14 +267,21 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
     iGlob = 1  
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
-      OrientE = Grid.Faces[iF].OrientE[i]
-      for j = 1 : DoFE
-        if OrientE > 0  
-          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
-        else
-          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1  
-        end  
-        iGlob += 1
+      if ElemType == Grids.Tri
+        OrientE = Grid.Faces[iF].OrientE[i]  
+        for j = 1 : DoFE
+          if OrientE > 0
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+          else
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1
+          end
+          iGlob += 1
+        end
+      else
+        for j = 1 : DoFE
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+          iGlob += 1
+        end
       end
     end
     for j = 1 : DoFF

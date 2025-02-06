@@ -137,11 +137,11 @@ function ConstructND(k,ElemType::Grids.Quad)
   iDoF = 1 
   for i = 1 : k+2
     for j = 1 : k+1
-      phi[iDoF,1] = P_kp1x1[i] * P_kx2[j] 
-      phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
-      iDoF += 1
+      phi[iDoF,2] = P_kp1x1[i] * P_kx2[j] 
       phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
-      phi[iDoF,2] = P_kp1x2[i] * P_kx1[j] 
+      iDoF += 1
+      phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+      phi[iDoF,1] = P_kp1x2[i] * P_kx1[j] 
       iDoF += 1
     end
   end
@@ -167,7 +167,7 @@ function ConstructND(k,ElemType::Grids.Quad)
     phiE2 = subs(phi[iDoF,2], x[1] => 1.0, x[2] => t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += -0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] += +0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end 
@@ -187,7 +187,7 @@ function ConstructND(k,ElemType::Grids.Quad)
     phiE2 = subs(phi[iDoF,2], x[1] => -1.0, x[2] => t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += -0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end  
@@ -218,6 +218,7 @@ function ConstructND(k,ElemType::Grids.Quad)
       end
     end
   end  
+  @show I
   r = zeros(DoF)
   for iDoF = 1 : DoF  
     r[iDoF] = 1
@@ -233,7 +234,8 @@ function ConstructND(k,ElemType::Grids.Quad)
   end  
   Curlphi = Array{Polynomial,2}(undef,DoF,1)
   for i = 1 : DoF
-    Curlphi[i,1] = -differentiate(phiB[i,1],x[2]) + differentiate(phiB[i,2],x[2])
+    Curlphi[i,1] = -differentiate(phiB[i,1],x[2]) + differentiate(phiB[i,2],x[1])
+    @show phiB[i,:]
   end
   return DoF, DoFE, DoFF, phiB, Curlphi
 end
@@ -256,6 +258,7 @@ end
 function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:AbstractFloat
   @polyvar x[1:2]
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
+  @show ElemType
   DoF, DoFE, DoFF, phi, Curlphi = FEMSei.ConstructND(k,ElemType)
   Comp = 2
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
@@ -266,14 +269,21 @@ function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
     iGlob = 1  
     for i = 1 : length(Grid.Faces[iF].E)
       iE = Grid.Faces[iF].E[i]
-      OrientE = Grid.Faces[iF].OrientE[i]
-      for j = 1 : DoFE
-        if OrientE > 0
-          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
-        else
-          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1
+      if ElemType == Grids.Tri
+        OrientE = Grid.Faces[iF].OrientE[i]
+        for j = 1 : DoFE
+          if OrientE > 0
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+          else
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1
+          end
+          iGlob += 1
         end
-        iGlob += 1
+      else
+        for j = 1 : DoFE
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+          iGlob += 1
+        end
       end
     end
     for j = 1 : DoFF

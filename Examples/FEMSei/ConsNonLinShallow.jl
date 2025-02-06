@@ -162,11 +162,10 @@ if Problem == "GalewskiSphere"
   cS = sqrt(Phys.Grav * Param.H0G)
   dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-  nAdveVel = round(EndTime / dtau)
+  nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nprint = ceil(PrintT/dtau)
-  FileNameOutput = GridType*"NonLinShallowGal"
+  nprint::Int = ceil(PrintT/dtau)
   FileNameOutput = "Galewski/"*GridType*"NSGalewski"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
@@ -177,10 +176,10 @@ elseif Problem == "HaurwitzSphere"
   cS = sqrt(Phys.Grav * Param.h0)
   dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-  nAdveVel = round(EndTime / dtau)
+  nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nprint =ceil(PrintT/dtau)
+  nprint::Int = ceil(PrintT/dtau)
   FileNameOutput = "Haurwitz/"*GridType*"NSHaurwitz"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
