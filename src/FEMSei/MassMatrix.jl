@@ -23,7 +23,7 @@ function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
   for iF = 1 : Grid.NumFaces
     MLoc .= 0  
     for iQ = 1 : NumQuad
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
       fLoc = pinvDF * fRef[:, :, iQ]
       MLoc = MLoc + abs(detDFLoc) * Weights[iQ]*(fLoc'*fLoc)
@@ -67,7 +67,7 @@ function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
   for iF = 1 : Grid.NumFaces
     MLoc .= 0  
     for i = 1 : length(Weights)
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
       fLoc = DF * fRef[:, :, i]
       MLoc = MLoc + 1 / abs(detDFLoc) * Weights[i]*(fLoc'*fLoc)
@@ -109,7 +109,7 @@ function MassMatrix(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi)
   for iF = 1 : Grid.NumFaces
     MLoc = zeros(Fe.DoF,Fe.DoF)
       for i = 1 : length(Weights)
-        Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF],Grid)
+        Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF],Grid)
         detDFLoc = detDF[1]
         fLoc = fRef[:, :, i]
         MLoc = MLoc + abs(detDFLoc) * Weights[i] *(fLoc' * fLoc)
@@ -151,7 +151,7 @@ function MassMatrix(backend,FTB,Fe::VectorElement,Grid,QuadOrd,Jacobi)
   for iF = 1 : Grid.NumFaces
     MLoc = zeros(Fe.DoF,Fe.DoF)
       for i = 1 : length(Weights)
-        Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF],Grid)
+        Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF],Grid)
         detDFLoc = detDF[1]
         fLoc = fRef[:, :, i]
         MLoc = MLoc + abs(detDFLoc) * Weights[i] *(fLoc' * fLoc)

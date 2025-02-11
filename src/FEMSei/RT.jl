@@ -17,9 +17,7 @@ function ConstructRT(k,ElemType::Grids.Tri)
   DoFF = DoF - 3 * DoFE
   phi = Array{Polynomial,2}(undef,DoF,2)
   phiB = Array{Polynomial,2}(undef,DoF,2)
-  rounded_poly = Array{Polynomial,2}(undef,DoF,2)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
-  rounded_Divphi = Array{Polynomial,2}(undef,DoF,1) 
   iDoF = 1 
   for i = 1 : lP_k
     phi[iDoF,1] = P_k[i]  
@@ -131,9 +129,7 @@ function ConstructRT(k,ElemType::Grids.Quad)
 
   phi = Array{Polynomial,2}(undef,DoF,2)
   phiB = Array{Polynomial,2}(undef,DoF,2)
-  rounded_poly = Array{Polynomial,2}(undef,DoF,2)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
-  rounded_Divphi = Array{Polynomial,2}(undef,DoF,1)
   iDoF = 1 
   for i = 1 : k+2
     for j = 1 : k+1
@@ -184,7 +180,7 @@ function ConstructRT(k,ElemType::Grids.Quad)
   rDoF += k + 1
   # Edge 4 (-1,1) -> (-1,-1)
   for iDoF = 1 : DoF
-    phiE1 = subs(phi[iDoF,1], x[1] => -1.0, x[2] => t)
+    phiE1 = subs(phi[iDoF,1], x[1] => -1.0, x[2] => -t)
     for i = 0 : k
       for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
@@ -234,7 +230,6 @@ function ConstructRT(k,ElemType::Grids.Quad)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   for i = 1 : DoF
     Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
-    @show "RT",phiB[i,:]
   end
   return DoF, DoFE, DoFF, phiB, Divphi
 end
@@ -263,31 +258,41 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = Grid.NumEdges * DoFE + Grid.NumFaces * DoFF
   NumI = NumG
-  for iF = 1 : Grid.NumFaces
-    iGlob = 1  
-    for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
-      if ElemType == Grids.Tri
-        OrientE = Grid.Faces[iF].OrientE[i]  
+  if ElemType == Grids.Tri
+    for iF = 1 : Grid.NumFaces
+      iGlob = 1  
+      for i = 1 : length(Grid.Faces[iF].E)
+        iE = Grid.Faces[iF].E[i]
+        OrientE = Grid.Faces[iF].OrientE[i]
         for j = 1 : DoFE
-          if OrientE > 0
-            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+          if OrientE > 0  
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
           else
-            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1
-          end
-          iGlob += 1
-        end
-      else
-        for j = 1 : DoFE
-          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1  
+          end  
           iGlob += 1
         end
       end
+      for j = 1 : DoFF
+        GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+        iGlob += 1
+      end
     end
-    for j = 1 : DoFF
-      GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
-      iGlob += 1
-    end
+  else  
+    for iF = 1 : Grid.NumFaces
+      iGlob = 1  
+      for i = 1 : length(Grid.Faces[iF].E)
+        iE = Grid.Faces[iF].E[i]
+        for j = 1 : DoFE
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
+          iGlob += 1
+        end  
+      end  
+      for j = 1 : DoFF
+        GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+        iGlob += 1
+      end
+    end  
   end  
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])

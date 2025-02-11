@@ -81,22 +81,88 @@ function CurlVel1(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid)
   end    
   ldiv!(FeT.LUM,q)
 end
-function CurlVel(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid)
+
+function CurlVel(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
 #
 #
 # int q*v dx = int Curl u * v dx = - int u * rot v dx + int_E (u*t)*q ds
 #
 #
-  tBar = [1 0 1 0
-          0 1 0 1]
+  @. q = 0
+
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)  
+  RotqRef  = zeros(2,FeT.DoF,NumQuad)
+  uFRef  = zeros(uFe.Comp,uFe.DoF,NumQuad)
+  for iQ = 1 : NumQuad
+    for iDoF = 1 : uFe.DoF
+      uFRef[1,iDoF,iQ] = uFe.phi[iDoF,1](Points[iQ,1],Points[iQ,2])
+      uFRef[2,iDoF,iQ] = uFe.phi[iDoF,2](Points[iQ,1],Points[iQ,2])
+    end  
+    for iDoF = 1 : FeT.DoF
+      RotqRef[1,iDoF,iQ] = -FeT.Gradphi[iDoF,1,2](Points[iQ,1],Points[iQ,2])
+      RotqRef[2,iDoF,iQ] = FeT.Gradphi[iDoF,1,1](Points[iQ,1],Points[iQ,2])
+    end  
+  end  
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  uLoc = zeros(uFe.DoF)
+  uFLoc = zeros(2)
+  uuFLoc = zeros(3)
+  qLoc = zeros(FeT.DoF)
+
+  for iF = 1 : Grid.NumFaces
+    for iDoF = 1 : uFe.DoF
+      ind = uFe.Glob[iDoF,iF]  
+      uLoc[iDoF] = u[ind] 
+    end  
+    @. qLoc = 0
+    for iQ = 1 : NumQuad
+      @. uFLoc = 0  
+      for iDoF = 1 : uFe.DoF  
+        uFLoc[1] += uFRef[1,iDoF,iQ] * uLoc[iDoF]  
+        uFLoc[2] += uFRef[2,iDoF,iQ] * uLoc[iDoF]  
+      end   
+      Jacobi!(DF,detDF,pinvDF,X,ElemType,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+#     detDF[1] *= Grid.Faces[iF].Orientation
+      uuFLoc[1] = (DF[1,1] * uFLoc[1] + DF[1,2] * uFLoc[2]) / detDF[1]
+      uuFLoc[2] = (DF[2,1] * uFLoc[1] + DF[2,2] * uFLoc[2]) / detDF[1]
+      uuFLoc[3] = (DF[3,1] * uFLoc[1] + DF[3,2] * uFLoc[2]) / detDF[1]
+      uFLoc[1] = DF[1,1] * uuFLoc[1] + DF[2,1] * uuFLoc[2] + DF[3,1] * uuFLoc[3]
+      uFLoc[2] = DF[1,2] * uuFLoc[1] + DF[2,2] * uuFLoc[2] + DF[3,2] * uuFLoc[3]
+      for iDoF = 1 : FeT.DoF  
+        qLoc[iDoF] +=  -Weights[iQ] * (uFLoc[1] * RotqRef[1,iDoF,iQ] +
+          uFLoc[2] * RotqRef[2,iDoF,iQ])
+      end  
+    end  
+    for iDoF = 1 : FeT.DoF
+      ind = FeT.Glob[iDoF,iF]
+      q[ind] += qLoc[iDoF]
+    end
+  end    
+  @show sum(abs.(q))
+
   NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
-  @show NumQuadL
-  @show WeightsL
-  @show PointsL
-  if ElemType == Grids.Quad()
-    uFRef  = zeros(uFe.Comp,uFe.DoF,NumQuadL,4)
-    qRef  = zeros(FeT.DoF,NumQuadL,4)
-    PointsE = zeros(2,NumQuadL,4)
+  PointsE = zeros(2,NumQuadL,3)
+  if ElemType == Grids.Tri()
+    tBar = [1.0 -1.0  0.0
+            0.0  1.0  1.0]
+    NumE = 3
+    PointsE = zeros(2,NumQuadL,NumE)
+    for iQ = 1 : NumQuadL
+      PointsE[1,iQ,1] = PointsL[iQ]
+      PointsE[2,iQ,1] = -1.0
+      PointsE[1,iQ,2] = -PointsL[iQ]
+      PointsE[2,iQ,2] = PointsL[iQ]
+      PointsE[1,iQ,3] = -1.0
+      PointsE[2,iQ,3] = PointsL[iQ]
+    end
+  elseif ElemType == Grids.Quad()
+    tBar = [1.0 0.0 1.0 0.0
+            0.0 1.0 0.0 1.0]
+    NumE = 4
+    PointsE = zeros(2,NumQuadL,NumE)
     for iQ = 1 : NumQuadL
       PointsE[1,iQ,1] = PointsL[iQ]
       PointsE[2,iQ,1] = -1.0
@@ -106,21 +172,18 @@ function CurlVel(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid)
       PointsE[2,iQ,3] = 1.0
       PointsE[1,iQ,4] = -1.0
       PointsE[2,iQ,4] = PointsL[iQ]
+    end
+  end  
+  uFRef  = zeros(uFe.Comp,uFe.DoF,NumQuadL,NumE)
+  qRef  = zeros(FeT.DoF,NumQuadL,NumE)
+  for iQ = 1 : NumQuadL
+    for iE = 1 : NumE  
       for iDoF = 1 : uFe.DoF
-        uFRef[1,iDoF,iQ,1] = uFe.phi[iDoF,1](PointsL[iQ],-1.0)  
-        uFRef[2,iDoF,iQ,1] = uFe.phi[iDoF,2](PointsL[iQ],-1.0)  
-        uFRef[1,iDoF,iQ,2] = uFe.phi[iDoF,1](1.0,PointsL[iQ])  
-        uFRef[2,iDoF,iQ,2] = uFe.phi[iDoF,2](1.0,PointsL[iQ])  
-        uFRef[1,iDoF,iQ,3] = uFe.phi[iDoF,1](PointsL[iQ],1.0)  
-        uFRef[2,iDoF,iQ,3] = uFe.phi[iDoF,2](PointsL[iQ],1.0)  
-        uFRef[1,iDoF,iQ,4] = uFe.phi[iDoF,1](-1.0,PointsL[iQ])
-        uFRef[2,iDoF,iQ,4] = uFe.phi[iDoF,2](-1.0,PointsL[iQ])
+        uFRef[1,iDoF,iQ,iE] = uFe.phi[iDoF,1](PointsE[1,iQ,iE],PointsE[2,iQ,iE])
+        uFRef[2,iDoF,iQ,iE] = uFe.phi[iDoF,2](PointsE[1,iQ,iE],PointsE[2,iQ,iE])
       end  
       for iDoF = 1 : FeT.DoF
-        qRef[iDoF,iQ,1] = FeT.phi[iDoF,1](PointsL[iQ],-1.0)  
-        qRef[iDoF,iQ,2] = FeT.phi[iDoF,1](1.0,PointsL[iQ])  
-        qRef[iDoF,iQ,3] = FeT.phi[iDoF,1](PointsL[iQ],1.0)  
-        qRef[iDoF,iQ,4] = FeT.phi[iDoF,1](-1.0,PointsL[iQ])  
+        qRef[iDoF,iQ,iE] = FeT.phi[iDoF,1](PointsE[1,iQ,1],PointsE[2,iQ,1])
       end  
     end  
   end  
@@ -138,11 +201,11 @@ function CurlVel(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid)
   uFLocR = zeros(2)
   uuFLocL = zeros(3)
   uuFLocR = zeros(3)
-  tt = zeros(3)
+  ttL = zeros(3)
+  ttR = zeros(3)
   qLocL = zeros(FeT.DoF)
   qLocR = zeros(FeT.DoF)
 
-  @. q = 0
   for iE = 1 : Grid.NumEdges
     Edge = Grid.Edges[iE]
     if length(Edge.F) > 1
@@ -150,9 +213,10 @@ function CurlVel(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid)
       EdgeTypeL = Edge.FE[1]
       iFR = Edge.F[2]
       EdgeTypeR = Edge.FE[2]
+
       #computation normales of edges
-      @views tBarLocL = tBar[:, EdgeTypeL] * Grid.Faces[iFL].Orientation
-      @views tBarLocR = tBar[:, EdgeTypeR] * Grid.Faces[iFR].Orientation
+      @views tBarLocL = tBar[:, EdgeTypeL] #* Grid.Faces[iFL].Orientation
+      @views tBarLocR = tBar[:, EdgeTypeR] #* Grid.Faces[iFR].Orientation
       for iDoF = 1 : uFe.DoF
         ind = uFe.Glob[iDoF,iFL]  
         uLocL[iDoF] = u[ind] 
@@ -172,39 +236,41 @@ function CurlVel(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid)
         end  
         Jacobi!(DFL,detDFL,pinvDFL,XL,ElemType,PointsE[1,iQ,EdgeTypeL],
           PointsE[2,iQ,EdgeTypeL],Grid.Faces[iFL], Grid)
-        uuFLocL[1] = (DFL[1,1] * uFLocL[1] + DFL[1,2] * uFLocL[2]) #/ detDFL[1]
-        uuFLocL[2] = (DFL[2,1] * uFLocL[1] + DFL[2,2] * uFLocL[2]) #/ detDFL[1]
-        uuFLocL[3] = (DFL[3,1] * uFLocL[1] + DFL[3,2] * uFLocL[2]) #/ detDFL[1]
-        tt[1] = DFL[1,1] * tBarLocL[1]  + DFL[1,2] * tBarLocL[2] 
-        tt[2] = DFL[2,1] * tBarLocL[1]  + DFL[2,2] * tBarLocL[2] 
-        tt[3] = DFL[3,1] * tBarLocL[1]  + DFL[3,2] * tBarLocL[2] 
+        detDFL[1] *= Grid.Faces[iFL].Orientation
+        uuFLocL[1] = (DFL[1,1] * uFLocL[1] + DFL[1,2] * uFLocL[2]) / detDFL[1]
+        uuFLocL[2] = (DFL[2,1] * uFLocL[1] + DFL[2,2] * uFLocL[2]) / detDFL[1]
+        uuFLocL[3] = (DFL[3,1] * uFLocL[1] + DFL[3,2] * uFLocL[2]) / detDFL[1]
+        ttL[1] = DFL[1,1] * tBarLocL[1]  + DFL[1,2] * tBarLocL[2] 
+        ttL[2] = DFL[2,1] * tBarLocL[1]  + DFL[2,2] * tBarLocL[2] 
+        ttL[3] = DFL[3,1] * tBarLocL[1]  + DFL[3,2] * tBarLocL[2] 
         Jacobi!(DFR,detDFR,pinvDFR,XR,ElemType,PointsE[1,iQ,EdgeTypeR],
           PointsE[2,iQ,EdgeTypeR],Grid.Faces[iFR], Grid)
-        uuFLocR[1] = (DFR[1,1] * uFLocR[1] + DFR[1,2] * uFLocR[2]) #/ detDFR[1]
-        uuFLocR[2] = (DFR[2,1] * uFLocR[1] + DFR[2,2] * uFLocR[2]) #/ detDFR[1]
-        uuFLocR[3] = (DFR[3,1] * uFLocR[1] + DFR[3,2] * uFLocR[2]) #/ detDFR[1]
-        t = (uuFLocL + uuFLocR)' * tt / (detDFL[1] + detDFR[1])
+        detDFR[1] *= Grid.Faces[iFR].Orientation
+        uuFLocR[1] = (DFR[1,1] * uFLocR[1] + DFR[1,2] * uFLocR[2]) / detDFR[1]
+        uuFLocR[2] = (DFR[2,1] * uFLocR[1] + DFR[2,2] * uFLocR[2]) / detDFR[1]
+        uuFLocR[3] = (DFR[3,1] * uFLocR[1] + DFR[3,2] * uFLocR[2]) / detDFR[1]
+        ttR[1] = DFR[1,1] * tBarLocR[1]  + DFR[1,2] * tBarLocR[2] 
+        ttR[2] = DFR[2,1] * tBarLocR[1]  + DFR[2,2] * tBarLocR[2] 
+        ttR[3] = DFR[3,1] * tBarLocR[1]  + DFR[3,2] * tBarLocR[2] 
+        tL = 0.5 * (uuFLocL + uuFLocR)' * ttL * Grid.Faces[iFL].Orientation
+        tR = 0.5 * (uuFLocL + uuFLocR)' * ttR * Grid.Faces[iFR].Orientation
         for iDoF = 1 : FeT.DoF  
           qLocL[iDoF] += Grid.Faces[iFL].OrientE[EdgeTypeL] * WeightsL[iQ] * 
-            t * qRef[iDoF,iQ,EdgeTypeL]  
+            tL * qRef[iDoF,iQ,EdgeTypeL]  
           qLocR[iDoF] += Grid.Faces[iFR].OrientE[EdgeTypeR] * WeightsL[iQ] * 
-            t * qRef[iDoF,iQ,EdgeTypeR]  
+            tR * qRef[iDoF,iQ,EdgeTypeR]  
         end  
       end
       for iDoF = 1 : FeT.DoF
         ind = FeT.Glob[iDoF,iFL]
         q[ind] += qLocL[iDoF]
-        if ind == 33836
-          @show qLocL[iDoF]
-        end  
         ind = FeT.Glob[iDoF,iFR]
         q[ind] += qLocR[iDoF]
-        if ind == 33836
-          @show qLocR[iDoF]
-        end  
       end   
     end    
   end    
+  @show size(q)
+  @show size(FeT.M)
   ldiv!(FeT.LUM,q)
 end
 function CurlVelSimple(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,F)
@@ -328,6 +394,7 @@ function CurlVelSimple(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,F)
     end    
   end    
 end
+
 function CurlVelFun(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,F)
 #
 #

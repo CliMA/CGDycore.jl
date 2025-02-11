@@ -334,7 +334,10 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
   NumFacesB = 0
   NumFacesG = 0
   AdaptGrid = ""
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
   return GridStruct{FT,
+                    typeof(EF),
                     typeof(z)}(
     nz,
     zP,
@@ -360,5 +363,7 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
     nBar3,
     nBar,
     AdaptGrid,
+    EF,
+    FE,
     )
 end

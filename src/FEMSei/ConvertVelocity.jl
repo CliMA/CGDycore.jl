@@ -9,11 +9,11 @@ function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,hu,uFE::HDivElement,h
   ConvertScalar!(backend,FTB,Vort,UCachep,VortFE,Grid,Jacobi)
 end
 
-function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,hu,uFE::HDivElement,
+function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,u,uFE::HDivElement,
   ND::HCurlElement,Curl,Grid,ElemType,QuadOrd,Jacobi)
-  UCacheu = zeros(size(hu))
+  UCacheu = zeros(size(u))
   UCachep = zeros(VortFE.NumG)
-  ProjectHDivHCurl!(backend,FTB,UCacheu,ND,hu,uFE,
+  ProjectHDivHCurl!(backend,FTB,UCacheu,ND,u,uFE,
     Grid,ElemType,QuadOrd,Jacobi)
   mul!(UCachep,Curl,UCacheu)
   ldiv!(VortFE.LUM,UCachep)

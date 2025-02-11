@@ -182,7 +182,7 @@ function ConstructND(k,ElemType::Grids.Quad)
     end
   end
   rDoF += k + 1
-  # Edge 4 (-1,1) -> (-1,-1)
+  # Edge 4 (-1,-1) -> (-1,-1)
   for iDoF = 1 : DoF
     phiE2 = subs(phi[iDoF,2], x[1] => -1.0, x[2] => t)
     for i = 0 : k
@@ -200,10 +200,10 @@ function ConstructND(k,ElemType::Grids.Quad)
         phiI1 = phi[iDoF,1]  
         phiI2 = phi[iDoF,2]  
         for iQ = 1 : NumQuadT
-          I[rDoF,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * 
+          I[rDoF,iDoF] += 0.25 * phiI2(PointsT[iQ,1],PointsT[iQ,2]) * 
           P_km1x1[j](PointsT[iQ,1],PointsT[iQ,2]) * P_kx2[i](PointsT[iQ,1],PointsT[iQ,2]) * 
           WeightsT[iQ]
-          I[rDoF+1,iDoF] += 0.25 * phiI2(PointsT[iQ,1],PointsT[iQ,2]) * 
+          I[rDoF+1,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * 
           P_kx1[i](PointsT[iQ,1],PointsT[iQ,2]) * P_km1x2[j](PointsT[iQ,1],PointsT[iQ,2]) * 
           WeightsT[iQ] 
         end
@@ -218,7 +218,9 @@ function ConstructND(k,ElemType::Grids.Quad)
       end
     end
   end  
-  @show I
+  for i = 1 : DoF
+    @show I[i,:]
+  end  
   r = zeros(DoF)
   for iDoF = 1 : DoF  
     r[iDoF] = 1
@@ -265,11 +267,11 @@ function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = Grid.NumEdges * DoFE + Grid.NumFaces * DoFF
   NumI = NumG
-  for iF = 1 : Grid.NumFaces
-    iGlob = 1  
-    for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
-      if ElemType == Grids.Tri
+  if ElemType == Grids.Tri
+    for iF = 1 : Grid.NumFaces
+      iGlob = 1
+      for i = 1 : length(Grid.Faces[iF].E)
+        iE = Grid.Faces[iF].E[i]
         OrientE = Grid.Faces[iF].OrientE[i]
         for j = 1 : DoFE
           if OrientE > 0
@@ -279,18 +281,28 @@ function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
           end
           iGlob += 1
         end
-      else
+      end
+      for j = 1 : DoFF
+        GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+        iGlob += 1
+      end
+    end
+  else
+    for iF = 1 : Grid.NumFaces
+      iGlob = 1
+      for i = 1 : length(Grid.Faces[iF].E)
+        iE = Grid.Faces[iF].E[i]
         for j = 1 : DoFE
           GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
           iGlob += 1
         end
       end
+      for j = 1 : DoFF
+        GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+        iGlob += 1
+      end
     end
-    for j = 1 : DoFF
-      GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
-      iGlob += 1
-    end
-  end  
+  end
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
