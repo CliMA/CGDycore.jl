@@ -42,6 +42,7 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   @views Up = U[Model.pPosS:Model.pPosE]
   @views Uu = U[Model.uPosS:Model.uPosE]
   @views UCachep = UCache[Model.pPosS:Model.pPosE]
+  @views k = UCache[Model.pPosS:Model.pPosE]
   @views UCacheu = UCache[Model.uPosS:Model.uPosE]
   @views Fp = F[Model.pPosS:Model.pPosE]
   @views Fu = F[Model.uPosS:Model.uPosE]
@@ -51,6 +52,10 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   mul!(UCachep,Curl,UCacheu)
   ldiv!(DG.LUM,UCachep)
 
+
+# CurlVel(UCachep,DG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
+
+
   CrossRhs!(backend,FTB,Fu,UCachep,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
   GradKinHeight!(backend,FTB,Fu,Up,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
   ldiv!(RT.LUM,Fu)
@@ -58,6 +63,7 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Up,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
   DivRhs!(backend,FTB,Fp,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
   ldiv!(DG.LUM,Fp)
+
 end
 
 function Curl!(backend,FTB,uCurl,DG,Uu,RT,ND,Grid,Jacobi,QuadOrdM,Curl,UCacheu)

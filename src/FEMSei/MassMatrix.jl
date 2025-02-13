@@ -1,7 +1,7 @@
 function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
-  fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
-  DF  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+  fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
+  DF  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
   for iQ = 1 : NumQuad
     for iComp = 1 : Fe.Comp
@@ -44,10 +44,10 @@ end
 
 function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
-  fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
-  DF  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+  fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
+  DF  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
-  for i = 1 : length(Weights)
+  for i = 1 : NumQuad
     for iComp = 1 : Fe.Comp
       for iD = 1 : Fe.DoF
         fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
@@ -66,7 +66,7 @@ function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
   X = zeros(3)
   for iF = 1 : Grid.NumFaces
     MLoc .= 0  
-    for i = 1 : length(Weights)
+    for i = 1 : NumQuad
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
       fLoc = DF * fRef[:, :, i]
@@ -88,9 +88,9 @@ end
 
 function MassMatrix(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
-  fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+  fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
-  for i = 1 : length(Weights)
+  for i = 1 : NumQuad
     for iComp = 1 : Fe.Comp
       for iD = 1 : Fe.DoF
         fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
@@ -108,7 +108,7 @@ function MassMatrix(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi)
 
   for iF = 1 : Grid.NumFaces
     MLoc = zeros(Fe.DoF,Fe.DoF)
-      for i = 1 : length(Weights)
+      for i = 1 : NumQuad
         Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF],Grid)
         detDFLoc = detDF[1]
         fLoc = fRef[:, :, i]
@@ -130,9 +130,9 @@ end
 
 function MassMatrix(backend,FTB,Fe::VectorElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
-  fRef  = zeros(Fe.Comp,Fe.DoF,length(Weights))
+  fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
-  for i = 1 : length(Weights)
+  for i = 1 : NumQuad
     for iComp = 1 : Fe.Comp
       for iD = 1 : Fe.DoF
         fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
@@ -150,7 +150,7 @@ function MassMatrix(backend,FTB,Fe::VectorElement,Grid,QuadOrd,Jacobi)
 
   for iF = 1 : Grid.NumFaces
     MLoc = zeros(Fe.DoF,Fe.DoF)
-      for i = 1 : length(Weights)
+      for i = 1 : NumQuad
         Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[i,1],Points[i,2],Grid.Faces[iF],Grid)
         detDFLoc = detDF[1]
         fLoc = fRef[:, :, i]

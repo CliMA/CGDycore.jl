@@ -7,10 +7,11 @@ julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --GridType="CubedSphere" \
   --nPanel=60 \
   --RefineLevel=6 \
+  --Decomp="EqualArea" \
   --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=1 \
   --SimHours=0 \
-  --PrintHours=1 \
-  --PrintSeconds=0 \
+  --PrintHours=0 \
+  --PrintSeconds=1800 \
   --PrintTime=0

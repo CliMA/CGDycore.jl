@@ -30,8 +30,8 @@ function ConvertScalar!(backend,FTB,pC,p,Fe::ScalarElement,Grid,Jacobi)
   end
 
   fRef = zeros(Fe.Comp,Fe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -40,7 +40,7 @@ function ConvertScalar!(backend,FTB,pC,p,Fe::ScalarElement,Grid,Jacobi)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     @views pC[iF]  = fRef[1, :]' * p[Fe.Glob[:,iF]]
   end
 end
@@ -55,8 +55,8 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HDivElement,Grid,Jacobi)
   end  
       
   fRef = zeros(Fe.Comp,Fe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -66,7 +66,7 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HDivElement,Grid,Jacobi)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1]
     @views VelCa[iF,:]  .= (Grid.Faces[iF].Orientation / detDFLoc) * DF * (fRef[:, :] * Vel[Fe.Glob[:,iF]])
@@ -84,8 +84,8 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::VectorElement,Grid,Jacob
   end  
       
   fRef = zeros(Fe.Comp,Fe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -95,7 +95,7 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::VectorElement,Grid,Jacob
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1]
     @views VelCa[iF,1] = (fRef[:, 1]' * Vel[Fe.Glob[:,iF]])
@@ -114,8 +114,8 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HCurlElement,Grid,Jacobi
   end
 
   fRef = zeros(Fe.Comp,Fe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -125,7 +125,7 @@ function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Fe::HCurlElement,Grid,Jacobi
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1]
     @views VelCa[iF,:]  .= pinvDF * (fRef[:, :] * Vel[Fe.Glob[:,iF]])
@@ -142,8 +142,8 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi)
   end  
       
   fRef = zeros(Fe.Comp,Fe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -154,7 +154,7 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     @. VelLoc = Vel[Fe.Glob[:,iF]] 
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1] * Grid.Faces[iF].Orientation
@@ -177,13 +177,13 @@ function ConvertScalarVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,h,hFe::S
       
   fRef = zeros(Fe.Comp,Fe.DoF)
   hfRef = zeros(hFe.Comp,hFe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
-  for iComp = 1 : hFe.Comp
-    for iD = 1 : hFe.DoF
+  @inbounds for iComp = 1 : hFe.Comp
+    @inbounds for iD = 1 : hFe.DoF
       hfRef[iComp,iD] = hFe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -194,7 +194,7 @@ function ConvertScalarVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,h,hFe::S
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     VelLoc = Vel[Fe.Glob[:,iF]]  
     hLoc = h[hFe.Glob[:,iF]]
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
@@ -217,8 +217,8 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::VectorElement,Grid,Jacobi)
   end  
       
   fRef = zeros(Fe.Comp,Fe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -228,7 +228,7 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::VectorElement,Grid,Jacobi)
   pinvDF = zeros(3,2)
   VelCa = zeros(3)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     VelCa .= (fRef[:, :] * Vel[Fe.Glob[:,iF]])
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
@@ -248,8 +248,8 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HCurlElement,Grid,Jacobi)
   end  
       
   fRef = zeros(Fe.Comp,Fe.DoF)
-  for iComp = 1 : Fe.Comp
-    for iD = 1 : Fe.DoF
+  @inbounds for iComp = 1 : Fe.Comp
+    @inbounds for iD = 1 : Fe.DoF
       fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
     end
   end
@@ -260,7 +260,7 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HCurlElement,Grid,Jacobi)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  for iF = 1 : Grid.NumFaces
+  @inbounds for iF = 1 : Grid.NumFaces
     VelLoc = Vel[Fe.Glob[:,iF]]  
     Jacobi!(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
     detDFLoc = detDF[1]

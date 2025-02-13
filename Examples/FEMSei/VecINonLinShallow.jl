@@ -154,6 +154,12 @@ RadEarth = Phys.RadEarth
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
 
+#for iF = 1 : Grid.NumFaces
+#  @show iF
+#  @show Grid.Faces[iF].Orientation
+#  @show Grid.Faces[iF].OrientE
+#end  
+
 Param = Examples.Parameters(FTB,Problem)
 
 if Problem == "GalewskiSphere"
@@ -164,13 +170,13 @@ if Problem == "GalewskiSphere"
   nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nprint::Int = ceil(PrintT/dtau)
+  nPrint::Int = ceil(PrintT/dtau)
   FileNameOutput = GridType*"NonLinShallowGal"
   FileNameOutput = "GalewskiVecI/"*GridType*"NSGalewski"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
-  @show nprint
+  @show nPrint
 elseif Problem == "HaurwitzSphere"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = sqrt(Phys.Grav * Param.h0)
@@ -179,12 +185,12 @@ elseif Problem == "HaurwitzSphere"
   nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nprint::Int =ceil(PrintT/dtau)
+  nPrint::Int =ceil(PrintT/dtau)
   FileNameOutput = "HaurwitzVecI/"*GridType*"NSHaurwitz"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
-  @show nprint
+  @show nPrint
 else
     print("Error")
 end
@@ -226,4 +232,4 @@ FEMSei.InterpolateRT!(Uu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialPro
 cName = ["h";"Vort";"uS";"vS"]
 
 @show  nAdveVel
-FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName)
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName,nPrint)

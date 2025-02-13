@@ -19,7 +19,7 @@ function ConstructRT(k,ElemType::Grids.Tri)
   phiB = Array{Polynomial,2}(undef,DoF,2)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   iDoF = 1 
-  for i = 1 : lP_k
+  @inbounds for i = 1 : lP_k
     phi[iDoF,1] = P_k[i]  
     phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
     iDoF += 1
@@ -27,44 +27,44 @@ function ConstructRT(k,ElemType::Grids.Tri)
     phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
     iDoF += 1
   end  
-  for i = 1 : lH_km1
+  @inbounds for i = 1 : lH_km1
     phi[iDoF,1] = H_km1[i] * x[1]
     phi[iDoF,2] = H_km1[i] * x[2]
     iDoF += 1
   end  
   @polyvar t
   phiL = CGLine(k,t)
-  QuadOrd = 5
+  QuadOrd = 4
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
 # Compute functional over edges
   # Edge 1 (-1,-1) -> (1,-1)
-  for iDoF = 1 : DoF
+  @inbounds for iDoF = 1 : DoF
     phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
-    for i = 0 : k
-      for iQ = 1 : NumQuadL
+    @inbounds for i = 0 : k
+      @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
   end
   rDoF += k + 1
   # Edge 2 (1,-1) -> (-1,1)
-  for iDoF = 1 : DoF
+  @inbounds for iDoF = 1 : DoF
     phiE1 = subs(phi[iDoF,1], x[1] => -t, x[2] => t)
     phiE2 = subs(phi[iDoF,2], x[1] => -t, x[2] => t)
-    for i = 0 : k
-      for iQ = 1 : NumQuadL
+    @inbounds for i = 0 : k
+      @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += -0.5 * (phiE1(PointsL[iQ]) + phiE2(PointsL[iQ])) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ] 
       end
     end
   end
   rDoF += k + 1
 # Edge 3 (-1,1) -> (-1,-1)
-  for iDoF = 1 : DoF
+  @inbounds for iDoF = 1 : DoF
     phiE1 = subs(phi[iDoF,1], x[1] => -1, x[2] => -t)
-    for i = 0 : k
-      for iQ = 1 : NumQuadL
+    @inbounds for i = 0 : k
+      @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += - 0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
@@ -73,9 +73,9 @@ function ConstructRT(k,ElemType::Grids.Tri)
   QuadOrd = 4
   NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Tri(),QuadOrd)
 # Interior  
-  for iDoF = 1 : DoF
-    for i = 1 : lP_km1
-      for iQ = 1 : NumQuadT
+  @inbounds for iDoF = 1 : DoF
+    @inbounds for i = 1 : lP_km1
+      @inbounds for iQ = 1 : NumQuadT
         Fac = P_km1[i](PointsT[iQ,1],PointsT[iQ,2])  
         I[rDoF+2*i-2,iDoF] +=  0.5 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
         I[rDoF+2*i-1,iDoF] +=  0.5 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
@@ -83,20 +83,20 @@ function ConstructRT(k,ElemType::Grids.Tri)
     end
   end
 
-  for iDoF = 1 : DoF  
-    for jDoF = 1 : DoF  
+  @inbounds for iDoF = 1 : DoF  
+    @inbounds for jDoF = 1 : DoF  
       if abs(I[iDoF,jDoF]) < 1.e-12
         I[iDoF,jDoF] = 0
       end
     end
   end  
   r = zeros(DoF)
-  for iDoF = 1 : DoF  
+  @inbounds for iDoF = 1 : DoF  
     r[iDoF] = 1
     c = I \ r
     phiB[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
     phiB[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
-    for jDoF = 1 : DoF  
+    @inbounds for jDoF = 1 : DoF  
       phiB[iDoF,:] += c[jDoF] * phi[jDoF,:]
     end  
     phiB[iDoF,1] = round.(phiB[iDoF,1], digits=5)
@@ -104,7 +104,7 @@ function ConstructRT(k,ElemType::Grids.Tri)
     r[iDoF] = 0
   end  
   Divphi = Array{Polynomial,2}(undef,DoF,1)
-  for i = 1 : DoF
+  @inbounds for i = 1 : DoF
     Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
   end
   return DoF, DoFE, DoFF, phiB, Divphi
@@ -131,8 +131,8 @@ function ConstructRT(k,ElemType::Grids.Quad)
   phiB = Array{Polynomial,2}(undef,DoF,2)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   iDoF = 1 
-  for i = 1 : k+2
-    for j = 1 : k+1
+  @inbounds for i = 1 : k+2
+    @inbounds for j = 1 : k+1
       phi[iDoF,1] = P_kp1x1[i] * P_kx2[j] 
       phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
       iDoF += 1
@@ -149,40 +149,40 @@ function ConstructRT(k,ElemType::Grids.Quad)
   rDoF = 1
 # Compute functional over edges
   # Edge 1 (-1,-1) -> (1,-1)
-  for iDoF = 1 : DoF
+  @inbounds for iDoF = 1 : DoF
     phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
-    for i = 0 : k
-      for iQ = 1 : NumQuadL
+    @inbounds for i = 0 : k
+      @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
   end
   rDoF += k + 1
   # Edge 2 (1,-1) -> (1,1)
-  for iDoF = 1 : DoF
+  @inbounds for iDoF = 1 : DoF
     phiE1 = subs(phi[iDoF,1], x[1] => 1.0, x[2] => t)
-    for i = 0 : k
-      for iQ = 1 : NumQuadL
+    @inbounds for i = 0 : k
+      @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end 
   rDoF += k + 1
-  # Edge 3 (1,1) -> (-1,1)
-  for iDoF = 1 : DoF
+  # Edge 3 (-1,1) -> (1,1)
+  @inbounds for iDoF = 1 : DoF
     phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => 1.0)
-    for i = 0 : k
-      for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+    @inbounds for i = 0 : k
+      @inbounds for iQ = 1 : NumQuadL
+        I[rDoF+i,iDoF] += +0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
   end
   rDoF += k + 1
-  # Edge 4 (-1,1) -> (-1,-1)
-  for iDoF = 1 : DoF
-    phiE1 = subs(phi[iDoF,1], x[1] => -1.0, x[2] => -t)
-    for i = 0 : k
-      for iQ = 1 : NumQuadL
+  # Edge 4 (-1,-1) -> (-1,1)
+  @inbounds for iDoF = 1 : DoF
+    phiE1 = subs(phi[iDoF,1], x[1] => -1.0, x[2] => t)
+    @inbounds for i = 0 : k
+      @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
@@ -190,12 +190,12 @@ function ConstructRT(k,ElemType::Grids.Quad)
   rDoF += k + 1
   NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Quad(),QuadOrd)
 # Interior  
-  for i = 1 : k+1
-    for j = 1 : k
-      for iDoF = 1 : DoF
+  @inbounds for i = 1 : k+1
+    @inbounds for j = 1 : k
+      @inbounds for iDoF = 1 : DoF
         phiI1 = phi[iDoF,1]  
         phiI2 = phi[iDoF,2]  
-        for iQ = 1 : NumQuadT
+        @inbounds for iQ = 1 : NumQuadT
           I[rDoF,iDoF] += 0.25 * phiI1(PointsT[iQ,1],PointsT[iQ,2]) * 
           P_km1x1[j](PointsT[iQ,1],PointsT[iQ,2]) * P_kx2[i](PointsT[iQ,1],PointsT[iQ,2]) * 
           WeightsT[iQ]
@@ -207,28 +207,28 @@ function ConstructRT(k,ElemType::Grids.Quad)
       rDoF += 2
     end
   end
-  for iDoF = 1 : DoF  
-    for jDoF = 1 : DoF  
+  @inbounds for iDoF = 1 : DoF  
+    @inbounds for jDoF = 1 : DoF  
       if abs(I[iDoF,jDoF]) < 1.e-12
         I[iDoF,jDoF] = 0
       end
     end
   end  
   r = zeros(DoF)
-  for iDoF = 1 : DoF  
+  @inbounds for iDoF = 1 : DoF  
     r[iDoF] = 1
     c = I \ r
     phiB[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
     phiB[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
-    for jDoF = 1 : DoF  
+    @inbounds for jDoF = 1 : DoF  
       phiB[iDoF,:] += c[jDoF] * phi[jDoF,:]
     end  
-    phiB[iDoF,1] = round.(phiB[iDoF,1], digits=5)
-    phiB[iDoF,2] = round.(phiB[iDoF,2], digits=5)
+    phiB[iDoF,1] = round.(phiB[iDoF,1], digits=10)
+    phiB[iDoF,2] = round.(phiB[iDoF,2], digits=10)
     r[iDoF] = 0
   end  
   Divphi = Array{Polynomial,2}(undef,DoF,1)
-  for i = 1 : DoF
+  @inbounds for i = 1 : DoF
     Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
   end
   return DoF, DoFE, DoFF, phiB, Divphi
@@ -259,41 +259,41 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
   NumG = Grid.NumEdges * DoFE + Grid.NumFaces * DoFF
   NumI = NumG
   if ElemType == Grids.Tri
-    for iF = 1 : Grid.NumFaces
-      iGlob = 1  
-      for i = 1 : length(Grid.Faces[iF].E)
+    @inbounds for iF = 1 : Grid.NumFaces
+      iGlob = 1
+      @inbounds for i = 1 : length(Grid.Faces[iF].E)
         iE = Grid.Faces[iF].E[i]
         OrientE = Grid.Faces[iF].OrientE[i]
-        for j = 1 : DoFE
-          if OrientE > 0  
-            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
+        @inbounds for j = 1 : DoFE
+          if OrientE > 0
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
           else
-            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1  
-          end  
+            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1
+          end
           iGlob += 1
         end
       end
-      for j = 1 : DoFF
+      @inbounds for j = 1 : DoFF
         GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
         iGlob += 1
       end
     end
-  else  
-    for iF = 1 : Grid.NumFaces
-      iGlob = 1  
-      for i = 1 : length(Grid.Faces[iF].E)
+  else
+    @inbounds for iF = 1 : Grid.NumFaces
+      iGlob = 1
+      @inbounds for i = 1 : length(Grid.Faces[iF].E)
         iE = Grid.Faces[iF].E[i]
-        for j = 1 : DoFE
-          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j 
+        @inbounds for j = 1 : DoFE
+          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
           iGlob += 1
-        end  
-      end  
-      for j = 1 : DoFF
+        end
+      end
+      @inbounds for j = 1 : DoFF
         GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
         iGlob += 1
       end
-    end  
-  end  
+    end
+  end
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)

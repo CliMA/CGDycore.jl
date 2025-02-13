@@ -1,4 +1,4 @@
-function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,cName)
+function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,cName,nPrint)
 
   pPosS = Model.pPosS
   pPosE = Model.pPosE
@@ -25,8 +25,9 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   time = 0.0
   UNew = similar(U)
   F = similar(U)
+  @views Fp = F[pPosS:pPosE]
+  @views Fu = F[uPosS:uPosE]
   time = 0.0
-  nPrint = ceil(nAdveVel/10)
   for i = 1 : nAdveVel
     @show i  
     Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
