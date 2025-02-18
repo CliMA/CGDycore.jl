@@ -1,6 +1,6 @@
 Base.@kwdef struct ParamGalewskiSphere
   H0G = 10000.0
-  hH = 0.0 #120.0 
+  hH = 120.0 
   alphaG = 1.0/3.0
   betaG = 1.0/15.0
   lat0G = pi/7.0
@@ -20,6 +20,7 @@ Base.@kwdef struct ParamLinearBlob
   lat0 = 4.0*atan(1.0)
   lon0 = 2.0*atan(1.0)
   Width = 0.8
+  H = 1.0e5
 end
 
 Base.@kwdef struct ParamBaroWaveDryCart{FT}

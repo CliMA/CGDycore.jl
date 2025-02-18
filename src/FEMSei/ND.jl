@@ -62,12 +62,12 @@ function ConstructND(k,ElemType::Grids.Tri)
     end
   end
   rDoF += k + 1
-# Edge 3 (-1,1) -> (-1,-1)
+# Edge 3 (-1,-1) -> (-1,1)
   @inbounds for iDoF = 1 : DoF
-    phiE2 = subs(phi[iDoF,2], x[1] => -1, x[2] => -t)
+    phiE2 = subs(phi[iDoF,2], x[1] => -1, x[2] => t)
     @inbounds for i = 0 : k
       @inbounds for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] += +0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end  
@@ -78,8 +78,8 @@ function ConstructND(k,ElemType::Grids.Tri)
     @inbounds for iDoF = 1 : DoF
       @inbounds for iQ = 1 : NumQuadT
         Fac = P_km1[i](PointsT[iQ,1],PointsT[iQ,2])  
-        I[rDoF,iDoF] += 0.25 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
-        I[rDoF+1,iDoF] += 0.25 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+        I[rDoF,iDoF] += 0.5 * Fac * phi[iDoF,1](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ] 
+        I[rDoF+1,iDoF] += 0.5 * Fac * phi[iDoF,2](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
       end
     end
     rDoF += 2

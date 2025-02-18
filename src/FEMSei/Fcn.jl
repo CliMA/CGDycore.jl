@@ -5,16 +5,19 @@ function FcnLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCac
   Div = Model.Div
   Grad = Model.Grad
 
-  @views Up = U[Model.pPosS:Model.pPosE]
+  @views Uh = U[Model.pPosS:Model.pPosE]
   @views Uu = U[Model.uPosS:Model.uPosE]
-  @views Fp = F[Model.pPosS:Model.pPosE]
+  @views Fh = F[Model.pPosS:Model.pPosE]
   @views Fu = F[Model.uPosS:Model.uPosE]
+  @views Gravh = UCache[Model.pPosS:Model.pPosE]
 
-  mul!(Fu,Grad,Up)
+  @. Gravh = 9.80616 * Uh
+  GradRhs!(backend,FTB,Fu,Gravh,DG,RT,Grid,Grid.Type,QuadOrdS,Jacobi)
+  CrossRhs!(backend,FTB,Fu,RT,Uu,RT,Grid,Grid.Type,QuadOrdS,Jacobi)
   ldiv!(RT.LUM,Fu)
 
-  mul!(Fp,Div,Uu)
-  ldiv!(DG.LUM,Fp)
+  DivRhs!(backend,FTB,Fh,DG,Uu,RT,Grid,Grid.Type,QuadOrdS,Jacobi)
+  ldiv!(DG.LUM,Fh)
 end
 
 function FcnHeat!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
@@ -22,11 +25,11 @@ function FcnHeat!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
   DG = Model.DG
   Lapl = Model.Lapl
 
-  @views Up = U[Model.pPosS:Model.pPosE]
-  @views Fp = F[Model.pPosS:Model.pPosE]
+  @views Uh = U[Model.pPosS:Model.pPosE]
+  @views Fh = F[Model.pPosS:Model.pPosE]
 
-  mul!(Fp,Lapl,Up)
-  ldiv!(DG.LUM,Fp)
+  mul!(Fh,Lapl,Uh)
+  ldiv!(DG.LUM,Fh)
 end
 
 function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
@@ -39,12 +42,12 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   Grad = Model.Grad
   Curl = Model.Curl
 
-  @views Up = U[Model.pPosS:Model.pPosE]
+  @views Uh = U[Model.pPosS:Model.pPosE]
   @views Uu = U[Model.uPosS:Model.uPosE]
   @views UCachep = UCache[Model.pPosS:Model.pPosE]
   @views k = UCache[Model.pPosS:Model.pPosE]
   @views UCacheu = UCache[Model.uPosS:Model.uPosE]
-  @views Fp = F[Model.pPosS:Model.pPosE]
+  @views Fh = F[Model.pPosS:Model.pPosE]
   @views Fu = F[Model.uPosS:Model.uPosE]
 
   ProjectHDivHCurl!(backend,FTB,UCacheu,ND,Uu,RT,
@@ -52,18 +55,17 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   mul!(UCachep,Curl,UCacheu)
   ldiv!(DG.LUM,UCachep)
 
-
-# CurlVel(UCachep,DG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
-
-
+# CurlVel!(UCachep,DG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
   CrossRhs!(backend,FTB,Fu,UCachep,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
-  GradKinHeight!(backend,FTB,Fu,Up,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+  GradKinHeight!(backend,FTB,Fu,Uh,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+# ProjectKE!(backend,FTB,k,DG,Uu,RT,Grid.Type,Grid,QuadOrdS,Jacobi)
+# @. k += 9.81 * Uh
+# GradRhs!(backend,FTB,Fu,k,DG,RT,Grid,Grid.Type,QuadOrdS,Jacobi)
   ldiv!(RT.LUM,Fu)
 
-  ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Up,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
-  DivRhs!(backend,FTB,Fp,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
-  ldiv!(DG.LUM,Fp)
-
+  ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
+  DivRhs!(backend,FTB,Fh,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
+  ldiv!(DG.LUM,Fh)
 end
 
 function Curl!(backend,FTB,uCurl,DG,Uu,RT,ND,Grid,Jacobi,QuadOrdM,Curl,UCacheu)

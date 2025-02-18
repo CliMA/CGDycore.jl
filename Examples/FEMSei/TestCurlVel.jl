@@ -227,14 +227,16 @@ UU = zeros(FTB,DG.NumG+RT.NumG)
 @views Uu = U[uPosS:uPosE]
 @views UUh = UU[pPosS:pPosE]
 @views UUhu = UU[uPosS:uPosE]
-uVort = similar(Uh)
+uVort1 = similar(Uh)
+uVort2 = similar(Uh)
+uVort3 = similar(Uh)
 
 FEMSei.InterpolateDG!(Uh,DG,FEMSei.Jacobi!,Grid,Grid.Type,Model.InitialProfile)
 FEMSei.InterpolateRT!(Uu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 FEMSei.InterpolateDG!(UUh,DG,FEMSei.Jacobi!,Grid,Grid.Type,Model.InitialProfile)
 FEMSei.InterpolatehRT!(UUhu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
-FEMSei.CurlVel(uVort,DG,Uu,RT,nQuad,Grid.Type,Grid,FEMSei.Jacobi!)
+FEMSei.CurlVel!(uVort1,DG,Uu,RT,nQuad,Grid.Type,Grid,FEMSei.Jacobi!)
 
 cName = ["h";"Vort";"uS";"vS"]
 VelSp = zeros(Grid.NumFaces,2)
@@ -245,7 +247,7 @@ FileNameOutput = "Vorticity"
 
 FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Uu,RT,Grid,FEMSei.Jacobi!)
 FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertScalar!(backend,FTB,Vort,uVort,DG,Grid,FEMSei.Jacobi!)
+FEMSei.ConvertScalar!(backend,FTB,Vort,uVort1,DG,Grid,FEMSei.Jacobi!)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp],FileNumber,cName)
 
 Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuad,FEMSei.Jacobi!)

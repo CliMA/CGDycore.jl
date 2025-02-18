@@ -828,3 +828,58 @@ function ProjectScalar!(backend,FTB,p,Fe::HDivElement,Grid,QuadOrd,Jacobi,F)
   end
   ldiv!(Fe.LUM,p)
 end
+
+function ProjectKE!(backend,FTB,k,kFe::ScalarElement,u,uFe::HDivElement,ElemType,Grid,QuadOrd,Jacobi)
+  NumQuad,Weights,Points = QuadRule(ElemType,QuadOrd)
+  ufRef  = zeros(uFe.Comp,uFe.DoF,NumQuad)
+  kfRef  = zeros(kFe.Comp,kFe.DoF,NumQuad)
+
+  @. k = 0
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iComp = 1 : uFe.Comp
+      @inbounds for iDoF = 1 : uFe.DoF
+        ufRef[iComp,iDoF,iQ] = uFe.phi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+    @inbounds for iComp = 1 : kFe.Comp
+      @inbounds for iDoF = 1 : kFe.DoF
+        kfRef[iComp,iDoF,iQ] = kFe.phi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+  end
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  uLoc = zeros(uFe.DoF)
+  kLoc = zeros(kFe.DoF)
+  @inbounds for iF = 1 : Grid.NumFaces
+    @. kLoc = 0
+    @inbounds for iDoF = 1 : uFe.DoF
+      ind = uFe.Glob[iDoF,iF]
+      uLoc[iDoF] = u[ind]
+    end  
+    @inbounds for iQ = 1 : NumQuad
+      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      detDFLoc = detDF[1]
+      u1 = 0.0
+      u2 = 0.0
+      @inbounds for iDoF = 1 : uFe.DoF
+        u1 += ufRef[1,iDoF,iQ] * uLoc[iDoF]
+        u2 += ufRef[2,iDoF,iQ] * uLoc[iDoF]
+      end
+      uLoc1 = DF[1,1] * u1 + DF[1,2] * u2
+      uLoc2 = DF[2,1] * u1 + DF[2,2] * u2
+      uLoc3 = DF[3,1] * u1 + DF[3,2] * u2
+      kkLoc = 0.5 * (uLoc1 * uLoc1 + uLoc2 * uLoc2 + uLoc3 * uLoc3) * Weights[iQ] / detDFLoc
+      for iDoF = 1 : kFe.DoF
+        kLoc[iDoF] += kfRef[1,iDoF,iQ] * kkLoc  
+      end  
+    end
+    @inbounds for iDoF = 1 : kFe.DoF
+      ind = kFe.Glob[iDoF,iF]  
+      k[ind] += kLoc[iDoF]
+    end  
+  end
+  ldiv!(kFe.LUM,k)
+end

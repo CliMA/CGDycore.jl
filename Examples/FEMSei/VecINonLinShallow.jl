@@ -154,11 +154,6 @@ RadEarth = Phys.RadEarth
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
 
-#for iF = 1 : Grid.NumFaces
-#  @show iF
-#  @show Grid.Faces[iF].Orientation
-#  @show Grid.Faces[iF].OrientE
-#end  
 
 Param = Examples.Parameters(FTB,Problem)
 
@@ -202,9 +197,9 @@ vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
-  nQuad = 4
-  nQuadM = 4
-  nQuadS = 4
+  nQuad = 3
+  nQuadM = 3
+  nQuadS = 3
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
   nQuadM = 4
@@ -215,6 +210,20 @@ end
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
+
+#for iE = 1 : Grid.NumEdges
+#  @show iE
+#  @show Grid.Edges[iE].F
+#  @show Grid.Edges[iE].FE
+#  iFL = Grid.Edges[iE].F[1]
+#  iFR = Grid.Edges[iE].F[2]
+#  for iDoF = 1 : RT.DoF
+#    indL = RT.Glob[iDoF,iFL]  
+#    indR = RT.Glob[iDoF,iFR]  
+#    @show iDoF,indL,indR  
+#  end  
+#end  
+#stop
 
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
 

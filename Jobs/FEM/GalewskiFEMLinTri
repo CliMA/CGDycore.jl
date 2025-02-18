@@ -1,16 +1,16 @@
 #!/bin/bash
-julia --project Examples/FEMSei/ConsNonLinShallow.jl \
+julia --project Examples/FEMSei/LinShallow.jl \
   --Problem="GalewskiSphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
-  --GridType="CubedSphere" \
-  --nPanel=80 \
+  --GridType="TriangularSphere" \
+  --nPanel=60 \
   --RefineLevel=6 \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=6 \
+  --SimDays=1 \
   --SimHours=0 \
-  --PrintHours=12 \
+  --PrintHours=1 \
   --PrintSeconds=0 \
   --PrintTime=0

@@ -5,7 +5,7 @@ julia --project Examples/FEMSei/TestCurlVel.jl \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
-  --nPanel=80 \
+  --nPanel=60 \
   --RefineLevel=6 \
   --ns=120 \
   --OrderFEM=1 \

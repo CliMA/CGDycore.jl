@@ -60,12 +60,12 @@ function ConstructRT(k,ElemType::Grids.Tri)
     end
   end
   rDoF += k + 1
-# Edge 3 (-1,1) -> (-1,-1)
+# Edge 3 (-1,-1) -> (1,1)
   @inbounds for iDoF = 1 : DoF
-    phiE1 = subs(phi[iDoF,1], x[1] => -1, x[2] => -t)
+    phiE1 = subs(phi[iDoF,1], x[1] => -1, x[2] => t)
     @inbounds for i = 0 : k
       @inbounds for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += - 0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
+        I[rDoF+i,iDoF] +=  -0.5 * phiE1(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]  
       end  
     end  
   end  
@@ -153,7 +153,7 @@ function ConstructRT(k,ElemType::Grids.Quad)
     phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
     @inbounds for i = 0 : k
       @inbounds for iQ = 1 : NumQuadL
-        I[rDoF+i,iDoF] += 0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+        I[rDoF+i,iDoF] += +0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
   end
@@ -230,6 +230,9 @@ function ConstructRT(k,ElemType::Grids.Quad)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   @inbounds for i = 1 : DoF
     Divphi[i,1] = differentiate(phiB[i,1],x[1]) + differentiate(phiB[i,2],x[2])
+    @show phiB[i,:]
+    @show phi[i,:]
+    @show I[i,:]
   end
   return DoF, DoFE, DoFF, phiB, Divphi
 end

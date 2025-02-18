@@ -366,7 +366,7 @@ function (profile::LinearBlob)(Param,Phys)
     (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
     d = acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0))
     if abs(d) <= Param.Width
-      h = cos(pi*d/Param.Width/2)^2 + 1.0
+      h = Param.H*cos(pi*d/Param.Width/2)^2 + 1.0
     else
       h = 0.0 + 1.0
     end

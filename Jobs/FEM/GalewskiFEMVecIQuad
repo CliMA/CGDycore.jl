@@ -5,10 +5,10 @@ julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
-  --nPanel=60 \
-  --RefineLevel=6 \
+  --nPanel=80 \
+  --RefineLevel=5 \
   --Decomp="EqualArea" \
-  --OrderFEM=1 \
+  --OrderFEM=0 \
   --SimTime=0 \
   --SimDays=1 \
   --SimHours=0 \

@@ -12,5 +12,5 @@ julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --SimDays=1 \
   --SimHours=0 \
   --PrintHours=0 \
-  --PrintSeconds=600 \
+  --PrintSeconds=1800 \
   --PrintTime=0

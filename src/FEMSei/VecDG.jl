@@ -95,7 +95,7 @@ function VecDGStruct{FT}(backend,k::Int,Type::Grids.ElementType,Grid) where FT<:
       M = sparse([1],[1],[1.0])
       LUM = lu(M)
     end
-  elseif k == 1 #order 1
+  elseif k >= 1 #order 1
     if Type == Grids.Tri() #Tri
       DoF = 9 
       Comp = 3
@@ -177,7 +177,6 @@ function VecDGStruct{FT}(backend,k::Int,Type::Grids.ElementType,Grid) where FT<:
        kp1 = k + 1
        DoF = (kp1 * kp1) * Comp
        Glob = KernelAbstractions.zeros(backend,Int,0,0)
-       points = KernelAbstractions.zeros(backend,Float64,4,2)
        phi = Array{Polynomial,2}(undef,DoF,Comp)
        Gradphi = Array{Polynomial,3}(undef,DoF,Comp,2)
        L1 = Array{Polynomial,1}(undef,kp1)
@@ -209,6 +208,7 @@ function VecDGStruct{FT}(backend,k::Int,Type::Grids.ElementType,Grid) where FT<:
          end  
        end 
            
+       points = KernelAbstractions.zeros(backend,Float64,kp1*kp1,2)
        iDoF = 1
        @inbounds for j = 1 : kp1
          @inbounds for i = 1 : kp1
@@ -217,10 +217,10 @@ function VecDGStruct{FT}(backend,k::Int,Type::Grids.ElementType,Grid) where FT<:
            iDoF += 1
          end  
        end   
-       @inbounds for i = 1 : DoF
-         @inbounds for j = 1 : Comp
-           Gradphi[i,j,1] = differentiate(phi[i,j],x[1])
-           Gradphi[i,j,2] = differentiate(phi[i,j],x[2])
+       @inbounds for iDoF = 1 : DoF
+         @inbounds for iComp = 1 : Comp
+           Gradphi[iDoF,iComp,1] = differentiate(phi[iDoF,iComp],x[1])
+           Gradphi[iDoF,iComp,2] = differentiate(phi[iDoF,iComp],x[2])
          end
        end
 
