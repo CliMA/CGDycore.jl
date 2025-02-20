@@ -1,4 +1,5 @@
 abstract type SurfaceValues end
+abstract type SurfaceFluxValues end
 
 Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
@@ -8,10 +9,15 @@ function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
     Lon = xS[1]
     Lat = xS[2]
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
-    p_vs = Thermodynamics.fpws(TSurf,Phys.T0)
+    p_vs = Thermodynamics.fpws(TSurf,Phys)
     SD[RhoVSurfPos] = p_vs / (Phys.Rv * TSurf)
     SD[TSurfPos] = TSurf
   end  
+  return SurfaceValues
+end  
+Base.@kwdef struct HeldSuarezMoistSurfaceFlux <: SurfaceFluxValues end
+
+function (::HeldSuarezMoistSurfaceFlux)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceFluxValues(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
     SD[uStarPos] = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
@@ -19,7 +25,7 @@ function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
     SD[CTPos] = FT(Param.CE)
     SD[CHPos] = FT(Param.CH)
   end
-  return SurfaceValues, SurfaceFluxValues
+  return SurfaceFluxValues
 end  
 
 Base.@kwdef struct HeldSuarezDrySurface <: SurfaceValues end
@@ -31,6 +37,11 @@ function (::HeldSuarezDrySurface)(Phys,Param,uPos,vPos,wPos)
     TSurf = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     return TSurf, FT(0)
   end
+end
+
+Base.@kwdef struct HeldSuarezDrySurfaceFlux <: SurfaceFluxValues end
+
+function (::HeldSuarezDrySurfaceFlux)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceFluxValues(z,U,p,nS,TS,z0M,z0H,LandClass)
     FT = eltype(U)
     uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
@@ -40,7 +51,7 @@ function (::HeldSuarezDrySurface)(Phys,Param,uPos,vPos,wPos)
     RiBSurf = FT(0)
     return uStar, CM, CT, CH
   end
-  return SurfaceValues, SurfaceFluxValues
+  return SurfaceFluxValues
 end
 
 Base.@kwdef struct FriersonSurface <: SurfaceValues end
@@ -52,6 +63,11 @@ function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
     SD[TSurfPos] = Param.DeltaTS * exp(-FT(0.5) * Lat^2 / Param.DeltaLat^2) + Param.TSMin
     SD[RhoVSurfPos] = FT(0)
   end
+end
+
+Base.@kwdef struct FriersonSurfaceFlux <: SurfaceFluxValues end
+
+function (::FriersonSurfaceFlux)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
   @inline function SurfaceFluxValues!(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
     norm_uh = U[uPos]^2 + U[vPos]^2
@@ -68,7 +84,7 @@ function (::FriersonSurface)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
     SD[CTPos] = SD[CMPos]
     SD[CHPos] = SD[CMPos]
   end
-  return SurfaceValues!, SurfaceFluxValues!
+  return SurfaceFluxValues!
 end
 
 
@@ -85,21 +101,21 @@ end
   return uStar
 end
 
-Base.@kwdef struct MOSurface <: SurfaceValues end
+Base.@kwdef struct MOSurfaceFlux <: SurfaceFluxValues end
 
-function (::MOSurface)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
-  @inline function SurfaceValues(x,U,p)
-    FT = eltype(x)
-    return FT(300), FT(0)
-  end
-  @inline function SurfaceFluxValues(z,U,p,nSS,TS,z0M,z0H,LandClass)
+function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
+  @inline function SurfaceFluxValues(SD,z,U,p,nSS,z0M,z0H,LandClass)
     FT = eltype(U)
+    TS = SD[TSurfPos]
     uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
     theta = U[ThPos] / U[RhoPos]
-    CM, CT = Surfaces.MOSTIteration(uf,z0M,z0H,z,uStar,theta,TS,LandClass,Phys)
-    return uStar, CM, CT, CT
+    CM, CT = MOSTIteration(uf,z0M,z0H,z,uStar,theta,TS,LandClass,Phys)
+    SD[uStarPos] = uStar
+    SD[CMPos] = CM
+    SD[CTPos] = CT
+    SD[CHPos] = CT
   end  
-  return SurfaceValues, SurfaceFluxValues
+  return SurfaceFluxValues
 end  
 
 

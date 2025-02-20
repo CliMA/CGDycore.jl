@@ -286,7 +286,44 @@ function (profile::StratifiedExample)(Param,Phys)
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     T = pLoc / (Rd * Rho)
     E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
-    return (Rho,u,v,w,Th,E)
+    IE = Cvd * T 
+    qv = FT(0)
+    qc = FT(0)
+
+    return (Rho,u,v,w,Th,E,IE,qv,qc)
+  end
+  return local_profile
+end
+
+Base.@kwdef struct StratifiedSphereExample <: Example end
+
+function (profile::StratifiedSphereExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
+    z = max(r - Phys.RadEarth, FT(0))
+    u = Param.uMax
+    v = Param.vMax
+    w = FT(0)
+    NBr = Param.NBr
+    Grav = Phys.Grav
+    p0 = Phys.p0
+    Cpd = Phys.Cpd
+    Cvd = Phys.Cvd
+    Rd = Phys.Rd
+    kappa = Phys.kappa
+    Th0 = Param.Th0
+    S = NBr * NBr / Grav
+    Th = Th0 * exp(z *  S)
+    pLoc = p0 * (FT(1) - Grav / (Cpd * Th0 * S) * (FT(1) - exp(-S * z))).^(Cpd / Rd)
+    Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
+    T = pLoc / (Rd * Rho)
+    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
+    IE = Cvd * T 
+    qv = FT(0)
+    qc = FT(0)
+
+    return (Rho,u,v,w,Th,E,IE,qv,qc)
   end
   return local_profile
 end
@@ -704,12 +741,15 @@ function (::HeldSuarezMoistExample)(Param,Phys)
     #                 }
 
     uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    uS = FT(0)
     vS = FT(0)
     w = FT(0)
+    qV = FT(0)
+    qC = FT(0)
+    IE = Thermodynamics.InternalEnergyW(FT(1.0),qV,qC,Temperature,Phys) 
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
 
-    qv = FT(0)
-    qc = FT(0)
-    return (Rho,uS,vS,w,Th,qv,qc)
+    return (Rho,uS,vS,w,Th,E,IE,qV,qC)
   end
   @inline function Force(F,U,p,lat)
     FT = eltype(U)

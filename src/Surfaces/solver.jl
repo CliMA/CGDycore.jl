@@ -8,10 +8,10 @@ end
 end  
 @inline function MOSTIteration(uf,z0M,z0H,z,U,theta,thetaS,LandClass,Phys)
   FT = eltype(theta)
-  Karm = 0.4
-  Pr = 0.74
+  Karm = FT(0.4)
+  Pr = FT(0.74)
   U2 = U^2
-  Ri_b = min(Phys.Grav / thetaS *(theta - thetaS) * z  / U2, 0.2)
+  Ri_b = max(min(Phys.Grav / thetaS *(theta - thetaS) * z  / U2, FT(0.2)), FT(-10.0))
   L = (theta - thetaS) / U2
   L = L + sign(L) * eps(FT) + eps(FT)
 

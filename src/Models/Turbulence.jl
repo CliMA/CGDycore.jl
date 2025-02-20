@@ -38,7 +38,7 @@ end
 
 
 function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
-  @inline function Model(UB,UT,dzB,dzT)
+  @inline function Model(UT,UB,dzT,dzB)
 
 #   Constants
     SigT = 0.74e0
@@ -55,13 +55,17 @@ function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
     ThB = UB[ThPos] / UB[RhoPos]
     N2 = Phys.Grav * FT(2.0) * (ThT- ThB) / dzF / (ThT + ThB)
 
-    LenScale = dzF
+    LenScale = min(dzF, FT(200.0))
 #   Diffusion Koefficient
     RhoF = FT(0.5) * (UT[RhoPos] + UB[RhoPos])
     TkeF = FT(0.5) * (UB[TkePos] / UB[RhoPos] + UT[TkePos] / UT[RhoPos])
     TkeFAbs = max(TkeF, FT(1.e-8))
     sqrTkeFAbs = sqrt(TkeFAbs)
     DiffKoeff = RhoF * max(Phys.Cd * sqrTkeFAbs * LenScale, 1.e-2)
+    if DiffKoeff < 0
+      @show TkeFAbs,sqrTkeFAbs,RhoF
+      stop
+    end  
 
 #   Richardson-number and production terms
     Rich = N2 / (S * S + 1.e-3)

@@ -415,14 +415,21 @@ Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
 @. Global.LandUseData.z0M = 0.01
 @. Global.LandUseData.z0H = 0.01
 @. Global.LandUseData.LandClass = 5
+# SurfaceValues
+if Model.SurfaceFlux
+  if Problem == "HeldSuarezMoistSphere"  
+    SurfaceValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)  
+    Model.SurfaceValues = SurfaceValues
+  end
+end  
+# SurfaceFlux
 if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
   if SurfaceScheme == ""
     @show "Warning: No surface scheme"  
   elseif SurfaceScheme == "MOST"
     @show "SurfaceScheme MOST"
-    SurfaceValues, SurfaceFluxValues = Surfaces.MOSurface()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
+    SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
       Model.vPos,Model.wPos,Model.ThPos)
-    Model.SurfaceValues = SurfaceValues
     Model.SurfaceFluxValues = SurfaceFluxValues
   end
 end
@@ -437,15 +444,15 @@ end
 #Vertical Diffusion
 if Model.VerticalDiffusion || Model.VerticalDiffusionMom
   if Model.Turbulence
-    Model.Eddy = Examples.TkeKoefficient()(Param,Phys,TkePos,Model.RhoPos)
+    Model.Eddy = Surfaces.TkeKoefficient()(Param,Phys,Model.TkePos,Model.RhoPos)
   else
-    Model.Eddy = Examples.SimpleKoefficient()(Param,Phys)
+    Model.Eddy = Surfaces.SimpleKoefficient()(Param,Phys)
   end
 end
 
 #Turbulence
 if Model.Turbulence
-  Model.TurbulenceSource = Examples.TKEModel()(Param,Phys,Model.RhoPos,Model.uPos,
+  Model.TurbulenceSource = Models.TKEModel()(Param,Phys,Model.RhoPos,Model.uPos,
     Model.vPos,Model.ThPos,Model.TkePos)
 end
 
@@ -488,9 +495,19 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "Th",
       "ThE",
       "Pres",
-      "Tr1",
-      "Tr2",
       ]
+    if TkePos > 0
+      push!(Global.Output.cNames,"Tke")
+    end
+    if RhoVPos > 0
+      push!(Global.Output.cNames,"qV")
+    end
+    if RhoCPos > 0
+      push!(Global.Output.cNames,"qC")
+    end
+    if VerticalDiffusion
+      push!(Global.Output.cNames,"DiffKoeff")
+    end
   end    
 elseif ModelType == "Conservative"
   Global.Output.cNames = [

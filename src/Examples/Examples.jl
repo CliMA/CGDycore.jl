@@ -44,7 +44,9 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
   elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
-    Profile, Force = Examples.HeldSuarezMoistExample()(Param,Phys)
+    _, Force = Examples.HeldSuarezMoistExample()(Param,Phys)
+#   Model.InitialProfile = Profile
+    Profile = Examples.StratifiedSphereExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
   elseif Problem == "Stratified" || Problem == "HillAgnesiXCart" || Problem == "HillSchaerCart"

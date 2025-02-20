@@ -521,6 +521,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KV = Cache.KV
     KTkeSourceKernel! = TkeSourceKernel!(backend, groupG)
     KTkeSourceKernel!(Global.Model.TurbulenceSource,FTke,KV,U,dz,ndrange=ndrangeG)
+    if minimum(KV) < 0.0
+      @show size(KV)  
+      @show minimum(KV)  
+      @show findmin(KV)  
+      stop
+    end  
   end 
   if Global.Model.VerticalDiffusionMom
     KVerticalDiffusionMomentumKernel! = VerticalDiffusionMomentumKernel!(backend,groupG)
@@ -528,7 +534,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KVerticalDiffusionMomentumKernel!(F,U,KV,dz,ndrange=ndrangeG)
   end 
   if Global.Model.SurfaceFluxMom
-    CM = Global.SurfaceData.CM
+    @views CM = Global.SurfaceData.Data[Surfaces.CMPos,:]
     KSurfaceFluxMomentumKernel! = SurfaceFluxMomentumKernel!(backend,groupS)
     KSurfaceFluxMomentumKernel!(F,U,nSS,CM,dz,ndrange=ndrangeS)
   end  

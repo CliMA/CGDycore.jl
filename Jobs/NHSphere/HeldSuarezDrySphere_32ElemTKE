@@ -1,11 +1,13 @@
-julia --project Examples/testNHSphere.jl \
-  --Problem="HeldSuarezDrySphere" \
+#!/bin/bash
+julia --project Examples/Driver.jl \
+  --Problem="HeldSuarezMoistSphere" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=2 \
-  --RhoVPos=6 \
-  --RhoCPos=7 \
+  --TkePos=6 \
+  --RhoVPos=7 \
+  --RhoCPos=8 \
   --ProfpBGrd="" \
   --ProfRhoBGrd="" \
   --Source=true \
@@ -14,8 +16,10 @@ julia --project Examples/testNHSphere.jl \
   --ModelType="VectorInvariant" \
   --Turbulence=true \
   --VerticalDiffusion=true \
+  --VerticalDiffusionMom=true \
   --SurfaceFlux=true \
-  --SurfaceScheme="" \
+  --SurfaceFluxMom=true \
+  --SurfaceScheme="MOST" \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
@@ -32,7 +36,7 @@ julia --project Examples/testNHSphere.jl \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=1 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
@@ -45,7 +49,7 @@ julia --project Examples/testNHSphere.jl \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=30 \
-  --H=45000.0 \
+  --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \

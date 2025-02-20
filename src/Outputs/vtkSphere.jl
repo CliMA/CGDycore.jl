@@ -629,12 +629,31 @@ function unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global, part::Int, nparts
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,TkePos],UR[:,:,:,RhoPos],vtkInter,CG.Glob)
       copyto!(TkeCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["Tke", VTKCellData()] = TkeCell
+    elseif  str == "qV" 
+      RhoVPos = Global.Model.RhoVPos
+      RhoPos = Global.Model.RhoPos
+      qVCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views InterpolateRhoGPU!(cCell,UR[:,:,:,RhoVPos],UR[:,:,:,RhoPos],vtkInter,CG.Glob)
+      copyto!(qVCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+      vtk["qV", VTKCellData()] = qVCell
+    elseif  str == "qC" 
+      RhoCPos = Global.Model.RhoCPos
+      RhoPos = Global.Model.RhoPos
+      qCCell = zeros(OrdPrint*OrdPrint*nz*NF)
+      @views InterpolateRhoGPU!(cCell,UR[:,:,:,RhoCPos],UR[:,:,:,RhoPos],vtkInter,CG.Glob)
+      copyto!(qCCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+      vtk["qC", VTKCellData()] = qCCell
     elseif  str == "DiffKoeff" 
       DiffKoeff = Cache.KV  
       RhoPos = Global.Model.RhoPos
-      DiffKoeffCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      @views InterpolateRhoGPU!(cCell,DiffKoeff,UR[:,:,:,RhoPos],vtkInter,CG.Glob)
-      copyto!(DiffKoeffCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
+      DiffKoeffCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
+      if length(size(U)) == 3
+        DiffKoeffR = reshape(DiffKoeff,size(DiffKoeff,1),1,size(DiffKoeff,2))  
+      else
+        DiffKoeffR = DiffKoeff  
+      end  
+      @views InterpolateRhoGPU!(cCell,DiffKoeffR,UR[:,:,:,RhoPos],vtkInter,CG.Glob)
+      copyto!(DiffKoeffCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
       vtk["DiffKoeff", VTKCellData()] = DiffKoeffCell
     elseif  str == "Tr1" 
       Tr1Pos = Global.Model.NumV + 1

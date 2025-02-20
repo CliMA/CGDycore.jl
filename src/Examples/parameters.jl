@@ -178,6 +178,7 @@ Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
   DeltaT::FT = 1
   ExpDist::FT = 5
   T0::FT = 300
+  Th0::FT = 300
   TEq::FT = 300
   T_init::FT  = 315
   lapse_rate::FT  = -0.008
