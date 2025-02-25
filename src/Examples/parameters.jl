@@ -227,19 +227,20 @@ Base.@kwdef struct ParamHillSchaerCart
   Stretch::Bool = false
 end
 
-Base.@kwdef struct ParamHillAgnesiXCart
+Base.@kwdef struct ParamHillAgnesiXCart{FT}
   Deep::Bool = false
-  NBr::Float64 = 1.e-2
-  Th0::Float64 =300.0
-  uMax::Float64 =10
-  vMax::Float64 =0
-  wMax::Float64 =0
-  TEq::Float64 =300.0
-  a::Float64  = 1000.0
-  h::Float64  = 400.0
-  xc::Float64  = 0.0
+  NBr::FT = 1.e-5
+  Th0::FT =300.0
+  uMax::FT =10
+  vMax::FT =0
+  wMax::FT =0
+  TEq::FT =300.0
+  a::FT  = 1000.0
+  h::FT  = 400.0
+  xc::FT  = 0.0
   Stretch::Bool = false
-  CMom::Float64 = 1.e-3
+  CMom::FT = 1.e-3
+  TSurf::FT = 299
 end
 
 Base.@kwdef struct ParamHillAgnesiYCart
@@ -455,7 +456,7 @@ function Parameters(FT,Problem::String)
     Param = ParamHillSchaerCart()
   elseif Problem == "HillAgnesiXCart"
     @show Problem
-    Param = ParamHillAgnesiXCart()
+    Param = ParamHillAgnesiXCart{FT}()
   elseif Problem == "HillAgnesiYCart"
     @show Problem
     Param = ParamHillAgnesiYCart()

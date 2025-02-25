@@ -36,7 +36,7 @@ julia --project Examples/Driver.jl \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \

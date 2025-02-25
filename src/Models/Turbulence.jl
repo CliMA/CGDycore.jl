@@ -62,10 +62,6 @@ function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
     TkeFAbs = max(TkeF, FT(1.e-8))
     sqrTkeFAbs = sqrt(TkeFAbs)
     DiffKoeff = RhoF * max(Phys.Cd * sqrTkeFAbs * LenScale, 1.e-2)
-    if DiffKoeff < 0
-      @show TkeFAbs,sqrTkeFAbs,RhoF
-      stop
-    end  
 
 #   Richardson-number and production terms
     Rich = N2 / (S * S + 1.e-3)

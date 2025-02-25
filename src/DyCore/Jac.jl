@@ -1,6 +1,6 @@
 using KernelAbstractions
 
-function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
+function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
 
   backend = get_backend(U)
   FT = eltype(U)
@@ -21,13 +21,21 @@ function JacSchurGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equ
     @views p = Cache.Thermo[:,:,1]
   end  
 
-  KJacSchurKernel! = JacSchurKernel!(backend,group)
-  KJacSchurKernel!(dPresdRhoTh,dPresdRho,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,p,Metric.dz,Phys,Param,ndrange=ndrange)
+  KJacAcousticKernel! = JacAcousticKernel!(backend,group)
+  KJacAcousticKernel!(dPresdRhoTh,dPresdRho,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,p,Metric.dz,Phys,Param,ndrange=ndrange)
+
+  if Global.Model.VerticalDiffusion
+    group = (Nz-1, NG)
+    ndrange = (Nz-1, NumG)  
+    @. J.JDiff = FT(0)  
+    KJacTransportKernel! = JacTransportKernel!(backend,group)
+    @views KJacTransportKernel!(J.JDiff,U[:,:,1],Cache.KV,Metric.dz,ndrange=ndrange)
+  end  
 
 end
 
 
-@kernel inbounds = true function JacSchurKernel!(dPresdRhoTh,dPresdRho,JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(p),@Const(dz),Phys,Param)
+@kernel inbounds = true function JacAcousticKernel!(dPresdRhoTh,dPresdRho,JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(p),@Const(dz),Phys,Param)
   iz, iC   = @index(Local, NTuple)
   Iz,IC = @index(Global, NTuple)
 
@@ -79,6 +87,28 @@ end
 
   end
 end
+
+@kernel inbounds = true function JacTransportKernel!(JDiff,@Const(Rho),@Const(KV),@Const(dz))
+  iz, iC   = @index(Local, NTuple)
+  Iz,IC = @index(Global, NTuple)
+
+  NG = @uniform @groupsize()[2]
+  Nz = @uniform @ndrange()[1]
+  NumG = @uniform @ndrange()[2]    
+
+  if IC <= NumG
+    dzT = dz[Iz+1,IC]
+    dzB = dz[Iz,IC]
+    RhoT = Rho[Iz+1,IC]
+    RhoB = Rho[Iz+1,IC]
+    KF = eltype(JDiff)(2) * KV[Iz,IC] / (dzT + dzB)
+    JDiff[3,Iz+1,IC] = -KF / RhoT / dzB
+    @atomic :monotonic JDiff[2,Iz,IC] += KF / RhoB/ dzB
+    JDiff[1,Iz,IC] = -KF / RhoB / dzT
+    @atomic :monotonic JDiff[2,Iz+1,IC] += KF / RhoT / dzT
+  end  
+end  
+
 
 function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
   (  RhoPos,

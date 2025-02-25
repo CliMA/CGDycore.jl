@@ -26,13 +26,14 @@ RhoCPos = parsed_args["RhoCPos"]
 RhoIPos = parsed_args["RhoIPos"]
 RhoRPos = parsed_args["RhoRPos"]
 TkePos = parsed_args["TkePos"]
+NumV = parsed_args["NumV"]
+NumTr = parsed_args["NumTr"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
 Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
-NumV = parsed_args["NumV"]
-NumTr = parsed_args["NumTr"]
+Forcing = parsed_args["Forcing"]
 BoundaryWE = parsed_args["BoundaryWE"]
 BoundarySN = parsed_args["BoundarySN"]
 BoundaryBT = parsed_args["BoundaryBT"]
@@ -218,6 +219,7 @@ Model.Upwind = Upwind
 Model.Damping = Damping
 Model.StrideDamp = StrideDamp
 Model.Relax = Relax
+Model.Forcing = Forcing
 Model.Coriolis = Coriolis
 Model.CoriolisType = CoriolisType
 Model.Buoyancy = Buoyancy
@@ -357,7 +359,7 @@ if State == "Dry"
   Pressure, dPresdRhoTh, dPresdRho = Models.Dry()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
-  Model.dPresdRhoTh = dPresdRho
+  Model.dPresdRho = dPresdRho
 elseif State == "DryInternalEnergy"
   Pressure, dPresdRhoTh, dPresdRho = Models.DryInternalEnergy()(Phys)
   Model.Pressure = Pressure
@@ -420,6 +422,9 @@ if Model.SurfaceFlux
   if Problem == "HeldSuarezMoistSphere"  
     SurfaceValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)  
     Model.SurfaceValues = SurfaceValues
+  else
+    SurfaceValues = Surfaces.DefaultSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)  
+    Model.SurfaceValues = SurfaceValues
   end
 end  
 # SurfaceFlux
@@ -455,9 +460,6 @@ if Model.Turbulence
   Model.TurbulenceSource = Models.TKEModel()(Param,Phys,Model.RhoPos,Model.uPos,
     Model.vPos,Model.ThPos,Model.TkePos)
 end
-
-# Forcing
-Force =  Examples.NoForcing()(Param,Phys)
 # Damping
 if Damping
   Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
@@ -554,13 +556,13 @@ if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacSchurGPU!,
+  Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacGPU!,
     Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 else
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   @show "vor CPU Timestepper"
-  Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacSchurGPU!,
+  Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacGPU!,
     Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 end
 

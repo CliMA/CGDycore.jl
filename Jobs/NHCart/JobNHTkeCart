@@ -1,4 +1,5 @@
-mpirun -n 1 julia --project Examples/testNHCart.jl \
+#!/bin/bash
+julia --project Examples/Driver.jl \
   --Problem="HillAgnesiXCart" \
   --Device="CPU" \
   --GPUType="CUDA" \
@@ -20,6 +21,7 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --SurfaceFlux=true \
   --VerticalDiffusionMom=true \
   --VerticalDiffusion=true \
+  --JacVerticalDiffusion=true \
   --Damping=true \
   --StrideDamp=10000 \
   --Relax=1.0e-2 \
@@ -29,9 +31,10 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --BoundaryBT="" \
   --Thermo="" \
   --SimMinutes=0 \
-  --SimHours=20 \
+  --SimHours=40 \
   --PrintSeconds=0 \
-  --PrintMinutes=20 \
+  --PrintMinutes=0 \
+  --PrintHours=1 \
   --PrintTime=0 \
   --dtau=3 \
   --IntMethod="Rosenbrock" \
@@ -41,8 +44,9 @@ mpirun -n 1 julia --project Examples/testNHCart.jl \
   --P1=0.0\
   --P2=1000.0\
   --P3=0.0\
-  --Stretch=true \
+  --Stretch=false \
   --StretchType="ICON" \
+  --GridForm="Cartesian" \
   --H=19600.0 \
   --Lx=40000.0 \
   --Ly=40000.0 \

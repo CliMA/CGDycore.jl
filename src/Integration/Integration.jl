@@ -9,7 +9,6 @@ using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using NVTX
 
-include("JacStruc.jl")
 include("LinIMEXMethod.jl")
 include("LinIMEXSchur.jl")
 include("IMEXMethod.jl")

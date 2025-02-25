@@ -13,6 +13,21 @@
   end
 end
 
+@inline function triSolve!(x,triD,SN,C,invfac,b)
+# Thomas algorithm, b and x used as intermediate storage
+# b is destroyed after the elemination
+  n = size(triD,2)
+  x[1] = SN * triD[2,1] + invfac + C 
+  for i=1 : n - 1
+    x[i+1] = (SN * triD[2,i+1] + invfac) -triD[3,i] / x[i] * triD[1,i+1]  
+    b[i+1] = b[i+1]- SN * triD[3,i] / x[i] * b[i]  
+  end
+  x[n] = b[n] / x[n]
+  for i = n - 1 : -1 : 1
+    x[i]=(b[i] - SN * triD[1,i+1] *x[i+1]) / x[i]  
+  end
+end
+
 @inline function mulUL!(tri,biU,biL)
   n = size(biL,2)
   tri[2,1] = tri[2,1] - biU[2,1]*biL[1,1] - biU[1,1]*biL[2,1]
@@ -113,16 +128,6 @@ end
   end
 end
 
-@kernel inbounds = true function SchurSolveTriKernel1!(Nz,k,v,@Const(tri))
-  IC, = @index(Global, NTuple)
-
-  NumG = @uniform @ndrange()[1]
-
-  if IC <= NumG
-    @views triSolve!(k[1:Nz-1,IC,4],tri[:,:,IC],v[1:Nz-1,IC,4])
-  end    
-end
-
 @kernel inbounds = true function SchurSolveTriKernel!(::Val{Nz},k,@Const(v),@Const(tri)) where {Nz}
   IG,   = @index(Local, NTuple)
   IC, = @index(Global, NTuple)
@@ -146,6 +151,35 @@ end
   end
 end
 
+@kernel inbounds = true function SchurSolveTriDiffKernel!(::Val{Nz},NT,v,@Const(triD),
+  @Const(SN),@Const(C),invfac,@Const(ListTracer)) where {Nz}
+  IG,   = @index(Local, NTuple)
+  IC, = @index(Global, NTuple)
+
+  TilesDim = @uniform @groupsize()[1]
+  NumG = @uniform @ndrange()[1]
+
+  triCol = @localmem eltype(v) (3,Nz,TilesDim)
+  vCol = @localmem eltype(v) (Nz,TilesDim)
+  kCol = @localmem eltype(v) (Nz,TilesDim)
+
+  if IC <= NumG
+    @. @views triCol[:,:,IG] = triD[:,:,IC]
+  end
+  for iT = 1 : NT
+    ind = ListTracer[iT]  
+    if IC <= NumG
+      @. @views vCol[:,IG] = v[:,IC,ind]
+    end
+    if IC <= NumG
+      @views triSolve!(kCol[:,IG],triCol[:,:,IG],SN[iT],C[iT],invfac,vCol[:,IG])
+    end
+    if IC <= NumG
+      @. @views v[:,IC,ind] = invfac * kCol[:,IG]
+    end
+  end
+end
+
 function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   backend = get_backend(k)
   FT = eltype(k)
@@ -161,6 +195,14 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
 # group = (1024)
   groupTri = (32)
   ndrangeTri = (NumG)
+  invfac = 1 / fac
+  NTDiff = length(J.ListTracer)
+
+  if Global.Model.JacVerticalDiffusion
+    KSchurSolveTriDiffKernel! = SchurSolveTriDiffKernel!(backend,groupTri)
+    @views KSchurSolveTriDiffKernel!(Val(Nz),NTDiff,v,J.JDiff,J.SN,J.C,invfac,
+      J.ListTracer,ndrange=ndrangeTri)
+  end
 
   if J.CompTri
     KTriDiagKernel! = TriDiagKernel!(backend,groupTriDiag)
@@ -253,7 +295,6 @@ function SchurSolve!(k,v,J,fac,Cache,Global)
       @views triSolve!(sTh,JAdvC[:,:,in2],rTh)
       @. rTh = invfac * sTh
 
-      @views rTh = v[:,in2,2]
       @views rTh = v[:,in2,5]
       @views sTh = k[:,in2,5]
       @views triSolve!(sTh,JAdvC[:,:,in2],rTh)

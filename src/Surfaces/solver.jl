@@ -16,7 +16,7 @@ end
   L = L + sign(L) * eps(FT) + eps(FT)
 
   zeta = L / z
-  for Iter = 1 : 10
+  for Iter = 1 : 4
     f = Ri_b - Pr * zeta *
       VertProfile(uf, z0H, z, zeta, HeatTransport()) / 
       VertProfile(uf, z0M, z, zeta, MomentumTransport())^2 
@@ -26,12 +26,13 @@ end
       VertProfile(uf, z0M, z, zetaP, MomentumTransport())^2 
     df = (fP - f) /(zetaP - zeta)
     zetaNew = zeta - f/df
-    if abs(zetaNew-zeta) < eps(FT)^FT(1/3)
-      zeta  = zetaNew 
-      break
-    else
-      zeta = zetaNew  
-    end  
+    zeta = zetaNew
+#   if abs(zetaNew-zeta) < eps(FT)^FT(1/3)
+#     zeta  = zetaNew 
+#     break
+#   else
+#     zeta = zetaNew  
+#   end  
   end  
 
   CM = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport()))^2

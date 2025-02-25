@@ -1,6 +1,15 @@
 abstract type SurfaceValues end
 abstract type SurfaceFluxValues end
 
+Base.@kwdef struct DefaultSurface <: SurfaceValues end
+
+function (::DefaultSurface)(Phys,Param,uPos,vPos,wPos)
+  @inline function SurfaceValues(SD,xS,U,p)
+    SD[TSurfPos] = Param.TSurf
+  end  
+  return SurfaceValues
+end  
+
 Base.@kwdef struct HeldSuarezMoistSurface <: SurfaceValues end
 
 function (::HeldSuarezMoistSurface)(Phys,Param,uPos,vPos,wPos)
