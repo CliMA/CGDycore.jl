@@ -49,7 +49,7 @@ mutable struct SurfaceData{FT<:AbstractFloat,
   Data::AT2                         
 end
 
-function SurfaceData{FT}(backend,NumG) where FT<:AbstractFloat
+function SurfaceData{FT}(backend,LenSurfaceData,NumG) where FT<:AbstractFloat
   Data = KernelAbstractions.zeros(backend,FT,LenSurfaceData,NumG)
   return SurfaceData{FT,
                      typeof(Data)}(

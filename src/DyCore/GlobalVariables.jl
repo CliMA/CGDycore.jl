@@ -579,8 +579,8 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
   RhoBGrd = zeros(0,0)
   UGeo = KernelAbstractions.zeros(backend,FT,0,0)
   VGeo = KernelAbstractions.zeros(backend,FT,0,0)
-  SurfaceData = Surfaces.SurfaceData{FT}(backend,0)
-  LandUseData = Surfaces.LandUseData{FT}(backend,00)
+  SurfaceData = Surfaces.SurfaceData{FT}(backend,0,0)
+  LandUseData = Surfaces.LandUseData{FT}(backend,0)
   return GlobalStruct{FT,
                       typeof(UGeo)}(
     Grid,

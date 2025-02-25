@@ -295,7 +295,7 @@ else
   TopoProfile = Examples.Flat()()  
 end  
 
-Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,H)
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 
 if GridForm == "Cartesian"
   if ParallelCom.Proc == 1  
@@ -412,11 +412,11 @@ if Microphysics
 end
 
 # Surface flux
-Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.NumG)
+Global.SurfaceData.Data = Surfaces.SurfcaeData{FTB}(backend,Surfaces.LenSurfaceData,CG.NumG)
 Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
-@. Global.LandUseData.z0M = 0.01
-@. Global.LandUseData.z0H = 0.01
-@. Global.LandUseData.LandClass = 5
+copyto!(Global.LandUseData.z0M,FTB(0.01))
+copyto!(Global.LandUseData.z0H,FTB(0.01))
+copyto!(Global.LandUseData.LandClass,5)
 # SurfaceValues
 if Model.SurfaceFlux
   if Problem == "HeldSuarezMoistSphere"  
