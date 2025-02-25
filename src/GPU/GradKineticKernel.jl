@@ -21,7 +21,7 @@
     pCol[I,J,iz] = p[Iz,ind]  
     RhoCol[I,J,iz+1] = U[Iz,ind,1]
     KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
-    KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + 1/2 * U[Iz,ind,4]^2
+    KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + eltype(F)(0.5) * U[Iz,ind,4]^2
     if iz == 1 && Iz == 1
       wCol = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
         dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]

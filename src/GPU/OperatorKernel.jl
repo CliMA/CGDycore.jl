@@ -1079,11 +1079,11 @@ end
 
   kR = (JL / (JL + JR)) * ((JLL + JL) / (JLL + JL + JR))
   kL = -(JL / (JLL + JL)) * (JR / (JLL + JL + JR))
-  cFL = kL * cLL + (1 - kL - kR)*cL + kR * cR
+  cFL = kL * cLL + (eltype(cLL)(1) - kL - kR)*cL + kR * cR
 
   kL = (JR / (JR + JL)) * ((JRR + JR)/(JL + JR + JRR))
   kR = -(JR /(JRR + JR)) *(JL /(JL + JR + JRR))
-  cFR = kL * cL + (1 - kL - kR) * cR + kR * cRR
+  cFR = kL * cL + (eltype(cLL)(1) - kL - kR) * cR + kR * cRR
  
   return (cFL,cFR)
 end
@@ -1093,13 +1093,13 @@ end
   kR = (JL / (JL + JR)) * ((JLL + JL) / (JLL + JL + JR))
   kL = (JL / (JLL + JL)) * (JR / (JLL + JL + JR))
   #r = (cL - cLL) / (cR - cL + sign(cR- cL)*1.e-20 + 1.e-20)
-  r = (cL - cLL) / (cR - cL + 1.e-20)
+  r = (cL - cLL) / (cR - cL + eltype(cLL)(1.e-20))
   cFL = cL + max(eltype(cLL)(0), min(r, min(kL * r + kR, eltype(cLL)(1)))) * (cR - cL) 
 
   kL = (JR / (JR + JL)) * ((JRR + JR)/(JL + JR + JRR))
   kR = (JR /(JRR + JR)) *(JL /(JL + JR + JRR))
 # r = (cR - cRR) / (cL - cR  + sign(cL- cR)*1.e-20 + 1.e-20)
-  r = (cR - cRR) / (cL - cR  + 1.e-20)
+  r = (cR - cRR) / (cL - cR  + eltype(cLL)(1.e-20))
   cFR = cR + max(eltype(cLL)(0), min(r, min(kR * r + kL, eltype(cLL)(1)))) * (cL - cR) 
  
   return (cFL,cFR)

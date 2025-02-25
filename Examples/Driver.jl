@@ -412,7 +412,7 @@ if Microphysics
 end
 
 # Surface flux
-Global.SurfaceData.Data = Surfaces.SurfcaeData{FTB}(backend,Surfaces.LenSurfaceData,CG.NumG)
+Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,CG.NumG)
 Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
 copyto!(Global.LandUseData.z0M,FTB(0.01))
 copyto!(Global.LandUseData.z0H,FTB(0.01))
