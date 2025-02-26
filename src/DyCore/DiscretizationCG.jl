@@ -60,7 +60,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::FiniteElements.CGQuad,Exchange,G
   KMetricLowerBoundaryKernel! = MetricLowerBoundaryKernel!(backend,group)
   KMetricLowerBoundaryKernel!(Metric.nSS,Metric.xS,Metric.dXdxI,Metric.X,CG.M,CG.Glob,ndrange=ndrange)
   Parallels.ExchangeData!(Metric.nSS,Exchange)
-  groupS = (max(div(NumG,NumberThreadGPU),1))
+  groupS = (NumberThreadGPU)
   ndrangeS = (NumG)
   KMetricLowerBoundaryScaleKernel! = MetricLowerBoundaryScaleKernel!(backend,groupS)
   KMetricLowerBoundaryScaleKernel!(Metric.nSS,ndrange=ndrangeS)
@@ -173,8 +173,8 @@ end
     y = X[ID,1,2,1,IF]
     z = X[ID,1,3,1,IF]
     lon,lat,_ = Grids.cart2sphere(x,y,z)
-    @atomic :monotonic xS[1,ind] = lon
-    @atomic :monotonic xS[2,ind] = lat
+    xS[1,ind] = lon
+    xS[2,ind] = lat
   end
 end
 
