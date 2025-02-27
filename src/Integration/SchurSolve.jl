@@ -194,7 +194,7 @@ function SchurSolveGPU!(k,v,J,fac,Cache,Global)
   ndrangeTriDiag = (Nz-1,NumG)
 # group = (1024)
 # groupTri = (32)
-  groupTri = (16)
+  groupTri = (Global)
   ndrangeTri = (NumG)
   invfac = 1 / fac
   NTDiff = length(J.ListTracer)

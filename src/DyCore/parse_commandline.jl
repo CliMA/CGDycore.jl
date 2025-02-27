@@ -564,6 +564,11 @@ function parse_commandline()
      arg_type = Int
      default = 256
 
+    "--NumberThreadTriGPU"
+     help = "Number of threads for linear vertical solver in GPU mode"
+     arg_type = Int
+     default = 32
+
   # Finite elements     
 
     "--OrderFEM"

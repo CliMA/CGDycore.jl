@@ -272,15 +272,18 @@ mutable struct ParallelComStruct
   Proc::Int
   ProcNumber::Int
   NumberThreadGPU::Int
+  NumberThreadTriGPU::Int
 end  
 function ParallelComStruct()
   Proc = 1
   ProcNumber = 1
   NumberThreadGPU = 256
+  NumberThreadTriGPU = 32
   return ParallelComStruct(
     Proc,
     ProcNumber,
     NumberThreadGPU,
+    NumberThreadTriGPU,
   )
 end  
 

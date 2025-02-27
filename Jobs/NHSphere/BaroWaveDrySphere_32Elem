@@ -3,6 +3,7 @@ julia --project Examples/Driver.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float32" \
   --NumberThreadGPU=512 \
+  --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumTr=0 \
   --RhoVPos=0 \

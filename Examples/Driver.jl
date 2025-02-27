@@ -119,6 +119,7 @@ Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
+NumberThreadTriGPU = parsed_args["NumberThreadTriGPU"]
 
 MPI.Init()
 comm = MPI.COMM_WORLD
@@ -554,6 +555,7 @@ end
 
 if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
+  Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacGPU!,
