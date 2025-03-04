@@ -171,6 +171,7 @@ Boundary.SN = BoundarySN
 Boundary.BT = BoundaryBT
 
 Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+@show Grid.NumFaces
 @show Grid.Form
 #Grid, Exchange = Grids.CartGrid(backend,FTB,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz)
 
@@ -257,10 +258,11 @@ Vort = zeros(Grid.NumFaces)
 FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!)
 FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!)
 FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart;] ,FileNumber,cName)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart] ,FileNumber,cName)
+stop
 
 nAdveVel = 1
-nPrint = 1
+nprint = 1
 for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600 
   @. F = 0  
@@ -271,7 +273,7 @@ for i = 1 : nAdveVel
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.JacobiCart!)
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
+# FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 1 / 3 * dtau * F
@@ -284,7 +286,7 @@ for i = 1 : nAdveVel
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.JacobiCart!)
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
+# FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
   ldiv!(RT.LUM,Fhu)
   @. UNew = U + 0.5 * dtau * F
@@ -297,7 +299,7 @@ for i = 1 : nAdveVel
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.JacobiCart!)
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
+# FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
   ldiv!(RT.LUM,Fhu)
   @. U = U + dtau * F
@@ -305,10 +307,11 @@ for i = 1 : nAdveVel
   # Output
   if mod(i,nprint) == 0 
     global FileNumber += 1
-    FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!)
+    @show "Print",i
+    FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!)
     FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!)
     FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp] ,FileNumber,cName)
+    Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart;] ,FileNumber,cName)
   end
 end
 @show "finished"

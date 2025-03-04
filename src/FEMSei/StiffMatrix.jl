@@ -1178,13 +1178,13 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
       k1 = X[1] / Rad
       k2 = X[2] / Rad
       k3 = X[3] / Rad
+      sinlat = k3
+      qFLoc = 2 * Omega * sinlat
       kcru1 = k2 * u3 - k3 * u2
       kcru2 = -(k1 * u3 - k3 * u1)
       kcru3 = k1 * u2 - k2 * u1
       cu1 = (DF[1,1] * kcru1 + DF[2,1] * kcru2 + DF[3,1] * kcru3)
       cu2 = (DF[1,2] * kcru1 + DF[2,2] * kcru2 + DF[3,2] * kcru3)
-      sinlat = k3
-      qFLoc = 2 * Omega * sinlat
       @inbounds for iDoF = 1 : FeT.DoF
         CrossLoc[iDoF] -= Weights[iQ] * qFLoc * (fTRef[1,iDoF,iQ] * cu1 +
           fTRef[2,iDoF,iQ] * cu2) / detDF[1] 
@@ -1195,6 +1195,21 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
       Cross[ind] += CrossLoc[iDoF]
     end
   end
+end
+
+function Coriolis(X,Form)
+  if Form == "Sphere"
+    Omega = 2 * pi / 24.0 / 3600.0
+    Rad = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
+    k1 = X[1] / Rad
+    k2 = X[2] / Rad
+    k3 = X[3] / Rad
+    sinlat = k3
+    qFLoc = 2 * Omega * sinlat
+    return qFLoc, SVector{3}(k1,k2,k3)
+  else
+    return 1.e-4,SVector{3}(0.0,0.0,1.0)
+  end    
 end
 
 function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,FeT::HDivElement,Grid,

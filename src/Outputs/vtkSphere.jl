@@ -72,11 +72,20 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
   else    
     if Refine == 0  
       for iF in 1 : NumFaces
-        for iN in Grid.Faces[iF].N  
-          NumNodes += 1  
-          pts[1,NumNodes] = Grid.Nodes[iN].P.x  
-          pts[2,NumNodes] = Grid.Nodes[iN].P.y  
-          pts[3,NumNodes] = Grid.Nodes[iN].P.z  
+        if Grid.Form == "Sphere"  
+          for iN in  Grid.Faces[iF].N  
+            NumNodes += 1  
+            pts[1,NumNodes] = Grid.Nodes[iN].P.x  
+            pts[2,NumNodes] = Grid.Nodes[iN].P.y  
+            pts[3,NumNodes] = Grid.Nodes[iN].P.z  
+          end  
+        else    
+          for i = 1 : length(Grid.Faces[iF].N)  
+            NumNodes += 1  
+            pts[1,NumNodes] = Grid.Faces[iF].P[i].x  
+            pts[2,NumNodes] = Grid.Faces[iF].P[i].y  
+            pts[3,NumNodes] = Grid.Faces[iF].P[i].z  
+          end  
         end  
       end
     elseif Refine == 1  
@@ -466,9 +475,7 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber, 
   stepS = "$step"
   vtk_filename_noext = pwd()*"/output/VTK/" * filename * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
-  @show size(c)
   for iC = 1 : length(cName)
-    @show minimum(c[:,iC]),maximum(c[:,iC])  
     vtk[cName[iC], VTKCellData()] = c[:,iC]
   end
   outfiles = vtk_save(vtk)
