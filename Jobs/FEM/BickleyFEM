@@ -1,0 +1,23 @@
+#!/bin/bash
+julia --project Examples/FEMSei/ConsNonLinShallowCart.jl \
+  --Problem="BickleyJet" \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=512 \
+  --Flat=false \
+  --nx=20 \
+  --ny=20 \
+  --Lx=12.566370614359172 \
+  --Ly=12.566370614359172 \
+  --x0=-6.283185307179586 \
+  --y0=-6.283185307179586 \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --OrdPoly=3 \
+  --OrderFEM=0 \
+  --SimTime=0 \
+  --SimDays=0 \
+  --SimHours=1 \
+  --PrintHours=0 \
+  --PrintSeconds=600 \
+  --PrintTime=0 \

@@ -1,3 +1,11 @@
+Base.@kwdef struct ParamBickleyJet
+  ϵ = 0.1 # perturbation magnitude
+  l = 0.5 # gaussian width
+  k = 0.5 # sinusoidal wavenumber
+  L = 4.0*pi # domain size
+  Ly = 4.0*pi
+end
+
 Base.@kwdef struct ParamGalewskiSphere
   H0G = 10000.0
   hH = 120.0 
@@ -433,6 +441,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "SchaerSphericalSphere"
     @show Problem
     Param = ParamSchaerSphericalSphere{FT}()
+  elseif Problem == "BickleyJet"
+    @show Problem
+    Param = ParamBickleyJet()
   elseif Problem == "GalewskiSphere"
     @show Problem
     Param = ParamGalewskiSphere()

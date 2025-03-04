@@ -333,7 +333,7 @@ function parse_commandline()
 
 #   Grid
     "--GridForm"
-    help = "Cartesain or Spherical"
+    help = "Cartesian or Spherical"
     arg_type = String
     default = "Spherical"
 
@@ -442,6 +442,11 @@ function parse_commandline()
     arg_type = Int
     default = 4
 
+    "--OrdPolyZ"
+    help = "Order of the local polynoms in vertical direction"
+    arg_type = Int
+    default = 0
+
     "--HyperVisc"
     help = "HyperViscosity"
     arg_type = Bool
@@ -542,7 +547,7 @@ function parse_commandline()
     "--Flat"
      help = "Output as sphere or cube"
      arg_type = Bool
-     default = true
+     default = false
 
     "--Device"
      help = "CPU or GPU"

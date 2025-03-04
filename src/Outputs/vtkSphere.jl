@@ -374,9 +374,9 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   dTol = Global.Output.dTol
   FT = eltype(Metric.X)
   backend = get_backend(Metric.X)
-  X = zeros(FT,OrdPoly+1,OrdPoly+1,2,3)
+  X = zeros(FT,OrdPoly+1,OrdPoly+1,1,3)
   for iF = 1 : NF
-    @views copyto!(X,reshape(Metric.X[:,:,:,1,iF],OrdPoly+1,OrdPoly+1,2,3))
+    @views copyto!(X,reshape(Metric.X[:,1,:,1,iF],OrdPoly+1,OrdPoly+1,1,3))
     dd = 2 / OrdPrint
     eta0 = -1
     for jRef = 1 : OrdPrint
@@ -466,8 +466,9 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber, 
   stepS = "$step"
   vtk_filename_noext = pwd()*"/output/VTK/" * filename * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
-#  cName=["Height","uC","vC","wC","uS","vS"]
+  @show size(c)
   for iC = 1 : length(cName)
+    @show minimum(c[:,iC]),maximum(c[:,iC])  
     vtk[cName[iC], VTKCellData()] = c[:,iC]
   end
   outfiles = vtk_save(vtk)
@@ -948,7 +949,7 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   return outfiles::Vector{String}
 end
 
-function unstructured_vtkOrography(Height,vtkGrid, NF, CG,  part::Int, nparts::Int)
+function unstructured_vtk2Dim(Height,vtkGrid, NF, CG,  part::Int, nparts::Int)
   nz = 1
   OrdPrint = CG.OrdPoly
   OrdPoly = CG.OrdPoly
@@ -965,6 +966,30 @@ function unstructured_vtkOrography(Height,vtkGrid, NF, CG,  part::Int, nparts::I
   cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,NF)
   #@views InterpolateCG!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
   InterpolateCGDim2GPU!(cCell,Height,vtkInter,CG.Glob)
+  copyto!(HeightCell,cCell)
+  @show minimum(HeightCell),maximum(HeightCell)
+  vtk["Height", VTKCellData()] = HeightCell
+  outfiles=vtk_save(vtk)
+  return outfiles::Vector{String}
+end  
+
+function unstructured_vtkOrography(Height,vtkGrid, NF, CG,  part::Int, nparts::Int)
+  nz = 1
+  OrdPrint = CG.OrdPoly
+  OrdPoly = CG.OrdPoly
+  vtkInter = vtkGrid.vtkInter
+  cells = vtkGrid.cells
+  pts = vtkGrid.pts
+  filename = "Orography"
+
+  vtk_filename_noext = filename
+  vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  HeightCell = zeros(OrdPrint*OrdPrint*NF) 
+  backend = get_backend(Height)
+  FTB = eltype(Height)
+  cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,NF)
+  #@views InterpolateCG!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
+  InterpolateOrographyGPU!(cCell,Height,vtkInter,CG.Glob)
   copyto!(HeightCell,cCell)
   vtk["Height", VTKCellData()] = HeightCell
   outfiles=vtk_save(vtk)

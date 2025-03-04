@@ -60,6 +60,31 @@ end
   end
 end
 
+@kernel inbounds = true function uvFunCDGKernel!(Profile,u,v,time,@Const(Glob),@Const(X),Param,Phys)
+
+  I, K, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  M = @uniform @groupsize()[1]
+  N = @uniform @groupsize()[2]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+
+  if Iz <= Nz
+    ind = Glob[I,IF]
+    x1 = X[I,K,1,Iz,IF] 
+    x2 = X[I,K,2,Iz,IF]
+    x3 = X[I,K,3,Iz,IF] 
+    xS = SVector{3}(x1, x2 ,x3)
+    _,uP,vP,wP = Profile(xS,time)
+    lon,lat,_= Grids.cart2sphere(x1,x2,x3)
+    u[Iz,K,ind] = uP
+    v[Iz,K,ind] = vP
+  end
+end
+
 @kernel inbounds = true function RhouvFunCKernel!(Profile,Rho,u,v,time,@Const(Glob),@Const(X),Param,Phys)
 
   I, iz   = @index(Local, NTuple)

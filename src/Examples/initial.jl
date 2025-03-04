@@ -1,5 +1,34 @@
 abstract type Example end
 
+Base.@kwdef struct BickleyJetExample <: Example end
+
+function (profile::BickleyJetExample)(Param,Phys)
+    @inline function local_profile(x,time)
+    # Definition of the "Bickley jet": a sech(y)^2 jet with sinusoidal tracer
+    Ψ = - tanh(x[2])
+    U = sech(x[2])^2
+
+    # A sinusoidal tracer
+    C = sin(2π * x[2] / Param.L)
+
+    # Slightly off-center vortical perturbations
+    ψ̃ = exp(-(x[2] + Param.l/10)^2 / 2 * Param.l^2) * cos(Param.k * x[1]) * cos(Param.k * x[2])
+
+    # Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
+    ũ = + ψ̃ * (Param.k * tan(Param.k * x[2]) + x[2] / Param.l^2)
+    ṽ = - ψ̃ * Param.k * tan(Param.k * x[1])
+
+    # total initial conditions
+    u = U + Param.ϵ * ũ
+    v = Param.ϵ * ṽ
+    w = 0.0
+    Rho = sin(2π * x[2] / Param.Ly)
+    Th = 1.0
+    return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct DivergentSphereExample <: Example end
 
 function (profile::DivergentSphereExample)(Param,Phys)

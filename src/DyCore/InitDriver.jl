@@ -1,3 +1,21 @@
+function InitSphereDG2(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfile,Exchange,Grid,ParallelCom)    
+  nz = Grid.nz 
+  Proc = ParallelCom.Proc
+  ProcNumber = ParallelCom.ProcNumber
+
+  TimeStepper = TimeStepperStruct{FT}(backend)
+
+  Output = OutputStruct()
+  DoF = (OrdPoly + 1) * (OrdPoly + 1)
+  Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
+    Model.NumV,Model.NumTr)
+  DG = FiniteElements.DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+
+  (DG,Metric) = DiscretizationDG2(backend,FT,Grids.JacobiSphereDG2GPU!,DG,Exchange,Global)
+
+  return DG, Metric, Global
+end  
+
 function InitSphere(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfile,Exchange,Grid,ParallelCom)    
   nz = Grid.nz 
   Proc = ParallelCom.Proc

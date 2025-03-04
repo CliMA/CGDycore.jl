@@ -214,7 +214,12 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   copyto!(w,wCPU)
   copyto!(xw,xwCPU)
   
-  xwZCPU, wZ = gausslobatto(OrdPolyZ+1)
+  if OrdPolyZ == 0
+    xwZCPU = zeros(1)  
+    wZ = 2 * ones(1)
+  else    
+    xwZCPU, wZ = gausslobatto(OrdPolyZ+1)
+  end  
   xwZ = KernelAbstractions.zeros(backend,FT,size(xwZCPU))
   copyto!(xwZ,xwZCPU)
   xe = zeros(OrdPoly+1)

@@ -126,6 +126,7 @@ mutable struct MetricStruct{FT<:AbstractFloat,
   J::AT4
   X::AT5
   dXdxI::AT6
+  Rotate::AT6
   nSS::AT2
   nS::AT3
   FS::AT2
@@ -147,6 +148,7 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
     X      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,3,nz,NF)
     dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
+    Rotate  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
     nSS  = KernelAbstractions.zeros(backend,FT,3,NumG)
     nS = KernelAbstractions.zeros(backend,FT,nQuad,3,NF)
     FS = KernelAbstractions.zeros(backend,FT,nQuad,NF)
@@ -172,6 +174,7 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
         J,
         X,
         dXdxI,
+        Rotate,
         nSS,
         nS, 
         FS, 

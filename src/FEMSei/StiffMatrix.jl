@@ -1842,7 +1842,7 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
         uFLoc[1] += uFRef[1,iDoF,iQ] * uLoc[iDoF]  
         uFLoc[2] += uFRef[2,iDoF,iQ] * uLoc[iDoF]  
       end   
-      Jacobi!(DF,detDF,pinvDF,X,ElemType,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      Jacobi(DF,detDF,pinvDF,X,ElemType,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
 #     detDF[1] *= Grid.Faces[iF].Orientation
       uuFLoc[1] = (DF[1,1] * uFLoc[1] + DF[1,2] * uFLoc[2]) / detDF[1]
       uuFLoc[2] = (DF[2,1] * uFLoc[1] + DF[2,2] * uFLoc[2]) / detDF[1]
@@ -1951,7 +1951,7 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
           uFLocR[1] += uFRef[1,iDoF,iQ,EdgeTypeR] * uLocR[iDoF]  
           uFLocR[2] += uFRef[2,iDoF,iQ,EdgeTypeR] * uLocR[iDoF]  
         end  
-        Jacobi!(DFL,detDFL,pinvDFL,XL,ElemType,PointsE[1,iQ,EdgeTypeL],
+        Jacobi(DFL,detDFL,pinvDFL,XL,ElemType,PointsE[1,iQ,EdgeTypeL],
           PointsE[2,iQ,EdgeTypeL],Grid.Faces[iFL], Grid)
         detDFL[1] *= Grid.Faces[iFL].Orientation
         uuFLocL[1] = (DFL[1,1] * uFLocL[1] + DFL[1,2] * uFLocL[2]) / detDFL[1]
@@ -1960,7 +1960,7 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
         ttL[1] = DFL[1,1] * tBarLocL[1]  + DFL[1,2] * tBarLocL[2] 
         ttL[2] = DFL[2,1] * tBarLocL[1]  + DFL[2,2] * tBarLocL[2] 
         ttL[3] = DFL[3,1] * tBarLocL[1]  + DFL[3,2] * tBarLocL[2] 
-        Jacobi!(DFR,detDFR,pinvDFR,XR,ElemType,PointsE[1,iQ,EdgeTypeR],
+        Jacobi(DFR,detDFR,pinvDFR,XR,ElemType,PointsE[1,iQ,EdgeTypeR],
           PointsE[2,iQ,EdgeTypeR],Grid.Faces[iFR], Grid)
         detDFR[1] *= Grid.Faces[iFR].Orientation
         uuFLocR[1] = (DFR[1,1] * uFLocR[1] + DFR[1,2] * uFLocR[2]) / detDFR[1]

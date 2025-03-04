@@ -75,6 +75,31 @@ end
 @kernel inbounds = true function InterpolateCGDim2Kernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
   I, J   = @index(Local,  NTuple)
+  _,_,_,_,IF = @index(Global,  NTuple)
+
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  NF = @uniform @ndrange()[5]
+
+
+  @uniform N = size(Inter,4)
+
+  if IF <= NF
+    cCell[I,J,IF] = eltype(cCell)(0)
+    iD = 0
+    for jP = 1 : N
+      for iP = 1 : N
+        iD += 1  
+        ind = Glob[iD,IF]
+        cCell[I,J,IF] += Inter[I,J,1,iP,jP,1] * c[1,1,ind]
+      end
+    end
+  end
+end
+
+@kernel inbounds = true function InterpolateOrographyKernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
+  ::Val{BANK}=Val(1)) where BANK
+  I, J   = @index(Local,  NTuple)
   _,_,IF = @index(Global,  NTuple)
 
 
@@ -87,7 +112,7 @@ end
     cCell[I,J,IF] = eltype(cCell)(0)
     for jP = 1 : N
       for iP = 1 : N
-         cCell[I,J,IF] += Inter[I,J,1iP,jP,1] * c[I,J,IF]
+         cCell[I,J,IF] += Inter[I,J,1,iP,jP,1] * c[I,J,IF]
       end
     end
   end
@@ -248,6 +273,7 @@ function InterpolateCGDim2GPU!(cCell,c,Inter,Glob)
   ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
 
   KInterpolateCGDim2Kernel! = InterpolateCGDim2Kernel!(backend,group)
+  @show "KInterpolateCGDim2Kernel"
   KInterpolateCGDim2Kernel!(cCell,c,Inter,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 

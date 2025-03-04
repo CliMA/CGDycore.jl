@@ -205,7 +205,6 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
     end
   end
 
-
   if order
     Orientation!(Edges,Faces);
     Renumbering!(Edges,Faces);
@@ -224,7 +223,6 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   NumNodesB = 0
   NumNodesG = 0
   nBar3 = zeros(0,0)
-  nBar = zeros(0,0)
   AdaptGrid = ""
   Rad = 1.0
   EF=KernelAbstractions.zeros(backend,Int,0,0)
