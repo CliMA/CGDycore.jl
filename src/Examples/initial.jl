@@ -23,6 +23,7 @@ function (profile::BickleyJetExample)(Param,Phys)
     v = Param.ϵ * ṽ
     w = 0.0
     Rho = sin(2π * x[2] / Param.Ly)
+    Rho = 1.0
     Th = 1.0
     return (Rho,u,v,w,Th)
   end

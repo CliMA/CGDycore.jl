@@ -4,8 +4,8 @@ julia --project Examples/FEMSei/ConsNonLinShallowCart.jl \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --Flat=false \
-  --nx=20 \
-  --ny=20 \
+  --nx=40 \
+  --ny=40 \
   --Lx=12.566370614359172 \
   --Ly=12.566370614359172 \
   --x0=-6.283185307179586 \
@@ -14,7 +14,7 @@ julia --project Examples/FEMSei/ConsNonLinShallowCart.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --OrdPoly=3 \
-  --OrderFEM=0 \
+  --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=0 \
   --SimHours=1 \

@@ -171,8 +171,6 @@ Boundary.SN = BoundarySN
 Boundary.BT = BoundaryBT
 
 Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
-@show Grid.NumFaces
-@show Grid.Form
 #Grid, Exchange = Grids.CartGrid(backend,FTB,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz)
 
 Param = Examples.Parameters(FTB,Problem)
@@ -180,7 +178,7 @@ Param = Examples.Parameters(FTB,Problem)
   Problem == "BickleyJet"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   #cS = sqrt(Phys.Grav * Param.H0G)
-  dtau = 0.2 * 2π / 64
+  dtau = 0.2 * 2π / sqrt(nx * ny) / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
@@ -211,7 +209,7 @@ end
 
 #Finite elements
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
-VecDG = FEMSei.VecDGStruct{FTB}(backend,k,Grid.Type,Grid)
+VecDG = FEMSei.VecDGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
@@ -259,10 +257,9 @@ FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.J
 FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!)
 FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart] ,FileNumber,cName)
-stop
 
-nAdveVel = 1
-nprint = 1
+nAdveVel = 1000
+nprint = 100
 for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600 
   @. F = 0  
