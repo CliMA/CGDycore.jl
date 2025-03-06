@@ -5,6 +5,8 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
+  --RefineLevel=3 \
+  --Flat=true \
   --nPanel=60 \
   --RefineLevel=6 \
   --OrderFEM=1 \

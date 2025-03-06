@@ -194,7 +194,7 @@ Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 #Output
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=k)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
@@ -246,17 +246,20 @@ uRec = zeros(FTB,VecDG.NumG)
 cName = ["h";"Vort";"uS";"vS";"wS"]
 
 FEMSei.InterpolatehRT!(Uhu,RT,FEMSei.JacobiCart!,Grid,Grid.Type,nQuad,Model.InitialProfile)
-@show maximum(Uhu),minimum(Uhu)
 FEMSei.InterpolateDG!(Uh,DG,FEMSei.JacobiCart!,Grid,Grid.Type,Model.InitialProfile)
 # Output of the initial values
 FileNumber=0
-VelCart = zeros(Grid.NumFaces,3)
-hout = zeros(Grid.NumFaces)
-Vort = zeros(Grid.NumFaces)
-FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!)
-FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!)
-FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
+NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
+VelCart = zeros(Grid.NumFaces*NumRefine,3)
+hout = zeros(Grid.NumFaces*NumRefine)
+Vort = zeros(Grid.NumFaces*NumRefine)
+FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
+FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!,
+  vtkSkeletonMesh.RefineMidPoints)
+FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,
+  FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart] ,FileNumber,cName)
+stop
 
 nAdveVel = 1000
 nprint = 100
@@ -305,9 +308,11 @@ for i = 1 : nAdveVel
   if mod(i,nprint) == 0 
     global FileNumber += 1
     @show "Print",i
-    FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!)
-    FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!)
-    FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
+    FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
+    FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!,
+      vtkSkeletonMesh.RefineMidPoints)
+    FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,
+      FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
     Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart;] ,FileNumber,cName)
   end
 end

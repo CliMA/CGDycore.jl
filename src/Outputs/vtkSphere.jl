@@ -3,6 +3,7 @@ mutable struct vtkStruct{FT<:AbstractFloat,
   vtkInter::AT6
   cells
   pts::Array{Float64,2}
+  RefineMidPoints::Array{Float64,2}
 end
 function vtkStruct{FT}(backend) where FT<:AbstractFloat
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
@@ -13,116 +14,273 @@ function vtkStruct{FT}(backend) where FT<:AbstractFloat
   vtkInter,
   cells,
   pts,
+  RefineMidPoints,
   )
 end
 
 function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFloat
 
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
-  celltype = VTKCellTypes.VTK_POLYGON
-  celltypeQ = VTKCellTypes.VTK_QUAD
   cells = MeshCell[]
+  dTol = 2*pi / 30
   NumNodes = 0
 
   if Refine == 0
+    celltype = VTKCellTypes.VTK_POLYGON
     for iF in 1 : NumFaces
       inds = Vector(1 : length(Grid.Faces[iF].N)) .+ NumNodes
       push!(cells, MeshCell(celltype, inds))
       NumNodes += length(Grid.Faces[iF].N)
     end
-  elseif Refine == 1
+    pts = Array{Float64,2}(undef,3,NumNodes)
+    NumNodes = 0
+    RefineMidPoints = zeros(1,2)
+    if Grid.Type == Tri()
+      RefineMidPoints[1,1] = -1/3  
+      RefineMidPoints[1,2] = -1/3  
+    end  
     for iF in 1 : NumFaces
-      for i in 1 : length(Grid.Faces[iF].N)  
-        inds = Vector(1 : 4) .+ NumNodes
-        push!(cells, MeshCell(celltypeQ, inds))
-        NumNodes += 4
-      end  
-    end
-  end
-
-  pts = Array{Float64,2}(undef,3,NumNodes)
-  NumNodes = 0
-  dTol = 2*pi / 30
-  if Flat
-    for iF in 1 : NumFaces
-      lam = zeros(length(Grid.Faces[iF].N))
-      theta = zeros(length(Grid.Faces[iF].N))
-      NumNodesLoc = 0
-      for iN in Grid.Faces[iF].N  
-        NumNodesLoc += 1  
-        (lam[NumNodesLoc],theta[NumNodesLoc],z) = Grids.cart2sphere(Grid.Nodes[iN].P.x,Grid.Nodes[iN].P.y,Grid.Nodes[iN].P.z)
-      end  
-      lammin = minimum(lam)
-      lammax = maximum(lam)
-      if abs(lammin - lammax) > 2*pi-dTol
-        for i = 1 : NumNodesLoc
-          if lam[i] > pi
-            lam[i] = lam[i] - 2*pi
-            if lam[i] > 3*pi
-              lam[i] = lam[i]  - 2*pi
+      if Grid.Form == "Sphere"
+        if Flat
+          lam = zeros(length(Grid.Faces[iF].N))
+          theta = zeros(length(Grid.Faces[iF].N))
+          NumNodesLoc = 0
+          for iN in Grid.Faces[iF].N
+            NumNodesLoc += 1
+            (lam[NumNodesLoc],theta[NumNodesLoc],z) = Grids.cart2sphere(Grid.Nodes[iN].P.x,
+              Grid.Nodes[iN].P.y,Grid.Nodes[iN].P.z)
+          end
+          lammin = minimum(lam)
+          lammax = maximum(lam)
+          if abs(lammin - lammax) > 2*pi-dTol
+            for i = 1 : NumNodesLoc
+              if lam[i] > pi
+                lam[i] = lam[i] - 2*pi
+                if lam[i] > 3*pi
+                  lam[i] = lam[i]  - 2*pi
+                end
+              end
             end
           end
+          for i = 1 : NumNodesLoc
+            NumNodes += 1
+            pts[:,NumNodes] = [lam[i],theta[i],0.0]
+          end
+        else    
+          for iN in  Grid.Faces[iF].N
+            NumNodes += 1
+            pts[1,NumNodes] = Grid.Nodes[iN].P.x
+            pts[2,NumNodes] = Grid.Nodes[iN].P.y
+            pts[3,NumNodes] = Grid.Nodes[iN].P.z
+          end
+        end  
+      else
+        for i = 1 : length(Grid.Faces[iF].N)
+          NumNodes += 1
+          pts[1,NumNodes] = Grid.Faces[iF].P[i].x
+          pts[2,NumNodes] = Grid.Faces[iF].P[i].y
+          pts[3,NumNodes] = Grid.Faces[iF].P[i].z
         end
-      end  
-      for i = 1 : NumNodesLoc
-        NumNodes += 1  
-        pts[:,NumNodes] = [lam[i],theta[i],0.0]
       end
     end
-  else    
-    if Refine == 0  
+  else
+    if Grid.Type == Grids.Quad()
+      NodeLoc = zeros(3,4)
+      lam = zeros(4)
+      theta = zeros(4)
+      celltypeQ = VTKCellTypes.VTK_QUAD
+      NumRefine = (Refine + 1) * (Refine + 1)  
+      RefineMidPoints = zeros(NumRefine,2)
+      RefinePoints = zeros(NumRefine,4,2)
+      dksi = 2 / (Refine + 1)
+      iRefine = 0
+      for jR in 1 : Refine + 1
+        for iR in 1 : Refine + 1
+          iRefine += 1  
+          RefinePoints[iRefine,1,1] = -1.0 + (iR - 1) * dksi  
+          RefinePoints[iRefine,1,2] = -1.0 + (jR - 1) * dksi  
+          RefinePoints[iRefine,2,1] = -1.0 + (iR    ) * dksi  
+          RefinePoints[iRefine,2,2] = -1.0 + (jR - 1) * dksi  
+          RefinePoints[iRefine,3,1] = -1.0 + (iR    ) * dksi  
+          RefinePoints[iRefine,3,2] = -1.0 + (jR    ) * dksi  
+          RefinePoints[iRefine,4,1] = -1.0 + (iR - 1) * dksi  
+          RefinePoints[iRefine,4,2] = -1.0 + (jR    ) * dksi  
+          RefineMidPoints[iRefine,1] = 0.25 * (RefinePoints[iRefine,1,1] +
+            RefinePoints[iRefine,2,1] + RefinePoints[iRefine,3,1] +
+            RefinePoints[iRefine,4,1])
+          RefineMidPoints[iRefine,2] = 0.25 * (RefinePoints[iRefine,1,2] +
+            RefinePoints[iRefine,2,2] + RefinePoints[iRefine,3,2] +
+            RefinePoints[iRefine,4,2])
+        end
+      end  
       for iF in 1 : NumFaces
-        if Grid.Form == "Sphere"  
-          for iN in  Grid.Faces[iF].N  
-            NumNodes += 1  
-            pts[1,NumNodes] = Grid.Nodes[iN].P.x  
-            pts[2,NumNodes] = Grid.Nodes[iN].P.y  
-            pts[3,NumNodes] = Grid.Nodes[iN].P.z  
-          end  
-        else    
-          for i = 1 : length(Grid.Faces[iF].N)  
-            NumNodes += 1  
-            pts[1,NumNodes] = Grid.Faces[iF].P[i].x  
-            pts[2,NumNodes] = Grid.Faces[iF].P[i].y  
-            pts[3,NumNodes] = Grid.Faces[iF].P[i].z  
-          end  
-        end  
-      end
-    elseif Refine == 1  
+        for i in 1 : NumRefine
+          inds = Vector(1 : 4) .+ NumNodes
+          push!(cells, MeshCell(celltypeQ, inds))
+          NumNodes += 4
+        end
+      end  
+      pts = Array{Float64,2}(undef,3,NumNodes)
+      NumNodes = 0
       for iF in 1 : NumFaces
-        for i in 1 : length(Grid.Faces[iF].E)  
-          iE1 = Grid.Faces[iF].E[i]  
-          if i == length(Grid.Faces[iF].E)
-            iE2 = Grid.Faces[iF].E[1]
-          else
-            iE2 = Grid.Faces[iF].E[i+1]  
+        for iR in 1 : NumRefine  
+          if Grid.Form == "Sphere" 
+            for i in 1 : 4  
+              NumNodes += 1  
+              NodeLoc[1,i], NodeLoc[2,i], NodeLoc[3,i] =
+                Bilinear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
+                Grid.Nodes[Grid.Faces[iF].N[1]].P,
+                Grid.Nodes[Grid.Faces[iF].N[2]].P,
+                Grid.Nodes[Grid.Faces[iF].N[3]].P,
+                Grid.Nodes[Grid.Faces[iF].N[4]].P,
+                Grid.Form,Grid.Rad)
+            end  
+            if Flat
+              for i in 1 : 3
+                (lam[i],theta[i],z) = Grids.cart2sphere(NodeLoc[1,i],NodeLoc[2,i],NodeLoc[3,i])
+              end
+              lammin = minimum(lam)
+              lammax = maximum(lam)
+              if abs(lammin - lammax) > 2*pi-dTol
+                for i = 1 : 4
+                  if lam[i] > pi
+                    lam[i] = lam[i] - 2*pi
+                    if lam[i] > 3*pi
+                      lam[i] = lam[i]  - 2*pi
+                    end
+                  end
+                end
+              end
+              for i in 1 : 4
+                NumNodes += 1
+                pts[:,NumNodes] = [lam[i],theta[i],0.0]
+              end
+            else
+              for i in 1 : 4
+                NumNodes += 1
+                pts[1,NumNodes] = NodeLoc[1,i]
+                pts[2,NumNodes] = NodeLoc[2,i]
+                pts[3,NumNodes] = NodeLoc[3,i]
+              end
+            end
+          else    
+            for i in 1 : 4  
+              NumNodes += 1  
+              pts[1,NumNodes], pts[2,NumNodes], pts[3,NumNodes] =
+                Bilinear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
+                Grid.Faces[iF].P[1],Grid.Faces[iF].P[2],Grid.Faces[iF].P[3],
+                Grid.Faces[iF].P[4],Grid.Form,Grid.Rad)
+            end    
+          end    
+        end    
+      end    
+    elseif Grid.Type == Grids.Tri()
+      NodeLoc = zeros(3,3)
+      lam = zeros(3)
+      theta = zeros(3)
+      celltypeQ = VTKCellTypes.VTK_TRIANGLE
+      NumRefine = (Refine + 1) * (Refine + 1)  
+      RefineMidPoints = zeros(NumRefine,2)
+      RefinePoints = zeros(NumRefine,4,2)
+      dksi = 2 / (Refine + 1)
+      iRefine = 0
+      for jRR in Refine + 1 : -1 : 1
+        jR = Refine + 2 - jRR  
+        for iR in 1 : jRR
+          iRefine += 1  
+          RefinePoints[iRefine,1,1] = -1.0 + (iR - 1) * dksi  
+          RefinePoints[iRefine,1,2] = -1.0 + (jR - 1) * dksi  
+          RefinePoints[iRefine,2,1] = -1.0 + (iR    ) * dksi  
+          RefinePoints[iRefine,2,2] = -1.0 + (jR - 1) * dksi  
+          RefinePoints[iRefine,3,1] = -1.0 + (iR - 1) * dksi  
+          RefinePoints[iRefine,3,2] = -1.0 + (jR    ) * dksi  
+          RefineMidPoints[iRefine,1] = 1/3 * (RefinePoints[iRefine,1,1] +
+            RefinePoints[iRefine,2,1] + RefinePoints[iRefine,3,1]) 
+          RefineMidPoints[iRefine,2] = 1/3 * (RefinePoints[iRefine,1,2] +
+            RefinePoints[iRefine,2,2] + RefinePoints[iRefine,3,2])
+          if iR == jRR
+            continue
           end  
-          NumNodes += 1  
-          pts[1,NumNodes] = Grid.Faces[iF].Mid.x  
-          pts[2,NumNodes] = Grid.Faces[iF].Mid.y  
-          pts[3,NumNodes] = Grid.Faces[iF].Mid.z  
-          NumNodes += 1  
-          pts[1,NumNodes] = Grid.Edges[iE1].Mid.x  
-          pts[2,NumNodes] = Grid.Edges[iE1].Mid.y  
-          pts[3,NumNodes] = Grid.Edges[iE1].Mid.z  
-          NumNodes += 1  
-          pts[1,NumNodes] = Grid.Nodes[iE].P.x  
-          pts[2,NumNodes] = Grid.Nodes[iE].P.y  
-          pts[3,NumNodes] = Grid.Nodes[iE].P.z  
-          NumNodes += 1  
-          pts[1,NumNodes] = Grid.Edges[iE2].Mid.x  
-          pts[2,NumNodes] = Grid.Edges[iE2].Mid.y  
-          pts[3,NumNodes] = Grid.Edges[iE2].Mid.z  
+          iRefine += 1  
+          RefinePoints[iRefine,1,1] = -1.0 + (iR    ) * dksi  
+          RefinePoints[iRefine,1,2] = -1.0 + (jR - 1) * dksi  
+          RefinePoints[iRefine,2,1] = -1.0 + (iR    ) * dksi  
+          RefinePoints[iRefine,2,2] = -1.0 + (jR    ) * dksi  
+          RefinePoints[iRefine,3,1] = -1.0 + (iR - 1) * dksi  
+          RefinePoints[iRefine,3,2] = -1.0 + (jR    ) * dksi  
+          RefineMidPoints[iRefine,1] = 1/3 * (RefinePoints[iRefine,1,1] +
+            RefinePoints[iRefine,2,1] + RefinePoints[iRefine,3,1]) 
+          RefineMidPoints[iRefine,2] = 1/3 * (RefinePoints[iRefine,1,2] +
+            RefinePoints[iRefine,2,2] + RefinePoints[iRefine,3,2])
         end  
       end  
-    end  
-  end  
-
+      for iF in 1 : NumFaces
+        for i in 1 : NumRefine
+          inds = Vector(1 : 3) .+ NumNodes
+          push!(cells, MeshCell(celltypeQ, inds))
+          NumNodes += 3
+        end
+      end  
+      pts = Array{Float64,2}(undef,3,NumNodes)
+      NumNodes = 0
+      for iF in 1 : NumFaces
+        for iR in 1 : NumRefine  
+          if Grid.Form == "Sphere" 
+            for i in 1 : 3  
+              NodeLoc[1,i], NodeLoc[2,i], NodeLoc[3,i] =
+                Linear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
+                Grid.Nodes[Grid.Faces[iF].N[1]].P,
+                Grid.Nodes[Grid.Faces[iF].N[2]].P,
+                Grid.Nodes[Grid.Faces[iF].N[3]].P,
+                Grid.Form,Grid.Rad)
+            end    
+            if Flat 
+              for i in 1 : 3
+                (lam[i],theta[i],z) = Grids.cart2sphere(NodeLoc[1,i],NodeLoc[2,i],NodeLoc[3,i])
+              end  
+              lammin = minimum(lam)
+              lammax = maximum(lam)
+              if abs(lammin - lammax) > 2*pi-dTol
+                for i = 1 : 3
+                  if lam[i] > pi
+                    lam[i] = lam[i] - 2*pi
+                    if lam[i] > 3*pi
+                      lam[i] = lam[i]  - 2*pi
+                    end
+                  end
+                end
+              end
+              for i in 1 : 3
+                NumNodes += 1
+                pts[:,NumNodes] = [lam[i],theta[i],0.0]
+              end
+            else    
+              for i in 1 : 3  
+                NumNodes += 1  
+                pts[1,NumNodes] = NodeLoc[1,i]
+                pts[2,NumNodes] = NodeLoc[2,i]
+                pts[3,NumNodes] = NodeLoc[3,i]
+              end
+            end  
+          else    
+            for i in 1 : 3  
+              NumNodes += 1  
+              pts[1,NumNodes], pts[2,NumNodes], pts[3,NumNodes] =
+                Linear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
+                Grid.Faces[iF].P[1],Grid.Faces[iF].P[2],Grid.Faces[iF].P[3],
+                Grid.Form,Grid.Rad)
+            end    
+          end    
+        end    
+      end    
+    end
+  end
   return vtkStruct{FT,
                    typeof(vtkInter)}(
   vtkInter,
   cells,
   pts,
+  RefineMidPoints,
   )
 end                   
 
@@ -362,11 +520,13 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,FE,Metric,Global) where FT<:A
   end
   dvtkInter = KernelAbstractions.zeros(backend,FT,size(vtkInter))
   copyto!(dvtkInter,vtkInter)
+  RefineMidPoints = zeros(0,0)
   return vtkStruct{FT,
                    typeof(dvtkInter)}(
     dvtkInter,
     cells,
     pts,
+    RefineMidPoints,
   )  
 end
 
@@ -1002,3 +1162,43 @@ function unstructured_vtkOrography(Height,vtkGrid, NF, CG,  part::Int, nparts::I
   outfiles=vtk_save(vtk)
   return outfiles::Vector{String}
 end  
+
+function Bilinear(ksi1,ksi2,P1,P2,P3,P4,Form,R)
+  x = 0.25 * ((1 - ksi1) * (1 - ksi2) * P1.x +
+    (1 + ksi1) * (1 - ksi2) * P2.x +
+    (1 + ksi1) * (1 + ksi2) * P3.x +
+    (1 - ksi1) * (1 + ksi2) * P4.x) 
+  y = 0.25 * ((1 - ksi1) * (1 - ksi2) * P1.y +
+    (1 + ksi1) * (1 - ksi2) * P2.y +
+    (1 + ksi1) * (1 + ksi2) * P3.y +
+    (1 - ksi1) * (1 + ksi2) * P4.y) 
+  z = 0.25 * ((1 - ksi1) * (1 - ksi2) * P1.z +
+    (1 + ksi1) * (1 - ksi2) * P2.z +
+    (1 + ksi1) * (1 + ksi2) * P3.z +
+    (1 - ksi1) * (1 + ksi2) * P4.z) 
+  if Form == "Sphere"
+    r = sqrt(x^2 + y^2 + z^2)
+    x = x / r * R
+    y = y / r * R
+    z = z / r * R
+  end
+  return x, y, z
+end  
+function Linear(ksi1,ksi2,P1,P2,P3,Form,R)
+  x = 0.5 * ((-ksi1 - ksi2) * P1.x +
+    (1 + ksi1) * P2.x +
+    (1 + ksi2) * P3.x)
+  y = 0.5 * ((-ksi1 - ksi2) * P1.y +
+    (1 + ksi1) * P2.y +
+    (1 + ksi2) * P3.y)
+  z = 0.5 * ((-ksi1 - ksi2) * P1.z +
+    (1 + ksi1) * P2.z +
+    (1 + ksi2) * P3.z)
+  if Form == "Sphere"
+    r = sqrt(x^2 + y^2 + z^2)
+    x = x / r * R
+    y = y / r * R
+    z = z / r * R
+  end
+  return x, y, z
+end

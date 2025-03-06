@@ -105,7 +105,6 @@ NumberThreadGPU = parsed_args["NumberThreadGPU"]
 k = parsed_args["OrderFEM"]
 
 MPI.Init()
-Flat = false #testen
 Device = "CPU"
 FloatTypeBackend = "Float64"
 
@@ -192,7 +191,7 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 #Output
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=k)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
@@ -247,12 +246,14 @@ FEMSei.InterpolatehRT!(Uhu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialP
 FEMSei.InterpolateDG!(Uh,DG,FEMSei.Jacobi!,Grid,Grid.Type,Model.InitialProfile)
 # Output of the initial values
 FileNumber=0
-VelSp = zeros(Grid.NumFaces,2)
-hout = zeros(Grid.NumFaces)
-Vort = zeros(Grid.NumFaces)
-FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
+VelSp = zeros(Grid.NumFaces*NumRefine,2)
+hout = zeros(Grid.NumFaces*NumRefine)
+Vort = zeros(Grid.NumFaces*NumRefine)
+FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
+FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
+FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!,
+  vtkSkeletonMesh.RefineMidPoints)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp] ,FileNumber,cName)
 
 for i = 1 : nAdveVel
@@ -305,9 +306,10 @@ for i = 1 : nAdveVel
   # Output
   if mod(i,nprint) == 0 
     global FileNumber += 1
-    FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!)
-    FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!)
-    FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
+    FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
+    FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
+    FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!,
+      vtkSkeletonMesh.RefineMidPoints)
     Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp] ,FileNumber,cName)
   end
 end
