@@ -1,12 +1,12 @@
-@inline function RiemannByLMARSNonLin!(F,VLL,VRR)
+@inline function RiemannByLMARSNonLin!(F,VLL,VRR,Phys)
   hPos = 1
   uPos = 2
   vPos = 3
 
-  cS = sqrt(9.81 * 1.e5)
+  cS = sqrt(Phys.Grav * 1.e5)
 
-  pLL = PresSh(VLL)
-  pRR = PresSh(VRR)
+  pLL = PresSh(VLL,Phys)
+  pRR = PresSh(VRR,Phys)
   hM = 0.5 * (VLL[hPos] + VRR[hPos])
   vLL = VLL[uPos] / VLL[hPos]
   vRR = VRR[uPos] / VRR[hPos]

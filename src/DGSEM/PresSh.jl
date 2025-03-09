@@ -1,5 +1,4 @@
-function PresSh(V)
+function PresSh(V,Phys)
   hPos = 1
-  Grav = 9.81
-  p = 0.5 * Grav * V[hPos]^2
+  p = 0.5 * Phys.Grav * V[hPos]^2
 end

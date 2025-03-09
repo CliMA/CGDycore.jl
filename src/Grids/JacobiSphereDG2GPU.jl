@@ -1,4 +1,4 @@
-function JacobiSphereDG2GPU!(X,dXdxI,J,Rotate,FE,F,Rad)
+function JacobiSphereDG2GPU!(X,dXdx,dXdxI,J,Rotate,FE,F,Rad)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -12,10 +12,10 @@ function JacobiSphereDG2GPU!(X,dXdxI,J,Rotate,FE,F,Rad)
 
   KJacobiSphereDG2Kernel! = JacobiSphereDG2Kernel!(backend,group)
 
-  KJacobiSphereDG2Kernel!(X,dXdxI,J,Rotate,FE.xw,F,Rad,ndrange=ndrange)
+  KJacobiSphereDG2Kernel!(X,dXdx,dXdxI,J,Rotate,FE.xw,F,Rad,ndrange=ndrange)
 end
 
-@kernel inbounds = true function JacobiSphereDG2Kernel!(X,dXdxI,JJ,Rotate,@Const(ksi),@Const(F),Rad)
+@kernel inbounds = true function JacobiSphereDG2Kernel!(X,dXdx,dXdxI,JJ,Rotate,@Const(ksi),@Const(F),Rad)
 
   I, J, iF   = @index(Local, NTuple)
   _,_,IF = @index(Global, NTuple)
@@ -70,10 +70,12 @@ end
                  eltype(X)(1)-ksi2  eltype(X)(-1)-ksi1
                  eltype(X)(1)+ksi2   eltype(X)(1)+ksi1
                  eltype(X)(-1)-ksi2   eltype(X)(1)-ksi1])
-    @views dXdxLoc[I,J,:,:,iF] .= eltype(X)(0.25) * J1 * B * C
+    @views dXdxLoc[I,J,:,1:2,iF] .= eltype(X)(0.25) * J1 * B * C
+    @. dXdx[:,1:2,1,ID,1,IF] = dXdxLoc[I,J,:,1:2,iF]
 
-    @views JJ = Determinant(dXdxLoc[I,J,:,1,iF],dXdxLoc[I,J,:,2,iF])
-    @views pinvJac(dXdxI[1:3,1:2,1,ID,1,IF],dXdxLoc[I,J,:,:,iF]) * JJ
+    JJ[ID,1,1,IF] = Determinant(dXdxLoc[I,J,:,1,iF],dXdxLoc[I,J,:,2,iF])
+    @views pinvJac(dXdxI[:,:,1,ID,1,IF],dXdxLoc[I,J,:,:,iF]) 
+    @views dXdxI[:,:,1,ID,1,IF] *= JJ[ID,1,1,IF]
     X[ID,1,1,1,IF] = X1 * Rad
     X[ID,1,2,1,IF] = X2 * Rad
     X[ID,1,3,1,IF] = X3 * Rad
@@ -107,14 +109,13 @@ end
   i21 = -g12 / det
   i12 = -g12 / det
   i22 = g11 / det
-  pD11 = D[1,1] * i11 + D[1,2] * i21
-  pD12 = D[1,1] * i12 + D[1,2] * i22
-  pD21 = D[2,1] * i11 + D[2,2] * i21
-  pD22 = D[2,1] * i12 + D[2,2] * i22
-  pD31 = D[3,1] * i11 + D[3,2] * i21
-  pD32 = D[3,1] * i12 + D[3,2] * i22
-  pinvD=@SArray([pD11 pD21 pD31
-                 pD21 pD22 pD32])
+  pinvD[1,1] = D[1,1] * i11 + D[1,2] * i21
+  pinvD[2,1] = D[1,1] * i12 + D[1,2] * i22
+  pinvD[1,2] = D[2,1] * i11 + D[2,2] * i21
+  pinvD[2,2] = D[2,1] * i12 + D[2,2] * i22
+  pinvD[1,3] = D[3,1] * i11 + D[3,2] * i21
+  pinvD[2,3] = D[3,1] * i12 + D[3,2] * i22
+
 end
 
 

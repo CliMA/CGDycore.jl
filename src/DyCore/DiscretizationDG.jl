@@ -156,7 +156,6 @@ end
   # Normal TV2(3,I,J,2,iz,IF)
 
   ID,Iz,IF = @index(Global, NTuple)
-
   NF = @uniform @ndrange()[3]
   NZ = @uniform @ndrange()[2]
 

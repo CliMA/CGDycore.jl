@@ -310,14 +310,33 @@ U = GPU.InitialConditionsDG2(backend,FTB,DG,Metric,Phys,Global,Model.InitialProf
 
 
 vtkCache = Outputs.vtkInit2D(DG.OrdPoly,Grids.TransSphereX!,DG,Metric,Global)
-@views Outputs.unstructured_vtk2Dim(U[:,:,:,1],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber)
+global FileNumber = 0
+cName = ["h";"uS1";"vS"]
+@views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,cName)
 
-V = zeros(size(U,1),size(U,2),size(U,3),4)
-DGSEM.VSp2VCart!(V,U,Metric.Rotate)
-@show Metric.Rotate[1,:,1,1,1,1]
-@show Metric.Rotate[2,:,1,1,1,1]
-@show Metric.Rotate[3,:,1,1,1,1]
+Cache = zeros(size(U,1),size(U,2),size(U,3),8)
+FU = zeros(size(U,1),size(U,2),size(U,3),3)
+UNew = similar(U)
+dtau = 20
+nAdvel::Int = 3600 * 24 * 6 / dtau
+nprint::Int  = 3600 * 6 / dtau
+EndTime = nAdvel * dtau / 3600
+@show EndTime
 
-F = zeros(size(U,1),size(U,2),size(U,3),4)
-DGSEM.FluxVolumeNonLin!(F,V,DG,Metric.dXdxI,Grid)
-DGSEM.RiemanNonLinKernel(F,V,DG,Metric,Grid)
+@inbounds for i = 1 : nAdvel
+
+  DGSEM.Fcn!(FU,U,DG,Metric,Grid,Cache,Phys)
+  @. UNew = U + 1/3 * dtau * FU
+
+  DGSEM.Fcn!(FU,UNew,DG,Metric,Grid,Cache,Phys)
+  @. UNew = U + 1/2 * dtau * FU
+
+  DGSEM.Fcn!(FU,UNew,DG,Metric,Grid,Cache,Phys)
+  @. U = U + dtau * FU
+
+  if mod(i,nprint) == 0
+    global FileNumber += 1
+    @show i, FileNumber
+    @views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,cName)
+  end
+end

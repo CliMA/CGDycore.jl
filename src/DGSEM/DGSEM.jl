@@ -15,5 +15,7 @@ include("RiemannNonLin.jl")
 include("RiemannByLMARSNonLin.jl")
 include("FluxVolumeNonLin.jl")
 include("PresSh.jl")
+include("Source.jl")
+include("Fcn.jl")
 
 end

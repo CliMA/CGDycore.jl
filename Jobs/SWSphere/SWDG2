@@ -2,7 +2,7 @@
 julia --project Examples/DriverDG2.jl \
   --Problem=""GalewskiSphere"" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumV=3 \
   --NumTr=0 \
   --RhoVPos=0 \
@@ -31,11 +31,11 @@ julia --project Examples/DriverDG2.jl \
   --TopoS="" \
   --GridType="CubedSphere" \
   --nz=1 \
-  --nPanel=32 \
+  --nPanel=20 \
   --nLon=120 \
   --nLat=60 \
   --H=300.0 \
-  --OrdPoly=4 \
+  --OrdPoly=5 \
   --OrdPolyZ=0 \
   --HyperVisc=true \
   --HyperDCurl=1.0e13 \

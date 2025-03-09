@@ -126,6 +126,7 @@ mutable struct MetricStruct{FT<:AbstractFloat,
   J::AT4
   X::AT5
   dXdxI::AT6
+  dXdx::AT6
   Rotate::AT6
   nSS::AT2
   nS::AT3
@@ -148,6 +149,7 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
     X      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,3,nz,NF)
     dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
+    dXdx   = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
     Rotate  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
     nSS  = KernelAbstractions.zeros(backend,FT,3,NumG)
     nS = KernelAbstractions.zeros(backend,FT,nQuad,3,NF)
@@ -174,6 +176,7 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
         J,
         X,
         dXdxI,
+        dXdx,
         Rotate,
         nSS,
         nS, 
@@ -220,30 +223,30 @@ struct PhysParameters{FT<:AbstractFloat}
   Karm::FT
 end
 function PhysParameters{FT}() where FT<:AbstractFloat
-  RadEarth = 6.37122e+6
-  Grav =  9.80616
-  Cpd = 1004.0
-  Cvd = 717.0
-  Cpv = 1885.0
-  Cvv = 1424.0
-  Cpl = 4186.0
-  Cpi = 2110.0
-  Rd = Cpd - Cvd
-  Rv = Cpv - Cvv
+  RadEarth::FT = 6.37122e+6
+  Grav::FT =  9.80616
+  Cpd::FT = 1004.0
+  Cvd::FT = 717.0
+  Cpv::FT = 1885.0
+  Cvv::FT = 1424.0
+  Cpl::FT = 4186.0
+  Cpi::FT = 2110.0
+  Rd::FT = Cpd - Cvd
+  Rv::FT = Cpv - Cvv
 # L00 = 2.5000e6 + (Cpl - Cpv) * 273.15
-  L0V =  2.5000e6 # 2500800 
-  L0S =  2.834e6
-  L0F =  L0S - L0V
-  p0 = 1.0e5
-  Rho0 = 1.41e0
-  Gamma = Cpd / Cvd
-  kappa = Rd / Cpd
-  Omega = 2 * pi / 24.0 / 3600.0
-  T0 = 273.15
-  T00 = 273.15 -35.0
-  Cd = 0.125
-  PrTke = 1.0
-  Karm = 0.4
+  L0V::FT =  2.5000e6 # 2500800 
+  L0S::FT =  2.834e6
+  L0F::FT =  L0S - L0V
+  p0::FT = 1.0e5
+  Rho0::FT = 1.41e0
+  Gamma::FT = Cpd / Cvd
+  kappa::FT = Rd / Cpd
+  Omega::FT = 2 * pi / 24.0 / 3600.0
+  T0::FT = 273.15
+  T00::FT = 273.15 -35.0
+  Cd::FT = 0.125
+  PrTke::FT = 1.0
+  Karm::FT = 0.4
  return PhysParameters{FT}(
   RadEarth,
   Grav,

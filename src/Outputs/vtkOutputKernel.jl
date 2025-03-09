@@ -273,7 +273,6 @@ function InterpolateCGDim2GPU!(cCell,c,Inter,Glob)
   ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
 
   KInterpolateCGDim2Kernel! = InterpolateCGDim2Kernel!(backend,group)
-  @show "KInterpolateCGDim2Kernel"
   KInterpolateCGDim2Kernel!(cCell,c,Inter,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 

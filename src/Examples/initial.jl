@@ -836,7 +836,7 @@ end
 end
 
 @inline function simpson(x0,xN,r,dx,f,Param,Phys)
-  n=ceil(Int,(xN-x0)/dx) + 1
+  n=floor(Int,(xN-x0)/dx) + 1
   h=(xN-x0)/n
   res=0.5*(f(x0,r,Param,Phys)+f(xN,r,Param,Phys))
   xi=x0

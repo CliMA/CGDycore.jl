@@ -9,6 +9,7 @@ function vtkStruct{FT}(backend) where FT<:AbstractFloat
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
   pts = Array{Float64,2}(undef,0,0)
   cells = MeshCell[]
+  RefineMidPoints = zeros(0,0)
   return vtkStruct{FT,
                    typeof(vtkInter)}(
   vtkInter,
@@ -619,11 +620,13 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   end
   dvtkInter = KernelAbstractions.zeros(backend,FT,size(vtkInter))
   copyto!(dvtkInter,vtkInter)
+  RefineMidPoints = zeros(0,0)
   return vtkStruct{FT,
                    typeof(dvtkInter)}(
     dvtkInter,
     cells,
     pts,
+    RefineMidPoints,
   )  
 end
 
@@ -1116,26 +1119,31 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   return outfiles::Vector{String}
 end
 
-function unstructured_vtk2Dim(Height,vtkGrid, NF, CG,  part::Int, nparts::Int)
+function unstructured_vtk2Dim(c,vtkGrid, NF, CG,  part::Int, nparts::Int, FileNumber, cName)
   nz = 1
   OrdPrint = CG.OrdPoly
   OrdPoly = CG.OrdPoly
   vtkInter = vtkGrid.vtkInter
   cells = vtkGrid.cells
   pts = vtkGrid.pts
-  filename = "Orography"
 
-  vtk_filename_noext = filename
+  filename = "Orography"
+  stepS="$FileNumber"
+  vtk_filename_noext = filename * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
-  HeightCell = zeros(OrdPrint*OrdPrint*NF) 
-  backend = get_backend(Height)
-  FTB = eltype(Height)
+  backend = get_backend(c)
+  FTB = eltype(c)
   cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,NF)
-  #@views InterpolateCG!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,CG.Glob,NF,nz)
-  InterpolateCGDim2GPU!(cCell,Height,vtkInter,CG.Glob)
-  copyto!(HeightCell,cCell)
-  @show minimum(HeightCell),maximum(HeightCell)
-  vtk["Height", VTKCellData()] = HeightCell
+  HeightCell = zeros(OrdPrint*OrdPrint*NF,length(cName)) 
+  iC = 1
+  @views InterpolateCGDim2GPU!(cCell,c[:,:,:,iC],vtkInter,CG.Glob)
+  @views copyto!(HeightCell[:,iC],cCell)
+  @views vtk[cName[iC], VTKCellData()] = HeightCell[:,iC]
+  for iC = 2 : length(cName)
+    @views InterpolateCGDim2GPU!(cCell,c[:,:,:,iC]./c[:,:,:,1],vtkInter,CG.Glob)
+    @views copyto!(HeightCell[:,iC],cCell)
+    @views vtk[cName[iC], VTKCellData()] = HeightCell[:,iC]
+  end
   outfiles=vtk_save(vtk)
   return outfiles::Vector{String}
 end  
