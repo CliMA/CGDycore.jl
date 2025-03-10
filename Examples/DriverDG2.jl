@@ -87,6 +87,7 @@ nx = parsed_args["nx"]
 ny = parsed_args["ny"]
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+ns = parsed_args["ns"]
 RefineLevel = parsed_args["RefineLevel"]
 nLon = parsed_args["nLon"]
 nLat = parsed_args["nLat"]
@@ -269,7 +270,6 @@ if GridForm == "Cartesian"
               )
   Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
 else  
-  ns=50
   if RadEarth == 0.0
     RadEarth = Phys.RadEarth
     if ScaleFactor != 0.0
@@ -311,13 +311,12 @@ U = GPU.InitialConditionsDG2(backend,FTB,DG,Metric,Phys,Global,Model.InitialProf
 
 vtkCache = Outputs.vtkInit2D(DG.OrdPoly,Grids.TransSphereX!,DG,Metric,Global)
 global FileNumber = 0
-cName = ["h";"uS1";"vS"]
+cName = ["h";"uS1";"vS1"]
 @views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,cName)
 
 Cache = zeros(size(U,1),size(U,2),size(U,3),8)
 FU = zeros(size(U,1),size(U,2),size(U,3),3)
 UNew = similar(U)
-dtau = 20
 nAdvel::Int = 3600 * 24 * 6 / dtau
 nprint::Int  = 3600 * 6 / dtau
 EndTime = nAdvel * dtau / 3600

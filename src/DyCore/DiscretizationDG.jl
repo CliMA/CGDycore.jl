@@ -137,9 +137,15 @@ end
     tSLoc1 = tSLoc1 / t1Norm
     tSLoc2 = tSLoc2 / t1Norm
     tSLoc3 = tSLoc3 / t1Norm
-    NH[1,K,I,Iz,IE] = nSLoc1
-    NH[2,K,I,Iz,IE] = nSLoc2
-    NH[3,K,I,Iz,IE] = nSLoc3
+    if IS == 1 
+      NH[1,K,I,Iz,IE] = -nSLoc1
+      NH[2,K,I,Iz,IE] = -nSLoc2
+      NH[3,K,I,Iz,IE] = -nSLoc3
+    else
+      NH[1,K,I,Iz,IE] = nSLoc1
+      NH[2,K,I,Iz,IE] = nSLoc2
+      NH[3,K,I,Iz,IE] = nSLoc3
+    end
     T1H[1,K,I,Iz,IE] = tSLoc1
     T1H[2,K,I,Iz,IE] = tSLoc2
     T1H[3,K,I,Iz,IE] = tSLoc3

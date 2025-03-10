@@ -29,7 +29,7 @@ julia --project Examples/DriverDG2.jl \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
-  --GridType="CubedSphere" \
+  --GridType="HealPix" \
   --nz=1 \
   --nPanel=20 \
   --ns=20 \

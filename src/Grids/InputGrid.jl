@@ -281,8 +281,11 @@ function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
   NumNodesB = 0
   NumNodesG = 0
   AdaptGrid = ""
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
 
   return GridStruct{FT,
+                    typeof(EF),
                     typeof(z)}(
     nz,
     zP,
@@ -308,6 +311,8 @@ function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
     nBar3,
     nBar,
     AdaptGrid,
+    EF,
+    FE,
     )
 end
 

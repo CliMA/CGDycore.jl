@@ -29,10 +29,10 @@ julia --project Examples/DriverDG2.jl \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
-  --GridType="CubedSphere" \
+  --GridType="SQuadGen" \
   --nz=1 \
   --nPanel=20 \
-  --ns=20 \
+  --ns=10 \
   --nLon=120 \
   --nLat=60 \
   --H=300.0 \
