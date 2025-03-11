@@ -1119,7 +1119,7 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   return outfiles::Vector{String}
 end
 
-function unstructured_vtk2Dim(c,vtkGrid, NF, CG,  part::Int, nparts::Int, FileNumber, cName)
+function unstructured_vtk2Dim(c,vtkGrid, NF, CG,  part::Int, nparts::Int, FileNumber, FileName, cName)
   nz = 1
   OrdPrint = CG.OrdPoly
   OrdPoly = CG.OrdPoly
@@ -1127,9 +1127,9 @@ function unstructured_vtk2Dim(c,vtkGrid, NF, CG,  part::Int, nparts::Int, FileNu
   cells = vtkGrid.cells
   pts = vtkGrid.pts
 
-  filename = "Orography"
-  stepS="$FileNumber"
-  vtk_filename_noext = filename * stepS
+  step = FileNumber
+  stepS = "$step"
+  vtk_filename_noext = pwd()*"/output/VTK/" * FileName * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
   backend = get_backend(c)
   FTB = eltype(c)

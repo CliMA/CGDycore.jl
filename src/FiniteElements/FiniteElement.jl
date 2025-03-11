@@ -192,6 +192,8 @@ mutable struct DGQuad{FT<:AbstractFloat,
     DST::Array{FT, 2}
     DSZ::AT2
     DWZ::AT2
+    DV::AT2
+    DVT::AT2
     S::Array{FT, 2}
     BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
@@ -204,8 +206,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   nz = Grid.nz
 
 # CG = CGStruct{FT}(backend)
-  OrdPoly=OrdPoly
-  OrdPolyZ=OrdPolyZ
   DoF = OP * OP
 
   xwCPU, wCPU = gausslobatto(OrdPoly+1)
@@ -250,6 +250,13 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   copyto!(DW,DWCPU)
   DST=DS'
   DWT=DW'
+
+  DV = KernelAbstractions.zeros(backend,FT,size(DSCPU))
+  DVCPU = 2 * DSCPU
+  DVCPU[1,1] += 1 / wCPU[1]
+  DVCPU[OrdPoly+1,OrdPoly+1] += -1 / wCPU[OrdPoly+1]
+  copyto!(DV,DVCPU)
+  DVT=DV'
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
@@ -329,6 +336,8 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     DST,
     DSZ,
     DWZ,
+    DV,
+    DVT,
     S,
     BoundaryDoF,
     MasterSlave,

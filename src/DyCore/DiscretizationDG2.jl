@@ -58,10 +58,10 @@ function DiscretizationDG2(backend,FT,Jacobi,DG,Exchange,Global)
   Metric.NH = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
   Metric.T1H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
   Metric.T2H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
-  KNormalTangentHKernel1!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
-    Metric.dXdx,Metric.X,Grid.EF,Grid.FE,ndrange=ndrange)
-# KNormalTangentHKernel!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
-#   Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
+# KNormalTangentHKernel1!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
+#   Metric.dXdx,Metric.X,Grid.EF,Grid.FE,ndrange=ndrange)
+  KNormalTangentHKernel!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
+    Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
 
   NzG = min(div(NumberThreadGPU,DoF),nz+1)
   group = (OP,OP,NzG)

@@ -41,29 +41,102 @@ function FluxVolumeNonLin!(F,V,DG,dXdxI,Grid,Phys)
 end
 
 
-@inline function FluxNonLin(f,c,Phys)
+@inline function FluxNonLin(flux,V,Phys)
   uPos = 2
   vPos = 3
   wPos = 4
   hPos = 1
-  p = PresSh(c,Phys)
-  u = c[uPos] / c[hPos]
-  v = c[vPos] / c[hPos]
-  w = c[wPos] / c[hPos]
-  f[1,hPos] = -c[uPos]
-  f[1,uPos] = -c[uPos] * u - p
-  f[1,vPos] = -c[uPos] * v
-  f[1,wPos] = -c[uPos] * w
+  p = PresSh(V,Phys)
+  u = V[uPos] / V[hPos]
+  v = V[vPos] / V[hPos]
+  w = V[wPos] / V[hPos]
+  flux[1,hPos] = -V[uPos]
+  flux[1,uPos] = -V[uPos] * u - p
+  flux[1,vPos] = -V[uPos] * v
+  flux[1,wPos] = -V[uPos] * w
 
-  f[2,hPos] = -c[vPos]
-  f[2,uPos] = -c[vPos] * u
-  f[2,vPos] = -c[vPos] * v - p
-  f[2,wPos] = -c[vPos] * w
+  flux[2,hPos] = -V[vPos]
+  flux[2,uPos] = -V[vPos] * u
+  flux[2,vPos] = -V[vPos] * v - p
+  flux[2,wPos] = -V[vPos] * w
 
 
-  f[3,hPos] = -c[wPos]
-  f[3,uPos] = -c[wPos] * u
-  f[3,vPos] = -c[wPos] * v
-  f[3,wPos] = -c[wPos] * w - p
+  flux[3,hPos] = -V[wPos]
+  flux[3,uPos] = -V[wPos] * u
+  flux[3,vPos] = -V[wPos] * v
+  flux[3,wPos] = -V[wPos] * w - p
 end
 
+@inline function FluxNonLinAver(flux,VL,VR,m_L,m_R,Phys)
+  uPos = 2
+  vPos = 3
+  wPos = 4
+  hPos = 1
+  pL = PresSh(VL,Phys)
+  pR = PresSh(VR,Phys)
+  hL = VL[hPos]
+  hR = VR[hPos]
+  uL = VL[uPos] / hL
+  vL = VL[vPos] / hL
+  wL = VL[wPos] / hL
+  uR = VR[uPos] / hR
+  vR = VR[vPos] / hR
+  wR = VR[wPos] / hR
+
+  pAv = 0.5 * (pL + pR)
+  uAv = 0.5 * (uL + uR)
+  vAv = 0.5 * (vL + vR)
+  wAv = 0.5 * (wL + wR)
+  hAv = 0.5 * (hL + hR)
+  mAv1 = 0.5 * (m_L[1] + m_R[1])
+  mAv2 = 0.5 * (m_L[2] + m_R[2])
+  mAv3 = 0.5 * (m_L[3] + m_R[3])
+  qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
+  flux[1] = hAv * qHat
+  flux[2] = flux[1] * uAv + mAv1 * pAv
+  flux[3] = flux[1] * vAv + mAv2 * pAv
+  flux[4] = flux[1] * wAv + mAv3 * pAv
+end    
+
+function VolumeFluxAver(FluxAver,fTilde,gTilde,V,dXdxI,Phys)
+  nV = size(fTilde,1);
+  NX = size(fTilde,2);
+  @inbounds for j = 1 : NX
+    @inbounds for i = 1 : NX
+      @inbounds for l = i + 1 : NX
+        @views FluxAver(fTilde[:,l,i,j],V[i,j,:],V[l,j,:],dXdxI[1,:,i,j],
+          dXdxI[1,:,l,j],Phys)  
+        @. fTilde[:,i,l,j] = fTilde[:,l,i,j]
+      end
+      @. fTilde[:,i,i,j] = 0.0
+      @inbounds for l = j + 1 : NX
+        @views FluxAver(gTilde[:,l,i,j],V[i,j,:],V[i,l,:],dXdxI[2,:,i,j],
+          dXdxI[2,:,i,l],Phys)  
+        @. gTilde[:,j,i,l] = gTilde[:,l,i,j]
+      end
+      @. gTilde[:,j,i,j] = 0.0
+    end
+  end
+end
+
+function FluxSplitVolumeNonLin!(FluxAver,F,V,DG,dXdxI,Grid,Phys)
+  NX = DG.OrdPoly + 1
+  NV = 4
+  fTilde = zeros(NV,NX,NX,NX)
+  gTilde = zeros(NV,NX,NX,NX)
+  @inbounds for iF = 1 : Grid.NumFaces
+    iDG1 = (iF - 1) * NX *NX + 1  
+    iDG2 = iF * NX * NX   
+    @views VolumeFluxAver(FluxAver,fTilde,gTilde,reshape(V[1,1,iDG1:iDG2,:],NX,NX,NV),
+      reshape(dXdxI[:,:,1,:,1,iF],3,3,NX,NX),Phys)
+    @views FLoc = reshape(F[1,1,iDG1:iDG2,:],NX,NX,NV)
+    @inbounds for j = 1 : NX
+      @inbounds for i = 1 : NX
+        @inbounds for l = 1 : NX
+          @. FLoc[i,j,:] -= DG.DVT[l,i] * fTilde[:,l,i,j] +
+           DG.DVT[l,j] * gTilde[:,l,i,j]
+        end
+      end
+    end
+  end
+end
