@@ -174,6 +174,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     OrdPolyZ::Int
     DoF::Int
     Glob::IT3
+    IndE::IT2
     Stencil::IT2
     NumG::Int
     NumI::Int
@@ -197,6 +198,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     S::Array{FT, 2}
     BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
+    VZ::AT1
 end
 
 function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
@@ -275,7 +277,22 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   copyto!(MasterSlave,MasterSlaveCPU)
   BoundaryDoF = KernelAbstractions.zeros(backend,Int,size(BoundaryDoFCPU))
   copyto!(BoundaryDoF,BoundaryDoFCPU)
-
+  IndECPU = zeros(Int,4,OrdPoly+1)
+  @inbounds for i = 1 : OrdPoly + 1
+    IndECPU[1,i] = i                               #  1  2  3  4  5
+    IndECPU[2,i] = i * (OrdPoly + 1)               #  5 10 15 20 25
+    IndECPU[3,i] = i  + OrdPoly * (OrdPoly + 1)    # 21 22 23 24 25
+    IndECPU[4,i] = 1  + (i-1) * (OrdPoly + 1)      #  1  6 11 16 21
+  end
+  IndE = KernelAbstractions.zeros(backend,Int,4,OrdPoly+1)
+  copyto!(IndE,IndECPU)
+  VZCPU = zeros(4)
+  VZCPU[1] = -1.0
+  VZCPU[2] = -1.0
+  VZCPU[3] = 1.0
+  VZCPU[4] = 1.0
+  VZ = KernelAbstractions.zeros(backend,FT,4)
+  copyto!(VZ,VZCPU)
 
 # Boundary nodes
 #=
@@ -318,6 +335,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     OrdPolyZ,
     DoF,
     Glob,
+    IndE,
     Stencil,
     NumG,
     NumI,
@@ -341,5 +359,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
     S,
     BoundaryDoF,
     MasterSlave,
+    VZ,
  )
 end

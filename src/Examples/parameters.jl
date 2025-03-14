@@ -15,6 +15,7 @@ Base.@kwdef struct ParamGalewskiSphere{FT}
   lat1G::FT = pi/2.0-lat0G
   eN::FT = exp(-4.0/(lat1G-lat0G)^2.0)
   uM::FT = 80.0
+  cS::FT = sqrt(H0G * 9.81)
 end
 
 Base.@kwdef struct ParamHaurwitzSphere

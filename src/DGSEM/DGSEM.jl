@@ -10,9 +10,13 @@ import ..Outputs
 import ..Integration
 import ..FiniteElements
 
+using StaticArrays
+using KernelAbstractions
+using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using KernelAbstractions.Extras: @unroll
+
 
 include("RiemannNonLin.jl")
-include("RiemannByLMARSNonLin.jl")
 include("FluxVolumeNonLin.jl")
 include("PresSh.jl")
 include("Source.jl")

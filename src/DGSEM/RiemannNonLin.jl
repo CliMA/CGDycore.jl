@@ -1,130 +1,146 @@
-function VSp2VCart!(VCart,VSp,Rotate)
-  @. VCart[:,:,:,1] = VSp[:,:,:,1]
-  NF = size(Rotate,6)
-  nQuad = size(Rotate,4)
-  iD = 0
-  @inbounds for iF = 1 : NF
-    @inbounds for iQ = 1 : nQuad  
-      iD += 1  
-      VCart[1,1,iD,2] = Rotate[1,1,1,iQ,1,iF] * VSp[1,1,iD,2] +
-        Rotate[2,1,1,iQ,1,iF] * VSp[1,1,iD,3]
-      VCart[1,1,iD,3] = Rotate[1,2,1,iQ,1,iF] * VSp[1,1,iD,2] +
-        Rotate[2,2,1,iQ,1,iF] * VSp[1,1,iD,3]
-      VCart[1,1,iD,4] = Rotate[1,3,1,iQ,1,iF] * VSp[1,1,iD,2] +
-        Rotate[2,3,1,iQ,1,iF] * VSp[1,1,iD,3]
+abstract type RiemannSolver end
+
+Base.@kwdef struct RiemannLMARS <: RiemannSolver end
+
+function (Riemann::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,pPos)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR)
+
+    FT = eltype(F)
+    cS = Param.cS
+
+    pLL = AuxL[pPos]
+    pRR = AuxR[pPos]
+    hM = FT(0.5) * (VLL[hPos] + VRR[hPos])
+    vLL = VLL[uPos] / VLL[hPos]
+    vRR = VRR[uPos] / VRR[hPos]
+    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * hM * (vRR - vLL)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / hM
+    if vM > FT(0)
+      F[hPos] = vM * VLL[hPos]
+      F[uPos] = vM * VLL[uPos] + pM
+      F[vPos] = vM * VLL[vPos]
+    else
+      F[hPos] = vM * VRR[hPos]
+      F[uPos] = vM * VRR[uPos] + pM
+      F[vPos] = vM * VRR[vPos]
     end
+  end
+  return RiemannByLMARSNonLin!
+end    
+
+@kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,U,Aux,Glob,IndE,EF,FTE,NH,T1H,T2H,VolSurfH,
+  JJ,w,VZ,Grid, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+
+  I, iE   = @index(Local, NTuple)
+  _,IE = @index(Global, NTuple)
+
+  NE = @uniform @ndrange()[2]
+
+  VLL = @private eltype(F) (NV,)
+  VRR = @private eltype(F) (NV,)
+  AuxL = @private eltype(F) (NAUX,)
+  AuxR = @private eltype(F) (NAUX,)
+  FLoc = @private eltype(F) (NV,)
+  FE = @private eltype(F) (NV,)
+
+  hPos = @uniform 1
+  uPos = @uniform 2
+  vPos = @uniform 3
+  wPos = @uniform 4
+
+  iFL = EF[1,IE]
+  iFR = EF[2,IE]
+  EL = FTE[1,IE]
+  ER = FTE[2,IE]
+  VZL = VZ[EL]
+
+  if IE <= NE
+    indL = Glob[IndE[EL,I],iFL]
+    indR = Glob[IndE[ER,I],iFR]
+    VLL[hPos] = U[1,1,indL,hPos]
+    VLL[uPos] = NH[1,1,I,1,IE] * U[1,1,indL,uPos] +
+      NH[2,1,I,1,IE] * U[1,1,indL,vPos] +
+      NH[3,1,I,1,IE] * U[1,1,indL,wPos]
+    VLL[vPos] = T1H[1,1,I,1,IE] * U[1,1,indL,uPos] +
+      T1H[2,1,I,1,IE] * U[1,1,indL,vPos] +
+      T1H[3,1,I,1,IE] * U[1,1,indL,wPos]
+    VLL[wPos] = T2H[1,1,I,1,IE] * U[1,1,indL,uPos] +
+      T2H[2,1,I,1,IE] * U[1,1,indL,vPos] +
+      T2H[3,1,I,1,IE] * U[1,1,indL,wPos]
+    VRR[hPos] = U[1,1,indR,hPos]
+    VRR[uPos] = NH[1,1,I,1,IE] * U[1,1,indR,uPos] +
+      NH[2,1,I,1,IE] * U[1,1,indR,vPos] +
+      NH[3,1,I,1,IE] * U[1,1,indR,wPos]
+    VRR[vPos] = T1H[1,1,I,1,IE] * U[1,1,indR,uPos] +
+      T1H[2,1,I,1,IE] * U[1,1,indR,vPos] +
+      T1H[3,1,I,1,IE] * U[1,1,indR,wPos]
+    VRR[wPos] = T2H[1,1,I,1,IE] * U[1,1,indR,uPos] +
+      T2H[2,1,I,1,IE] * U[1,1,indR,vPos] +
+      T2H[3,1,I,1,IE] * U[1,1,indR,wPos]
+    @views RiemannSolver!(FLoc,VLL,VRR,Aux[1,1,indL,:],Aux[1,1,indR,:])  
+
+    FE[hPos] =  FLoc[hPos]
+    FE[uPos] =  NH[1,1,I,1,IE] * FLoc[uPos] +
+      T1H[1,1,I,1,IE] * FLoc[vPos] + T2H[1,1,I,1,IE] * FLoc[wPos]
+    FE[vPos] =  NH[2,1,I,1,IE] * FLoc[uPos] +
+      T1H[2,1,I,1,IE] * FLoc[vPos] + T2H[2,1,I,1,IE] * FLoc[wPos]
+    FE[wPos] =  NH[3,1,I,1,IE] * FLoc[uPos] +
+      T1H[3,1,I,1,IE] * FLoc[vPos] + T2H[3,1,I,1,IE] * FLoc[wPos]
+    Surf = VolSurfH[1,I,1,IE] * VZL / w  
+    FE[hPos] *= Surf
+    FE[uPos] *= Surf
+    FE[vPos] *= Surf
+    FE[wPos] *= Surf
+    JJL = JJ[IndE[EL,I],1,1,iFL]
+    JJR = JJ[IndE[ER,I],1,1,iFR]
+    @atomic :monotonic F[1,1,indL,hPos] += FE[hPos] / JJL
+    @atomic :monotonic F[1,1,indL,uPos] += FE[uPos] / JJL
+    @atomic :monotonic F[1,1,indL,vPos] += FE[vPos] / JJL
+    @atomic :monotonic F[1,1,indL,wPos] += FE[wPos] / JJL
+    @atomic :monotonic F[1,1,indR,hPos] -= FE[hPos] / JJR
+    @atomic :monotonic F[1,1,indR,uPos] -= FE[uPos] / JJR
+    @atomic :monotonic F[1,1,indR,vPos] -= FE[vPos] / JJR
+    @atomic :monotonic F[1,1,indR,wPos] -= FE[wPos] / JJR
   end  
 end
 
-function VCart2VSp!(VSp,VCart,Rotate)
-  @. VSp[:,:,:,1] = VCart[:,:,:,1]
-  NF = size(Rotate,6)
-  nQuad = size(Rotate,4)
-  iD = 0
-  @inbounds for iF = 1 : NF
-    @inbounds for iQ = 1 : nQuad
-      iD += 1
-      VSp[1,1,iD,2] = Rotate[1,1,1,iQ,1,iF] * VCart[1,1,iD,2] +
-        Rotate[1,2,1,iQ,1,iF] * VCart[1,1,iD,3] +
-        Rotate[1,3,1,iQ,1,iF] * VCart[1,1,iD,4]
-      VSp[1,1,iD,3] = Rotate[2,1,1,iQ,1,iF] * VCart[1,1,iD,2] +
-        Rotate[2,2,1,iQ,1,iF] * VCart[1,1,iD,3] +
-        Rotate[2,3,1,iQ,1,iF] * VCart[1,1,iD,4]
-    end
-  end
+@kernel inbounds = true function VSp2VCartKernel!(VCart,@Const(VSp),@Const(Rotate))
+
+  iQ,  = @index(Local, NTuple)
+  _,IF = @index(Global, NTuple)
+
+  NQ = @uniform @ndrange()[1]
+  NF = @uniform @ndrange()[2]
+
+  if IF <= NF
+    iD = iQ + (IF - 1) * NQ
+    VCart[1,1,iD,1] = VSp[1,1,iD,1]
+    VCart[1,1,iD,2] = Rotate[1,1,1,iQ,1,IF] * VSp[1,1,iD,2] +
+      Rotate[2,1,1,iQ,1,IF] * VSp[1,1,iD,3]
+    VCart[1,1,iD,3] = Rotate[1,2,1,iQ,1,IF] * VSp[1,1,iD,2] +
+      Rotate[2,2,1,iQ,1,IF] * VSp[1,1,iD,3]
+    VCart[1,1,iD,4] = Rotate[1,3,1,iQ,1,IF] * VSp[1,1,iD,2] +
+      Rotate[2,3,1,iQ,1,IF] * VSp[1,1,iD,3]
+  end  
 end
 
-function RiemanNonLinKernel(F,U,DG,Metric,Grid,Phys)
 
-  OrdPoly = DG.OrdPoly
-  Glob = DG.Glob
+@kernel inbounds = true function VCart2VSpKernel!(VSp,@Const(VCart),@Const(Rotate))
 
-  NH = Metric.NH
-  T1H = Metric.T1H
-  T2H = Metric.T2H
-  VolSurfH = Metric.VolSurfH
-  JJ = Metric.J
+  iQ,  = @index(Local, NTuple)
+  _,IF = @index(Global, NTuple)
 
-  hPos = 1
-  uPos = 2
-  vPos = 3
-  wPos = 4
+  NQ = @uniform @ndrange()[1]
+  NF = @uniform @ndrange()[2]
 
-  IndE = zeros(Int,4,OrdPoly+1)
-  @inbounds for i = 1 : OrdPoly + 1
-    IndE[1,i] = i                               #  1  2  3  4  5
-    IndE[2,i] = i * (OrdPoly + 1)               #  5 10 15 20 25
-    IndE[3,i] = i  + OrdPoly * (OrdPoly + 1)    # 21 22 23 24 25 
-    IndE[4,i] = 1  + (i-1) * (OrdPoly + 1)      #  1  6 11 16 21 
+  if IF <= NF
+    iD = iQ + (IF - 1) * NQ
+    VSp[1,1,iD,1] = VCart[1,1,iD,1]
+    VSp[1,1,iD,2] = Rotate[1,1,1,iQ,1,IF] * VCart[1,1,iD,2] +
+      Rotate[1,2,1,iQ,1,IF] * VCart[1,1,iD,3] +
+      Rotate[1,3,1,iQ,1,IF] * VCart[1,1,iD,4]
+    VSp[1,1,iD,3] = Rotate[2,1,1,iQ,1,IF] * VCart[1,1,iD,2] +
+      Rotate[2,2,1,iQ,1,IF] * VCart[1,1,iD,3] +
+      Rotate[2,3,1,iQ,1,IF] * VCart[1,1,iD,4]
   end  
-
-  VLL = zeros(4)
-  VRR = zeros(4)
-  FLoc = zeros(4)
-  FE = zeros(OrdPoly+1,4)
-  VZ = zeros(4)
-  VZ[1] = -1.0
-  VZ[2] = -1.0
-  VZ[3] = 1.0
-  VZ[4] = 1.0
-
-  @inbounds for iE = 1 : Grid.NumEdges
-    iFL = Grid.Edges[iE].F[1]  
-    iFR = Grid.Edges[iE].F[2]  
-    EL = Grid.Edges[iE].FE[1]
-    ER = Grid.Edges[iE].FE[2]
-    VZL = VZ[EL]
-
-    @inbounds for i = 1 : OrdPoly + 1
-      indL = Glob[IndE[EL,i],iFL]  
-      indR = Glob[IndE[ER,i],iFR]  
-      VLL[hPos] = U[1,1,indL,hPos]
-      VLL[uPos] = NH[1,1,i,1,iE] * U[1,1,indL,uPos] +  
-        NH[2,1,i,1,iE] * U[1,1,indL,vPos] +  
-        NH[3,1,i,1,iE] * U[1,1,indL,wPos]  
-      VLL[vPos] = T1H[1,1,i,1,iE] * U[1,1,indL,uPos] +  
-        T1H[2,1,i,1,iE] * U[1,1,indL,vPos] +  
-        T1H[3,1,i,1,iE] * U[1,1,indL,wPos]  
-      VLL[wPos] = T2H[1,1,i,1,iE] * U[1,1,indL,uPos] +  
-        T2H[2,1,i,1,iE] * U[1,1,indL,vPos] +  
-        T2H[3,1,i,1,iE] * U[1,1,indL,wPos]  
-      VRR[hPos] = U[1,1,indR,hPos]
-      VRR[uPos] = NH[1,1,i,1,iE] * U[1,1,indR,uPos] +  
-        NH[2,1,i,1,iE] * U[1,1,indR,vPos] +  
-        NH[3,1,i,1,iE] * U[1,1,indR,wPos]  
-      VRR[vPos] = T1H[1,1,i,1,iE] * U[1,1,indR,uPos] +  
-        T1H[2,1,i,1,iE] * U[1,1,indR,vPos] +  
-        T1H[3,1,i,1,iE] * U[1,1,indR,wPos]  
-      VRR[wPos] = T2H[1,1,i,1,iE] * U[1,1,indR,uPos] +  
-        T2H[2,1,i,1,iE] * U[1,1,indR,vPos] +  
-        T2H[3,1,i,1,iE] * U[1,1,indR,wPos]  
-      RiemannByLMARSNonLin!(FLoc,VLL,VRR,Phys)  
-      FE[i,hPos] =  FLoc[hPos]
-      FE[i,uPos] =  NH[1,1,i,1,iE] * FLoc[uPos] + 
-        T1H[1,1,i,1,iE] * FLoc[vPos] + T2H[1,1,i,1,iE] * FLoc[wPos]
-      FE[i,vPos] =  NH[2,1,i,1,iE] * FLoc[uPos] + 
-        T1H[2,1,i,1,iE] * FLoc[vPos] + T2H[2,1,i,1,iE] * FLoc[wPos]
-      FE[i,wPos] =  NH[3,1,i,1,iE] * FLoc[uPos] + 
-        T1H[3,1,i,1,iE] * FLoc[vPos] + T2H[3,1,i,1,iE] * FLoc[wPos]
-      FE[i,hPos] *= VolSurfH[1,i,1,iE]  
-      FE[i,uPos] *= VolSurfH[1,i,1,iE]  
-      FE[i,vPos] *= VolSurfH[1,i,1,iE]  
-      FE[i,wPos] *= VolSurfH[1,i,1,iE]  
-      F[1,1,indL,hPos] += VZL * FE[i,hPos] / DG.w[1]
-      F[1,1,indL,uPos] += VZL * FE[i,uPos] / DG.w[1]
-      F[1,1,indL,vPos] += VZL * FE[i,vPos] / DG.w[1]
-      F[1,1,indL,wPos] += VZL * FE[i,wPos] / DG.w[1]
-      F[1,1,indR,hPos] -= VZL * FE[i,hPos] / DG.w[1]
-      F[1,1,indR,uPos] -= VZL * FE[i,uPos] / DG.w[1]
-      F[1,1,indR,vPos] -= VZL * FE[i,vPos] / DG.w[1]
-      F[1,1,indR,wPos] -= VZL * FE[i,wPos] / DG.w[1]
-    end
-  end
-  iDG = 0
-  @inbounds for iF = 1 : Grid.NumFaces
-     @inbounds for iD = 1 : (OrdPoly + 1) * (OrdPoly + 1) 
-       iDG += 1  
-       @views F[1,1,iDG,:] /= JJ[iD,1,1,iF]
-     end
-  end   
 end

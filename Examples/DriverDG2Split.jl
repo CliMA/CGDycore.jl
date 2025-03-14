@@ -307,7 +307,14 @@ Trans = Grids.TransSphereX!
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditionsDG2(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
-@show size(U),size(DG.Glob)
+RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,1)
+Model.RiemannSolver = RiemannSolver
+
+FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,1)
+Model.FluxAverage = FluxAverage
+
+Pressure = Models.ShallowWaterState()(Phys)
+Model.Pressure = Pressure
 
 
 vtkCache = Outputs.vtkInit2D(DG.OrdPoly,Grids.TransSphereX!,DG,Metric,Global)
@@ -316,24 +323,25 @@ cName = ["h";"uS1";"vS1"]
 @views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,
   vtkFileName,cName)
 
-Cache = zeros(size(U,1),size(U,2),size(U,3),8)
-FU = zeros(size(U,1),size(U,2),size(U,3),3)
+Cache = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),size(U,3),9)
+FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),size(U,3),3)
 UNew = similar(U)
 nAdvel::Int = 3600 * 24 * 6 / dtau
 nprint::Int  = 3600 * 6 / dtau
 EndTime = nAdvel * dtau / 3600
 @show EndTime
 
+
 @inbounds for i = 1 : nAdvel
   @show i
 
-  DGSEM.FcnSplit!(FU,U,DG,Metric,Grid,Cache,Phys)
+  DGSEM.FcnGPUSplit!(FU,U,DG,Model,Metric,Grid,Cache,Phys)
   @. UNew = U + 1/3 * dtau * FU
 
-  DGSEM.FcnSplit!(FU,UNew,DG,Metric,Grid,Cache,Phys)
+  DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys)
   @. UNew = U + 1/2 * dtau * FU
 
-  DGSEM.FcnSplit!(FU,UNew,DG,Metric,Grid,Cache,Phys)
+  DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys)
   @. U = U + dtau * FU
 
   if mod(i,nprint) == 0

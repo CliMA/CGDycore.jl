@@ -5,10 +5,6 @@ julia --project Examples/DriverDG2Split.jl \
   --FloatTypeBackend="Float64" \
   --NumV=3 \
   --NumTr=0 \
-  --RhoVPos=0 \
-  --RhoCPos=0 \
-  --ProfpBGrd="" \
-  --ProfRhoBGrd="" \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
@@ -25,7 +21,7 @@ julia --project Examples/DriverDG2Split.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=false \
-  --vtkFileName="Galewsky/Split" \
+  --vtkFileName="Galewsky/SplitGPU" \
   --dtau=20 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
