@@ -560,6 +560,10 @@ end
 if Device == "CPU"  || Device == "GPU"
   Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
   Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU
+  if JuliaGPU == "Metal"
+    Global.ParallelCom.NumberThreadGPU = NumberThreadGPU / 2
+    Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU / 2
+  end  
   nT = max(7 + NumTr, NumV + NumTr)
   Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
   Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacGPU!,

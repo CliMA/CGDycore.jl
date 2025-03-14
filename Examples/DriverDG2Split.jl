@@ -335,15 +335,15 @@ EndTime = nAdvel * dtau / 3600
 @inbounds for i = 1 : nAdvel
   @show i
 
-  DGSEM.FcnGPUSplit!(FU,U,DG,Model,Metric,Grid,Cache,Phys)
+  DGSEM.FcnGPUSplit!(FU,U,DG,Model,Metric,Grid,Cache,Phys,Global)
   fac = FTB(1/3 * dtau)
   @. UNew = U + fac * FU
 
-  DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys)
+  DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys,Global)
   fac = FTB(1/2 * dtau)
   @. UNew = U + fac * FU
 
-  DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys)
+  DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys,Global)
   fac = FTB(dtau)
   @. U = U + fac * FU
 
