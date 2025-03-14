@@ -2,12 +2,11 @@ abstract type RiemannSolver end
 
 Base.@kwdef struct RiemannLMARS <: RiemannSolver end
 
-function (Riemann::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,pPos)
+function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,pPos)
   @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR)
 
     FT = eltype(F)
     cS = Param.cS
-
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
     hM = FT(0.5) * (VLL[hPos] + VRR[hPos])
@@ -29,17 +28,18 @@ function (Riemann::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,pPos)
 end    
 
 @kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,U,Aux,Glob,IndE,EF,FTE,NH,T1H,T2H,VolSurfH,
-  JJ,w,VZ,Grid, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+  JJ,w,VZ, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
-  I, iE   = @index(Local, NTuple)
+  I,iE = @index(Local, NTuple)
   _,IE = @index(Global, NTuple)
+
+  N = @uniform @groupsize()[1]
+  TilesDim = @uniform @groupsize()[2]
 
   NE = @uniform @ndrange()[2]
 
-  VLL = @private eltype(F) (NV,)
-  VRR = @private eltype(F) (NV,)
-  AuxL = @private eltype(F) (NAUX,)
-  AuxR = @private eltype(F) (NAUX,)
+  VLL = @localmem eltype(F) (N,TilesDim,NV)
+  VRR = @localmem eltype(F) (N,TilesDim,NV)
   FLoc = @private eltype(F) (NV,)
   FE = @private eltype(F) (NV,)
 
@@ -57,27 +57,28 @@ end
   if IE <= NE
     indL = Glob[IndE[EL,I],iFL]
     indR = Glob[IndE[ER,I],iFR]
-    VLL[hPos] = U[1,1,indL,hPos]
-    VLL[uPos] = NH[1,1,I,1,IE] * U[1,1,indL,uPos] +
+    VLL[I,iE,hPos] = U[1,1,indL,hPos]
+    VLL[I,iE,uPos] = NH[1,1,I,1,IE] * U[1,1,indL,uPos] +
       NH[2,1,I,1,IE] * U[1,1,indL,vPos] +
       NH[3,1,I,1,IE] * U[1,1,indL,wPos]
-    VLL[vPos] = T1H[1,1,I,1,IE] * U[1,1,indL,uPos] +
+    VLL[I,iE,vPos] = T1H[1,1,I,1,IE] * U[1,1,indL,uPos] +
       T1H[2,1,I,1,IE] * U[1,1,indL,vPos] +
       T1H[3,1,I,1,IE] * U[1,1,indL,wPos]
-    VLL[wPos] = T2H[1,1,I,1,IE] * U[1,1,indL,uPos] +
+    VLL[I,iE,wPos] = T2H[1,1,I,1,IE] * U[1,1,indL,uPos] +
       T2H[2,1,I,1,IE] * U[1,1,indL,vPos] +
       T2H[3,1,I,1,IE] * U[1,1,indL,wPos]
-    VRR[hPos] = U[1,1,indR,hPos]
-    VRR[uPos] = NH[1,1,I,1,IE] * U[1,1,indR,uPos] +
+    VRR[I,iE,hPos] = U[1,1,indR,hPos]
+    VRR[I,iE,uPos] = NH[1,1,I,1,IE] * U[1,1,indR,uPos] +
       NH[2,1,I,1,IE] * U[1,1,indR,vPos] +
       NH[3,1,I,1,IE] * U[1,1,indR,wPos]
-    VRR[vPos] = T1H[1,1,I,1,IE] * U[1,1,indR,uPos] +
+    VRR[I,iE,vPos] = T1H[1,1,I,1,IE] * U[1,1,indR,uPos] +
       T1H[2,1,I,1,IE] * U[1,1,indR,vPos] +
       T1H[3,1,I,1,IE] * U[1,1,indR,wPos]
-    VRR[wPos] = T2H[1,1,I,1,IE] * U[1,1,indR,uPos] +
+    VRR[I,iE,wPos] = T2H[1,1,I,1,IE] * U[1,1,indR,uPos] +
       T2H[2,1,I,1,IE] * U[1,1,indR,vPos] +
       T2H[3,1,I,1,IE] * U[1,1,indR,wPos]
-    @views RiemannSolver!(FLoc,VLL,VRR,Aux[1,1,indL,:],Aux[1,1,indR,:])  
+    @views RiemannSolver!(FLoc,VLL[I,iE,:],VRR[I,iE,:],
+      Aux[1,1,indL,:],Aux[1,1,indR,:])
 
     FE[hPos] =  FLoc[hPos]
     FE[uPos] =  NH[1,1,I,1,IE] * FLoc[uPos] +

@@ -367,13 +367,13 @@ function (profile::GalewskiExample)(Param,Phys)
     Omega=Phys.Omega
     (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
     r=Phys.RadEarth
-    Rho=(Grav*Param.H0G-(simpson(-0.5*pi,lat,r,pi/100.0,integrandG,Param,Phys)))/Grav +
-      Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2.0)*exp(-((pi/4.0-lat)/Param.betaG)^2.0)
+    Rho=(Grav*Param.H0G-(simpson(-FT(0.5)*pi,lat,r,pi/FT(100.0),integrandG,Param,Phys)))/Grav +
+      Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2)*exp(-((pi/FT(4.0)-lat)/Param.betaG)^2)
     Th = FT(1)   
     if (lat<=Param.lat0G) || (lat>=Param.lat1G)
       u=FT(0)
     else
-      u=Param.uM/Param.eN*exp(1.0/((lat-Param.lat0G)*(lat-Param.lat1G)))
+      u=Param.uM/Param.eN*exp(FT(1.0)/((lat-Param.lat0G)*(lat-Param.lat1G)))
     end
     v = FT(0)
     w = FT(0)
@@ -821,35 +821,38 @@ function (profile::SchaerSphereExample)(Param,Phys)
 end
 
 @inline function integrandG(tau,RadEarth,Param,Phys)
-  f=2.0*Phys.Omega*sin(tau)
+  FT = eltype(tau)
+  f=FT(2.0)*Phys.Omega*sin(tau)
   if (tau<=Param.lat0G) || (tau>=Param.lat1G)
-    uStart=0.0
+    uStart=FT(0.0)
   else
-    uStart=Param.uM/Param.eN*exp(1.0/((tau-Param.lat0G)*(tau-Param.lat1G)))
+    uStart=Param.uM/Param.eN*exp(FT(1.0)/((tau-Param.lat0G)*(tau-Param.lat1G)))
   end
-  if abs(tau)<0.5*pi
+  if abs(tau)<FT(0.5)*pi
     intG=(RadEarth*f+uStart*tan(tau))*uStart
   else
-    intG=0.0
+    intG=FT(0.0)
   end
   return intG
 end
 
 @inline function simpson(x0,xN,r,dx,f,Param,Phys)
-  n=floor(Int,(xN-x0)/dx) + 1
+  FT = eltype(x0)
+# n=floor(Int32,(xN-x0)/dx) + 1
+  n=50
   h=(xN-x0)/n
-  res=0.5*(f(x0,r,Param,Phys)+f(xN,r,Param,Phys))
+  res=FT(0.5)*(f(x0,r,Param,Phys)+f(xN,r,Param,Phys))
   xi=x0
   for i=1:(n-1)
     xi=xi+h
     res=res+f(xi,r,Param,Phys)
   end
-  xi=x0-0.5*h
+  xi=x0-FT(0.5)*h
   for i=1:n
     xi=xi+h
-    res=res+2.0*f(xi,r,Param,Phys)
+    res=res+FT(2.0) *f(xi,r,Param,Phys)
   end
-  res=res*h/3.0
+  res=res*h/FT(3.0)
   return res
 end
 

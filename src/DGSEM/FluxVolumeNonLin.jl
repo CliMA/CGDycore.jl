@@ -183,7 +183,6 @@ end
 
   if IF <= NF
     @unroll for l = 1 : N
-      fTilde[1] = 0.0  
       @views FluxAver!(fTilde,VLoc[I,J,iF,:],VLoc[l,J,iF,:],
         AuxLoc[I,J,iF,:],AuxLoc[l,J,iF,:],
         dXdxILoc[1,:,I,J,iF],dXdxILoc[1,:,l,J,iF])    

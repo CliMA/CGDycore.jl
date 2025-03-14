@@ -26,12 +26,12 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Grid,Cache,Phys)
   FT = eltype(F)
   @views V = Cache[:,:,:,1:4]
   @views FV = Cache[:,:,:,5:8]
-  @views Aux = Cache[:,:,:,9]
+  @views Aux = Cache[:,:,:,9:9]
   @. FV = 0
 
   hPos = Model.RhoPos
-  @views @. Aux[:,:,:,1] = FT(0.5) * Phys.Grav * U[:,:,:,hPos]^2
-
+  fac = FT(0.5)
+  @views @. Aux[:,:,:,1] = fac * Phys.Grav * U[:,:,:,hPos]^2
   NV = 4
   NAUX = 1
 
@@ -46,11 +46,11 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Grid,Cache,Phys)
   KFluxSplitVolumeNonLinKernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,Metric.J,DG.DVT,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
-  group = (DG.OrdPoly+1,20)
+  group = (DG.OrdPoly+1,10)
   ndrange = (DG.OrdPoly+1,Grid.NumEdges)
   KRiemanNonLinKernel! = RiemanNonLinKernel!(backend,group)
   KRiemanNonLinKernel!(Model.RiemannSolver,FV,V,Aux,DG.Glob,DG.IndE,Grid.EF,Grid.FE,Metric.NH,Metric.T1H,
-    Metric.T2H,Metric.VolSurfH,Metric.J,DG.w[1],DG.VZ,Grid,Val(NV),Val(NAUX);ndrange=ndrange) 
+    Metric.T2H,Metric.VolSurfH,Metric.J,DG.w[1],DG.VZ,Val(NV),Val(NAUX);ndrange=ndrange) 
 
   group = ((DG.OrdPoly+1)*(DG.OrdPoly+1),10)
   ndrange = ((DG.OrdPoly+1)*(DG.OrdPoly+1),Grid.NumFaces)

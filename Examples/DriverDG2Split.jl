@@ -330,19 +330,22 @@ nAdvel::Int = 3600 * 24 * 6 / dtau
 nprint::Int  = 3600 * 6 / dtau
 EndTime = nAdvel * dtau / 3600
 @show EndTime
-
+@show typeof(UNew)
 
 @inbounds for i = 1 : nAdvel
   @show i
 
   DGSEM.FcnGPUSplit!(FU,U,DG,Model,Metric,Grid,Cache,Phys)
-  @. UNew = U + 1/3 * dtau * FU
+  fac = FTB(1/3 * dtau)
+  @. UNew = U + fac * FU
 
   DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys)
-  @. UNew = U + 1/2 * dtau * FU
+  fac = FTB(1/2 * dtau)
+  @. UNew = U + fac * FU
 
   DGSEM.FcnGPUSplit!(FU,UNew,DG,Model,Metric,Grid,Cache,Phys)
-  @. U = U + dtau * FU
+  fac = FTB(dtau)
+  @. U = U + fac * FU
 
   if mod(i,nprint) == 0
     global FileNumber += 1

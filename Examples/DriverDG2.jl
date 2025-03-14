@@ -4,6 +4,7 @@ using MPI
 using Base
 using CUDA
 using AMDGPU
+using oneAPI
 using Metal
 using KernelAbstractions
 using StaticArrays

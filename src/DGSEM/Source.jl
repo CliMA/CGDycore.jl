@@ -24,12 +24,13 @@ end
 
   NQ = @uniform @ndrange()[1]
   NF = @uniform @ndrange()[2]
+  FT = eltype(F)
 
   if IF <= NF
     uPos = 2  
     vPos = 3  
     iD = iQ + (IF - 1) * NQ
-    fac = 2.0 * Phys.Omega * X[iQ,1,3,1,IF] / sqrt(X[iQ,1,1,1,IF]^2 + 
+    fac = FT(2.0) * Phys.Omega * X[iQ,1,3,1,IF] / sqrt(X[iQ,1,1,1,IF]^2 + 
       X[iQ,1,2,1,IF]^2 + X[iQ,1,3,1,IF]^2)
     F[1,1,iD,uPos] += fac * U[1,1,iD,vPos]  
     F[1,1,iD,vPos] += -fac * U[1,1,iD,uPos]  
