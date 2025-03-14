@@ -71,11 +71,11 @@ end
                  eltype(X)(1)+ksi2   eltype(X)(1)+ksi1
                  eltype(X)(-1)-ksi2   eltype(X)(1)-ksi1])
     @views dXdxLoc[I,J,:,1:2,iF] .= eltype(X)(0.25) * J1 * B * C
-    @. dXdx[:,1:2,1,ID,1,IF] = dXdxLoc[I,J,:,1:2,iF]
+    @views @. dXdx[:,1:2,1,ID,1,IF] = dXdxLoc[I,J,:,1:2,iF]
 
-    JJ[ID,1,1,IF] = Determinant(dXdxLoc[I,J,:,1,iF],dXdxLoc[I,J,:,2,iF])
+    @views JJ[ID,1,1,IF] = Determinant(dXdxLoc[I,J,:,1,iF],dXdxLoc[I,J,:,2,iF])
     @views pinvJac(dXdxI[:,:,1,ID,1,IF],dXdxLoc[I,J,:,:,iF]) 
-    @views dXdxI[:,:,1,ID,1,IF] *= JJ[ID,1,1,IF]
+    @views @. dXdxI[:,:,1,ID,1,IF] *= JJ[ID,1,1,IF]
     X[ID,1,1,1,IF] = X1 * Rad
     X[ID,1,2,1,IF] = X2 * Rad
     X[ID,1,3,1,IF] = X3 * Rad
