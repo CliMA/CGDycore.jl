@@ -1,5 +1,5 @@
 function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,Model,
-  ParallelCom;order=true,ChangeOrient=3)
+  ParallelCom;order=true,ChangeOrient=3,Discretization="CG")
 
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc
@@ -42,7 +42,13 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   end
   SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc,order=order)
 
-  Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly-1,1,CellToProc,Proc,ProcNumber,Model.HorLimit)
+  if Discretization == "DG"
+    Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly+1,0,CellToProc,Proc,ProcNumber,
+      Model.HorLimit,"DG")
+  elseif Discretization == "CG"
+    Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly-1,1,CellToProc,Proc,ProcNumber,
+    Model.HorLimiti,"CG")
+  end
   return SubGrid, Exchange
 end  
 

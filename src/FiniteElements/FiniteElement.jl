@@ -169,7 +169,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
                         AT2<:AbstractArray,
                         IT1<:AbstractArray,
                         IT2<:AbstractArray,
-                        IT3<:AbstractArray}
+                        IT3<:AbstractArray} 
     OrdPoly::Int
     OrdPolyZ::Int
     DoF::Int
@@ -287,6 +287,10 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   IndE = KernelAbstractions.zeros(backend,Int,4,OrdPoly+1)
   copyto!(IndE,IndECPU)
   VZCPU = zeros(4)
+  VZCPU[1] = 1.0
+  VZCPU[2] = -1.0
+  VZCPU[3] = -1.0
+  VZCPU[4] = 1.0
   VZCPU[1] = -1.0
   VZCPU[2] = -1.0
   VZCPU[3] = 1.0

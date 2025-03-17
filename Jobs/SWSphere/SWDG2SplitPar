@@ -1,9 +1,9 @@
 #!/bin/bash
-julia --project Examples/DriverDG2Split.jl \
+julia --project Examples/DriverDG2SplitPar.jl \
   --Problem="GalewskiSphere" \
   --Discretization="DG" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumV=3 \
   --NumTr=0 \
   --Coriolis=true \
@@ -22,7 +22,7 @@ julia --project Examples/DriverDG2Split.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=false \
-  --vtkFileName="Galewsky/Split" \
+  --vtkFileName="Galewsky/SplitPar" \
   --dtau=20 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \

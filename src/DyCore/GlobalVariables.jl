@@ -295,6 +295,7 @@ end
 
 Base.@kwdef mutable struct ModelStruct{FT}
   Problem::String
+  Discretization::String
   Profile::Bool
   ProfRho::String
   ProfTheta::String
@@ -385,6 +386,7 @@ end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
   Problem = ""
+  Discretization = "CG"
   Profile = false
   ProfRho = ""
   ProfTheta = ""
@@ -473,6 +475,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   SurfaceFluxValues = ""
   return ModelStruct{FT}(
    Problem,
+   Discretization,
    Profile,
    ProfRho,
    ProfTheta,

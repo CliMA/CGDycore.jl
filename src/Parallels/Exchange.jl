@@ -76,7 +76,7 @@ function ExchangeStruct{FT}(backend) where FT<:AbstractFloat
 end  
 
 
-function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,ProcNumber,HorLimit) where FT<:AbstractFloat
+function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,ProcNumber,HorLimit,Discretization) where FT<:AbstractFloat
 
   IndSendBuffer = Dict()
   IndRecvBuffer = Dict()
@@ -122,7 +122,26 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
         iE = InBoundEdges[iEB] 
         push!(GlobTemp,SubGrid.Edges[iE].EG)
         for k = 1 : OrdEdge
-          push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
+          if Discretization == "CG"  
+            push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
+          elseif Discretization == "DG"  
+            if SubGrid.Edges[iEB].F[1] < SubGrid.Edges[iEB].F[2]
+              F = SubGrid.Edges[iEB].F[1]
+              FE = SubGrid.Edges[iEB].FE[1]
+            else
+              F = SubGrid.Edges[iEB].F[2]
+              FE = SubGrid.Edges[iEB].FE[2]
+            end    
+            if FE == 1
+              push!(LocTemp,k + (F - 1) * OrdEdge * OrdEdge)
+            elseif FE == 2
+              push!(LocTemp,k * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
+            elseif FE == 3
+              push!(LocTemp,k + (OrdEdge - 1) * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
+            elseif FE ==4
+              push!(LocTemp,k + (k - 1) * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
+            end
+          end  
         end
       end  
     end
@@ -157,7 +176,11 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
         iEB1 += 1  
         (iE,) = DictE[GlobInd[iEB1]]  
         for k = 1 : OrdEdge
-          push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
+          if Discretization == "CG"  
+            push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
+          elseif Discretization == "DG"  
+            push!(LocTemp,k + (iEB1 - 1) * OrdEdge + SubGrid.NumFaces * OrdEdge * OrdEdge)
+          end
         end
       end
     end
@@ -246,6 +269,14 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
     for iP in eachindex(NeiProcE)
       RecvBufferN[NeiProcE[iP]] = [RecvBufferN[NeiProcE[iP]];RecvBufferE[NeiProcE[iP]]] 
       SendBufferN[NeiProcE[iP]] = [SendBufferN[NeiProcE[iP]];SendBufferE[NeiProcE[iP]]] 
+    end  
+  else  
+    RecvBufferN = Dict()
+    SendBufferN = Dict()
+    NeiProcN = NeiProcE
+    for iP in eachindex(NeiProcE)
+      RecvBufferN[NeiProcE[iP]] = RecvBufferE[NeiProcE[iP]] 
+      SendBufferN[NeiProcE[iP]] = SendBufferE[NeiProcE[iP]] 
     end  
   end  
 
@@ -1065,6 +1096,44 @@ end
   if I <= NumInd && IT <= NT
     Ind = IndRecvBuffer[I]    
     @atomic :monotonic U[Iz,Ind,IT] += RecvBuffer[Iz,I,IT]
+  end  
+end  
+
+function ExchangeData3DRecvSetGPU!(U,Exchange)
+  backend = get_backend(U)
+  FT = eltype(U)
+
+  Nz = size(U,1)
+  nT = size(U,3)
+  IndRecvBuffer = Exchange.IndRecvBuffer
+  NeiProc = Exchange.NeiProc
+  Proc = Exchange.Proc
+  RecvBuffer3 = Exchange.RecvBuffer3
+  rreq = Exchange.rreq
+  sreq = Exchange.sreq
+
+  stats = MPI.Waitall(rreq)
+  stats = MPI.Waitall(sreq)
+  MPI.Barrier(MPI.COMM_WORLD)
+
+  group = (Nz,5,1)
+  KExchangeData3DRecvSetKernel! = ExchangeData3DRecvSetKernel!(backend,group)
+
+  #Receive
+  @inbounds for iP in NeiProc
+    ndrange = (Nz,length(IndRecvBuffer[iP]),nT)
+    KExchangeData3DRecvSetKernel!(U,RecvBuffer3[iP],IndRecvBuffer[iP],ndrange=ndrange)
+  end
+end  
+
+@kernel inbounds = true function ExchangeData3DRecvSetKernel!(U,@Const(RecvBuffer),@Const(IndRecvBuffer))
+
+  Iz,I,IT = @index(Global, NTuple)
+  NumInd = @uniform @ndrange()[2]
+  NT = @uniform @ndrange()[3]
+  if I <= NumInd && IT <= NT
+    Ind = IndRecvBuffer[I]   
+    U[Iz,Ind,IT] = RecvBuffer[Iz,I,IT]
   end  
 end  
 

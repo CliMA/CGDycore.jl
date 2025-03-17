@@ -4,7 +4,6 @@ using MPI
 using Base
 using CUDA
 using AMDGPU
-using oneAPI
 using Metal
 using KernelAbstractions
 using StaticArrays
@@ -14,6 +13,7 @@ using ArgParse
 # Model
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
+Discretization = parsed_args["Discretization"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
@@ -116,6 +116,7 @@ PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
+vtkFileName = parsed_args["vtkFileName"]
 # Device
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
@@ -278,13 +279,9 @@ else
     end
   end
   Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
-    GridType,Decomp,RadEarth,Model,ParallelCom)
+    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
 end  
-@show Proc,Grid.NumFaces
-@show Proc,Grid.NumEdges
-
-stop
 
 
 #Topography
@@ -304,43 +301,64 @@ end
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 
 Trans = Grids.TransSphereX!
-  (DG, Metric, Global) = DyCore.InitSphereDG2(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
-    Phys,TopoProfile,Exchange,Grid,ParallelCom)
+(DG, Metric, Global) = DyCore.InitSphereDG2(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+  Phys,TopoProfile,Exchange,Grid,ParallelCom)
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditionsDG2(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
-@show size(U),size(DG.Glob)
+RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,1)
+Model.RiemannSolver = RiemannSolver
+
+FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,1)
+Model.FluxAverage = FluxAverage
+
+Pressure = Models.ShallowWaterState()(Phys)
+Model.Pressure = Pressure
 
 
 vtkCache = Outputs.vtkInit2D(DG.OrdPoly,Grids.TransSphereX!,DG,Metric,Global)
 global FileNumber = 0
 cName = ["h";"uS1";"vS1"]
-@views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,cName)
 
-Cache = zeros(size(U,1),size(U,2),size(U,3),8)
-FU = zeros(size(U,1),size(U,2),size(U,3),3)
+@views Outputs.unstructured_vtk2Dim(U,vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,
+  vtkFileName,cName)
+CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,5)
+CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,4)
+FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,3)
 UNew = similar(U)
 nAdvel::Int = 3600 * 24 * 6 / dtau
 nprint::Int  = 3600 * 6 / dtau
 EndTime = nAdvel * dtau / 3600
 @show EndTime
+NumAux = 1
+Parallels.InitExchangeData3D(backend,FTB,1,NumV+NumAux+1,Exchange)
 
 @inbounds for i = 1 : nAdvel
+  if Proc == 1
+    @show i
+    @show sum(abs.(U))
+  end  
 
-  DGSEM.Fcn!(FU,U,DG,Metric,Grid,Cache,Phys)
-  @. UNew = U + 1/3 * dtau * FU
+  DGSEM.FcnGPUSplitPar!(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
+  fac = FTB(1/3 * dtau)
+  @. UNew = U + fac * FU
 
-  DGSEM.Fcn!(FU,UNew,DG,Metric,Grid,Cache,Phys)
-  @. UNew = U + 1/2 * dtau * FU
+  DGSEM.FcnGPUSplitPar!(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
+  fac = FTB(1/2 * dtau)
+  @. UNew = U + fac * FU
 
-  DGSEM.Fcn!(FU,UNew,DG,Metric,Grid,Cache,Phys)
-  @. U = U + dtau * FU
+  DGSEM.FcnGPUSplitPar!(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
+  fac = FTB(dtau)
+  @. U = U + fac * FU
 
   if mod(i,nprint) == 0
     global FileNumber += 1
-    @show i, FileNumber
-    @views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,cName)
+    if Proc == 1
+      @show i, FileNumber
+    end  
+    @views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,
+      vtkFileName,cName)
   end
 end

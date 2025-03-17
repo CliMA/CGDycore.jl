@@ -265,7 +265,7 @@ function InterpolateCGDim2GPU!(cCell,c,Inter,Glob)
 
   OrdPrint = size(Inter,1)
   OrdPrintZ = size(Inter,3)
-  NF = size(Glob,2)
+  NF = size(cCell,3)
   Nz = size(c,1)
 # Ranges
   NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)

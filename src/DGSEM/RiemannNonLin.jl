@@ -27,8 +27,9 @@ function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,pPos)
   return RiemannByLMARSNonLin!
 end    
 
-@kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,U,Aux,Glob,IndE,EF,FTE,NH,T1H,T2H,VolSurfH,
-  JJ,w,VZ, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+@kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(Glob),@Const(IndE),
+  @Const(EF),@Const(FTE),@Const(NH),@Const(T1H),@Const(T2H),@Const(VolSurfH),
+  @Const(JJ),@Const(w), ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
   I,iE = @index(Local, NTuple)
   _,IE = @index(Global, NTuple)
@@ -37,6 +38,7 @@ end
   TilesDim = @uniform @groupsize()[2]
 
   NE = @uniform @ndrange()[2]
+  NF = @uniform size(JJ,4)
 
   VLL = @localmem eltype(F) (N,TilesDim,NV)
   VRR = @localmem eltype(F) (N,TilesDim,NV)
@@ -52,7 +54,6 @@ end
   iFR = EF[2,IE]
   EL = FTE[1,IE]
   ER = FTE[2,IE]
-  VZL = VZ[EL]
 
   if IE <= NE
     indL = Glob[IndE[EL,I],iFL]
@@ -87,21 +88,25 @@ end
       T1H[2,1,I,1,IE] * FLoc[vPos] + T2H[2,1,I,1,IE] * FLoc[wPos]
     FE[wPos] =  NH[3,1,I,1,IE] * FLoc[uPos] +
       T1H[3,1,I,1,IE] * FLoc[vPos] + T2H[3,1,I,1,IE] * FLoc[wPos]
-    Surf = VolSurfH[1,I,1,IE] * VZL / w  
+    Surf = VolSurfH[1,I,1,IE] / w  
     FE[hPos] *= Surf
     FE[uPos] *= Surf
     FE[vPos] *= Surf
     FE[wPos] *= Surf
-    JJL = JJ[IndE[EL,I],1,1,iFL]
-    JJR = JJ[IndE[ER,I],1,1,iFR]
-    @atomic :monotonic F[1,1,indL,hPos] += FE[hPos] / JJL
-    @atomic :monotonic F[1,1,indL,uPos] += FE[uPos] / JJL
-    @atomic :monotonic F[1,1,indL,vPos] += FE[vPos] / JJL
-    @atomic :monotonic F[1,1,indL,wPos] += FE[wPos] / JJL
-    @atomic :monotonic F[1,1,indR,hPos] -= FE[hPos] / JJR
-    @atomic :monotonic F[1,1,indR,uPos] -= FE[uPos] / JJR
-    @atomic :monotonic F[1,1,indR,vPos] -= FE[vPos] / JJR
-    @atomic :monotonic F[1,1,indR,wPos] -= FE[wPos] / JJR
+    if iFL <= NF
+      JJL = JJ[IndE[EL,I],1,1,iFL]
+      @atomic :monotonic F[1,1,indL,hPos] -= FE[hPos] / JJL
+      @atomic :monotonic F[1,1,indL,uPos] -= FE[uPos] / JJL
+      @atomic :monotonic F[1,1,indL,vPos] -= FE[vPos] / JJL
+      @atomic :monotonic F[1,1,indL,wPos] -= FE[wPos] / JJL
+    end  
+    if iFR <= NF
+      JJR = JJ[IndE[ER,I],1,1,iFR]
+      @atomic :monotonic F[1,1,indR,hPos] += FE[hPos] / JJR
+      @atomic :monotonic F[1,1,indR,uPos] += FE[uPos] / JJR
+      @atomic :monotonic F[1,1,indR,vPos] += FE[vPos] / JJR
+      @atomic :monotonic F[1,1,indR,wPos] += FE[wPos] / JJR
+    end  
   end  
 end
 

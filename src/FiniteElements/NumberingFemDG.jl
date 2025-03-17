@@ -1,63 +1,73 @@
 function NumberingFemDGQuad(Grid,PolyOrd)
 
-NumGlobF = Grid.NumFaces*(PolyOrd+1)*(PolyOrd+1)
-
-Glob = zeros(Int,(PolyOrd+1)*(PolyOrd+1),Grid.NumFaces)
-GlobLoc = zeros(Int,(PolyOrd+1)*(PolyOrd+1))
-for iF = 1:Grid.NumFaces
-  Face = Grid.Faces[iF]
-  ii = 1
-  for j = 1:PolyOrd+1
-    for i = 1:PolyOrd+1
-      GlobLoc[ii] = i + (j - 1) * (PolyOrd + 1) + (iF - 1) * (PolyOrd + 1) *(PolyOrd + 1)
-      ii = ii + 1
-    end
-  end
-  Glob[:,iF] = GlobLoc
-end
-
-NumG = NumGlobF
-NumI = NumG
-Stencil = zeros(Int,Grid.NumFaces,12)
-
-for iF = 1:Grid.NumFaces
-  Stencil[iF,:] .= iF
-  StencilLoc = zeros(Int, 16,1)
-  StencilLoc[:] .= iF
-  iS = 0
-  for i = 1:4
-    iN = Grid.Faces[iF].N[i]
-    for j = 1:size(Grid.Nodes[iN].F,1)
-      jF = Grid.Nodes[iN].F[j]
-      inside = false
-      for jS = 1:iS
-        if StencilLoc[jS] == jF
-          inside = true
-          break
-        end
-      end
-      if !inside
-        iS = iS + 1
-        StencilLoc[iS] = jF
+  N = PolyOrd + 1
+  Glob = zeros(Int,N*N,Grid.NumFaces+Grid.NumEdgesB)
+  GlobLoc = zeros(Int,N*N)
+  for iF = 1:Grid.NumFaces
+    Face = Grid.Faces[iF]
+    ii = 1
+    for j = 1 : N
+      for i = 1 : N
+        GlobLoc[ii] = i + (j - 1) * N + (iF - 1) * N * N
+        ii = ii + 1
       end
     end
+    Glob[:,iF] = GlobLoc
   end
-  Stencil[iF,1:iS] = StencilLoc[1:iS]
-end
-
-MasterSlave = zeros(Int,NumG)
-ii = 1
-for iF = 1 : Grid.NumFaces
-  for j = 1 : PolyOrd - 1
-    for i = 1 : PolyOrd - 1
-      MasterSlave[ii] = 1
-      ii = ii + 1
+  for iE = 1 : Grid.NumEdgesB
+    @. GlobLoc = 0  
+    if Grid.Edges[iE].F[1] < Grid.Edges[iE].F[2]
+      iF = Grid.Edges[iE].F[2]
+      FE = Grid.Edges[iE].FE[2]
+    else  
+      iF = Grid.Edges[iE].F[1]
+      FE = Grid.Edges[iE].FE[1]
     end  
-  end
-end  
-BoundaryDoF = zeros(Int,0)
+    if FE == 1
+      ii = 1  
+      for i = 1 : N
+        GlobLoc[ii] = i + (iE - 1) * N + Grid.NumFaces * N * N
+        ii += 1
+      end
+    elseif FE == 2  
+      ii =  N
+      for i = 1 : PolyOrd + 1
+        GlobLoc[ii] = i + (iE - 1) * N + Grid.NumFaces * N * N
+        ii += N
+      end
+    elseif FE == 3  
+      ii =  1 + PolyOrd * N 
+      for i = 1 : N
+        GlobLoc[ii] = i + (iE - 1) * N + Grid.NumFaces * N * N
+        ii += 1
+      end  
+    elseif FE == 4  
+      ii =  1 
+      for i = 1 : PolyOrd + 1
+        GlobLoc[ii] = i + (iE - 1) * N + Grid.NumFaces * N * N
+        ii += PolyOrd + 1
+      end  
+    end
+    Glob[:,iF] = GlobLoc
+  end  
+
+  NumI = Grid.NumFaces * N * N
+  NumG = NumI + Grid.NumEdgesB * N
+  Stencil = zeros(Int,0,0)
+
+  MasterSlave = zeros(Int,NumG)
+  ii = 1
+  for iF = 1 : Grid.NumFaces
+    for j = 1 : PolyOrd - 1
+      for i = 1 : PolyOrd - 1
+        MasterSlave[ii] = 1
+        ii = ii + 1
+      end  
+    end
+  end  
+  BoundaryDoF = zeros(Int,0)
     
-return (Glob,NumG,NumI,Stencil,MasterSlave,BoundaryDoF)
+  return (Glob,NumG,NumI,Stencil,MasterSlave,BoundaryDoF)
 end
 
 

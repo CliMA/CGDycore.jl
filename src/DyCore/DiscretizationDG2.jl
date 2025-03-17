@@ -58,10 +58,11 @@ function DiscretizationDG2(backend,FT,Jacobi,DG,Exchange,Global)
   Metric.NH = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
   Metric.T1H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
   Metric.T2H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
-# KNormalTangentHKernel1!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
-#   Metric.dXdx,Metric.X,Grid.EF,Grid.FE,ndrange=ndrange)
-  KNormalTangentHKernel!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
-    Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
+  KNormalTangentHKernel1!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
+    Metric.dXdx,Metric.X,Grid.EF,Grid.FE,ndrange=ndrange)
+  @show sum(abs.(Metric.NH))
+# KNormalTangentHKernel!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
+#   Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
 
   NzG = min(div(NumberThreadGPU,DoF),nz+1)
   group = (OP,OP,NzG)
@@ -89,8 +90,81 @@ end
   N = @uniform @ndrange()[2]
 
   if IE <= NE && Iz <= NZ
-    IS = FE[1,IE]  
-    IF = EF[1,IE]
+    if EF[1,IE] < EF[2,IE]  
+      IS = FE[1,IE]  
+      IF = EF[1,IE]
+    else  
+      IS = FE[2,IE]  
+      IF = EF[2,IE]
+    end  
+    if IS == 1
+      ID = I  
+      tSLoc1 = dXdx[1,1,K,ID,Iz,IF]
+      tSLoc2 = dXdx[2,1,K,ID,Iz,IF]
+      tSLoc3 = dXdx[3,1,K,ID,Iz,IF]
+    elseif IS == 2
+      ID = N + (I - 1) * N  
+      tSLoc1 = dXdx[1,2,K,ID,Iz,IF]
+      tSLoc2 = dXdx[2,2,K,ID,Iz,IF]
+      tSLoc3 = dXdx[3,2,K,ID,Iz,IF]
+    elseif IS == 3
+      ID = I + (N - 1) * N  
+      tSLoc1 = dXdx[1,1,K,ID,Iz,IF]
+      tSLoc2 = dXdx[2,1,K,ID,Iz,IF]
+      tSLoc3 = dXdx[3,1,K,ID,Iz,IF]
+    elseif IS == 4
+      ID = 1 + (I - 1) * N  
+      tSLoc1 = dXdx[1,2,K,ID,Iz,IF]
+      tSLoc2 = dXdx[2,2,K,ID,Iz,IF]
+      tSLoc3 = dXdx[3,2,K,ID,Iz,IF]
+    end  
+    XLoc1 = X[ID,1,1,1,IF] 
+    XLoc2 = X[ID,1,2,1,IF] 
+    XLoc3 = X[ID,1,3,1,IF] 
+    nSLoc1 = tSLoc2 * XLoc3 - tSLoc3 * XLoc2 
+    nSLoc2 = -(tSLoc1 * XLoc3 - tSLoc3 * XLoc1) 
+    nSLoc3 = tSLoc1 * XLoc2 - tSLoc2 * XLoc1 
+
+    n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
+    nSLoc1 = nSLoc1 / n1Norm
+    nSLoc2 = nSLoc2 / n1Norm
+    nSLoc3 = nSLoc3 / n1Norm
+
+    t1Norm = sqrt(tSLoc1 * tSLoc1 + tSLoc2 * tSLoc2 + tSLoc3 * tSLoc3)
+    tSLoc1 = tSLoc1 / t1Norm
+    tSLoc2 = tSLoc2 / t1Norm
+    tSLoc3 = tSLoc3 / t1Norm
+
+    VolSurfH[K,I,Iz,IE] = t1Norm
+
+    NH[1,K,I,Iz,IE] = nSLoc1
+    NH[2,K,I,Iz,IE] = nSLoc2
+    NH[3,K,I,Iz,IE] = nSLoc3
+    T1H[1,K,I,Iz,IE] = tSLoc1
+    T1H[2,K,I,Iz,IE] = tSLoc2
+    T1H[3,K,I,Iz,IE] = tSLoc3
+    T2H[1,K,I,Iz,IE] = 0.0
+    T2H[2,K,I,Iz,IE] = 0.0
+    T2H[3,K,I,Iz,IE] = 0.0
+  end
+end
+
+@kernel inbounds = true function NormalTangentHKernel2!(VolSurfH,NH,T1H,T2H,
+  @Const(dXdx),@Const(X),@Const(EF),@Const(FE))
+
+# Normal NH(3,I,K,iz,IE)
+# Normal TH1(3,I,K,iz,IE)
+# Normal TH2(3,I,K,iz,IE)
+
+  K,I,Iz,IE = @index(Global, NTuple)
+
+  NE = @uniform @ndrange()[4]
+  NZ = @uniform @ndrange()[3]
+  N = @uniform @ndrange()[2]
+
+  if IE <= NE && Iz <= NZ
+    IS = FE[2,IE]  
+    IF = EF[2,IE]
     if IS == 1
       ID = I  
       tSLoc1 = dXdx[1,1,K,ID,Iz,IF]

@@ -169,7 +169,7 @@ function InitialConditionsDG2(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,
   ndrange = (N * N, M, Nz, NF)
   lengthU = NumV
 
-  U = KernelAbstractions.zeros(backend,FTB,Nz,M,DG.NumG,lengthU)
+  U = KernelAbstractions.zeros(backend,FTB,Nz,M,DG.NumI,lengthU)
   @views Rho = U[:,:,:,Model.RhoPos]
   @views u = U[:,:,:,Model.uPos]
   @views v = U[:,:,:,Model.vPos]

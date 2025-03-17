@@ -13,6 +13,7 @@ using ArgParse
 # Model
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
+Discretization = parsed_args["Discretization"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
@@ -278,7 +279,7 @@ else
     end
   end
   Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
-    GridType,Decomp,RadEarth,Model,ParallelCom)
+    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
 end  
 
@@ -300,8 +301,8 @@ end
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 
 Trans = Grids.TransSphereX!
-  (DG, Metric, Global) = DyCore.InitSphereDG2(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
-    Phys,TopoProfile,Exchange,Grid,ParallelCom)
+(DG, Metric, Global) = DyCore.InitSphereDG2(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
+  Phys,TopoProfile,Exchange,Grid,ParallelCom)
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
@@ -320,20 +321,24 @@ Model.Pressure = Pressure
 vtkCache = Outputs.vtkInit2D(DG.OrdPoly,Grids.TransSphereX!,DG,Metric,Global)
 global FileNumber = 0
 cName = ["h";"uS1";"vS1"]
-@views Outputs.unstructured_vtk2Dim(U[:,:,:,1:3],vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,
-  vtkFileName,cName)
 
-Cache = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),size(U,3),9)
-FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),size(U,3),3)
+@views Outputs.unstructured_vtk2Dim(U,vtkCache,Global.Grid.NumFaces,DG,Proc,ProcNumber,FileNumber,
+  vtkFileName,cName)
+Cache = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,9)
+FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,3)
 UNew = similar(U)
 nAdvel::Int = 3600 * 24 * 6 / dtau
 nprint::Int  = 3600 * 6 / dtau
 EndTime = nAdvel * dtau / 3600
 @show EndTime
-@show typeof(UNew)
+NumAux = 1
+
 
 @inbounds for i = 1 : nAdvel
-  @show i
+  if Proc == 1
+    @show i
+    @show sum(abs.(U))
+  end  
 
   DGSEM.FcnGPUSplit!(FU,U,DG,Model,Metric,Grid,Cache,Phys,Global)
   fac = FTB(1/3 * dtau)

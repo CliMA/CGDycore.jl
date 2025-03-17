@@ -7,6 +7,11 @@ function parse_commandline()
     arg_type = String
     default = "Problem"
 
+    "--Discretization"
+    help = "Discretization type"
+    arg_type = String
+    default = "CG"
+
     "--Profile"
     help = "Profile for initial onditions"
     arg_type = Bool

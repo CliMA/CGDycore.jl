@@ -84,11 +84,11 @@ end
     Rotate[1,1,1,ID,1,IF] = -sin(lon)
     Rotate[2,1,1,ID,1,IF] = -sin(lat)*cos(lon)
 
-    Rotate[1,2,1,ID,1IF] = cos(lon)
-    Rotate[2,2,1,ID,1IF] = -sin(lat)*sin(lon)
+    Rotate[1,2,1,ID,1,IF] = cos(lon)
+    Rotate[2,2,1,ID,1,IF] = -sin(lat)*sin(lon)
 
-    Rotate[1,3,1,ID,1IF] = 0.0
-    Rotate[2,3,1,ID,1IF] = cos(lat)
+    Rotate[1,3,1,ID,1,IF] = 0.0
+    Rotate[2,3,1,ID,1,IF] = cos(lat)
   end  
 end  
 

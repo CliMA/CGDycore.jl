@@ -5,7 +5,6 @@ using Base
 using CUDA
 using AMDGPU
 using Metal
-using oneAPI
 using KernelAbstractions
 using StaticArrays
 using ArgParse
@@ -15,6 +14,7 @@ using MPI
 # Model
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
+Discretization = parsed_args["Discretization"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
@@ -150,9 +150,9 @@ elseif JuliaDevice == "GPU"
   elseif JuliaGPU == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
-  elseif JuliaGPU == "oneAPI"
-    backend = oneAPIBackend()
-    oneAPI.allowscalar(true)
+# elseif JuliaGPU == "oneAPI"
+#   backend = oneAPIBackend()
+#   oneAPI.allowscalar(true)
   end
 else
   backend = CPU()
@@ -282,7 +282,7 @@ else
     end
   end
   Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
-    GridType,Decomp,RadEarth,Model,ParallelCom)
+    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
 end  
 
