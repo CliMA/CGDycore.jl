@@ -117,6 +117,9 @@ NumberThreadGPU = parsed_args["NumberThreadGPU"]
 # Finite elements
 k = parsed_args["OrderFEM"]
 
+# Grid Output Refine
+ref = parsed_args["RefineOutput"]
+
 MPI.Init()
 Device = "CPU"
 FloatTypeBackend = "Float64"
@@ -171,7 +174,6 @@ Boundary.SN = BoundarySN
 Boundary.BT = BoundaryBT
 
 Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
-#Grid, Exchange = Grids.CartGrid(backend,FTB,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz)
 
 Param = Examples.Parameters(FTB,Problem)
 
@@ -185,22 +187,22 @@ Param = Examples.Parameters(FTB,Problem)
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint = ceil(PrintT/dtau)
   FileNameOutput = GridType*"BickleyJet"
-  FileNameOutput = "Flat/"*GridType*"BickleyJet"
+  FileNameOutput = "Flat/Tri/"*GridType*"BickleyJet"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
   @show nprint
 
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
-
+@show Grid.Type
 #Output
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=k)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
-  nQuad = 4
-  nQuadM = 4
-  nQuadS = 4
+  nQuad = 2
+  nQuadM = 2
+  nQuadS = 2
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
   nQuadM = 4
@@ -259,9 +261,9 @@ FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.J
 FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,
   FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart] ,FileNumber,cName)
-stop
 
-nAdveVel = 1000
+
+nAdveVel = 20000
 nprint = 100
 for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600 

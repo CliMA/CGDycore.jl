@@ -334,8 +334,15 @@ EndTime = nAdvel * dtau / 3600
 @show EndTime
 NumAux = 1
 Parallels.InitExchangeData3D(backend,FTB,1,NumV+NumAux+1,Exchange)
+if Proc == 1
+  @show Grid.NumFaces
+  @show Exchange.IndSendBuffer
+  @show Exchange.IndRecvBuffer
+end  
 
+nAdvel = 1
 @inbounds for i = 1 : nAdvel
+
   if Proc == 1
     @show i
     @show sum(abs.(U))
@@ -344,6 +351,7 @@ Parallels.InitExchangeData3D(backend,FTB,1,NumV+NumAux+1,Exchange)
   DGSEM.FcnGPUSplitPar!(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
   fac = FTB(1/3 * dtau)
   @. UNew = U + fac * FU
+  stop
 
   DGSEM.FcnGPUSplitPar!(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
   fac = FTB(1/2 * dtau)

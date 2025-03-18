@@ -6,11 +6,12 @@ julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
   --nPanel=60 \
-  --RefineLevel=6 \
+  --RefineLevel=7 \
+  --RefineOutput=1 \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=1 \
+  --SimDays=6 \
   --SimHours=0 \
-  --PrintHours=0 \
-  --PrintSeconds=1800 \
+  --PrintHours=1 \
+  --PrintSeconds=0 \
   --PrintTime=0

@@ -104,6 +104,9 @@ NumberThreadGPU = parsed_args["NumberThreadGPU"]
 # Finite elements
 k = parsed_args["OrderFEM"]
 
+# Grid Output Refine
+ref = parsed_args["RefineOutput"]
+
 MPI.Init()
 Device = "CPU"
 FloatTypeBackend = "Float64"
@@ -165,7 +168,7 @@ if Problem == "GalewskiSphere"
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint::Int = ceil(PrintT/dtau)
-  FileNameOutput = "Galewski/"*GridType*"NSGalewski"
+  FileNameOutput = "Galewski/test/"*GridType*"NSGalewski"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -191,7 +194,7 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 #Output
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=k)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
@@ -220,7 +223,6 @@ RT.LUM = lu(RT.M)
 ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuadM,FEMSei.Jacobi!)
 ND.LUM = lu(ND.M)
 Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuad,FEMSei.Jacobi!)
-
 
 #Runge-Kutta steps
 time = 0.0

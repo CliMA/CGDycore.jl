@@ -36,7 +36,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
     pts = Array{Float64,2}(undef,3,NumNodes)
     NumNodes = 0
     RefineMidPoints = zeros(1,2)
-    if Grid.Type == Tri()
+    if Grid.Type == Grids.Tri()
       RefineMidPoints[1,1] = -1/3  
       RefineMidPoints[1,2] = -1/3  
     end  
@@ -1114,6 +1114,7 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
   PartitionCell = zeros(NF)
   PartitionCell .= part
+  @show PartitionCell
   vtk["Part", VTKCellData()] = PartitionCell
   outfiles=vtk_save(vtk)
   return outfiles::Vector{String}

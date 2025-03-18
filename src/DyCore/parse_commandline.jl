@@ -554,6 +554,11 @@ function parse_commandline()
      arg_type = Bool
      default = false
 
+     "--RefineOutput"
+     help = "Refining Output Finite Elements"
+     arg_type = Int
+     default = 0
+
     "--Device"
      help = "CPU or GPU"
      arg_type = String

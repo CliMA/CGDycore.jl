@@ -101,6 +101,9 @@ GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
+# Grid Output Refine
+ref = parsed_args["RefineOutput"]
+
 # Finite elements
 k = parsed_args["OrderFEM"]
 MPI.Init()
@@ -167,7 +170,7 @@ if Problem == "GalewskiSphere"
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nPrint::Int = ceil(PrintT/dtau)
   FileNameOutput = GridType*"NonLinShallowGal"
-  FileNameOutput = "GalewskiVecI/"*GridType*"NSGalewski"
+  FileNameOutput = "GalewskiVecI/160_tri/"*GridType*"NSGalewski"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -193,7 +196,7 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 #Output
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
@@ -211,20 +214,6 @@ DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
-#for iE = 1 : Grid.NumEdges
-#  @show iE
-#  @show Grid.Edges[iE].F
-#  @show Grid.Edges[iE].FE
-#  iFL = Grid.Edges[iE].F[1]
-#  iFR = Grid.Edges[iE].F[2]
-#  for iDoF = 1 : RT.DoF
-#    indL = RT.Glob[iDoF,iFL]  
-#    indR = RT.Glob[iDoF,iFR]  
-#    @show iDoF,indL,indR  
-#  end  
-#end  
-#stop
-
 ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
 
 pPosS = ModelFEM.pPosS
@@ -241,4 +230,4 @@ FEMSei.InterpolateRT!(Uu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialPro
 cName = ["h";"Vort";"uS";"vS"]
 
 @show  nAdveVel
-FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName,nPrint)
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName,nPrint,ref)

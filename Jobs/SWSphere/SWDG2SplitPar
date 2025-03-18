@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverDG2SplitPar.jl \
+julia --project --check-bounds=yes Examples/DriverDG2SplitPar.jl \
   --Problem="GalewskiSphere" \
   --Discretization="DG" \
   --NumberThreadGPU=512 \
@@ -29,12 +29,12 @@ julia --project Examples/DriverDG2SplitPar.jl \
   --TopoS="" \
   --GridType="CubedSphere" \
   --nz=1 \
-  --nPanel=20 \
+  --nPanel=3 \
   --ns=20 \
   --nLon=120 \
   --nLat=60 \
   --H=300.0 \
-  --OrdPoly=5 \
+  --OrdPoly=1 \
   --OrdPolyZ=0 \
   --HyperVisc=true \
   --HyperDCurl=1.0e13 \

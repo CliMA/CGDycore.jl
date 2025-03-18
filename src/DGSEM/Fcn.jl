@@ -80,6 +80,7 @@ function FcnGPUSplitPar!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Gl
   NF = Grid.NumFaces
   NE = Grid.NumEdges
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  Proc = Global.ParallelCom.Proc
   @views V = CacheU[:,:,:,1:4]
   @views VI = V[:,:,1:DG.NumI,:]
   @views FV = CacheF[:,:,:,1:4]
@@ -114,8 +115,10 @@ function FcnGPUSplitPar!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Gl
   group = (N,NEG)
   ndrange = (N,NE)
   KRiemanNonLinKernel! = RiemanNonLinKernel!(backend,group)
+  @show "S",sum(abs.(FV)) 
   KRiemanNonLinKernel!(Model.RiemannSolver,FV,V,Aux,DG.Glob,DG.IndE,Grid.EF,Grid.FE,Metric.NH,Metric.T1H,
-    Metric.T2H,Metric.VolSurfH,Metric.J,DG.w[1],Val(NV),Val(NAUX);ndrange=ndrange) 
+    Metric.T2H,Metric.VolSurfH,Metric.J,DG.w[1],Proc,Val(NV),Val(NAUX);ndrange=ndrange) 
+  @show "E",sum(abs.(FV)) 
 
   NFG = min(div(NumberThreadGPU,N*N),NF)
   group = (N*N,NFG)

@@ -9,9 +9,16 @@ function InitSphereDG2(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoP
   DoF = (OrdPoly + 1) * (OrdPoly + 1)
   Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     Model.NumV,Model.NumTr)
-  DG = FiniteElements.DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid)
+  DG = FiniteElements.DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid,ParallelCom.Proc)
 
   (DG,Metric) = DiscretizationDG2(backend,FT,Grids.JacobiSphereDG2GPU!,DG,Exchange,Global)
+
+  # Output partition
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,DG,Metric,Global)
+  Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
+  Global.Grid.nz = nzTemp
 
   return DG, Metric, Global
 end  

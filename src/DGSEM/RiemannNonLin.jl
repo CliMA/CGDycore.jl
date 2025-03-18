@@ -29,7 +29,7 @@ end
 
 @kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(Glob),@Const(IndE),
   @Const(EF),@Const(FTE),@Const(NH),@Const(T1H),@Const(T2H),@Const(VolSurfH),
-  @Const(JJ),@Const(w), ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+  @Const(JJ),@Const(w), Proc, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
   I,iE = @index(Local, NTuple)
   _,IE = @index(Global, NTuple)
@@ -57,7 +57,21 @@ end
 
   if IE <= NE
     indL = Glob[IndE[EL,I],iFL]
+    if indL == 0 && Proc == 3
+      @show Proc,iFL,EL
+      @show Proc,iFL,Glob[:,iFL]
+      @show EF[:,IE]
+      @show Proc,EL,IndE[EL,I]
+      stop
+    end
     indR = Glob[IndE[ER,I],iFR]
+    if indR == 0 && Proc == 3
+      @show Proc,iFR,ER
+      @show Proc,iFR,Glob[:,iFR]
+      @show EF[:,IE]
+      @show Proc,ER,IndE[ER,I]
+      stop
+    end
     VLL[I,iE,hPos] = U[1,1,indL,hPos]
     VLL[I,iE,uPos] = NH[1,1,I,1,IE] * U[1,1,indL,uPos] +
       NH[2,1,I,1,IE] * U[1,1,indL,vPos] +

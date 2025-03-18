@@ -8,7 +8,7 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --RefineLevel=3 \
   --Flat=true \
   --nPanel=60 \
-  --RefineLevel=6 \
+  --RefineOutput=1 \
   --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=1 \

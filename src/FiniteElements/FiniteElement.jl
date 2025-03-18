@@ -173,7 +173,8 @@ mutable struct DGQuad{FT<:AbstractFloat,
     OrdPoly::Int
     OrdPolyZ::Int
     DoF::Int
-    Glob::IT3
+    Glob::IT2
+    GlobE::IT3
     IndE::IT2
     Stencil::IT2
     NumG::Int
@@ -201,7 +202,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     VZ::AT1
 end
 
-function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
+function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
 # Discretization
   OP=OrdPoly+1
   OPZ=OrdPolyZ+1
@@ -267,10 +268,11 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   copyto!(DSZ,DSZCPU)
   DWZ = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
   copyto!(DWZ,DWZCPU)
-  (GlobCPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
-    NumberingFemDGQuad(Grid,OrdPoly)  
+  (GlobCPU,GlobECPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
+    NumberingFemDGQuad(Grid,OrdPoly,Proc)  
 
   Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
+  GlobE = KernelAbstractions.zeros(backend,Int,size(GlobECPU))
   Stencil = KernelAbstractions.zeros(backend,Int,size(StencilCPU))
   copyto!(Stencil,StencilCPU)
   MasterSlave = KernelAbstractions.zeros(backend,Int,size(MasterSlaveCPU))
@@ -329,16 +331,18 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   end  
 =#  
   copyto!(Glob,GlobCPU)
+  copyto!(GlobE,GlobECPU)
   return DGQuad{FT,
                  typeof(w),
                  typeof(DW),
                  typeof(MasterSlave),
                  typeof(Stencil),
-                 typeof(Glob)}(
+                 typeof(GlobE)}(
     OrdPoly,
     OrdPolyZ,
     DoF,
     Glob,
+    GlobE,
     IndE,
     Stencil,
     NumG,

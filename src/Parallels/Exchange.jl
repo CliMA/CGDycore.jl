@@ -179,7 +179,7 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
           if Discretization == "CG"  
             push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
           elseif Discretization == "DG"  
-            push!(LocTemp,k + (iEB1 - 1) * OrdEdge + SubGrid.NumFaces * OrdEdge * OrdEdge)
+            push!(LocTemp,k + (iE - 1) * OrdEdge + SubGrid.NumFaces * OrdEdge * OrdEdge)
           end
         end
       end

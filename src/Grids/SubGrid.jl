@@ -223,6 +223,9 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
     else
       Edges[i].F[2] = 0
     end
+    if ProcNumber == 3
+      @show i,Edges[i].F
+    end  
   end
 
   Dim=3;
