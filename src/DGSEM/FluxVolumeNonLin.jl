@@ -146,7 +146,7 @@ function FluxSplitVolumeNonLin!(FluxAver,F,V,DG,dXdxI,Grid,Phys)
 end
 
 @kernel inbounds = true function FluxSplitVolumeNonLinKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
-  @Const(JJ),@Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
+  @Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
 
   I, J, iF   = @index(Local, NTuple)
   _,_,IF = @index(Global, NTuple)
@@ -196,7 +196,7 @@ end
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]  
     @unroll for iv = 1 : NV
-      F[1,1,ind,iv] += FLoc[I,J,iF,iv] / JJ[ID,1,1,IF]
+      F[1,1,ind,iv] += FLoc[I,J,iF,iv] 
     end
   end
 end  

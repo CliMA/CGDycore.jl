@@ -12,74 +12,53 @@ function NumberingFemDGQuad(Grid,PolyOrd,Proc)
         ii = ii + 1
       end
     end
-    Glob[:,iF] = GlobLoc
+    @. Glob[:,iF] = GlobLoc
   end
+
   GlobE = zeros(Int,2,N,Grid.NumEdges)
+  GlobLocE = zeros(Int,2,N)
   iEB = 0
   for iE = 1 : Grid.NumEdges
-    for i = 1 : 2  
-      iF = Grid.Edges[iE].F[i]  
+    for j = 1 : 2  
+      iF = Grid.Edges[iE].F[j]  
       if iF > 0 
-        FE = Grid.Edges[iE].EF[i]
+        FE = Grid.Edges[iE].FE[j]
         if iF <= Grid.NumFaces 
           if FE == 1  
             ii = 1  
             for i = 1 : N
-              GlobLocE[i,ii] = ii + (iF - 1) * N * N
+              GlobLocE[j,i] = ii + (iF - 1) * N * N
               ii += 1
             end
           elseif FE == 2  
             ii =  N
             for i = 1 : N
-              GlobLocE[i,ii] = ii + (iF - 1) * N * N
+              GlobLocE[j,i] = ii + (iF - 1) * N * N
               ii += N
             end
           elseif FE == 3  
             ii =  1 + (N - 1) * N 
             for i = 1 : N
-              GlobLocE[i,ii] = ii + (iF - 1) * N * N
+              GlobLocE[j,i] = ii + (iF - 1) * N * N
               ii += 1
             end  
           elseif FE == 4  
             ii =  1 
             for i = 1 : N
-              GlobLocE[i,ii] = ii + (iF - 1) * N * N
+              GlobLocE[j,i] = ii + (iF - 1) * N * N
               ii += N
             end  
           end
         else
           iEB += 1
-          if FE == 1
-            ii = 1  
-            for i = 1 : N
-              GlobLocE[i,ii] = i + (iEB - 1) * N + Grid.NumFaces * N * N
-              ii += 1
-            end
-          elseif FE == 2  
-            ii =  N
-            for i = 1 : N
-              GlobLocE[i,ii] = i + (iEB - 1) * N + Grid.NumFaces * N * N
-              ii += N
-            end
-          elseif FE == 3  
-            ii =  1 + (N - 1) * N 
-            for i = 1 : N
-              GlobLocE[i,ii] = i + (iEB - 1) * N + Grid.NumFaces * N * N
-              ii += 1
-            end  
-          elseif FE == 4  
-            ii =  1 
-            for i = 1 : N
-              GlobLocE[i,ii] = i + (iEB - 1) * N + Grid.NumFaces * N * N
-              ii += N
-            end  
+          for i = 1 : N
+            GlobLocE[j,i] = i + (iEB - 1) * N + Grid.NumFaces * N * N
           end
         end
       end  
     end  
-    GlobE[:,:,iE] = GlobLocE
+    @. GlobE[:,:,iE] = GlobLocE
   end  
-  stop
 
   NumI = Grid.NumFaces * N * N
   NumG = NumI + Grid.NumEdgesB * N

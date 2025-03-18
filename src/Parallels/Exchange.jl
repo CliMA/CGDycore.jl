@@ -76,7 +76,8 @@ function ExchangeStruct{FT}(backend) where FT<:AbstractFloat
 end  
 
 
-function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,ProcNumber,HorLimit,Discretization) where FT<:AbstractFloat
+function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,ProcNumber,
+  HorLimit;Discretization="CG") where FT<:AbstractFloat
 
   IndSendBuffer = Dict()
   IndRecvBuffer = Dict()
@@ -139,7 +140,7 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
             elseif FE == 3
               push!(LocTemp,k + (OrdEdge - 1) * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
             elseif FE ==4
-              push!(LocTemp,k + (k - 1) * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
+              push!(LocTemp,1 + (k - 1) * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
             end
           end  
         end

@@ -127,7 +127,6 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
         for iR in 1 : NumRefine  
           if Grid.Form == "Sphere" 
             for i in 1 : 4  
-              NumNodes += 1  
               NodeLoc[1,i], NodeLoc[2,i], NodeLoc[3,i] =
                 Bilinear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
                 Grid.Nodes[Grid.Faces[iF].N[1]].P,
@@ -1114,7 +1113,6 @@ function unstructured_vtkPartition(vtkGrid, NF, part::Int, nparts::Int)
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
   PartitionCell = zeros(NF)
   PartitionCell .= part
-  @show PartitionCell
   vtk["Part", VTKCellData()] = PartitionCell
   outfiles=vtk_save(vtk)
   return outfiles::Vector{String}

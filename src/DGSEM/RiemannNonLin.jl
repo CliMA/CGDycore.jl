@@ -2,7 +2,7 @@ abstract type RiemannSolver end
 
 Base.@kwdef struct RiemannLMARS <: RiemannSolver end
 
-function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,pPos)
+function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,wPos,pPos)
   @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR)
 
     FT = eltype(F)
@@ -18,18 +18,20 @@ function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,pPos)
       F[hPos] = vM * VLL[hPos]
       F[uPos] = vM * VLL[uPos] + pM
       F[vPos] = vM * VLL[vPos]
+      F[wPos] = vM * VLL[wPos]
     else
       F[hPos] = vM * VRR[hPos]
       F[uPos] = vM * VRR[uPos] + pM
       F[vPos] = vM * VRR[vPos]
+      F[wPos] = vM * VRR[wPos]
     end
   end
   return RiemannByLMARSNonLin!
 end    
 
-@kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(Glob),@Const(IndE),
+@kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
   @Const(EF),@Const(FTE),@Const(NH),@Const(T1H),@Const(T2H),@Const(VolSurfH),
-  @Const(JJ),@Const(w), Proc, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+  @Const(w), NF, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
   I,iE = @index(Local, NTuple)
   _,IE = @index(Global, NTuple)
@@ -38,7 +40,6 @@ end
   TilesDim = @uniform @groupsize()[2]
 
   NE = @uniform @ndrange()[2]
-  NF = @uniform size(JJ,4)
 
   VLL = @localmem eltype(F) (N,TilesDim,NV)
   VRR = @localmem eltype(F) (N,TilesDim,NV)
@@ -50,28 +51,12 @@ end
   vPos = @uniform 3
   wPos = @uniform 4
 
-  iFL = EF[1,IE]
-  iFR = EF[2,IE]
-  EL = FTE[1,IE]
-  ER = FTE[2,IE]
 
   if IE <= NE
-    indL = Glob[IndE[EL,I],iFL]
-    if indL == 0 && Proc == 3
-      @show Proc,iFL,EL
-      @show Proc,iFL,Glob[:,iFL]
-      @show EF[:,IE]
-      @show Proc,EL,IndE[EL,I]
-      stop
-    end
-    indR = Glob[IndE[ER,I],iFR]
-    if indR == 0 && Proc == 3
-      @show Proc,iFR,ER
-      @show Proc,iFR,Glob[:,iFR]
-      @show EF[:,IE]
-      @show Proc,ER,IndE[ER,I]
-      stop
-    end
+    iFL = EF[1,IE]
+    iFR = EF[2,IE]
+    indL = GlobE[1,I,IE]
+    indR = GlobE[2,I,IE]
     VLL[I,iE,hPos] = U[1,1,indL,hPos]
     VLL[I,iE,uPos] = NH[1,1,I,1,IE] * U[1,1,indL,uPos] +
       NH[2,1,I,1,IE] * U[1,1,indL,vPos] +
@@ -108,18 +93,16 @@ end
     FE[vPos] *= Surf
     FE[wPos] *= Surf
     if iFL <= NF
-      JJL = JJ[IndE[EL,I],1,1,iFL]
-      @atomic :monotonic F[1,1,indL,hPos] -= FE[hPos] / JJL
-      @atomic :monotonic F[1,1,indL,uPos] -= FE[uPos] / JJL
-      @atomic :monotonic F[1,1,indL,vPos] -= FE[vPos] / JJL
-      @atomic :monotonic F[1,1,indL,wPos] -= FE[wPos] / JJL
+      @atomic :monotonic F[1,1,indL,hPos] -= FE[hPos]
+      @atomic :monotonic F[1,1,indL,uPos] -= FE[uPos]
+      @atomic :monotonic F[1,1,indL,vPos] -= FE[vPos]
+      @atomic :monotonic F[1,1,indL,wPos] -= FE[wPos]
     end  
     if iFR <= NF
-      JJR = JJ[IndE[ER,I],1,1,iFR]
-      @atomic :monotonic F[1,1,indR,hPos] += FE[hPos] / JJR
-      @atomic :monotonic F[1,1,indR,uPos] += FE[uPos] / JJR
-      @atomic :monotonic F[1,1,indR,vPos] += FE[vPos] / JJR
-      @atomic :monotonic F[1,1,indR,wPos] += FE[wPos] / JJR
+      @atomic :monotonic F[1,1,indR,hPos] += FE[hPos]
+      @atomic :monotonic F[1,1,indR,uPos] += FE[uPos]
+      @atomic :monotonic F[1,1,indR,vPos] += FE[vPos]
+      @atomic :monotonic F[1,1,indR,wPos] += FE[wPos]
     end  
   end  
 end
@@ -145,7 +128,7 @@ end
 end
 
 
-@kernel inbounds = true function VCart2VSpKernel!(VSp,@Const(VCart),@Const(Rotate))
+@kernel inbounds = true function VCart2VSpKernel!(VSp,@Const(VCart),@Const(Rotate),@Const(J))
 
   iQ,  = @index(Local, NTuple)
   _,IF = @index(Global, NTuple)
@@ -155,12 +138,12 @@ end
 
   if IF <= NF
     iD = iQ + (IF - 1) * NQ
-    VSp[1,1,iD,1] = VCart[1,1,iD,1]
-    VSp[1,1,iD,2] = Rotate[1,1,1,iQ,1,IF] * VCart[1,1,iD,2] +
+    VSp[1,1,iD,1] = VCart[1,1,iD,1] / J[iQ,1,1,IF]
+    VSp[1,1,iD,2] = (Rotate[1,1,1,iQ,1,IF] * VCart[1,1,iD,2] +
       Rotate[1,2,1,iQ,1,IF] * VCart[1,1,iD,3] +
-      Rotate[1,3,1,iQ,1,IF] * VCart[1,1,iD,4]
-    VSp[1,1,iD,3] = Rotate[2,1,1,iQ,1,IF] * VCart[1,1,iD,2] +
+      Rotate[1,3,1,iQ,1,IF] * VCart[1,1,iD,4]) / J[iQ,1,1,IF]
+    VSp[1,1,iD,3] = (Rotate[2,1,1,iQ,1,IF] * VCart[1,1,iD,2] +
       Rotate[2,2,1,iQ,1,IF] * VCart[1,1,iD,3] +
-      Rotate[2,3,1,iQ,1,IF] * VCart[1,1,iD,4]
+      Rotate[2,3,1,iQ,1,IF] * VCart[1,1,iD,4]) / J[iQ,1,1,IF]
   end  
 end

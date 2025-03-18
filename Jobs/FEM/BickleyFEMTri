@@ -1,12 +1,12 @@
 #!/bin/bash
-julia --project Examples/FEMSei/ConsNonLinShallowCart.jl \
+julia --project Examples/FEMSei/ConsNonLinShallowCartTri.jl \
   --Problem="BickleyJet" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
+  --GridType="Tri" \
   --Flat=false \
-  --nx=20 \
-  --ny=20 \
-  --GridType="Quad" \
+  --nx=2 \
+  --ny=2 \
   --Lx=12.566370614359172 \
   --Ly=12.566370614359172 \
   --x0=-6.283185307179586 \
