@@ -196,7 +196,15 @@ Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 @show Grid.Type
 #Output
+
+ref=0
+hout=ones(Grid.NumFaces)
+cName=["hh"]
+FileNumber = 0
+FileNameOutput = "GridTri"
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
+Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout;] ,FileNumber,cName)
+stop
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()

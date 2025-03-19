@@ -167,7 +167,6 @@ function CartGridTri(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Floa
          N1 = 1 + (iy - 1) * nx
        end  
        N2 += 1
-       @show ix,iy,N1,N2
        Edges[EdgeNumber]=Edge(sort([N1,N2]),Nodes,EdgeNumber,EdgeNumber,TypeE,EdgeNumberD)
        EdgeNumber += 1
        EdgeNumberD += 1
@@ -200,16 +199,16 @@ function CartGridTri(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Floa
 #         E1=E1+1
 #         E4=E4+1
           e = [E1,EdgeDiag,E4]  
-          P=[P[:,ix,iy] P[:,ix+1,iy] P[:,ix,iy+1]]
-          ee, PP = SortEdges(e,P,Edges)  
+          PL = [P[:,ix,iy+1] P[:,ix+1,iy] P[:,ix,iy]]
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           e = [1+(iy-1)*nx,NumEdgesX+1+(ix-1),EdgeDiag]
-          P = [P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]]
-          ee, PP = SortEdges(e,P,Edges)  
+          PL = [P[:,ix+1,iy+1] P[:,ix,iy+1] P[:,ix+1,iy]]
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           E1=E1+1
           E4=E4+1
@@ -221,16 +220,16 @@ function CartGridTri(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Floa
 #         E2=E2+1
 #         E4=E4+1
           e = [E1,EdgeDiag,E4]  
-          P = [P[:,ix,iy] P[:,ix+1,iy] P[:,ix,iy+1]]
-          ee, PP = SortEdges(e,P,Edges)  
+          PL = [P[:,ix,iy+1] P[:,ix,iy] P[:,ix+1,iy]]
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           e = [E2,NumEdgesX+1+(ix-1),EdgeDiag]
-          P = [P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]]
-          ee, PP = SortEdges(e,P,Edges)  
+          PL = [P[:,ix,iy+1] P[:,ix+1,iy+1] P[:,ix+1,iy]]
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           E1=E1+1
           E2=E2+1
@@ -247,23 +246,16 @@ function CartGridTri(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Floa
 #         E1=E1+1
 #         E3=E3+1
           e = [E1,EdgeDiag,E4]
-          P = [P[:,ix,iy] P[:,ix+1,iy] P[:,ix,iy+1]]
-          ee, PP = SortEdges(e,P,Edges)  
-          @show "C3",e
-          @show "C3",P
-          @show "C3",Edges[e[1]].N
-          @show "C3",Edges[e[2]].N
-          @show "C3",Edges[e[3]].N
-          @show "C3",ee
-          @show "C3",PP
+          PL = [P[:,ix+1,iy] P[:,ix,iy] P[:,ix,iy+1]]
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           e = [1+(iy-1)*nx,E3,EdgeDiag]
-          P = [P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]]
-          ee, PP = SortEdges(e,P,Edges)  
+          PL = [P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]]
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           E1=E1+1
           E3=E3+1
@@ -276,23 +268,16 @@ function CartGridTri(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Floa
 #         E3=E3+1
 #         E4=E4+1
           e = [E1,EdgeDiag,E4]  
-          P = [P[:,ix,iy] P[:,ix+1,iy] P[:,ix,iy+1]]
-          ee, PP = SortEdges(e,P,Edges)  
-          @show e
-          @show ee
-          @show P
-          @show PP
-          @show Edges[e[1]].N
-          @show Edges[e[2]].N
-          @show Edges[e[3]].N
+          PL = [P[:,ix,iy] P[:,ix+1,iy] P[:,ix,iy+1]]
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           e = [E2,E3,EdgeDiag]
-          P = [P[:,ix+1,iy] P[:,ix+1,iy+1] P[:,ix,iy+1]] 
-          ee, PP = SortEdges(e,P,Edges)  
+          PL = [P[:,ix+1,iy] P[:,ix,iy+1] P[:,ix+1,iy+1]] 
+          ee = SortEdges(e,Edges)  
           (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,TypeF,OrientFace;
-            P=PP)
+            P=PL)
           FaceNumber=FaceNumber+1
           E1=E1+1
           E2=E2+1
@@ -356,12 +341,11 @@ function CartGridTri(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Floa
 
 end
 
-function SortEdges(e,P,Edges)
+function SortEdges(e,Edges)
   s1 = sum(Edges[e[1]].N)
   s2 = sum(Edges[e[2]].N)
   s3 = sum(Edges[e[3]].N)
   permu = sortperm([s1;s2;s3])
   ee = [e[permu[1]]; e[permu[3]]; e[permu[2]]]
-  PP = [P[:,permu[1]] P[:,permu[3]]  P[:,permu[2]]]
-  return ee, PP
+  return ee
 end   

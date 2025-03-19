@@ -5,8 +5,8 @@ julia --project Examples/FEMSei/ConsNonLinShallowCartTri.jl \
   --NumberThreadGPU=512 \
   --GridType="Tri" \
   --Flat=false \
-  --nx=2 \
-  --ny=2 \
+  --nx=20 \
+  --ny=20 \
   --Lx=12.566370614359172 \
   --Ly=12.566370614359172 \
   --x0=-6.283185307179586 \
