@@ -197,8 +197,8 @@ Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 @show Grid.Type
 #Output
 
-ref=0
-hout=ones(Grid.NumFaces)
+ref=1
+hout=ones(4^ref*Grid.NumFaces)
 cName=["hh"]
 FileNumber = 0
 FileNameOutput = "GridTri"
