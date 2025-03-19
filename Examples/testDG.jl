@@ -167,7 +167,7 @@ H = 1000.0
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,"Sleve",FTB(H))
 
 print("Which Problem do you want so solve? \n")
-print("1 - GalewskiSphere\n\
+print("1 - GalewskySphere\n\
        2 - HaurwitzSphere\n")
 
 #text = readline() 
@@ -177,7 +177,7 @@ if a == 0
     Problem = "LinearBlob"
     Param = Examples.Parameters(FTB,Problem)
 elseif  a == 1
-    Problem = "GalewskiSphere"
+    Problem = "GalewskySphere"
     Param = Examples.Parameters(FTB,Problem)
     GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
     cS = sqrt(Phys.Grav * Param.H0G)

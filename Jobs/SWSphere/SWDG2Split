@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/DriverDG2Split.jl \
-  --Problem="GalewskiSphere" \
+  --Problem="GalewskySphere" \
   --Discretization="DG" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \

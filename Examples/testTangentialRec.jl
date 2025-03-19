@@ -157,7 +157,7 @@ Boundary.WE = "Period"
 Boundary.SN = "Period"
 Decomp = ""
 Decomp = "EqualArea"
-Problem = "GalewskiSphere"
+Problem = "GalewskySphere"
 #Problem = "LinearBlob"
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)

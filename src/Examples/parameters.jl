@@ -6,7 +6,7 @@ Base.@kwdef struct ParamBickleyJet
   Ly = 4.0*pi
 end
 
-Base.@kwdef struct ParamGalewskiSphere{FT}
+Base.@kwdef struct ParamGalewskySphere{FT}
   H0G::FT = 10000.0
   hH::FT = 120.0 
   alphaG::FT = 1.0/3.0
@@ -445,9 +445,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "BickleyJet"
     @show Problem
     Param = ParamBickleyJet()
-  elseif Problem == "GalewskiSphere"
+  elseif Problem == "GalewskySphere"
     @show Problem
-    Param = ParamGalewskiSphere{FT}()
+    Param = ParamGalewskySphere{FT}()
   elseif Problem == "HaurwitzSphere"
     @show Problem
     Param = ParamHaurwitzSphere()

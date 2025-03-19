@@ -152,13 +152,13 @@ Decomp = "EqualArea"
 GridType = "TriangularSphere"
 
 print("Which Problem do you want so solve? \n")
-print("1 - GalewskiSphere\n\
+print("1 - GalewskySphere\n\
        2 - HaurwitzSphere\n\
        3 - LinearBlob\n")
 text = readline() 
 a = parse(Int,text)
 if  a == 1
-  Problem = "GalewskiSphere"
+  Problem = "GalewskySphere"
   RadEarth = Phys.RadEarth
   dtau = 30
   nAdveVel = ceil(Int,6*24*3600/dtau)

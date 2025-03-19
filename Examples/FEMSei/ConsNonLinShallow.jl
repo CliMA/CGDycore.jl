@@ -159,7 +159,7 @@ Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,
 
 Param = Examples.Parameters(FTB,Problem)
 
-if Problem == "GalewskiSphere"
+if Problem == "GalewskySphere"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = sqrt(Phys.Grav * Param.H0G)
   dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
@@ -168,7 +168,7 @@ if Problem == "GalewskiSphere"
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint::Int = ceil(PrintT/dtau)
-  FileNameOutput = "Galewski/test/"*GridType*"NSGalewski"
+  FileNameOutput = "Galewsky/test/"*GridType*"NSGalewsky"
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau

@@ -1,4 +1,4 @@
-Base.@kwdef struct ParamGalewskiSphere
+Base.@kwdef struct ParamGalewskySphere
   H0G = 10000.0
   hH = 120.0
   alphaG = 1.0/3.0
@@ -10,7 +10,7 @@ Base.@kwdef struct ParamGalewskiSphere
   Omega = 2*pi/24.0/3600.0
 end
 
-Param = ParamGalewskiSphere()
+Param = ParamGalewskySphere()
 
 abstract type Example end
 

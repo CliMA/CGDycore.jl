@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/DriverDG2.jl \
-  --Problem=""GalewskiSphere"" \
+  --Problem=""GalewskySphere"" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
   --NumV=3 \

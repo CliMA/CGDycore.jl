@@ -165,14 +165,14 @@ Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
 
 print("Which Problem do you want so solve? \n")
-print("1 - GalewskiSphere\n\
+print("1 - GalewskySphere\n\
        2 - HaurwitzSphere\n\
        3 - LinearBlob\n\
        4 - AdvectionSpherical\n")
 text = readline() 
 a = parse(Int,text)
 if  a == 1
-    Problem = "GalewskiSphere"
+    Problem = "GalewskySphere"
     Param = Examples.Parameters(FTB,Problem)
     RadEarth = Phys.RadEarth
     dtau = 30

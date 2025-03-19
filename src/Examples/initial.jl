@@ -358,9 +358,9 @@ function (profile::StratifiedSphereExample)(Param,Phys)
   return local_profile
 end
 
-Base.@kwdef struct GalewskiExample <: Example end
+Base.@kwdef struct GalewskyExample <: Example end
 
-function (profile::GalewskiExample)(Param,Phys)
+function (profile::GalewskyExample)(Param,Phys)
   @inline function local_profile(x,time)
     FT = eltype(x)
     Grav=Phys.Grav 

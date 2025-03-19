@@ -148,7 +148,7 @@ nPanel = 40
 nQuad = 3
 Decomp = ""
 Decomp = "EqualArea"
-#Problem = "GalewskiSphere"
+#Problem = "GalewskySphere"
 Problem = "LinearBlob"
 Param = Examples.Parameters(FTB,Problem)
 Examples.InitialProfile!(Model,Problem,Param,Phys)

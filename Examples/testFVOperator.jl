@@ -145,7 +145,7 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-Problem = "GalewskiSphere"
+Problem = "GalewskySphere"
 RadEarth = Phys.RadEarth
 RadEarth = 300.0
 dtau = 6

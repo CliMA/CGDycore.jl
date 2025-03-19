@@ -14,8 +14,8 @@ include("InitProfileBryanFritsch.jl")
 
 function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
   # Initial values
-  if Problem == "GalewskiSphere"
-    Profile = Examples.GalewskiExample()(Param,Phys)
+  if Problem == "GalewskySphere"
+    Profile = Examples.GalewskyExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "HaurwitzSphere"
     Profile = Examples.HaurwitzExample()(Param,Phys)

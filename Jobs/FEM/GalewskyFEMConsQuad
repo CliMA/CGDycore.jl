@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/FEMSei/ConsNonLinShallow.jl \
-  --Problem="GalewskiSphere" \
+  --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \

@@ -1,9 +1,9 @@
 #!/bin/bash
 julia --project --check-bounds=yes Examples/DriverDG2SplitPar.jl \
-  --Problem="GalewskiSphere" \
+  --Problem="GalewskySphere" \
   --Discretization="DG" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float64" \
+  --FloatTypeBackend="Float32" \
   --NumV=3 \
   --NumTr=0 \
   --Coriolis=true \
