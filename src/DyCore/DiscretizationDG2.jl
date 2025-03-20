@@ -34,8 +34,7 @@ function DiscretizationDG2(backend,FT,Jacobi,DG,Exchange,Global)
   if Global.Grid.Form == "Sphere"
     Grids.JacobiSphereDG2GPU!(Metric.X,Metric.dXdx,Metric.dXdxI,Metric.J,Metric.Rotate,DG,FGPU,Grid.Rad)
   else
-    Grids.JacobiCartDG3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
-#   Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+    Grids.JacobiCartDG2GPU!(Metric.X,Metric.dXdx,Metric.dXdxI,Metric.J,Metric.Rotate,DG,FGPU,Grid.Rad)
   end
 
   EFCPU = zeros(Int,2,NE)
@@ -52,16 +51,13 @@ function DiscretizationDG2(backend,FT,Jacobi,DG,Exchange,Global)
   NzG = min(div(NumberThreadGPU,OP*OPZ),nz)
   group = (OPZ,OP,NzG)
   ndrange = (OPZ,OP,nz,NE)
-  KNormalTangentHKernel1! = NormalTangentHKernel1!(backend,group)
   KNormalTangentHKernel! = NormalTangentHKernel!(backend,group)
   Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,OPZ,OP,nz,NE)
   Metric.NH = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
   Metric.T1H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
   Metric.T2H = KernelAbstractions.zeros(backend,FT,3,OPZ,OP,nz,NE)
-  KNormalTangentHKernel1!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
-    Metric.dXdx,Metric.X,Grid.EF,Grid.FE,ndrange=ndrange)
-# KNormalTangentHKernel!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
-#   Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
+  KNormalTangentHKernel!(Metric.VolSurfH,Metric.NH,Metric.T1H,Metric.T2H,
+    Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
 
   NzG = min(div(NumberThreadGPU,DoF),nz+1)
   group = (OP,OP,NzG)
@@ -147,125 +143,3 @@ end
     T2H[3,K,I,Iz,IE] = 0.0
   end
 end
-
-@kernel inbounds = true function NormalTangentHKernel2!(VolSurfH,NH,T1H,T2H,
-  @Const(dXdx),@Const(X),@Const(EF),@Const(FE))
-
-# Normal NH(3,I,K,iz,IE)
-# Normal TH1(3,I,K,iz,IE)
-# Normal TH2(3,I,K,iz,IE)
-
-  K,I,Iz,IE = @index(Global, NTuple)
-
-  NE = @uniform @ndrange()[4]
-  NZ = @uniform @ndrange()[3]
-  N = @uniform @ndrange()[2]
-
-  if IE <= NE && Iz <= NZ
-    IS = FE[2,IE]  
-    IF = EF[2,IE]
-    if IS == 1
-      ID = I  
-      tSLoc1 = dXdx[1,1,K,ID,Iz,IF]
-      tSLoc2 = dXdx[2,1,K,ID,Iz,IF]
-      tSLoc3 = dXdx[3,1,K,ID,Iz,IF]
-    elseif IS == 2
-      ID = N + (I - 1) * N  
-      tSLoc1 = dXdx[1,2,K,ID,Iz,IF]
-      tSLoc2 = dXdx[2,2,K,ID,Iz,IF]
-      tSLoc3 = dXdx[3,2,K,ID,Iz,IF]
-    elseif IS == 3
-      ID = I + (N - 1) * N  
-      tSLoc1 = dXdx[1,1,K,ID,Iz,IF]
-      tSLoc2 = dXdx[2,1,K,ID,Iz,IF]
-      tSLoc3 = dXdx[3,1,K,ID,Iz,IF]
-    elseif IS == 4
-      ID = 1 + (I - 1) * N  
-      tSLoc1 = dXdx[1,2,K,ID,Iz,IF]
-      tSLoc2 = dXdx[2,2,K,ID,Iz,IF]
-      tSLoc3 = dXdx[3,2,K,ID,Iz,IF]
-    end  
-    XLoc1 = X[ID,1,1,1,IF] 
-    XLoc2 = X[ID,1,2,1,IF] 
-    XLoc3 = X[ID,1,3,1,IF] 
-    nSLoc1 = tSLoc2 * XLoc3 - tSLoc3 * XLoc2 
-    nSLoc2 = -(tSLoc1 * XLoc3 - tSLoc3 * XLoc1) 
-    nSLoc3 = tSLoc1 * XLoc2 - tSLoc2 * XLoc1 
-
-    n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
-    nSLoc1 = nSLoc1 / n1Norm
-    nSLoc2 = nSLoc2 / n1Norm
-    nSLoc3 = nSLoc3 / n1Norm
-
-    t1Norm = sqrt(tSLoc1 * tSLoc1 + tSLoc2 * tSLoc2 + tSLoc3 * tSLoc3)
-    tSLoc1 = tSLoc1 / t1Norm
-    tSLoc2 = tSLoc2 / t1Norm
-    tSLoc3 = tSLoc3 / t1Norm
-
-    VolSurfH[K,I,Iz,IE] = t1Norm
-
-    NH[1,K,I,Iz,IE] = nSLoc1
-    NH[2,K,I,Iz,IE] = nSLoc2
-    NH[3,K,I,Iz,IE] = nSLoc3
-    T1H[1,K,I,Iz,IE] = tSLoc1
-    T1H[2,K,I,Iz,IE] = tSLoc2
-    T1H[3,K,I,Iz,IE] = tSLoc3
-    T2H[1,K,I,Iz,IE] = 0.0
-    T2H[2,K,I,Iz,IE] = 0.0
-    T2H[3,K,I,Iz,IE] = 0.0
-  end
-end
-
-#=
-@kernel inbounds = true function NormalTangentVKernel!(VolSurfV,NV,T1V,T2V,M,@Const(dXdxI))
-
-  # Normal NV(3,I,J,2,iz,IF)
-  # Normal TV1(3,I,J,2,iz,IF)
-  # Normal TV2(3,I,J,2,iz,IF)
-
-  ID,Iz,IF = @index(Global, NTuple)
-
-  NF = @uniform @ndrange()[3]
-  NZ = @uniform @ndrange()[2]
-
-  if IF <= NF && Iz <= NZ
-    if Iz < NZ  
-      nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
-      nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
-      nSLoc3 = dXdxI[3,3,1,ID,Iz,IF]
-      tSLoc1 = dXdxI[1,1,1,ID,Iz,IF]
-      tSLoc2 = dXdxI[1,2,1,ID,Iz,IF]
-      tSLoc3 = dXdxI[1,3,1,ID,Iz,IF]
-    else
-      nSLoc1 = dXdxI[3,1,M,ID,Iz-1,IF]
-      nSLoc2 = dXdxI[3,2,M,ID,Iz-1,IF]
-      nSLoc3 = dXdxI[3,3,M,ID,Iz-1,IF]
-      tSLoc1 = dXdxI[1,1,M,ID,Iz-1,IF]
-      tSLoc2 = dXdxI[1,2,M,ID,Iz-1,IF]
-      tSLoc3 = dXdxI[1,3,M,ID,Iz-1,IF]
-    end  
-    n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
-    nSLoc1 = nSLoc1 / n1Norm
-    nSLoc2 = nSLoc2 / n1Norm
-    nSLoc3 = nSLoc3 / n1Norm
-    VolSurfV[ID,Iz,IF] = n1Norm
-    n1t1 = nSLoc1 * tSLoc1 + nSLoc2 * tSLoc2 + nSLoc3 * tSLoc3
-    tSLoc1 = tSLoc1 - n1t1 * nSLoc1
-    tSLoc2 = tSLoc2 - n1t1 * nSLoc2
-    tSLoc3 = tSLoc3 - n1t1 * nSLoc3
-    t1Norm = sqrt(tSLoc1 * tSLoc1 + tSLoc2 * tSLoc2 + tSLoc3 * tSLoc3)
-    tSLoc1 = tSLoc1 / t1Norm
-    tSLoc2 = tSLoc2 / t1Norm
-    tSLoc3 = tSLoc3 / t1Norm
-    NV[1,ID,Iz,IF] = nSLoc1
-    NV[2,ID,Iz,IF] = nSLoc2
-    NV[3,ID,Iz,IF] = nSLoc3
-    T1V[1,ID,Iz,IF] = tSLoc1
-    T1V[2,ID,Iz,IF] = tSLoc2
-    T1V[3,ID,Iz,IF] = tSLoc3
-    T2V[1,ID,Iz,IF] = nSLoc2 * tSLoc3 - nSLoc3 * tSLoc2
-    T2V[2,ID,Iz,IF] = nSLoc3 * tSLoc1 - nSLoc1 * tSLoc3
-    T2V[3,ID,Iz,IF] = nSLoc1 * tSLoc2 - nSLoc2 * tSLoc1
-  end
-end
-=#

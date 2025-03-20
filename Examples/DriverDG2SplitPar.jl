@@ -270,7 +270,8 @@ if GridForm == "Cartesian"
               P3=P3,
               P4=P4,
               )
-  Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+  Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom,Discretization=Discretization)
+  Trans = Grids.TransCartX!
 else  
   if RadEarth == 0.0
     RadEarth = Phys.RadEarth
@@ -281,6 +282,7 @@ else
   Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
     GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
+  Trans = Grids.TransSphereX!
 end  
 
 
@@ -300,7 +302,6 @@ end
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 
-Trans = Grids.TransSphereX!
 (DG, Metric, Global) = DyCore.InitSphereDG2(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
   Phys,TopoProfile,Exchange,Grid,ParallelCom)
 
@@ -328,14 +329,25 @@ CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,5)
 CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,4)
 FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,3)
 UNew = similar(U)
-nAdvel::Int = 3600 * 24 * 6 / dtau
-nprint::Int  = 3600 * 6 / dtau
-EndTime = nAdvel * dtau / 3600
-@show EndTime
 NumAux = 1
 Parallels.InitExchangeData3D(backend,FTB,1,NumV+NumAux+1,Exchange)
 
-@inbounds for i = 1 : nAdvel
+# Simulation time
+GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+dtau = GridLengthMin / Param.cS / sqrt(2) * .2 / (OrdPoly + 1)^1.5
+EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+IterTime::Int = round(EndTime / dtau)
+dtau = EndTime / IterTime
+PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+nPrint::Int = ceil(PrintT/dtau)
+EndTime = IterTime * dtau / 3600
+
+@show dtau
+@show EndTime
+@show IterTime
+@show nPrint
+
+@inbounds for i = 1 : IterTime
 
   if Proc == 1
     @show i
@@ -353,7 +365,7 @@ Parallels.InitExchangeData3D(backend,FTB,1,NumV+NumAux+1,Exchange)
   fac = FTB(dtau)
   @. U = U + fac * FU
 
-  if mod(i,nprint) == 0
+  if mod(i,nPrint) == 0
     global FileNumber += 1
     if Proc == 1
       @show i, FileNumber

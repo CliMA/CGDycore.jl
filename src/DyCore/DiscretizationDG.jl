@@ -89,13 +89,20 @@ end
   N = @uniform @ndrange()[2]
 
   if IE <= NE && Iz <= NZ
-    IS = FE[1,IE]  
-    IF = EF[1,IE]
+    IF1 = EF[1,IE]
+    IF2 = EF[2,IE]
+    if IF1 < IF2
+      IF = IF1  
+      IS = FE[1,IE]  
+    else
+      IF = IF2
+      IS = FE[2,IE]  
+    end  
     if IS == 1
       ID = I  
-      nSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
-      nSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
-      nSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
+      nSLoc1 = -dXdxI[2,1,K,ID,Iz,IF]
+      nSLoc2 = -dXdxI[2,2,K,ID,Iz,IF]
+      nSLoc3 = -dXdxI[2,3,K,ID,Iz,IF]
       tSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
       tSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
       tSLoc3 = dXdxI[1,3,K,ID,Iz,IF]
@@ -109,9 +116,9 @@ end
       tSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
     elseif IS == 3
       ID = I + (N - 1) * N  
-      nSLoc1 = dXdxI[2,1,K,ID,Iz,IF]
-      nSLoc2 = dXdxI[2,2,K,ID,Iz,IF]
-      nSLoc3 = dXdxI[2,3,K,ID,Iz,IF]
+      nSLoc1 = -dXdxI[2,1,K,ID,Iz,IF]
+      nSLoc2 = -dXdxI[2,2,K,ID,Iz,IF]
+      nSLoc3 = -dXdxI[2,3,K,ID,Iz,IF]
       tSLoc1 = dXdxI[1,1,K,ID,Iz,IF]
       tSLoc2 = dXdxI[1,2,K,ID,Iz,IF]
       tSLoc3 = dXdxI[1,3,K,ID,Iz,IF]

@@ -124,10 +124,12 @@ function FcnGPUSplitPar!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Gl
   KVCart2VSpKernel! = VCart2VSpKernel!(backend,group)
   KVCart2VSpKernel!(F,FV,Metric.Rotate,Metric.J,;ndrange=ndrange)
 
-  NFG = min(div(NumberThreadGPU,N*N),NF)
-  group = (N*N,NFG)
-  ndrange = (N*N,NF)
-  KSourceKernel! = SourceKernel!(backend,group)
-  KSourceKernel!(F,U,Metric.X,Phys;ndrange=ndrange)
+  if Model.Coriolis
+    NFG = min(div(NumberThreadGPU,N*N),NF)
+    group = (N*N,NFG)
+    ndrange = (N*N,NF)
+    KSourceKernel! = SourceKernel!(backend,group)
+    KSourceKernel!(F,U,Metric.X,Phys;ndrange=ndrange)
+  end  
 
 end
