@@ -1,7 +1,7 @@
 function GridLength(Grid) 
   Faces = Grid.Faces
   LengthMaxLoc = 0
-  LengthMinLoc = 4 * pi * Grid.Rad^2
+  LengthMinLoc = Inf
   for iF = 1 : Grid.NumFaces
     LengthMaxLoc = max(sqrt(Faces[iF].Area), LengthMaxLoc)
     LengthMinLoc = min(sqrt(Faces[iF].Area), LengthMinLoc)

@@ -32,12 +32,12 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs)
   end
   copyto!(FGPU,F)
   if Global.Grid.Form == "Sphere"
-#   Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,
-#     Grid.z,zs,Grid.Rad,Global.Model.Equation)
-#   Grids.JacobiDG3GPU!(Grids.XSphereDG3Loc!,Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
-    Grids.JacobiSphere3DGGPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs,Grid.Rad)
+    Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad)
   else
-    Grids.JacobiCartDG3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
+    Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad)
+#   Grids.JacobiCartDG3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
 #   Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,DG,FGPU,Grid.z,zs)
   end
 

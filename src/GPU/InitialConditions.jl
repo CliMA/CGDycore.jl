@@ -88,11 +88,12 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Glo
   M = DG.OrdPolyZ + 1
   Glob = DG.Glob
   X = Metric.X
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   time = 0
 
 
   # Ranges
-  NzG = min(div(256,N*N),Nz)
+  NzG = min(div(NumberThreadGPU,N*N*M),Nz)
   group = (N * N, M, NzG, 1)
   ndrange = (N * N, M, Nz, NF)
   lengthU = NumV
@@ -106,6 +107,13 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Glo
     ND = Model.NDEDMF  
     lengthU += ND*(1 + 1 + 1 + NumTr)
   end    
+
+#=
+ U[K,ID,iZ,iF,Pos]
+ U[K,iZ,ID,iF,Pos]
+ U[K,iZ,ID,Pos]
+=#
+
 
   U = KernelAbstractions.zeros(backend,FTB,Nz,M,DG.NumG,lengthU)
   @views Rho = U[:,:,:,Model.RhoPos]

@@ -63,7 +63,7 @@ function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,Par
   else GridType == "Tri"  
     Grid = Grids.CartGridTri(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order)
   end  
-  CellToProc = Grids.Decompose(Grid,ProcNumber)
+  CellToProc = Grids.Decompose(Grid,nx,ny,ProcNumber)
   SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc;order)
   if Discretization == "DG"
     Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly+1,0,CellToProc,Proc,ProcNumber,Model.HorLimit;

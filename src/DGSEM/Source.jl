@@ -17,3 +17,17 @@
     F[1,1,iD,vPos] += -fac * U[1,1,iD,uPos]  
   end
 end
+
+@kernel inbounds = true function BuoyancyKernel!(F,U,Phys)
+
+  _,_,iD  = @index(Local, NTuple)
+  Iz,K,ID = @index(Global, NTuple)
+
+  ND = @uniform @ndrange()[3]
+
+  if ID <= ND
+    RhoPos = 1
+    wPos = 4
+    F[Iz,K,ID,wPos] += -Phys.Grav * U[Iz,K,ID,RhoPos]
+  end
+end

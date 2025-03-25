@@ -31,38 +31,32 @@ end
 
 @kernel inbounds = true function uvwFunCDGKernel!(Profile,u,v,w,time,@Const(Glob),@Const(X),Param,Phys)
 
-  I, K, iz   = @index(Local, NTuple)
+  ID, K, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
-  M = @uniform @groupsize()[1]
-  N = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  M = @uniform @groupsize()[2]
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
 
   if Iz <= Nz
-    ind = Glob[I,IF]
-    x1 = X[I,K,1,Iz,IF] 
-    x2 = X[I,K,2,Iz,IF]
-    x3 = X[I,K,3,Iz,IF] 
+    ind = Glob[ID,IF]
+    x1 = X[ID,K,1,Iz,IF] 
+    x2 = X[ID,K,2,Iz,IF]
+    x3 = X[ID,K,3,Iz,IF] 
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,wP = Profile(xS,time)
-    lon,lat,_= Grids.cart2sphere(x1,x2,x3)
-    VelSp = SVector{3}(uP, vP ,wP)
-    VelCart = VelSphere2Cart(VelSp,lon,lat)
-    u[Iz,K,ind] = VelCart[1]
-    v[Iz,K,ind] = VelCart[2]
-    w[Iz,K,ind] = VelCart[3]
-#   u[Iz,K,ind] = uP
-#   v[Iz,K,ind] = vP
-#   w[Iz,K,ind] = wP
+    u[Iz,K,ind] = uP
+    v[Iz,K,ind] = vP
+    w[Iz,K,ind] = wP
   end
 end
 
 @kernel inbounds = true function uvFunCDGKernel!(Profile,u,v,time,@Const(Glob),@Const(X),Param,Phys)
 
-  I, K, iz   = @index(Local, NTuple)
+  ID, K, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
@@ -73,10 +67,10 @@ end
 
 
   if Iz <= Nz
-    ind = Glob[I,IF]
-    x1 = X[I,K,1,Iz,IF] 
-    x2 = X[I,K,2,Iz,IF]
-    x3 = X[I,K,3,Iz,IF] 
+    ind = Glob[ID,IF]
+    x1 = X[ID,K,1,Iz,IF] 
+    x2 = X[ID,K,2,Iz,IF]
+    x3 = X[ID,K,3,Iz,IF] 
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,wP = Profile(xS,time)
     lon,lat,_= Grids.cart2sphere(x1,x2,x3)
@@ -131,7 +125,7 @@ end
 
 @kernel inbounds = true function RhoFunCDGKernel!(Profile,Rho,time,@Const(Glob),@Const(X),Param,Phys)
 
-  I, K, iz   = @index(Local, NTuple)
+  ID, K, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[2]
@@ -141,10 +135,10 @@ end
   NF = @uniform @ndrange()[4]
 
   if Iz <= Nz
-    ind = Glob[I,IF]
-    x1 = X[I,K,1,Iz,IF]
-    x2 = X[I,K,2,Iz,IF]
-    x3 = X[I,K,3,Iz,IF]
+    ind = Glob[ID,IF]
+    x1 = X[ID,K,1,Iz,IF]
+    x2 = X[ID,K,2,Iz,IF]
+    x3 = X[ID,K,3,Iz,IF]
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ = Profile(xS,time)
     Rho[Iz,K,ind] = RhoP
@@ -200,14 +194,14 @@ end
 
   ColumnTilesDim = @uniform @groupsize()[2]
   N = @uniform @groupsize()[1]
-  Nz = @uniform @ndrange()[2]
-  NF = @uniform @ndrange()[3]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
 
   if Iz <= Nz
     ind = Glob[I,IF]
-    x1 = X[I,1,1,Iz,IF]
-    x2 = X[I,1,2,Iz,IF]
-    x3 = X[I,1,3,Iz,IF]
+    x1 = X[I,K,1,Iz,IF]
+    x2 = X[I,K,2,Iz,IF]
+    x3 = X[I,K,3,Iz,IF]
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,ThP = Profile(xS,time)
     RhoTh[Iz,K,ind] = RhoP * ThP

@@ -29,12 +29,41 @@ function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,wPos,pPos)
   return RiemannByLMARSNonLin!
 end    
 
+function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,wPos,ThPos,pPos)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR)
+
+    FT = eltype(F)
+    cS = Param.cS
+    pLL = AuxL[pPos]
+    pRR = AuxR[pPos]
+    hM = FT(0.5) * (VLL[hPos] + VRR[hPos])
+    vLL = VLL[uPos] / VLL[hPos]
+    vRR = VRR[uPos] / VRR[hPos]
+    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * hM * (vRR - vLL)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / hM
+    if vM > FT(0)
+      F[hPos] = vM * VLL[hPos]
+      F[uPos] = vM * VLL[uPos] + pM
+      F[vPos] = vM * VLL[vPos]
+      F[wPos] = vM * VLL[wPos]
+      F[ThPos] = vM * VLL[ThPos]
+    else
+      F[hPos] = vM * VRR[hPos]
+      F[uPos] = vM * VRR[uPos] + pM
+      F[vPos] = vM * VRR[vPos]
+      F[wPos] = vM * VRR[wPos]
+      F[ThPos] = vM * VRR[ThPos]
+    end
+  end
+  return RiemannByLMARSNonLin!
+end
+
 @kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
   @Const(EF),@Const(FTE),@Const(NH),@Const(T1H),@Const(T2H),@Const(VolSurfH),
   @Const(w), NF, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
-  I,iE = @index(Local, NTuple)
-  _,IE = @index(Global, NTuple)
+  _,_,I,iE = @index(Local, NTuple)
+  Iz,K,_,IE = @index(Global, NTuple)
 
   N = @uniform @groupsize()[1]
   TilesDim = @uniform @groupsize()[2]
@@ -109,11 +138,12 @@ end
 
 @kernel inbounds = true function VSp2VCartKernel!(VCart,@Const(VSp),@Const(Rotate))
 
-  iQ,  = @index(Local, NTuple)
-  _,IF = @index(Global, NTuple)
+  K,iQ,  = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
 
-  NQ = @uniform @ndrange()[1]
-  NF = @uniform @ndrange()[2]
+  M = @uniform @ndrange()[1]
+  NQ = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
 
   if IF <= NF
     iD = iQ + (IF - 1) * NQ

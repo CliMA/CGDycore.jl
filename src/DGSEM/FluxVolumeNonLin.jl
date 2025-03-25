@@ -71,33 +71,37 @@ end
 
 Base.@kwdef struct KennedyGruber <: AverageFlux end
 
-function (::KennedyGruber)(hPos,uPos,vPos,wPos,pPos)
+function (::KennedyGruber)(RhoPos,uPos,vPos,wPos,ThPos,pPos)
   @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
     FT = eltype(flux)
     pL = AuxL[pPos]
     pR = AuxR[pPos]
-    hL = VL[hPos]
-    hR = VR[hPos]
-    uL = VL[uPos] / hL
-    vL = VL[vPos] / hL
-    wL = VL[wPos] / hL
-    uR = VR[uPos] / hR
-    vR = VR[vPos] / hR
-    wR = VR[wPos] / hR
+    RhoL = VL[RhoPos]
+    RhoR = VR[RhoPos]
+    uL = VL[uPos] / RhoL
+    vL = VL[vPos] / RhoL
+    wL = VL[wPos] / RhoL
+    ThL = VL[ThPos] / RhoL
+    uR = VR[uPos] / RhoR
+    vR = VR[vPos] / RhoR
+    wR = VR[wPos] / RhoR
+    ThR = VR[ThPos] / RhoR
 
     pAv = FT(0.5) * (pL + pR)
     uAv = FT(0.5) * (uL + uR)
     vAv = FT(0.5) * (vL + vR)
     wAv = FT(0.5) * (wL + wR)
-    hAv = FT(0.5) * (hL + hR)
+    RhoAv = FT(0.5) * (RhoL + RhoR)
+    ThAv = FT(0.5) * (ThL + ThR)
     mAv1 = FT(0.5) * (m_L[1] + m_R[1])
     mAv2 = FT(0.5) * (m_L[2] + m_R[2])
     mAv3 = FT(0.5) * (m_L[3] + m_R[3])
     qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-    flux[1] = hAv * qHat
+    flux[1] = RhoAv * qHat
     flux[2] = flux[1] * uAv + mAv1 * pAv
     flux[3] = flux[1] * vAv + mAv2 * pAv
     flux[4] = flux[1] * wAv + mAv3 * pAv
+    flux[5] = flux[1] * ThAv
   end    
   return FluxNonLinAver!
 end  
@@ -145,7 +149,7 @@ function FluxSplitVolumeNonLin!(FluxAver,F,V,DG,dXdxI,Grid,Phys)
   end
 end
 
-@kernel inbounds = true function FluxSplitVolumeNonLinKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
+@kernel inbounds = true function FluxSplitVolumeNonLinHKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
   @Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
 
   I, J, iF   = @index(Local, NTuple)

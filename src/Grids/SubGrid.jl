@@ -1,4 +1,4 @@
-function Decompose(Grid,NumProc)
+function Decompose(Grid,nx,ny,NumProc)
 
   NumFaces=Grid.NumFaces
   LocalNumfaces=zeros(Int,NumProc)
@@ -10,6 +10,28 @@ function Decompose(Grid,NumProc)
   CellToProc = zeros(Int,NumFaces)
   @inbounds for ic = 1 : NumProc
     CellToProc[sum(LocalNumfaces[1:ic-1])+1:sum(LocalNumfaces[1:ic])] .= ic
+  end  
+  LenLocalX = div(nx,NumProc) 
+  RestX = mod(nx,NumProc)
+  iProc1 = 1
+  iProc2 = LenLocalX + 1
+  Proc = 0
+  for i = 1 : RestX
+    Proc  += 1  
+    for iy = 1 : ny
+      @. CellToProc[iProc1+(iy-1)*nx:iProc2+(iy-1)*nx] = Proc  
+    end
+    iProc1 += LenLocalX + 1
+    iProc2 += LenLocalX + 1
+  end  
+  iProc2 -= 1
+  for i = RestX + 1 : NumProc
+    Proc  += 1  
+    for iy = 1 : ny
+      @. CellToProc[iProc1+(iy-1)*nx:iProc2+(iy-1)*nx] = Proc  
+    end
+    iProc1 += LenLocalX 
+    iProc2 += LenLocalX
   end  
   return CellToProc
 end

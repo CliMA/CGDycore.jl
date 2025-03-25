@@ -23,6 +23,51 @@ function InitSphereDG2(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoP
   return DG, Metric, Global
 end  
 
+function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfile,Exchange,Grid,ParallelCom)
+  nz = Grid.nz
+  Proc = ParallelCom.Proc
+  ProcNumber = ParallelCom.ProcNumber
+
+  TimeStepper = TimeStepperStruct{FT}(backend)
+
+  Output = OutputStruct()
+  DoF = (OrdPoly + 1) * (OrdPoly + 1)
+  Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
+    Model.NumV,Model.NumTr)
+  DG = FiniteElements.DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid,ParallelCom.Proc)
+
+  if Model.Stretch
+    if Model.StretchType == "ICON"
+      sigma = 1.0
+      lambda = 3.16
+      Grids.AddStretchICONVerticalGrid!(Global.Grid,nz,H,sigma,lambda)
+    elseif Model.StretchType == "Exp"
+      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,30.0,1500.0)
+    else
+      Grids.AddVerticalGrid!(Global.Grid,nz,H)
+    end
+  else
+    Grids.AddVerticalGrid!(Global.Grid,nz,H)
+  end
+
+  if Topography.TopoS == "EarthOrography"
+    @time zS, GradDx_zs, GradDy_zs = Grids.Orography4(backend,FT,CG,Exchange,Global)
+  else
+    zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile)
+  end
+
+  (DG,Metric) = DiscretizationDG(backend,FT,Grids.JacobiSphereDG3GPU!,DG,Exchange,Global,zS)
+
+  # Output partition
+  nzTemp = Global.Grid.nz
+  Global.Grid.nz = 1
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,DG,Metric,Global)
+  Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
+  Global.Grid.nz = nzTemp
+
+  return DG, Metric, Global
+end
+
 function InitSphere(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfile,Exchange,Grid,ParallelCom)    
   nz = Grid.nz 
   Proc = ParallelCom.Proc

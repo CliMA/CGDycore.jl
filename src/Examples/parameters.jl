@@ -93,6 +93,7 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   q_t::FT = 1.0e-12
   # Surface flux
   CMom::FT = 1.e-3
+  cS::FT = 360
 end
 
 Base.@kwdef struct ParamBaroWaveHillDrySphere{FT}
@@ -267,15 +268,16 @@ Base.@kwdef struct ParamHillAgnesiYCart
   Stretch = false
 end
 
-Base.@kwdef struct ParamWarmBubble2DXCart
-  Th0::Float64 = 300.0
-  uMax::Float64 = 0.0
-  vMax::Float64 = 0
-  wMax::Float64 = 0
-  DeltaTh::Float64 = 2.0
-  xC0::Float64 = 10000.0
-  zC0::Float64 = 2000.0
-  rC0::Float64 = 2000.0
+Base.@kwdef struct ParamWarmBubble2DXCart{FT}
+  Th0::FT = 300.0
+  uMax::FT = 20.0
+  vMax::FT = 0
+  wMax::FT = 0
+  DeltaTh::FT = 2.0
+  xC0::FT = 10000.0
+  zC0::FT = 2000.0
+  rC0::FT = 2000.0
+  cS::FT = 360.0
 end
 
 Base.@kwdef struct ParamBryanFritschCart
@@ -502,7 +504,7 @@ function Parameters(FT,Problem::String)
     Param = LimAdvectionCart{FT}()  
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
-    Param = ParamWarmBubble2DXCart()
+    Param = ParamWarmBubble2DXCart{FT}()
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()

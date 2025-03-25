@@ -8,6 +8,7 @@ struct CompressibleDeep  <: EquationType  end
 abstract type State end
 struct ShallowWaterState  <: State  end
 struct Dry  <: State  end
+struct DryDG  <: State  end
 struct Moist  <: State end
 struct DryTotalEnergy  <: State  end
 struct DryInternalEnergy  <: State  end
@@ -26,6 +27,22 @@ function (::ShallowWaterState)(Phys)
   end
   return Pressure
 end 
+
+function (::DryDG)(Phys)
+  @inline function Pressure(RhoTh)
+    FT = eltype(RhoTh)
+    p = Phys.p0 * fast_powGPU(Phys.Rd * RhoTh / Phys.p0, FT(1) / (FT(1) - Phys.kappa))
+  end
+  @inline function dPresdRhoTh(RhoTh)
+    dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
+    return dpdRhoTh
+  end
+  @inline function dPresdRho()
+    dpdRho = eltype(Phys.Rd)(0)
+    return dpdRho
+  end
+  return Pressure,dPresdRhoTh,dPresdRho
+end
 
 function (::Dry)(Phys)
   @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
