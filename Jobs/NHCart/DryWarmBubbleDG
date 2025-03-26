@@ -3,7 +3,7 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --Problem="WarmBubble2DXCart" \
   --Discretization="DG" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumTr=0 \
   --ModelType="Conservative" \
@@ -17,7 +17,7 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --BoundaryBT="" \
   --SimTime=1000 \
   --PrintTime=10 \
-  --vtkFileName="output/VTK/WarmBubble/DGCart" \
+  --vtkFileName="output/VTK/WarmBubble/DGCartFloat64" \
   --Curl=false \
   --dtau=.2 \
   --IntMethod="RungeKutta" \

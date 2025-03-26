@@ -30,7 +30,7 @@
   if ID <= NQ
     ind = Glob[ID,IF]
     if Iz > 1    
-      @unroll for iAux = 1 : NAUX  
+      for iAux = 1 : NAUX  
         AuxL[Iz,iD,iAux] = Aux[Iz-1,M,ind,iAux]
       end  
       VLL[Iz,iD,RhoPos] = U[Iz-1,M,ind,RhoPos]
@@ -45,7 +45,7 @@
         T2V[3,ID,Iz,IF] * U[Iz-1,M,ind,wPos]
       VLL[Iz,iD,ThPos] = U[Iz-1,M,ind,ThPos]
     else
-      @unroll for iAux = 1 : NAUX  
+      for iAux = 1 : NAUX  
         AuxL[Iz,iD,iAux] = Aux[Iz,1,ind,iAux]
       end  
       VLL[Iz,iD,RhoPos] = U[Iz,1,ind,RhoPos]
@@ -60,7 +60,7 @@
         T2V[3,ID,Iz,IF] * U[Iz,1,ind,wPos]
     end  
     if Iz < Nz
-      @unroll for iAux = 1 : NAUX  
+      for iAux = 1 : NAUX  
         AuxR[Iz,iD,iAux] = Aux[Iz,1,ind,iAux]
       end  
       VRR[Iz,iD,RhoPos] = U[Iz,1,ind,RhoPos]
@@ -75,7 +75,7 @@
         T2V[3,ID,Iz,IF] * U[Iz,1,ind,wPos]
       VRR[Iz,iD,ThPos] = U[Iz,1,ind,ThPos]
     else  
-      @unroll for iAux = 1 : NAUX  
+      for iAux = 1 : NAUX  
         AuxR[Iz,iD,iAux] = Aux[Iz-1,M,ind,iAux]
       end  
       VRR[Iz,iD,RhoPos] = U[Iz-1,M,ind,RhoPos]
@@ -161,7 +161,7 @@ end
     iFR = EF[2,IE]
     indL = GlobE[1,I,IE]
     indR = GlobE[2,I,IE]
-    @unroll for iAux = 1 : NAUX
+    for iAux = 1 : NAUX
       AuxL[I,K,iz,iAux] = Aux[Iz,K,indL,iAux]
       AuxR[I,K,iz,iAux] = Aux[Iz,K,indR,iAux]
     end  
