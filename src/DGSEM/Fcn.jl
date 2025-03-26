@@ -187,7 +187,7 @@ function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,G
   ndrange = (N,M,Nz,NE)
   KRiemanNonLinH3Kernel! = RiemanNonLinH3Kernel!(backend,group)
   KRiemanNonLinH3Kernel!(Model.RiemannSolver,FV,V,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,Metric.T1H,
-    Metric.T2H,Metric.VolSurfH,DG.w[1],Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange) 
+    Metric.T2H,Metric.VolSurfH,DG.w,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange) 
 
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz+1),NQ)
@@ -195,7 +195,7 @@ function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,G
   ndrange = (Nz+1,NQ,NF)
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
   KRiemanNonLinV3Kernel!(Model.RiemannSolver,FV,V,Aux,DG.Glob,Metric.NV,Metric.T1V,
-    Metric.T2V,Metric.VolSurfV,DG.wZ[1],M,Val(NV),Val(NAUX);ndrange=ndrange) 
+    Metric.T2V,Metric.VolSurfV,DG.wZ,M,Val(NV),Val(NAUX);ndrange=ndrange) 
 
 
   NQ = N * N

@@ -8,7 +8,7 @@ function JacobiCartDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad)
   M = size(FE.xwZ,1)
   Nz = size(X,4)
 
-  NzG = min(div(512,N*N*2),Nz)
+  NzG = min(div(512,N*N*M),Nz)
   group = (N, N, M, NzG, 1)
   ndrange = (N, N, M, Nz, NF)
 

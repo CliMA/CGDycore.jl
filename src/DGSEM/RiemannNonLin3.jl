@@ -106,7 +106,7 @@
       T2V[3,ID,Iz,IF] * FLoc[wPos] 
     FE[ThPos] =  FLoc[ThPos]
 
-    Surf = VolSurfV[ID,Iz,IF] / w  
+    Surf = VolSurfV[ID,Iz,IF] / w[1]  
     FE[RhoPos] *= Surf
     FE[uPos] *= Surf
     FE[vPos] *= Surf
@@ -198,7 +198,7 @@ end
     FE[wPos] =  NH[3,K,I,Iz,IE] * FLoc[uPos] +
       T1H[3,K,I,Iz,IE] * FLoc[vPos] + T2H[3,K,I,Iz,IE] * FLoc[wPos]
     FE[ThPos] =  FLoc[ThPos]
-    Surf = VolSurfH[K,I,Iz,IE] / w  
+    Surf = VolSurfH[K,I,Iz,IE] / w[1]  
     FE[RhoPos] *= Surf
     FE[uPos] *= Surf
     FE[vPos] *= Surf

@@ -3,7 +3,7 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --Problem="WarmBubble2DXCart" \
   --Discretization="DG" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float64" \
+  --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
   --ModelType="Conservative" \
