@@ -1,11 +1,10 @@
 @kernel inbounds = true function RiemanNonLinV3Kernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(Glob),
   @Const(NV),@Const(T1V),@Const(T2V),@Const(VolSurfV),
-  @Const(w), M, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
+  @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
 
   Iz,iD,_  = @index(Local, NTuple)
   Iz,ID,IF = @index(Global, NTuple)
 
-  N = @uniform @groupsize()[1]
   TilesDim = @uniform @groupsize()[2]
 
   Nz = @uniform @ndrange()[1]
