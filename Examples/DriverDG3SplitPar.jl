@@ -14,6 +14,7 @@ using ArgParse
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
+FluxDG = parsed_args["FluxDG"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
@@ -309,11 +310,21 @@ Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 U = GPU.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
+pAuxPos = 1
+GPAuxPos = 2
+
 RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
 Model.RiemannSolver = RiemannSolver
 
-FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
-Model.FluxAverage = FluxAverage
+NonConservativeFlux = DGSEM.BuoyancyFlux()(Model.RhoPos,GPAuxPos)
+Model.NonConservativeFlux = NonConservativeFlux
+
+if FluxDG == "KennedyGruber"
+  Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+elseif luxDG == "KennedyGruberGrav"  
+  Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.ThPos,pAuxPos,GPAuxPos)
+end  
 
 # Pressure
 if State == "Dry"
@@ -321,7 +332,22 @@ if State == "Dry"
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
+elseif State  == "ShallowWater"  
+  Model.Pressure = Models.ShallowWaterStateDG()(Phys)
 end
+
+if Damping
+  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
+  Model.Damp = Damp
+end
+if Grid.Form == "Sphere"
+  Model.GeoPotential = GPU.GeoPotentialDeep()(Phys)
+else
+  Model.GeoPotential = GPU.GeoPotentialCart()(Phys)
+end  
+    
+
+
 
 Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
 
@@ -351,6 +377,8 @@ if OrdPrint == 0
 else
   Global.Output.OrdPrint = OrdPrint
 end
+Global.Output.nPanel = nPanel
+Global.Output.dTol = pi/30
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Trans,DG,Metric,Global)
 
 
@@ -359,18 +387,20 @@ Global.Output.vtkFileName = vtkFileName
 Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
 
 
-CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,6)
-CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,5)
-FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,5)
+NumAux = 2
+CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
+CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
 UNew = similar(U)
-NumAux = 1
 @views UI = U[:,:,1:DG.NumI,:]
 @views UNewI = UNew[:,:,1:DG.NumI,:]
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
 
 # Simulation time
 GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
+if dtau == 0.0
+  dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
+end  
 EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
 IterTime::Int = round(EndTime / dtau)
 dtau = EndTime / IterTime
@@ -386,9 +416,6 @@ if Proc == 1
 @show nPrint
 end
 
-dtau=0.05
-IterTime=20000
-nPrint=1000
 @inbounds for i = 1 : IterTime
 
   if Proc == 1

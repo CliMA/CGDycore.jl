@@ -135,6 +135,10 @@ end
 
 function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
   backend = get_backend(F)
+  Damp = Model.Damp
+  GeoPotential = Model.GeoPotential
+  NonConservativeFlux = Model.NonConservativeFlux
+  RiemannSolver = Model.RiemannSolver
   FT = eltype(F)
   N = DG.OrdPoly + 1
   M = DG.OrdPolyZ + 1
@@ -144,7 +148,7 @@ function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,G
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Proc = Global.ParallelCom.Proc
   NV = 5
-  NAUX = 1
+  NAUX = 2
   @views V = CacheU[:,:,:,1:NV]
   @views VI = V[:,:,1:DG.NumI,:]
   @views FV = CacheF[:,:,:,1:NV]
@@ -160,6 +164,13 @@ function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,G
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   KVSp2VCart3Kernel!(VI,U,Metric.Rotate,DG.Glob;ndrange=ndrange)
   @views @. AuxI[:,:,:,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
+  NQ = N * N
+  NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+  group = (Nz,M,NQG,1)
+  ndrange = (Nz,M,NQ,NF)
+  KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
+  @views KGeoPotentialKernel!(GeoPotential,AuxI[:,:,:,2],Metric.X,DG.Glob;ndrange=ndrange)
+    
 
   @views Parallels.ExchangeData3DSendGPU(reshape(CacheU[:,:,:,1:NV+NAUX],
     Nz*M,size(CacheU,3),NV+NAUX),Exchange)
@@ -171,12 +182,11 @@ function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,G
   KFluxSplitVolumeNonLinH3Kernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DVT,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
-
   NDG = min(div(NumberThreadGPU,M*Nz),N*N)
   group = (M,Nz,NDG,1)
   ndrange = (M,Nz,N*N,NF)
   KFluxSplitVolumeNonLinV3Kernel! = FluxSplitVolumeNonLinV3Kernel!(backend,group)
-  KFluxSplitVolumeNonLinV3Kernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DVT,DG.Glob,
+  KFluxSplitVolumeNonLinV3Kernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DVZT,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(reshape(CacheU[:,:,:,1:NV+NAUX],
@@ -186,32 +196,68 @@ function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,G
   group = (N,M,NzG,1)
   ndrange = (N,M,Nz,NE)
   KRiemanNonLinH3Kernel! = RiemanNonLinH3Kernel!(backend,group)
-  KRiemanNonLinH3Kernel!(Model.RiemannSolver,FV,V,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,Metric.T1H,
-    Metric.T2H,Metric.VolSurfH,DG.w,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange) 
+  KRiemanNonLinH3Kernel!(Model.RiemannSolver,FV,V,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
+    Metric.VolSurfH,DG.w,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange) 
 
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz+1),NQ)
   group = (Nz+1,NQG,1)
   ndrange = (Nz+1,NQ,NF)
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
-  KRiemanNonLinV3Kernel!(Model.RiemannSolver,FV,V,Aux,DG.Glob,Metric.NV,Metric.T1V,
-    Metric.T2V,Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
+  KRiemanNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,FV,V,Aux,DG.Glob,Metric.NV,
+    Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
 
+  NQ = N * N
+  NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+  group = (Nz,M,NQG,1)
+  ndrange = (Nz,M,NQ,NF)
+  KScaleMassMatrixKernel! = ScaleMassMatrixKernel!(backend,group)
+  KScaleMassMatrixKernel!(FV,Metric.J,DG.Glob,Val(NV);ndrange=ndrange)
+
+  if Model.Buoyancy
+    NQ = N * N
+    NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+    group = (Nz,M,NQG,1)
+    ndrange = (Nz,M,NQ,NF)
+    if Grid.Form == "Sphere"
+      KBuoyancyKernel! = BuoyancySphereKernel!(backend,group)
+      KBuoyancyKernel!(FV,V,Metric.X,DG.Glob,Phys;ndrange=ndrange)
+    else  
+      KBuoyancyKernel! = BuoyancyCartKernel!(backend,group)
+      KBuoyancyKernel!(FV,V,DG.Glob,Phys;ndrange=ndrange)
+    end  
+  end  
 
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz*M),NQ)
   group = (Nz,M,NQG,1)
   ndrange = (Nz,M,NQ,NF)
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
-  KVCart2VSp3Kernel!(F,FV,Metric.Rotate,Metric.J,DG.Glob;ndrange=ndrange)
+  KVCart2VSp3Kernel!(F,FV,Metric.Rotate,DG.Glob;ndrange=ndrange)
+
+  if Model.Damping
+    NQ = N * N
+    NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+    group = (Nz,M,NQG,1)
+    ndrange = (Nz,M,NQ,NF)
+    if Grid.Form == "Sphere"
+      KDampKernel! = DampSphereKernel!(backend, group)
+      KDampKernel!(Damp,F,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
+    else  
+      KDampKernel! = DampCartKernel!(backend, group)
+      KDampKernel!(Damp,F,U,Metric.X,DG.Glob;ndrange=ndrange)
+    end  
+  end  
 
   if Model.Coriolis
-    NFG = min(div(NumberThreadGPU,N*N),NF)
-    group = (N*N,NFG)
-    ndrange = (N*N,NF)
-    KSourceKernel! = SourceKernel!(backend,group)
-    KSourceKernel!(F,U,Metric.X,Phys;ndrange=ndrange)
+    NQ = N * N
+    NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+    group = (Nz,M,NQG,1)
+    ndrange = (Nz,M,NQ,NF)
+    KCoriolisKernel! = CoriolisKernel!(backend,group)
+    KCoriolisKernel!(F,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
   end  
+#=
   if Model.Buoyancy
     NDG = min(div(NumberThreadGPU,Nz*M),size(F,3))
     group = (Nz,M,NDG)
@@ -219,5 +265,6 @@ function FcnGPUSplitPar3!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,G
     KBuoyancyKernel! = BuoyancyKernel!(backend,group)
     KBuoyancyKernel!(F,U,Phys;ndrange=ndrange)
   end    
+=#  
 
 end

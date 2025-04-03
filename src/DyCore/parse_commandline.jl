@@ -12,6 +12,11 @@ function parse_commandline()
     arg_type = String
     default = "CG"
 
+    "--FluxDG"
+    help = "Average flux for DG"
+    arg_type = String
+    default = "KennedyGruberGrav"
+
     "--Profile"
     help = "Profile for initial onditions"
     arg_type = Bool

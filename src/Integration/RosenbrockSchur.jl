@@ -65,7 +65,7 @@ function RosenbrockSchurMIS!(V,dt,Fcn,R,Jac,CG,Global,Param)
   end
   @. V = Vn
   @inbounds for iStage=1:nStage
-    @views @. V[:,:,1:NumV+NumTr] = V[:,:,1:NumV+NumTr] + ROS.m[iStage] * k[:,:,:,iStage]
+    @views @. V = V + ROS.m[iStage] * k[:,:,:,iStage]
   end
 
 end

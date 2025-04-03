@@ -554,7 +554,7 @@ function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
       @inbounds for iDoF = 1 : hFeF.DoF
         hfFRefLoc += hfFRef[1,iDoF,iQ] * hhF[iDoF]  
       end  
-      Jacobi!(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
       detDFLoc = detDF[1]
       uLoc31 = DF[1,1] * ufFRefLoc1 + DF[1,2] * ufFRefLoc2
       uLoc32 = DF[2,1] * ufFRefLoc1 + DF[2,2] * ufFRefLoc2

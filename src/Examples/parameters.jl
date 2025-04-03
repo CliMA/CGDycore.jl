@@ -76,7 +76,7 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   TEq::FT = 300
   T_init::FT  = 315
   lapse_rate::FT  = -0.008
-  Deep::Bool = false
+  Deep::Bool = true
   pert::FT = 0.1
   uMax::FT = 1.0
   vMax::FT = 0.0
@@ -240,7 +240,7 @@ end
 
 Base.@kwdef struct ParamHillAgnesiXCart{FT}
   Deep::Bool = false
-  NBr::FT = 1.e-5
+  NBr::FT = 1.e-2
   Th0::FT =300.0
   uMax::FT =10
   vMax::FT =0
@@ -252,6 +252,7 @@ Base.@kwdef struct ParamHillAgnesiXCart{FT}
   Stretch::Bool = false
   CMom::FT = 1.e-3
   TSurf::FT = 299
+  cS::FT = 360
 end
 
 Base.@kwdef struct ParamHillAgnesiYCart
@@ -269,15 +270,15 @@ Base.@kwdef struct ParamHillAgnesiYCart
 end
 
 Base.@kwdef struct ParamWarmBubble2DXCart{FT}
-  Th0::FT = 300.0
-  uMax::FT = 20.0
+  Th0::FT = 300
+  uMax::FT = 20
   vMax::FT = 0
   wMax::FT = 0
-  DeltaTh::FT = 2.0
-  xC0::FT = 10000.0
-  zC0::FT = 2000.0
-  rC0::FT = 2000.0
-  cS::FT = 360.0
+  DeltaTh::FT = 2
+  xC0::FT = 10000
+  zC0::FT = 2000
+  rC0::FT = 2000
+  cS::FT = 360
 end
 
 Base.@kwdef struct ParamBryanFritschCart

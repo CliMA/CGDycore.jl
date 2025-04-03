@@ -94,9 +94,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     @. uLoc = 0
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],-1,Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += 0.5 * Grid.Faces[iF].Orientation * uP[2] * ValphiL[iQ,i+1] * WeightsL[iQ]
@@ -106,9 +104,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     # Edge 2 (1,-1) -> (-1,1)
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,-PointsL[iQ,1],PointsL[iQ,1],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * (uP[1] + uP[2]) * ValphiL[iQ,i+1] * WeightsL[iQ] 
@@ -118,9 +114,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     # Edge 3 (-1,-1) -> (-1,1)
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,-1,PointsL[iQ,1],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * uP[1] * ValphiL[iQ,i+1] * WeightsL[iQ]
@@ -130,9 +124,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
 # Interior  
     @inbounds for iQ = 1 : NumQuadT
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsT[iQ,1],PointsT[iQ,2],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 1 : lP_km1
         phiLoc =  ValP_km1[iQ,i]
@@ -186,9 +178,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     @. uLoc = 0
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],-1,Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa * h
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += 0.5 * Grid.Faces[iF].Orientation * uP[2] * ValphiL[iQ,i+1] * WeightsL[iQ]
@@ -198,9 +188,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     # Edge 2 (1,-1) -> (-1,1)
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,-PointsL[iQ,1],PointsL[iQ,1],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa * h
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * (uP[1] + uP[2]) * ValphiL[iQ,i+1] * WeightsL[iQ] 
@@ -210,9 +198,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     # Edge 3 (-1,-1) -> (-1,-1)
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,-1,PointsL[iQ,1],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa * h
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * uP[1] * ValphiL[iQ,i+1] * WeightsL[iQ]
@@ -222,9 +208,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
 # Interior  
     @inbounds for iQ = 1 : NumQuadT
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsT[iQ,1],PointsT[iQ,2],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa * h
       @inbounds for i = 1 : lP_km1
         phiLoc =  ValP_km1[iQ,i]
@@ -292,9 +276,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     @. uLoc = 0
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],-1,Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat) 
+      h,VelCa = FCart(X,F,Grid.Form) 
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += +0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
@@ -304,9 +286,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     # Edge 2 (1,-1) -> (1,1)
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,1,PointsL[iQ,1],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat) 
+      h,VelCa = FCart(X,F,Grid.Form) 
       uP .= detDF[1] * pinvDF' * VelCa 
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += -0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ] 
@@ -316,9 +296,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     # Edge 3 (-1,1) -> (1,1)
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],1,Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += +0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
@@ -328,9 +306,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     # Edge 4 (-1,-1) -> (-1,1)
     @inbounds for iQ = 1 : NumQuadL
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,-1,PointsL[iQ,1],Grid.Faces[iF], Grid)
-      h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
         uLoc[iDoF+i] += -0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
@@ -340,9 +316,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
 # Interior  
     @inbounds for iQ = 1 : NumQuadT
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsT[iQ,1],PointsT[iQ,2],Grid.Faces[iF], Grid)
-       h,VelSp[1],VelSp[2],VelSp[3], = F(X,0.0)
-      lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       iiDoF = iDoF
       @inbounds for i = 1 : k+1

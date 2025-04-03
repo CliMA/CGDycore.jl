@@ -118,3 +118,46 @@ function (GravitationFun::GravitationNo)()
   return Gravitation
 end
 
+abstract type GeoPotentialType end
+
+Base.@kwdef struct GeoPotentialShallow <: GeoPotentialType end
+
+function (GeoPotentialFun::GeoPotentialShallow)(Phys)
+  @inline function GeoPotential(x,y,z)
+    FT = eltype(x)
+    r = sqrt(x^2 + y^2 + z^2)
+    return Phys.Grav * r 
+  end
+  return GeoPotential
+end
+
+Base.@kwdef struct GeoPotentialDeep <: GeoPotentialType end
+
+function (GeoPotentialFun::GeoPotentialDeep)(Phys)
+  @inline function GeoPotential(x,y,z)
+    FT = eltype(x)
+    r = sqrt(x^2 + y^2 + z^2)
+    return Phys.Grav * (Phys.RadEarth - Phys.RadEarth^2 / r)
+  end
+  return GeoPotential
+end
+
+Base.@kwdef struct GeoPotentialCart <: GeoPotentialType end
+
+function (GeoPotentialFun::GeoPotentialCart)(Phys)
+  @inline function GeoPotential(x,y,z)
+    return Phys.Grav * z 
+  end
+  return GeoPotential
+end
+
+Base.@kwdef struct GeoPotentialNo <: GeoPotentialType end
+
+function (GeoPotentialFun::GeoPotentialNo)()
+  @inline function GeoPotential(x,y,z)
+    FT = eltype(x)
+    return FT(0)
+  end
+  return GeoPotential
+end
+

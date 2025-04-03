@@ -16,9 +16,9 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll
 
 
-include("RiemannNonLin.jl")
+include("LocalFlux.jl")
+include("Rotation.jl")
 include("RiemannNonLin3.jl")
-include("FluxVolumeNonLin.jl")
 include("FluxVolumeNonLin3.jl")
 include("PresSh.jl")
 include("Source.jl")

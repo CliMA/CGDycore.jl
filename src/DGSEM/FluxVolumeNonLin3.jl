@@ -68,7 +68,7 @@ end
   gTilde = @private eltype(F) (NV,)
 
   if IZ <= NZ
-    K = mod(IZ,M)+1  
+    K = mod(IZ-1,M)+1  
     Iz = div(IZ-1,M) + 1
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]  
@@ -100,7 +100,7 @@ end
         FLoc[I,J,iz,iv] += -DVT[l,I] * fTilde[iv] - DVT[l,J] * gTilde[iv]
       end  
     end  
-    K = mod(IZ,M)+1  
+    K = mod(IZ-1,M)+1  
     Iz = div(IZ-1,M) + 1
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]  

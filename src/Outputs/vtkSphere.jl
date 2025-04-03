@@ -403,6 +403,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,FE,Metric,Global) where FT<:A
   theta=zeros(8,1)
   z=zeros(8,1)
   dTol = Global.Output.dTol
+  dTol=2*pi/max(Global.Output.nPanel-1,2)
   
   FTX = eltype(Metric.X)
   X = zeros(FTX,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,3)
@@ -434,16 +435,38 @@ function vtkStruct{FT}(backend,OrdPrint::Int,Trans,FE,Metric,Global) where FT<:A
               end 
               lammin = minimum(lam)
               lammax = maximum(lam)
-              if abs(lammin - lammax) > 2*pi-dTol
-                for i = 1 : 8
-                  if lam[i] > pi
-                    lam[i] = lam[i] - 2*pi
-                    if lam[i] > 3*pi
-                      lam[i] = lam[i]  - 2*pi
+              if abs(lammin-lammax) > pi
+                smaller = count(<(pi), lam)
+                greater = count(>=(pi), lam)
+
+                if greater >= smaller
+                  for i = 1 : 8
+                    if lam[i] < pi
+                      lam[i] += 2 * pi
+                    end
+                  end
+                else
+                  for i = 1 : 8
+                    if lam[i] >= pi
+                      lam[i] -= 2 * pi
                     end
                   end
                 end
               end
+          #=
+              if abs(lammin - lammax) > 2*pi-dTol
+                @show iF,lam[1:4]  
+                for i = 1 : 8
+                  if lam[i] > 2*pi-dTol
+                    lam[i] = lam[i] - 2*pi
+                  end  
+                  if lam[i] < dTol
+                    lam[i] = lam[i]  + 2*pi
+                  end
+                end
+                @show iF,lam[1:4]  
+              end
+          =#    
               for i = 1 : 8
                 pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Grid.Rad,0.0)/Global.Grid.H*3]
                 ipts = ipts + 1

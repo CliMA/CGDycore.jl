@@ -7,6 +7,7 @@ struct CompressibleDeep  <: EquationType  end
 
 abstract type State end
 struct ShallowWaterState  <: State  end
+struct ShallowWaterStateDG  <: State  end
 struct Dry  <: State  end
 struct DryDG  <: State  end
 struct Moist  <: State end
@@ -14,6 +15,15 @@ struct DryTotalEnergy  <: State  end
 struct DryInternalEnergy  <: State  end
 struct MoistInternalEnergy  <: State  end
 struct IceInternalEnergy  <: State  end
+
+
+function (::ShallowWaterStateDG)(Phys)
+  @inline function Pressure(RhoTh)
+    FT = eltype(RhoTh)
+    p = FT(0.5) * Phys.Grav * RhoTh^2
+  end
+  return Pressure
+end
   
 function (::ShallowWaterState)(Phys)
   @inline function Pressure(Thermo,U,wL,wR,z)

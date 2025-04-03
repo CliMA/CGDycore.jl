@@ -19,9 +19,9 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   UCache = similar(U)
  
   uCurl = zeros(Model.DG.NumG)
-  ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-  ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-  Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
+  ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelSp],
     FileNumber,cName)
 
@@ -33,26 +33,27 @@ function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdv
   time = 0.0
   for i = 1 : nAdveVel
     @show i,(i-1)*dtau/3600   
-    Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
+    Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
+    @show sum(abs.(F))
     @. UNew = U + 1/3 * dtau * F
-    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
+    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
     @. UNew = U + 1/2 * dtau * F
-    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi!;UCache)
+    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
     @. U = U + dtau * F
     if mod(i,nPrint) == 0
       @show "Druck ",i  
-      ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-      ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-      Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
+      ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+      ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+      Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi,vtkSkeletonMesh.RefineMidPoints)
       FileNumber += 1
       Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelSp],
         FileNumber,cName)
     end  
     time += dtau
   end
-  ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-  ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-  Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
+  ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  Vorticity!(backend,FTB,Vort,Model.DG,Uu,Model.RT,Model.ND,Model.Curl,Grid,Grid.Type,nQuadS,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   FileNumber += 1
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelSp],
     FileNumber,cName)

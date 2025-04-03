@@ -9,7 +9,7 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
   --State="Dry" \
-  --Buoyancy=false \
+  --Buoyancy=true \
   --Damping=false \
   --Upwind=true \
   --BoundaryWE="Period" \
@@ -17,9 +17,9 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --BoundaryBT="" \
   --SimTime=1000 \
   --PrintTime=10 \
-  --vtkFileName="output/VTK/WarmBubble/DGCart" \
+  --vtkFileName="output/VTK/WarmBubble/DGCartY" \
   --Curl=false \
-  --dtau=.08 \
+  --dtau=.01 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   `#Grid       `        \
@@ -29,14 +29,14 @@ julia --project Examples/DriverDG3SplitPar.jl \
   `#Topography `        \
   --H=10000.0 \
   --Lx=20000.0 \
-  --Ly=2000.0 \
+  --Ly=20000.0 \
   --x0=0.0 \
   --y0=0.0 \
   --nz=20 \
-  --nx=40 \
-  --ny=2 \
+  --nx=2 \
+  --ny=40 \
   --OrdPoly=4 \
-  --OrdPolyZ=3 \
+  --OrdPolyZ=4 \
   --HyperVisc=true \
   --HyperDCurl=1.e7 \
   --HyperDGrad=1.e7 \

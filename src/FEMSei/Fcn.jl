@@ -54,7 +54,6 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
     Grid,RT.Type,QuadOrdM,Jacobi)
   mul!(UCachep,Curl,UCacheu)
   ldiv!(DG.LUM,UCachep)
-
 # CurlVel!(UCachep,DG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
   CrossRhs!(backend,FTB,Fu,UCachep,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
   GradKinHeight!(backend,FTB,Fu,Uh,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
@@ -62,7 +61,6 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
 # @. k += 9.81 * Uh
 # GradRhs!(backend,FTB,Fu,k,DG,RT,Grid,Grid.Type,QuadOrdS,Jacobi)
   ldiv!(RT.LUM,Fu)
-
   ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
   DivRhs!(backend,FTB,Fh,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
   ldiv!(DG.LUM,Fh)

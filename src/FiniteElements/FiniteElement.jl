@@ -95,38 +95,6 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid) where FT<:AbstractFloat
   copyto!(MasterSlave,MasterSlaveCPU)
   BoundaryDoF = KernelAbstractions.zeros(backend,Int,size(BoundaryDoFCPU))
   copyto!(BoundaryDoF,BoundaryDoFCPU)
-
-
-# Boundary nodes
-#=
-  Boundary = zeros(Int,0)
-  for iF = 1 : Grid.NumFaces
-    Side = 0
-    for iE in Grid.Faces[iF].E
-       Side += 1 
-       if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-         @views GlobLoc = reshape(GlobCPU[:,iF],OP,OP) 
-         if Side == 1
-           for i in GlobLoc[1:OP-1,1]   
-             push!(Boundary,i)
-           end
-         elseif Side == 2  
-           for i in GlobLoc[OP,1:OP-1]
-             push!(Boundary,i)
-           end
-         elseif Side == 3  
-           for i in GlobLoc[2:OP,OP]
-             push!(Boundary,i)
-           end
-         elseif Side == 4  
-           for i in GlobLoc[1,2:OP]
-             push!(Boundary,i)
-           end
-         end  
-       end  
-    end
-  end  
-=#  
   copyto!(Glob,GlobCPU)
   M = KernelAbstractions.zeros(backend,FT,nz,NumG,2)
   MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
@@ -195,6 +163,8 @@ mutable struct DGQuad{FT<:AbstractFloat,
     DWZ::AT2
     DV::AT2
     DVT::AT2
+    DVZ::AT2
+    DVZT::AT2
     S::Array{FT, 2}
     BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
@@ -206,7 +176,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
   OPZ=OrdPolyZ+1
   nz = Grid.nz
 
-# CG = CGStruct{FT}(backend)
   DoF = OP * OP
 
   xwCPU, wCPU = gausslobatto(OrdPoly+1)
@@ -217,7 +186,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
   
   if OrdPolyZ == 0
     xwZCPU = zeros(1)  
-    wZ = 2 * ones(1)
+    wZCPU = 2 * ones(1)
   else    
     xwZCPU, wZCPU = gausslobatto(OrdPolyZ+1)
   end  
@@ -271,6 +240,13 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
   (GlobCPU,GlobECPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
     NumberingFemDGQuad(Grid,OrdPoly,Proc)  
 
+  DVZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
+  DVZCPU = 2 * DSZCPU
+  DVZCPU[1,1] += 1 / wZCPU[1]
+  DVZCPU[OrdPolyZ+1,OrdPolyZ+1] += -1 / wZCPU[OrdPolyZ+1]
+  copyto!(DVZ,DVZCPU)
+  DVZT=DVZ'
+
   Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
   GlobE = KernelAbstractions.zeros(backend,Int,size(GlobECPU))
   Stencil = KernelAbstractions.zeros(backend,Int,size(StencilCPU))
@@ -279,37 +255,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
   copyto!(MasterSlave,MasterSlaveCPU)
   BoundaryDoF = KernelAbstractions.zeros(backend,Int,size(BoundaryDoFCPU))
   copyto!(BoundaryDoF,BoundaryDoFCPU)
-
-# Boundary nodes
-#=
-  Boundary = zeros(Int,0)
-  for iF = 1 : Grid.NumFaces
-    Side = 0
-    for iE in Grid.Faces[iF].E
-       Side += 1 
-       if Grid.Edges[iE].F[1] == 0 || Grid.Edges[iE].F[2] == 0
-         @views GlobLoc = reshape(GlobCPU[:,iF],OP,OP) 
-         if Side == 1
-           for i in GlobLoc[1:OP-1,1]   
-             push!(Boundary,i)
-           end
-         elseif Side == 2  
-           for i in GlobLoc[OP,1:OP-1]
-             push!(Boundary,i)
-           end
-         elseif Side == 3  
-           for i in GlobLoc[2:OP,OP]
-             push!(Boundary,i)
-           end
-         elseif Side == 4  
-           for i in GlobLoc[1,2:OP]
-             push!(Boundary,i)
-           end
-         end  
-       end  
-    end
-  end  
-=#  
   copyto!(Glob,GlobCPU)
   copyto!(GlobE,GlobECPU)
   return DGQuad{FT,
@@ -343,6 +288,8 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
     DWZ,
     DV,
     DVT,
+    DVZ,
+    DVZT,
     S,
     BoundaryDoF,
     MasterSlave,

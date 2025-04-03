@@ -172,7 +172,6 @@ Boundary = Grids.Boundary()
 Boundary.WE = BoundaryWE
 Boundary.SN = BoundarySN
 Boundary.BT = BoundaryBT
-
 Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;GridType=GridType)
 
 Param = Examples.Parameters(FTB,Problem)
@@ -195,131 +194,41 @@ Param = Examples.Parameters(FTB,Problem)
 
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 @show Grid.Type
-#Output
 
-ref=1
-FileNumber = 0
+#Output
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
-  nQuad = 2
-  nQuadM = 2
-  nQuadS = 2
+  nQuad = 3
+  nQuadM = 3
+  nQuadS = 3
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
   nQuadM = 4
   nQuadS = 4
-end  
+end
 
 #Finite elements
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
-VecDG = FEMSei.VecDGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
-#massmatrix und LU-decomposition
-DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.JacobiCart!)
-DG.LUM = lu(DG.M)
-VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.JacobiCart!)
-VecDG.LUM = lu(VecDG.M)
-RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.JacobiCart!)
-RT.LUM = lu(RT.M)
-ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuadM,FEMSei.JacobiCart!)
-ND.LUM = lu(ND.M)
-Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuad,FEMSei.JacobiCart!)
+ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.JacobiCart!)
 
+pPosS = ModelFEM.pPosS
+pPosE = ModelFEM.pPosE
+uPosS = ModelFEM.uPosS
+uPosE = ModelFEM.uPosE
+U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
+@views Up = U[pPosS:pPosE]
+@views Uu = U[uPosS:uPosE]
 
-#Runge-Kutta steps
-time = 0.0
+FEMSei.InterpolateDG!(Up,DG,FEMSei.JacobiCart!,Grid,Grid.Type,Model.InitialProfile)
+FEMSei.InterpolateRT!(Uu,RT,FEMSei.JacobiCart!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
-hPosS = 1
-hPosE = DG.NumG
-huPosS = DG.NumG + 1
-huPosE = DG.NumG + RT.NumG
-
-U = zeros(FTB,DG.NumG+RT.NumG)
-@views Uh = U[hPosS:hPosE]  
-@views Uhu = U[huPosS:huPosE]  
-UNew = zeros(FTB,DG.NumG+RT.NumG)
-@views UNewh = UNew[hPosS:hPosE]  
-@views UNewhu = UNew[huPosS:huPosE]  
-F = zeros(FTB,DG.NumG+RT.NumG)
-@views Fh = F[hPosS:hPosE]  
-@views Fhu = F[huPosS:huPosE]  
-uRec = zeros(FTB,VecDG.NumG)
-cName = ["h";"Vort";"uS";"vS";"wS"]
-
-FEMSei.InterpolatehRT!(Uhu,RT,FEMSei.JacobiCart!,Grid,Grid.Type,nQuad,Model.InitialProfile)
-FEMSei.InterpolateDG!(Uh,DG,FEMSei.JacobiCart!,Grid,Grid.Type,Model.InitialProfile)
-# Output of the initial values
-FileNumber=0
-NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
-VelCart = zeros(Grid.NumFaces*NumRefine,3)
-hout = zeros(Grid.NumFaces*NumRefine)
-Vort = zeros(Grid.NumFaces*NumRefine)
-FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
-FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!,
-  vtkSkeletonMesh.RefineMidPoints)
-FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,
-  FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
-Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart] ,FileNumber,cName)
-
-
-nAdveVel = 20000
+cName = ["h";"Vort";"uS";"vS"]
+nAdveVel = 1000
 nprint = 100
-for i = 1 : nAdveVel
-  @show i,(i-1)*dtau/3600 
-  @. F = 0  
-  # Tendency h
-  FEMSei.DivRhs!(backend,FTB,Fh,DG,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  ldiv!(DG.LUM,Fh)
-  # Tendency hu
-  FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
-    Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-# FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  ldiv!(RT.LUM,Fhu)
-  @. UNew = U + 1 / 3 * dtau * F
-
-  @. F = 0  
-  # Tendency h
-  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  ldiv!(DG.LUM,Fh)
-  # Tendency hu
-  FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
-    Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-# FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  ldiv!(RT.LUM,Fhu)
-  @. UNew = U + 0.5 * dtau * F
-
-  @. F = 0  
-  # Tendency h
-  FEMSei.DivRhs!(backend,FTB,Fh,DG,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  ldiv!(DG.LUM,Fh)
-  # Tendency hu
-  FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,UNewh,DG,UNewhu,RT,Grid,
-    Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,UNewhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-# FEMSei.CrossRhs!(backend,FTB,Fhu,RT,UNewhu,RT,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,UNewh,DG,Grid,Grid.Type,nQuad,FEMSei.JacobiCart!)
-  ldiv!(RT.LUM,Fhu)
-  @. U = U + dtau * F
-    
-  # Output
-  if mod(i,nprint) == 0 
-    global FileNumber += 1
-    @show "Print",i
-    FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
-    FEMSei.ConvertScalarVelocityCart!(backend,FTB,VelCart,Uhu,RT,Uh,DG,Grid,FEMSei.JacobiCart!,
-      vtkSkeletonMesh.RefineMidPoints)
-    FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,
-      FEMSei.JacobiCart!,vtkSkeletonMesh.RefineMidPoints)
-    Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart;] ,FileNumber,cName)
-  end
-end
-@show "finished"
-
+@show  nAdveVel
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.JacobiCart!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName,nprint,ref)
