@@ -107,6 +107,7 @@ PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
+vtkFileName = parsed_args["vtkFileName"]
 
 # Device
 Device = parsed_args["Device"]
@@ -185,8 +186,7 @@ Param = Examples.Parameters(FTB,Problem)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint = ceil(PrintT/dtau)
-  FileNameOutput = GridType*"BickleyJet"
-  FileNameOutput = "Flat/Tri/"*GridType*"BickleyJet"
+  FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau

@@ -245,6 +245,40 @@ function ConvertScalarVelocityCart!(backend,FTB,VelCart,Vel,Fe::HDivElement,h,hF
   end  
 end
 
+function ConvertVelocityCart!(backend,FTB,VelCart,Vel,Fe::HDivElement,
+  Grid,Jacobi,ksi)
+      
+  Numksi = size(ksi,1)    
+  fRef = zeros(Numksi,Fe.Comp,Fe.DoF)
+  @inbounds for iksi = 1 : Numksi
+    @inbounds for iComp = 1 : Fe.Comp
+      @inbounds for iD = 1 : Fe.DoF
+        fRef[iksi,iComp,iD] = Fe.phi[iD,iComp](ksi[iksi,1],ksi[iksi,2])
+      end
+    end
+  end
+
+  VelLoc = zeros(Fe.DoF)
+  VelCa = zeros(3)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  iS = 0
+  @inbounds for iF = 1 : Grid.NumFaces
+    VelLoc = Vel[Fe.Glob[:,iF]]  
+    @inbounds for iksi = 1 : Numksi
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi[iksi,1],ksi[iksi,2],Grid.Faces[iF],Grid)
+      detDFLoc = detDF[1]
+      VelCa .= (Grid.Faces[iF].Orientation / detDFLoc) * DF * (fRef[iksi,:, :] * VelLoc) 
+      iS += 1
+      VelCart[iS,1] = VelCa[1]
+      VelCart[iS,2] = VelCa[2]
+      VelCart[iS,3] = VelCa[3]
+    end  
+  end  
+end
+
 function ConvertScalarVelocityCart!(backend,FTB,VelCart,Vel,Fe::HDivElement,h,hFe::ScalarElement,Grid,Jacobi)
   if Grid.Type == Grids.Tri()
     ksi1 = -1/3 

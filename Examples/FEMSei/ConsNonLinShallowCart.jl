@@ -107,6 +107,7 @@ PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
+vtkFileName = parsed_args["vtkFileName"]
 
 # Device
 Device = parsed_args["Device"]
@@ -173,7 +174,7 @@ Boundary.WE = BoundaryWE
 Boundary.SN = BoundarySN
 Boundary.BT = BoundaryBT
 
-Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;GridType=GridType)
 
 Param = Examples.Parameters(FTB,Problem)
 
@@ -186,8 +187,7 @@ Param = Examples.Parameters(FTB,Problem)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint = ceil(PrintT/dtau)
-  FileNameOutput = GridType*"BickleyJet"
-  FileNameOutput = "Flat/Tri/"*GridType*"BickleyJet"
+  FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -263,8 +263,8 @@ FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,
 Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelCart] ,FileNumber,cName)
 
 
-nAdveVel = 20000
-nprint = 100
+nAdveVel = 100
+nprint = 1
 for i = 1 : nAdveVel
   @show i,(i-1)*dtau/3600 
   @. F = 0  

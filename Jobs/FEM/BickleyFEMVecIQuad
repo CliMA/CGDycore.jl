@@ -4,8 +4,8 @@ julia --project Examples/FEMSei/VecINonLinShallowCart.jl \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --Flat=false \
-  --nx=20 \
-  --ny=20 \
+  --nx=5 \
+  --ny=5 \
   --GridType="Quad" \
   --Lx=12.566370614359172 \
   --Ly=12.566370614359172 \
@@ -14,12 +14,13 @@ julia --project Examples/FEMSei/VecINonLinShallowCart.jl \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
-  --RefineOutput=1 \
+  --RefineOutput=0 \
   --OrdPoly=3 \
-  --OrderFEM=1 \
+  --OrderFEM=0 \
   --SimTime=0 \
   --SimDays=0 \
   --SimHours=1 \
   --PrintHours=0 \
   --PrintSeconds=600 \
   --PrintTime=0 \
+  --vtkFileName="Bickley/VecIQuad" \
