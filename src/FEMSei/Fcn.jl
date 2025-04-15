@@ -36,6 +36,7 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
 
   @. F = 0
   DG = Model.DG
+  CG = Model.CG
   RT = Model.RT
   ND = Model.ND
   Div = Model.Div
@@ -49,17 +50,42 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   @views UCacheu = UCache[Model.uPosS:Model.uPosE]
   @views Fh = F[Model.pPosS:Model.pPosE]
   @views Fu = F[Model.uPosS:Model.uPosE]
+  @views UCacheq = UCache[Model.uPosE+1:end]
+
+  CurlVel!(UCacheq,CG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
+  CrossRhs!(backend,FTB,Fu,UCacheq,CG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+  GradKinHeight!(backend,FTB,Fu,Uh,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+  ldiv!(RT.LUM,Fu)
+  ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
+  DivRhs!(backend,FTB,Fh,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
+  ldiv!(DG.LUM,Fh)
+end
+
+function FcnNonLinShallowKent!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
+
+  @. F = 0
+  DG = Model.DG
+  RT = Model.RT
+  ND = Model.ND
+  Div = Model.Div
+  Grad = Model.Grad
+  Curl = Model.Curl
+
+  @views Uh = U[Model.pPosS:Model.pPosE]
+  @views Uu = U[Model.uPosS:Model.uPosE]
+  @views UCachep = UCache[Model.pPosS:Model.pPosE]
+  @views k = UCache[Model.pPosS:Model.pPosE]
+  @views UCacheu = UCache[Model.uPosS:Model.uPosE]
+  @views Fh = F[Model.pPosS:Model.pPosE]
+  @views Fu = F[Model.uPosS:Model.uPosE]
+  @views UCacheq = UCache[Model.uPosE+1:end]
 
   ProjectHDivHCurl!(backend,FTB,UCacheu,ND,Uu,RT,
     Grid,RT.Type,QuadOrdM,Jacobi)
   mul!(UCachep,Curl,UCacheu)
   ldiv!(DG.LUM,UCachep)
-# CurlVel!(UCachep,DG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
-  CrossRhs!(backend,FTB,Fu,UCachep,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+  CrossRhs!(backend,FTB,Fu,UCacheq,CG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
   GradKinHeight!(backend,FTB,Fu,Uh,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
-# ProjectKE!(backend,FTB,k,DG,Uu,RT,Grid.Type,Grid,QuadOrdS,Jacobi)
-# @. k += 9.81 * Uh
-# GradRhs!(backend,FTB,Fu,k,DG,RT,Grid,Grid.Type,QuadOrdS,Jacobi)
   ldiv!(RT.LUM,Fu)
   ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
   DivRhs!(backend,FTB,Fh,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)

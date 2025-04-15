@@ -1,18 +1,19 @@
 #!/bin/bash
 julia --project Examples/FEMSei/VecINonLinShallow.jl \
-  --Problem="HaurwitzSphere" \
+  --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
-  --GridType="TriangularSphere" \
-  --nPanel=60 \
+  --GridType="CubedSphere" \
+  --nPanel=80 \
   --RefineLevel=5 \
+  --Decomp="EqualArea" \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=0 \
-  --SimHours=1 \
+  --SimDays=1 \
+  --SimHours=0 \
   --PrintHours=0 \
-  --PrintMinutes=1 \
-  --PrintSeconds=0 \
+  --PrintSeconds=3600 \
+  --vtkFileName="Galewsky/VecIQuad" \
+  --RefineOutput=1 \
   --PrintTime=0
-

@@ -1,6 +1,5 @@
 module DGSEM
 
-import ..DG: DerivativeX!, DerivativeY!
 import ..DG
 import ..Parallels
 import ..Models
@@ -19,9 +18,10 @@ using KernelAbstractions.Extras: @unroll
 include("LocalFlux.jl")
 include("Rotation.jl")
 include("RiemannNonLin3.jl")
-include("FluxVolumeNonLin3.jl")
+include("FluxVolumeNonLin.jl")
 include("PresSh.jl")
 include("Source.jl")
 include("Fcn.jl")
+include("RK3.jl")
 
 end

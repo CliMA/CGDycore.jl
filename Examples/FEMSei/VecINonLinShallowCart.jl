@@ -180,7 +180,7 @@ Param = Examples.Parameters(FTB,Problem)
   Problem == "BickleyJet"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   #cS = sqrt(Phys.Grav * Param.H0G)
-  dtau = 0.1 * 2π / sqrt(nx * ny) / (k + 1)
+  dtau = 0.05 * 2π / sqrt(nx * ny) / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
@@ -228,7 +228,7 @@ FEMSei.InterpolateDG!(Up,DG,FEMSei.JacobiCart!,Grid,Grid.Type,Model.InitialProfi
 FEMSei.InterpolateRT!(Uu,RT,FEMSei.JacobiCart!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
 cName = ["h";"Vort";"uS";"vS"]
-nAdveVel = 1000
-nprint = 100
+nAdveVel = 4000
+nprint = 400
 @show  nAdveVel
-FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.JacobiCart!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName,nprint,ref)
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.JacobiCart!,nAdveVel,FileNameOutput,Proc,ProcNumber,nprint,ref)

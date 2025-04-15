@@ -1815,7 +1815,7 @@ end
 function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
 #
 #
-# int q*v dx = int Curl u * v dx = - int u * rot v dx + int_E (u*t)*q ds
+# int q*v dx = int Curl u * v dx = - int u * rot v dx 
 #
 #
   @. q = 0
@@ -1855,7 +1855,7 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
         uFLoc[2] += uFRef[2,iDoF,iQ] * uLoc[iDoF]  
       end   
       Jacobi(DF,detDF,pinvDF,X,ElemType,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
-#     detDF[1] *= Grid.Faces[iF].Orientation
+      detDF[1] *= Grid.Faces[iF].Orientation
       uuFLoc[1] = (DF[1,1] * uFLoc[1] + DF[1,2] * uFLoc[2]) / detDF[1]
       uuFLoc[2] = (DF[2,1] * uFLoc[1] + DF[2,2] * uFLoc[2]) / detDF[1]
       uuFLoc[3] = (DF[3,1] * uFLoc[1] + DF[3,2] * uFLoc[2]) / detDF[1]
@@ -1863,140 +1863,13 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
       uFLoc[2] = DF[1,2] * uuFLoc[1] + DF[2,2] * uuFLoc[2] + DF[3,2] * uuFLoc[3]
       @inbounds for iDoF = 1 : FeT.DoF  
         qLoc[iDoF] +=  -Weights[iQ] * (uFLoc[1] * RotqRef[1,iDoF,iQ] +
-          uFLoc[2] * RotqRef[2,iDoF,iQ])
+          uFLoc[2] * RotqRef[2,iDoF,iQ])  
       end  
     end  
     @inbounds for iDoF = 1 : FeT.DoF
       ind = FeT.Glob[iDoF,iF]
       q[ind] += qLoc[iDoF]
     end
-  end    
-
-  NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
-  PointsE = zeros(2,NumQuadL,3)
-  if ElemType == Grids.Tri()
-    tBar = [1.0 -1.0  0.0
-            0.0  1.0  1.0]
-    NumE = 3
-    PointsE = zeros(2,NumQuadL,NumE)
-    @inbounds for iQ = 1 : NumQuadL
-      PointsE[1,iQ,1] = PointsL[iQ]
-      PointsE[2,iQ,1] = -1.0
-      PointsE[1,iQ,2] = -PointsL[iQ]
-      PointsE[2,iQ,2] = PointsL[iQ]
-      PointsE[1,iQ,3] = -1.0
-      PointsE[2,iQ,3] = PointsL[iQ]
-    end
-  elseif ElemType == Grids.Quad()
-    tBar = [1.0 0.0 1.0 0.0
-            0.0 1.0 0.0 1.0]
-    NumE = 4
-    PointsE = zeros(2,NumQuadL,NumE)
-    @inbounds for iQ = 1 : NumQuadL
-      PointsE[1,iQ,1] = PointsL[iQ]
-      PointsE[2,iQ,1] = -1.0
-      PointsE[1,iQ,2] = 1.0
-      PointsE[2,iQ,2] = PointsL[iQ]
-      PointsE[1,iQ,3] = PointsL[iQ]
-      PointsE[2,iQ,3] = 1.0
-      PointsE[1,iQ,4] = -1.0
-      PointsE[2,iQ,4] = PointsL[iQ]
-    end
-  end  
-  uFRef  = zeros(uFe.Comp,uFe.DoF,NumQuadL,NumE)
-  qRef  = zeros(FeT.DoF,NumQuadL,NumE)
-  @inbounds for iQ = 1 : NumQuadL
-    @inbounds for iE = 1 : NumE  
-      @inbounds for iDoF = 1 : uFe.DoF
-        uFRef[1,iDoF,iQ,iE] = uFe.phi[iDoF,1](PointsE[1,iQ,iE],PointsE[2,iQ,iE])
-        uFRef[2,iDoF,iQ,iE] = uFe.phi[iDoF,2](PointsE[1,iQ,iE],PointsE[2,iQ,iE])
-      end  
-      @inbounds for iDoF = 1 : FeT.DoF
-        qRef[iDoF,iQ,iE] = FeT.phi[iDoF,1](PointsE[1,iQ,1],PointsE[2,iQ,1])
-      end  
-    end  
-  end  
-  DFL = zeros(3,2)
-  detDFL = zeros(1)
-  pinvDFL = zeros(3,2)
-  XL = zeros(3)
-  DFR = zeros(3,2)
-  detDFR = zeros(1)
-  pinvDFR = zeros(3,2)
-  XR = zeros(3)
-  uLocL = zeros(uFe.DoF)
-  uLocR = zeros(uFe.DoF)
-  uFLocL = zeros(2)
-  uFLocR = zeros(2)
-  uuFLocL = zeros(3)
-  uuFLocR = zeros(3)
-  ttL = zeros(3)
-  ttR = zeros(3)
-  qLocL = zeros(FeT.DoF)
-  qLocR = zeros(FeT.DoF)
-
-  @inbounds for iE = 1 : Grid.NumEdges
-    Edge = Grid.Edges[iE]
-    if length(Edge.F) > 1
-      iFL = Edge.F[1]
-      EdgeTypeL = Edge.FE[1]
-      iFR = Edge.F[2]
-      EdgeTypeR = Edge.FE[2]
-
-      #computation normales of edges
-      @views tBarLocL = tBar[:, EdgeTypeL] #* Grid.Faces[iFL].Orientation
-      @views tBarLocR = tBar[:, EdgeTypeR] #* Grid.Faces[iFR].Orientation
-      @inbounds for iDoF = 1 : uFe.DoF
-        ind = uFe.Glob[iDoF,iFL]  
-        uLocL[iDoF] = u[ind] 
-        ind = uFe.Glob[iDoF,iFR]  
-        uLocR[iDoF] = u[ind] 
-      end  
-      @. qLocL = 0
-      @. qLocR = 0
-      @inbounds for iQ = 1 : NumQuadL  
-        @. uFLocL = 0
-        @. uFLocR = 0
-        @inbounds for iDoF = 1 : uFe.DoF  
-          uFLocL[1] += uFRef[1,iDoF,iQ,EdgeTypeL] * uLocL[iDoF]  
-          uFLocL[2] += uFRef[2,iDoF,iQ,EdgeTypeL] * uLocL[iDoF]  
-          uFLocR[1] += uFRef[1,iDoF,iQ,EdgeTypeR] * uLocR[iDoF]  
-          uFLocR[2] += uFRef[2,iDoF,iQ,EdgeTypeR] * uLocR[iDoF]  
-        end  
-        Jacobi(DFL,detDFL,pinvDFL,XL,ElemType,PointsE[1,iQ,EdgeTypeL],
-          PointsE[2,iQ,EdgeTypeL],Grid.Faces[iFL], Grid)
-        detDFL[1] *= Grid.Faces[iFL].Orientation
-        uuFLocL[1] = (DFL[1,1] * uFLocL[1] + DFL[1,2] * uFLocL[2]) / detDFL[1]
-        uuFLocL[2] = (DFL[2,1] * uFLocL[1] + DFL[2,2] * uFLocL[2]) / detDFL[1]
-        uuFLocL[3] = (DFL[3,1] * uFLocL[1] + DFL[3,2] * uFLocL[2]) / detDFL[1]
-        ttL[1] = DFL[1,1] * tBarLocL[1]  + DFL[1,2] * tBarLocL[2] 
-        ttL[2] = DFL[2,1] * tBarLocL[1]  + DFL[2,2] * tBarLocL[2] 
-        ttL[3] = DFL[3,1] * tBarLocL[1]  + DFL[3,2] * tBarLocL[2] 
-        Jacobi(DFR,detDFR,pinvDFR,XR,ElemType,PointsE[1,iQ,EdgeTypeR],
-          PointsE[2,iQ,EdgeTypeR],Grid.Faces[iFR], Grid)
-        detDFR[1] *= Grid.Faces[iFR].Orientation
-        uuFLocR[1] = (DFR[1,1] * uFLocR[1] + DFR[1,2] * uFLocR[2]) / detDFR[1]
-        uuFLocR[2] = (DFR[2,1] * uFLocR[1] + DFR[2,2] * uFLocR[2]) / detDFR[1]
-        uuFLocR[3] = (DFR[3,1] * uFLocR[1] + DFR[3,2] * uFLocR[2]) / detDFR[1]
-        ttR[1] = DFR[1,1] * tBarLocR[1]  + DFR[1,2] * tBarLocR[2] 
-        ttR[2] = DFR[2,1] * tBarLocR[1]  + DFR[2,2] * tBarLocR[2] 
-        ttR[3] = DFR[3,1] * tBarLocR[1]  + DFR[3,2] * tBarLocR[2] 
-        tL = 0.5 * (uuFLocL + uuFLocR)' * ttL * Grid.Faces[iFL].Orientation
-        tR = 0.5 * (uuFLocL + uuFLocR)' * ttR * Grid.Faces[iFR].Orientation
-        @inbounds for iDoF = 1 : FeT.DoF  
-          qLocL[iDoF] += Grid.Faces[iFL].OrientE[EdgeTypeL] * WeightsL[iQ] * 
-            tL * qRef[iDoF,iQ,EdgeTypeL]  
-          qLocR[iDoF] += Grid.Faces[iFR].OrientE[EdgeTypeR] * WeightsL[iQ] * 
-            tR * qRef[iDoF,iQ,EdgeTypeR]  
-        end  
-      end
-      @inbounds for iDoF = 1 : FeT.DoF
-        ind = FeT.Glob[iDoF,iFL]
-        q[ind] += qLocL[iDoF]
-        ind = FeT.Glob[iDoF,iFR]
-        q[ind] += qLocR[iDoF]
-      end   
-    end    
   end    
   ldiv!(FeT.LUM,q)
 end

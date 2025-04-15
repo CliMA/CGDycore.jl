@@ -295,3 +295,192 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
     MasterSlave,
  )
 end
+
+mutable struct DGTri{FT<:AbstractFloat,
+                        AT1<:AbstractArray,
+                        AT2<:AbstractArray,
+                        IT2<:AbstractArray,
+                        IT3<:AbstractArray}
+    k::Int                   
+    OrdPolyZ::Int
+    DoF::Int
+    ksi::AT2
+    Glob::IT2
+    GlobE::IT3
+    Dx1::AT2
+    Dx2::AT2
+    w::AT1
+    wF::AT1
+end    
+
+function DGTri{FT}(backend,Method,OrdPolyZ,Grid,Proc) where FT<:AbstractFloat
+
+  N1 = [0.0 -1.0]
+  N2 = [1.0 1.0]
+  N3 = [-1.0 0.0]
+  if Method  == "Kubatko1"
+    k = 1  
+    n = 6
+    ksi = zeros(2,n)
+    N = zeros(2,n)
+    wFR = zeros(n)
+    ksi[:,1] = [-0.577350269189626  -1]
+    ksi[:,2] = [0.577350269189626 -1]
+    ksi[:,3] = [-1 -0.577350269189626]
+    ksi[:,4] = [-1 0.577350269189626]
+    ksi[:,5] = [-0.577350269189626 0.577350269189626]
+    ksi[:,6] = [ 0.577350269189626 -0.577350269189626]
+
+    N[:,1] = N1
+    N[:,2] = N1
+    N[:,3] = N3
+    N[:,4] = N3
+    N[:,5] = N2
+    N[:,6] = N2
+
+    w = ones(n) * 1/3
+    _, wF = gausslegendre(k+1)
+    wFR[1:k+1] = wF
+    wFR[k+1+1:2*(k+1)] = wF
+    wFR[2*(k+1)+1:3*(k+1)] = wF
+  elseif Method  == "Kubatko2"
+    k = 2
+    n = 10
+    ksi = zeros(2,n)
+    N = zeros(2,n)
+    w = zeros(n)
+    wFR = zeros(n)
+
+    ksi[:,1] = [-0.774596669241483 -1] 
+    N[:,1] = N1
+    ksi[:,2] = [0 -1] 
+    N[:,2] = N1
+    ksi[:,3] = [0.774596669241483 -1] 
+    N[:,3] = N1
+    ksi[:,4] = [-1 -0.774596669241483] 
+    N[:,4] = N3
+    ksi[:,5] = [-1 0] 
+    N[:,5] = N3
+    ksi[:,6] = [-1 0.774596669241483]
+    N[:,6] = N3
+    ksi[:,7] = [-0.774596669241483 0.774596669241483] 
+    N[:,7] = N2
+    ksi[:,8] = [0 0] 
+    N[:,8] = N2
+    ksi[:,9] = [0.774596669241483 -0.774596669241483] 
+    N[:,9] = N2
+    ksi[:,10] = [-0.333333333333333 -0.333333333333333]
+
+    w[1] = 0.083333333333333 
+    w[2] = 0.2 
+    w[3] = 0.083333333333333 
+    w[4] = 0.083333333333333 
+    w[5] = 0.2
+    w[6] = 0.083333333333333 
+    w[7] = 0.083333333333333 
+    w[8] = 0.2 
+    w[9] = 0.083333333333333 
+    w[10] = 0.9
+
+
+    _, wF = gausslegendre(k+1)
+    wFR[1:k+1] = wF
+    wFR[k+1+1:2*(k+1)] = wF
+    wFR[2*(k+1)+1:3*(k+1)] = wF
+    
+  elseif Method == "Hicken1"
+    k = 1
+    n = 7
+    ksi = zeros(2,n)
+    N = zeros(2,n)
+    w = zeros(n)
+    wF = zeros(n)
+    wFx1 = zeros(n)
+    wFx1 = zeros(n)
+    ksi[:,1] = [-1.0 -1.0]
+    N[:,1] = [0.0 -1.0] + [-1.0 0.0]
+    ksi[:,2] = [1.0 -1.0]
+    N[:,2] = [0.0 -1.0] + [1.0 1.0]
+    ksi[:,3] = [-1.0 1.0]
+    N[:,3] = [1.0 1.0] + [-1.0 0.0]
+    ksi[:,4] = [0.0 -1.0]
+    N[:,4] = [0.0 -1.0]
+    ksi[:,5] = [0.0 0.0]
+    N[:,5] = [1.0 1.0]
+    ksi[:,6] = [-1.0 0.0]
+    N[:,6] = [-1.0 0.0]
+    ksi[:,7] = [-1/3 -1/3]
+
+    w[1] = 0.09999999999999999
+    w[2] =0.09999999999999999
+    w[3] =0.09999999999999999
+    w[4] =0.26666666666666666
+    w[5] =0.26666666666666666
+    w[6] =0.26666666666666666
+    w[7] =0.9000000000000002
+    wFR = zeros(n)
+    wFR[1] = 0.333333333333333 
+    wFR[2] = 0.333333333333333 
+    wFR[3] = 0.333333333333333 
+    wFR[4] = 1.333333333333333
+    wFR[5] = 1.333333333333333
+    wFR[6] = 1.333333333333333
+  end
+  wFx1 = wFR .* N[1,:]
+  wFx2 = wFR .* N[2,:]
+  s = @polyvar x[1:2]
+  phi = DG.Polynomial_k(k,s)
+  nSt = size(phi,1)
+  phiDx1 = Array{Polynomial,2}(undef,nSt,1)
+  phiDx2 = Array{Polynomial,2}(undef,nSt,1)
+  for i = 1 : nSt
+    phiDx1[i] = differentiate(phi[i],x[1])  
+    phiDx2[i] = differentiate(phi[i],x[2])  
+  end  
+  V = zeros(n,nSt)
+  VDx1 = zeros(n,nSt)
+  VDx2 = zeros(n,nSt)
+  for j = 1 : nSt
+    for i = 1 : n
+      V[i,j] = phi[j](ksi[1,i],ksi[2,i])  
+      VDx1[i,j] = phiDx1[j](ksi[1,i],ksi[2,i])  
+      VDx2[i,j] = phiDx2[j](ksi[1,i],ksi[2,i])  
+    end
+  end  
+
+  Q,R = qr(diagm(sqrt.(w)) * V)
+  VO = V / R 
+  VODx1 = VDx1 / R 
+  VODx2 = VDx2 / R 
+
+  Dx1 = 0.5 * (diagm(1.0 ./ w) + VO * VO') * diagm(wFx1) * (I - VO * VO' * diagm(w)) +
+    VODx1 * VO' * diagm(w)
+  Dx2 = 0.5 * (diagm(1.0 ./ w) + VO * VO') * diagm(wFx2) * (I - VO * VO' * diagm(w)) +
+    VODx2 * VO' * diagm(w)
+
+  Stencil = zeros(Int,0,0)
+  Glob= zeros(Int,0,0)
+  GlobE= zeros(Int,0,0,0)
+
+
+  @show sum(abs.(Dx1*VO - VODx1))
+    
+
+  return DGTri{FT,
+               typeof(w),
+               typeof(Dx1),
+               typeof(Glob),
+               typeof(GlobE)}(
+    k,
+    OrdPolyZ,
+    n,
+    ksi,
+    Glob,
+    GlobE,
+    Dx1,
+    Dx2,
+    w,
+    wF,
+  )
+end
+

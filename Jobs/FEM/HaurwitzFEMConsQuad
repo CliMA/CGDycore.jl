@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/FEMSei/ConsNonLinShallow.jl \
-  --Problem="GalewskySphere" \
+  --Problem="HaurwitzSphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
@@ -12,6 +12,6 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --SimHours=1 \
   --PrintHours=0 \
   --PrintSeconds=900 \
-  --vtkFileName="Galewsky/ConsQuad"
+  --vtkFileName="Haurwitz/ConsQuad"
   --RefineOutput=1 \
   --PrintTime=0

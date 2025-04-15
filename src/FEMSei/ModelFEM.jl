@@ -1,6 +1,7 @@
 mutable struct ModelFEM
   ND
   RT
+  CG
   DG
   pPosS::Int
   pPosE::Int
@@ -19,6 +20,7 @@ function ModelFEM(backend,FTB,DG,Grid,nQuad,Jacobi)
   uPosE = 0
   ND = nothing
   RT = nothing
+  CG = nothing
   Div = spzeros(0,0)
   Grad = spzeros(0,0)
   Curl = spzeros(0,0)
@@ -28,6 +30,7 @@ function ModelFEM(backend,FTB,DG,Grid,nQuad,Jacobi)
   return ModelFEM(
     ND,
     RT,
+    CG,
     DG,
     pPosS,
     pPosE,
@@ -40,7 +43,7 @@ function ModelFEM(backend,FTB,DG,Grid,nQuad,Jacobi)
   )  
 end
 
-function ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,Jacobi)
+function ModelFEM(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
   pPosS = 1
   pPosE = DG.NumG
   uPosS = pPosE + 1
@@ -55,11 +58,14 @@ function ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,Jacobi)
 
   ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuadM,Jacobi)
   ND.LUM = lu(ND.M)
+  CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,Jacobi)
+  CG.LUM = lu(CG.M)
   Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuadS,Jacobi)
   Lapl = spzeros(0,0)
   return ModelFEM(
     ND,
     RT,
+    CG,
     DG,
     pPosS,
     pPosE,

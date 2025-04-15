@@ -94,6 +94,7 @@ PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
+vtkFileName = parsed_args["vtkFileName"]
 
 # Device
 Device = parsed_args["Device"]
@@ -169,8 +170,7 @@ if Problem == "GalewskySphere"
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nPrint::Int = ceil(PrintT/dtau)
-  FileNameOutput = GridType*"NonLinShallowGal"
-  FileNameOutput = "GalewskyVecI/160_tri/"*GridType*"NSGalewsky"
+  FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -184,7 +184,7 @@ elseif Problem == "HaurwitzSphere"
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nPrint::Int =ceil(PrintT/dtau)
-  FileNameOutput = "HaurwitzVecI/"*GridType*"NSHaurwitz"
+  FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -200,21 +200,22 @@ vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Ref
 
 #Quadrature rules
 if Grid.Type == Grids.Quad()
+  nQuad = 2
+  nQuadM = 2
+  nQuadS = 2
+elseif Grid.Type == Grids.Tri()
   nQuad = 3
   nQuadM = 3
   nQuadS = 3
-elseif Grid.Type == Grids.Tri()
-  nQuad = 4
-  nQuadM = 4
-  nQuadS = 4
 end
 
 #Finite elements
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
+CG = FEMSei.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 
-ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
+ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,FEMSei.Jacobi!)
 
 pPosS = ModelFEM.pPosS
 pPosE = ModelFEM.pPosE
@@ -230,4 +231,5 @@ FEMSei.InterpolateRT!(Uu,RT,FEMSei.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialPro
 cName = ["h";"Vort";"uS";"vS"]
 
 @show  nAdveVel
-FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,nAdveVel,FileNameOutput,Proc,ProcNumber,cName,nPrint,ref)
+FEMSei.TimeStepper(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEMSei.Jacobi!,
+  nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)

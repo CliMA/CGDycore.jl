@@ -219,6 +219,7 @@ Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
 Model.TkePos  = TkePos
+Model.ModelType = ModelType
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping

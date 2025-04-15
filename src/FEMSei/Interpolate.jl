@@ -60,7 +60,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   s = @polyvar x[1:2]
 
   if k > 0
-    P_km1 = Polynomial_k(k-1,s)
+    P_km1 = DG.Polynomial_k(k-1,s)
     lP_km1 = length(P_km1)
   else
     lP_km1 = 0
@@ -72,7 +72,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     end
   end  
   @polyvar t
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   l_phiL = length(phiL)
   ValphiL=zeros(NumQuadL,l_phiL)
   @inbounds for iQ = 1 : NumQuadL
@@ -144,7 +144,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   s = @polyvar x[1:2]
 
   if k > 0
-    P_km1 = Polynomial_k(k-1,s)
+    P_km1 = DG.Polynomial_k(k-1,s)
     lP_km1 = length(P_km1)
   else
     lP_km1 = 0
@@ -156,7 +156,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
     end
   end  
   @polyvar t
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   l_phiL = length(phiL)
   ValphiL=zeros(NumQuadL,l_phiL)
   @inbounds for iQ = 1 : NumQuadL
@@ -226,13 +226,13 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   k = FE.Order
   DoF = FE.DoF
   s = @polyvar x[1:2]
-  P_kp1x1 = Polynomial_1D(k+1,s,1)
-  P_kx1 = Polynomial_1D(k,s,1)
-  P_kp1x2 = Polynomial_1D(k+1,s,2)
-  P_kx2 = Polynomial_1D(k,s,2)
+  P_kp1x1 = DG.Polynomial_1D(k+1,s,1)
+  P_kx1 = DG.Polynomial_1D(k,s,1)
+  P_kp1x2 = DG.Polynomial_1D(k+1,s,2)
+  P_kx2 = DG.Polynomial_1D(k,s,2)
   if k > 0
-    P_km1x1 = Polynomial_1D(k-1,s,1)
-    P_km1x2 = Polynomial_1D(k-1,s,2)
+    P_km1x1 = DG.Polynomial_1D(k-1,s,1)
+    P_km1x2 = DG.Polynomial_1D(k-1,s,2)
   end
   
   DoF = 2 * (k+2) * (k+1)
@@ -254,13 +254,13 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     end
   end
   @polyvar t
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   QuadOrd = 3
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
 
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   uLoc = zeros(DoF)
   DF = zeros(3,2)
   detDF = zeros(1)
@@ -353,13 +353,13 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   k = FE.Order
   DoF = FE.DoF
   s = @polyvar x[1:2]
-  P_kp1x1 = Polynomial_1D(k+1,s,1)
-  P_kx1 = Polynomial_1D(k,s,1)
-  P_kp1x2 = Polynomial_1D(k+1,s,2)
-  P_kx2 = Polynomial_1D(k,s,2)
+  P_kp1x1 = DG.Polynomial_1D(k+1,s,1)
+  P_kx1 = DG.Polynomial_1D(k,s,1)
+  P_kp1x2 = DG.Polynomial_1D(k+1,s,2)
+  P_kx2 = DG.Polynomial_1D(k,s,2)
   if k > 0
-    P_km1x1 = Polynomial_1D(k-1,s,1)
-    P_km1x2 = Polynomial_1D(k-1,s,2)
+    P_km1x1 = DG.Polynomial_1D(k-1,s,1)
+    P_km1x2 = DG.Polynomial_1D(k-1,s,2)
   end
   
   DoF = 2 * (k+2) * (k+1)
@@ -381,13 +381,13 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     end
   end
   @polyvar t
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   QuadOrd = 3
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
 
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   uLoc = zeros(DoF)
   DF = zeros(3,2)
   detDF = zeros(1)

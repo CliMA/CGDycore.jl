@@ -1,5 +1,6 @@
 module FEMSei
 
+import ..DG
 import ..Parallels
 import ..Models
 import ..Grids
@@ -37,7 +38,6 @@ abstract type HCurlConfElement <: HCurlElement end
 abstract type TensorElement <: VectorElement end
 
 include("Quadratur.jl")
-include("Common.jl")
 include("RT.jl")
 include("ND.jl")
 include("DG.jl")

@@ -161,3 +161,16 @@ function (GeoPotentialFun::GeoPotentialNo)()
   return GeoPotential
 end
 
+abstract type BuoyancyType end
+
+Base.@kwdef struct BuoyancyBoussinesq <: BuoyancyType end
+
+function (::BuoyancyBoussinesq)(Param,wPos,bPos)
+  @inline function BuoyancyFun(F,U,x)
+    FT = eltype(F)
+    F[wPos] += U[bPos]
+    F[bPos] += -Param.N^2 * U[wPos]
+  end
+  return BuoyancyFun
+end
+

@@ -208,6 +208,27 @@ end
   end
 end
 
+@kernel inbounds = true function ThFunCDGKernel!(Profile,RhoTh,time,@Const(Glob),@Const(X))
+
+  I, K, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  if Iz <= Nz
+    ind = Glob[I,IF]
+    x1 = X[I,K,1,Iz,IF]
+    x2 = X[I,K,2,Iz,IF]
+    x3 = X[I,K,3,Iz,IF]
+    xS = SVector{3}(x1, x2 ,x3)
+    _,_,_,_ ,ThP = Profile(xS,time)
+    RhoTh[Iz,K,ind] = ThP
+  end
+end
+
 @kernel inbounds = true function RhoEFunCKernel!(Profile,RhoE,time,@Const(Glob),@Const(X))
 
   I, iz   = @index(Local, NTuple)

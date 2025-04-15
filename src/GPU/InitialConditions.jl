@@ -127,9 +127,11 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Glo
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
-  @. u *= Rho
-  @. v *= Rho
-  @. w *= Rho
+  if Model.ModelType == "Conservative"
+    @. u *= Rho
+    @. v *= Rho
+    @. w *= Rho
+  end  
   KernelAbstractions.synchronize(backend)
   if State == "Dry" || State == "Moist" || State == "ShallowWater"  
     KRhoThFunCKernel! = RhoThFunCDGKernel!(backend, group)
@@ -137,6 +139,9 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Glo
   elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"
     KRhoEFunCKernel! = RhoEFunCDGKernel!(backend, group)
     KRhoEFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+  elseif State == ""
+    KThFunCKernel! = ThFunCDGKernel!(backend, group)
+    KThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   end
   KernelAbstractions.synchronize(backend)
   if Model.RhoVPos > 0

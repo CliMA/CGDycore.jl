@@ -5,8 +5,8 @@ julia --project Examples/FEMSei/ConsNonLinShallowCart.jl \
   --NumberThreadGPU=512 \
   --GridType="Tri" \
   --Flat=false \
-  --nx=40 \
-  --ny=40 \
+  --nx=100 \
+  --ny=100 \
   --Lx=12.566370614359172 \
   --Ly=12.566370614359172 \
   --x0=-6.283185307179586 \
@@ -14,13 +14,12 @@ julia --project Examples/FEMSei/ConsNonLinShallowCart.jl \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
-  --RefineOutput=0 \
-  --OrdPoly=3 \
-  --OrderFEM=1 \
+  --OrderFEM=0 \
   --SimTime=0 \
   --SimDays=0 \
   --SimHours=1 \
   --PrintHours=0 \
   --PrintSeconds=600 \
   --PrintTime=0 \
-  --vtkFileName="Bickley/AAA" \
+  --RefineOutput=0 \
+  --vtkFileName="Bickley/ConsTri" \

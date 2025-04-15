@@ -1,0 +1,46 @@
+#!/bin/bash
+julia --project Examples/DriverDG.jl \
+  --Problem="LinearGravity" \
+  --Discretization="DG" \
+  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
+  --NumAux=0 \
+  --NumTr=0 \
+  --ModelType="Boussinesq" \
+  --Equation="Boussinesq" \
+  --State="" \
+  --Buoyancy=true \
+  --Damping=false \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --SimTime=1000 \
+  --PrintTime=10 \
+  --vtkFileName="output/VTK/LinearGravity/DGCart" \
+  --Curl=false \
+  --dtau=.08 \
+  --FluxDG="LinearBoussinesqFlux" \
+  --InterfaceFluxDG="RiemannBoussinesqLMARS"  \
+  --IntMethod="RungeKutta" \
+  --Table="RK4" \
+  `#Grid       `        \
+  --GridForm="Cartesian" \
+  --Flat=false \
+  --TopoS="" \
+  `#Topography `        \
+  --H=10000.0 \
+  --Lx=300000.0 \
+  --Ly=2000.0 \
+  --x0=-150000.0 \
+  --y0=0.0 \
+  --nz=4 \
+  --nx=40 \
+  --ny=2 \
+  --OrdPoly=4 \
+  --OrdPolyZ=4 \
+  --HyperVisc=true \
+  --HyperDCurl=1.e7 \
+  --HyperDGrad=1.e7 \
+  --HyperDDiv=1.e7

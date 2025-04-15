@@ -94,6 +94,7 @@ PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
+vtkFileName = parsed_args["vtkFileName"]
 
 # Device
 Device = parsed_args["Device"]
@@ -162,13 +163,13 @@ Param = Examples.Parameters(FTB,Problem)
 if Problem == "GalewskySphere"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = sqrt(Phys.Grav * Param.H0G)
-  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  dtau = GridLengthMin / cS / sqrt(2) * .05 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint::Int = ceil(PrintT/dtau)
-  FileNameOutput = "Galewsky/test/"*GridType*"NSGalewsky"
+  FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau
@@ -176,13 +177,13 @@ if Problem == "GalewskySphere"
 elseif Problem == "HaurwitzSphere"
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = sqrt(Phys.Grav * Param.h0)
-  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  dtau = GridLengthMin / cS / sqrt(2) * .1 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nprint::Int = ceil(PrintT/dtau)
-  FileNameOutput = "Haurwitz/"*GridType*"NSHaurwitz"
+  FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
   @show dtau

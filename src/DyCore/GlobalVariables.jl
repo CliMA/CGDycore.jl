@@ -326,6 +326,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   wEDMFPos::Int
   ThEDMFPos::Int
   NumV::Int
+  NumAux::Int
   NumTr::Int
   NumThermo::Int
   Equation::Models.EquationType
@@ -376,7 +377,9 @@ Base.@kwdef mutable struct ModelStruct{FT}
   GeoPotential::Any
   RiemannSolver::Any
   NonConservativeFlux::Any
+  Flux::Any
   FluxAverage::Any
+  BuoyancyFun::Any
   dPresdRhoTh::Any
   dPresdRho::Any
   CoriolisFun::Any
@@ -419,6 +422,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   wEDMFPos = 0
   ThEDMFPos = 0
   NumV = 0
+  NumAux = 0
   NumTr = 0
   NumThermo = 0
   Equation = Models.CompressibleShallow()
@@ -469,7 +473,9 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   GeoPotential = ""
   RiemannSolver = ""
   NonConservativeFlux = ""
+  Flux = ""
   FluxAverage = ""
+  BuoyancyFun = ""
   dPresdRhoTh = ""
   dPresdRho = ""
   CoriolisFun = ""
@@ -510,6 +516,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    wEDMFPos,
    ThEDMFPos,
    NumV,
+   NumAux,
    NumTr,
    NumThermo,
    Equation,
@@ -561,6 +568,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    RiemannSolver,
    NonConservativeFlux,
    FluxAverage,
+   BuoyancyFun,
+   Flux,
    dPresdRhoTh,
    dPresdRho,
    CoriolisFun,

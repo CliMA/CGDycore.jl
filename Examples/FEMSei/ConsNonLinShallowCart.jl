@@ -245,7 +245,7 @@ F = zeros(FTB,DG.NumG+RT.NumG)
 @views Fh = F[hPosS:hPosE]  
 @views Fhu = F[huPosS:huPosE]  
 uRec = zeros(FTB,VecDG.NumG)
-cName = ["h";"Vort";"uS";"vS";"wS"]
+cName = ["h";"Vort";"uC";"vC";"wC"]
 
 FEMSei.InterpolatehRT!(Uhu,RT,FEMSei.JacobiCart!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 FEMSei.InterpolateDG!(Uh,DG,FEMSei.JacobiCart!,Grid,Grid.Type,Model.InitialProfile)

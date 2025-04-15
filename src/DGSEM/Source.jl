@@ -16,17 +16,16 @@
   end  
 end
 
-@kernel inbounds = true function BuoyancyKernel!(F,U,Phys)
+@kernel inbounds = true function BuoyancyKernel!(Fun,F,@Const(U),@Const(X),@Const(Glob))
 
-  _,_,iD  = @index(Local, NTuple)
-  Iz,K,ID = @index(Global, NTuple)
+  _,_,iD,  = @index(Local, NTuple)
+  Iz,K,ID,IF = @index(Global, NTuple)
 
   ND = @uniform @ndrange()[3]
 
   if ID <= ND
-    RhoPos = 1
-    wPos = 4
-    F[Iz,K,ID,wPos] += -Phys.Grav * U[Iz,K,ID,RhoPos]
+    ind = Glob[ID,IF]
+    @views Fun(F[Iz,K,ind,:],U[Iz,K,ind,:],X[ID,K,:,Iz,IF])
   end
 end
 

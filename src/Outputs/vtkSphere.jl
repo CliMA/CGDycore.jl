@@ -763,6 +763,11 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
 #       vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz,Metric.dXdxI)
       @views copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["w", VTKCellData()] = wCell
+    elseif  str == "BDG" 
+      BPos = Global.Model.ThPos
+      @views InterpolateGPU!(cCell,UR[:,:,:,BPos],vtkInter,FE.Glob)
+      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      vtk["BDG", VTKCellData()] = cCellCPU
     elseif str == "Th"  
       ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views PotT = reshape(Cache.Thermo[:,:,3],size(Cache.Thermo[:,:,3],1),1,

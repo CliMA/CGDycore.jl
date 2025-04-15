@@ -2,15 +2,15 @@
 function ConstructND(k,ElemType::Grids.Tri)
   s = @polyvar x[1:2]
 
-  P_k = Polynomial_k(k,s)
+  P_k = DG.Polynomial_k(k,s)
   lP_k = length(P_k)
   if k > 0
-    P_km1 = Polynomial_k(k-1,s)
+    P_km1 = DG.Polynomial_k(k-1,s)
     lP_km1 = length(P_km1)
   else
     lP_km1 = 0  
   end  
-  H_km1 = HomegenuousPolynomial(k,s)
+  H_km1 = DG.HomegenuousPolynomial(k,s)
   lH_km1 = length(H_km1)
   DoF = 2 * lP_k + lH_km1
   DoFE = lH_km1
@@ -35,7 +35,7 @@ function ConstructND(k,ElemType::Grids.Tri)
     iDoF += 1
   end  
   @polyvar t
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   QuadOrd = 3
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
@@ -109,6 +109,7 @@ function ConstructND(k,ElemType::Grids.Tri)
   @inbounds for i = 1 : DoF
     Curlphi[i,1] = -differentiate(phiB[i,1],x[2]) + differentiate(phiB[i,2],x[1])
   end
+  @show phiB
   return DoF, DoFE, DoFF, phiB, Curlphi
 end
 
@@ -116,13 +117,13 @@ end
 function ConstructND(k,ElemType::Grids.Quad)
 
   s = @polyvar x[1:2]
-  P_kp1x1 = Polynomial_1D(k+1,s,1)
-  P_kx1 = Polynomial_1D(k,s,1)
-  P_kp1x2 = Polynomial_1D(k+1,s,2)
-  P_kx2 = Polynomial_1D(k,s,2)
+  P_kp1x1 = DG.Polynomial_1D(k+1,s,1)
+  P_kx1 = DG.Polynomial_1D(k,s,1)
+  P_kp1x2 = DG.Polynomial_1D(k+1,s,2)
+  P_kx2 = DG.Polynomial_1D(k,s,2)
   if k > 0
-    P_km1x2 = Polynomial_1D(k-1,s,2)
-    P_km1x1 = Polynomial_1D(k-1,s,1)
+    P_km1x2 = DG.Polynomial_1D(k-1,s,2)
+    P_km1x1 = DG.Polynomial_1D(k-1,s,1)
   end  
   
   DoF = 2 * (k+2) * (k+1)
@@ -146,7 +147,7 @@ function ConstructND(k,ElemType::Grids.Quad)
     end
   end
   @polyvar t
-  phiL = CGLine(k,t)
+  phiL = DG.CGLine(k,t)
   QuadOrd = 3
   NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)

@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/FEMSei/VecINonLinShallow.jl \
-  --Problem="GalewskySphere" \
+  --Problem="HaurwitzSphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
@@ -12,6 +12,6 @@ julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --SimHours=0 \
   --PrintHours=1 \
   --PrintSeconds=0 \
-  --vtkFileName="Galewsky/VecITri" \
+  --vtkFileName="Haurwitz/VecITri" \
   --RefineOutput=0 \
   --PrintTime=0

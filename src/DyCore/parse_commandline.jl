@@ -17,6 +17,11 @@ function parse_commandline()
     arg_type = String
     default = "KennedyGruberGrav"
 
+    "--InterfaceFluxDG"
+    help = "Interface flux for DG"
+    arg_type = String
+    default = "KennedyGruberGrav"
+
     "--Profile"
     help = "Profile for initial onditions"
     arg_type = Bool
@@ -31,6 +36,11 @@ function parse_commandline()
     help = "Number of tracer variables"
     arg_type = Int
     default = 0
+
+    "--NumAux"
+    help = "Number of auxilary variables"
+    arg_type = Int
+    default = 1
 
     "--ProfRho"
     help = "Initial conditions for density"

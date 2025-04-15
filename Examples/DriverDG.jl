@@ -15,6 +15,7 @@ parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
 FluxDG = parsed_args["FluxDG"]
+InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
@@ -28,6 +29,7 @@ RhoIPos = parsed_args["RhoIPos"]
 RhoRPos = parsed_args["RhoRPos"]
 TkePos = parsed_args["TkePos"]
 NumV = parsed_args["NumV"]
+NumAux = parsed_args["NumAux"]
 NumTr = parsed_args["NumTr"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
@@ -180,8 +182,9 @@ Phys = DyCore.PhysParameters{FTB}()
 Model = DyCore.ModelStruct{FTB}()
 
 # Initial conditions
-Model.NumV=NumV
-Model.NumTr=NumTr
+Model.NumV = NumV
+Model.NumAux = NumAux
+Model.NumTr = NumTr
 Model.NumThermo = 4
 if State == "MoistInternalEnergy"
   Model.NumThermo +=2
@@ -219,6 +222,7 @@ Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
 Model.TkePos  = TkePos
+Model.ModelType = ModelType
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
 Model.Damping = Damping
@@ -313,18 +317,30 @@ U = GPU.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile
 pAuxPos = 1
 GPAuxPos = 2
 
-RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
-Model.RiemannSolver = RiemannSolver
+if InterfaceFluxDG == "RiemannLMARS"
+  RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  Model.RiemannSolver = RiemannSolver
+elseif InterfaceFluxDG == "RiemannBoussinesqLMARS"  
+  RiemannSolver = DGSEM.RiemannBoussinesqLMARS()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
+  Model.RiemannSolver = RiemannSolver
+end  
 
 NonConservativeFlux = DGSEM.BuoyancyFlux()(Model.RhoPos,GPAuxPos)
 Model.NonConservativeFlux = NonConservativeFlux
 
 if FluxDG == "KennedyGruber"
   Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
-elseif luxDG == "KennedyGruberGrav"  
+elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.ThPos,pAuxPos,GPAuxPos)
+elseif FluxDG == "LinearBoussinesqFlux"
+  Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
 end  
+
+if ModelType == "Boussinesq"
+  Model.BuoyancyFun = GPU.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
+end  
+    
 
 # Pressure
 if State == "Dry"
@@ -362,6 +378,13 @@ if ModelType == "Conservative"
 #   "Th",
 #   "Vort",
     ]
+elseif ModelType == "Boussinesq"
+  Global.Output.cNames = [
+    "Rho",
+    "u",
+    "wDG",
+    "BDG",
+    ]
 end
 
 Global.Output.Flat = Flat
@@ -384,16 +407,6 @@ Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Trans,DG
 
 Global.Output.vtkFileName = vtkFileName
 
-Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-
-
-NumAux = 2
-CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
-CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
-FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
-UNew = similar(U)
-@views UI = U[:,:,1:DG.NumI,:]
-@views UNewI = UNew[:,:,1:DG.NumI,:]
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
 
 # Simulation time
@@ -416,28 +429,5 @@ if Proc == 1
 @show nPrint
 end
 
-@inbounds for i = 1 : IterTime
+DGSEM.RK3(U,DGSEM.FcnGPU!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 
-  if Proc == 1
-    @show i
-  end  
-
-  DGSEM.FcnGPUSplitPar3!(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
-  fac = FTB(1/3 * dtau)
-  @. UNewI = UI + fac * FU
-
-  DGSEM.FcnGPUSplitPar3!(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
-  fac = FTB(1/2 * dtau)
-  @. UNewI = UI + fac * FU
-
-  DGSEM.FcnGPUSplitPar3!(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global)
-  fac = FTB(dtau)
-  @. UI = UI + fac * FU
-
-  if mod(i,nPrint) == 0
-    if Proc == 1
-      @show "Print",i
-    end  
-    Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-  end
-end

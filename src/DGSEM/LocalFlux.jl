@@ -25,24 +25,57 @@ function (::EulerFlux)(RhoPos,uPos,vPos,wPos,ThPos,pPos)
     w = V[wPos] / V[RhoPos]
     Th = V[ThPos] / V[RhoPos]
 
-    flux[1,RhoPos] = -V[uPos]
-    flux[1,uPos] = -V[uPos] * u - p
-    flux[1,vPos] = -V[uPos] * v
-    flux[1,wPos] = -V[uPos] * w
-    flux[1,ThPos] = -V[uPos] * Th
+    flux[1,RhoPos] = V[uPos]
+    flux[1,uPos] = V[uPos] * u + p
+    flux[1,vPos] = V[uPos] * v
+    flux[1,wPos] = V[uPos] * w
+    flux[1,ThPos] = V[uPos] * Th
 
-    flux[2,RhoPos] = -V[vPos]
-    flux[2,uPos] = -V[vPos] * u
-    flux[2,vPos] = -V[vPos] * v - p
-    flux[2,wPos] = -V[vPos] * w
-    flux[2,ThPos] = -V[vPos] * Th
+    flux[2,RhoPos] = V[vPos]
+    flux[2,uPos] = V[vPos] * u
+    flux[2,vPos] = V[vPos] * v + p
+    flux[2,wPos] = V[vPos] * w
+    flux[2,ThPos] = V[vPos] * Th
 
 
-    flux[3,RhoPos] = -V[wPos]
-    flux[3,uPos] = -V[wPos] * u
-    flux[3,vPos] = -V[wPos] * v
-    flux[3,wPos] = -V[wPos] * w - p
-    flux[3,ThPos] = -V[wPos] * Th
+    flux[3,RhoPos] = V[wPos]
+    flux[3,uPos] = V[wPos] * u
+    flux[3,vPos] = V[wPos] * v
+    flux[3,wPos] = V[wPos] * w + p
+    flux[3,ThPos] = V[wPos] * Th
+  end
+  return Flux
+end
+
+Base.@kwdef struct LinearBoussinesqFlux <: Flux end
+
+function (::LinearBoussinesqFlux)(Param,pPos,uPos,vPos,wPos,bPos)
+  @inline function Flux(flux,V,Aux)
+
+    p = V[pPos]
+    u = V[uPos]
+    v = V[vPos]
+    w = V[wPos]
+    b = V[bPos]
+
+    flux[1,pPos] = -Param.U * p - Param.cS^2 * u
+    flux[1,uPos] = -Param.U * u - p
+    flux[1,vPos] = eltype(flux)(0)
+    flux[1,wPos] = -Param.U * w 
+    flux[1,bPos] = eltype(flux)(0)
+
+    flux[2,pPos] = -Param.cS^2 * v
+    flux[2,uPos] = eltype(flux)(0)
+    flux[2,vPos] = -p
+    flux[2,wPos] = eltype(flux)(0)
+    flux[2,bPos] = eltype(flux)(0)
+
+    flux[3,pPos] = -Param.cS^2 * w
+    flux[3,uPos] = -p
+    flux[3,vPos] = eltype(flux)(0)
+    flux[3,wPos] = eltype(flux)(0)
+    flux[3,bPos] = eltype(flux)(0)
+
   end
   return Flux
 end
@@ -187,24 +220,39 @@ function (::RiemannLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
   return RiemannByLMARSNonLin!
 end
 
+Base.@kwdef struct RiemannBoussinesqLMARS <: RiemannSolver end
 
+function (::RiemannBoussinesqLMARS)(Param,pPos,uPos,vPos,wPos,bPos)
+  @inline function RiemannByLMARS(F,VLL,VRR,AuxL,AuxR,Normal)
 
-
-
-
-
-#=
-function flux_nonconservative_waruszewski(u_ll, u_rr, normal_direction::AbstractVector,
-                                          equations::CompressibleEulerEquationsWithGravity2D)
-    rho_ll, _, _, _, phi_ll = u_ll
-    rho_rr, _, _, _, phi_rr = u_rr
-
-    # We omit the 0.5 in the density average since Trixi.jl always multiplies the non-conservative flux with 0.5
-    noncons = ln_mean(rho_ll, rho_rr) * (phi_rr - phi_ll)
-    # noncons = 0.5 * (rho_ll + rho_rr) * (phi_rr - phi_ll)
-
-    f0 = zero(eltype(u_ll))
-    return SVector(f0, noncons * normal_direction[1], noncons * normal_direction[2],
-                   f0, f0)
+    FT = eltype(F)
+    cS = Param.cS
+    pLL = VLL[pPos]
+    pRR = VRR[pPos]
+    U = Normal[1] * Param.U
+    vLL = VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3] 
+    vRR = VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]
+    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * (vRR - vLL)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) 
+    if Param.U > 0
+      F[pPos] = U * VLL[pPos] + Param.cS^2*vM 
+      F[uPos] = U * VLL[uPos] + Normal[1] * pM
+      F[vPos] = U * VLL[vPos] + Normal[2] * pM
+      F[wPos] = U * VLL[wPos] + Normal[3] * pM
+      F[bPos] = U * VLL[bPos]
+    else
+      F[pPos] = U * VRR[pPos] + Param.cS^2*vM 
+      F[uPos] = U * VRR[uPos] + Normal[1] * pM 
+      F[vPos] = U * VRR[vPos] + Normal[2] * pM
+      F[wPos] = U * VRR[wPos] + Normal[3] * pM
+      F[bPos] = U * VRR[bPos]
+    end
+  end
+  return RiemannByLMARS
 end
-=#
+
+
+
+
+
+

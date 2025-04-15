@@ -1,9 +1,34 @@
 abstract type Example end
 
+Base.@kwdef struct LinearGravityExample <: Example end
+
+function (profile::LinearGravityExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    binv = (1 + (x[1] - Param.xc)^2 / Param.A^2)
+    b = Param.b0 * sin(pi * x[3] / Param.H) / binv
+    p = eltype(x)(0)
+    u = eltype(x)(0)
+    v = eltype(x)(0)
+    w = eltype(x)(0)
+
+    return (p,u,v,w,b)
+  end
+  return local_profile
+#=
+  @inline function Source(F,U)
+    wPos = 4
+    bPos = 5
+    F[wPos] = U[bPos]
+    F[bPos] = -Param.N^2 * U[wPos]
+  end
+  return local_profile,Source
+=#  
+end
+
 Base.@kwdef struct BickleyJetExample <: Example end
 
 function (profile::BickleyJetExample)(Param,Phys)
-    @inline function local_profile(x,time)
+  @inline function local_profile(x,time)
     # Definition of the "Bickley jet": a sech(y)^2 jet with sinusoidal tracer
     Ψ = - tanh(x[2])
     U = sech(x[2])^2
@@ -25,6 +50,23 @@ function (profile::BickleyJetExample)(Param,Phys)
     Rho = sin(2π * x[2] / Param.Ly)
     Rho = 1.0
     Th = 1.0
+    return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+
+Base.@kwdef struct BickleyJetExample1 <: Example end
+
+function (profile::BickleyJetExample1)(Param,Phys)
+  @inline function local_profile(x,time)
+    Rho = cos(x[1]) + cos(x[2]) #2 * (x[1] + x[2])
+    Rho = 2 * (x[1] + x[2])
+    Th = 1.0
+    u = -sin(x[2]) #-x[2]^2
+    v = sin(x[1]) #x[1]^2
+    u = -x[2]^2
+    v = x[1]^2
+    w = 0
     return (Rho,u,v,w,Th)
   end
   return local_profile

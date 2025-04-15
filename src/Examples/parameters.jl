@@ -6,6 +6,18 @@ Base.@kwdef struct ParamBickleyJet{FT}
   Ly::FT = 4.0*pi
   cS::FT = sqrt(9.81)
 end
+Base.@kwdef struct ParamBickleyJet1{FT}
+end
+
+Base.@kwdef struct ParamLinearGravity{FT}
+  A::FT = 5000
+  H::FT = 10000
+  b0::FT = 0.01
+  xc::FT = -50000
+  cS::FT = 350.0
+  N::FT = 1.e-2
+  U::FT = 0.0
+end
 
 Base.@kwdef struct ParamGalewskySphere{FT}
   H0G::FT = 10000.0
@@ -449,9 +461,15 @@ function Parameters(FT,Problem::String)
   elseif Problem == "BickleyJet"
     @show Problem
     Param = ParamBickleyJet{FT}()
+  elseif Problem == "BickleyJet1"
+    @show Problem
+    Param = ParamBickleyJet1{FT}()
   elseif Problem == "GalewskySphere"
     @show Problem
     Param = ParamGalewskySphere{FT}()
+  elseif Problem == "LinearGravity"
+    @show Problem
+    Param = ParamLinearGravity{FT}()
   elseif Problem == "HaurwitzSphere"
     @show Problem
     Param = ParamHaurwitzSphere()

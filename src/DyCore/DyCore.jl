@@ -1,6 +1,5 @@
 module DyCore
 
-import ..DG: DerivativeX!, DerivativeY!
 import ..DG
 import ..Parallels
 import ..Models
