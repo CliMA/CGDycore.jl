@@ -208,6 +208,15 @@ elseif Grid.Type == Grids.Tri()
   nQuadM = 3
   nQuadS = 3
 end
+DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(1,Grids.Tri())
+@show phiB
+DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(2,Grids.Tri())
+@show phiB
+DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(3,Grids.Tri())
+@show phiB
+DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(4,Grids.Tri())
+@show phiB
+stop
 
 #Finite elements
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
