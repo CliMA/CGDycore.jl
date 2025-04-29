@@ -72,6 +72,49 @@ end
   end
 end
 
+@kernel inbounds = true function InterpolateKernelNeu!(cCell,@Const(c),@Const(InterH),@Const(InterV),@Const(Glob),
+  ::Val{BANK}=Val(1)) where BANK
+  IP, KP, iz   = @index(Local,  NTuple)
+  _,_,Iz,IF = @index(Global,  NTuple)
+
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  @uniform DoFH = size(InterH,2)
+  @uniform DoFV = size(InterV,2)
+
+  if Iz <= Nz
+    cCell[IP,KP,Iz,IF] = eltype(cCell)(0)  
+    for iDoF = 1 : DoFH
+      ind = Glob[iDoF,IF]  
+      cLoc = eltype(cCell)(0)
+      for k = 1 : DoFV  
+        cLoc += InterV[KP,k] * c[Iz,k,ind] 
+      end  
+      cCell[IP,KP,Iz,IF] +=  InterH[IP,iDoF] * cLoc
+    end
+  end  
+end
+
+@kernel inbounds = true function InterpolateKernelCG!(cCell,@Const(c),@Const(InterH),@Const(Glob),
+  ::Val{BANK}=Val(1)) where BANK
+  IP, iz   = @index(Local,  NTuple)
+  _,Iz,IF = @index(Global,  NTuple)
+
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  @uniform DoFH = size(InterH,2)
+
+  if Iz <= Nz
+    cCell[IP,1,Iz,IF] = eltype(cCell)(0)
+    for iDoF = 1 : DoFH
+      ind = Glob[iDoF,IF]
+      cCell[IP,1,Iz,IF] +=  InterH[IP,iDoF] * c[Iz,1,ind]
+    end
+  end
+end
+
 @kernel inbounds = true function InterpolateCGDim2Kernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
   ::Val{BANK}=Val(1)) where BANK
   I, J   = @index(Local,  NTuple)
@@ -118,32 +161,29 @@ end
   end
 end
 
-@kernel inbounds = true function InterpolateRhoKernel!(cCell,@Const(c),@Const(RhoC),@Const(Inter),@Const(Glob),
-  ::Val{BANK}=Val(1)) where BANK
-  I, J, K, iz   = @index(Local,  NTuple)
-  _,_,_,Iz,IF = @index(Global,  NTuple)
+@kernel inbounds = true function InterpolateRhoKernel!(cCell,@Const(c),@Const(RhoC),@Const(InterH),
+  @Const(InterV),@Const(Glob), ::Val{BANK}=Val(1)) where BANK
 
+  IP, KP, iz   = @index(Local,  NTuple)
+  _,_,Iz,IF = @index(Global,  NTuple)
 
-  ColumnTilesDim = @uniform @groupsize()[3]
-  Nz = @uniform @ndrange()[4]
-  NF = @uniform @ndrange()[5]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
 
-  @uniform ColumnTiles = (div(Nz - 1, ColumnTilesDim) + 1) * NF
-  @uniform N = size(Inter,4)
-  @uniform M = size(Inter,6)
-  
+  @uniform DoFH = size(InterH,2)
+  @uniform DoFV = size(InterV,2)
+
   if Iz <= Nz
-    cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
-    for kP = 1 : M
-      iD = 0
-      for jP = 1 : N
-        for iP = 1 : N
-          iD += 1
-          ind = Glob[iD,IF]
-          cCell[I,J,K,Iz,IF] += Inter[I,J,K,iP,jP,kP] * c[Iz,kP,ind] / RhoC[Iz,kP,ind]
-        end
+    cCellLoc = eltype(cCell)(0)
+    for iDoF = 1 : DoFH
+      ind = Glob[iDoF,IF]
+      cLoc = eltype(cCell)(0)
+      for k = 1 : DoFV
+        cLoc += InterV[KP,k] * c[Iz,k,ind] / RhoC[Iz,k,ind]
       end
+      cCellLoc +=  InterH[IP,iDoF] * cLoc
     end
+    cCell[IP,KP,Iz,IF] = cCellLoc 
   end
 end
 
@@ -238,21 +278,44 @@ function InterpolateVortGPU!(Vort,U,Inter,FE,Metric)
 end
 
 
-function InterpolateGPU!(cCell,c,Inter,Glob)
+function InterpolateGPU!(cCell,c,FE::FiniteElements.DGElement)
 
   backend = get_backend(c)
   FT = eltype(c)
 
-  OrdPrint = size(Inter,1)
-  OrdPrintZ = size(Inter,3)
+  InterH = FE.InterOutputH
+  InterV = FE.InterOutputV
+  Glob = FE.Glob 
+  NumCellH = size(InterH,1)
+  NumCellV = size(InterV,1)
   NF = size(Glob,2)
   Nz = size(c,1)
 # Ranges
-  NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
-  group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
-  ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
-  KInterpolateKernel! = InterpolateKernel!(backend,group)
-  KInterpolateKernel!(cCell,c,Inter,Glob,ndrange=ndrange)
+  NzG = min(div(256,NumCellH*NumCellV),Nz)
+  group = (NumCellH,NumCellV,  NzG, 1)
+  ndrange = (NumCellH,NumCellV, Nz, NF)
+  KInterpolateKernel! = InterpolateKernelNeu!(backend,group)
+  KInterpolateKernel!(cCell,c,InterH,InterV,Glob,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+
+end
+
+function InterpolateGPU!(cCell,c,FE::FiniteElements.CGQuad)
+
+  backend = get_backend(c)
+  FT = eltype(c)
+
+  InterH = FE.InterOutputH
+  Glob = FE.Glob
+  NumCellH = size(InterH,1)
+  NF = size(Glob,2)
+  Nz = size(c,1)
+# Ranges
+  NzG = min(div(256,NumCellH),Nz)
+  group = (NumCellH,  NzG, 1)
+  ndrange = (NumCellH, Nz, NF)
+  KInterpolateKernel! = InterpolateKernelCG!(backend,group)
+  KInterpolateKernel!(cCell,c,InterH,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
 end
@@ -278,22 +341,25 @@ function InterpolateCGDim2GPU!(cCell,c,Inter,Glob)
 
 end
 
-function InterpolateRhoGPU!(cCell,c,Rho,Inter,Glob)
+function InterpolateRhoGPU!(cCell,c,Rho,FE)
 
   backend = get_backend(c)
   FT = eltype(c)
 
-  OrdPrint = size(Inter,1)
-  OrdPrintZ = size(Inter,3)
+  InterH = FE.InterOutputH
+  InterV = FE.InterOutputV
+  Glob = FE.Glob
+  NumCellH = size(InterH,1)
+  NumCellV = size(InterV,1)
   NF = size(Glob,2)
   Nz = size(c,1)
 # Ranges
-  NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
-  group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
-  ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
+  NzG = min(div(256,NumCellH*NumCellV),Nz)
+  group = (NumCellH,NumCellV,  NzG, 1)
+  ndrange = (NumCellH,NumCellV, Nz, NF)
 
   KInterpolateRhoKernel! = InterpolateRhoKernel!(backend,group)
-  KInterpolateRhoKernel!(cCell,c,Rho,Inter,Glob,ndrange=ndrange)
+  KInterpolateRhoKernel!(cCell,c,Rho,InterH,InterV,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 
 end

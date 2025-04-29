@@ -76,9 +76,12 @@ function ExchangeStruct{FT}(backend) where FT<:AbstractFloat
 end  
 
 
-function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,ProcNumber,
+function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
   HorLimit;Discretization="CG") where FT<:AbstractFloat
 
+  OrdEdge = FE.DoFE
+  OrdNode = FE.DoFN
+  DoF = FE.DoF
   IndSendBuffer = Dict()
   IndRecvBuffer = Dict()
   # Inner Nodes on Edges  
@@ -133,15 +136,7 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
               F = SubGrid.Edges[iEB].F[2]
               FE = SubGrid.Edges[iEB].FE[2]
             end    
-            if FE == 1
-              push!(LocTemp,k + (F - 1) * OrdEdge * OrdEdge)
-            elseif FE == 2
-              push!(LocTemp,k * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
-            elseif FE == 3
-              push!(LocTemp,k + (OrdEdge - 1) * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
-            elseif FE ==4
-              push!(LocTemp,1 + (k - 1) * OrdEdge + (F - 1) * OrdEdge * OrdEdge)
-            end
+            push!(LocTemp,FE.PosDoFE[k,FE] + (F - 1) * DoF)
           end  
         end
       end  
@@ -180,7 +175,7 @@ function ExchangeStruct{FT}(backend,SubGrid,OrdEdge,OrdNode,CellToProc,Proc,Proc
           if Discretization == "CG"  
             push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
           elseif Discretization == "DG"  
-            push!(LocTemp,k + (iE - 1) * OrdEdge + SubGrid.NumFaces * OrdEdge * OrdEdge)
+            push!(LocTemp,k + (iE - 1) * OrdEdge + SubGrid.NumFaces * DoF)
           end
         end
       end

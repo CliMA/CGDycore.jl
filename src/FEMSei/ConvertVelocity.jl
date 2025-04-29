@@ -22,14 +22,13 @@ end
 
 function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,u,uFE::HDivElement,
   ND::HCurlElement,Curl,Grid,ElemType,QuadOrd,Jacobi,ksi)
-  UCacheu = zeros(size(u))
   UCachep = zeros(VortFE.NumG)
-# ProjectHDivHCurl!(backend,FTB,UCacheu,ND,u,uFE,
-#   Grid,ElemType,QuadOrd,Jacobi)
-# mul!(UCachep,Curl,UCacheu)
-# ldiv!(VortFE.LUM,UCachep)
   CurlVel!(UCachep,VortFE,u,uFE,QuadOrd,ElemType,Grid,Jacobi)
+  @show minimum(UCachep)
+  @show maximum(UCachep)
   ConvertScalar!(backend,FTB,Vort,UCachep,VortFE,Grid,Jacobi,ksi)
+  @show minimum(Vort)
+  @show maximum(Vort)
 end
 
 function ConvertScalar!(backend,FTB,pC,p,Fe::ScalarElement,Grid,Jacobi)
@@ -187,7 +186,7 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi,ks
     @inbounds for iksi = 1 : Numksi
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi[iksi,1],ksi[iksi,2],Grid.Faces[iF],Grid)
       detDFLoc = detDF[1]
-      VelCa .= (1.0 / detDFLoc) * DF * (fRef[iksi,:, :] * VelLoc)
+      VelCa .= (1.0 / detDFLoc) * DF * (fRef[iksi,:, :] * VelLoc) * Grid.Faces[iF].Orientation
       lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
       VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
       iS += 1

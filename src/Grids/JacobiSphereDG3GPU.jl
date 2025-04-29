@@ -185,7 +185,8 @@ end
      F[3,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
      F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[I,J,IF])
+    #hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[I,J,IF])
+    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,eltype(X)(0))
     r = sqrt(XT1 * XT1 + XT2 * XT2 + XT3 * XT3)
     f = eltype(X)(1) / r^3
     dX1dXT1 = f * (XT2^2 + XT3^2) 
@@ -200,12 +201,16 @@ end
     J1 = @SArray([dX1dXT1    dX1dXT2     dX1dXT3
                   dX2dXT1    dX2dXT2     dX2dXT3
                   dX3dXT1    dX3dXT2     dX3dXT3])
+    dzsdksi1 = eltype(X)(0)
+    dzsdksi2 = eltype(X)(0)
+#=
     dzsdksi1 = D[I,1] * zs[1,J,IF]
     dzsdksi2 = D[J,1] * zs[I,1,IF]
     for k = 2 : N
       dzsdksi1 += D[I,k] * zs[k,J,IF]
       dzsdksi2 += D[J,k] * zs[I,k,IF]
     end  
+=#    
     B = @SArray([F[1,1,IF] F[2,1,IF] F[3,1,IF] F[4,1,IF]
                  F[1,2,IF] F[2,2,IF] F[3,2,IF] F[4,2,IF]
                  F[1,3,IF] F[2,3,IF] F[3,3,IF] F[4,3,IF]])
@@ -266,25 +271,24 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Tr
   FT = eltype(X)
 
   NF = size(X,5)
-  N = size(FE.w)
+  N = FE.DoF
   M = size(FE.xwZ,1)
   Nz = size(X,4)
 
-  NzG = min(div(512,N*N*M),Nz)
+  NzG = min(div(512,N*M),Nz)
   group = (N, M, NzG, 1)
   ndrange = (N, M, Nz, NF)
 
-  KJacobiSphereDG3Kernel! = JacobiSphereDG3Kernel!(backend,group)
+  KJacobiSphereDGTriKernel! = JacobiSphereDGTriKernel!(backend,group)
 
-  KJacobiSphereDG3Kernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.ksi,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
+  KJacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.ksi,FE.xwZ,FE.Dx1,FE.Dx2,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
 end
 
-@kernel inbounds = true function JacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,JJ,Rotate,@Const(ksi),@Const(zeta),@Const(D),
-  @Const(DZ),@Const(F),@Const(z),@Const(zs),Rad)
+@kernel inbounds = true function JacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,JJ,Rotate,@Const(ksi),@Const(zeta),
+  @Const(Dx1),@Const(Dx2),@Const(DZ),@Const(F),@Const(z),@Const(zs),Rad)
 
-  gi, gj, gk, gz, gF = @index(Group, NTuple)
   ID, K, iz   = @index(Local, NTuple)
-  _,_,_,Iz,IF = @index(Global, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
 
   ColumnTilesDim = @uniform @groupsize()[4]
   N = @uniform @groupsize()[1]
@@ -295,7 +299,6 @@ end
 
   dXdx = @private eltype(X) (3,3)
 
-  eta = ksi
   if Iz <= Nz
     z1 = z[Iz]
     z2 = z[Iz+1]
@@ -312,7 +315,8 @@ end
      F[2,3,IF] * (eltype(X)(1)+ksi1) +
      F[3,3,IF] * (eltype(X)(1)+ksi2)) 
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[I,J,IF])
+#   hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[I,J,IF])
+    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,eltype(X)(0))
     r = sqrt(XT1 * XT1 + XT2 * XT2 + XT3 * XT3)
     f = eltype(X)(1) / r^3
     dX1dXT1 = f * (XT2^2 + XT3^2) 
@@ -327,21 +331,24 @@ end
     J1 = @SArray([dX1dXT1    dX1dXT2     dX1dXT3
                   dX2dXT1    dX2dXT2     dX2dXT3
                   dX3dXT1    dX3dXT2     dX3dXT3])
+    dzsdksi1 = eltype(X)(0)
+    dzsdksi2 = eltype(X)(0)
+#=    
     dzsdksi1 = D[I,1] * zs[1,J,IF]
     dzsdksi2 = D[J,1] * zs[I,1,IF]
     for k = 2 : N
       dzsdksi1 += D[I,k] * zs[k,J,IF]
       dzsdksi2 += D[J,k] * zs[I,k,IF]
     end  
-    B = @SArray([F[1,1,IF] F[2,1,IF] F[3,1,IF] F[4,1,IF]
-                 F[1,2,IF] F[2,2,IF] F[3,2,IF] F[4,2,IF]
-                 F[1,3,IF] F[2,3,IF] F[3,3,IF] F[4,3,IF]])
-    C = @SArray([eltype(X)(-1)+ksi2  eltype(X)(-1)+ksi1
-                 eltype(X)(1)-ksi2  eltype(X)(-1)-ksi1
-                 eltype(X)(1)+ksi2   eltype(X)(1)+ksi1
-                 eltype(X)(-1)-ksi2   eltype(X)(1)-ksi1])
+=#    
+    B = @SArray([F[1,1,IF] F[2,1,IF] F[3,1,IF] 
+                 F[1,2,IF] F[2,2,IF] F[3,2,IF]
+                 F[1,3,IF] F[2,3,IF] F[3,3,IF]])
+    C = @SArray([eltype(X)(-1)  eltype(X)(-1)
+                 eltype(X)(1)   eltype(X)(0)
+                 eltype(X)(0)   eltype(X)(1)])
 
-    dXdx[:,1:2] .= eltype(X)(0.25) * (Rad + hR) * J1 * B * C
+    dXdx[:,1:2] .= eltype(X)(0.5) * (Rad + hR) * J1 * B * C
 
     dXdx[1,1] += dzsdksi1 * dhrdzs * XT1 / r 
     dXdx[2,1] += dzsdksi1 * dhrdzs * XT2 / r 

@@ -90,30 +90,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       lam = zeros(4)
       theta = zeros(4)
       celltypeQ = VTKCellTypes.VTK_QUAD
-      NumRefine = (Refine + 1) * (Refine + 1)  
-      RefineMidPoints = zeros(NumRefine,2)
-      RefinePoints = zeros(NumRefine,4,2)
-      dksi = 2 / (Refine + 1)
-      iRefine = 0
-      for jR in 1 : Refine + 1
-        for iR in 1 : Refine + 1
-          iRefine += 1  
-          RefinePoints[iRefine,1,1] = -1.0 + (iR - 1) * dksi  
-          RefinePoints[iRefine,1,2] = -1.0 + (jR - 1) * dksi  
-          RefinePoints[iRefine,2,1] = -1.0 + (iR    ) * dksi  
-          RefinePoints[iRefine,2,2] = -1.0 + (jR - 1) * dksi  
-          RefinePoints[iRefine,3,1] = -1.0 + (iR    ) * dksi  
-          RefinePoints[iRefine,3,2] = -1.0 + (jR    ) * dksi  
-          RefinePoints[iRefine,4,1] = -1.0 + (iR - 1) * dksi  
-          RefinePoints[iRefine,4,2] = -1.0 + (jR    ) * dksi  
-          RefineMidPoints[iRefine,1] = 0.25 * (RefinePoints[iRefine,1,1] +
-            RefinePoints[iRefine,2,1] + RefinePoints[iRefine,3,1] +
-            RefinePoints[iRefine,4,1])
-          RefineMidPoints[iRefine,2] = 0.25 * (RefinePoints[iRefine,1,2] +
-            RefinePoints[iRefine,2,2] + RefinePoints[iRefine,3,2] +
-            RefinePoints[iRefine,4,2])
-        end
-      end  
+      RefinePoints, RefineMidPoints = Grids.PrintPoints(Refine,Grids.Quad())
       for iF in 1 : NumFaces
         for i in 1 : NumRefine
           inds = Vector(1 : 4) .+ NumNodes
@@ -179,41 +156,9 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       lam = zeros(3)
       theta = zeros(3)
       celltypeQ = VTKCellTypes.VTK_TRIANGLE
-      NumRefine = (Refine + 1) * (Refine + 1)  
-      RefineMidPoints = zeros(NumRefine,2)
-      RefinePoints = zeros(NumRefine,4,2)
-      dksi = 2 / (Refine + 1)
-      iRefine = 0
-      for jRR in Refine + 1 : -1 : 1
-        jR = Refine + 2 - jRR  
-        for iR in 1 : jRR
-          iRefine += 1  
-          RefinePoints[iRefine,1,1] = -1.0 + (iR - 1) * dksi  
-          RefinePoints[iRefine,1,2] = -1.0 + (jR - 1) * dksi  
-          RefinePoints[iRefine,2,1] = -1.0 + (iR    ) * dksi  
-          RefinePoints[iRefine,2,2] = -1.0 + (jR - 1) * dksi  
-          RefinePoints[iRefine,3,1] = -1.0 + (iR - 1) * dksi  
-          RefinePoints[iRefine,3,2] = -1.0 + (jR    ) * dksi  
-          RefineMidPoints[iRefine,1] = 1/3 * (RefinePoints[iRefine,1,1] +
-            RefinePoints[iRefine,2,1] + RefinePoints[iRefine,3,1]) 
-          RefineMidPoints[iRefine,2] = 1/3 * (RefinePoints[iRefine,1,2] +
-            RefinePoints[iRefine,2,2] + RefinePoints[iRefine,3,2])
-          if iR == jRR
-            continue
-          end  
-          iRefine += 1  
-          RefinePoints[iRefine,1,1] = -1.0 + (iR    ) * dksi  
-          RefinePoints[iRefine,1,2] = -1.0 + (jR - 1) * dksi  
-          RefinePoints[iRefine,2,1] = -1.0 + (iR    ) * dksi  
-          RefinePoints[iRefine,2,2] = -1.0 + (jR    ) * dksi  
-          RefinePoints[iRefine,3,1] = -1.0 + (iR - 1) * dksi  
-          RefinePoints[iRefine,3,2] = -1.0 + (jR    ) * dksi  
-          RefineMidPoints[iRefine,1] = 1/3 * (RefinePoints[iRefine,1,1] +
-            RefinePoints[iRefine,2,1] + RefinePoints[iRefine,3,1]) 
-          RefineMidPoints[iRefine,2] = 1/3 * (RefinePoints[iRefine,1,2] +
-            RefinePoints[iRefine,2,2] + RefinePoints[iRefine,3,2])
-        end  
-      end  
+      RefinePoints, RefineMidPoints = Grids.PrintPoints(Refine,Grids.Tri())
+      NumRefine = size(RefinePoints,1)
+      @show NumRefine 
       for iF in 1 : NumFaces
         for i in 1 : NumRefine
           inds = Vector(1 : 3) .+ NumNodes
@@ -284,265 +229,96 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
   )
 end                   
 
-#=
-function vtkStruct{FT}(backend,OrdPrint::Int,Trans,FE::DyCore.FEStruct,Metric,Global) where FT<:AbstractFloat
-  OrdPoly = FE.OrdPoly
-  NF = Global.Grid.NumFaces
-  nz = Global.Grid.nz
-  Npts = 8 * NF * nz * OrdPrint * OrdPrint
-  pts = Array{Float64,2}(undef,3,Npts)
-  ipts = 1
-  x = zeros(8,3)
-  lam=zeros(8,1)
-  theta=zeros(8,1)
-  z=zeros(8,1)
-  dTol = Global.Output.dTol
-  
-  FTX = eltype(Metric.X)
-  X = zeros(FTX,OrdPoly+1,OrdPoly+1,2,3)
-  for iF = 1 : NF
-    for iz = 1 : nz
-      @views copyto!(X,reshape(Metric.X[:,:,:,iz,iF],OrdPoly+1,OrdPoly+1,2,3))
-      dd = 2 / OrdPrint
-      eta0 = -1
-      for jRef = 1 : OrdPrint
-        ksi0 = -1
-        eta1 = eta0 + dd
-        for iRef = 1 : OrdPrint
-          ksi1 = ksi0 + dd
-          @views Trans(x[1,:],ksi0,eta0, -1.0,X,FE,Global)
-          @views Trans(x[2,:],ksi1,eta0, -1.0,X,FE,Global)
-          @views Trans(x[3,:],ksi1,eta1, -1.0,X,FE,Global)
-          @views Trans(x[4,:],ksi0,eta1, -1.0,X,FE,Global)
-          @views Trans(x[5,:],ksi0,eta0, 1.0,X,FE,Global)
-          @views Trans(x[6,:],ksi1,eta0, 1.0,X,FE,Global)
-          @views Trans(x[7,:],ksi1,eta1, 1.0,X,FE,Global)
-          @views Trans(x[8,:],ksi0,eta1, 1.0,X,FE,Global)
-          if Global.Grid.Form == "Sphere" && Global.Output.Flat
-            for i=1:8
-              (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
-            end 
-            lammin = minimum(lam)
-            lammax = maximum(lam)
-            if abs(lammin - lammax) > 2*pi-dTol
-              for i = 1 : 8
-                if lam[i] > pi
-                  lam[i] = lam[i] - 2*pi
-                  if lam[i] > 3*pi
-                    lam[i] = lam[i]  - 2*pi
-                  end
-                end
-              end
-            end
-            for i = 1 : 8
-              pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Grid.Rad,0.0)/Global.Grid.H*3]
-              ipts = ipts + 1
-            end
-          else
-            for i=1:8
-              pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
-              ipts = ipts + 1
-            end
-          end
-          ksi0=ksi1
-        end
-        eta0=eta1
-      end
-    end
-  end
-  celltype = VTKCellTypes.VTK_HEXAHEDRON
-
-  ConnectivityList=reshape(1:1:8*NF*OrdPrint*OrdPrint*nz,8,NF*OrdPrint*OrdPrint*nz)
-  cells = MeshCell[]
-
-  for k in 1 : NF * nz * OrdPrint * OrdPrint
-    inds = Vector(1 : 8) .+ 8 * (k -1)
-    push!(cells, MeshCell(celltype, inds))
-  end
-
-  vtkInter = zeros(Float64,OrdPrint,OrdPrint,1,OrdPoly+1,OrdPoly+1,1)
-  dd=2/OrdPrint
-  eta0=-1
-  for jRef=1:OrdPrint
-    ksi0=-1
-    eta1=eta0+dd
-    for iRef=1:OrdPrint
-      ksi1=ksi0+dd
-      for j=1:OrdPoly+1
-        for i=1:OrdPoly+1
-          vtkInter[iRef,jRef,1,i,j,1] = vtkInter[iRef,jRef,i,j] + DG.Lagrange(0.5*(ksi0+ksi1),FE.xwCPU,i)*
-                DG.Lagrange(0.5*(eta0+eta1),FE.xwCPU,j)
-        end
-      end
-      ksi0 = ksi1
-    end
-    eta0 = eta1
-  end
-  dvtkInter = KernelAbstractions.zeros(backend,FT,size(vtkInter))
-  copyto!(dvtkInter,vtkInter)
-  return vtkStruct{FT,
-                   typeof(dvtkInter)}(
-    dvtkInter,
-    cells,
-    pts,
-  )  
-end
-=#
-
-function vtkStruct{FT}(backend,OrdPrint::Int,Trans,FE,Metric,Global) where FT<:AbstractFloat
-  OrdPoly = FE.OrdPoly
+function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Global) where FT<:AbstractFloat
+  DoF = FE.DoF
   OrdPolyZ = FE.OrdPolyZ
-  OrdPrintZ = Global.Output.OrdPrintZ
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
-  Npts = 8 * NF * nz * OrdPrint * OrdPrint * OrdPrintZ
-  pts = Array{Float64,2}(undef,3,Npts)
-  ipts = 1
-  x = zeros(8,3)
-  lam=zeros(8,1)
-  theta=zeros(8,1)
-  z=zeros(8,1)
   dTol = Global.Output.dTol
   dTol=2*pi/max(Global.Output.nPanel-1,2)
   
   FTX = eltype(Metric.X)
-  X = zeros(FTX,OrdPoly+1,OrdPoly+1,OrdPolyZ+1,3)
-  dd = 2 / OrdPrint
-  ddZ = 2 / OrdPrintZ
+  X = zeros(FTX,DoF,OrdPolyZ+1,3)
+  ddZ = 2 / (OrdPrintZ + 1)
+  RefinePoints, RefineMidPoints = Grids.PrintPoints(OrdPrint,Global.Grid.Type)
+  NumRefine = size(RefinePoints,1)
+  NumPoint = size(RefinePoints,2)
+  Npts = 2 * NumPoint * NF * nz * NumRefine * (OrdPrintZ + 1)
+  pts = Array{Float64,2}(undef,3,Npts)
+  x = zeros(2*NumPoint,3)
+  lam = zeros(2*NumPoint,1)
+  theta = zeros(2*NumPoint,1)
+  z = zeros(2*NumPoint,1)
+  ipts = 1
   for iF = 1 : NF
     for iz = 1 : nz
-      @views copyto!(X,reshape(Metric.X[:,:,:,iz,iF],OrdPoly+1,OrdPoly+1,OrdPolyZ+1,3))
+      @views copyto!(X,Metric.X[:,:,:,iz,iF])
       zeta0 = -1.0
-      for kRef = 1 : OrdPrintZ  
+      for kRef = 1 : (OrdPrintZ + 1) 
         zeta1 = zeta0 + ddZ
-        eta0 = -1.0
-        for jRef = 1 : OrdPrint
-          ksi0 = -1.0
-          eta1 = eta0 + dd
-          for iRef = 1 : OrdPrint
-            ksi1 = ksi0 + dd
-            @views Trans(x[1,:],ksi0,eta0,zeta0,X,FE,Global)
-            @views Trans(x[2,:],ksi1,eta0,zeta0,X,FE,Global)
-            @views Trans(x[3,:],ksi1,eta1,zeta0,X,FE,Global)
-            @views Trans(x[4,:],ksi0,eta1,zeta0,X,FE,Global)
-            @views Trans(x[5,:],ksi0,eta0,zeta1,X,FE,Global)
-            @views Trans(x[6,:],ksi1,eta0,zeta1,X,FE,Global)
-            @views Trans(x[7,:],ksi1,eta1,zeta1,X,FE,Global)
-            @views Trans(x[8,:],ksi0,eta1,zeta1,X,FE,Global)
-            if Global.Grid.Form == "Sphere" && Global.Output.Flat
-              for i=1:8
-                (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
-              end 
-              lammin = minimum(lam)
-              lammax = maximum(lam)
-              if abs(lammin-lammax) > pi
-                smaller = count(<(pi), lam)
-                greater = count(>=(pi), lam)
+        for iNumRefine = 1 : NumRefine
+          for iNumPoint = 1 : NumPoint
+            @views Trans(x[iNumPoint,:],RefinePoints[iNumRefine,iNumPoint,1],
+              RefinePoints[iNumRefine,iNumPoint,2],zeta0,X,FE,Global,Global.Grid.Type)
+          end  
+          for iNumPoint = 1 : NumPoint
+            @views Trans(x[iNumPoint+NumPoint,:],RefinePoints[iNumRefine,iNumPoint,1],
+              RefinePoints[iNumRefine,iNumPoint,2],zeta1,X,FE,Global,Global.Grid.Type)
+          end  
+          if Global.Grid.Form == "Sphere" && Global.Output.Flat
+            for i=1:2*NumPoint
+              (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
+            end 
+            lammin = minimum(lam)
+            lammax = maximum(lam)
+            if abs(lammin-lammax) > pi
+              smaller = count(<(pi), lam)
+              greater = count(>=(pi), lam)
 
-                if greater >= smaller
-                  for i = 1 : 8
-                    if lam[i] < pi
-                      lam[i] += 2 * pi
-                    end
-                  end
-                else
-                  for i = 1 : 8
-                    if lam[i] >= pi
-                      lam[i] -= 2 * pi
-                    end
+              if greater >= smaller
+                for i = 1 : 2*NumPoint
+                  if lam[i] < pi
+                    lam[i] += 2 * pi
                   end
                 end
-              end
-          #=
-              if abs(lammin - lammax) > 2*pi-dTol
-                @show iF,lam[1:4]  
-                for i = 1 : 8
-                  if lam[i] > 2*pi-dTol
-                    lam[i] = lam[i] - 2*pi
-                  end  
-                  if lam[i] < dTol
-                    lam[i] = lam[i]  + 2*pi
+              else
+                for i = 1 : 2*NumPoint
+                  if lam[i] >= pi
+                    lam[i] -= 2 * pi
                   end
                 end
-                @show iF,lam[1:4]  
-              end
-          =#    
-              for i = 1 : 8
-                pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Grid.Rad,0.0)/Global.Grid.H*3]
-                ipts = ipts + 1
-              end
-            else
-              for i=1:8
-                pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
-                ipts = ipts + 1
               end
             end
-            ksi0=ksi1
+            for i = 1 : 2*NumPoint
+              pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Grid.Rad,0.0)/Global.Grid.H*3]
+              ipts = ipts + 1
+            end
+          else
+            for i=1:2*NumPoint
+              pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
+              ipts = ipts + 1
+            end
           end
-          eta0=eta1
-        end
+        end  
         zeta0=zeta1
       end
     end
   end
-  celltype = VTKCellTypes.VTK_HEXAHEDRON
+  if Global.Grid.Type == Grids.Quad()
+    celltype = VTKCellTypes.VTK_HEXAHEDRON
+  elseif Global.Grid.Type == Grids.Tri()
+    celltype = VTKCellTypes.VTK_WEDGE
+  end  
 
-  ConnectivityList=reshape(1:1:8*NF*OrdPrint*OrdPrint*OrdPrintZ*nz,8,NF*OrdPrint*OrdPrint*OrdPrintZ*nz)
+  ConnectivityList=reshape(1:1:2*NumPoint*NF*NumRefine*(OrdPrintZ+1)*nz,2*NumPoint,NF*NumRefine*(OrdPrintZ+1)*nz)
   cells = MeshCell[]
 
-  for k in 1 : NF * nz * OrdPrint * OrdPrint * OrdPrintZ
-    inds = Vector(1 : 8) .+ 8 * (k -1)
+  for k in 1 : NF * nz * NumRefine * (OrdPrintZ + 1)
+    inds = Vector(1 : 2*NumPoint) .+ 2*NumPoint * (k -1)
     push!(cells, MeshCell(celltype, inds))
   end
 
-  if typeof(FE) <: FiniteElements.CGQuad
-    vtkInter = zeros(Float64,OrdPrint,OrdPrint,1,OrdPoly+1,OrdPoly+1,1)
-    eta0=-1.0
-    zeta1=zeta0+ddZ
-    for jRef=1:OrdPrint
-      ksi0=-1.0
-      eta1=eta0+dd
-      for iRef=1:OrdPrint
-        ksi1=ksi0+dd
-        for j=1:OrdPoly+1
-          for i=1:OrdPoly+1
-            vtkInter[iRef,jRef,1,i,j,1] = DG.Lagrange(0.5*(ksi0+ksi1),FE.xwCPU,i)*
-                DG.Lagrange(0.5*(eta0+eta1),FE.xwCPU,j) 
-          end
-        end
-        ksi0 = ksi1
-      end
-      eta0 = eta1
-    end
-  else    
-    vtkInter = zeros(Float64,OrdPrint,OrdPrint,OrdPrintZ,OrdPoly+1,OrdPoly+1,OrdPolyZ+1)
-    zeta0 = -1.0
-    for kRef = 1 : OrdPrintZ
-      eta0=-1.0
-      zeta1=zeta0+ddZ
-      for jRef=1:OrdPrint
-        ksi0=-1.0
-        eta1=eta0+dd
-        for iRef=1:OrdPrint
-          ksi1=ksi0+dd
-          for k=1:OrdPolyZ+1
-            for j=1:OrdPoly+1
-              for i=1:OrdPoly+1
-                vtkInter[iRef,jRef,kRef,i,j,k] = DG.Lagrange(0.5*(ksi0+ksi1),FE.xwCPU,i)*
-                    DG.Lagrange(0.5*(eta0+eta1),FE.xwCPU,j) *
-                    DG.Lagrange(0.5*(zeta0+zeta1),FE.xwZCPU,k) 
-              end
-            end
-          end
-          ksi0 = ksi1
-        end
-        eta0 = eta1
-      end
-      zeta0 = zeta1
-    end
-  end
-  dvtkInter = KernelAbstractions.zeros(backend,FT,size(vtkInter))
-  copyto!(dvtkInter,vtkInter)
+  dvtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
   RefineMidPoints = zeros(0,0)
   return vtkStruct{FT,
                    typeof(dvtkInter)}(
@@ -566,9 +342,9 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   dTol = Global.Output.dTol
   FT = eltype(Metric.X)
   backend = get_backend(Metric.X)
-  X = zeros(FT,OrdPoly+1,OrdPoly+1,1,3)
+  X = zeros(FT,FE.DoF,3)
   for iF = 1 : NF
-    @views copyto!(X,reshape(Metric.X[:,1,:,1,iF],OrdPoly+1,OrdPoly+1,1,3))
+    @views copyto!(X,reshape(Metric.X[:,1,:,1,iF],FE.DoF,3))
     dd = 2 / OrdPrint
     eta0 = -1
     for jRef = 1 : OrdPrint
@@ -576,10 +352,10 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
       eta1 = eta0 + dd
       for iRef = 1 : OrdPrint
         ksi1 = ksi0 + dd
-        @views Trans(x[1,:],ksi0,eta0, -1.0,X,FE,Global)
-        @views Trans(x[2,:],ksi1,eta0, -1.0,X,FE,Global)
-        @views Trans(x[3,:],ksi1,eta1, -1.0,X,FE,Global)
-        @views Trans(x[4,:],ksi0,eta1, -1.0,X,FE,Global)
+        @views Trans(x[1,:],ksi0,eta0, -1.0,X,FE,Global,Global.Grid.Type)
+        @views Trans(x[2,:],ksi1,eta0, -1.0,X,FE,Global,Global.Grid.Type)
+        @views Trans(x[3,:],ksi1,eta1, -1.0,X,FE,Global,Global.Grid.Type)
+        @views Trans(x[4,:],ksi0,eta1, -1.0,X,FE,Global,Global.Grid.Type)
         if Global.Grid.Form == "Sphere" && Global.Output.Flat
           for i=1:4
             (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
@@ -673,12 +449,13 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
   NG = FE.NumG
-  OrdPoly = FE.OrdPoly 
+  DoF = FE.DoF 
   OrdPolyZ = FE.OrdPolyZ 
   NumV = Global.Model.NumV
   NumTr = Global.Model.NumTr
   OrdPrint = Global.Output.OrdPrint
   OrdPrintZ = Global.Output.OrdPrintZ
+  OrdPrintH = size(FE.InterOutputH,1)
   vtkInter = Global.vtkCache.vtkInter
   cells = Global.vtkCache.cells
   pts = Global.vtkCache.pts
@@ -696,41 +473,41 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   else
     UR = U
   end  
-  cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,OrdPrintZ,nz,NF)
-  cCellCPU = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF) 
+  cCell = KernelAbstractions.zeros(backend,FTB,OrdPrintH,(OrdPrintZ + 1),nz,NF)
+  cCellCPU = zeros(OrdPrintH*(OrdPrintZ + 1)*nz*NF) 
   for i=1:length(Global.Output.cNames)
     str = Global.Output.cNames[i]
     if str == "Rho"
       RhoPos = Global.Model.RhoPos
-      @views InterpolateGPU!(cCell,UR[:,:,:,RhoPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      @views InterpolateGPU!(cCell,UR[:,:,:,RhoPos],FE)
+      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["rho", VTKCellData()] = cCellCPU
     elseif  str == "u" 
       uPos = Global.Model.uPos
-      @views InterpolateGPU!(cCell,UR[:,:,:,uPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
-      vtk["u", VTKCellData()] = cCellCPU
+      @views InterpolateGPU!(cCell,UR[:,:,:,uPos],FE)
+      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      vtk["AA", VTKCellData()] = cCellCPU
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
       RhoPos = Global.Model.RhoPos
-      @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
-      vtk["u", VTKCellData()] = cCellCPU
+      @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],FE)
+      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      vtk["AA", VTKCellData()] = cCellCPU
     elseif  str == "v" 
       vPos = Global.Model.vPos
-      @views InterpolateGPU!(cCell,UR[:,:,:,vPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      @views InterpolateGPU!(cCell,UR[:,:,:,vPos],FE)
+      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["v", VTKCellData()] = cCellCPU
     elseif  str == "Thermo" 
       ThPos = Global.Model.ThPos
       @views InterpolateGPU!(cCell,UR[:,:,:,ThPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*(OrdPrintZ + 1)*nz*NF))
       vtk["Thermo", VTKCellData()] = cCellCPU
     elseif  str == "Rhov" 
       vPos = Global.Model.vPos
       RhoPos = Global.Model.RhoPos
-      @views InterpolateRhoGPU!(cCell,UR[:,:,:,vPos],UR[:,:,:,RhoPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      @views InterpolateRhoGPU!(cCell,UR[:,:,:,vPos],UR[:,:,:,RhoPos],FE)
+      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["v", VTKCellData()] = cCellCPU
     elseif  str == "Rhow" 
       wPos = Global.Model.wPos
@@ -1200,7 +977,7 @@ function unstructured_vtkOrography(Height,vtkGrid, NF, FE,  part::Int, nparts::I
   FTB = eltype(Height)
   cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,NF)
   #@views InterpolateFE!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz)
-  InterpolateFEDim2GPU!(cCell,Height,vtkInter,FE.Glob)
+  InterpolateCGDim2GPU!(cCell,reshape(Height,1,1,(OrdPoly+1)^2*NF),vtkInter,FE.Glob)
   copyto!(HeightCell,cCell)
   vtk["Height", VTKCellData()] = HeightCell
   outfiles=vtk_save(vtk)

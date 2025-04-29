@@ -42,6 +42,7 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   end
   SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc,order=order)
 
+#=
   if Discretization == "DG"
     Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly+1,0,CellToProc,Proc,ProcNumber,
       Model.HorLimit;Discretization="DG")
@@ -49,7 +50,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
     Exchange = Parallels.ExchangeStruct{FT}(backend,SubGrid,OrdPoly-1,1,CellToProc,Proc,ProcNumber,
     Model.HorLimit)
   end
-  return SubGrid, Exchange
+=#  
+  return SubGrid, CellToProc
 end  
 
 function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;

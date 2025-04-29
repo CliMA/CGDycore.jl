@@ -22,6 +22,7 @@ include("FluxVolumeNonLin.jl")
 include("PresSh.jl")
 include("Source.jl")
 include("Fcn.jl")
+include("FcnSplit.jl")
 include("RK3.jl")
 
 end

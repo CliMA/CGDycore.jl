@@ -141,7 +141,7 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-RefineLevel = 6
+RefineLevel = 1
 nz = 1
 nQuad = 3
 nQuadM = 3 #2
@@ -200,13 +200,15 @@ Global = DyCore.GlobalStruct{FTB}(backend,Grid,Model,TimeStepper,ParallelCom,Out
 DGK1 = FiniteElements.DGTri{FTB}(backend,"Kubatko1",OrdPolyZ,Grid,Proc)
 DGK2 = FiniteElements.DGTri{FTB}(backend,"Kubatko2",OrdPolyZ,Grid,Proc)
 DGH1 = FiniteElements.DGTri{FTB}(backend,"Hicken1",OrdPolyZ,Grid,Proc)
-#=
 
 zS = zeros(1)
 Grids.AddVerticalGrid!(Grid,nz,H)
-DG, Metric = DyCore.DiscretizationDG(backend,FTB,Grids.JacobiSphere3,DG,Exchange,Global,zS)
+DG, Metric = DyCore.DiscretizationDG(backend,FTB,Grids.JacobiSphere3,DGK1,Exchange,Global,zS,Grid.Type)
+
+
 
 Global.Output.Flat = Flat
+#=
 Global.Output.OrdPrint = OrdPoly
 Global.Output.OrdPrintZ = OrdPolyZ
 Global.Output.RadPrint = H

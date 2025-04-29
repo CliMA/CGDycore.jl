@@ -13,7 +13,7 @@ function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equation
   ndrange = (Nz, NumG)
   dPresdRhoTh = Global.Model.dPresdRhoTh
   dPresdRho = Global.Model.dPresdRho
-  if Global.Model.State == "Dry" || Global.Model.State == "Moist"
+  if Global.Model.State == "Dry" || Global.Model.State == "Moist" || Global.Model.State == "ShallowWater"
     @views p = Cache.Thermo[:,:,4]
   elseif  Global.Model.State == "DryInternalEnergy" || Global.Model.State == "MoistInternalEnergy"  
     @views p = Cache.Thermo[:,:,4]

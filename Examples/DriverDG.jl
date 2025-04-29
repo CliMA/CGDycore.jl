@@ -113,6 +113,7 @@ HyperDGrad = parsed_args["HyperDGrad"]
 HyperDDiv = parsed_args["HyperDDiv"]
 # Output
 OrdPrint = parsed_args["OrdPrint"]
+OrdPrintZ = parsed_args["OrdPrintZ"]
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
@@ -277,7 +278,7 @@ if GridForm == "Cartesian"
               P4=P4,
               )
   Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom,Discretization=Discretization)
-  Trans = Grids.TransCartX!
+  Trans = Outputs.TransCartX!
 else  
   if RadEarth == 0.0
     RadEarth = Phys.RadEarth
@@ -285,10 +286,10 @@ else
       RadEarth = RadEarth / ScaleFactor
     end
   end
-  Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
-    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization)
+  Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
+    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization,ChangeOrient=2)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
-  Trans = Grids.TransSphereX!
+  Trans = Outputs.TransSphereX!
 end  
 
 
@@ -306,9 +307,9 @@ else
 end  
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
-
-(DG, Metric, Global) = DyCore.InitSphereDG(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
-  Phys,TopoProfile,Exchange,Grid,ParallelCom)
+DGMethod = "Kubatko2"
+(DG, Metric, Exchange, Global) = DyCore.InitSphereDG(backend,FTB,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,Topography,Model,
+  Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
@@ -372,8 +373,8 @@ if ModelType == "Conservative"
     "Rho",
     "Rhou",
     "Rhov",
-    "Rhow",
-    "RhoTh",
+#   "Rhow",
+#   "RhoTh",
 #   "w",
 #   "Th",
 #   "Vort",
@@ -394,18 +395,20 @@ Global.Output.PrintMinutes = PrintMinutes
 Global.Output.PrintSeconds = PrintSeconds
 Global.Output.PrintTime = PrintTime
 Global.Output.PrintStartTime = PrintStartTime
-if OrdPrint == 0
+if OrdPrint <  0
   Global.Output.OrdPrint = DG.OrdPoly
   Global.Output.OrdPrintZ = DG.OrdPolyZ
 else
   Global.Output.OrdPrint = OrdPrint
+  Global.Output.OrdPrintZ = OrdPrintZ
 end
 Global.Output.nPanel = nPanel
 Global.Output.dTol = pi/30
-Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Trans,DG,Metric,Global)
-
-
 Global.Output.vtkFileName = vtkFileName
+@show Global.Output.OrdPrint
+Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
+
+
 
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
 
@@ -428,6 +431,8 @@ if Proc == 1
 @show IterTime
 @show nPrint
 end
+IterTime = 5
+nPrint = 1
 
-DGSEM.RK3(U,DGSEM.FcnGPU!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
+DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 

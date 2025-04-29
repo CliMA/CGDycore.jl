@@ -138,12 +138,8 @@ mutable struct MetricStruct{FT<:AbstractFloat,
   xS::AT2
   VolSurfH::AT4
   NH::AT5
-  T1H::AT5
-  T2H::AT5
   VolSurfV::AT3
   NV::AT4
-  T1V::AT4
-  T2V::AT4
 end
 function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
@@ -161,12 +157,8 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
     xS    = KernelAbstractions.zeros(backend,FT,2,NumG)
     VolSurfH = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     NH = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
-    T1H = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
-    T2H = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
     VolSurfV = KernelAbstractions.zeros(backend,FT,0,0,0)
     NV = KernelAbstractions.zeros(backend,FT,0,0,0,0)
-    T1V = KernelAbstractions.zeros(backend,FT,0,0,0,0)
-    T2V = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     return MetricStruct{FT,
                         typeof(zP),
                         typeof(nS),
@@ -188,12 +180,8 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
         xS,
         VolSurfH,
         NH,
-        T1H,
-        T2H,
         VolSurfV,
         NV,
-        T1V,
-        T2V,
     )
 end
 

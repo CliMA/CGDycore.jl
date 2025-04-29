@@ -48,7 +48,7 @@
   end
 end  
 
-@kernel inbounds = true function FluxSplitVolumeNonLinH3Kernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
+@kernel inbounds = true function FluxSplitVolumeNonLinHQuadKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
   @Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
 
   I, J, iz,   = @index(Local, NTuple)
@@ -106,6 +106,66 @@ end
     ind = Glob[ID,IF]  
     @unroll for iv = 1 : NV
       F[Iz,K,ind,iv] += FLoc[I,J,iz,iv] 
+    end
+  end
+end  
+
+@kernel inbounds = true function FluxSplitVolumeNonLinHTriKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
+  @Const(Dx1),@Const(Dx2),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
+
+  ID, iz,   = @index(Local, NTuple)
+  _,IZ,IF = @index(Global, NTuple)
+
+  TilesDim = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  NZ = @uniform @ndrange()[2]
+  M = @uniform size(dXdxI,3)
+  nz = @uniform size(dXdxI,5)
+
+  VLoc = @localmem eltype(F) (N,TilesDim,NV)
+  AuxLoc = @localmem eltype(F) (N,TilesDim,NAUX)
+  FLoc = @localmem eltype(F) (N,TilesDim,NV)
+  dXdxILoc = @localmem eltype(F) (2,3,N,TilesDim)
+  fTilde = @private eltype(F) (NV,)
+  gTilde = @private eltype(F) (NV,)
+
+  if IZ <= NZ
+    K = mod(IZ-1,M)+1  
+    Iz = div(IZ-1,M) + 1
+    ind = Glob[ID,IF]  
+    @unroll for iaux = 1 : NAUX
+      AuxLoc[ID,iz,iaux] = Aux[Iz,K,ind,iaux]  
+    end
+    @unroll for iv = 1 : NV
+      VLoc[ID,iz,iv] = V[Iz,K,ind,iv]  
+      FLoc[ID,iz,iv] = 0.0
+    end
+    @unroll for j = 1 : 3
+      @unroll for i = 1 : 2
+        dXdxILoc[i,j,ID,iz] = dXdxI[i,j,K,ID,Iz,IF]
+      end   
+    end  
+  end
+
+  @synchronize
+
+  if IZ <= NZ
+    @unroll for l = 1 : N
+      @views FluxAver!(fTilde,VLoc[ID,iz,:],VLoc[l,iz,:],
+        AuxLoc[ID,iz,:],AuxLoc[l,iz,:],
+        dXdxILoc[1,:,ID,iz],dXdxILoc[1,:,l,iz])    
+      @views FluxAver!(gTilde,VLoc[ID,iz,:],VLoc[l,iz,:],
+        AuxLoc[ID,iz,:],AuxLoc[l,iz,:],
+        dXdxILoc[2,:,ID,iz],dXdxILoc[2,:,l,iz])    
+      @unroll for iv = 1 : NV
+        FLoc[ID,iz,iv] += -Dx1[ID,l] * fTilde[iv] - Dx2[ID,l] * gTilde[iv]
+      end  
+    end  
+    K = mod(IZ-1,M)+1  
+    Iz = div(IZ-1,M) + 1
+    ind = Glob[ID,IF]  
+    @unroll for iv = 1 : NV
+      F[Iz,K,ind,iv] += FLoc[ID,iz,iv] 
     end
   end
 end  

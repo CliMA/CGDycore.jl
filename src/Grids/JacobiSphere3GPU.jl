@@ -157,7 +157,7 @@ end
      F[3,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
      F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-    hR[I,J,K,iz] = AdaptGrid(zLoc,zs[I,J,IF])
+    hR[I,J,K,iz],_,_ = AdaptGrid(zLoc,zs[I,J,IF])
     r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
     f = Rad / r
     X[ID,K,1,Iz,IF] = X1 / r * (Rad + hR[I,J,K,iz])

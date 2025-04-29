@@ -79,5 +79,64 @@ function NumberingFemDGQuad(Grid,PolyOrd,Proc)
   return (Glob,GlobE,NumG,NumI,Stencil,MasterSlave,BoundaryDoF)
 end
 
+function NumberingFemDGTri(Grid,DoF,DoFE,PosDoFE,Proc)
+
+  Glob = zeros(Int,DoF,Grid.NumFaces)
+  GlobLoc = zeros(Int,DoF)
+  for iF = 1:Grid.NumFaces
+    Face = Grid.Faces[iF]
+    for iDoF = 1 : DoF
+      for i = 1 : DoF
+        GlobLoc[iDoF] = iDoF + (iF - 1) * DoF
+      end
+    end
+    @. Glob[:,iF] = GlobLoc
+  end
+
+  GlobE = zeros(Int,2,DoFE,Grid.NumEdges)
+  GlobLocE = zeros(Int,2,DoFE)
+  iEB = 0
+  for iE = 1 : Grid.NumEdges
+    iF = Grid.Edges[iE].F[1]  
+    if iF > 0 
+      FE = Grid.Edges[iE].FE[1]
+      if iF <= Grid.NumFaces 
+        for iDoFE = 1 : DoFE
+          GlobLocE[1,iDoFE] = PosDoFE[iDoFE,FE] + (iF - 1) * DoF
+        end
+      else
+        iEB += 1
+        for iDoFE = 1 : DoFE
+          GlobLocE[1,iDoFE] = iDoFE + (iEB - 1) * DoFE + Grid.NumFaces * DoF
+        end
+      end  
+    end  
+    iF = Grid.Edges[iE].F[2]  
+    if iF > 0 
+      FE = Grid.Edges[iE].FE[2]
+      if iF <= Grid.NumFaces 
+        for iDoFE = 1 : DoFE
+          GlobLocE[2,iDoFE] = PosDoFE[DoFE-iDoFE+1,FE] + (iF - 1) * DoF
+        end
+      else  
+        iEB += 1
+        for iDoFE = 1 : DoFE
+          GlobLocE[2,iDoFE] = iDoFE + (iEB - 1) * DoFE + Grid.NumFaces * DoF
+        end
+      end  
+    end  
+    @. GlobE[:,:,iE] = GlobLocE
+  end  
+
+  NumI = Grid.NumFaces * DoF
+  NumG = NumI + Grid.NumEdgesB * DoFE
+  Stencil = zeros(Int,0,0)
+
+  MasterSlave = zeros(Int,NumG) # Sinn
+  BoundaryDoF = zeros(Int,0)
+    
+  return (Glob,GlobE,NumG,NumI,Stencil,MasterSlave,BoundaryDoF)
+end
+
 
 

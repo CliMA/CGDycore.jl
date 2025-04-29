@@ -26,7 +26,7 @@ function (::ShallowWaterStateDG)(Phys)
 end
   
 function (::ShallowWaterState)(Phys)
-  @inline function Pressure(Thermo,U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
     p = FT(0.5) * Phys.Grav * U[5]^2
     T = FT(0.0)

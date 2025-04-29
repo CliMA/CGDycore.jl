@@ -22,15 +22,15 @@ function RK3(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
       @show i
     end  
 
-    Fcn(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Global)
+    Fcn(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
     fac = FTB(1/3 * dtau)
     @. UNewI = UI + fac * FU
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Global)
+    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
     fac = FTB(1/2 * dtau)
     @. UNewI = UI + fac * FU
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Global)
+    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
     fac = FTB(dtau)
     @. UI = UI + fac * FU
 

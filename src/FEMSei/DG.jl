@@ -91,7 +91,7 @@ end
 #DG Tri
 
 function DGStruct{FT}(backend,k,Type::Grids.Tri,Grid) where FT<:AbstractFloat
-  Glob = KernelAbstractions.zeros(backend,Int,0,0)
+
   if k == 0
     DoF = 1
     Comp = 1
@@ -107,57 +107,28 @@ function DGStruct{FT}(backend,k,Type::Grids.Tri,Grid) where FT<:AbstractFloat
     end 
     points = KernelAbstractions.zeros(backend,Float64,DoF,2)
     points = [-1/3 -1/3]     
-    Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
     GlobCPU = zeros(Int,DoF,Grid.NumFaces)
     NumG = Grid.NumFaces
     NumI = Grid.NumFaces
     @inbounds for iF = 1 : Grid.NumFaces
       GlobCPU[1,iF] = Grid.Faces[iF].F
     end
-    copyto!(Glob,GlobCPU)
-    M = sparse([1],[1],[1.0])
-    LUM = lu(M)
-  elseif k == 1
-    DoF = 3
-    Comp = 1
-    nu = Array{Polynomial,2}(undef,DoF,Comp)
-    phi = Array{Polynomial,2}(undef,DoF,Comp)
-    Gradphi = Array{Polynomial,3}(undef,DoF,Comp,2)
-    @polyvar x1 x2 ksi1 ksi2
-    nu[1,1] = -1.0*ksi1 + -1.0*ksi2 + 1.0
-    nu[2,1] = 1.0*ksi1 + 0.0*ksi2 + 0.0
-    nu[3,1] = 0.0*ksi1 + 1.0*ksi2 + 0.0
-  
-    @inbounds for s = 1 : DoF
-      @inbounds for t = 1 : 1
-        phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
-      end
-    end
-    @inbounds for i = 1 : DoF
-        @inbounds for j = 1 : Comp
-            Gradphi[i,j,1] = differentiate(phi[i,j],x1)
-            Gradphi[i,j,2] = differentiate(phi[i,j],x2)
-        end
-    end
-    points = KernelAbstractions.zeros(backend,Float64,DoF,2)
-    points[1,:] = [-1.0 -1.0]
-    points[2,:] = [1.0 -1.0]
-    points[3,:] = [-1.0 1.0]
-
-    Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
+  else
+    Comp = 1  
+    DoF, DoFE, DoFF, phi, Gradphi, points = FEMSei.ConstructCG(k,Type)  
+    NumG = DoF * Grid.NumFaces 
+    NumI = NumG
     GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-    NumG = 3 * Grid.NumFaces
-    NumI = 3 * Grid.NumFaces
     @inbounds for iF = 1 : Grid.NumFaces
-      GlobCPU[1,iF] = 3 * Grid.Faces[iF].F - 2
-      GlobCPU[2,iF] = 3 * Grid.Faces[iF].F - 1
-      GlobCPU[3,iF] = 3 * Grid.Faces[iF].F
+      @inbounds for iDoF = 1 : DoF
+        GlobCPU[iDoF,iF] = iDoF + (Grid.Faces[iF].F - 1) * DoF
+      end  
     end
-    copyto!(Glob,GlobCPU)
-    M = sparse([1],[1],[1.0])
-    LUM = lu(M)
-  else println("Not implemented")
-  end
+  end  
+  Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
+  copyto!(Glob,GlobCPU)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
 
   return DGStruct{FT,
                   typeof(Glob)}( 

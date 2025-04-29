@@ -77,14 +77,14 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   return U
 end  
 
-function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Global,Profile,Param)
+function InitialConditions(backend,FTB,DG::FiniteElements.DGElement,Metric,Phys,Global,Profile,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
   NumV = Model.NumV
   NumTr = Model.NumTr
   State = Model.State
-  N = DG.OrdPoly + 1
+  DoF = DG.DoF
   M = DG.OrdPolyZ + 1
   Glob = DG.Glob
   X = Metric.X
@@ -93,9 +93,9 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Glo
 
 
   # Ranges
-  NzG = min(div(NumberThreadGPU,N*N*M),Nz)
-  group = (N * N, M, NzG, 1)
-  ndrange = (N * N, M, Nz, NF)
+  NzG = min(div(NumberThreadGPU,DoF*M),Nz)
+  group = (DoF, M, NzG, 1)
+  ndrange = (DoF, M, Nz, NF)
   lengthU = NumV
   if Model.TkePos > 0
     lengthU += 1
@@ -107,13 +107,6 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Glo
     ND = Model.NDEDMF  
     lengthU += ND*(1 + 1 + 1 + NumTr)
   end    
-
-#=
- U[K,ID,iZ,iF,Pos]
- U[K,iZ,ID,iF,Pos]
- U[K,iZ,ID,Pos]
-=#
-
 
   U = KernelAbstractions.zeros(backend,FTB,Nz,M,DG.NumG,lengthU)
   @views Rho = U[:,:,:,Model.RhoPos]

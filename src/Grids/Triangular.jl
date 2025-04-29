@@ -477,7 +477,6 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
   EF=KernelAbstractions.zeros(backend,Int,0,0)
   FE=KernelAbstractions.zeros(backend,Int,0,0)
 
-
   return GridStruct{FT,
                     typeof(EF),
                     typeof(z)}(

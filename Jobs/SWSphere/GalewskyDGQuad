@@ -1,11 +1,12 @@
 #!/bin/bash
-julia --project Examples/DriverDG3SplitPar.jl \
+julia --check-bounds=yes --project Examples/DriverDG.jl \
   --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumTr=0 \
+  --NumAux=2 \
   --RhoVPos=0 \
   --RhoCPos=0 \
   --ModelType="Conservative" \
@@ -29,13 +30,14 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --SimDays=6 \
   --SimHours=0 \
   --SimSeconds=0 \
-  --vtkFileName="output/VTK/Galewsky/DG" \
+  --vtkFileName="output/VTK/Galewsky/DGQuad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
   --PrintHours=6 \
   --PrintDays=0 \
+  --OrdPrint=4 \
   --StartAverageDays=100 \
-  --Flat=true \
+  --Flat=false \
   --dtau=30.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
@@ -49,6 +51,7 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --H=10.0 \
   --Discretization="DG" \
   --FluxDG="KennedyGruber" \
+  --InterfaceFluxDG="RiemannLMARS" \
   --OrdPoly=4 \
   --OrdPolyZ=1 \
   --HyperVisc=true \

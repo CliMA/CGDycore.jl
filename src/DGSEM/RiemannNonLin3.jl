@@ -115,7 +115,7 @@ end
     RiemannSolver!(FLoc,view(U[Iz,K,indL,:],1:NUMV),view(U[Iz,K,indR,:],1:NUMV),
       view(Aux[Iz,K,indL,:],1:NAUX),view(Aux[Iz,K,indR,:],1:NAUX),
       view(NH[:,K,I,Iz,IE],1:3))
-    Surf = VolSurfH[K,I,Iz,IE] / w[1]  
+    Surf = VolSurfH[K,I,Iz,IE] / w[i]  
     FLoc[RhoPos] *= Surf
     FLoc[uPos] *= Surf
     FLoc[vPos] *= Surf

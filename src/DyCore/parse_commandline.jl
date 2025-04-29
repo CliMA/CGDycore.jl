@@ -529,6 +529,11 @@ function parse_commandline()
      arg_type = Int
      default = 0
 
+    "--OrdPrintZ"
+     help = "Subcell printing in the vertical"
+     arg_type = Int
+     default = 0
+
     "--PrintDays"
      help = "Number of print days"
      arg_type = Int

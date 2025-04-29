@@ -155,7 +155,7 @@ Model = DyCore.ModelStruct{FTB}()
 
 #Grid construction
 RadEarth = Phys.RadEarth
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
+Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
 
 
@@ -204,19 +204,38 @@ if Grid.Type == Grids.Quad()
   nQuadM = 2
   nQuadS = 2
 elseif Grid.Type == Grids.Tri()
-  nQuad = 3
-  nQuadM = 3
+  nQuad = 6
+  nQuadM = 6
   nQuadS = 3
 end
-DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(1,Grids.Tri())
-@show phiB
-DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(2,Grids.Tri())
-@show phiB
-DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(3,Grids.Tri())
-@show phiB
-DoF, DoFE, DoFF, phiB = FEMSei.ConstructCG(4,Grids.Tri())
-@show phiB
+#=
+for i = 3 : 3
+  @show "--------------------"  
+  DoF, DoFE, DoFF, phiB, _, points = FEMSei.ConstructCG(i,Grids.Tri())
+  @show DoF, DoFE, DoFF
+  for iDoF = 1 : length(phiB)
+    @show points[iDoF,:]  
+    @show phiB[iDoF]  
+  end    
+end
+CG = FEMSei.CGStruct{FTB}(backend,k+2,Grid.Type,Grid)
+@show CG.Glob[:,1]
+@show CG.Glob[:,2]
+@show CG.Glob[:,3]
 stop
+
+DG0 = FEMSei.DGStruct{FTB}(backend,0,Grid.Type,Grid)
+DG1 = FEMSei.DGStruct{FTB}(backend,1,Grid.Type,Grid)
+DG2 = FEMSei.DGStruct{FTB}(backend,2,Grid.Type,Grid)
+DG3 = FEMSei.DGStruct{FTB}(backend,3,Grid.Type,Grid)
+
+VecDG0 = FEMSei.VecDGStruct{FTB}(backend,0,Grid.Type,Grid)
+VecDG1 = FEMSei.VecDGStruct{FTB}(backend,1,Grid.Type,Grid)
+VecDG2 = FEMSei.VecDGStruct{FTB}(backend,2,Grid.Type,Grid)
+VecDG3 = FEMSei.VecDGStruct{FTB}(backend,3,Grid.Type,Grid)
+
+stop
+=#
 
 #Finite elements
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)

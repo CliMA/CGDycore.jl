@@ -89,6 +89,7 @@ nx = parsed_args["nx"]
 ny = parsed_args["ny"]
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
+@show nPanel
 RefineLevel = parsed_args["RefineLevel"]
 nLon = parsed_args["nLon"]
 nLat = parsed_args["nLat"]
@@ -109,12 +110,15 @@ HyperDGrad = parsed_args["HyperDGrad"]
 HyperDDiv = parsed_args["HyperDDiv"]
 # Output
 OrdPrint = parsed_args["OrdPrint"]
+OrdPrintZ = parsed_args["OrdPrintZ"]
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
+vtkFileName = parsed_args["vtkFileName"]
+Flat = parsed_args["Flat"]
 # Device
 Device = parsed_args["Device"]
 GPUType = parsed_args["GPUType"]
@@ -282,9 +286,11 @@ else
       RadEarth = RadEarth / ScaleFactor
     end
   end
-  Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
+  @show nPanel
+  Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
     GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
+  @show Grid.NumFaces
 end  
 
 
@@ -307,16 +313,16 @@ if GridForm == "Cartesian"
   if ParallelCom.Proc == 1  
     @show "InitCart"
   end  
-  Trans = Grids.TransCartX!
+  Trans = Outputs.TransCartX!
   (CG, Metric, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
     Phys,TopoProfile,Exchange,Grid,ParallelCom)
 else  
   if ParallelCom.Proc == 1  
     @show "InitSphere"
   end  
-  Trans = Grids.TransSphereX!
-  (CG, Metric, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
-    Phys,TopoProfile,Exchange,Grid,ParallelCom)
+  Trans = Outputs.TransSphereX!
+  (CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,
+    Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 end  
 
 # Initial values
@@ -473,10 +479,9 @@ if Damping
 end
 
 # Output
-Global.Output.vtkFileName=string(Problem*"_")
 Global.Output.vtk=0
-Global.Output.Flat=true
-Global.Output.H=H
+Global.Output.Flat = Flat
+Global.Output.H = H
 if ModelType == "VectorInvariant" || ModelType == "Advection"
   if State == "Dry" || State == "DryInternalEnergy" || State == "DryTotalEnergy"
     Global.Output.cNames = [
@@ -494,6 +499,12 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
     if VerticalDiffusion
       push!(Global.Output.cNames,"DiffKoeff")
     end
+  elseif State == "ShallowWater" 
+    Global.Output.cNames = [
+      "Rho",
+      "u",
+      "v",
+      ]
   elseif State == "Moist" || State == "MoistInternalEnergy" || State == "IceInternalEnergy"
     Global.Output.cNames = [
       "Rho",
@@ -534,12 +545,15 @@ Global.Output.PrintMinutes = PrintMinutes
 Global.Output.PrintSeconds = PrintSeconds
 Global.Output.PrintTime = PrintTime
 Global.Output.PrintStartTime = PrintStartTime
+Global.Output.OrdPrintZ = OrdPrintZ
 if OrdPrint == 0
   Global.Output.OrdPrint = CG.OrdPoly
 else  
   Global.Output.OrdPrint = OrdPrint
-end  
-Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Trans,CG,Metric,Global)
+end 
+Global.Output.vtkFileName = vtkFileName
+@show Global.Output.OrdPrint,size(CG.InterOutputH)
+Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,CG,Metric,Global)
 
 
 # TimeStepper

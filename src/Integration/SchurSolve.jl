@@ -62,6 +62,7 @@ end
   NumG = @uniform @ndrange()[2]
   Nz = @uniform @ndrange()[1]
 
+  @show "Hallo",fac
   invfac = eltype(tri)(1) / fac
   invfac2 = invfac / fac
   if IC <= NumG
