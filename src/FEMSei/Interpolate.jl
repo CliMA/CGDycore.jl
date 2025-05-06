@@ -299,7 +299,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
       h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
-        uLoc[iDoF+i] += +0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+        uLoc[iDoF+i] += -0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
     iDoF += k + 1
@@ -309,7 +309,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
       h,VelCa = FCart(X,F,Grid.Form)
       uP .= detDF[1] * pinvDF' * VelCa
       @inbounds for i = 0 : k
-        uLoc[iDoF+i] += -0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+        uLoc[iDoF+i] += +0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
       end
     end
     iDoF += k + 1

@@ -1293,10 +1293,10 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
 
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   fuHDiv  = zeros(FeHDiv.DoF,FeHDiv.Comp,NumQuad)
-  fuVecDG  = zeros(FeVecDG.DoF,FeVecDG.DoF,NumQuad)
+  fuVecDG  = zeros(FeVecDG.DoF,FeVecDG.Comp,NumQuad)
   fuTHDiv  = zeros(FeTHDiv.DoF,FeTHDiv.Comp,NumQuad)
   fuDivHDiv = zeros(FeHDiv.DoF,NumQuad)
-  fuGradVecDG = zeros(FeVecDG.DoF,FeVecDG.DoF,2,NumQuad)
+  fuGradVecDG = zeros(FeVecDG.DoF,FeVecDG.Comp,2,NumQuad)
 
   #computation of the ansatz functions in the quadrature points
   @inbounds for iQ = 1 : NumQuad
@@ -1328,7 +1328,6 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       fuGradVecDG[iD,3,2,iQ] = FeVecDG.Gradphi[iD,3,2](Points[iQ,1],Points[iQ,2])
     end
   end
-
 
   #local variables
   uVecDGLoc = zeros(FeVecDG.DoF) 
@@ -1397,7 +1396,6 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
           GradVecDGHDiv[i] += uuGradVecDGLoc[i,j] * uuHDivLoc[j]
         end
       end  
-#     @. innersum = Grid.Faces[iF].Orientation * (VecDGDivHDiv + GradVecDGHDiv)
       @. innersum = (VecDGDivHDiv + GradVecDGHDiv)
       #computation of Jacobi
       Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
@@ -1422,8 +1420,8 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
 
   #UPWIND on Edges
   NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
-  uFFLocL = zeros(FeHDiv.DoF)
-  uFFLocR = zeros(FeHDiv.DoF)
+  #uFFLocL = zeros(FeHDiv.DoF)
+  #uFFLocR = zeros(FeHDiv.DoF)
   uHDivLocLeft = zeros(FeHDiv.DoF)
   uHDivLocRight = zeros(FeHDiv.DoF)
   uVecDGLocLeft = zeros(FeVecDG.DoF)
@@ -1479,15 +1477,16 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
   end
 
   #allocation Mloc
-  MLoc11 = zeros(FeTHDiv.DoF, FeHDiv.DoF)
-  MLoc12 = zeros(FeTHDiv.DoF, FeHDiv.DoF)
-  MLoc21 = zeros(FeTHDiv.DoF, FeHDiv.DoF)
-  MLoc22 = zeros(FeTHDiv.DoF, FeHDiv.DoF)
+  ILL = zeros(FeTHDiv.DoF)
+  ILR = zeros(FeTHDiv.DoF)
+  IRL = zeros(FeTHDiv.DoF)
+  IRR = zeros(FeTHDiv.DoF)
   fTLocL = zeros(3,FeTHDiv.DoF)
   fTLocR = zeros(3,FeTHDiv.DoF)
 
   uL = zeros(3)
   uR = zeros(3)
+  gammaU = 0.5
   @inbounds for iE in 1:Grid.NumEdges
     Edge = Grid.Edges[iE]
     if length(Edge.F) > 1
@@ -1515,26 +1514,22 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       end 
       @inbounds for iQ = 1:NumQuadL
         @inbounds for iD = 1 : FeHDiv.DoF
-#         @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*(uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL) +
-#           uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR))
           @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL) 
-          @views uER += WeightsL[iQ]*uHDivLocRight[iD]*(uFFRef[iD,:,iQ,EdgeTypeR]'*nBarLocR)
         end
       end
-      gammaU = 0.5
       gammaLoc = uE > 0 ? gammaU : -gammaU
 
-      @. MLoc11 = 0
-      @. MLoc12 = 0
-      @. MLoc21 = 0
-      @. MLoc22 = 0
+      @. ILL = 0
+      @. ILR = 0
+      @. IRL = 0
+      @. IRR = 0
 
       @inbounds for iQ in 1: NumQuadL
         #computation of Jacobi EdgetypeL
-        Jacobi(DFL,detDFL,pinvDFL,XL,Grid.Type,PointsE[iQ,1,EdgeTypeL],PointsE[iQ,2,EdgeTypeL],Grid.Faces[iFL], Grid)
+        Jacobi(DFL,detDFL,pinvDFL,XL,Grid.Type,PointsE[1,iQ,EdgeTypeL],PointsE[2,iQ,EdgeTypeL],Grid.Faces[iFL], Grid)
         detDFLLoc = detDFL[1] * Grid.Faces[iFL].Orientation
         #EdgeTypeR
-        Jacobi(DFR,detDFR,pinvDFR,XR,Grid.Type,PointsE[iQ,1,EdgeTypeR],PointsE[iQ,2,EdgeTypeR],Grid.Faces[iFR], Grid)
+        Jacobi(DFR,detDFR,pinvDFR,XR,Grid.Type,PointsE[1,iQ,EdgeTypeR],PointsE[2,iQ,EdgeTypeR],Grid.Faces[iFR], Grid)
         detDFRLoc = detDFR[1] * Grid.Faces[iFR].Orientation
 
         @inbounds for iDoF  = 1 : FeTHDiv.DoF 
@@ -1545,13 +1540,15 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
               DFR[j,2] * fTRef[iDoF,2,iQ,EdgeTypeR])
           end
         end
+        uFFLocL = 0.0
+        uFFLocR = 0.0
         @inbounds for iD in 1:FeHDiv.DoF
-          @views uFFLocL[iD] = uFFRef[iD,:,iQ,EdgeTypeL]' * nBarLocL
-          @views uFFLocR[iD] = uFFRef[iD,:,iQ,EdgeTypeR]' * nBarLocR
+          @views uFFLocL = uHDivLocLeft[iD] * uFFRef[iD,:,iQ,EdgeTypeL]' * nBarLocL
+          @views uFFLocR = uHDivLocRight[iD] * uFFRef[iD,:,iQ,EdgeTypeR]' * nBarLocR
         end
+
         @. uL = 0.0
         @. uR = 0.0
-      
         @inbounds for iD in 1:FeVecDG.DoF 
           uL[1] +=  uVecDGRef[iD,1,iQ,EdgeTypeL] * uVecDGLocLeft[iD]          
           uL[2] +=  uVecDGRef[iD,2,iQ,EdgeTypeL] * uVecDGLocLeft[iD]          
@@ -1563,250 +1560,34 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
         @inbounds for iDoF  = 1 : FeTHDiv.DoF 
           @inbounds for jDoF  = 1 : FeHDiv.DoF 
             @inbounds for k = 1 : 3  
-              MLoc11[iDoF,jDoF] += WeightsL[iQ] * (fTLocL[k,iDoF]' * uL[k]) * uFFLocL[jDoF]
-              MLoc12[iDoF,jDoF] += WeightsL[iQ] * (fTLocL[k,iDoF]' * uR[k]) * uFFLocR[jDoF]
-              MLoc21[iDoF,jDoF] += WeightsL[iQ] * (fTLocR[k,iDoF]' * uL[k]) * uFFLocL[jDoF]
-              MLoc22[iDoF,jDoF] += WeightsL[iQ] * (fTLocR[k,iDoF]' * uR[k]) * uFFLocR[jDoF]
+              ILL[iDoF] += WeightsL[iQ] * (fTLocL[k,iDoF]' * uL[k])
+              ILR[iDoF] += WeightsL[iQ] * (fTLocL[k,iDoF]' * uR[k])
+              IRL[iDoF] += WeightsL[iQ] * (fTLocR[k,iDoF]' * uL[k])
+              IRR[iDoF] += WeightsL[iQ] * (fTLocR[k,iDoF]' * uR[k])
             end
           end
+          ILL[iDoF] *= uFFLocL
+          ILR[iDoF] *= uFFLocL
+          IRL[iDoF] *= uFFLocR
+          IRR[iDoF] *= uFFLocR
         end
       end
       #all together over edges
       @inbounds for iD = 1 : FeTHDiv.DoF
-        indL = FeTHDiv.Glob[iD,iFL] 
-        @views Rhs[indL] += (+0.5 - gammaLoc) * MLoc11[iD,:]' * uHDivLocLeft
-        @views Rhs[indL] += (-0.5 + gammaLoc) * MLoc12[iD,:]' * uHDivLocRight
-        indR = FeTHDiv.Glob[iD,iFR] 
-        @views Rhs[indR] += (+0.5 + gammaLoc) * MLoc21[iD,:]' * uHDivLocLeft
-        @views Rhs[indR] += (-0.5 - gammaLoc) * MLoc22[iD,:]' * uHDivLocRight
-      end
-    end
-  end
-end
-
-function DivMomentumScalar!(backend,FTB,Rhs,uHDiv,FeHDiv::HDivElement,
-  cDG,FeDG::ScalarElement,FeT::ScalarElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
-
-  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
-  fuHDiv  = zeros(FeHDiv.DoF,FeHDiv.Comp,NumQuad) 
-  fuDG  = zeros(FeDG.DoF,FeDG.DoF,NumQuad) 
-  fuT  = zeros(FeT.DoF,FeT.Comp,NumQuad) 
-  fuDivHDiv = zeros(FeHDiv.DoF,NumQuad) 
-  fuGradDG = zeros(FeDG.DoF,FeDG.DoF,2,NumQuad) 
-
-  #computation of the ansatz functions in the quadrature points
-  @inbounds for iQ = 1 : NumQuad
-    @inbounds for iComp = 1 : FeT.Comp
-      @inbounds for iD = 1 : FeT.DoF
-        fuT[iD,iComp,iQ] = FeT.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
-      end
-    end
-    @inbounds for iComp = 1 : FeT.Comp
-      @inbounds for iD = 1 : FeHDiv.DoF
-        fuHDiv[iD,iComp,iQ] = FeHDiv.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
-      end
-    end
-    @inbounds for iD = 1 : FeDG.DoF
-      fuGradDG[iD,1,1,iQ] = FeDG.Gradphi[iD,1,1](Points[iQ,1],Points[iQ,2])
-      fuGradDG[iD,1,2,iQ] = FeDG.Gradphi[iD,1,2](Points[iQ,1],Points[iQ,2])
-    end
-    @inbounds for iD = 1 : FeDG.DoF
-      fuDG[iD,1,iQ] = FeDG.phi[iD,1](Points[iQ,1],Points[iQ,2])
-    end
-    @inbounds for iD = 1 : FeHDiv.DoF
-      fuDivHDiv[iD,iQ] = FeHDiv.Divphi[iD,1](Points[iQ,1],Points[iQ,2])
-    end
-  end
-
-  #local variables
-  cDGLoc = zeros(FeDG.DoF)
-  uHDivLoc = zeros(FeHDiv.DoF)
-  RhsLoc = zeros(FeT.DoF)
-
-  uHDivLocLeft = zeros(FeHDiv.DoF)
-  uHDivLocRight = zeros(FeHDiv.DoF)
-  cDGLocLeft = zeros(FeDG.DoF)
-  cDGLocRight = zeros(FeDG.DoF)
-
-  uuGradDGLoc = zeros(2)
-  uuHDivLoc = zeros(2)
- 
-  DF = zeros(3,2)
-  detDF = zeros(1)
-  pinvDF = zeros(3,2)
-  X = zeros(3)
- 
-  #copy from global variables to local variables  
-  @inbounds for iF = 1 : Grid.NumFaces
-    @inbounds for iD = 1 : FeDG.DoF
-      ind = FeDG.Glob[iD,iF]  
-      cDGLoc[iD] = cDG[ind]
-    end 
-    @inbounds for iD = 1 : FeHDiv.DoF
-      ind = FeHDiv.Glob[iD,iF]  
-      uHDivLoc[iD] = uHDiv[ind]
-    end  
-    @. RhsLoc = 0.0
-
-    @inbounds for iQ = 1 : NumQuad
-      #computation of local variables in a quadrature point
-      uuDGLoc = 0.0
-      @. uuGradDGLoc = 0.0
-      @inbounds for iD = 1 : FeDG.DoF
-        uuDGLoc += cDGLoc[iD] * fuDG[iD,1,iQ] 
-        @views @. uuGradDGLoc += cDGLoc[iD] * fuGradDG[iD,1,:,iQ] 
-      end
-      uuDivHDivLoc = 0.0
-      @. uuHDivLoc = 0.0
-      @inbounds for iD = 1 : FeHDiv.DoF
-        uuDivHDivLoc += uHDivLoc[iD] * fuDivHDiv[iD,iQ] 
-        uuHDivLoc[1] += uHDivLoc[iD] * fuHDiv[iD,1,iQ]
-        uuHDivLoc[2] += uHDivLoc[iD] * fuHDiv[iD,2,iQ] 
-      end
-      GradDGHDiv = uuGradDGLoc' * uuHDivLoc
-      DGDivHDiv = uuDivHDivLoc * uuDGLoc
-      innersum = Grid.Faces[iF].Orientation * (DGDivHDiv + GradDGHDiv)
-      #product incoming functions and test function
-      @inbounds for iD = 1 : FeT.DoF
-        product = innersum * fuT[iD,1,iQ]
-        RhsLoc[iD] += Weights[iQ] * product
-      end 
-    end
-
-    #save the new without upwind 
-    @inbounds for iD = 1 : FeT.DoF
-      ind = FeT.Glob[iD,iF] 
-      Rhs[ind] += RhsLoc[iD]
-    end  
-  end 
-
-  #UPWIND on Edges
-  NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd) 
-  uFFLocL = zeros(FeHDiv.DoF)
-  uFFLocR = zeros(FeHDiv.DoF)
-
-  #distinction between Tri or Quad 
-  if ElemType == Grids.Tri()
-    PointsE = zeros(2,NumQuadL,3)
-    @inbounds for iQ = 1 : NumQuadL
-      PointsE[1,iQ,1] = PointsL[iQ]
-      PointsE[2,iQ,1] = -1.0
-      PointsE[1,iQ,2] = -PointsL[iQ]
-      PointsE[2,iQ,2] = PointsL[iQ]
-      PointsE[1,iQ,3] = -1.0
-      PointsE[2,iQ,3] = PointsL[iQ]
-    end
-  elseif ElemType == Grids.Quad()
-    PointsE = zeros(2,NumQuadL,4)
-    @inbounds for iQ = 1 : NumQuadL
-      PointsE[1,iQ,1] = PointsL[iQ]
-      PointsE[2,iQ,1] = -1.0
-      PointsE[1,iQ,2] = 1.0
-      PointsE[2,iQ,2] = PointsL[iQ]
-      PointsE[1,iQ,3] = PointsL[iQ]
-      PointsE[2,iQ,3] = 1.0
-      PointsE[1,iQ,4] = -1.0
-      PointsE[2,iQ,4] = PointsL[iQ]
-    end
-  else 
-    @show "wrong ElemType"
-  end
-  uFFRef  = zeros(FeHDiv.DoF, FeHDiv.Comp,NumQuadL,size(PointsE,3))
-  hFFRef  = zeros(FeDG.DoF,FeDG.DoF,NumQuadL,size(PointsE,3))
-  fTRef  = zeros(FeT.DoF,FeT.Comp,NumQuadL,size(PointsE,3))
-  @inbounds for i = 1 : size(PointsE,3)
-    @inbounds for iQ = 1 : NumQuadL 
-      @inbounds for iComp = 1 : FeT.Comp
-        @inbounds for iD = 1 : FeT.DoF
-          fTRef[iD,iComp,iQ,i] = FeT.phi[iD,iComp](PointsE[1,iQ,i],PointsE[2,iQ,i])
-        end 
-      end 
-      @inbounds for iComp = 1 : FeHDiv.Comp
-        @inbounds for iD = 1 : FeHDiv.DoF
-          uFFRef[iD,iComp,iQ,i] = FeHDiv.phi[iD,iComp](PointsE[1,iQ,i],PointsE[2,iQ,i])
-        end
-      end
-      @inbounds for iComp = 1 : FeDG.Comp
-        @inbounds for iD = 1 : FeDG.DoF
-          hFFRef[iD,iComp,iQ,i] = FeDG.phi[iD,iComp](PointsE[1,iQ,i],PointsE[2,iQ,i])
-        end
-      end
-    end
-  end
-
-  #allocation Mloc
-  MLoc11 = zeros(FeT.DoF, FeHDiv.DoF)
-  MLoc12 = zeros(FeT.DoF, FeHDiv.DoF)
-  MLoc21 = zeros(FeT.DoF, FeHDiv.DoF)
-  MLoc22 = zeros(FeT.DoF, FeHDiv.DoF)
-  
-  @inbounds for iE in 1:Grid.NumEdges
-    Edge = Grid.Edges[iE]
-    if length(Edge.F) > 1
-      iFL = Edge.F[1]
-      EdgeTypeL = Edge.FE[1]
-      iFR = Edge.F[2]
-      EdgeTypeR = Edge.FE[2]
-      #computation normales of edges
-      @views nBarLocL = Grid.nBar[:, EdgeTypeL] 
-      @views nBarLocR = Grid.nBar[:, EdgeTypeR]
-      #gamma upwind value
-      uE = 0.0 
-      @inbounds for iD = 1 : FeHDiv.DoF
-        ind = FeHDiv.Glob[iD,iFL]  
-        uHDivLocLeft[iD] = uHDiv[ind]
-        ind = FeHDiv.Glob[iD,iFR]  
-        uHDivLocRight[iD] = uHDiv[ind]
-      end 
-      @inbounds for iD = 1 : FeDG.DoF
-        ind = FeDG.Glob[iD,iFL]  
-        cDGLocLeft[iD] = cDG[ind]
-        ind = FeDG.Glob[iD,iFR]  
-        cDGLocRight[iD] = cDG[ind]
-      end 
-      @inbounds for iQ = 1:NumQuadL
-        @inbounds for iD = 1 : FeHDiv.DoF
-          @views uE += WeightsL[iQ]*(uHDivLocLeft[iD]*(uFFRef[iD,:,iQ,EdgeTypeL]'*nBarLocL))
-        end
-      end
-      #upwind value
-      gammaU = 0.5
-      gammaLoc = uE > 0 ? gammaU : -gammaU
-
-      @. MLoc11 = 0
-      @. MLoc12 = 0
-      @. MLoc21 = 0
-      @. MLoc22 = 0
-      
-      @inbounds for iQ in 1:NumQuadL
-        hFFL = 0.0
-        hFFR = 0.0
-        @inbounds for iD in 1:FeHDiv.DoF
-          @views uFFLocL[iD] = uFFRef[iD,:,iQ,EdgeTypeL]' * nBarLocL 
-          @views uFFLocR[iD] = uFFRef[iD,:,iQ,EdgeTypeR]' * nBarLocR 
-        end
-        @inbounds for iD in 1:FeDG.DoF
-          hFFL += hFFRef[iD,1,iQ,EdgeTypeL] * cDGLocLeft[iD]
-          hFFR += hFFRef[iD,1,iQ,EdgeTypeR] * cDGLocRight[iD]
-        end
-
-        @inbounds for iDoF  = 1 : FeT.DoF 
-          @inbounds for jDoF  = 1 : FeHDiv.DoF
-            MLoc11[iDoF,jDoF] += WeightsL[iQ] * (fTRef[iDoF,1,iQ,EdgeTypeL] * hFFL) * uFFLocL[jDoF]'
-            MLoc12[iDoF,jDoF] += WeightsL[iQ] * (fTRef[iDoF,1,iQ,EdgeTypeL] * hFFR) * uFFLocR[jDoF]'
-            MLoc21[iDoF,jDoF] += WeightsL[iQ] * (fTRef[iDoF,1,iQ,EdgeTypeR] * hFFL) * uFFLocL[jDoF]'
-            MLoc22[iDoF,jDoF] += WeightsL[iQ] * (fTRef[iDoF,1,iQ,EdgeTypeR] * hFFR) * uFFLocR[jDoF]'
-          end
-        end
-      end
-      #all together over edges
-      @inbounds for iD = 1 : FeT.DoF
-        indL = FeT.Glob[iD,iFL]
-        @views Rhs[indL] += (-0.5 - gammaLoc) * MLoc11[iD,:]' * uHDivLocLeft 
-        @views Rhs[indL] += (-0.5 + gammaLoc) * MLoc12[iD,:]' * uHDivLocRight
-        indR = FeT.Glob[iD,iFR]
-        @views Rhs[indR] += (+0.5 + gammaLoc) * MLoc21[iD,:]' * uHDivLocLeft
-        @views Rhs[indR] += (+0.5 - gammaLoc) * MLoc22[iD,:]' * uHDivLocRight
+#       indR = FeTHDiv.Glob[iD,iFR]
+#       Rhs[indR] = 0.5 * (IRR[iD] - IRL[iD])
+#       indL = FeTHDiv.Glob[iD,iFL]
+#       Rhs[indL] = 0.5 * (ILL[iD] - ILR[iD])
+        
+        if gammaLoc > 0.0
+          indR = FeTHDiv.Glob[iD,iFR]
+          Rhs[indR] = -1.0 * IRL[iD]
+          Rhs[indR] = +1.0 * IRR[iD]
+        else
+          indL = FeTHDiv.Glob[iD,iFL]
+          Rhs[indL] = +1.0  * ILL[iD]
+          Rhs[indL] = -1.0  * ILR[iD]
+        end  
       end
     end
   end
@@ -1863,6 +1644,80 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
       @inbounds for iDoF = 1 : FeT.DoF  
         qLoc[iDoF] +=  -Weights[iQ] * (uFLoc[1] * RotqRef[1,iDoF,iQ] +
           uFLoc[2] * RotqRef[2,iDoF,iQ])  
+      end  
+    end  
+    @inbounds for iDoF = 1 : FeT.DoF
+      ind = FeT.Glob[iDoF,iF]
+      q[ind] += qLoc[iDoF]
+    end
+  end    
+  ldiv!(FeT.LUM,q)
+end
+
+function CurlVel!(q,FeT,u,uFe::HDivElement,h,hFe::ScalarElement,QuadOrd,ElemType,Grid,Jacobi)
+#
+#
+# int q*v dx = int Curl u * v dx = - int u * rot v dx 
+#
+#
+  @. q = 0
+
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)  
+  RotqRef  = zeros(2,FeT.DoF,NumQuad)
+  uFRef  = zeros(uFe.Comp,uFe.DoF,NumQuad)
+  hFRef  = zeros(hFe.DoF,NumQuad)
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iDoF = 1 : uFe.DoF
+      uFRef[1,iDoF,iQ] = uFe.phi[iDoF,1](Points[iQ,1],Points[iQ,2])
+      uFRef[2,iDoF,iQ] = uFe.phi[iDoF,2](Points[iQ,1],Points[iQ,2])
+    end  
+    @inbounds for iDoF = 1 : FeT.DoF
+      RotqRef[1,iDoF,iQ] = -FeT.Gradphi[iDoF,1,2](Points[iQ,1],Points[iQ,2])
+      RotqRef[2,iDoF,iQ] = FeT.Gradphi[iDoF,1,1](Points[iQ,1],Points[iQ,2])
+    end  
+    @inbounds for iDoF = 1 : hFe.DoF
+      hFRef[iDoF,iQ] = hFe.phi[iDoF](Points[iQ,1],Points[iQ,2])
+    end  
+  end  
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  uLoc = zeros(uFe.DoF)
+  hLoc = zeros(hFe.DoF)
+  uFLoc = zeros(2)
+  uuFLoc = zeros(3)
+  qLoc = zeros(FeT.DoF)
+
+  @inbounds for iF = 1 : Grid.NumFaces
+    @inbounds for iDoF = 1 : uFe.DoF
+      ind = uFe.Glob[iDoF,iF]  
+      uLoc[iDoF] = u[ind] 
+    end  
+    @inbounds for iDoF = 1 : hFe.DoF
+      ind = hFe.Glob[iDoF,iF]  
+      hLoc[iDoF] = h[ind] 
+    end  
+    @. qLoc = 0
+    @inbounds for iQ = 1 : NumQuad
+      @. uFLoc = 0  
+      @inbounds for iDoF = 1 : uFe.DoF  
+        uFLoc[1] += uFRef[1,iDoF,iQ] * uLoc[iDoF]  
+        uFLoc[2] += uFRef[2,iDoF,iQ] * uLoc[iDoF]  
+      end   
+      hFLoc = 0.0 
+      @inbounds for iDoF = 1 : hFe.DoF  
+        hFLoc += hFRef[iDoF,iQ] * hLoc[iDoF]  
+      end   
+      Jacobi(DF,detDF,pinvDF,X,ElemType,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      uuFLoc[1] = (DF[1,1] * uFLoc[1] + DF[1,2] * uFLoc[2]) / detDF[1]
+      uuFLoc[2] = (DF[2,1] * uFLoc[1] + DF[2,2] * uFLoc[2]) / detDF[1]
+      uuFLoc[3] = (DF[3,1] * uFLoc[1] + DF[3,2] * uFLoc[2]) / detDF[1]
+      uFLoc[1] = DF[1,1] * uuFLoc[1] + DF[2,1] * uuFLoc[2] + DF[3,1] * uuFLoc[3]
+      uFLoc[2] = DF[1,2] * uuFLoc[1] + DF[2,2] * uuFLoc[2] + DF[3,2] * uuFLoc[3]
+      @inbounds for iDoF = 1 : FeT.DoF  
+        qLoc[iDoF] +=  -Weights[iQ] * (uFLoc[1] * RotqRef[1,iDoF,iQ] +
+          uFLoc[2] * RotqRef[2,iDoF,iQ]) / hFLoc 
       end  
     end  
     @inbounds for iDoF = 1 : FeT.DoF

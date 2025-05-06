@@ -1,6 +1,6 @@
 function CubedGrid(backend,FT,n,OrientFace,Rad,nz;order=true)
-  nBar=[ 0  1   0   1
-        -1  0  -1   0];
+  nBar=[ 0  -1   0   1
+        -1  0  1   0];
   Dim=3;
   Type=Quad()
   Rad=Rad;

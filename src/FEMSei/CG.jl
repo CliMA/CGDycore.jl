@@ -240,21 +240,12 @@ function CGStruct{FT}(backend,k::Int,Type::Grids.Tri,Grid) where FT<:AbstractFlo
     iD += 1 
     GlobCPU[iD,iF] = Grid.Faces[iF].N[3]
     iD += 1 
-#   if Grid.Faces[iF].Orientation > 0
-      @inbounds for i = 1 : 3  
-        @inbounds for iDoF = 1 : DoFE  
-          GlobCPU[iD, iF] = iDoF + (Grid.Faces[iF].E[i] - 1) * DoFE + Grid.NumNodes
-          iD += 1 
-        end  
-      end
-#   else  
-#     @inbounds for i = 1 : 3  
-#       @inbounds for iDoF = 1 : DoFE  
-#         GlobCPU[iD, iF] = DoFE - iDoF + 1 + (Grid.Faces[iF].E[i] - 1) * DoFE + Grid.NumNodes
-#         iD += 1 
-#       end  
-#     end
-#   end  
+    @inbounds for i = 1 : 3  
+      @inbounds for iDoF = 1 : DoFE  
+        GlobCPU[iD, iF] = iDoF + (Grid.Faces[iF].E[i] - 1) * DoFE + Grid.NumNodes
+        iD += 1 
+      end  
+    end
     @inbounds for iDoF = 1 : DoFF
       GlobCPU[iD, iF] = iDoF + (Grid.Faces[iF].F - 1) * DoFF +
         Grid.NumEdges * DoFE + Grid.NumNodes

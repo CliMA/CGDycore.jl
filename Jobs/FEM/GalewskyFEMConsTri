@@ -5,13 +5,14 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
-  --RefineLevel=6 \
+  --RefineLevel=5 \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=1 \
   --SimHours=0 \
   --PrintHours=1 \
+  --PrintMinutes=0 \
   --PrintSeconds=0 \
   --PrintTime=0 \
   --RefineOutput=1 \

@@ -150,40 +150,57 @@ function VecDGStruct{FT}(backend,k::Int,Type::Grids.Tri,Grid) where FT<:Abstract
     phi[3,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
     phi[3,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
     phi[3,3] = 1.0 + 0.0*x[1] + 0.0*x[2]
+    Gradphi = Array{Polynomial,3}(undef,DoF,Comp,2)
+    @inbounds for i = 1 : DoF
+      @inbounds for j = 1 : Comp
+        Gradphi[i,j,1] = differentiate(phi[i,j],x[1])
+        Gradphi[i,j,2] = differentiate(phi[i,j],x[2])
+      end
+    end
         
     points = KernelAbstractions.zeros(backend,Float64,DoF,2)
     points[1,:] = [0.0 0.0]
           
   else
     Comp = 3 
-    DoF, DoFE, DoFF, phiDG, Gradphi, points = FEMSei.ConstructCG(k,Type)
+    DoF, DoFE, DoFF, phiDG, GradphiDG, points = FEMSei.ConstructCG(k,Type)
     phi = Array{Polynomial,2}(undef,Comp*DoF,Comp)
+    Gradphi = Array{Polynomial,3}(undef,Comp*DoF,Comp,2)
 
-    @show k, DoF
     for iDoF = 1 : DoF
       phi[Comp*iDoF-2,1] = phiDG[iDoF]
+      Gradphi[Comp*iDoF-2,1,1] = GradphiDG[iDoF,1,1]
+      Gradphi[Comp*iDoF-2,1,2] = GradphiDG[iDoF,1,2]
       phi[Comp*iDoF-2,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-2,2,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-2,2,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
       phi[Comp*iDoF-2,3] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-2,3,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-2,3,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
 
       phi[Comp*iDoF-1,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-1,1,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-1,1,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
       phi[Comp*iDoF-1,2] = phiDG[iDoF]
+      Gradphi[Comp*iDoF-1,2,1] = GradphiDG[iDoF,1,1]
+      Gradphi[Comp*iDoF-1,2,2] = GradphiDG[iDoF,1,2]
       phi[Comp*iDoF-1,3] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-1,3,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF-1,3,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
 
       phi[Comp*iDoF,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF,1,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF,1,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
       phi[Comp*iDoF,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF,2,1] = 0.0 + 0.0*x[1] + 0.0*x[2]
+      Gradphi[Comp*iDoF,2,2] = 0.0 + 0.0*x[1] + 0.0*x[2]
       phi[Comp*iDoF,3] = phiDG[iDoF]
+      Gradphi[Comp*iDoF,3,1] = GradphiDG[iDoF,1,1]
+      Gradphi[Comp*iDoF,3,2] = GradphiDG[iDoF,1,2]
     end  
     DoF *= Comp
   end  
 
-  Gradphi = Array{Polynomial,3}(undef,DoF,Comp,2)
-  @inbounds for i = 1 : DoF
-    @inbounds for j = 1 : Comp
-      Gradphi[i,j,1] = differentiate(phi[i,j],x[1])
-      Gradphi[i,j,2] = differentiate(phi[i,j],x[2])
-    end
-  end
-    
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = DoF * Grid.NumFaces
   NumI = DoF * Grid.NumFaces

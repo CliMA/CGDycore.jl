@@ -1,6 +1,6 @@
 function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64,y0::Float64,OrientFace,Boundary,nz;order=true)
   nBar=[ 0  1   0   1
-             -1  0  -1   0]
+        -1  0  -1   0]
   nBar3=[ 0  1   0   1
              -1  0  -1   0
              0   0  0    0]

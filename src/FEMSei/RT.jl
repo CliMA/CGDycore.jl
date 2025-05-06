@@ -258,45 +258,18 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = Grid.NumEdges * DoFE + Grid.NumFaces * DoFF
   NumI = NumG
-  if ElemType == Grids.Tri
-    @inbounds for iF = 1 : Grid.NumFaces
-      iGlob = 1
-#     if Grid.Faces[iF].Orientaion > 0
-        @inbounds for i = 1 : length(Grid.Faces[iF].E)
-          iE = Grid.Faces[iF].E[i]
-          @inbounds for j = 1 : DoFE
-            GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
-            iGlob += 1
-          end  
-        end  
-#     else  
-#       @inbounds for i = 1 : length(Grid.Faces[iF].E)
-#         iE = Grid.Faces[iF].E[i]
-#         @inbounds for j = 1 : DoFE
-#           GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + DoFE - j + 1
-#           iGlob += 1
-#         end  
-#       end
-#     end
-      @inbounds for j = 1 : DoFF
-        GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+  @inbounds for iF = 1 : Grid.NumFaces
+    iGlob = 1
+    @inbounds for i = 1 : length(Grid.Faces[iF].E)
+      iE = Grid.Faces[iF].E[i]
+      @inbounds for j = 1 : DoFE
+        GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
         iGlob += 1
-      end
-    end
-  else
-    @inbounds for iF = 1 : Grid.NumFaces
-      iGlob = 1
-      @inbounds for i = 1 : length(Grid.Faces[iF].E)
-        iE = Grid.Faces[iF].E[i]
-        @inbounds for j = 1 : DoFE
-          GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
-          iGlob += 1
-        end
-      end
-      @inbounds for j = 1 : DoFF
-        GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
-        iGlob += 1
-      end
+      end  
+    end  
+    @inbounds for j = 1 : DoFF
+      GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+      iGlob += 1
     end
   end
   copyto!(Glob,GlobCPU)

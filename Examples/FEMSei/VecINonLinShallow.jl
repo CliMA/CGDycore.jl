@@ -204,9 +204,9 @@ if Grid.Type == Grids.Quad()
   nQuadM = 2
   nQuadS = 2
 elseif Grid.Type == Grids.Tri()
-  nQuad = 6
-  nQuadM = 6
-  nQuadS = 3
+  nQuad = 4
+  nQuadM = 4
+  nQuadS = 4
 end
 #=
 for i = 3 : 3

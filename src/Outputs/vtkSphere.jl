@@ -91,6 +91,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       theta = zeros(4)
       celltypeQ = VTKCellTypes.VTK_QUAD
       RefinePoints, RefineMidPoints = Grids.PrintPoints(Refine,Grids.Quad())
+      NumRefine = size(RefinePoints,1)
       for iF in 1 : NumFaces
         for i in 1 : NumRefine
           inds = Vector(1 : 4) .+ NumNodes

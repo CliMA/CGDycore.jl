@@ -200,11 +200,11 @@ vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Ref
 #Quadrature rules
 if Grid.Type == Grids.Quad()
   nQuad = 2
-  nQuadM = 2
-  nQuadS = 2
+  nQuadM = 3
+  nQuadS = 3
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
-  nQuadM = 4
+  nQuadM = 6
   nQuadS = 4
 end  
 
@@ -213,10 +213,13 @@ DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 VecDG = FEMSei.VecDGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
+CG = FEMSei.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 
 #massmatrix und LU-decomposition
 DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,FEMSei.Jacobi!)
 DG.LUM = lu(DG.M)
+CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,FEMSei.Jacobi!)
+CG.LUM = lu(CG.M)
 VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,FEMSei.Jacobi!)
 VecDG.LUM = lu(VecDG.M)
 RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,FEMSei.Jacobi!)
@@ -268,16 +271,12 @@ for i = 1 : nAdveVel
   # Tendency hu
   FEMSei.InterpolateScalarHDivVecDG!(backend,FTB,uRec,VecDG,Uh,DG,Uhu,RT,Grid,
     Grid.Type,nQuad,FEMSei.Jacobi!)
+
   FEMSei.DivMomentumVector!(backend,FTB,Fhu,RT,Uhu,RT,uRec,VecDG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   FEMSei.CrossRhs!(backend,FTB,Fhu,RT,Uhu,RT,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   FEMSei.GradHeightSquared!(backend,FTB,Fhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!)
   ldiv!(RT.LUM,Fhu)
-# FileNumber += 1
-# FEMSei.ConvertScalar!(backend,FTB,hout,Fh,DG,Grid,FEMSei.Jacobi!)
-# FEMSei.ConvertVelocitySp!(backend,FTB,VelSp,Fhu,RT,Grid,FEMSei.Jacobi!)
-# Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelSp],
-#   FileNumber,cName)
-# stop
+  
   @. UNew = U + 1 / 3 * dtau * F
 
   @. F = 0  
@@ -311,7 +310,7 @@ for i = 1 : nAdveVel
     global FileNumber += 1
     FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
     FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-    FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!,
+    FEMSei.Vorticity!(backend,FTB,Vort,CG,Uhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!,
       vtkSkeletonMesh.RefineMidPoints)
     Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp] ,FileNumber,cName)
   end
