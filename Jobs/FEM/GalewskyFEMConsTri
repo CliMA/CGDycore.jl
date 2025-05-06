@@ -11,7 +11,7 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --SimTime=0 \
   --SimDays=1 \
   --SimHours=0 \
-  --PrintHours=1 \
+  --PrintHours=6 \
   --PrintMinutes=0 \
   --PrintSeconds=0 \
   --PrintTime=0 \

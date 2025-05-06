@@ -417,6 +417,9 @@ GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
 if dtau == 0.0
   dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
 end  
+@show dtau
+dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
+@show dtau
 EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
 IterTime::Int = round(EndTime / dtau)
 dtau = EndTime / IterTime
@@ -431,8 +434,9 @@ if Proc == 1
 @show IterTime
 @show nPrint
 end
-IterTime = 5
-nPrint = 1
+
+IterTime=100
+nPrint=1
 
 DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 

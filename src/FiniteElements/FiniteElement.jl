@@ -254,8 +254,8 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   iDoF = 1
   for j = 1 : OrdPoly + 1
     for i = 1 : OrdPoly +1
-      ksi[1,iDoF] = xw[i]
-      ksi[2,iDoF] = xw[j]
+      ksi[1,iDoF] = xwCPU[i]
+      ksi[2,iDoF] = xwCPU[j]
       iDoF += 1
     end
   end

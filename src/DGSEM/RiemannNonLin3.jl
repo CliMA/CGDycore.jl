@@ -99,6 +99,7 @@ end
   Nz = @uniform @ndrange()[3]
 
   FLoc = @private eltype(F) (NUMV,)
+# FLoc = @localmem eltype(F) (N,M,TilesDim,NUMV)
 
   RhoPos = @uniform 1
   uPos = @uniform 2
@@ -112,21 +113,21 @@ end
     iFR = EF[2,IE]
     indL = GlobE[1,I,IE]
     indR = GlobE[2,I,IE]
-    RiemannSolver!(FLoc,view(U[Iz,K,indL,:],1:NUMV),view(U[Iz,K,indR,:],1:NUMV),
-      view(Aux[Iz,K,indL,:],1:NAUX),view(Aux[Iz,K,indR,:],1:NAUX),
-      view(NH[:,K,I,Iz,IE],1:3))
-    Surf = VolSurfH[K,I,Iz,IE] / w[i]  
-    FLoc[RhoPos] *= Surf
-    FLoc[uPos] *= Surf
-    FLoc[vPos] *= Surf
-    FLoc[wPos] *= Surf
-    FLoc[ThPos] *= Surf
+    RiemannSolver!(FLoc,view(U,Iz,K,indL,1:NUMV),view(U,Iz,K,indR,1:NUMV),
+      view(Aux,Iz,K,indL,1:NAUX),view(Aux,Iz,K,indR,1:NAUX),
+      view(NH,1:3,K,I,Iz,IE))
+    Surf = VolSurfH[K,I,Iz,IE] / w[I]  
+    FLoc[RhoPos] = FLoc[RhoPos] * Surf
+    FLoc[uPos] = FLoc[uPos] * Surf
+    FLoc[vPos] = FLoc[vPos] * Surf
+    FLoc[wPos] = FLoc[wPos] * Surf
+    FLoc[ThPos] = FLoc[ThPos] * Surf
     if iFL <= NF
-      @atomic :monotonic F[Iz,K,indL,RhoPos] -= FLoc[RhoPos]
-      @atomic :monotonic F[Iz,K,indL,uPos] -= FLoc[uPos]
-      @atomic :monotonic F[Iz,K,indL,vPos] -= FLoc[vPos]
-      @atomic :monotonic F[Iz,K,indL,wPos] -= FLoc[wPos]
-      @atomic :monotonic F[Iz,K,indL,ThPos] -= FLoc[ThPos]
+      @atomic :monotonic F[Iz,K,indL,RhoPos] += -FLoc[RhoPos]
+      @atomic :monotonic F[Iz,K,indL,uPos] += -FLoc[uPos]
+      @atomic :monotonic F[Iz,K,indL,vPos] += -FLoc[vPos]
+      @atomic :monotonic F[Iz,K,indL,wPos] += -FLoc[wPos]
+      @atomic :monotonic F[Iz,K,indL,ThPos] += -FLoc[ThPos]
     end  
     if iFR <= NF
       @atomic :monotonic F[Iz,K,indR,RhoPos] += FLoc[RhoPos]

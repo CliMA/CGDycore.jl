@@ -1,15 +1,17 @@
 #!/bin/bash
-julia --project Examples/DriverDG3SplitPar.jl \
+julia --project Examples/DriverDG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float32" \
   --NumberThreadGPU=512 \
   --NumberThreadTriGPU=32 \
   --NumV=5 \
+  --NumAux=2 \
   --NumTr=0 \
   --RhoVPos=0 \
   --RhoCPos=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
+  --InterfaceFluxDG="RiemannLMARS" \
   --State="Dry" \
   --Buoyancy=false \
   --Coriolis=true \
@@ -29,11 +31,13 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --SimDays=1 \
   --SimHours=0 \
   --SimSeconds=0 \
-  --vtkFileName="output/VTK/BaroWaveDrySphere/DG" \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --PrintSeconds=0 \
-  --PrintMinutes=20 \
-  --PrintHours=0 \
+  --PrintMinutes=0 \
+  --PrintHours=1 \
   --PrintDays=0 \
+  --OrdPrint=4 \
+  --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=1.5 \
@@ -48,6 +52,7 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --nPanel=10 \
   --H=30000.0 \
   --Discretization="DG" \
+  --FluxDG="KennedyGruber" \
   --OrdPoly=4 \
   --OrdPolyZ=4 \
   --HyperVisc=true \
