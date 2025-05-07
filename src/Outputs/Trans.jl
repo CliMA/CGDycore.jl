@@ -126,7 +126,7 @@ function TransSphereX!(XP,ksi,eta,zeta,X,CG,Global,::Grids.Tri)
   OrdPolyZ=CG.OrdPolyZ
   @. XP = 0
   @inbounds for k = 1 : OrdPolyZ + 1
-    XR = CG.PL2 * X[:,k,:]
+    XR = CG.PL2CPU * X[:,k,:]
     Fac = DG.Lagrange(zeta,CG.xwZCPU,k)
     for i = 1 : size(XR,1)
       XP .+= Fac * CG.phi[i](ksi,eta) * XR[i,:]   

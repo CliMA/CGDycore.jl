@@ -447,6 +447,7 @@ mutable struct DGTri{FT<:AbstractFloat,
     xwZCPU::Array{FT, 1}
     DSZ::AT2
     PL2::AT2
+    PL2CPU::Array{FT, 1}
     phi
     InterOutputH::AT2
     InterOutputV::AT2
@@ -734,6 +735,8 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   copyto!(ksiGPU,ksi)
   wGPU = KernelAbstractions.zeros(backend,FT,size(w))
   copyto!(wGPU,w)
+  PL2GPU = KernelAbstractions.zeros(backend,FT,size(PL2))
+  copyto!(PL2GPU,PL2)
 
   return DGTri{FT,
                typeof(wGPU),
@@ -762,6 +765,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     xwZ,
     xwZCPU,
     DSZ,
+    PL2GPU,
     PL2,
     phi,
     InterOutputH,
