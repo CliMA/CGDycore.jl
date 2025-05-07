@@ -730,11 +730,13 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   InterOutputV = KernelAbstractions.zeros(backend,FT,size(InterOutputVCPU))
   copyto!(InterOutputV,InterOutputVCPU)
   DoFN = 0
-  ksiGPU = KernelAbstractions.zeros(backend,FT,,size(ksi))
+  ksiGPU = KernelAbstractions.zeros(backend,FT,size(ksi))
   copyto!(ksiGPU,ksi)
+  wGPU = KernelAbstractions.zeros(backend,FT,size(w))
+  copyto!(wGPU,w)
 
   return DGTri{FT,
-               typeof(w),
+               typeof(wGPU),
                typeof(Dx1),
                typeof(Glob),
                typeof(GlobE)}(
@@ -744,7 +746,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     OrdPolyZ,
     NumG,
     NumI,
-    ksiGPu,
+    ksiGPU,
     Glob,
     GlobE,
     Dx1,
@@ -753,7 +755,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     DSx2,
     DVZ,
     DVZT,
-    w,
+    wGPU,
     wF,
     PosDoFE,
     wZ,
