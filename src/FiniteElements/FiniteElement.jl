@@ -447,7 +447,7 @@ mutable struct DGTri{FT<:AbstractFloat,
     xwZCPU::Array{FT, 1}
     DSZ::AT2
     PL2::AT2
-    PL2CPU::Array{FT, 1}
+    PL2CPU::Array{FT, 2}
     phi
     InterOutputH::AT2
     InterOutputV::AT2
