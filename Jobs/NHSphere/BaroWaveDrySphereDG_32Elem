@@ -11,8 +11,10 @@ julia --project Examples/DriverDG.jl \
   --RhoCPos=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
-  --InterfaceFluxDG="RiemannLMARS" \
   --State="Dry" \
+  --Discretization="DG" \
+  --FluxDG="KennedyGruberGrav" \
+  --InterfaceFluxDG="RiemannLMARS" \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \
@@ -28,13 +30,13 @@ julia --project Examples/DriverDG.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=1 \
+  --SimDays=10 \
   --SimHours=0 \
   --SimSeconds=0 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
@@ -51,8 +53,6 @@ julia --project Examples/DriverDG.jl \
   --nz=8 \
   --nPanel=10 \
   --H=30000.0 \
-  --Discretization="DG" \
-  --FluxDG="KennedyGruber" \
   --OrdPoly=4 \
   --OrdPolyZ=4 \
   --HyperVisc=true \

@@ -435,8 +435,6 @@ if Proc == 1
 @show nPrint
 end
 
-IterTime=100
-nPrint=1
 
 DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 
