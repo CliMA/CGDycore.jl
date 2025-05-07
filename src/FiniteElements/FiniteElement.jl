@@ -360,8 +360,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   end
   InterOutputV = KernelAbstractions.zeros(backend,FT,size(InterOutputVCPU))
   copyto!(InterOutputV,InterOutputVCPU)
-  @show size(InterOutputV)
-  @show size(InterOutputH)
   DoFN = 0
   DoFE = OrdPoly + 1
   DoF = DoFE * DoFE 
@@ -670,20 +668,6 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   copyto!(DSx1,Dx1CPU)
   DSx2 = KernelAbstractions.zeros(backend,FT,size(Dx2CPU))
   copyto!(DSx2,Dx2CPU)
-  @show Dx1[1,:]
-  @show Dx1[2,:]
-  @show Dx1[3,:]
-  @show Dx2[1,:]
-  @show Dx2[2,:]
-  @show Dx2[3,:]
-  @show DSx1[1,:]
-  @show DSx1[2,:]
-  @show DSx1[3,:]
-  @show DSx2[1,:]
-  @show DSx2[2,:]
-  @show DSx2[3,:]
-  @show w
-  @show wF
 
   Stencil = zeros(Int,0,0)
   NumG = n * Grid.NumFaces

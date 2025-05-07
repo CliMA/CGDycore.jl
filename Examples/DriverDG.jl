@@ -407,7 +407,7 @@ Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
 @show Global.Output.OrdPrint
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
-
+@show "nach Outputs.vtkStruct"
 
 
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)

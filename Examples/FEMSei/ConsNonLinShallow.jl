@@ -258,7 +258,7 @@ hout = zeros(Grid.NumFaces*NumRefine)
 Vort = zeros(Grid.NumFaces*NumRefine)
 FEMSei.ConvertScalar!(backend,FTB,hout,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
 FEMSei.ConvertScalarVelocitySp!(backend,FTB,VelSp,Uhu,RT,Uh,DG,Grid,FEMSei.Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-FEMSei.Vorticity!(backend,FTB,Vort,DG,Uhu,RT,Uh,DG,ND,Curl,Grid,Grid.Type,nQuad,FEMSei.Jacobi!,
+FEMSei.Vorticity!(backend,FTB,Vort,CG,Uhu,RT,Uh,DG,Grid,Grid.Type,nQuad,FEMSei.Jacobi!,
   vtkSkeletonMesh.RefineMidPoints)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, FileNameOutput, Proc, ProcNumber, [hout Vort VelSp] ,FileNumber,cName)
 

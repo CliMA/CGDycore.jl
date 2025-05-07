@@ -159,7 +159,6 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       celltypeQ = VTKCellTypes.VTK_TRIANGLE
       RefinePoints, RefineMidPoints = Grids.PrintPoints(Refine,Grids.Tri())
       NumRefine = size(RefinePoints,1)
-      @show NumRefine 
       for iF in 1 : NumFaces
         for i in 1 : NumRefine
           inds = Vector(1 : 3) .+ NumNodes

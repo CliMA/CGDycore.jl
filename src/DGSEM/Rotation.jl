@@ -88,6 +88,9 @@ end
         Rotate[3,2,K,ID,Iz,IF] * VCart[Iz,K,ind,3] +
         Rotate[3,3,K,ID,Iz,IF] * VCart[Iz,K,ind,4])
     end  
+    if Iz == Nz && K == M
+      VSp[Iz,K,ind,4] = eltype(VSp)(0)  
+    end  
     VSp[Iz,K,ind,5] = VCart[Iz,K,ind,5]
   end  
 end

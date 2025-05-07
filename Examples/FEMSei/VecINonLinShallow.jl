@@ -205,37 +205,9 @@ if Grid.Type == Grids.Quad()
   nQuadS = 2
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
-  nQuadM = 4
+  nQuadM = 6
   nQuadS = 4
 end
-#=
-for i = 3 : 3
-  @show "--------------------"  
-  DoF, DoFE, DoFF, phiB, _, points = FEMSei.ConstructCG(i,Grids.Tri())
-  @show DoF, DoFE, DoFF
-  for iDoF = 1 : length(phiB)
-    @show points[iDoF,:]  
-    @show phiB[iDoF]  
-  end    
-end
-CG = FEMSei.CGStruct{FTB}(backend,k+2,Grid.Type,Grid)
-@show CG.Glob[:,1]
-@show CG.Glob[:,2]
-@show CG.Glob[:,3]
-stop
-
-DG0 = FEMSei.DGStruct{FTB}(backend,0,Grid.Type,Grid)
-DG1 = FEMSei.DGStruct{FTB}(backend,1,Grid.Type,Grid)
-DG2 = FEMSei.DGStruct{FTB}(backend,2,Grid.Type,Grid)
-DG3 = FEMSei.DGStruct{FTB}(backend,3,Grid.Type,Grid)
-
-VecDG0 = FEMSei.VecDGStruct{FTB}(backend,0,Grid.Type,Grid)
-VecDG1 = FEMSei.VecDGStruct{FTB}(backend,1,Grid.Type,Grid)
-VecDG2 = FEMSei.VecDGStruct{FTB}(backend,2,Grid.Type,Grid)
-VecDG3 = FEMSei.VecDGStruct{FTB}(backend,3,Grid.Type,Grid)
-
-stop
-=#
 
 #Finite elements
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)

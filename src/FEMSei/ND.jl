@@ -109,7 +109,6 @@ function ConstructND(k,ElemType::Grids.Tri)
   @inbounds for i = 1 : DoF
     Curlphi[i,1] = -differentiate(phiB[i,1],x[2]) + differentiate(phiB[i,2],x[1])
   end
-  @show phiB
   return DoF, DoFE, DoFF, phiB, Curlphi
 end
 
