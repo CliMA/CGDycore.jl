@@ -30,13 +30,14 @@ julia --project Examples/DriverDG.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
+  --SimDays=1 \
   --SimHours=0 \
+  --SimMinutes=0 \
   --SimSeconds=0 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --PrintSeconds=0 \
-  --PrintMinutes=0 \
-  --PrintHours=12 \
+  --PrintMinutes=30 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
