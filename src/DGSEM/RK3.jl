@@ -18,10 +18,6 @@ function RK3(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
   @inbounds for i = 1 : IterTime
 
-    if Proc == 1
-      @show i
-    end  
-
     Fcn(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
     fac = FTB(1/3 * dtau)
     @. UNewI = UI + fac * FU
@@ -34,7 +30,7 @@ function RK3(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
     fac = FTB(dtau)
     @. UI = UI + fac * FU
 
-    if mod(i,nPrint) == 0
+    if mod(i,nPrint) == 0 || i == IterTime
       if Proc == 1
         @show "Print",i
       end  

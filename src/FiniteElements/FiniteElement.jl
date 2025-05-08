@@ -187,6 +187,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     DoFE::Int                    
     DoF::Int                    
     PosDoFE::IT2
+    PosDoFECPU::Array{Int, 2}
     OrdPoly::Int
     OrdPolyZ::Int
     Glob::IT2
@@ -370,6 +371,8 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     PosDoFECPU[i,3] = i + (DoFE - 1) *  DoFE
     PosDoFECPU[i,4] = 1 + (i - 1) * DoFE
   end  
+  PosDoFE = KernelAbstractions.zeros(backend,FT,size(PosDoFECPU))
+  copyto!(PosDoFE,PosDoFECPU)
 
 
 
@@ -382,6 +385,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     DoFN,
     DoFE,
     DoF,
+    PosDoFE,
     PosDoFECPU,
     OrdPoly,
     OrdPolyZ,
@@ -442,6 +446,7 @@ mutable struct DGTri{FT<:AbstractFloat,
     w::AT1
     wF::AT1
     PosDoFE::IT2
+    PosDoFECPU::Array{Int, 2}
     wZ::AT1
     xwZ::AT1
     xwZCPU::Array{FT, 1}
@@ -737,6 +742,8 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   copyto!(wGPU,w)
   PL2GPU = KernelAbstractions.zeros(backend,FT,size(PL2))
   copyto!(PL2GPU,PL2)
+  PosDoFEGPU = KernelAbstractions.zeros(backend,FT,size(PosDoFE))
+  copyto!(PosDoFEGPU,PosDoFE)
 
   return DGTri{FT,
                typeof(wGPU),
@@ -760,6 +767,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     DVZT,
     wGPU,
     wF,
+    PosDoFEGPU,
     PosDoFE,
     wZ,
     xwZ,

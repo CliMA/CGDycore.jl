@@ -18,7 +18,7 @@ julia --project Examples/DriverDG.jl \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \
-  --StrideDamp=20000 \
+  --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --VerticalDiffusion=false \
   --SurfaceFlux=false \
@@ -30,15 +30,15 @@ julia --project Examples/DriverDG.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=1 \
+  --SimDays=10 \
   --SimHours=0 \
   --SimMinutes=0 \
   --SimSeconds=0 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --PrintSeconds=0 \
-  --PrintMinutes=30 \
+  --PrintMinutes=0 \
   --PrintHours=0 \
-  --PrintDays=0 \
+  --PrintDays=1 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
