@@ -575,6 +575,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   elseif Method  == "Kubatko5"
     k = 5
     n = 34
+    ksi = zeros(2,n)
     N = zeros(2,n)
     wFR = zeros(n)
     for i = 1 : k + 1
@@ -583,7 +584,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
       N[:,i+2*(k+1)] = N3
     end  
 
-    ksi = [
+    ksiT = [
      -0.932469514203153  -1.000000000000000
      -0.661209386466264  -1.000000000000000
      -0.238619186083197  -1.000000000000000
@@ -617,7 +618,12 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
       0.154088161163644  -0.340874613330224
      -0.340874613330224   0.154088161163644
      -0.813213547833420  -0.340874613330224
-     -0.340874613330224  -0.813213547833420]'
+     -0.340874613330224  -0.813213547833420]
+    for i = 1 : n
+      w[1,i] = wT[i,1]
+      w[2,i] = wT[i,2[
+    end  
+
 
     w = [
       0.006658503841347
