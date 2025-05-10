@@ -30,6 +30,11 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   else
     @show "False GridType"
   end
+  if Proc == 1
+    @show Grid.NumFaces   
+    @show Grid.NumEdges   
+  end  
+
 
   if Decomp == "Hilbert"
     Parallels.HilbertFaceSphere!(Grid)

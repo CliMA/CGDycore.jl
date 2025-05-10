@@ -24,14 +24,14 @@
   if ID <= NQ
     ind = Glob[ID,IF]
     if Iz > 1    
-      for iAux = 1 : NAUX  
+      @unroll for iAux = 1 : NAUX  
         AuxL[iAux] = Aux[Iz-1,M,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
         VLL[iv] = U[Iz-1,M,ind,iv]
       end  
     else
-      for iAux = 1 : NAUX  
+      @unroll for iAux = 1 : NAUX  
         AuxL[iAux] = Aux[Iz,1,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
@@ -42,7 +42,7 @@
       VLL[wPos] = -VLL[wPos]
     end  
     if Iz < Nz
-      for iAux = 1 : NAUX  
+      @unroll for iAux = 1 : NAUX  
         AuxR[iAux] = Aux[Iz,1,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  

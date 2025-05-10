@@ -307,7 +307,7 @@ else
 end  
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
-DGMethod = "Kubatko2"
+DGMethod = "Kubatko5"
 (DG, Metric, Exchange, Global) = DyCore.InitSphereDG(backend,FTB,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,Topography,Model,
   Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 

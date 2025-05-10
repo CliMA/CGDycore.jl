@@ -2,7 +2,7 @@
 julia --project Examples/DriverDG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
+  --NumberThreadGPU=256 \
   --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumAux=2 \
@@ -39,7 +39,7 @@ julia --project Examples/DriverDG.jl \
   --PrintMinutes=30 \
   --PrintHours=0 \
   --PrintDays=0 \
-  --OrdPrint=2 \
+  --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
@@ -51,7 +51,7 @@ julia --project Examples/DriverDG.jl \
   --StretchType="" \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
-  --RefineLevel=4 \
+  --RefineLevel=3 \
   --nz=8 \
   --nPanel=10 \
   --H=30000.0 \
