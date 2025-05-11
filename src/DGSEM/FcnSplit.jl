@@ -180,14 +180,14 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   group = (DoF,NzG,1)
   ndrange = (DoF,M*Nz,NF)
   KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHTriKernel!(backend,group)
-  @time KFluxSplitVolumeNonLinHKernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DSx1,DG.DSx2,DG.Glob,
+  KFluxSplitVolumeNonLinHKernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DSx1,DG.DSx2,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
   NDG = min(div(NumberThreadGPU,M*Nz),DoF)
   group = (M,Nz,NDG,1)
   ndrange = (M,Nz,DoF,NF)
   KFluxSplitVolumeNonLinV3Kernel! = FluxSplitVolumeNonLinV3Kernel!(backend,group)
-  @time KFluxSplitVolumeNonLinV3Kernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DVZT,DG.Glob,
+  KFluxSplitVolumeNonLinV3Kernel!(Model.FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DVZT,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(reshape(CacheU[:,:,:,1:NV+NAUX],
@@ -197,13 +197,13 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   group = (DoFE,M,NzG,1)
   ndrange = (DoFE,M,Nz,NE)
   KRiemanNonLinH3Kernel! = RiemanNonLinH3Kernel!(backend,group)
-  @time KRiemanNonLinH3Kernel!(Model.RiemannSolver,FV,V,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
+  KRiemanNonLinH3Kernel!(Model.RiemannSolver,FV,V,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
     Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange) 
   DoFG = min(div(NumberThreadGPU,Nz+1),DoF)
   group = (Nz+1,DoFG,1)
   ndrange = (Nz+1,DoF,NF)
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
-  @time KRiemanNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,FV,V,Aux,DG.Glob,Metric.NV,
+  KRiemanNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,FV,V,Aux,DG.Glob,Metric.NV,
     Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
 
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)

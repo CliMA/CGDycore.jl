@@ -412,14 +412,17 @@ Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.O
 
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
 
+
 # Simulation time
 GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
 if dtau == 0.0
   dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
 end  
-@show dtau
-dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
-@show dtau
+if nz > 1
+  @show dtau
+  dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
+  @show dtau
+end  
 EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
 IterTime::Int = round(EndTime / dtau)
 dtau = EndTime / IterTime

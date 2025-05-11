@@ -13,6 +13,7 @@ julia --project Examples/DriverDG.jl \
   --Equation="CompressibleShallow" \
   --State="ShallowWater" \
   --InterfaceFluxDG="RiemannLMARS" \
+  --FluxDG="KennedyGruber" \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \
@@ -28,17 +29,17 @@ julia --project Examples/DriverDG.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=6 \
+  --SimDays=10 \
   --SimHours=0 \
   --SimSeconds=0 \
   --vtkFileName="output/VTK/Galewsky/DGTri" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=6 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=false \
-  --OrdPrint=1 \
+  --OrdPrint=4 \
   --OrdPrintZ=0 \
   --dtau=30.0 \
   --IntMethod="Rosenbrock" \
@@ -47,7 +48,7 @@ julia --project Examples/DriverDG.jl \
   --Stretch=true \
   --StretchType="" \
   --GridForm="Spherical" \
-  --RefineLevel=6 \
+  --RefineLevel=4 \
   --GridType="TriangularSphere" \
   --nz=1 \
   --nPanel=30 \
