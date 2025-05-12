@@ -121,7 +121,7 @@ function NumberingFemDGTri(Grid,DoF,DoFE,PosDoFE,Proc)
       else  
         iEB += 1
         for iDoFE = 1 : DoFE
-          GlobLocE[2,iDoFE] = iDoFE + (iEB - 1) * DoFE + Grid.NumFaces * DoF
+          GlobLocE[2,iDoFE] = DoFE - iDoFE + 1 + (iEB - 1) * DoFE + Grid.NumFaces * DoF
         end
       end  
     end  

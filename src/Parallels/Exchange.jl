@@ -139,10 +139,6 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
               Side = 2
             end    
             push!(LocTemp,FE.PosDoFECPU[k,FEE] + (F - 1) * DoF)
-#           push!(LocTemp,FE.GlobE[Side,k,iE])
-#           if Proc == 1
-#             @show FE.PosDoFECPU[k,FEE] + (F - 1) * DoF,FE.GlobE[Side,k,iE]  
-#           end  
           end  
         end
       end  
@@ -182,18 +178,13 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
             push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
           elseif Discretization == "DG" 
             if SubGrid.Edges[iE].F[1] < SubGrid.Edges[iE].F[2]
-              F = SubGrid.Edges[iE].F[1]
-              FEE = SubGrid.Edges[iE].FE[1]
-              Side = 2
-              push!(LocTemp,FE.GlobE[Side,OrdEdge - k + 1,iE])
+              k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + OrdEdge - k + 1
+              k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + k 
+              push!(LocTemp,k1)
             else
-              F = SubGrid.Edges[iE].F[2]
-              FEE = SubGrid.Edges[iE].FE[2]
-              Side = 1
-              push!(LocTemp,FE.GlobE[Side,k,iE])
+              k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + k 
+              push!(LocTemp,k1)
             end    
-#           push!(LocTemp,FE.PosDoFECPU[k,FEE] + (F - 1) * DoF)
-#           push!(LocTemp,k + (iEB - 1) * OrdEdge + SubGrid.NumFaces * DoF)
           end
         end
       end
