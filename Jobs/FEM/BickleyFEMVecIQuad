@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/FEMSei/VecINonLinShallowCart.jl \
-  --Problem="BickleyJet1" \
+  --Problem="BickleyJet" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --Flat=false \

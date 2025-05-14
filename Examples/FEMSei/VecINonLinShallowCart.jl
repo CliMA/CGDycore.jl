@@ -211,10 +211,11 @@ end
 
 #Finite elements
 DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
+CG = FEMSei.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
 ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
-ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEMSei.JacobiCart!)
+ModelFEM = FEMSei.ModelFEM(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,FEMSei.JacobiCart!)
 
 pPosS = ModelFEM.pPosS
 pPosE = ModelFEM.pPosE
