@@ -1,77 +1,141 @@
-@kernel inbounds = true function RiemanNonLinKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
-  @Const(EF),@Const(FTE),@Const(NH),@Const(T1H),@Const(T2H),@Const(VolSurfH),
-  @Const(w), NF, ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+@kernel inbounds = true function RiemanNonLinV3Kernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
+  @Const(NV),@Const(VolSurfV),
+  @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
 
-  _,_,I,iE = @index(Local, NTuple)
-  Iz,K,_,IE = @index(Global, NTuple)
+  Iz,iD,_  = @index(Local, NTuple)
+  Iz,ID,IF = @index(Global, NTuple)
 
-  N = @uniform @groupsize()[1]
-  TilesDim = @uniform @groupsize()[2]
 
-  NE = @uniform @ndrange()[2]
+  Nz = @uniform @ndrange()[1]
+  NQ = @uniform @ndrange()[2]
 
-  VLL = @localmem eltype(F) (N,TilesDim,NV)
-  VRR = @localmem eltype(F) (N,TilesDim,NV)
-  FLoc = @private eltype(F) (NV,)
-  FE = @private eltype(F) (NV,)
+  VLL = @private eltype(F) (NUMV,)
+  VRR = @private eltype(F) (NUMV,)
+  AuxL = @private eltype(F) (NAUX,)
+  AuxR = @private eltype(F) (NAUX,)
+  FLoc = @private eltype(F) (NUMV,)
 
-  hPos = @uniform 1
+  RhoPos = @uniform 1
   uPos = @uniform 2
   vPos = @uniform 3
   wPos = @uniform 4
+  ThPos = @uniform 5
+
+  if ID <= NQ
+    ind = Glob[ID,IF]
+    if Iz > 1    
+      @unroll for iAux = 1 : NAUX  
+        AuxL[iAux] = Aux[Iz-1,M,ind,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        VLL[iv] = U[Iz-1,M,ind,iv]
+      end  
+    else
+      @unroll for iAux = 1 : NAUX  
+        AuxL[iAux] = Aux[Iz,1,ind,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        VLL[iv] = U[Iz,1,ind,iv]
+      end  
+      VLL[uPos] = -VLL[uPos]
+      VLL[vPos] = -VLL[vPos]
+      VLL[wPos] = -VLL[wPos]
+    end  
+    if Iz < Nz
+      @unroll for iAux = 1 : NAUX  
+        AuxR[iAux] = Aux[Iz,1,ind,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        VRR[iv] = U[Iz,1,ind,iv]
+      end  
+    else  
+      @unroll for iAux = 1 : NAUX  
+        AuxR[iAux] = Aux[Iz-1,M,ind,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        VRR[iv] = U[Iz-1,M,ind,iv]
+      end  
+      VRR[uPos] = -VRR[uPos]
+      VRR[vPos] = -VRR[vPos]
+      VRR[wPos] = -VRR[wPos]
+    end
+
+    @views RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,NV[:,ID,Iz,IF])
+
+    Surf = VolSurfV[ID,Iz,IF] / w[1]  
+    FLoc[RhoPos] *= Surf
+    FLoc[uPos] *= Surf
+    FLoc[vPos] *= Surf
+    FLoc[wPos] *= Surf
+    FLoc[ThPos] *= Surf
+    if Iz > 1 
+      @atomic :monotonic F[Iz-1,M,ind,RhoPos] -= FLoc[RhoPos]
+      @atomic :monotonic F[Iz-1,M,ind,uPos] -= FLoc[uPos] 
+      @atomic :monotonic F[Iz-1,M,ind,vPos] -= FLoc[vPos]
+      @atomic :monotonic F[Iz-1,M,ind,wPos] -= FLoc[wPos]
+      @atomic :monotonic F[Iz-1,M,ind,ThPos] -= FLoc[ThPos]
+    end  
+    if Iz < Nz
+      @atomic :monotonic F[Iz,1,ind,RhoPos] += FLoc[RhoPos]
+      @atomic :monotonic F[Iz,1,ind,uPos] += FLoc[uPos]
+      @atomic :monotonic F[Iz,1,ind,vPos] += FLoc[vPos]
+      @atomic :monotonic F[Iz,1,ind,wPos] += FLoc[wPos]
+      @atomic :monotonic F[Iz,1,ind,ThPos] += FLoc[ThPos]
+    end  
+  end  
+end
+
+@kernel inbounds = true function RiemanNonLinH3Kernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
+  @Const(EF),@Const(FTE),@Const(NH),@Const(VolSurfH),
+  @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
+
+  _,_,iz, = @index(Local, NTuple)
+  I,K,Iz,IE = @index(Global, NTuple)
+
+  N = @uniform @groupsize()[1]
+  M = @uniform @groupsize()[2]
+  TilesDim = @uniform @groupsize()[3]
+
+  Nz = @uniform @ndrange()[3]
+
+  FLoc = @private eltype(F) (NUMV,)
+# FLoc = @localmem eltype(F) (N,M,TilesDim,NUMV)
+
+  RhoPos = @uniform 1
+  uPos = @uniform 2
+  vPos = @uniform 3
+  wPos = @uniform 4
+  ThPos = @uniform 5
 
 
-  if IE <= NE
+  if Iz <= Nz
     iFL = EF[1,IE]
     iFR = EF[2,IE]
     indL = GlobE[1,I,IE]
     indR = GlobE[2,I,IE]
-    VLL[I,iE,hPos] = U[1,1,indL,hPos]
-    VLL[I,iE,uPos] = NH[1,1,I,1,IE] * U[1,1,indL,uPos] +
-      NH[2,1,I,1,IE] * U[1,1,indL,vPos] +
-      NH[3,1,I,1,IE] * U[1,1,indL,wPos]
-    VLL[I,iE,vPos] = T1H[1,1,I,1,IE] * U[1,1,indL,uPos] +
-      T1H[2,1,I,1,IE] * U[1,1,indL,vPos] +
-      T1H[3,1,I,1,IE] * U[1,1,indL,wPos]
-    VLL[I,iE,wPos] = T2H[1,1,I,1,IE] * U[1,1,indL,uPos] +
-      T2H[2,1,I,1,IE] * U[1,1,indL,vPos] +
-      T2H[3,1,I,1,IE] * U[1,1,indL,wPos]
-    VRR[I,iE,hPos] = U[1,1,indR,hPos]
-    VRR[I,iE,uPos] = NH[1,1,I,1,IE] * U[1,1,indR,uPos] +
-      NH[2,1,I,1,IE] * U[1,1,indR,vPos] +
-      NH[3,1,I,1,IE] * U[1,1,indR,wPos]
-    VRR[I,iE,vPos] = T1H[1,1,I,1,IE] * U[1,1,indR,uPos] +
-      T1H[2,1,I,1,IE] * U[1,1,indR,vPos] +
-      T1H[3,1,I,1,IE] * U[1,1,indR,wPos]
-    VRR[I,iE,wPos] = T2H[1,1,I,1,IE] * U[1,1,indR,uPos] +
-      T2H[2,1,I,1,IE] * U[1,1,indR,vPos] +
-      T2H[3,1,I,1,IE] * U[1,1,indR,wPos]
-    @views RiemannSolver!(FLoc,VLL[I,iE,:],VRR[I,iE,:],
-      Aux[1,1,indL,:],Aux[1,1,indR,:])
-
-    FE[hPos] =  FLoc[hPos]
-    FE[uPos] =  NH[1,1,I,1,IE] * FLoc[uPos] +
-      T1H[1,1,I,1,IE] * FLoc[vPos] + T2H[1,1,I,1,IE] * FLoc[wPos]
-    FE[vPos] =  NH[2,1,I,1,IE] * FLoc[uPos] +
-      T1H[2,1,I,1,IE] * FLoc[vPos] + T2H[2,1,I,1,IE] * FLoc[wPos]
-    FE[wPos] =  NH[3,1,I,1,IE] * FLoc[uPos] +
-      T1H[3,1,I,1,IE] * FLoc[vPos] + T2H[3,1,I,1,IE] * FLoc[wPos]
-    Surf = VolSurfH[1,I,1,IE] / w  
-    FE[hPos] *= Surf
-    FE[uPos] *= Surf
-    FE[vPos] *= Surf
-    FE[wPos] *= Surf
+    RiemannSolver!(FLoc,view(U,Iz,K,indL,1:NUMV),view(U,Iz,K,indR,1:NUMV),
+      view(Aux,Iz,K,indL,1:NAUX),view(Aux,Iz,K,indR,1:NAUX),
+      view(NH,1:3,K,I,Iz,IE))
+    Surf = VolSurfH[K,I,Iz,IE] / w[I]  
+    FLoc[RhoPos] = FLoc[RhoPos] * Surf
+    FLoc[uPos] = FLoc[uPos] * Surf
+    FLoc[vPos] = FLoc[vPos] * Surf
+    FLoc[wPos] = FLoc[wPos] * Surf
+    FLoc[ThPos] = FLoc[ThPos] * Surf
     if iFL <= NF
-      @atomic :monotonic F[1,1,indL,hPos] -= FE[hPos]
-      @atomic :monotonic F[1,1,indL,uPos] -= FE[uPos]
-      @atomic :monotonic F[1,1,indL,vPos] -= FE[vPos]
-      @atomic :monotonic F[1,1,indL,wPos] -= FE[wPos]
+      @atomic :monotonic F[Iz,K,indL,RhoPos] += -FLoc[RhoPos]
+      @atomic :monotonic F[Iz,K,indL,uPos] += -FLoc[uPos]
+      @atomic :monotonic F[Iz,K,indL,vPos] += -FLoc[vPos]
+      @atomic :monotonic F[Iz,K,indL,wPos] += -FLoc[wPos]
+      @atomic :monotonic F[Iz,K,indL,ThPos] += -FLoc[ThPos]
     end  
     if iFR <= NF
-      @atomic :monotonic F[1,1,indR,hPos] += FE[hPos]
-      @atomic :monotonic F[1,1,indR,uPos] += FE[uPos]
-      @atomic :monotonic F[1,1,indR,vPos] += FE[vPos]
-      @atomic :monotonic F[1,1,indR,wPos] += FE[wPos]
+      @atomic :monotonic F[Iz,K,indR,RhoPos] += FLoc[RhoPos]
+      @atomic :monotonic F[Iz,K,indR,uPos] += FLoc[uPos]
+      @atomic :monotonic F[Iz,K,indR,vPos] += FLoc[vPos]
+      @atomic :monotonic F[Iz,K,indR,wPos] += FLoc[wPos]
+      @atomic :monotonic F[Iz,K,indR,ThPos] += FLoc[ThPos]
     end  
   end  
 end
+

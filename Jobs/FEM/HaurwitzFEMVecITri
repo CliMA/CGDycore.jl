@@ -2,7 +2,6 @@
 julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --Problem="HaurwitzSphere" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
   --RefineLevel=7 \

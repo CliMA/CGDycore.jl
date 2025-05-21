@@ -2,15 +2,16 @@
 julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
-  --nPanel=50 \
+  --nPanel=90 \
   --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=1 \
   --SimHours=0 \
-  --PrintHours=6 \
+  --SimMinutes=0 \
+  --PrintHours=0 \
+  --PrintMinutes=20 \
   --PrintSeconds=0 \
   --vtkFileName="Galewsky/ConsQuad" \
   --RefineOutput=1 \

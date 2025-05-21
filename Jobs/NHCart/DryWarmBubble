@@ -1,24 +1,27 @@
 #!/bin/bash
-julia --project Examples/testNHCart.jl \
+julia --project Examples/Driver.jl \
   --Problem="WarmBubble2DXCart" \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
   --NumTr=0 \
   --Equation="CompressibleShallow" \
-  --State="DryInternalEnergy" \
+  --State="Dry" \
   --Damping=false \
   --Upwind=true \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=10 \
+  --PrintTime=100 \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --dtau=.2 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   --TopoS="" \
+  --GridForm="Cartesian" \
+  --OrdPrint=3 \
+  --vtkFileName="output/VTK/WarmBubble/CGCart" \
   `#Topography `        \
   --H=10000.0 \
   --Lx=20000.0 \

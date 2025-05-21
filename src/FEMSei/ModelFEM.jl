@@ -1,4 +1,4 @@
-mutable struct ModelFEM
+mutable struct ModelFEMVecI
   ND
   RT
   CG
@@ -13,37 +13,7 @@ mutable struct ModelFEM
   Lapl::AbstractMatrix
 end
 
-function ModelFEM(backend,FTB,DG,Grid,nQuad,Jacobi)
-  pPosS = 1
-  pPosE = DG.NumG
-  uPosS = 0
-  uPosE = 0
-  ND = nothing
-  RT = nothing
-  CG = nothing
-  Div = spzeros(0,0)
-  Grad = spzeros(0,0)
-  Curl = spzeros(0,0)
-  Lapl = FEMSei.LaplMatrix(backend,FTB,DG,DG,Grid,nQuad,Jacobi)
-  DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuad,Jacobi)
-  DG.LUM = lu(DG.M)
-  return ModelFEM(
-    ND,
-    RT,
-    CG,
-    DG,
-    pPosS,
-    pPosE,
-    uPosS,
-    uPosE,
-    Div,
-    Grad,
-    Curl,
-    Lapl,
-  )  
-end
-
-function ModelFEM(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+function ModelFEMVecI(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
   pPosS = 1
   pPosE = DG.NumG
   uPosS = pPosE + 1
@@ -62,7 +32,7 @@ function ModelFEM(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
   CG.LUM = lu(CG.M)
   Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuadS,Jacobi)
   Lapl = spzeros(0,0)
-  return ModelFEM(
+  return ModelFEMVecI(
     ND,
     RT,
     CG,
@@ -71,6 +41,65 @@ function ModelFEM(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
     pPosE,
     uPosS,
     uPosE,
+    Div,
+    Grad,
+    Curl,
+    Lapl,
+  )  
+end
+
+mutable struct ModelFEMCons
+  ND
+  RT
+  CG
+  DG
+  VecDG
+  hPosS::Int
+  hPosE::Int
+  huPosS::Int
+  huPosE::Int
+  uPosVec::Int
+  Div::AbstractMatrix
+  Grad::AbstractMatrix
+  Curl::AbstractMatrix
+  Lapl::AbstractMatrix
+end
+
+function ModelFEMCons(backend,FTB,ND,RT,CG,DG,VecDG,Grid,nQuadM,nQuadS,Jacobi)
+  hPosS = 1
+  hPosE = DG.NumG
+  huPosS = hPosE + 1
+  huPosE = hPosE + RT.NumG
+  uPosVec = VecDG.NumG
+
+  DG.M = FEMSei.MassMatrix(backend,FTB,DG,Grid,nQuadM,Jacobi)
+  DG.LUM = lu(DG.M)
+
+  VecDG.M = FEMSei.MassMatrix(backend,FTB,VecDG,Grid,nQuadM,Jacobi)
+  VecDG.LUM = lu(VecDG.M)
+
+  RT.M = FEMSei.MassMatrix(backend,FTB,RT,Grid,nQuadM,Jacobi)
+  RT.LUM = lu(RT.M)
+  Div = FEMSei.DivMatrix(backend,FTB,RT,DG,Grid,nQuadS,Jacobi)
+  Grad = -Div'
+
+  ND.M = FEMSei.MassMatrix(backend,FTB,ND,Grid,nQuadM,Jacobi)
+  ND.LUM = lu(ND.M)
+  CG.M = FEMSei.MassMatrix(backend,FTB,CG,Grid,nQuadM,Jacobi)
+  CG.LUM = lu(CG.M)
+  Curl = FEMSei.CurlMatrix(backend,FTB,ND,DG,Grid,nQuadS,Jacobi)
+  Lapl = spzeros(0,0)
+  return ModelFEMCons(
+    ND,
+    RT,
+    CG,
+    DG,
+    VecDG,
+    hPosS,
+    hPosE,
+    huPosS,
+    huPosE,
+    uPosVec,
     Div,
     Grad,
     Curl,

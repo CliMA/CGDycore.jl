@@ -1,15 +1,19 @@
 #!/bin/bash
-julia --project Examples/DriverDG3SplitPar.jl \
+julia --project Examples/DriverDG.jl \
   --Problem="HillAgnesiXCart" \
   --Discretization="DG" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
+  --NumAux=2 \
   --NumTr=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
   --State="Dry" \
-  --Buoyancy=true \
+  --Discretization="DG" \
+  --FluxDG="KennedyGruberGrav" \
+  --InterfaceFluxDG="RiemannLMARS" \
+  --Buoyancy=false \
   --Damping=true \
   --StrideDamp=10000 \
   --Relax=1.0e-2 \
@@ -20,6 +24,8 @@ julia --project Examples/DriverDG3SplitPar.jl \
   --SimMinutes=30 \
   --PrintSeconds=60 \
   --vtkFileName="output/VTK/HillAgnesi/DGCartFloat64" \
+  --OrdPrint=4 \
+  --OrdPrintZ=4 \
   --Curl=false \
   --dtau=.2 \
   --IntMethod="RungeKutta" \

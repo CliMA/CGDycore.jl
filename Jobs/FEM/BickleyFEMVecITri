@@ -1,8 +1,9 @@
 #!/bin/bash
-julia --project Examples/FEMSei/VecINonLinShallowCart.jl \
+julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --Problem="BickleyJet" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
+  --GridForm="Cartesian" \
   --GridType="Tri" \
   --Flat=false \
   --nx=60 \

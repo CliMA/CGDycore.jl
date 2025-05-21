@@ -1,5 +1,5 @@
-#TimeStepper for Vectorinvariant Nonlinear Shallow Water Equations
-function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)
+#TimeStepper for Vectorinvariant Linear Shallow Water Equations
+function TimeStepper(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)
 
   pPosS = Model.pPosS
   pPosE = Model.pPosE
@@ -81,117 +81,6 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,
     FileNumber,cName)
 end
 
-#TimeStepper for Conservative Nonlinear Shallow Water Equations
-function TimeStepperCons(backend,FTB,U,dtau,Fcn,Model,Grid,nQuad,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)
-time = 0.0
-
-  hPosS = Model.hPosS # hPosS
-  hPosE = Model.hPosE # hPosE
-  huPosS = Model.huPosS # huPosS
-  huPosE = Model.huPosE # huPosE
-  uPosVec = Model.uPosVec
-  @views Uh = U[hPosS:hPosE]
-  @views Uhu = U[huPosS:huPosE]
-
-  UNew = zeros(FTB,huPosE)
-  @views UNewh = UNew[hPosS:hPosE]  
-  @views UNewhu = UNew[huPosS:huPosE]  
-  F =  zeros(FTB,huPosE)
-  @views Fh = F[hPosS:hPosE]  
-  @views Fhu = F[huPosS:huPosE]  
-  uRec = zeros(FTB,uPosVec)
-
-  if Grid.Form == "Sphere"
-    Flat = false
-  else
-    Flat = true
-  end  
-  vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
-  
-  # Output of the initial values
-  FileNumber = 0
-  NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
-  if Grid.Form == "Sphere"
-    VelOut = zeros(Grid.NumFaces*NumRefine,2)
-    hout = zeros(Grid.NumFaces*NumRefine)
-    Vort = zeros(Grid.NumFaces*NumRefine)
-    cName = ["h";"Vort";"uS";"vS"]
-  else  
-    VelOut = zeros(Grid.NumFaces*NumRefine,3)
-    hout = zeros(Grid.NumFaces*NumRefine)
-    Vort = zeros(Grid.NumFaces*NumRefine)
-    cName = ["h";"Vort";"uC";"vC";"wC"]
-  end  
-
-  ConvertScalar!(backend,FTB,hout,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  if Grid.Form == "Sphere"
-    ConvertScalarVelocitySp!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  else
-    ConvertScalarVelocityCart!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-  end
-  Vorticity!(backend,FTB,Vort,Model.CG,Uhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuad,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],FileNumber,cName)
-
-  for i = 1 : nAdveVel
-    @show i,(i-1)*dtau/3600 
-    @. F = 0  
-    # Tendency h
-    DivRhs!(backend,FTB,Fh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.DG.LUM,Fh)
-    # Tendency hu
-    InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,Uh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    DivMomentumVector!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-    if Grid.Form == "Sphere"
-      CrossRhs!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    end
-    GradHeightSquared!(backend,FTB,Fhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.RT.LUM,Fhu)
-    @. UNew = U + 1 / 3 * dtau * F
-
-    @. F = 0  
-    # Tendency h
-    DivRhs!(backend,FTB,Fh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.DG.LUM,Fh)
-    # Tendency hu
-    InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,UNewh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    DivMomentumVector!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-    if Grid.Form == "Sphere"
-      CrossRhs!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    end
-    GradHeightSquared!(backend,FTB,Fhu,Model.RT,UNewh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.RT.LUM,Fhu)
-    @. UNew = U + 0.5 * dtau * F
-
-    @. F = 0  
-    # Tendency h
-    DivRhs!(backend,FTB,Fh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.DG.LUM,Fh)
-    # Tendency hu
-    InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,UNewh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    DivMomentumVector!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-    if Grid.Form == "Sphere"
-      CrossRhs!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    end
-    GradHeightSquared!(backend,FTB,Fhu,Model.RT,UNewh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.RT.LUM,Fhu)
-    @. U = U + dtau * F
-      
-    # Output
-    if mod(i,nPrint) == 0 
-      FileNumber += 1
-      @show "Print",i
-      ConvertScalar!(backend,FTB,hout,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      if Grid.Form == "Sphere"
-        ConvertScalarVelocitySp!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      else
-        ConvertScalarVelocityCart!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-      end
-      Vorticity!(backend,FTB,Vort,Model.CG,Uhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuad,Jacobi!,vtkSkeletonMesh.RefineMidPoints)
-      Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],FileNumber,cName)
-    end
-  end
-  @show "finished"
-  end
 function TimeStepperEul(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,GridType,Proc,ProcNumber)
 
   pPosS = Model.pPosS

@@ -1,3 +1,18 @@
+function AddVerticalGrid(nz::Int,H::Float64)
+  zP=zeros(nz);
+  z=zeros(nz+1);
+  dzeta = zeros(nz)
+  @. dzeta = H/nz;
+  for i=2:nz+1
+    z[i] = z[i-1] + dzeta[i-1]
+  end
+  for i=1:nz
+    dzeta[i] = z[i+1] - z[i]
+    zP[i] = 0.5 * (z[i] + z[i+1])
+  end
+  return z, zP, dzeta
+end
+
 function AddVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64)
   Grid.zP=zeros(nz);
   z=zeros(nz+1);

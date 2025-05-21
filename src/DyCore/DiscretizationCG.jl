@@ -27,12 +27,15 @@ function DiscretizationCG(backend,FT,Jacobi,CG::FiniteElements.CGQuad,Exchange,G
     F[4,3,iF] = Grid.Faces[iF].P[4].z  
   end  
   copyto!(FGPU,F)
+  @show Global.Grid.Form
   if Global.Grid.Form == "Sphere"
     Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,
       Grid.z,zs,Grid.Rad,Global.Model.Equation)
   else
 #   Grids.JacobiDG3GPU!(Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
-    Grids.JacobiCartDG3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
+#   Grids.JacobiCartDG3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,Grid.z,zs)
+    Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+      Metric.Rotate,CG,FGPU,Grid.z,zs,Grid.Rad,Grid.Type)
   end  
 
   MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)

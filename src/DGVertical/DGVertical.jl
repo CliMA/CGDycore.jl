@@ -1,4 +1,4 @@
-module DGSEM
+module DGVertical
 
 import ..DG
 import ..Parallels
@@ -16,12 +16,12 @@ using KernelAbstractions.Extras: @unroll
 
 
 include("LocalFlux.jl")
-include("Rotation.jl")
+#include("Rotation.jl")
 include("RiemannNonLin.jl")
 include("FluxVolumeNonLin.jl")
-include("PresSh.jl")
-include("Source.jl")
+#include("PresSh.jl")
+#include("Source.jl")
 include("Fcn.jl")
-include("RK3.jl")
+#include("RK3.jl")
 
 end

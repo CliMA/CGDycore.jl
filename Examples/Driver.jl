@@ -277,7 +277,7 @@ if GridForm == "Cartesian"
               P3=P3,
               P4=P4,
               )
-  Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+  Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
 else  
   ns=50
   if RadEarth == 0.0
@@ -314,8 +314,8 @@ if GridForm == "Cartesian"
     @show "InitCart"
   end  
   Trans = Outputs.TransCartX!
-  (CG, Metric, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,H,Topography,Model,
-    Phys,TopoProfile,Exchange,Grid,ParallelCom)
+  (CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,OrdPrint,H,
+    Topography,Model,Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 else  
   if ParallelCom.Proc == 1  
     @show "InitSphere"

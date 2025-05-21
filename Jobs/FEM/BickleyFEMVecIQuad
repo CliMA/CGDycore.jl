@@ -1,12 +1,12 @@
 #!/bin/bash
-julia --project Examples/FEMSei/VecINonLinShallowCart.jl \
+julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --Problem="BickleyJet" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
+  --GridForm="Cartesian" \
+  --GridType="Quad" \
   --Flat=false \
   --nx=50 \
   --ny=50 \
-  --GridType="Quad" \
   --Lx=12.566370614359172 \
   --Ly=12.566370614359172 \
   --x0=-6.283185307179586 \

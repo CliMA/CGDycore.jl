@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, DGSEM, GPU, DyCore
+  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGVertical, GPU, DyCore
 using MPI
 using Base
 using CUDA
@@ -264,6 +264,44 @@ elseif Equation == "CompressibleDeep"
   Model.Equation = Models.CompressibleDeep()
 end
 
+z,zP,dzeta = Grids.AddVerticalGrid(nz,H)
+
+@show z
+
+DG1 = FiniteElements.DG1{FTB}(backend,OrdPolyZ,OrdPrintZ)
+
+X = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz)
+dXdxI = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz)
+J = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz)
+
+Grids.JacobiDG1GPU!(X,dXdxI,J,DG1,z)
+@show J
+@show size(X)
+@show X[:,1]
+@show X[:,2]
+NumV = 3
+NumAux = 2
+@show dXdxI
+U = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz,NumV)
+Profile = Examples.StratifiedExample()(Param,Phys)
+time = 0.0
+for iz = 1 : nz
+  for K = 1 : DG1.OrdPolyZ + 1
+    xS = SVector{3}(0.0,0.0,X[K,iz])
+    RhoP,_,_,_,ThP= Profile(xS,time)
+    U[K,iz,1] = RhoP
+    U[K,iz,3] = RhoP * ThP
+  end
+end  
+
+F = similar(U)
+CacheU = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz,NumAux)
+Pressure, dPresdRhoTh, dPresdRho = Models.DryDG()(Phys)
+
+DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys)
+
+
+#=
 # Grid
 if GridForm == "Cartesian"
   Boundary = Grids.Boundary()
@@ -451,4 +489,4 @@ end
 
 
 DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
-
+=#

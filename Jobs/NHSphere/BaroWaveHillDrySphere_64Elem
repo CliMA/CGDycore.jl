@@ -1,9 +1,9 @@
 #!/bin/bash
-julia --project Examples/testNHSphere.jl \
+julia --project Examples/Driver.jl \
   --Problem="BaroWaveHillDrySphere" \
   --Device="CPU" \
   --GPUType="Metal" \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
   --NumV=5 \
   --NumTr=0 \
@@ -20,21 +20,23 @@ julia --project Examples/testNHSphere.jl \
   --StrideDamp=20000 \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \
-  --SimDays=10 \
+  --SimDays=5 \
   --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
   --PrintHours=6 \
   --PrintDays=0 \
   --PrintStartTime=0 \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/BaroWaveHillDrySphere/CGQuad64" \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=75 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="BaroWaveHill" \
-  --Stretch=false \
-  --StretchType="Exp" \
+  --Stretch=true \
+  --StretchType="ICON" \
   --AdaptGridType="Sleve" \
   --GridType="CubedSphere" \
   --nz=30 \

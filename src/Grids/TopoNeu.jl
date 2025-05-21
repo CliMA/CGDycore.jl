@@ -250,8 +250,8 @@ function Orography(backend,FT,CG,Exchange,Global,TopoProfile)
     end  
     @views ChangeBasisHeight!(HeightCGCPU[:,:,iF],HeightCGCPU[:,:,iF],CG)
   end  
-  HeightCG = KernelAbstractions.zeros(backend,FT,size(HeightCGCPU))
-  copyto!(HeightCG,HeightCGCPU)
+  HeightCG = KernelAbstractions.zeros(backend,FT,(OrdPoly+1)*(OrdPoly+1),NF)
+  copyto!(HeightCG,reshape(HeightCGCPU,(OrdPoly+1)*(OrdPoly+1),NF))
 
   return HeightCG
 end

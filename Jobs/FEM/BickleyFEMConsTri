@@ -1,8 +1,9 @@
 #!/bin/bash
-julia --project Examples/FEMSei/ConsNonLinShallowCart.jl \
+julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --Problem="BickleyJet" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \
+  --GridForm="Cartesian" \
   --GridType="Tri" \
   --Flat=false \
   --nx=100 \

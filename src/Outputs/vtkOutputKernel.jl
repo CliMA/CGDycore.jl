@@ -187,40 +187,44 @@ end
   end
 end
 
-@kernel inbounds = true function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),@Const(Inter),@Const(dXdxI),@Const(Glob))
-  I, J, K, iz   = @index(Local,  NTuple)
-  _,_,_,Iz,IF = @index(Global,  NTuple)
+@kernel inbounds = true function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),
+ @Const(InterH),@Const(InterV),@Const(dXdxI),@Const(Glob))
+  IP, KP, iz   = @index(Local,  NTuple)
+  _,_,Iz,IF = @index(Global,  NTuple)
 
-  Nz = @uniform @ndrange()[4]
-  NF = @uniform @ndrange()[5]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
 
-  @uniform N = size(Inter,4)
-  @uniform M = size(Inter,6)
+  @uniform DoFH = size(InterH,2)
+  @uniform DoFV = size(InterV,2)
 
   if Iz == 1
-    cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
-    iD = 0  
-    for jP = 1 : N
-      for iP = 1 : N
-        iD += 1
-        ind = Glob[iD,IF]
-        w0 = -(u[Iz,1,ind] * dXdxI[3,1,1,iD,Iz,IF] +
-          v[Iz,1,ind] * dXdxI[3,2,1,iD,Iz,IF]) / dXdxI[3,3,1,iD,Iz,IF]
-         cCell[I,J,K,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w0)
+    cCellLoc = eltype(cCell)(0)
+    for iDoF = 1 : DoFH
+      ind = Glob[iDoF,IF]
+      cLoc = eltype(cCell)(0)
+      for k = 1 : DoFV
+        w0 = -(u[Iz,1,ind] * dXdxI[3,1,1,iDoF,Iz,IF] +
+          v[Iz,1,ind] * dXdxI[3,2,1,iDoF,Iz,IF]) / dXdxI[3,3,1,iDoF,Iz,IF]  
+        cLoc += eltype(cCell)(0.5) * InterV[KP,k] * (w[Iz,k,ind] + w0) 
       end
+      cCellLoc +=  InterH[IP,iDoF] * cLoc
     end
+    cCell[IP,KP,Iz,IF] = cCellLoc 
   elseif Iz <= Nz
-    cCell[I,J,K,Iz,IF] = eltype(cCell)(0)
-    iD = 0
-    for jP = 1 : N
-      for iP = 1 : N
-        iD += 1
-        ind = Glob[iD,IF]
-         cCell[I,J,K,Iz,IF] += eltype(cCell)(0.5) * Inter[I,J,1,iP,jP,1] * (w[Iz,1,ind] + w[Iz-1,1,ind])
+    cCellLoc = eltype(cCell)(0)
+    for iDoF = 1 : DoFH
+      ind = Glob[iDoF,IF]
+      cLoc = eltype(cCell)(0)
+      for k = 1 : DoFV
+        cLoc += eltype(cCell)(0.5) * InterV[KP,k] * (w[Iz,k,ind] + w[Iz-1,k,ind]) 
       end
+      cCellLoc +=  InterH[IP,iDoF] * cLoc
     end
+    cCell[IP,KP,Iz,IF] = cCellLoc 
   end
 end
+
 @kernel inbounds = true function InterpolateThEKernel!(cCell,@Const(RhoTh),@Const(Rho),@Const(RhoV),@Const(RhoC),@Const(Inter),@Const(Glob),@Const(Phys))
   I, J, K, iz   = @index(Local,  NTuple)
   _,_,_,Iz,IF = @index(Global,  NTuple)
@@ -364,22 +368,25 @@ function InterpolateRhoGPU!(cCell,c,Rho,FE)
 
 end
 
-function InterpolateWBGPU!(cCell,u,v,w,Inter,dXdxI,Glob)
+function InterpolateWBGPU!(cCell,u,v,w,dXdxI,FE)
 
   backend = get_backend(w)
   FT = eltype(w)
 
-  OrdPrint = size(Inter,1)
-  OrdPrintZ = size(Inter,3)
+  InterH = FE.InterOutputH
+  InterV = FE.InterOutputV
+  Glob = FE.Glob
+  NumCellH = size(InterH,1)
+  NumCellV = size(InterV,1)
   NF = size(Glob,2)
   Nz = size(u,1)
 # Ranges
-  NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
-  group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
-  ndrange = (OrdPrint, OrdPrint, OrdPrintZ, Nz, NF)
+  NzG = min(div(256,NumCellH*NumCellV),Nz)
+  group = (NumCellH,NumCellV,  NzG, 1)
+  ndrange = (NumCellH,NumCellV, Nz, NF)
 
   KInterpolateWBKernel! = InterpolateWBKernel!(backend,group)
-  KInterpolateWBKernel!(cCell,u,v,w,Inter,dXdxI,Glob,ndrange=ndrange)
+  KInterpolateWBKernel!(cCell,u,v,w,InterH,InterV,dXdxI,Glob,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end
 

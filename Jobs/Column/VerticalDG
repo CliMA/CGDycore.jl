@@ -1,9 +1,9 @@
 #!/bin/bash
-julia --project Examples/DriverDG.jl \
-  --Problem="WarmBubble2DXCart" \
+julia --project Examples/DriverDGV.jl \
+  --Problem="HillAgnesiXCart" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
-  --NumV=5 \
+  --NumV=3 \
   --NumAux=2 \
   --NumTr=0 \
   --ModelType="Conservative" \

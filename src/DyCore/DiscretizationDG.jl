@@ -36,7 +36,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
       Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   else
     Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad)
+      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   end
 
   EFCPU = zeros(Int,2,NE)
@@ -186,7 +186,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
       Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   else
     Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad)
+      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   end
 
   EFCPU = zeros(Int,2,NE)

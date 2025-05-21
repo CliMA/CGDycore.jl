@@ -2,17 +2,16 @@
 julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
   --RefineLevel=5 \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=1 \
-  --SimHours=0 \
-  --PrintHours=6 \
-  --PrintMinutes=0 \
+  --SimDays=0 \
+  --SimHours=1 \
+  --PrintHours=0 \
+  --PrintMinutes=1 \
   --PrintSeconds=0 \
   --PrintTime=0 \
   --RefineOutput=1 \

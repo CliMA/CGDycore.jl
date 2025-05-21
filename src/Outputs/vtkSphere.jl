@@ -480,47 +480,47 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
     if str == "Rho"
       RhoPos = Global.Model.RhoPos
       @views InterpolateGPU!(cCell,UR[:,:,:,RhoPos],FE)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["rho", VTKCellData()] = cCellCPU
     elseif  str == "u" 
       uPos = Global.Model.uPos
       @views InterpolateGPU!(cCell,UR[:,:,:,uPos],FE)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["AA", VTKCellData()] = cCellCPU
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],FE)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["AA", VTKCellData()] = cCellCPU
     elseif  str == "v" 
       vPos = Global.Model.vPos
       @views InterpolateGPU!(cCell,UR[:,:,:,vPos],FE)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["v", VTKCellData()] = cCellCPU
     elseif  str == "Thermo" 
       ThPos = Global.Model.ThPos
-      @views InterpolateGPU!(cCell,UR[:,:,:,ThPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*(OrdPrintZ + 1)*nz*NF))
+      @views InterpolateGPU!(cCell,UR[:,:,:,ThPos],FE)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["Thermo", VTKCellData()] = cCellCPU
     elseif  str == "Rhov" 
       vPos = Global.Model.vPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,vPos],UR[:,:,:,RhoPos],FE)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["v", VTKCellData()] = cCellCPU
     elseif  str == "Rhow" 
       wPos = Global.Model.wPos
       RhoPos = Global.Model.RhoPos
-      @views InterpolateRhoGPU!(cCell,UR[:,:,:,wPos],UR[:,:,:,RhoPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      @views InterpolateRhoGPU!(cCell,UR[:,:,:,wPos],UR[:,:,:,RhoPos],FE)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["w", VTKCellData()] = cCellCPU
     elseif  str == "wDG" 
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
       @. @views UR[:,:,FE.BoundaryDoF,wPos] = FTB(0.0)
       @views InterpolateGPU!(cCell,UR[:,:,:,wPos],vtkInter,FE.Glob)
-      @views copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
       vtk["wDG", VTKCellData()] = wCell
     elseif  str == "w" 
       uPos = Global.Model.uPos
@@ -534,29 +534,25 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       uPos = Global.Model.uPos
       vPos = Global.Model.uPos
       wPos = Global.Model.wPos
-      wCell = zeros(OrdPrint*OrdPrint*nz*NF)
-      InterpolateWBGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,vPos],UR[:,:,:,wPos],vtkInter,Metric.dXdxI,FE.Glob)
-#     @views InterpolateWB!(wCell,U[:,:,wPos],U[:,:,uPos],U[:,:,vPos],
-#       vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz,Metric.dXdxI)
-      @views copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
-      vtk["w", VTKCellData()] = wCell
+      InterpolateWBGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,vPos],UR[:,:,:,wPos],Metric.dXdxI,FE)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      vtk["w", VTKCellData()] = cCellCPU
     elseif  str == "BDG" 
       BPos = Global.Model.ThPos
       @views InterpolateGPU!(cCell,UR[:,:,:,BPos],vtkInter,FE.Glob)
       @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
       vtk["BDG", VTKCellData()] = cCellCPU
     elseif str == "Th"  
-      ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views PotT = reshape(Cache.Thermo[:,:,3],size(Cache.Thermo[:,:,3],1),1,
         size(Cache.Thermo[:,:,3],2))
-      InterpolateGPU!(cCell,PotT,vtkInter,FE.Glob)
-      copyto!(ThCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
-      vtk["Th", VTKCellData()] = ThCell
+      InterpolateGPU!(cCell,PotT,FE)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      vtk["Th", VTKCellData()] = cCellCPU
     elseif str == "RhoTh"  
       ThPos = Global.Model.ThPos
       RhoPos = Global.Model.RhoPos
-      @views InterpolateRhoGPU!(cCell,UR[:,:,:,ThPos],UR[:,:,:,RhoPos],vtkInter,FE.Glob)
-      @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
+      @views InterpolateRhoGPU!(cCell,UR[:,:,:,ThPos],UR[:,:,:,RhoPos],FE)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["Th", VTKCellData()] = cCellCPU
     elseif str == "ThE"  
       ThECell = zeros(OrdPrint*OrdPrint*nz*NF)  
@@ -596,16 +592,14 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       end
     elseif str == "Pres"   
       @views Pres = Cache.Thermo[:,:,1]  
-      pCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
-#     Interpolate!(pCell,Pres,vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz)
       if length(size(Pres)) == 2
         PresR = reshape(Pres,size(Pres,1),1,size(Pres,2))  
       else
         PresR = Pres  
       end    
-      InterpolateGPU!(cCell,PresR,vtkInter,FE.Glob)
-      @views copyto!(pCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
-      vtk["Pres", VTKCellData()] = pCell 
+      InterpolateGPU!(cCell,PresR,FE)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      vtk["Pres", VTKCellData()] = cCellCPU 
     elseif  str == "Tke" 
       TkePos = Global.Model.TkePos
       RhoPos = Global.Model.RhoPos

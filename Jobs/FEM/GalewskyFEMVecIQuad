@@ -6,7 +6,6 @@ julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
   --nPanel=80 \
-  --Decomp="EqualArea" \
   --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=1 \

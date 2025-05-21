@@ -34,6 +34,7 @@ mutable struct CGQuad{FT<:AbstractFloat,
     BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
     InterOutputH::AT2
+    InterOutputV::AT2
 end
 
 function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFloat
@@ -138,6 +139,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
   end
   InterOutputH = KernelAbstractions.zeros(backend,FT,size(InterOutputHCPU))
   copyto!(InterOutputH,InterOutputHCPU)
+  InterOutputV = KernelAbstractions.ones(backend,FT,1,1)
 
   return CGQuad{FT,
                  typeof(w),
@@ -174,6 +176,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
     BoundaryDoF,
     MasterSlave,
     InterOutputH,
+    InterOutputV,
  )
 end
 
@@ -884,4 +887,57 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     InterOutputV,
   )
 end
+
+mutable struct DG1{FT<:AbstractFloat,
+                        AT1<:AbstractArray,
+                        AT2<:AbstractArray} <: DGElement 
+    OrdPolyZ::Int                    
+    wZ::AT1
+    xwZ::AT1
+    xwZCPU::Array{FT, 1}
+    DSZ::AT2
+    DVZ::AT2
+    DVZT::AT2
+end    
+function DG1{FT}(backend,OrdPolyZ,OrdPrintZ) where FT<:AbstractFloat
+
+  DoF = OrdPolyZ
+
+  if OrdPolyZ == 0
+    xwZCPU = zeros(1)
+    wZCPU = 2 * ones(1)
+  else
+    xwZCPU, wZCPU = gausslobatto(OrdPolyZ+1)
+  end
+  xwZ = KernelAbstractions.zeros(backend,FT,size(xwZCPU))
+  wZ = KernelAbstractions.zeros(backend,FT,size(wZCPU))
+  copyto!(xwZ,xwZCPU)
+  copyto!(wZ,wZCPU)
+
+  (DWZCPU,DSZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
+  DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
+  copyto!(DSZ,DSZCPU)
+  DWZ = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
+  copyto!(DWZ,DWZCPU)
+  DVZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
+  DVZCPU = 2 * DSZCPU
+  DVZCPU[1,1] += 1 / wZCPU[1]
+  DVZCPU[OrdPolyZ+1,OrdPolyZ+1] += -1 / wZCPU[OrdPolyZ+1]
+  copyto!(DVZ,DVZCPU)
+  DVZT=DVZ'
+
+  return DG1{FT,
+             typeof(wZ),
+             typeof(DVZ)}(
+    OrdPolyZ,         
+    wZ,
+    xwZ,
+    xwZCPU,
+    DSZ,
+    DVZ,
+    DVZT,
+  )
+end
+
+
 
