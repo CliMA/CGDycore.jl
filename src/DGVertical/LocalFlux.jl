@@ -35,7 +35,7 @@ abstract type AverageFluxV end
 
 Base.@kwdef struct KennedyGruberGravV <: AverageFluxV end
 
-function (::KennedyGruberGravV)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
+function (::KennedyGruberGravV)(RhoPos,wPos,ThPos,pPos,GPPos)
   @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
     FT = eltype(flux)
     pL = AuxL[pPos]
@@ -68,24 +68,24 @@ abstract type RiemannSolverV end
 
 Base.@kwdef struct RiemannLMARSV <: RiemannSolverV end
 
-function (::RiemannLMARSV)(Param,Phys,hPos,uPos,vPos,wPos,pPos)
+function (::RiemannLMARSV)(Param,Phys,RhoPos,wPos,ThPos,pPos)
   @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR)
 
     FT = eltype(F)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
-    hM = FT(0.5) * (VLL[hPos] + VRR[hPos])
+    RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     vLL = VLL[wPos] / VLL[wPos]
     vRR = VRR[wPos] / VRR[wPos]
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * hM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / hM
     if vM > FT(0)
-      F[hPos] = vM * VLL[hPos]
+      F[RhoPos] = vM * VLL[RhoPos]
       F[wPos] = vM * VLL[wPos] + pM
       F[ThPos] = vM * VLL[ThPos]
     else
-      F[hPos] = vM * VRR[hPos]
+      F[RhoPos] = vM * VRR[RhoPos]
       F[wPos] = vM * VRR[wPos] + pM
       F[ThPos] = vM * VRR[ThPos]
     end

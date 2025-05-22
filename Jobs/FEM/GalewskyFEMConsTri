@@ -4,7 +4,7 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --FloatTypeBackend="Float64" \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
-  --RefineLevel=5 \
+  --RefineLevel=6 \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \

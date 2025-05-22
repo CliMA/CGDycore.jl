@@ -1298,9 +1298,6 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
   fuDivHDiv = zeros(FeHDiv.DoF,NumQuad)
   fuGradVecDG = zeros(FeVecDG.DoF,FeVecDG.Comp,2,NumQuad)
 
-  nBar1 = [ 0 1 0 -1
-           -1 0 1  0]
-
   #computation of the ansatz functions in the quadrature points
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : FeTHDiv.Comp
@@ -1432,6 +1429,8 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
 
   #distinction between Tri or Quad 
   if ElemType == Grids.Tri()
+    nBar1 = [ 0 1 -1
+             -1 1  0]
     PointsE = zeros(2,NumQuadL,3)
     @inbounds for iQ = 1 : NumQuadL
       PointsE[1,iQ,1] = PointsL[iQ]
@@ -1442,6 +1441,8 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       PointsE[2,iQ,3] = PointsL[iQ]
     end
   elseif ElemType == Grids.Quad()
+    nBar1 = [ 0 1 0 -1
+             -1 0 1  0]
     PointsE = zeros(2,NumQuadL,4)
     @inbounds for iQ = 1 : NumQuadL
       PointsE[1,iQ,1] = PointsL[iQ]
@@ -1500,8 +1501,8 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       #computation normales of edges
       @views nBarLocL = Grid.nBar[:, EdgeTypeL]
       @views nBarLocR = Grid.nBar[:, EdgeTypeR]
-      @views nBarLocL = nBar1[:, EdgeTypeL]
-      @views nBarLocR = nBar1[:, EdgeTypeR]
+      @views nBarLocL = nBar1[:, EdgeTypeL] * Grid.Faces[iFL].Orientation
+      @views nBarLocR = nBar1[:, EdgeTypeR] * Grid.Faces[iFR].Orientation
       #gamma upwind value
       uE = 0.0 
       uER = 0.0 

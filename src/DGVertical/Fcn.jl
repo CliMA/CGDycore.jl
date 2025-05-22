@@ -1,4 +1,4 @@
-function FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys)
+function FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver)
   backend = get_backend(F)
 
   NumberThreadGPU = 256
@@ -9,12 +9,20 @@ function FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys)
   @views Aux = CacheU[:,:,:]
   @views @. Aux[:,:,1] = Pressure(U[:,:,3])
   @views @. Aux[:,:,2] = Phys.Grav * X
+
   NzG = min(div(NumberThreadGPU,M),Nz)
   group = (M,NzG)
   ndrange = (M,Nz)
   KFluxSplitVolumeNonLinVKernel! = FluxSplitVolumeNonLinVertKernel!(backend,group)
-  KFluxSplitVolumeNonLinVKernel!(FluxAverage,FV,V,Aux,Metric.dXdxI,DG.DVZT,DG.Glob,
+  KFluxSplitVolumeNonLinVKernel!(FluxAverage,F,U,Aux,dXdxI,DG1.DVZT,
     Val(NV),Val(NAUX);ndrange=ndrange)
+
+  group = (Nz+1,)
+  ndrange = (Nz+1,)
+  @show group,ndrange
+  KRiemanNonLinVKernel! = RiemanNonLinVertKernel!(backend,group)
+  KRiemanNonLinVKernel!(RiemannSolver,F,U,Aux,
+   DG1.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
 
 #=
   Damp = Model.Damp

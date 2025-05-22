@@ -298,7 +298,15 @@ F = similar(U)
 CacheU = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz,NumAux)
 Pressure, dPresdRhoTh, dPresdRho = Models.DryDG()(Phys)
 
-DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys)
+RhoPos = 1
+wPos = 2
+ThPos = 3
+pAuxPos = 1
+GPAuxPos = 2
+
+FluxAverage = DGVertical.KennedyGruberGravV()(RhoPos,wPos,ThPos,pAuxPos,GPAuxPos)
+RiemannSolver = DGVertical.RiemannLMARSV()(Param,Phys,RhoPos,wPos,ThPos,pAuxPos)
+DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver)
 
 
 #=
