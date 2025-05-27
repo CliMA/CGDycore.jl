@@ -9,11 +9,6 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,
   @views Uu = U[uPosS:uPosE]
   UCache = zeros(Model.DG.NumG+Model.RT.NumG+Model.CG.NumG)
 
-  if Grid.Form == "Sphere"
-    Flat = false
-  else
-    Flat = true
-  end  
   vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
   
   # Output of the initial values
@@ -101,11 +96,6 @@ time = 0.0
   @views Fhu = F[huPosS:huPosE]  
   uRec = zeros(FTB,uPosVec)
 
-  if Grid.Form == "Sphere"
-    Flat = false
-  else
-    Flat = true
-  end  
   vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
   
   # Output of the initial values

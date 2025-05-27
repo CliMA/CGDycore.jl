@@ -90,6 +90,36 @@ function (profile::BaroWaveHill)()
   return local_profile
 end
 
+Base.@kwdef struct GapHill{T} <: Topography
+  h0::T = 2.e3
+  lonC::T = (72 + 10) * pi / 180
+  latC::T = (140 + 10) * pi / 180
+  e1::T
+  e2::T
+  e3::T
+  d1::T
+  d2::T
+  d3::T
+end
+
+function (profile::GapHill)()
+  (; h0, lon1, lon2, lonBar, c, lat1, lat2, latBar, d) = profile
+  function local_profile(x)
+    FT = eltype(x)
+    (lon,lat,r) = Grids.cart2sphere(x[1],x[2],x[3])
+    d1 = lon - lon1
+    d2 = lon - lon2
+    l1 = min(d1, FT(2*pi) - d1)
+    l2 = min(d2, FT(2*pi) - d2)
+    h = h0 * exp(-((lon-lonC) / d1 )^e1 - ((lat-latC) / d2 )^e2) *
+      (FT(1) - exp(((lat-latC)/d3))^e3)
+    return h
+  end
+  return local_profile
+end
+
+
+
 Base.@kwdef struct SchaerSphereCircle{T} <: Topography
   PertLat::T = 0.0
   PertLon::T = pi / 4

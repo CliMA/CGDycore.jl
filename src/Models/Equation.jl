@@ -44,7 +44,8 @@ function (::DryDG)(Phys)
     p = Phys.p0 * fast_powGPU(Phys.Rd * RhoTh / Phys.p0, FT(1) / (FT(1) - Phys.kappa))
   end
   @inline function dPresdRhoTh(RhoTh)
-    dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
+    FT = eltype(RhoTh)
+    dpdRhoTh = FT(1) / (FT(1) - Phys.kappa) * Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (FT(1) - Phys.kappa))
     return dpdRhoTh
   end
   @inline function dPresdRho()
@@ -65,7 +66,8 @@ function (::Dry)(Phys)
     Thermo[3] = PotT
   end
   @inline function dPresdRhoTh(RhoTh)
-    dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
+    FT = eltype(RhoTh)
+    dpdRhoTh = FT(1) / (FT(1) - Phys.kappa) * Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (FT(1) - Phys.kappa))
     return dpdRhoTh
   end  
   @inline function dPresdRho()

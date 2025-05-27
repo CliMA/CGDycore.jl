@@ -50,6 +50,7 @@ for iz = 1 : nz
 end  
 
 F = similar(UStart)
+FT = similar(UStart)
 U = similar(UStart)
 UNew = similar(UStart)
 ULin = similar(UStart)
@@ -79,9 +80,26 @@ dMdM = spdiagm(reshape(1.0./J,N)) * dMdM
 Jac = [cS^2 * dSdS cS^2 * dSdM
      dMdS dMdM]
 DGVertical.FcnAccousticGPUVert!(F,UStart,DG1,X,dXdxI,J,CacheU,Pressure,Phys,Flux,RiemannSolver)
+JacDiff = zeros(2*N,2*N)
+ColJacDiff = zeros(OrdPolyZ+1,nz,2)
+iC = 0
+for iv = 1 : 2
+  for iz = 1 : nz
+    for k = 1 : OrdPolyZ + 1
+      global iC += 1
+      temp = UStart[k,iz,iv]
+      UStart[k,iz,iv] = (1 + 1.e-8) * UStart[k,iz,iv] + 1.e-8
+      DGVertical.FcnAccousticGPUVert!(FT,UStart,DG1,X,dXdxI,J,CacheU,Pressure,Phys,Flux,RiemannSolver)
+      ColJacDiff .= (FT - F) ./ (UStart[k,iz,iv] - temp)
+      JacDiff[:,iC] .= reshape(ColJacDiff,2*N)
+      UStart[k,iz,iv] = temp
+    end
+  end
+end
 aa = Jac * reshape(UStart,2*N)
 aa = reshape(aa,OrdPolyZ+1,nz,2)
 @show sum(abs.(aa-F))
+stop
 
 nIter = 1000
 dtau = 0.1 * H / N / cS

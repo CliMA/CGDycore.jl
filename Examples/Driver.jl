@@ -89,7 +89,6 @@ nx = parsed_args["nx"]
 ny = parsed_args["ny"]
 nz = parsed_args["nz"]
 nPanel = parsed_args["nPanel"]
-@show nPanel
 RefineLevel = parsed_args["RefineLevel"]
 nLon = parsed_args["nLon"]
 nLat = parsed_args["nLat"]
@@ -132,7 +131,6 @@ Proc = MPI.Comm_rank(comm) + 1
 ProcNumber = MPI.Comm_size(comm)
 ParallelCom = DyCore.ParallelComStruct()
 ParallelCom.Proc = Proc
-@show Proc
 ParallelCom.ProcNumber  = ProcNumber
 
 JuliaDevice = get(ENV, "JuliaDevice", "CPU")
@@ -287,11 +285,9 @@ else
       RadEarth = RadEarth / ScaleFactor
     end
   end
-  @show nPanel
   Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
     GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
-  @show Grid.NumFaces
 end  
 
 

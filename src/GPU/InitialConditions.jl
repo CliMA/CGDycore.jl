@@ -41,7 +41,6 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
   if State == "Dry" || State == "Moist" || State == "ShallowWater"
-    @show "RhoThFunCKernel"  
     KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
   elseif State == "DryInternalEnergy" || State == "MoistInternalEnergy" || 

@@ -23,9 +23,26 @@ function (::EulerFlux)(RhoPos,wPos,ThPos,pPos)
     w = V[wPos] / V[RhoPos]
     Th = V[ThPos] / V[RhoPos]
 
-    flux[RhoPos] = V[uPos]
-    flux[wPos] = V[uPos] * w + p
-    flux[ThPos] = V[uPos] * Th
+    flux[RhoPos] = V[wPos]
+    flux[wPos] = V[wPos] * w + p
+    flux[ThPos] = V[wPos] * Th
+
+  end
+  return Flux
+end
+
+Base.@kwdef struct EulerFluxA <: Flux end
+
+function (::EulerFluxA)(RhoPos,wPos,ThPos,pPos)
+  @inline function Flux(flux,V,Aux)
+    p = Aux[pPos]
+    w = V[wPos] / V[RhoPos]
+    Th = V[ThPos] / V[RhoPos]
+    Th = 300.0
+
+    flux[RhoPos] = V[wPos]
+    flux[wPos] = p
+    flux[ThPos] = V[wPos] * Th
 
   end
   return Flux
@@ -126,6 +143,36 @@ function (::RiemannLMARSV)(Param,Phys,RhoPos,wPos,ThPos,pPos)
   end
   return RiemannByLMARSNonLin!
 end
+
+Base.@kwdef struct RiemannLMARSAV <: RiemannSolverV end
+
+function (::RiemannLMARSAV)(Param,Phys,RhoPos,wPos,ThPos,pPos)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR)
+
+    FT = eltype(F)
+    cS = Param.cS
+    pLL = AuxL[pPos]
+    pRR = AuxR[pPos]
+    RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
+    vLL = VLL[wPos] / VLL[RhoPos]
+    vRR = VRR[wPos] / VRR[RhoPos]
+    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
+    ThL = 300.0
+    ThR = 300.0
+    if vM > FT(0)
+      F[RhoPos] = vM * VLL[RhoPos]
+      F[wPos] = pM
+      F[ThPos] = vM * ThL
+    else
+      F[RhoPos] = vM * VRR[RhoPos]
+      F[wPos] = pM
+      F[ThPos] = vM * ThR
+    end
+  end
+  return RiemannByLMARSNonLin!
+end
+
 
 Base.@kwdef struct RiemannAccousticV <: RiemannSolverV end
 

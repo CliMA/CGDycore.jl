@@ -107,10 +107,9 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
   end
 
   if Topography.TopoS == "EarthOrography"
-    @time zS, GradDx_zs, GradDy_zs = Grids.Orography4(backend,FT,CG,Exchange,Global)
+    zS, GradDx_zs, GradDy_zs = Grids.Orography4(backend,FT,CG,Exchange,Global)
   else
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile)
-    @show size(zS)
   end
 
 
