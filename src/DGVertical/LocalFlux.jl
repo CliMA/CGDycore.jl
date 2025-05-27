@@ -31,6 +31,20 @@ function (::EulerFlux)(RhoPos,wPos,ThPos,pPos)
   return Flux
 end
 
+Base.@kwdef struct AccousticFlux <: Flux end
+
+function (::AccousticFlux)(pPos,wPos,cS)
+  @inline function Flux(flux,V,Aux)
+    p = V[pPos]
+    w = V[wPos]
+
+    flux[pPos] = cS^2 * w
+    flux[wPos] = p
+
+  end
+  return Flux
+end
+
 abstract type AverageFluxV end
 
 Base.@kwdef struct KennedyGruberGravV <: AverageFluxV end
@@ -63,6 +77,26 @@ function (::KennedyGruberGravV)(RhoPos,wPos,ThPos,pPos,GPPos)
   return FluxNonLinAver!
 end
 
+Base.@kwdef struct KennedyGruberAccousticV <: AverageFluxV end
+
+function (::KennedyGruberAccousticV)(pPos,wPos,cS)
+  @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
+    FT = eltype(flux)
+    pL = VL[pPos]
+    pR = VR[pPos]
+    wL = VL[wPos]
+    wR = VR[wPos]
+
+    pAv = FT(0.5) * (pL + pR) 
+    wAv = FT(0.5) * (wL + wR)
+    mAv3 = FT(0.5) * (m_L + m_R)
+    qHat = mAv3 * wAv
+    flux[1] = cS^2 * qHat
+    flux[2] = mAv3 * pAv
+  end
+  return FluxNonLinAver!
+end
+
 
 abstract type RiemannSolverV end
 
@@ -76,10 +110,10 @@ function (::RiemannLMARSV)(Param,Phys,RhoPos,wPos,ThPos,pPos)
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
-    vLL = VLL[wPos] / VLL[wPos]
-    vRR = VRR[wPos] / VRR[wPos]
-    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * hM * (vRR - vLL)
-    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / hM
+    vLL = VLL[wPos] / VLL[RhoPos]
+    vRR = VRR[wPos] / VRR[RhoPos]
+    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
       F[wPos] = vM * VLL[wPos] + pM
@@ -92,3 +126,21 @@ function (::RiemannLMARSV)(Param,Phys,RhoPos,wPos,ThPos,pPos)
   end
   return RiemannByLMARSNonLin!
 end
+
+Base.@kwdef struct RiemannAccousticV <: RiemannSolverV end
+
+function (::RiemannAccousticV)(Param,Phys,pPos,wPos,cS)
+  @inline function RiemannSolver(F,VLL,VRR,AuxL,AuxR)
+
+    pLL = VLL[pPos]
+    pRR = VRR[pPos]
+    vLL = VLL[wPos]
+    vRR = VRR[wPos]
+    pM = 0.5 * (pLL + pRR) - 0.5 * cS * (vRR - vLL)
+    vM = 0.5 * (vRR + vLL) - 0.5 / cS * (pRR - pLL) 
+    F[pPos] = cS^2 * vM
+    F[wPos] = pM
+  end
+  return RiemannSolver
+end
+

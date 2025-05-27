@@ -388,7 +388,6 @@ elseif State == "Moist"
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State == "MoistInternalEnergy"
-  @show State
   Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoTPos)
   Model.Pressure = Pressure
@@ -552,7 +551,6 @@ else
   Global.Output.OrdPrint = OrdPrint
 end 
 Global.Output.vtkFileName = vtkFileName
-@show Global.Output.OrdPrint,size(CG.InterOutputH)
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,CG,Metric,Global)
 
 

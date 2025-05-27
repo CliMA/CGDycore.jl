@@ -10,6 +10,8 @@ import ..Integration
 import ..FiniteElements
 
 using StaticArrays
+using LinearAlgebra
+using SparseArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll
@@ -22,6 +24,6 @@ include("FluxVolumeNonLin.jl")
 #include("PresSh.jl")
 #include("Source.jl")
 include("Fcn.jl")
-#include("RK3.jl")
+include("Jac.jl")
 
 end

@@ -896,6 +896,7 @@ mutable struct DG1{FT<:AbstractFloat,
     xwZ::AT1
     xwZCPU::Array{FT, 1}
     DSZ::AT2
+    DWZ::AT2
     DVZ::AT2
     DVZT::AT2
 end    
@@ -934,6 +935,7 @@ function DG1{FT}(backend,OrdPolyZ,OrdPrintZ) where FT<:AbstractFloat
     xwZ,
     xwZCPU,
     DSZ,
+    DWZ,
     DVZ,
     DVZT,
   )

@@ -16,10 +16,10 @@
 
   if Iz <= Nz
     @unroll for iaux = 1 : NAUX
-      AuxLoc[K,iz,iaux] = Aux[Iz,K,iaux]  
+      AuxLoc[K,iz,iaux] = Aux[K,Iz,iaux]  
     end
     @unroll for iv = 1 : NV
-      VLoc[K,iz,iv] = V[Iz,K,iv]  
+      VLoc[K,iz,iv] = V[K,Iz,iv]  
       FLoc[K,iz,iv] = 0.0
     end
 
@@ -38,8 +38,36 @@
       end  
     end  
     @unroll for iv = 1 : NV
-      F[Iz,K,iv] += FLoc[K,iz,iv] 
+      F[K,Iz,iv] += FLoc[K,iz,iv] 
     end
   end
 end  
 
+@kernel inbounds = true function FluxVolumeNonLinVertKernel!(Flux,F,@Const(V),@Const(Aux),
+  @Const(DW), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
+
+  K, iz    = @index(Local, NTuple)
+  _,Iz = @index(Global, NTuple)
+
+  TilesDim = @uniform @groupsize()[2]
+  M = @uniform @groupsize()[1]
+  NZ = @uniform @ndrange()[2]
+
+  Con = @localmem eltype(F) (M,TilesDim,NV)
+  FLoc = @private eltype(F) (NV)
+
+  if Iz <= NZ
+    @views Flux(FLoc,V[K,Iz,:],Aux[K,Iz,:])
+    @. Con[K,Iz,:] = FLoc
+  end
+  @synchronize
+  if Iz <= NZ
+    @unroll for iv = 1 : NV
+      FF = DW[K,1] * Con[1,Iz,iv]
+      @unroll for k = 2 : M
+        FF += DW[K,k] * Con[k,Iz,iv]
+      end
+      F[K,Iz,iv] = -FF
+    end
+  end
+end  

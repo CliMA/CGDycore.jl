@@ -266,8 +266,6 @@ end
 
 z,zP,dzeta = Grids.AddVerticalGrid(nz,H)
 
-@show z
-
 DG1 = FiniteElements.DG1{FTB}(backend,OrdPolyZ,OrdPrintZ)
 
 X = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz)
@@ -275,13 +273,8 @@ dXdxI = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz)
 J = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz)
 
 Grids.JacobiDG1GPU!(X,dXdxI,J,DG1,z)
-@show J
-@show size(X)
-@show X[:,1]
-@show X[:,2]
 NumV = 3
 NumAux = 2
-@show dXdxI
 U = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz,NumV)
 Profile = Examples.StratifiedExample()(Param,Phys)
 time = 0.0
@@ -295,6 +288,7 @@ for iz = 1 : nz
 end  
 
 F = similar(U)
+UNew = similar(U)
 CacheU = KernelAbstractions.zeros(backend,FTB,DG1.OrdPolyZ+1,nz,NumAux)
 Pressure, dPresdRhoTh, dPresdRho = Models.DryDG()(Phys)
 
@@ -306,195 +300,19 @@ GPAuxPos = 2
 
 FluxAverage = DGVertical.KennedyGruberGravV()(RhoPos,wPos,ThPos,pAuxPos,GPAuxPos)
 RiemannSolver = DGVertical.RiemannLMARSV()(Param,Phys,RhoPos,wPos,ThPos,pAuxPos)
-DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver)
 
+Jac = DGVertical.Jacobian(U,DG1,J)
+stop
 
-#=
-# Grid
-if GridForm == "Cartesian"
-  Boundary = Grids.Boundary()
-  Boundary.WE = BoundaryWE
-  Boundary.SN = BoundarySN
-  Boundary.BT = BoundaryBT
-  Topography=(TopoS=TopoS,
-              H=H,
-              P1=P1,
-              P2=P2,
-              P3=P3,
-              P4=P4,
-              )
-  Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom,Discretization=Discretization)
-  Trans = Outputs.TransCartX!
-else  
-  if RadEarth == 0.0
-    RadEarth = Phys.RadEarth
-    if ScaleFactor != 0.0
-      RadEarth = RadEarth / ScaleFactor
-    end
-  end
-  Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
-    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization,ChangeOrient=2)
-  Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
-  Trans = Outputs.TransSphereX!
-end  
-
-
-#Topography
-if TopoS == "AgnesiHill"
-  TopoProfile = Examples.AgnesiHill()()
-elseif TopoS == "SchaerHill"
-  TopoProfile = Examples.SchaerHill()()
-elseif TopoS == "BaroWaveHill"
-  TopoProfile = Examples.BaroWaveHill()()
-elseif TopoS == "SchaerSphereCircle"
-  TopoProfile = Examples.SchaerSphereCircle()(Param,Phys)
-else
-  TopoProfile = Examples.Flat()()  
-end  
-
-Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
-DGMethod = "Kubatko5"
-
-if GridForm == "Cartesian"
-  if ParallelCom.Proc == 1
-    @show "InitCart"
-  end
-  (DG, Metric, Exchange, Global) = DyCore.InitCartDG(backend,FTB,OrdPoly,OrdPolyZ,DGMethod,
-    OrdPrint,OrdPrintZ,H,Topography,Model,
-    Phys,TopoProfile,CellToProc,Grid,ParallelCom)
-else
-  (DG, Metric, Exchange, Global) = DyCore.InitSphereDG(backend,FTB,OrdPoly,OrdPolyZ,DGMethod,
-    OrdPrint,OrdPrintZ,H,Topography,Model,
-    Phys,TopoProfile,CellToProc,Grid,ParallelCom)
-end
-
-# Initial values
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
-U = GPU.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
-
-pAuxPos = 1
-GPAuxPos = 2
-
-if InterfaceFluxDG == "RiemannLMARS"
-  RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
-  Model.RiemannSolver = RiemannSolver
-elseif InterfaceFluxDG == "RiemannBoussinesqLMARS"  
-  RiemannSolver = DGSEM.RiemannBoussinesqLMARS()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
-  Model.RiemannSolver = RiemannSolver
-end  
-
-NonConservativeFlux = DGSEM.BuoyancyFlux()(Model.RhoPos,GPAuxPos)
-Model.NonConservativeFlux = NonConservativeFlux
-
-if FluxDG == "KennedyGruber"
-  Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
-elseif FluxDG == "KennedyGruberGrav"  
-  Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-  Model.ThPos,pAuxPos,GPAuxPos)
-elseif FluxDG == "LinearBoussinesqFlux"
-  Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
-end  
-
-if ModelType == "Boussinesq"
-  Model.BuoyancyFun = GPU.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
-end  
-    
-
-# Pressure
-if State == "Dry"
-  Pressure, dPresdRhoTh, dPresdRho = Models.DryDG()(Phys)
-  Model.Pressure = Pressure
-  Model.dPresdRhoTh = dPresdRhoTh
-  Model.dPresdRho = dPresdRho
-elseif State  == "ShallowWater"  
-  Model.Pressure = Models.ShallowWaterStateDG()(Phys)
-end
-
-if Damping
-  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
-  Model.Damp = Damp
-end
-if Grid.Form == "Sphere"
-  Model.GeoPotential = GPU.GeoPotentialDeep()(Phys)
-else
-  Model.GeoPotential = GPU.GeoPotentialCart()(Phys)
-end  
-    
-
-
-
-Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
-
-if ModelType == "Conservative"
-  Global.Output.cNames = [
-    "Rho",
-    "Rhou",
-    "Rhov",
-    "Rhow",
-    "RhoTh",
-#   "w",
-#   "Th",
-#   "Vort",
-    ]
-elseif ModelType == "Boussinesq"
-  Global.Output.cNames = [
-    "Rho",
-    "u",
-    "wDG",
-    "BDG",
-    ]
-end
-
-Global.Output.Flat = Flat
-Global.Output.PrintDays = PrintDays
-Global.Output.PrintHours = PrintHours
-Global.Output.PrintMinutes = PrintMinutes
-Global.Output.PrintSeconds = PrintSeconds
-Global.Output.PrintTime = PrintTime
-Global.Output.PrintStartTime = PrintStartTime
-if OrdPrint <  0
-  Global.Output.OrdPrint = DG.OrdPoly
-  Global.Output.OrdPrintZ = DG.OrdPolyZ
-else
-  Global.Output.OrdPrint = OrdPrint
-  Global.Output.OrdPrintZ = OrdPrintZ
-end
-Global.Output.nPanel = nPanel
-Global.Output.dTol = pi/30
-Global.Output.vtkFileName = vtkFileName
-@show Global.Output.OrdPrint
-Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
-@show "nach Outputs.vtkStruct"
-
-
-Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
-
-
-# Simulation time
-GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-if dtau == 0.0
-  dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
-end  
-if nz > 1
-  @show dtau
-  dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
-  @show dtau
-end  
-EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-IterTime::Int = round(EndTime / dtau)
-dtau = EndTime / IterTime
-PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-nPrint::Int = ceil(PrintT/dtau)
-EndTime = IterTime * dtau / 3600
-
-if Proc == 1
-@show GridLengthMin,GridLengthMax
-@show dtau
-@show EndTime
-@show IterTime
-@show nPrint
-end
-
-
-DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
-=#
+dtau = 0.1
+nIter = 1000
+for Iter = 1 : nIter
+   @show Iter,sum(abs.(U))   
+   @show Iter,sum(abs.(U[:,:,wPos]))   
+   DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
+   @. UNew = U + 1/3 * dtau *F
+   DGVertical.FcnGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
+   @. UNew = U + 1/2 * dtau *F
+   DGVertical.FcnGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
+   @. U = U + dtau *F
+ end  

@@ -8,10 +8,10 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=0 \
-  --SimHours=1 \
+  --SimDays=1 \
+  --SimHours=0 \
   --PrintHours=0 \
-  --PrintMinutes=1 \
+  --PrintMinutes=20 \
   --PrintSeconds=0 \
   --PrintTime=0 \
   --RefineOutput=1 \

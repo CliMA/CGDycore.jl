@@ -1,18 +1,21 @@
 using LinearAlgebra
 using SparseArrays
 
-Nz = 20
-M = 7
-N = Nz * M
-RowInd = Int[]
-ColInd = Int[]
-Val = Int[]
-for iZ = 1 : Nz
-  for i = 1 : M  
-    for j = 1 : M  
-      push!(RowInd,i+(iZ-1)*M)  
-      push!(ColInd,j+(iZ-1)*M)  
-      push!(Val,1.0)
+function Jacobian(U,DG)
+  
+  FT = eltype(U) 
+  Nz = size(U,2)
+  M = size(U,1)
+  N = Nz * M
+  RowInd = Int[]
+  ColInd = Int[]
+  Val = FT[]
+  for iZ = 1 : Nz
+    for i = 1 : M  
+      for j = 1 : M  
+        push!(RowInd,i+(iZ-1)*M)  
+        push!(ColInd,j+(iZ-1)*M)  
+        push!(DG.DS[i,j])
     end
   end  
   if iZ < Nz

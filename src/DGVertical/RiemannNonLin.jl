@@ -1,7 +1,7 @@
 @kernel inbounds = true function RiemanNonLinVertKernel!(RiemannSolver!,F,
   @Const(U),@Const(Aux),@Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
 
-  Iz = @index(Global, NTuple)
+  Iz, = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[1]
 
@@ -18,33 +18,33 @@
   if Iz <= Nz
     if Iz > 1    
       @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[Iz-1,M,iAux]
+        AuxL[iAux] = Aux[M,Iz-1,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[Iz-1,M,iv]
+        VLL[iv] = U[M,Iz-1,iv]
       end  
     else
       @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[Iz,1,iAux]
+        AuxL[iAux] = Aux[1,Iz,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[Iz,1,iv]
+        VLL[iv] = U[1,Iz,iv]
       end  
       VLL[wPos] = -VLL[wPos]
     end  
     if Iz < Nz
       @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[Iz,1,ind,iAux]
+        AuxR[iAux] = Aux[1,Iz,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[Iz,1,ind,iv]
+        VRR[iv] = U[1,Iz,iv]
       end  
     else  
       @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[Iz-1,M,ind,iAux]
+        AuxR[iAux] = Aux[M,Iz-1,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[Iz-1,M,ind,iv]
+        VRR[iv] = U[M,Iz-1,iv]
       end  
       VRR[wPos] = -VRR[wPos]
     end
@@ -52,18 +52,18 @@
     @views RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR)
 
     Surf = eltype(U)(1) / w[1]  
-    FLoc[RhoPos] *= Surf
-    FLoc[wPos] *= Surf
-    FLoc[ThPos] *= Surf
+    @unroll for iv = 1 : NUMV  
+      FLoc[iv] *= Surf
+    end  
     if Iz > 1 
-      @atomic :monotonic F[Iz-1,M,RhoPos] -= FLoc[RhoPos]
-      @atomic :monotonic F[Iz-1,M,wPos] -= FLoc[wPos]
-      @atomic :monotonic F[Iz-1,M,ThPos] -= FLoc[ThPos]
+      @unroll for iv = 1 : NUMV  
+        @atomic :monotonic F[M,Iz-1,iv] -= FLoc[iv]
+      end  
     end  
     if Iz < Nz
-      @atomic :monotonic F[Iz,1,RhoPos] += FLoc[RhoPos]
-      @atomic :monotonic F[Iz,1,wPos] += FLoc[wPos]
-      @atomic :monotonic F[Iz,1,ThPos] += FLoc[ThPos]
+      @unroll for iv = 1 : NUMV  
+        @atomic :monotonic F[1,Iz,iv] += FLoc[iv]
+      end  
     end  
   end  
 end
