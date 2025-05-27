@@ -132,6 +132,7 @@ Proc = MPI.Comm_rank(comm) + 1
 ProcNumber = MPI.Comm_size(comm)
 ParallelCom = DyCore.ParallelComStruct()
 ParallelCom.Proc = Proc
+@show Proc
 ParallelCom.ProcNumber  = ProcNumber
 
 JuliaDevice = get(ENV, "JuliaDevice", "CPU")
