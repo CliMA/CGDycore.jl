@@ -22,7 +22,7 @@ Param = Examples.Parameters(FTB,Problem)
 Phys = DyCore.PhysParameters{FTB}()
 
 
-nz = 4
+nz = 20
 H = 10000.0
 OrdPolyZ = 4
 OrdPrintZ = 4
@@ -49,8 +49,19 @@ for iz = 1 : nz
     U[K,iz,3] = RhoP * ThP
   end
 end  
+UE = similar(U)
+UE .= U
+for iz = 1 : nz
+  for K = 1 : DG1.OrdPolyZ + 1
+    xS = SVector{3}(0.0,0.0,X[K,iz])
+    if X[K,iz] > 500.0 && X[K,iz] <  2500.0
+      U[K,iz,3] = U[K,iz,3] + 2.0
+    end
+  end
+end
 UStart = similar(U)
-UImp = similar(U)
+UImp1 = similar(U)
+UImp2 = similar(U)
 UStart .= U
 
 F = similar(U)
@@ -71,65 +82,61 @@ Flux = DGVertical.EulerFlux()(RhoPos,wPos,ThPos,pAuxPos)
 RiemannSolver = DGVertical.RiemannLMARSV()(Param,Phys,RhoPos,wPos,ThPos,pAuxPos)
 RiemannSolverA = DGVertical.RiemannLMARSAV()(Param,Phys,RhoPos,wPos,ThPos,pAuxPos)
 
-N = nz*(OrdPolyZ+1)
 
-dSdS,dSdM = DGVertical.DScalarDMomAc(nz,DG1,Param.cS)
-dMdS,dMdM = DGVertical.DMomDScalarAc(nz,DG1,Param.cS)
+dSdS,dSdM,dMdS,dMdM = DGVertical.InitJacDG(DG1,nz,J,Param)
+Jac = DGVertical.JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
+fac = 50.0
+A = (1 / fac) * sparse(I,3*N,3*N) - Jac
+# A = [A11 A12 A13
+#      A21 A22 A23
+#      A31 A32 A33]
+# A = [A11 A13 A12
+#      A31 A33 A32
+#      A21 A23 A22]
+# S = A22 - [A21 A23]*[A11 A13
+#                      A31 A33]^-1*[A12
+#                                   A32]
+A11 = A[1:N,1:N]
+A12 = A[1:N,N+1:2*N]
+A13 = A[1:N,2*N+1:3*N]
+A21 = A[N+1:2*N,1:N]
+A22 = A[N+1:2*N,N+1:2*N]
+A23 = A[N+1:2*N,2*N+1:3*N]
+A31 = A[2*N+1:3*N,1:N]
+A32 = A[2*N+1:3*N,N+1:2*N]
+A33 = A[2*N+1:3*N,2*N+1:3*N]
+D11 = [A11 A13
+       A31 A33]
+D12 = [A12
+       A32]
+D21 = [A21 A23]       
+D22 = A22
 
-dSdS = spdiagm(reshape(1.0./J,N)) * dSdS
-dSdM = spdiagm(reshape(1.0./J,N)) * dSdM
-dMdS = spdiagm(reshape(1.0./J,N)) * dMdS
-dMdM = spdiagm(reshape(1.0./J,N)) * dMdM
+DT = [A22 A23
+      A32 A33]
 
-# S => Th
-# M => w
-
-#=
-Th = reshape(U[:,:,ThPos]./U[:,:,RhoPos],N)
-dpdRhoTh = reshape(Phys.Rd * (Phys.Rd * U[:,:,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
-spId = sparse(I,N,N)
-spZero = spzeros(N,N)
-
-JacAc = [spZero dMdS * diagm(reshape(dpdRhoTh,N))
-         dSdM* diagm(reshape(Th,N))  spZero]
-JacAcFull = zeros(2*N,2*N)
-JacAcFull .= JacAc
-
-Jac = [spzeros(N,N) dSdM spzeros(N,N)
-       -Phys.Grav*spId spZero dMdS * diagm(reshape(dpdRhoTh,N))
-       spZero dSdM* diagm(reshape(Th,N))  spZero]
-JacFull = zeros(3*N,3*N)
-JacFull .= Jac
-
-stop         
-=#
-Th = reshape(U[:,:,ThPos]./U[:,:,RhoPos],N)
-@. Th = 300.0
-dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd * 
-  (Phys.Rd * U[:,:,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
-JacStart = [spzeros(N,N) dSdM  dSdS* diagm(dpdRhoTh)
-       -Phys.Grav * sparse(I,N,N) dMdM  dMdS * diagm(dpdRhoTh)
-       spzeros(N,N) dSdM* diagm(Th)  diagm(Th) * dSdS* diagm(dpdRhoTh)]
-JacDiff = zeros(3*N,3*N)
-ColJacDiff = zeros(OrdPolyZ + 1,nz,3)
-DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxA,RiemannSolverA) 
-iC = 0
-for iv = 1 : 3
-  for iz = 1 : nz
-    for k = 1 : OrdPolyZ + 1
-      global iC += 1  
-      temp = U[k,iz,iv]
-      U[k,iz,iv] = (1 + 1.e-8) * U[k,iz,iv] + 1.e-8
-      DGVertical.FcnGPUVert!(FT,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxA,RiemannSolverA) 
-      @. ColJacDiff .= (FT - F) / (U[k,iz,iv] - temp)
-      JacDiff[:,iC] .= reshape(ColJacDiff,3*N)
-      U[k,iz,iv] = temp
-    end
+D12F = zeros(2*N,N)
+D12F .= D12
+SchurF = D22 - D21 * (D11 \ D12F)
+Schur = sparse(SchurF)
+permu = zeros(Int,N)
+iInd = 1
+M = OrdPolyZ + 1
+shift = (M-2) * nz
+for iz = 1 : nz
+  for i = 2 : M - 1
+    permu[iInd] = i + (iz-1)*M
+    global iInd += 1
   end
-end  
+end
+for iz = 1 : nz
+  permu[iInd] = 1+(iz-1)*M
+  global iInd += 1
+  permu[iInd] = M + (iz-1)*M
+  global iInd += 1
+end
+SchurP = Schur[permu,permu]
 stop
-
-    
 
 dtau = 50.0
 fac = dtau 
@@ -139,44 +146,33 @@ nIter = 100
 for Iter = 1 : nIter
    @show "N",Iter,sum(abs.(U[:,:,wPos]))   
    DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,Flux,RiemannSolver) 
-   Th = reshape(U[:,:,ThPos]./U[:,:,RhoPos],N)
-   dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd * 
-     (Phys.Rd * U[:,:,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
-   Jac = [spzeros(N,N) dSdM  dSdS* diagm(dpdRhoTh)
-       -Phys.Grav * sparse(I,N,N) dMdM  dMdS * diagm(dpdRhoTh)
-       spzeros(N,N) dSdM* diagm(Th)  diagm(Th) * dSdS* diagm(dpdRhoTh)]   
+   Jac = DGVertical.JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
    A = (1 / fac) * sparse(I,3*N,3*N) - Jac       
    k = reshape(A \ reshape(F,3*N),OrdPolyZ+1,nz,3)
    @. U  = U + k
 end   
-UImp .= U
+UImp1 .= U
 
 @. U = UStart
 for Iter = 1 : nIter
    @show "S",Iter,sum(abs.(U[:,:,wPos]))
    DGVertical.FcnSplitGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver)
-   Th = reshape(U[:,:,ThPos]./U[:,:,RhoPos],N)
-   dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
-     (Phys.Rd * U[:,:,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
-   Jac = [spzeros(N,N) dSdM  dSdS* diagm(dpdRhoTh)
-       -Phys.Grav * sparse(I,N,N) dMdM  dMdS * diagm(dpdRhoTh)
-       spzeros(N,N) dSdM* diagm(Th)  diagm(Th) * dSdS* diagm(dpdRhoTh)]
+   Jac = DGVertical.JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
    A = (1 / fac) * sparse(I,3*N,3*N) - Jac
    k = reshape(A \ reshape(F,3*N),OrdPolyZ+1,nz,3)
    @. U  = U + k
 end
-UImp .= U
-stop
+UImp2 .= U
 
-dtau = .2
+dtau = .1
 nIter = 1000
 U .= UStart
 for Iter = 1 : nIter
-   DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
+   DGVertical.FcnSplitGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
    @. UNew = U + 1/3 * dtau *F
-   DGVertical.FcnGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
+   DGVertical.FcnSplitGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
    @. UNew = U + 1/2 * dtau *F
-   DGVertical.FcnGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
+   DGVertical.FcnSplitGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
    @. U = U + dtau *F
  end  
  @show "Ende Exp",sum(abs.(U[:,:,wPos]))   
