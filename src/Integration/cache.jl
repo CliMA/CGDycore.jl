@@ -84,7 +84,7 @@ end
 
 function CacheStruct{FT}(backend,DoF,NF,NGF,NumG,nz,NumV,NumTr,ND,NumThermo) where FT<:AbstractFloat
 Thermo=KernelAbstractions.zeros(backend,FT,nz,NumG,NumThermo)
-@views copyto!(Thermo[:,:,2],FT(250.0))
+@views @. Thermo[:,:,2],FT(250.0)
 KV=KernelAbstractions.zeros(backend,FT,nz,NumG)
 Aux2DG=zeros(FT,1,NumG,NumTr+1)
 Temp=zeros(FT,DoF,nz,NF)
