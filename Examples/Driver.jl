@@ -426,9 +426,12 @@ end
 # Surface flux
 Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,CG.NumG)
 Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
-copyto!(Global.LandUseData.z0M,FTB(0.01))
-copyto!(Global.LandUseData.z0H,FTB(0.01))
-copyto!(Global.LandUseData.LandClass,5)
+#copyto!(Global.LandUseData.z0M,FTB(0.01))
+#copyto!(Global.LandUseData.z0H,FTB(0.01))
+#copyto!(Global.LandUseData.LandClass,5)
+@. Global.LandUseData.z0M = FTB(0.01)
+@. Global.LandUseData.z0H = FTB(0.01)
+@. Global.LandUseData.LandClass = 5
 # SurfaceValues
 if Model.SurfaceFlux
   if Problem == "HeldSuarezMoistSphere"  
