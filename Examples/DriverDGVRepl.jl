@@ -26,6 +26,8 @@ nz = 20
 H = 10000.0
 OrdPolyZ = 4
 OrdPrintZ = 4
+M = OrdPolyZ + 1
+N = M * nz
 
 z,zP,dzeta = Grids.AddVerticalGrid(nz,H)
 
@@ -77,16 +79,16 @@ pAuxPos = 1
 GPAuxPos = 2
 
 FluxAverage = DGVertical.KennedyGruberGravV()(RhoPos,wPos,ThPos,pAuxPos,GPAuxPos)
-FluxA = DGVertical.EulerFluxA()(RhoPos,wPos,ThPos,pAuxPos)
 Flux = DGVertical.EulerFlux()(RhoPos,wPos,ThPos,pAuxPos)
 RiemannSolver = DGVertical.RiemannLMARSV()(Param,Phys,RhoPos,wPos,ThPos,pAuxPos)
-RiemannSolverA = DGVertical.RiemannLMARSAV()(Param,Phys,RhoPos,wPos,ThPos,pAuxPos)
 
 
 dSdS,dSdM,dMdS,dMdM = DGVertical.InitJacDG(DG1,nz,J,Param)
+
+# Play ground for own linear algebra
 Jac = DGVertical.JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
 fac = 50.0
-A = (1 / fac) * sparse(I,3*N,3*N) - Jac
+A = (1 / fac) * sparse(I,3*N,3*N) .- Jac
 # A = [A11 A12 A13
 #      A21 A22 A23
 #      A31 A32 A33]
@@ -119,23 +121,42 @@ D12F = zeros(2*N,N)
 D12F .= D12
 SchurF = D22 - D21 * (D11 \ D12F)
 Schur = sparse(SchurF)
-permu = zeros(Int,N)
+permuS = zeros(Int,N)
 iInd = 1
-M = OrdPolyZ + 1
-shift = (M-2) * nz
 for iz = 1 : nz
   for i = 2 : M - 1
-    permu[iInd] = i + (iz-1)*M
+    permuS[iInd] = i + (iz-1)*M
     global iInd += 1
   end
 end
 for iz = 1 : nz
-  permu[iInd] = 1+(iz-1)*M
+  permuS[iInd] = 1 + (iz-1)*M
   global iInd += 1
-  permu[iInd] = M + (iz-1)*M
+  permuS[iInd] = M + (iz-1)*M
   global iInd += 1
 end
-SchurP = Schur[permu,permu]
+SchurP = Schur[permuS,permuS]
+
+
+permu = zeros(Int,3*N)
+iInd = 1
+  for iz = 1 : nz
+    for i = 2 : M - 1
+for iv = 1 : NumV
+      permu[iInd] = i + (iz-1)*M + (iv-1)*M*nz
+      global iInd += 1
+    end
+  end
+end
+  for iz = 1 : nz
+for iv = 1 : NumV
+    permu[iInd] = 1 + (iz-1)*M + (iv-1)*M*nz
+    global iInd += 1
+    permu[iInd] = M + (iz-1)*M + (iv-1)*M*nz
+    global iInd += 1
+  end
+end
+AP = A[permu,permu]
 stop
 
 dtau = 50.0
@@ -174,5 +195,5 @@ for Iter = 1 : nIter
    @. UNew = U + 1/2 * dtau *F
    DGVertical.FcnSplitGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
    @. U = U + dtau *F
- end  
- @show "Ende Exp",sum(abs.(U[:,:,wPos]))   
+end  
+@show "Ende Exp",sum(abs.(U[:,:,wPos]))   

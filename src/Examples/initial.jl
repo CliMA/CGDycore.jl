@@ -864,6 +864,25 @@ function (profile::SchaerSphereExample)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct GapSphereExample <: Example end
+
+function (profile::GapSphereExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    z = max(FT(0), R - Phys.RadEarth / Param.X)
+    uS = Param.uEq * cos(Lat)
+    vS = FT(0.0)
+    w = FT(0.0)
+    pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(Lat)^2 -
+      Phys.Grav * z / (Phys.Rd * Param.TEq))
+    Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
+    Rho = pLoc / (Phys.Rd * Param.TEq)
+    return (Rho,uS,vS,w,Th)
+  end
+  return local_profile
+end
+
 @inline function integrandG(tau,RadEarth,Param,Phys)
   FT = eltype(tau)
   f=FT(2.0)*Phys.Omega*sin(tau)

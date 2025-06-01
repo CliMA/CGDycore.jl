@@ -90,29 +90,47 @@ function (profile::BaroWaveHill)()
   return local_profile
 end
 
-Base.@kwdef struct GapHill{T} <: Topography
-  h0::T = 2.e3
-  lonC::T = (72 + 10) * pi / 180
-  latC::T = (140 + 10) * pi / 180
-  e1::T
-  e2::T
-  e3::T
-  d1::T
-  d2::T
-  d3::T
+Base.@kwdef struct GapHillSphere{T} <: Topography
+  h0::T = 1.5e3
+  lonC::T = 0.5 * pi 
+  latC::T = 0.05 * pi
+  e1::T = 10.0
+  e2::T = 10.0
+  e3::T = 10.0
+  xLon::T = 800000.0
+  xLat::T = 6000000.0
+  xGap::T = 500000.0
 end
 
-function (profile::GapHill)()
-  (; h0, lon1, lon2, lonBar, c, lat1, lat2, latBar, d) = profile
+function (profile::GapHillSphere)(Phys,Scale)
+  (; h0, lonC, latC, e1, e2, e3, xLon, xLat, xGap) = profile
   function local_profile(x)
     FT = eltype(x)
     (lon,lat,r) = Grids.cart2sphere(x[1],x[2],x[3])
-    d1 = lon - lon1
-    d2 = lon - lon2
-    l1 = min(d1, FT(2*pi) - d1)
-    l2 = min(d2, FT(2*pi) - d2)
-    h = h0 * exp(-((lon-lonC) / d1 )^e1 - ((lat-latC) / d2 )^e2) *
-      (FT(1) - exp(((lat-latC)/d3))^e3)
+    d1 = xLon / (FT(2) * Phys.RadEarth ) * log(FT(10))^(-FT(1)/e1)
+    d2 = xLat / (FT(2) * Phys.RadEarth ) * log(FT(10))^(-FT(1)/e2)
+    d3 = xGap / (FT(2) * Phys.RadEarth ) * log(FT(10))^(-FT(1)/e3)
+    h = h0 * exp(-((lon-lonC) / d1)^e1 - ((lat-latC) / d2)^e2) *
+      (FT(1) - exp(-((lat-latC)/d3)^e3))
+    return h
+  end
+  return local_profile
+end
+
+Base.@kwdef struct VortexHillSphere{T} <: Topography
+  h0::T = 1.5e3
+  lonC::T = 0.5 * pi 
+  latC::T = pi / 9
+  Width::T = 250000.0
+end
+
+function (profile::VortexHillSphere)(Phys,Scale)
+  (; h0, lonC, latC, Width) = profile
+  function local_profile(x)
+    FT = eltype(x)
+    (lon,lat,r) = Grids.cart2sphere(x[1],x[2],x[3])
+    d = Phys.RadEarth*Grids.SizeGreatCircle(lon,lat,lonC,latC)
+    h = h0 * exp(-(d/Width)^2)
     return h
   end
   return local_profile

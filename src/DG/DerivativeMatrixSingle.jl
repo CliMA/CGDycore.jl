@@ -9,6 +9,9 @@ function DerivativeMatrixSingle(OrdPoly)
   for i = 1 : OrdPoly + 1
     for j = 1 : OrdPoly + 1
       DS[i,j] = DLagrange(xw[i],xw,j)
+      if abs(DS[i,j]) <= 1.e-12
+        DS[i,j] = 0.0
+      end  
     end
   end
   w = vec(wmat)

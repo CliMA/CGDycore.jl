@@ -12,6 +12,7 @@ import ..FiniteElements
 using StaticArrays
 using LinearAlgebra
 using SparseArrays
+using AMD
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll

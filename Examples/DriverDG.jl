@@ -11,8 +11,11 @@ using ArgParse
 
 
 # Model
+@show "Hallo-1"
 parsed_args = DyCore.parse_commandline()
+@show "Hallo0"
 Problem = parsed_args["Problem"]
+@show "Hallo1"
 Discretization = parsed_args["Discretization"]
 FluxDG = parsed_args["FluxDG"]
 InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
@@ -22,6 +25,7 @@ PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
+@show "Hallo2"
 RhoTPos = parsed_args["RhoTPos"]
 RhoVPos = parsed_args["RhoVPos"]
 RhoCPos = parsed_args["RhoCPos"]

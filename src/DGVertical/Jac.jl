@@ -148,7 +148,6 @@ function JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
   dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
     (Phys.Rd * U[:,:,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
   Jac = [spzeros(N,N) dSdM  dSdS* diagm(dpdRhoTh)
-# Jac = [spzeros(N,N) dSdM  spzeros(N,N)
        -Phys.Grav * sparse(I,N,N) dMdM  dMdS * diagm(dpdRhoTh)
        spzeros(N,N) dSdM* diagm(Th)  diagm(Th) * dSdS* diagm(dpdRhoTh)]
 end         

@@ -211,7 +211,7 @@ struct PhysParameters{FT<:AbstractFloat}
   Karm::FT
   cS::FT
 end
-function PhysParameters{FT}() where FT<:AbstractFloat
+function PhysParameters{FT}(;ScaleFactor=FT(1)) where FT<:AbstractFloat
   RadEarth::FT = 6.37122e+6
   Grav::FT =  9.80616
   Cpd::FT = 1004.0
@@ -230,7 +230,7 @@ function PhysParameters{FT}() where FT<:AbstractFloat
   Rho0::FT = 1.41e0
   Gamma::FT = Cpd / Cvd
   kappa::FT = Rd / Cpd
-  Omega::FT = 2 * pi / 24.0 / 3600.0
+  Omega::FT = 2 * pi / 24.0 / 3600.0 * ScaleFactor
   T0::FT = 273.15
   T00::FT = 273.15 -35.0
   Cd::FT = 0.125

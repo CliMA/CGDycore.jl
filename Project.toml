@@ -4,6 +4,7 @@ authors = ["Charles Kawczynski <kawczynski.charles@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+AMD = "14f7f29c-3bd6-536c-9a0b-7339e30b5a3e"
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 ArraysOfArrays = "65a8f2f4-9b39-5baf-92e2-a9cc46fdf018"
@@ -57,6 +58,7 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [compat]
+AMD = "0.5.3"
 Plots = "1.40.9"
 oneAPI = "1.6.1"
 

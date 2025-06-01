@@ -447,6 +447,13 @@ Base.@kwdef struct ParamSchaerSphericalSphere{FT}
   uEq::FT = 20
 end  
 
+Base.@kwdef struct ParamGapSphere{FT}
+  TEq::FT  = 300.0
+  X::FT = 20
+  H::FT = 20000
+  uEq::FT = 10
+end  
+
 
 function Parameters(FT,Problem::String)
   if Problem == "BaroWaveDrySphere" || Problem == "BaroWaveDrySphereOro" || Problem == "BaroWaveMoistSphere"
@@ -458,6 +465,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "SchaerSphericalSphere"
     @show Problem
     Param = ParamSchaerSphericalSphere{FT}()
+  elseif Problem == "GapSphere"
+    @show Problem
+    Param = ParamGapSphere{FT}()
   elseif Problem == "BickleyJet"
     @show Problem
     Param = ParamBickleyJet{FT}()

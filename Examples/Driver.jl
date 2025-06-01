@@ -177,7 +177,7 @@ OrdPolyZ=1
 Parallel = true
 
 # Physical parameters
-Phys = DyCore.PhysParameters{FTB}()
+Phys = DyCore.PhysParameters{FTB}(;ScaleFactor)
 
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
@@ -300,6 +300,10 @@ elseif TopoS == "BaroWaveHill"
   TopoProfile = Examples.BaroWaveHill()()
 elseif TopoS == "SchaerSphereCircle"
   TopoProfile = Examples.SchaerSphereCircle()(Param,Phys)
+elseif TopoS == "GapHillSphere"
+  TopoProfile = Examples.GapHillSphere()(Phys,ScaleFactor)
+elseif TopoS == "VortexHillSphere"
+  TopoProfile = Examples.VortexHillSphere()(Phys,ScaleFactor)
 else
   TopoProfile = Examples.Flat()()  
 end  
