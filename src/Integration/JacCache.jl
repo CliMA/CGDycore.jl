@@ -84,27 +84,30 @@ function JStruct{FT}(backend,NumG,nz,NumTr,TkePos) where FT<:AbstractFloat
   JAdvC=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
   JAdvF=KernelAbstractions.zeros(backend,FT,3,nz-1,NumG)
   if TkePos > 0
+    ListTracerCPU = zeros(Int32,NumTr+4)
     ListTracer = KernelAbstractions.zeros(backend,Int32,NumTr+4)
-    ListTracer[1] = 2
-    ListTracer[2] = 3
-    ListTracer[3] = 5
-    ListTracer[4] = TkePos
+    ListTracerCPU[1] = 2
+    ListTracerCPU[2] = 3
+    ListTracerCPU[3] = 5
+    ListTracerCPU[4] = TkePos
     for iT = 1 : NumTr
-      ListTracer[4+iT] = 6 + iT
+      ListTracerCPU[4+iT] = 6 + iT
     end  
     SN = KernelAbstractions.ones(backend,FT,NumTr+4)
     C = KernelAbstractions.zeros(backend,FT,NumTr+4)
   else    
+    ListTracerCPU = zeros(Int32,NumTr+3)
     ListTracer = KernelAbstractions.zeros(backend,Int32,NumTr+3)
-    ListTracer[1] = 2
-    ListTracer[2] = 3
-    ListTracer[3] = 5
+    ListTracerCPU[1] = 2
+    ListTracerCPU[2] = 3
+    ListTracerCPU[3] = 5
     for iT = 1 : NumTr
-      ListTracer[3+iT] = 5 + iT
+      ListTracerCPU[3+iT] = 5 + iT
     end  
     SN = KernelAbstractions.ones(backend,FT,NumTr+3)
     C = KernelAbstractions.zeros(backend,FT,NumTr+3)
   end  
+  copyto!(ListTracer,ListTracerCPU)
   CompTri=false
   CompJac=false
   CacheCol1=KernelAbstractions.zeros(backend,FT,nz)
