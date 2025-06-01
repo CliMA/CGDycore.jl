@@ -64,12 +64,12 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
     xe[i] = xe[i-1] + 2.0/OrdPoly
   end
   xe[OrdPoly+1] = 1.0
-  ksi = zeros(2,(OrdPoly+1)*(OrdPoly+1))
+  ksiCPU = zeros(2,(OrdPoly+1)*(OrdPoly+1))
   iDoF = 1
   for j = 1 : OrdPoly + 1
     for i = 1 : OrdPoly +1
-      ksi[1,iDoF] = xw[i]
-      ksi[2,iDoF] = xw[j]
+      ksi[1,iDoF] = xwCPU[i]
+      ksi[2,iDoF] = xwCPU[j]
       iDoF += 1
     end
   end
