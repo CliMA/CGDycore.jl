@@ -28,8 +28,8 @@ julia --project Examples/Driver.jl \
   --SimDays=0 \
   --SimTime=0 \
   --PrintSeconds=0 \
-  --PrintMinutes=1 \
-  --PrintHours=0 \
+  --PrintMinutes=0 \
+  --PrintHours=1 \
   --PrintDays=0 \
   --PrintTime=0.0 \
   --OrdPrint=2 \
