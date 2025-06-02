@@ -28,8 +28,8 @@ julia --project Examples/Driver.jl \
   --SimDays=0 \
   --SimTime=0 \
   --PrintSeconds=0 \
-  --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintMinutes=1 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --PrintTime=0.0 \
   --OrdPrint=2 \
@@ -50,7 +50,7 @@ julia --project Examples/Driver.jl \
   --H=20000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=1.e7 \
-  --HyperDGrad=1.e7 \
-  --HyperDDiv=1.e7 \
+  --HyperDCurl=2.e11 \
+  --HyperDGrad=2.e11 \
+  --HyperDDiv=2.e11 \
   --HyperDDivW=0.e7

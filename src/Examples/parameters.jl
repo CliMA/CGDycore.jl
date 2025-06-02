@@ -19,6 +19,30 @@ Base.@kwdef struct ParamLinearGravity{FT}
   U::FT = 0.0
 end
 
+Base.@kwdef struct ParamInertiaShortGravity{FT}
+  xC::FT = 300000 / 3
+  H::FT = 10000
+  NBr::FT = 0.01
+  cS::FT = 350.0
+  N::FT = 1.e-2
+  Th0::FT = 300.0
+  DeltaTh::FT = 1.e-2
+  a::FT = 5000
+  uMax::FT = 0.0
+end
+
+Base.@kwdef struct ParamInertiaLongGravity{FT}
+  xC::FT = 3000000 / 3
+  H::FT = 10000
+  NBr::FT = 0.01
+  cS::FT = 350.0
+  N::FT = 1.e-2
+  Th0::FT = 300.0
+  DeltaTh::FT = 1.e-2
+  a::FT = 100000
+  uMax::FT = 0.0
+end
+
 Base.@kwdef struct ParamGalewskySphere{FT}
   H0G::FT = 10000.0
   hH::FT = 120.0 
@@ -480,6 +504,12 @@ function Parameters(FT,Problem::String)
   elseif Problem == "LinearGravity"
     @show Problem
     Param = ParamLinearGravity{FT}()
+  elseif Problem == "InertiaShortGravity"
+    @show Problem
+    Param = ParamInertiaShortGravity{FT}()
+  elseif Problem == "InertiaLongGravity"
+    @show Problem
+    Param = ParamInertiaLongGravity{FT}()
   elseif Problem == "HaurwitzSphere"
     @show Problem
     Param = ParamHaurwitzSphere()

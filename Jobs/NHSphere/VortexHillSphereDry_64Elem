@@ -50,7 +50,7 @@ julia --project Examples/Driver.jl \
   --H=20000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=0.25e7 \
-  --HyperDGrad=0.25e7 \
-  --HyperDDiv=0.25e7 \
+  --HyperDCurl=0.5e11 \
+  --HyperDGrad=0.5e11 \
+  --HyperDDiv=0.5e11 \
   --HyperDDivW=0.e7
