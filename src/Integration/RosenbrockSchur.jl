@@ -32,6 +32,40 @@ NVTX.@annotate function RosenbrockSchur!(V,dt,Fcn!,FcnPrepare!,Jac,CG,Metric,Phy
   end
 end
 
+function RosenbrockSchurDG!(V,dt,Fcn!,Jac,CG,Metric,Phys,Cache,JCache,Exchange,
+  Global,Param,DiscType)
+
+  ROS = Global.TimeStepper.ROS
+  nStage = ROS.nStage
+  k = Cache.k
+  fV = Cache.fV
+  Vn = Cache.Vn
+  Global.TimeStepper.dtauStage = dt  # Oswald
+
+  JCache.CompTri = true
+  @. Vn = V
+  @inbounds for iStage = 1 : nStage
+    @. V = Vn
+    @inbounds for jStage = 1 : iStage-1
+      @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+    end
+    FcnPrepare!(V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+    Fcn!(fV,V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+    if iStage == 1
+      Jac(JCache,V,CG,Metric,Phys,Cache,Global,Param,DiscType)
+    end  
+    @inbounds for jStage = 1 : iStage - 1
+      fac = ROS.c[iStage,jStage] / dt
+      @views @. fV = fV + fac * k[:,:,:,:,jStage]
+    end
+    @views SchurSolveGPU!(k[:,:,:,iStage],fV,JCache,dt*ROS.gamma,Cache,Global)
+  end
+  @. V = Vn
+  @inbounds for iStage = 1 : nStage
+    @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
+  end
+end
+
 function RosenbrockSchurMIS!(V,dt,Fcn,R,Jac,CG,Global,Param)
   ROS=Global.TimeStepper.ROS
   nV1=size(V,1)

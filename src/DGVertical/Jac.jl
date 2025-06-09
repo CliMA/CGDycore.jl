@@ -127,15 +127,12 @@ function DMomDScalarAc(NZ,DG,cS)
   return dMdS,dMdM
 end
 
-function InitJacDG(DG,nz,J,Param)
+function InitJacDG(DG,nz,Param)
   N = (DG.OrdPolyZ + 1) * nz
+  @show N,DG.OrdPolyZ + 1,nz
   dSdS,dSdM = DGVertical.DScalarDMomAc(nz,DG,Param.cS)
   dMdS,dMdM = DGVertical.DMomDScalarAc(nz,DG,Param.cS)
-
-  dSdS = spdiagm(reshape(1.0./J,N)) * dSdS
-  dSdM = spdiagm(reshape(1.0./J,N)) * dSdM
-  dMdS = spdiagm(reshape(1.0./J,N)) * dMdS
-  dMdM = spdiagm(reshape(1.0./J,N)) * dMdM
+  @show size(dSdS),size(dSdM)
   return dSdS,dSdM,dMdS,dMdM
 end  
 
@@ -151,6 +148,28 @@ function JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
        -Phys.Grav * sparse(I,N,N) dMdM  dMdS * diagm(dpdRhoTh)
        spzeros(N,N) dSdM* diagm(Th)  diagm(Th) * dSdS* diagm(dpdRhoTh)]
 end         
+
+function JacDG1(U,DG,dSdS,dSdM,dMdS,dMdM,J,Phys)
+  FTB = eltype(U)
+  N = size(dSdM,1)
+  RhoPos = 1
+  ThPos = 3
+  nz = size(U,2)
+  NF = size(J,4)
+  Jac = Array{SparseMatrixCSC}(undef,1)
+  ID = 1  
+  @show size(J),N
+  @show size(U)
+  diagJ = spdiagm(1.0./reshape(J[:,:],N))
+  Th = reshape(U[:,:,ThPos]./U[:,:,RhoPos],N)
+  dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
+    (Phys.Rd * U[:,:,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
+  Jac[ID] = [spzeros(N,N)              diagJ * dSdM              diagJ* dSdS * diagm(dpdRhoTh)
+            -Phys.Grav * sparse(I,N,N) diagJ * dMdM              diagJ* dMdS * diagm(dpdRhoTh)
+#            spzeros(N,N)              diagJ * dSdM * diagm(Th)  diagm(Th) * diagJ * dSdS * diagm(dpdRhoTh)]
+             spzeros(N,N)              diagm(Th) * diagJ * dSdM  diagm(Th) * diagJ * dSdS * diagm(dpdRhoTh)]
+  return Jac     
+end
 
 function JacAccoustic(U,dSdM,dMdS,fac,Phys)
   N = size(dSdM,1)

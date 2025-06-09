@@ -582,7 +582,7 @@ mutable struct GlobalStruct{FT<:AbstractFloat,
   SurfaceData::Surfaces.SurfaceData{FT}
   LandUseData::Surfaces.LandUseData{FT}
   latN::Array{Float64, 1}
-  ThetaBGrd::Array{Float64, 2}
+  ThetaBGrd::AT2
   TBGrd::Array{Float64, 2}
   pBGrd::Array{Float64, 2}
   RhoBGrd::Array{Float64, 2}
@@ -597,7 +597,7 @@ function GlobalStruct{FT}(backend,Grid::Grids.GridStruct,
                 DoF,nz,NumV,NumTr) where FT<:AbstractFloat
   vtkCache = Outputs.vtkStruct{FT}(backend)
   latN=zeros(0)
-  ThetaBGrd = zeros(0,0)
+  ThetaBGrd = KernelAbstractions.zeros(backend,FT,0,0)
   TBGrd = zeros(0,0)
   pBGrd = zeros(0,0)
   RhoBGrd = zeros(0,0)

@@ -144,3 +144,25 @@ return CacheStruct{FT,
   RhoEDMF
 )
 end
+
+mutable struct CacheDGStruct{FT<:AbstractFloat,
+                           AT4<:AbstractArray,
+                           AT5<:AbstractArray}
+  Vn::AT4
+  k::AT5
+  fV::AT4
+end
+
+function CacheDGStruct{FT}(backend) where FT<:AbstractFloat
+  Vn=KernelAbstractions.zeros(backend,FT,0,0,0,0)
+  k=KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
+  fV=KernelAbstractions.zeros(backend,FT,0,0,0,0)
+return CacheDGStruct{FT,
+                   typeof(Vn),
+                   typeof(k)}(
+  Vn,
+  k,
+  fV,
+)
+end
+

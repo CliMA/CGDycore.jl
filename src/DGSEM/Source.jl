@@ -11,8 +11,8 @@
     ind = Glob[ID,IF]
     fac = eltype(F)(2.0) * Phys.Omega * X[ID,K,3,Iz,IF] / sqrt(X[ID,K,1,Iz,IF]^2 + 
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2)
-    F[Iz,K,ind,uPos] += fac * U[Iz,K,ind,vPos]  
-    F[Iz,K,ind,vPos] += -fac * U[Iz,K,ind,uPos]
+    F[K,Iz,ind,uPos] += fac * U[K,Iz,ind,vPos]  
+    F[K,Iz,ind,vPos] += -fac * U[K,Iz,ind,uPos]
   end  
 end
 
@@ -25,7 +25,7 @@ end
 
   if ID <= ND
     ind = Glob[ID,IF]
-    @views Fun(F[Iz,K,ind,:],U[Iz,K,ind,:],X[ID,K,:,Iz,IF])
+    @views Fun(F[K,Iz,ind,:],U[K,Iz,ind,:],X[ID,K,:,Iz,IF])
   end
 end
 
@@ -45,10 +45,10 @@ end
     r = sqrt(X[ID,K,1,Iz,IF]^2 +
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2) 
 
-    fac = -Phys.Grav * (Phys.RadEarth / r)^2 / r * U[Iz,K,ind,RhoPos]
-    F[Iz,K,ind,uPos] += fac * X[ID,K,1,Iz,IF]
-    F[Iz,K,ind,vPos] += fac * X[ID,K,2,Iz,IF]
-    F[Iz,K,ind,wPos] += fac * X[ID,K,3,Iz,IF]
+    fac = -Phys.Grav * (Phys.RadEarth / r)^2 / r * U[K,Iz,ind,RhoPos]
+    F[K,Iz,ind,uPos] += fac * X[ID,K,1,Iz,IF]
+    F[K,Iz,ind,vPos] += fac * X[ID,K,2,Iz,IF]
+    F[K,Iz,ind,wPos] += fac * X[ID,K,3,Iz,IF]
   end
 end
 
@@ -64,8 +64,8 @@ end
     wPos = 4
     ind = Glob[ID,IF]
 
-    fac = -Phys.Grav * U[Iz,K,ind,RhoPos]
-    F[Iz,K,ind,wPos] += fac
+    fac = -Phys.Grav * U[K,Iz,ind,RhoPos]
+    F[K,Iz,ind,wPos] += fac
   end
 end
 
@@ -83,10 +83,10 @@ end
     ind = Glob[ID,IF]
     h = sqrt(X[ID,K,1,Iz,IF]^2 +
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2) - Phys.RadEarth
-    Fu,Fv,Fw = Damp(h,view(U,Iz,K,ind,1:5))
-    F[Iz,K,ind,2] += Fu
-    F[Iz,K,ind,3] += Fv
-    F[Iz,K,ind,4] += Fw
+    Fu,Fv,Fw = Damp(h,view(U,K,Iz,ind,1:5))
+    F[K,Iz,ind,2] += Fu
+    F[K,Iz,ind,3] += Fv
+    F[K,Iz,ind,4] += Fw
   end
 end
 
@@ -103,10 +103,10 @@ end
     wPos = 4
     ind = Glob[ID,IF]
     h = X[ID,K,3,Iz,IF]
-    Fu,Fv,Fw = Damp(h,view(U,Iz,K,ind,1:5))
-    F[Iz,K,ind,2] += Fu
-    F[Iz,K,ind,3] += Fv
-    F[Iz,K,ind,4] += Fw
+    Fu,Fv,Fw = Damp(h,view(U,K,Iz,ind,1:5))
+    F[K,Iz,ind,2] += Fu
+    F[K,Iz,ind,3] += Fv
+    F[K,Iz,ind,4] += Fw
   end
 end
 
@@ -119,6 +119,6 @@ end
 
   if ID <= ND
     ind = Glob[ID,IF]
-    GP[Iz,K,ind] = GPF(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF])
+    GP[K,Iz,ind] = GPF(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF])
   end
 end

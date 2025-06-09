@@ -48,17 +48,17 @@ end
 
   if ID <= NQ
     ind = Glob[ID,IF]
-    VCart[Iz,K,ind,1] = VSp[Iz,K,ind,1]
-    VCart[Iz,K,ind,2] = Rotate[1,1,K,ID,Iz,IF] * VSp[Iz,K,ind,2] +
-      Rotate[2,1,K,ID,Iz,IF] * VSp[Iz,K,ind,3] +
-      Rotate[3,1,K,ID,Iz,IF] * VSp[Iz,K,ind,4]
-    VCart[Iz,K,ind,3] = Rotate[1,2,1,ID,Iz,IF] * VSp[Iz,K,ind,2] +
-      Rotate[2,2,K,ID,Iz,IF] * VSp[Iz,K,ind,3] +
-      Rotate[3,2,K,ID,Iz,IF] * VSp[Iz,K,ind,4] 
-    VCart[Iz,K,ind,4] = Rotate[1,3,K,ID,Iz,IF] * VSp[Iz,K,ind,2] +
-      Rotate[2,3,K,ID,Iz,IF] * VSp[Iz,K,ind,3] +
-      Rotate[3,3,K,ID,Iz,IF] * VSp[Iz,K,ind,4]
-    VCart[Iz,K,ind,5] = VSp[Iz,K,ind,5]
+    VCart[K,Iz,ind,1] = VSp[K,Iz,ind,1]
+    VCart[K,Iz,ind,2] = Rotate[1,1,K,ID,Iz,IF] * VSp[K,Iz,ind,2] +
+      Rotate[2,1,K,ID,Iz,IF] * VSp[K,Iz,ind,3] +
+      Rotate[3,1,K,ID,Iz,IF] * VSp[K,Iz,ind,4]
+    VCart[K,Iz,ind,3] = Rotate[1,2,1,ID,Iz,IF] * VSp[K,Iz,ind,2] +
+      Rotate[2,2,K,ID,Iz,IF] * VSp[K,Iz,ind,3] +
+      Rotate[3,2,K,ID,Iz,IF] * VSp[K,Iz,ind,4] 
+    VCart[K,Iz,ind,4] = Rotate[1,3,K,ID,Iz,IF] * VSp[K,Iz,ind,2] +
+      Rotate[2,3,K,ID,Iz,IF] * VSp[K,Iz,ind,3] +
+      Rotate[3,3,K,ID,Iz,IF] * VSp[K,Iz,ind,4]
+    VCart[K,Iz,ind,5] = VSp[K,Iz,ind,5]
   end  
 end
 
@@ -74,24 +74,24 @@ end
 
   if ID <= NQ
     ind = Glob[ID,IF]
-    VSp[Iz,K,ind,1] = VCart[Iz,K,ind,1] 
-    VSp[Iz,K,ind,2] = (Rotate[1,1,K,ID,Iz,IF] * VCart[Iz,K,ind,2] +
-      Rotate[1,2,K,ID,Iz,IF] * VCart[Iz,K,ind,3] +
-      Rotate[1,3,K,ID,Iz,IF] * VCart[Iz,K,ind,4])
-    VSp[Iz,K,ind,3] = (Rotate[2,1,K,ID,Iz,IF] * VCart[Iz,K,ind,2] +
-      Rotate[2,2,K,ID,Iz,IF] * VCart[Iz,K,ind,3] +
-      Rotate[2,3,K,ID,Iz,IF] * VCart[Iz,K,ind,4])
+    VSp[K,Iz,ind,1] = VCart[K,Iz,ind,1] 
+    VSp[K,Iz,ind,2] = (Rotate[1,1,K,ID,Iz,IF] * VCart[K,Iz,ind,2] +
+      Rotate[1,2,K,ID,Iz,IF] * VCart[K,Iz,ind,3] +
+      Rotate[1,3,K,ID,Iz,IF] * VCart[K,Iz,ind,4])
+    VSp[K,Iz,ind,3] = (Rotate[2,1,K,ID,Iz,IF] * VCart[K,Iz,ind,2] +
+      Rotate[2,2,K,ID,Iz,IF] * VCart[K,Iz,ind,3] +
+      Rotate[2,3,K,ID,Iz,IF] * VCart[K,Iz,ind,4])
     if Nz == 1 && M == 2
-      VSp[Iz,K,ind,4] = eltype(VSp)(0)  
+      VSp[K,Iz,ind,4] = eltype(VSp)(0)  
     else  
-      VSp[Iz,K,ind,4] = (Rotate[3,1,K,ID,Iz,IF] * VCart[Iz,K,ind,2] +
-        Rotate[3,2,K,ID,Iz,IF] * VCart[Iz,K,ind,3] +
-        Rotate[3,3,K,ID,Iz,IF] * VCart[Iz,K,ind,4])
+      VSp[K,Iz,ind,4] = (Rotate[3,1,K,ID,Iz,IF] * VCart[K,Iz,ind,2] +
+        Rotate[3,2,K,ID,Iz,IF] * VCart[K,Iz,ind,3] +
+        Rotate[3,3,K,ID,Iz,IF] * VCart[K,Iz,ind,4])
     end  
     if Iz == Nz && K == M
-      VSp[Iz,K,ind,4] = eltype(VSp)(0)  
+      VSp[K,Iz,ind,4] = eltype(VSp)(0)  
     end  
-    VSp[Iz,K,ind,5] = VCart[Iz,K,ind,5]
+    VSp[K,Iz,ind,5] = VCart[K,Iz,ind,5]
   end  
 end
 
@@ -106,7 +106,7 @@ end
   if ID <= NQ
     ind = Glob[ID,IF]
     @unroll for iv = 1 : NUMV
-      F[Iz,K,ind,iv] /= J[ID,K,Iz,IF]
+      F[K,Iz,ind,iv] /= J[ID,K,Iz,IF]
     end  
   end
 end

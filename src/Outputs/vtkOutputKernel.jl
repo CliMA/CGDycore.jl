@@ -65,7 +65,7 @@ end
         for iP = 1 : N
           iD += 1  
           ind = Glob[iD,IF]
-          cCell[I,J,K,Iz,IF] += Inter[I,J,K,iP,jP,kP] * c[Iz,kP,ind]
+          cCell[I,J,K,Iz,IF] += Inter[I,J,K,iP,jP,kP] * c[kP,Iz,ind]
         end
       end
     end
@@ -89,7 +89,7 @@ end
       ind = Glob[iDoF,IF]  
       cLoc = eltype(cCell)(0)
       for k = 1 : DoFV  
-        cLoc += InterV[KP,k] * c[Iz,k,ind] 
+        cLoc += InterV[KP,k] * c[k,Iz,ind] 
       end  
       cCell[IP,KP,Iz,IF] +=  InterH[IP,iDoF] * cLoc
     end
@@ -110,7 +110,7 @@ end
     cCell[IP,1,Iz,IF] = eltype(cCell)(0)
     for iDoF = 1 : DoFH
       ind = Glob[iDoF,IF]
-      cCell[IP,1,Iz,IF] +=  InterH[IP,iDoF] * c[Iz,1,ind]
+      cCell[IP,1,Iz,IF] +=  InterH[IP,iDoF] * c[1,Iz,ind]
     end
   end
 end
@@ -179,7 +179,7 @@ end
       ind = Glob[iDoF,IF]
       cLoc = eltype(cCell)(0)
       for k = 1 : DoFV
-        cLoc += InterV[KP,k] * c[Iz,k,ind] / RhoC[Iz,k,ind]
+        cLoc += InterV[KP,k] * c[k,Iz,ind] / RhoC[k,Iz,ind]
       end
       cCellLoc +=  InterH[IP,iDoF] * cLoc
     end
@@ -204,9 +204,9 @@ end
       ind = Glob[iDoF,IF]
       cLoc = eltype(cCell)(0)
       for k = 1 : DoFV
-        w0 = -(u[Iz,1,ind] * dXdxI[3,1,1,iDoF,Iz,IF] +
-          v[Iz,1,ind] * dXdxI[3,2,1,iDoF,Iz,IF]) / dXdxI[3,3,1,iDoF,Iz,IF]  
-        cLoc += eltype(cCell)(0.5) * InterV[KP,k] * (w[Iz,k,ind] + w0) 
+        w0 = -(u[1,Iz,ind] * dXdxI[3,1,1,iDoF,Iz,IF] +
+          v[1,Iz,ind] * dXdxI[3,2,1,iDoF,Iz,IF]) / dXdxI[3,3,1,iDoF,Iz,IF]  
+        cLoc += eltype(cCell)(0.5) * InterV[KP,k] * (w[k,Iz,ind] + w0) 
       end
       cCellLoc +=  InterH[IP,iDoF] * cLoc
     end
@@ -217,7 +217,7 @@ end
       ind = Glob[iDoF,IF]
       cLoc = eltype(cCell)(0)
       for k = 1 : DoFV
-        cLoc += eltype(cCell)(0.5) * InterV[KP,k] * (w[Iz,k,ind] + w[Iz-1,k,ind]) 
+        cLoc += eltype(cCell)(0.5) * InterV[KP,k] * (w[k,Iz,ind] + w[k,Iz-1,ind]) 
       end
       cCellLoc +=  InterH[IP,iDoF] * cLoc
     end
@@ -244,7 +244,7 @@ end
         for iP = 1 : N
           iD += 1
           ind = Glob[iD,IF]
-          cLoc = Thermodynamics.fThE(Rho[Iz,kP,ind],RhoV[Iz,kP,ind],RhoC[Iz,kP,ind],
+          cLoc = Thermodynamics.fThE(Rho[kP,Iz,ind],RhoV[kP,Iz,ind],RhoC[kP,Iz,ind],
             RhoTh[Iz,kP,ind],Phys)
           cCell[I,J,K,Iz,IF] += Inter[I,J,K,iP,jP,kP] * cLoc
         end
@@ -262,7 +262,7 @@ function InterpolateVortGPU!(Vort,U,Inter,FE,Metric)
   DoF = FE.DoF
   Glob = FE.Glob
   NF = size(Glob,2)
-  Nz = size(U,1)
+  Nz = size(U,2)
 
 # Ranges
   NzG = min(div(256,DoF),Nz)
@@ -293,7 +293,7 @@ function InterpolateGPU!(cCell,c,FE::FiniteElements.DGElement)
   NumCellH = size(InterH,1)
   NumCellV = size(InterV,1)
   NF = size(Glob,2)
-  Nz = size(c,1)
+  Nz = size(c,2)
 # Ranges
   NzG = min(div(256,NumCellH*NumCellV),Nz)
   group = (NumCellH,NumCellV,  NzG, 1)
@@ -313,7 +313,7 @@ function InterpolateGPU!(cCell,c,FE::FiniteElements.CGQuad)
   Glob = FE.Glob
   NumCellH = size(InterH,1)
   NF = size(Glob,2)
-  Nz = size(c,1)
+  Nz = size(c,2)
 # Ranges
   NzG = min(div(256,NumCellH),Nz)
   group = (NumCellH,  NzG, 1)
@@ -333,7 +333,7 @@ function InterpolateCGDim2GPU!(cCell,c,Inter,Glob)
   OrdPrint = size(Inter,1)
   OrdPrintZ = size(Inter,3)
   NF = size(cCell,3)
-  Nz = size(c,1)
+  Nz = size(c,2)
 # Ranges
   NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
   group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)
@@ -356,7 +356,7 @@ function InterpolateRhoGPU!(cCell,c,Rho,FE)
   NumCellH = size(InterH,1)
   NumCellV = size(InterV,1)
   NF = size(Glob,2)
-  Nz = size(c,1)
+  Nz = size(c,2)
 # Ranges
   NzG = min(div(256,NumCellH*NumCellV),Nz)
   group = (NumCellH,NumCellV,  NzG, 1)
@@ -379,7 +379,7 @@ function InterpolateWBGPU!(cCell,u,v,w,dXdxI,FE)
   NumCellH = size(InterH,1)
   NumCellV = size(InterV,1)
   NF = size(Glob,2)
-  Nz = size(u,1)
+  Nz = size(u,2)
 # Ranges
   NzG = min(div(256,NumCellH*NumCellV),Nz)
   group = (NumCellH,NumCellV,  NzG, 1)
@@ -398,7 +398,7 @@ function InterpolateThEGPU!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys)
   OrdPrint = size(Inter,1)
   OrdPrintZ = size(Inter,3)
   NF = size(Glob,2)
-  Nz = size(RhoTh,1)
+  Nz = size(RhoTh,2)
 # Ranges
   NzG = min(div(256,OrdPrint*OrdPrint*OrdPrintZ),Nz)
   group = (OrdPrint, OrdPrint, OrdPrintZ,  NzG, 1)

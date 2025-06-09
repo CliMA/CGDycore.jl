@@ -19,8 +19,6 @@ using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using DynamicPolynomials
 using FastGaussQuadrature
-using LinearAlgebra
-using SparseArrays
 
 export parse_commandline 
 

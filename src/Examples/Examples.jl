@@ -29,6 +29,9 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
   elseif Problem == "LinearGravity"
     Profile = Examples.LinearGravityExample()(Param,Phys)
     Model.InitialProfile = Profile  
+  elseif Problem == "InertiaGravityShortCart" || Problem == "InertiaGravityLongCart"
+    Profile = Examples.InertiaGravityExample()(Param,Phys)
+    Model.InitialProfile = Profile  
   elseif Problem == "LinearBlob"
     Profile = Examples.LinearBlob()(Param,Phys)
     Model.InitialProfile = Profile

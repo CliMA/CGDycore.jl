@@ -66,6 +66,8 @@ UImp1 = similar(U)
 UImp2 = similar(U)
 UStart .= U
 
+@views @. UStart[:,3,3] += 3.0
+
 F = similar(U)
 FT = similar(U)
 UNew = similar(U)
@@ -83,21 +85,22 @@ Flux = DGVertical.EulerFlux()(RhoPos,wPos,ThPos,pAuxPos)
 RiemannSolver = DGVertical.RiemannLMARSV()(Param,Phys,RhoPos,wPos,ThPos,pAuxPos)
 
 
-dSdS,dSdM,dMdS,dMdM = DGVertical.InitJacDG(DG1,nz,J,Param)
+dSdS,dSdM,dMdS,dMdM = DGVertical.InitJacDG(DG1,nz,Param)
 
+#=
 # Play ground for own linear algebra
-Jac = DGVertical.JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
+Jac = DGVertical.JacDG1(U,DG1,dSdS,dSdM,dMdS,dMdM,J,Phys)
 fac = 50.0
-A = (1 / fac) * sparse(I,3*N,3*N) .- Jac
-# A = [A11 A12 A13
-#      A21 A22 A23
-#      A31 A32 A33]
-# A = [A11 A13 A12
-#      A31 A33 A32
-#      A21 A23 A22]
-# S = A22 - [A21 A23]*[A11 A13
-#                      A31 A33]^-1*[A12
-#                                   A32]
+A = (1 / fac) * sparse(I,3*N,3*N) .- Jac[1]
+ A = [A11 A12 A13
+      A21 A22 A23
+      A31 A32 A33]
+ A = [A11 A13 A12
+      A31 A33 A32
+      A21 A23 A22]
+ S = A22 - [A21 A23]*[A11 A13
+                      A31 A33]^-1*[A12
+                                   A32]
 A11 = A[1:N,1:N]
 A12 = A[1:N,N+1:2*N]
 A13 = A[1:N,2*N+1:3*N]
@@ -157,9 +160,9 @@ for iv = 1 : NumV
   end
 end
 AP = A[permu,permu]
-stop
+=#
 
-dtau = 50.0
+dtau = 10.0
 fac = dtau 
 
 nIter = 100
@@ -167,8 +170,8 @@ nIter = 100
 for Iter = 1 : nIter
    @show "N",Iter,sum(abs.(U[:,:,wPos]))   
    DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,Flux,RiemannSolver) 
-   Jac = DGVertical.JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
-   A = (1 / fac) * sparse(I,3*N,3*N) - Jac       
+   Jac = DGVertical.JacDG1(U,DG1,dSdS,dSdM,dMdS,dMdM,J,Phys)
+   A = (1 / fac) * sparse(I,3*N,3*N) - Jac[1]       
    k = reshape(A \ reshape(F,3*N),OrdPolyZ+1,nz,3)
    @. U  = U + k
 end   
@@ -178,8 +181,8 @@ UImp1 .= U
 for Iter = 1 : nIter
    @show "S",Iter,sum(abs.(U[:,:,wPos]))
    DGVertical.FcnSplitGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver)
-   Jac = DGVertical.JacDG(U,dSdS,dSdM,dMdS,dMdM,Phys)
-   A = (1 / fac) * sparse(I,3*N,3*N) - Jac
+   Jac = DGVertical.JacDG1(U,DG1,dSdS,dSdM,dMdS,dMdM,J,Phys)
+   A = (1 / fac) * sparse(I,3*N,3*N) - Jac[1]
    k = reshape(A \ reshape(F,3*N),OrdPolyZ+1,nz,3)
    @. U  = U + k
 end

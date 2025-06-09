@@ -46,6 +46,19 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
     aCPU=[aCPU
        mCPU']
 
+  elseif str == "RosEul"
+    nStage = 1
+    alpha = zeros(FT,nStage,nStage)
+    b = zeros(FT,nStage)
+    b[1] = 1
+    Gamma = zeros(FT,nStage,nStage)
+    Gamma[1,1] = 1
+    gamma = FT(1)        
+    aCPU = alpha / Gamma
+    cCPU = -inv(Gamma)
+    mCPU = Gamma'\b
+    aCPU=[aCPU
+       mCPU']
   elseif str == "ROSRK3"
     nStage = 3
     alpha = zeros(FT,nStage,nStage)

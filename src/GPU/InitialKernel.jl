@@ -48,9 +48,9 @@ end
     x3 = X[ID,K,3,Iz,IF] 
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,wP = Profile(xS,time)
-    u[Iz,K,ind] = uP
-    v[Iz,K,ind] = vP
-    w[Iz,K,ind] = wP
+    u[K,Iz,ind] = uP
+    v[K,Iz,ind] = vP
+    w[K,Iz,ind] = wP
   end
 end
 
@@ -74,8 +74,8 @@ end
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,wP = Profile(xS,time)
     lon,lat,_= Grids.cart2sphere(x1,x2,x3)
-    u[Iz,K,ind] = uP
-    v[Iz,K,ind] = vP
+    u[K,Iz,ind] = uP
+    v[K,Iz,ind] = vP
   end
 end
 
@@ -123,6 +123,27 @@ end
   end
 end
 
+@kernel inbounds = true function ThBGFunCKernel!(Profile,ThBG,time,@Const(Glob),@Const(X))
+
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[2]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz
+    ind = Glob[I,IF]
+    x1 = eltype(X)(0.5) * (X[I,1,1,Iz,IF] + X[I,2,1,Iz,IF])
+    x2 = eltype(X)(0.5) * (X[I,1,2,Iz,IF] + X[I,2,2,Iz,IF])
+    x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
+    xS = SVector{3}(x1, x2 ,x3)
+    _,_,_,_,_,_,_,_,_,ThBGP = Profile(xS,time)
+    ThBG[Iz,ind] = ThBGP
+  end
+end
+
 @kernel inbounds = true function RhoFunCDGKernel!(Profile,Rho,time,@Const(Glob),@Const(X),Param,Phys)
 
   ID, K, iz   = @index(Local, NTuple)
@@ -141,7 +162,7 @@ end
     x3 = X[ID,K,3,Iz,IF]
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ = Profile(xS,time)
-    Rho[Iz,K,ind] = RhoP
+    Rho[K,Iz,ind] = RhoP
   end
 end
 
@@ -204,7 +225,7 @@ end
     x3 = X[I,K,3,Iz,IF]
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,ThP = Profile(xS,time)
-    RhoTh[Iz,K,ind] = RhoP * ThP
+    RhoTh[K,Iz,ind] = RhoP * ThP
   end
 end
 
@@ -225,7 +246,7 @@ end
     x3 = X[I,K,3,Iz,IF]
     xS = SVector{3}(x1, x2 ,x3)
     _,_,_,_ ,ThP = Profile(xS,time)
-    RhoTh[Iz,K,ind] = ThP
+    RhoTh[K,Iz,ind] = ThP
   end
 end
 

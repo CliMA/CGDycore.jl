@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/DriverDGHEVI.jl \
-  --Problem="WarmBubble2DXCart" \
+  --Problem="HillAgnesiXCart" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
@@ -10,7 +10,7 @@ julia --project Examples/DriverDGHEVI.jl \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Discretization="DG" \
-  --FluxDG="KennedyGruberGrav" \
+  --FluxDG="Euler" \
   --InterfaceFluxDG="RiemannLMARS" \
   --Buoyancy=false \
   --Damping=false \
@@ -18,13 +18,13 @@ julia --project Examples/DriverDGHEVI.jl \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
-  --SimTime=1000 \
-  --PrintTime=10.0 \
-  --vtkFileName="output/VTK/WarmBubble/DGCart" \
-  --OrdPrint=4 \
-  --OrdPrintZ=3 \
+  --SimTime=400 \
+  --PrintTime=50 \
+  --vtkFileName="output/VTK/VerticalColumn/DGCart" \
+  --OrdPrint=1 \
+  --OrdPrintZ=5 \
   --Curl=false \
-  --dtau=.08 \
+  --dtau=10.0 \
   --IntMethod="RungeKutta" \
   --Table="RK4" \
   `#Grid       `        \
@@ -32,17 +32,13 @@ julia --project Examples/DriverDGHEVI.jl \
   --Flat=false \
   --TopoS="" \
   `#Topography `        \
-  --H=10000.0 \
+  --H=200.0 \
   --Lx=20000.0 \
-  --Ly=2000.0 \
+  --Ly=20000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=20 \
-  --nx=40 \
+  --nz=2 \
+  --nx=2 \
   --ny=2 \
-  --OrdPoly=4 \
-  --OrdPolyZ=3 \
-  --HyperVisc=true \
-  --HyperDCurl=1.e7 \
-  --HyperDGrad=1.e7 \
-  --HyperDDiv=1.e7
+  --OrdPoly=1 \
+  --OrdPolyZ=3 

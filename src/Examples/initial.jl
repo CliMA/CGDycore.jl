@@ -14,15 +14,33 @@ function (profile::LinearGravityExample)(Param,Phys)
     return (p,u,v,w,b)
   end
   return local_profile
-#=
-  @inline function Source(F,U)
-    wPos = 4
-    bPos = 5
-    F[wPos] = U[bPos]
-    F[bPos] = -Param.N^2 * U[wPos]
+end
+
+Base.@kwdef struct InertiaGravityExample <: Example end
+
+function (profile::InertiaGravityExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    ThPert = Param.DeltaTh * sin(pi * x[3] / Param.H) / (FT(1) + ((x[1] - Param.xC) / Param.a)^2)
+    S = Param.NBr * Param.NBr / Phys.Grav
+    ThBG = Param.Th0 * exp(x[3] *  S)
+    Th =  ThBG + ThPert
+    pLoc = Phys.p0 * (FT(1) - Phys.Grav / (Phys.Cpd * Param.Th0 * S) * 
+      (FT(1) - exp(-S * x[3])))^(Phys.Cpd / Phys.Rd)
+    Rho = pLoc / ((pLoc / Phys.p0)^Phys.kappa * Phys.Rd * Th)
+    u = Param.uMax
+    v = eltype(x)(0)
+    w = eltype(x)(0)
+    T = pLoc / (Rd * Rho)
+    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * x[3]
+    IE = Cvd * T
+    qv = eltype(x)(0)
+    qc = eltype(x)(0)
+
+    return (Rho,u,v,w,Th,E,IE,qv,qc,ThBG)
   end
-  return local_profile,Source
-=#  
+
+  return local_profile
 end
 
 Base.@kwdef struct BickleyJetExample <: Example end
@@ -281,6 +299,7 @@ function (profile::BryanFritsch)(Param,Phys,ProfileBF)
     p_r = ProfileBF[iz+1,6]
     Rho = (Rho_r * (z - z_l) + Rho_l * (z_r - z)) / (z_r - z_l)
     Theta = (Theta_r * (z - z_l) + Theta_l * (z_r - z)) / (z_r - z_l)
+    ThBGrd = Theta
     RhoV = (RhoV_r * (z - z_l) + RhoV_l * (z_r - z)) / (z_r - z_l)
     RhoC = (RhoC_r * (z - z_l) + RhoC_l * (z_r - z)) / (z_r - z_l)
     pLoc = (p_r * (z - z_l) + p_l * (z_r - z)) / (z_r - z_l)
@@ -292,7 +311,7 @@ function (profile::BryanFritsch)(Param,Phys,ProfileBF)
     T = pLoc / (Rho * (Phys.Rd * (FT(1.0) - qV - qC) + Phys.Rv * qV))
     IE = Thermodynamics.InternalEnergyW(FT(1.0),qV,qC,T,Phys) 
     E = IE + FT(0.5) * (u * u + v * v) + Phys.Grav * z
-    return (Rho,u,v,w,Th,E,IE,qV,qC)
+    return (Rho,u,v,w,Th,E,IE,qV,qC,ThBGrd)
   end
   return local_profile
 end
@@ -329,8 +348,12 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     T = pLoc / (Rd * Rho)
     E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
     IE = Cvd * T 
+    qV = FT(0)
+    qC = FT(0)
+    ThBGrd = Th0
 
     return (Rho,u,v,w,Th,E,IE)
+    return (Rho,u,v,w,Th,E,IE,qV,qC,ThBGrd)
   end
   return local_profile
 end
@@ -362,7 +385,7 @@ function (profile::StratifiedExample)(Param,Phys)
     qv = FT(0)
     qc = FT(0)
 
-    return (Rho,u,v,w,Th,E,IE,qv,qc)
+    return (Rho,u,v,w,Th,E,IE,qv,qc,Th)
   end
   return local_profile
 end
@@ -395,7 +418,7 @@ function (profile::StratifiedSphereExample)(Param,Phys)
     qv = FT(0)
     qc = FT(0)
 
-    return (Rho,u,v,w,Th,E,IE,qv,qc)
+    return (Rho,u,v,w,Th,E,IE,qv,qc,Th)
   end
   return local_profile
 end

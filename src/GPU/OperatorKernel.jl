@@ -1101,6 +1101,10 @@ end
 # r = (cR - cRR) / (cL - cR  + sign(cL- cR)*1.e-20 + 1.e-20)
   r = (cR - cRR) / (cL - cR  + eltype(cLL)(1.e-20))
   cFR = cR + max(eltype(cLL)(0), min(r, min(kR * r + kL, eltype(cLL)(1)))) * (cL - cR) 
+
+# Central differences
+# cFL = (cL * JL + cR * JR) / (JL + JR)
+# cFR = cFL 
  
   return (cFL,cFR)
 end

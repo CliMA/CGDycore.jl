@@ -455,6 +455,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   OrdPrint = Global.Output.OrdPrint
   OrdPrintZ = Global.Output.OrdPrintZ
   OrdPrintH = size(FE.InterOutputH,1)
+  @show OrdPrintH
   vtkInter = Global.vtkCache.vtkInter
   cells = Global.vtkCache.cells
   pts = Global.vtkCache.pts
@@ -468,7 +469,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   backend = get_backend(U)				      
   FTB = eltype(U)
   if length(size(U)) == 3
-    UR = reshape(U,size(U,1),1,size(U,2),size(U,3))  
+    UR = reshape(U,1,size(U,1),size(U,2),size(U,3))  
   else
     UR = U
   end  
@@ -485,13 +486,13 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       uPos = Global.Model.uPos
       @views InterpolateGPU!(cCell,UR[:,:,:,uPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["AA", VTKCellData()] = cCellCPU
+      vtk["u", VTKCellData()] = cCellCPU
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["AA", VTKCellData()] = cCellCPU
+      vtk["u", VTKCellData()] = cCellCPU
     elseif  str == "v" 
       vPos = Global.Model.vPos
       @views InterpolateGPU!(cCell,UR[:,:,:,vPos],FE)
@@ -582,12 +583,17 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       else
         RhoPos = Global.Model.RhoPos
         ThPos = Global.Model.ThPos
-        ThCell = zeros(OrdPrint*OrdPrint*nz*NF)
-        ThCellBGrd = zeros(OrdPrint*OrdPrint*nz*NF)
-        @views Interpolate!(ThCell,UR[:,:,:,ThPos],UR[:,:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz)
-        @views Interpolate!(ThCellBGrd,Global.ThetaBGrd,vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz)
-        @. ThCell -= ThCellBGrd
-        vtk["ThDiff", VTKCellData()] = ThCell
+        ThCellBGrd = KernelAbstractions.zeros(backend,FTB,OrdPrintH,(OrdPrintZ + 1),nz,NF)
+        if length(size(U)) == 3
+          ThBGrdR = reshape(Global.ThetaBGrd,size(U,1),1,size(U,2))  
+        else
+          ThBGrdR = Global.ThetaBGrd
+        end  
+        @views InterpolateRhoGPU!(cCell,UR[:,:,:,ThPos],UR[:,:,:,RhoPos],FE)
+        InterpolateGPU!(ThCellBGrd,ThBGrdR,FE)
+        @. cCell -= ThCellBGrd
+        copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+        vtk["ThDiff", VTKCellData()] = cCellCPU
       end
     elseif str == "Pres"   
       @views Pres = Cache.Thermo[:,:,1]  

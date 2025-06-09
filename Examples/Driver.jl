@@ -493,7 +493,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-      "Thermo",
+      "ThDiff",
       "Pres",
       ]
     if TkePos > 0

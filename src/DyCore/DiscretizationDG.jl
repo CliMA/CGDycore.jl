@@ -38,6 +38,19 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
     Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
       Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   end
+  Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  NzG = min(div(NumberThreadGPU,DoF),nz)
+  group = (DoF,NzG,1)
+  ndrange = (DoF,nz,NF)
+  if Global.Grid.Form == "Sphere"
+    KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
+    Rad = Global.Grid.Rad
+    KGridSizeSphereKernel!(Metric.dz,Metric.X,DG.Glob,
+      Rad,ndrange=ndrange)
+  else
+    KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)
+    KGridSizeCartKernel!(Metric.dz,Metric.X,DG.Glob,ndrange=ndrange)
+  end
 
   EFCPU = zeros(Int,2,NE)
   FECPU = zeros(Int,2,NE)
@@ -189,6 +202,20 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
       Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   end
 
+  Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  NzG = min(div(NumberThreadGPU,DoF),nz)
+  group = (DoF,NzG,1)
+  ndrange = (DoF,nz,NF)
+  if Global.Grid.Form == "Sphere"
+    KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
+    Rad = Global.Grid.Rad
+    KGridSizeSphereKernel!(Metric.dz,Metric.X,DG.Glob,
+      Rad,ndrange=ndrange)
+  else
+    KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)
+    KGridSizeCartKernel!(Metric.dz,Metric.X,DG.Glob,ndrange=ndrange)
+  end
+
   EFCPU = zeros(Int,2,NE)
   FECPU = zeros(Int,2,NE)
   for iE = 1 : NE
@@ -270,5 +297,18 @@ end
       NH[2,K,I,Iz,IE] = -nSLoc2
       NH[3,K,I,Iz,IE] = -nSLoc3
     end  
+  end
+end
+
+@kernel inbounds = true function GridSizeCartDGKernel!(dz,@Const(X),@Const(Glob))
+
+  ID,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz && IF <= NF
+    ind = Glob[ID,IF]
+    dz[Iz,ind] = X[ID,end,3,Iz,IF] - X[ID,1,3,Iz,IF]
   end
 end

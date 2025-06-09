@@ -99,7 +99,6 @@ end
 aa = Jac * reshape(UStart,2*N)
 aa = reshape(aa,OrdPolyZ+1,nz,2)
 @show sum(abs.(aa-F))
-stop
 
 nIter = 1000
 dtau = 0.1 * H / N / cS
@@ -136,6 +135,7 @@ nIter = 1000
 dtau = 0.1 * H / N / cS
 @. U = UStart
 for Iter = 1 : nIter
+   @show sum(abs.(U))  
    DGVertical.FcnSplitAccousticGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
    @. UNew = U + 1/3 * dtau *F
    DGVertical.FcnSplitAccousticGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 

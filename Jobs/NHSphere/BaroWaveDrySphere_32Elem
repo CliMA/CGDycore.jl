@@ -34,7 +34,7 @@ julia --project Examples/Driver.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --OrdPrint=3 \
+  --OrdPrint=2 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/CGQuad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \

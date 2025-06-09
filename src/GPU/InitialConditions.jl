@@ -28,6 +28,8 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   end    
 
   U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,lengthU)
+  Global.ThetaBGrd = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG)
+  ThBG = Global.ThetaBGrd
   @views Rho = U[:,:,Model.RhoPos]
   @views u = U[:,:,Model.uPos]
   @views v = U[:,:,Model.vPos]
@@ -36,6 +38,7 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   KRhoFunCKernel! = RhoFunCKernel!(backend, group)
   KuvwFunCKernel! = uvwFunCKernel!(backend, group)
 
+
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
@@ -43,6 +46,8 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   if State == "Dry" || State == "Moist" || State == "ShallowWater"
     KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+    KThBGFunCKernel! = ThBGFunCKernel!(backend, group)
+    KThBGFunCKernel!(Profile,ThBG,time,Glob,X,ndrange=ndrange)
   elseif State == "DryInternalEnergy" || State == "MoistInternalEnergy" || 
     State == "IceInternalEnergy"
     KRhoIEFunCKernel! = RhoIEFunCKernel!(backend, group)
@@ -108,7 +113,7 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGElement,Metric,Phys,
     lengthU += ND*(1 + 1 + 1 + NumTr)
   end    
 
-  U = KernelAbstractions.zeros(backend,FTB,Nz,M,DG.NumG,lengthU)
+  U = KernelAbstractions.zeros(backend,FTB,M,Nz,DG.NumG,lengthU)
   @views Rho = U[:,:,:,Model.RhoPos]
   @views u = U[:,:,:,Model.uPos]
   @views v = U[:,:,:,Model.vPos]

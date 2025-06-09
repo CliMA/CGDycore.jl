@@ -18,10 +18,10 @@
   if ID <= ND
     ind = Glob[ID,IF]  
     @unroll for iaux = 1 : NAUX
-      AuxLoc[K,Iz,iD,iaux] = Aux[Iz,K,ind,iaux]  
+      AuxLoc[K,Iz,iD,iaux] = Aux[K,Iz,ind,iaux]  
     end
     @unroll for iv = 1 : NV
-      VLoc[K,Iz,iD,iv] = V[Iz,K,ind,iv]  
+      VLoc[K,Iz,iD,iv] = V[K,Iz,ind,iv]  
       FLoc[K,Iz,iD,iv] = 0.0
     end
 
@@ -43,7 +43,7 @@
     end  
     ind = Glob[ID,IF]  
     @unroll for iv = 1 : NV
-      F[Iz,K,ind,iv] += FLoc[K,Iz,iD,iv] 
+      F[K,Iz,ind,iv] += FLoc[K,Iz,iD,iv] 
     end
   end
 end  
@@ -73,10 +73,10 @@ end
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]  
     @unroll for iaux = 1 : NAUX
-      AuxLoc[I,J,iz,iaux] = Aux[Iz,K,ind,iaux]  
+      AuxLoc[I,J,iz,iaux] = Aux[K,Iz,ind,iaux]  
     end
     @unroll for iv = 1 : NV
-      VLoc[I,J,iz,iv] = V[Iz,K,ind,iv]  
+      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv]  
       FLoc[I,J,iz,iv] = 0.0
     end
     @unroll for j = 1 : 3
@@ -105,7 +105,7 @@ end
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]  
     @unroll for iv = 1 : NV
-      F[Iz,K,ind,iv] += FLoc[I,J,iz,iv] 
+      F[K,Iz,ind,iv] += FLoc[I,J,iz,iv] 
     end
   end
 end  
@@ -134,10 +134,10 @@ end
     Iz = div(IZ-1,M) + 1
     ind = Glob[ID,IF]  
     @unroll for iaux = 1 : NAUX
-      AuxLoc[ID,iz,iaux] = Aux[Iz,K,ind,iaux]  
+      AuxLoc[ID,iz,iaux] = Aux[K,Iz,ind,iaux]  
     end
     @unroll for iv = 1 : NV
-      VLoc[ID,iz,iv] = V[Iz,K,ind,iv]  
+      VLoc[ID,iz,iv] = V[K,Iz,ind,iv]  
       FLoc[ID,iz,iv] = 0.0
     end
     @unroll for j = 1 : 3
@@ -165,7 +165,7 @@ end
     Iz = div(IZ-1,M) + 1
     ind = Glob[ID,IF]  
     @unroll for iv = 1 : NV
-      F[Iz,K,ind,iv] += FLoc[ID,iz,iv] 
+      F[K,Iz,ind,iv] += FLoc[ID,iz,iv] 
     end
   end
 end  
@@ -186,7 +186,7 @@ end
 
   if ID <= ND
     ind = Glob[ID,IF]
-    @views Flux(FLoc,V[Iz,K,ind,:],Aux[Iz,K,ind,:])
+    @views Flux(FLoc,V[K,Iz,ind,:],Aux[K,Iz,ind,:])
     @. Con[K,Iz,iD,:] = dXdxI[3,1,K,ID,Iz,IF] * FLoc[1,:] +
       dXdxI[3,2,K,ID,Iz,IF] * FLoc[2,:] +
       dXdxI[3,3,K,ID,Iz,IF] * FLoc[3,:]
@@ -197,9 +197,9 @@ end
     @unroll for iv = 1 : NV
       FF = DW[K,1] * Con[1,Iz,iD,iv]
       @unroll for k = 2 : M
-        FF = DW[K,k] * Con[k,Iz,iD,iv]
+        FF += DW[K,k] * Con[k,Iz,iD,iv]
       end
-      F[Iz,K,ind,iv] += FF
+      F[K,Iz,ind,iv] += FF
     end
   end  
 end  
@@ -226,7 +226,7 @@ end
     Iz = div(IZ-1,M) + 1
     ID = I + (J - 1) * N
     ind = Glob[ID,IF]
-    @views Flux(FLoc,V[Iz,K,ind,:],Aux[Iz,K,ind,:])
+    @views Flux(FLoc,V[K,Iz,ind,:],Aux[K,Iz,ind,:])
     @. ConX[I,J,iz,:] = dXdxI[1,1,K,ID,Iz,IF] * FLoc[1,:] +
       dXdxI[1,2,K,ID,Iz,IF] * FLoc[2,:] +
       dXdxI[1,3,K,ID,Iz,IF] * FLoc[3,:]
@@ -246,7 +246,7 @@ end
       @unroll for k = 2 : M
         FF = DW[I,k] * ConX[k,J,iz,iv] + DW[k,J] * ConY[I,k,iz,iv]
       end
-      F[Iz,K,ind,iv] += FF
+      F[K,Iz,ind,iv] += FF
     end
   end
 end  

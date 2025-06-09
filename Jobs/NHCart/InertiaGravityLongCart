@@ -1,0 +1,56 @@
+#!/bin/bash
+julia --project Examples/Driver.jl \
+  --Problem="InertiaGravityLongCart" \
+  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
+  --NumTr=0 \
+  --RefProfile=false \
+  --Equation="CompressibleShallow" \
+  --State="Dry" \
+  --Buoyancy=true \
+  --Coriolis=false \
+  --Curl=true \
+  --ModelType="VectorInvariant" \
+  --SurfaceFluxMom=false \
+  --VerticalDiffusionMom=false \
+  --Damping=false \
+  --StrideDamp=10000 \
+  --Relax=1.0e-2 \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --Thermo="" \
+  --SimSeconds=60000 \
+  --SimMinutes=0 \
+  --PrintSeconds=600 \
+  --PrintTime=0 \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/InertiaGravityLong/CGQuad" \
+  --dtau=10.0 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="" \
+  `#Topography `        \
+  --P1=0.0\
+  --P2=1000.0\
+  --P3=400.0\
+  `#Grid       `        \
+  --GridForm="Cartesian" \
+  --Stretch=false \
+  --StretchType="ICON" \
+  --H=10000.0 \
+  --Lx=3000000.0 \
+  --Ly=40000.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nz=20 \
+  --nx=100 \
+  --ny=2 \
+  --OrdPoly=3 \
+  --HyperVisc=true \
+  --HyperDCurl=2.0e10 \
+  --HyperDGrad=2.0e10 \
+  --HyperDDiv=2.0e10 \
+  --HyperDDivW=2.0e10

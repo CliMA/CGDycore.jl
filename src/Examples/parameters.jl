@@ -19,7 +19,7 @@ Base.@kwdef struct ParamLinearGravity{FT}
   U::FT = 0.0
 end
 
-Base.@kwdef struct ParamInertiaShortGravity{FT}
+Base.@kwdef struct ParamInertiaGravityShortCart{FT}
   xC::FT = 300000 / 3
   H::FT = 10000
   NBr::FT = 0.01
@@ -31,7 +31,7 @@ Base.@kwdef struct ParamInertiaShortGravity{FT}
   uMax::FT = 0.0
 end
 
-Base.@kwdef struct ParamInertiaLongGravity{FT}
+Base.@kwdef struct ParamInertiaGravityLongCart{FT}
   xC::FT = 3000000 / 3
   H::FT = 10000
   NBr::FT = 0.01
@@ -278,7 +278,7 @@ Base.@kwdef struct ParamHillAgnesiXCart{FT}
   Deep::Bool = false
   NBr::FT = 1.e-2
   Th0::FT =300.0
-  uMax::FT =10
+  uMax::FT =0
   vMax::FT =0
   wMax::FT =0
   TEq::FT =300.0
@@ -504,12 +504,12 @@ function Parameters(FT,Problem::String)
   elseif Problem == "LinearGravity"
     @show Problem
     Param = ParamLinearGravity{FT}()
-  elseif Problem == "InertiaShortGravity"
+  elseif Problem == "InertiaGravityShortCart"
     @show Problem
-    Param = ParamInertiaShortGravity{FT}()
-  elseif Problem == "InertiaLongGravity"
+    Param = ParamInertiaGravityShortCart{FT}()
+  elseif Problem == "InertiaGravityLongCart"
     @show Problem
-    Param = ParamInertiaLongGravity{FT}()
+    Param = ParamInertiaGravityLongCart{FT}()
   elseif Problem == "HaurwitzSphere"
     @show Problem
     Param = ParamHaurwitzSphere()

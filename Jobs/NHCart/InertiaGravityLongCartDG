@@ -1,0 +1,57 @@
+#!/bin/bash
+julia --project Examples/DriverDGHEVI.jl \
+  --Problem="InertiaGravityLongCart" \
+  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
+  --NumAux=2 \
+  --NumTr=0 \
+  --RefProfile=false \
+  --Equation="CompressibleShallow" \
+  --ModelType="Conservative" \
+  --State="Dry" \
+  --Discretization="DG" \
+  --FluxDG="Euler" \
+  --InterfaceFluxDG="RiemannLMARS" \
+  --Buoyancy=false \
+  --Coriolis=false \
+  --Curl=true \
+  --SurfaceFluxMom=false \
+  --VerticalDiffusionMom=false \
+  --Damping=false \
+  --StrideDamp=10000 \
+  --Relax=1.0e-2 \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --Thermo="" \
+  --SimSeconds=60000 \
+  --SimMinutes=0 \
+  --PrintSeconds=1000 \
+  --PrintTime=0 \
+  --OrdPrint=4 \
+  --OrdPrintZ=4 \
+  --vtkFileName="output/VTK/InertiaGravityLong/DGQuad" \
+  --dtau=10.0 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="" \
+  `#Topography `        \
+  --P1=0.0\
+  --P2=1000.0\
+  --P3=400.0\
+  `#Grid       `        \
+  --GridForm="Cartesian" \
+  --Stretch=false \
+  --StretchType="ICON" \
+  --H=10000.0 \
+  --Lx=3000000.0 \
+  --Ly=120000.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nz=5 \
+  --nx=80 \
+  --ny=2 \
+  --OrdPoly=4 \
+  --OrdPolyZ=4 

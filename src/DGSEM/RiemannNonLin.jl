@@ -25,17 +25,17 @@
     ind = Glob[ID,IF]
     if Iz > 1    
       @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[Iz-1,M,ind,iAux]
+        AuxL[iAux] = Aux[M,Iz-1,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[Iz-1,M,ind,iv]
+        VLL[iv] = U[M,Iz-1,ind,iv]
       end  
     else
       @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[Iz,1,ind,iAux]
+        AuxL[iAux] = Aux[1,Iz,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[Iz,1,ind,iv]
+        VLL[iv] = U[1,Iz,ind,iv]
       end  
       VLL[uPos] = -VLL[uPos]
       VLL[vPos] = -VLL[vPos]
@@ -43,17 +43,17 @@
     end  
     if Iz < Nz
       @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[Iz,1,ind,iAux]
+        AuxR[iAux] = Aux[1,Iz,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[Iz,1,ind,iv]
+        VRR[iv] = U[1,Iz,ind,iv]
       end  
     else  
       @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[Iz-1,M,ind,iAux]
+        AuxR[iAux] = Aux[M,Iz-1,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[Iz-1,M,ind,iv]
+        VRR[iv] = U[M,Iz-1,ind,iv]
       end  
       VRR[uPos] = -VRR[uPos]
       VRR[vPos] = -VRR[vPos]
@@ -69,18 +69,18 @@
     FLoc[wPos] *= Surf
     FLoc[ThPos] *= Surf
     if Iz > 1 
-      @atomic :monotonic F[Iz-1,M,ind,RhoPos] -= FLoc[RhoPos]
-      @atomic :monotonic F[Iz-1,M,ind,uPos] -= FLoc[uPos] 
-      @atomic :monotonic F[Iz-1,M,ind,vPos] -= FLoc[vPos]
-      @atomic :monotonic F[Iz-1,M,ind,wPos] -= FLoc[wPos]
-      @atomic :monotonic F[Iz-1,M,ind,ThPos] -= FLoc[ThPos]
+      @atomic :monotonic F[M,Iz-1,ind,RhoPos] -= FLoc[RhoPos]
+      @atomic :monotonic F[M,Iz-1,ind,uPos] -= FLoc[uPos] 
+      @atomic :monotonic F[M,Iz-1,ind,vPos] -= FLoc[vPos]
+      @atomic :monotonic F[M,Iz-1,ind,wPos] -= FLoc[wPos]
+      @atomic :monotonic F[M,Iz-1,ind,ThPos] -= FLoc[ThPos]
     end  
     if Iz < Nz
-      @atomic :monotonic F[Iz,1,ind,RhoPos] += FLoc[RhoPos]
-      @atomic :monotonic F[Iz,1,ind,uPos] += FLoc[uPos]
-      @atomic :monotonic F[Iz,1,ind,vPos] += FLoc[vPos]
-      @atomic :monotonic F[Iz,1,ind,wPos] += FLoc[wPos]
-      @atomic :monotonic F[Iz,1,ind,ThPos] += FLoc[ThPos]
+      @atomic :monotonic F[1,Iz,ind,RhoPos] += FLoc[RhoPos]
+      @atomic :monotonic F[1,Iz,ind,uPos] += FLoc[uPos]
+      @atomic :monotonic F[1,Iz,ind,vPos] += FLoc[vPos]
+      @atomic :monotonic F[1,Iz,ind,wPos] += FLoc[wPos]
+      @atomic :monotonic F[1,Iz,ind,ThPos] += FLoc[ThPos]
     end  
   end  
 end
@@ -113,8 +113,8 @@ end
     iFR = EF[2,IE]
     indL = GlobE[1,I,IE]
     indR = GlobE[2,I,IE]
-    RiemannSolver!(FLoc,view(U,Iz,K,indL,1:NUMV),view(U,Iz,K,indR,1:NUMV),
-      view(Aux,Iz,K,indL,1:NAUX),view(Aux,Iz,K,indR,1:NAUX),
+    RiemannSolver!(FLoc,view(U,K,Iz,indL,1:NUMV),view(U,K,Iz,indR,1:NUMV),
+      view(Aux,K,Iz,indL,1:NAUX),view(Aux,K,Iz,indR,1:NAUX),
       view(NH,1:3,K,I,Iz,IE))
     Surf = VolSurfH[K,I,Iz,IE] / w[I]  
     FLoc[RhoPos] = FLoc[RhoPos] * Surf
@@ -123,18 +123,18 @@ end
     FLoc[wPos] = FLoc[wPos] * Surf
     FLoc[ThPos] = FLoc[ThPos] * Surf
     if iFL <= NF
-      @atomic :monotonic F[Iz,K,indL,RhoPos] += -FLoc[RhoPos]
-      @atomic :monotonic F[Iz,K,indL,uPos] += -FLoc[uPos]
-      @atomic :monotonic F[Iz,K,indL,vPos] += -FLoc[vPos]
-      @atomic :monotonic F[Iz,K,indL,wPos] += -FLoc[wPos]
-      @atomic :monotonic F[Iz,K,indL,ThPos] += -FLoc[ThPos]
+      @atomic :monotonic F[K,Iz,indL,RhoPos] += -FLoc[RhoPos]
+      @atomic :monotonic F[K,Iz,indL,uPos] += -FLoc[uPos]
+      @atomic :monotonic F[K,Iz,indL,vPos] += -FLoc[vPos]
+      @atomic :monotonic F[K,Iz,indL,wPos] += -FLoc[wPos]
+      @atomic :monotonic F[K,Iz,indL,ThPos] += -FLoc[ThPos]
     end  
     if iFR <= NF
-      @atomic :monotonic F[Iz,K,indR,RhoPos] += FLoc[RhoPos]
-      @atomic :monotonic F[Iz,K,indR,uPos] += FLoc[uPos]
-      @atomic :monotonic F[Iz,K,indR,vPos] += FLoc[vPos]
-      @atomic :monotonic F[Iz,K,indR,wPos] += FLoc[wPos]
-      @atomic :monotonic F[Iz,K,indR,ThPos] += FLoc[ThPos]
+      @atomic :monotonic F[K,Iz,indR,RhoPos] += FLoc[RhoPos]
+      @atomic :monotonic F[K,Iz,indR,uPos] += FLoc[uPos]
+      @atomic :monotonic F[K,Iz,indR,vPos] += FLoc[vPos]
+      @atomic :monotonic F[K,Iz,indR,wPos] += FLoc[wPos]
+      @atomic :monotonic F[K,Iz,indR,ThPos] += FLoc[ThPos]
     end  
   end  
 end
