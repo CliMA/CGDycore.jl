@@ -11,11 +11,8 @@ using ArgParse
 
 
 # Model
-@show "Hallo-1"
 parsed_args = DyCore.parse_commandline()
-@show "Hallo0"
 Problem = parsed_args["Problem"]
-@show "Hallo1"
 Discretization = parsed_args["Discretization"]
 FluxDG = parsed_args["FluxDG"]
 InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
@@ -25,7 +22,6 @@ PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
-@show "Hallo2"
 RhoTPos = parsed_args["RhoTPos"]
 RhoVPos = parsed_args["RhoVPos"]
 RhoCPos = parsed_args["RhoCPos"]
@@ -420,9 +416,7 @@ end
 Global.Output.nPanel = nPanel
 Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
-@show Global.Output.OrdPrint
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
-@show "nach Outputs.vtkStruct"
 
 
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
@@ -433,10 +427,8 @@ GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
 if dtau == 0.0
   dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
 end  
-if nz > 1
-  @show dtau
+if nz > 1 && IntMethod == "RungeKutta"
   dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
-  @show dtau
 end  
 EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
 IterTime::Int = round(EndTime / dtau)
@@ -453,6 +445,12 @@ if Proc == 1
 @show nPrint
 end
 
-
-DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
+if IntMethod == "Rosenbrock"
+  Ros = Integration.RosenbrockStruct{FTB}("SSP-Knoth")  
+  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+    Trans,Phys,Param,Grid,Global)
+elseif IntMethod == "RungeKutta"    
+  DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+    Trans,Phys,Grid,Global)
+end  
 

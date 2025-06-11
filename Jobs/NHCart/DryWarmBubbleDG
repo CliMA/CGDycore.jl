@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverDGHEVI.jl \
+julia --project Examples/DriverDG.jl \
   --Problem="WarmBubble2DXCart" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
@@ -19,7 +19,7 @@ julia --project Examples/DriverDGHEVI.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=10.0 \
+  --PrintTime=100.0 \
   --vtkFileName="output/VTK/WarmBubble/DGCart" \
   --OrdPrint=4 \
   --OrdPrintZ=3 \

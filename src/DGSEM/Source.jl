@@ -11,8 +11,8 @@
     ind = Glob[ID,IF]
     fac = eltype(F)(2.0) * Phys.Omega * X[ID,K,3,Iz,IF] / sqrt(X[ID,K,1,Iz,IF]^2 + 
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2)
-    F[K,Iz,ind,uPos] += fac * U[K,Iz,ind,vPos]  
-    F[K,Iz,ind,vPos] += -fac * U[K,Iz,ind,uPos]
+    F[K,Iz,ind,1] += fac * U[K,Iz,ind,vPos]  
+    F[K,Iz,ind,2] += -fac * U[K,Iz,ind,uPos]
   end  
 end
 
@@ -84,9 +84,9 @@ end
     h = sqrt(X[ID,K,1,Iz,IF]^2 +
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2) - Phys.RadEarth
     Fu,Fv,Fw = Damp(h,view(U,K,Iz,ind,1:5))
-    F[K,Iz,ind,2] += Fu
-    F[K,Iz,ind,3] += Fv
-    F[K,Iz,ind,4] += Fw
+    F[K,Iz,ind,1] += Fu
+    F[K,Iz,ind,2] += Fv
+    F[K,Iz,ind,3] += Fw
   end
 end
 

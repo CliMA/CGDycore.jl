@@ -136,7 +136,7 @@ function InitJacDG(DG,nz,Param)
   return dSdS,dSdM,dMdS,dMdM
 end  
 
-function JacDG(U,DG,dSdS,dSdM,dMdS,dMdM,z,Phys)
+function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
   FTB = eltype(U)
   N = size(dSdM,1)
   RhoPos = 1
@@ -145,16 +145,17 @@ function JacDG(U,DG,dSdS,dSdM,dMdS,dMdM,z,Phys)
   M = size(U,1)
   oneM = ones(M)
   NF = size(z,3)
-  Jac = Array{SparseMatrixCSC}(undef,size(U,3))
+  JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
   for ID = 1 : DG.NumI
     @views zCol = z[:,ID]
     diagz = spdiagm(2.0 ./ reshape(vec(oneM*zCol'),N))
     Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
     dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
       (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
-    Jac[ID] = [spzeros(N,N)              diagz * dSdM              diagz* dSdS * diagm(dpdRhoTh)
-              -(0.5 * Phys.Grav) * sparse(I,N,N) diagz * dMdM              diagz* dMdS * diagm(dpdRhoTh)
-               spzeros(N,N)              diagz * dSdM * diagm(Th)  diagz * dSdS * diagm(dpdRhoTh) * diagm(Th)]
+    Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
+           sparse((0.5 * Phys.Grav)*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
+           spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
+    JacLU[ID] = lu(Jac)           
   end
-  return Jac
+  return JacLU
 end

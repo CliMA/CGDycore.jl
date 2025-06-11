@@ -455,7 +455,6 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   OrdPrint = Global.Output.OrdPrint
   OrdPrintZ = Global.Output.OrdPrintZ
   OrdPrintH = size(FE.InterOutputH,1)
-  @show OrdPrintH
   vtkInter = Global.vtkCache.vtkInter
   cells = Global.vtkCache.cells
   pts = Global.vtkCache.pts

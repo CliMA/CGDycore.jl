@@ -352,7 +352,6 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     qC = FT(0)
     ThBGrd = Th0
 
-    return (Rho,u,v,w,Th,E,IE)
     return (Rho,u,v,w,Th,E,IE,qV,qC,ThBGrd)
   end
   return local_profile

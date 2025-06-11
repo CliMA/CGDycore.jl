@@ -43,7 +43,7 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=2.0 \
+  --dtau=150.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -52,7 +52,7 @@ julia --project Examples/DriverDG.jl \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
   --nz=8 \
-  --nPanel=5 \
+  --nPanel=10 \
   --H=30000.0 \
   --OrdPoly=4 \
   --OrdPolyZ=4 \

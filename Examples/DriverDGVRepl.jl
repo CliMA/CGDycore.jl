@@ -22,9 +22,41 @@ Param = Examples.Parameters(FTB,Problem)
 Phys = DyCore.PhysParameters{FTB}()
 
 
+#=
+#Ros = Integration.RosenbrockStruct{FTB}("ARS343")
+nStage = 4
+
+    gamma = 1/2
+    AHat = [0 0 0 0 0
+            1/1 0 0 0 0
+            11/18 1/18 0 0 0
+            5/6  -5/6 1/2 0 0
+            1/4 7/4 3/4 -7/4 0]
+    bHat = [1/4 7/4 3/4 -7/4 0]
+    A = [0 0 0 0 0
+         0 gamma 0 0 0
+         0 1/6 gamma 0 0 
+         0 -1/2 1/2 gamma 0 
+         0 2/3 -3/2 1/2 1/2]
+    b = [0 2/3 -3/2 1/2 1/2]
+    alpha = zeros(FTB,nStage,nStage)
+    @views @. alpha = AHat[2:end,1:end-1]
+    Gamma = zeros(FTB,nStage,nStage)
+    @views @. Gamma = A[2:end,2:end] - AHat[2:end,2:end]
+
+    Gamma = alpha \ Gamma * alpha
+    alpha = AHat[1:end,1:end-1]
+    aCPU = alpha / Gamma
+    cCPU = -inv(Gamma)
+    mCPU = aCPU[end,:]
+
+stop
+=#
+
+
 nz = 20
 H = 10000.0
-OrdPolyZ = 4
+OrdPolyZ = 1
 OrdPrintZ = 4
 M = OrdPolyZ + 1
 N = M * nz

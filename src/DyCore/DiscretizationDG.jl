@@ -43,9 +43,9 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
   group = (DoF,NzG,1)
   ndrange = (DoF,nz,NF)
   if Global.Grid.Form == "Sphere"
-    KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
+    KGridSizeSphereDGKernel! = GridSizeSphereDGKernel!(backend,group)
     Rad = Global.Grid.Rad
-    KGridSizeSphereKernel!(Metric.dz,Metric.X,DG.Glob,
+    KGridSizeSphereDGKernel!(Metric.dz,Metric.X,DG.Glob,
       Rad,ndrange=ndrange)
   else
     KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)
@@ -310,5 +310,20 @@ end
   if Iz <= Nz && IF <= NF
     ind = Glob[ID,IF]
     dz[Iz,ind] = X[ID,end,3,Iz,IF] - X[ID,1,3,Iz,IF]
+  end
+end
+
+@kernel inbounds = true function GridSizeSphereDGKernel!(dz,@Const(X),@Const(Glob),Rad)
+
+  ID,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+  if Iz <= Nz && IF <= NF
+    ind = Glob[ID,IF]
+    rS = sqrt(X[ID,1,1,Iz,IF]^2 + X[ID,1,2,Iz,IF]^2 + X[ID,1,3,Iz,IF]^2)
+    rE = sqrt(X[ID,end,1,Iz,IF]^2 + X[ID,end,2,Iz,IF]^2 + X[ID,end,3,Iz,IF]^2)
+    dz[Iz,ind] = rE - rS
   end
 end
