@@ -197,38 +197,4 @@ AP = A[permu,permu]
 dtau = 10.0
 fac = dtau 
 
-nIter = 100
-@. U = UStart
-for Iter = 1 : nIter
-   @show "N",Iter,sum(abs.(U[:,:,wPos]))   
-   DGVertical.FcnGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,Flux,RiemannSolver) 
-   Jac = DGVertical.JacDG1(U,DG1,dSdS,dSdM,dMdS,dMdM,J,Phys)
-   A = (1 / fac) * sparse(I,3*N,3*N) - Jac[1]       
-   k = reshape(A \ reshape(F,3*N),OrdPolyZ+1,nz,3)
-   @. U  = U + k
-end   
-UImp1 .= U
-
-@. U = UStart
-for Iter = 1 : nIter
-   @show "S",Iter,sum(abs.(U[:,:,wPos]))
-   DGVertical.FcnSplitGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver)
-   Jac = DGVertical.JacDG1(U,DG1,dSdS,dSdM,dMdS,dMdM,J,Phys)
-   A = (1 / fac) * sparse(I,3*N,3*N) - Jac[1]
-   k = reshape(A \ reshape(F,3*N),OrdPolyZ+1,nz,3)
-   @. U  = U + k
-end
-UImp2 .= U
-
-dtau = .1
-nIter = 1000
-U .= UStart
-for Iter = 1 : nIter
-   DGVertical.FcnSplitGPUVert!(F,U,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
-   @. UNew = U + 1/3 * dtau *F
-   DGVertical.FcnSplitGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
-   @. UNew = U + 1/2 * dtau *F
-   DGVertical.FcnSplitGPUVert!(F,UNew,DG1,X,dXdxI,J,CacheU,Pressure,Phys,FluxAverage,RiemannSolver) 
-   @. U = U + dtau *F
-end  
-@show "Ende Exp",sum(abs.(U[:,:,wPos]))   
+dSdS,dSdM,dMdS,dMdM = InitJacDG(DG,nz,Param)

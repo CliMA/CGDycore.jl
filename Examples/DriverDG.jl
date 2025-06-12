@@ -446,7 +446,8 @@ if Proc == 1
 end
 
 if IntMethod == "Rosenbrock"
-  Ros = Integration.RosenbrockStruct{FTB}("SSP-Knoth")  
+  @show "Rosenbrock"  
+  Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global)
 elseif IntMethod == "RungeKutta"    

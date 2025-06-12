@@ -35,15 +35,15 @@ julia --project Examples/DriverDG.jl \
   --SimMinutes=0 \
   --SimSeconds=0 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
-  --PrintSeconds=0 \
+  --PrintSeconds=360 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=2.0 \
+  --dtau=100.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -52,7 +52,7 @@ julia --project Examples/DriverDG.jl \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
   --nz=8 \
-  --nPanel=5 \
+  --nPanel=20 \
   --H=30000.0 \
   --OrdPoly=4 \
   --OrdPolyZ=4 \
