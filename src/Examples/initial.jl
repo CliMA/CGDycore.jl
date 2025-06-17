@@ -102,47 +102,16 @@ function (profile::ModonCollisionExample)(Param, Phys)
         lonC1, latC1 = Param.lonC1, Param.latC1
         lonC2, latC2 = Param.lonC2, Param.latC2
 
-        # Great-circle distance on the sphere (Lin et al. 2017, Eq. 2.1)
-        function sph_distance(lon1, lat1, lon2, lat2, R)
-            cos_d = sin(lat1)*sin(lat2) + cos(lat1)*cos(lat2)*cos(lon2-lon1)
-            cos_d = min(max(cos_d, -1.0), 1.0)
-            d = acos(cos_d)
-            return R * d
-        end
-
-        r1 = sph_distance(lon, lat, lonC1, latC1, R)
-        r2 = sph_distance(lon, lat, lonC2, latC2, R)
+        r1 = Grids.SizeGreatCircle(lon, lat, lonC1, latC1) * R
+        r2 = Grids.SizeGreatCircle(lon, lat, lonC2, latC2) * R
 
         # Modon amplitude profiles (Lin et al. 2017, Eq. 2.2)
-        amp1 = Param.amp * exp(-(r1^2 / Param.r0^2))
-        amp2 = Param.amp * exp(-(r2^2 / Param.r0^2))
+        M1 = Param.u0 * exp(-(r1^2 / Param.r0^2))
+        M2 = Param.u0 * exp(-(r2^2 / Param.r0^2))
 
-        # Direction switches as in Lin et al. 2017, Fig. 1 and text:
-        # 1. Zonal <-> meridional (collision zone, tanh in longitude)
-        lon_mid = (Param.lonC1 + Param.lonC2) / 2
-        width_lon = 0.2 # transition width (radians)
-        mix_lon = tanh((lon - lon_mid)/width_lon)
-
-        # 2. Meridional <-> zonal (polar zone, tanh in latitude)
-        width_lat = 0.2 # transition width (radians)
-        # +1: at the pole, -1: at the other pole, 0: at the equator
-        mix_lat = tanh((abs(lat) - (pi/2 - width_lat))/width_lat)
-
-        # Compose direction (Lin et al. 2017, Eq. 2.3, adapted for both modons):
-        # The transition is smooth and forms a loop at the poles.
-
-        # Modon 1 (center 1)
-        u1 = -Param.u0 * amp1 * (1 - mix_lon)/2 * (1 - mix_lat)/2 + Param.u0 * amp1 * (1 + mix_lat)/2
-        v1 =  Param.u0 * amp1 * (1 + mix_lon)/2 * (1 - mix_lat)/2
-
-        # Modon 2 (center 2)
-        u2 =  Param.u0 * amp2 * (1 + mix_lon)/2 * (1 - mix_lat)/2 - Param.u0 * amp2 * (1 + mix_lat)/2
-        v2 = -Param.u0 * amp2 * (1 - mix_lon)/2 * (1 - mix_lat)/2
-
-        # Superposition of both modons
-        Rho = Param.h0 + amp1 + amp2
-        u = u1 + u2
-        v = v1 + v2
+        Rho = Param.h0
+        u = M1 - M2
+        v = FT(0)
         w = FT(0)
         Th = FT(1)
 

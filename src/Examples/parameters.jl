@@ -65,9 +65,7 @@ end
 Base.@kwdef struct ParamModonCollisionExample{FT}
     u0::FT = 40.0         # Modon-Translation speed (m/s)
     r0::FT = 500000.0     # Modon-Radius (m)
-    sep::FT = 2000.0      # Separation of Modon centers (m)
     h0::FT = 10000.0      # Mean fluid depth (m)
-    amp::FT = 1.0 #0.1    # Amplitude of height anomaly (optional, relative to h0)
     lonC1::FT = pi/2      # longitude Modon 1
     latC1::FT = 0.0       # latitude Modon 1
     lonC2::FT = 3pi/2     # longitude Modon 2
