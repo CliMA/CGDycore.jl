@@ -62,6 +62,19 @@ Base.@kwdef struct ParamHaurwitzSphere
   R = 4
 end
 
+Base.@kwdef struct ParamModonCollisionExample{FT}
+    u0::FT = 40.0         # Modon-Translation speed (m/s)
+    r0::FT = 500000.0     # Modon-Radius (m)
+    sep::FT = 2000.0      # Separation of Modon centers (m)
+    h0::FT = 10000.0      # Mean fluid depth (m)
+    amp::FT = 1.0 #0.1    # Amplitude of height anomaly (optional, relative to h0)
+    lonC1::FT = pi/2      # longitude Modon 1
+    latC1::FT = 0.0       # latitude Modon 1
+    lonC2::FT = 3pi/2     # longitude Modon 2
+    latC2::FT = 0.0       # latitude Modon 2
+    cS::FT = sqrt(h0*9.81)
+end
+
 Base.@kwdef struct ParamLinearBlob
   lat0 = 4.0*atan(1.0)
   lon0 = 2.0*atan(1.0)
@@ -498,6 +511,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "BickleyJet1"
     @show Problem
     Param = ParamBickleyJet1{FT}()
+  elseif Problem == "ModonCollision"
+    @show Problem
+    Param = ParamModonCollisionExample{FT}()  
   elseif Problem == "GalewskySphere"
     @show Problem
     Param = ParamGalewskySphere{FT}()

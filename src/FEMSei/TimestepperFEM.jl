@@ -1,5 +1,5 @@
 #TimeStepper for Vectorinvariant Nonlinear Shallow Water Equations
-function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)
+function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 
   pPosS = Model.pPosS
   pPosE = Model.pPosE
@@ -77,7 +77,7 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,
 end
 
 #TimeStepper for Conservative Nonlinear Shallow Water Equations
-function TimeStepperCons(backend,FTB,U,dtau,Fcn,Model,Grid,nQuad,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)
+function TimeStepperCons(backend,FTB,U,dtau,Fcn,Model,Grid,nQuad,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 time = 0.0
 
   hPosS = Model.hPosS # hPosS

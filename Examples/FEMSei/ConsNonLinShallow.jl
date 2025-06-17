@@ -124,7 +124,6 @@ NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 # Finite elements
 k = parsed_args["OrderFEM"]
-
 # Grid Output Refine
 ref = parsed_args["RefineOutput"]
 
@@ -304,6 +303,20 @@ if GridForm == "Spherical"
     @show nAdveVel
     @show dtau
     @show nPrint
+  elseif Problem == "ModonCollisionExample"
+    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+    cS = sqrt(Phys.Grav * Param.h0)
+    dtau = GridLengthMin / cS / sqrt(2) * 0.2 / (k + 1)
+    EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+    nAdveVel::Int = round(EndTime / dtau)
+    dtau = EndTime / nAdveVel
+    PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+    nPrint::Int = ceil(PrintT/dtau)
+    FileNameOutput = vtkFileName
+    @show GridLengthMin,GridLengthMax
+    @show nAdveVel
+    @show dtau
+    @show nPrint
   else
     print("Error")
   end
@@ -340,6 +353,7 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 # Output
+@show Flat
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
 
 # Quadrature rules
@@ -349,7 +363,7 @@ if Grid.Type == Grids.Quad()
   nQuadS = 2
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
-  nQuadM = 6
+  nQuadM = 4
   nQuadS = 4
 end
 
@@ -382,4 +396,4 @@ FEMSei.InterpolateDG!(Uh,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 
 # Time integration
 FEMSei.TimeStepperCons(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuad,nQuadM,nQuadS,Jacobi,
-  nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)
+  nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)

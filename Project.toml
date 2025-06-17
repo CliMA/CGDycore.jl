@@ -53,6 +53,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 TypedPolynomials = "afbbf031-7a57-5f58-a1b9-b774a0fad08d"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 VTKBase = "4004b06d-e244-455f-a6ce-a5f9919cc534"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
@@ -60,6 +61,7 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 [compat]
 AMD = "0.5.3"
 Plots = "1.40.9"
+UnicodePlots = "3.7.2"
 oneAPI = "1.6.1"
 
 [extras]
