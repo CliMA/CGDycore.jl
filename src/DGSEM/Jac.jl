@@ -6,12 +6,13 @@ function DScalarDMomAc(NZ,DG,cS)
   RowInd = Int[]
   ColInd = Int[]
   Val = Float64[]
+  D = DG.DWZ
   for iZ = 1 : NZ
     for i = 1 : M
       for j = 1 : M
         push!(RowInd,i+(iZ-1)*M)
         push!(ColInd,j+(iZ-1)*M)
-        push!(Val,-DG.DWZ[i,j])
+        push!(Val,-D[i,j])
       end
     end  
     if iZ < NZ
@@ -62,12 +63,13 @@ function DMomDScalarAc(NZ,DG,cS)
   RowInd = Int[]
   ColInd = Int[]
   Val = Float64[]
+  D = DG.DWZ
   for iZ = 1 : NZ
     for i = 1 : M
       for j = 1 : M
         push!(RowInd,i+(iZ-1)*M)
         push!(ColInd,j+(iZ-1)*M)
-        push!(Val,-DG.DWZ[i,j])
+        push!(Val,-D[i,j])
       end
     end  
     if iZ < NZ

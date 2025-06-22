@@ -284,37 +284,31 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     end
   end
 
-  (DWCPU,DSCPU)=DG.DerivativeMatrixSingle(OrdPoly)
+  (DWCPU,DSCPU,DVCPU)=DG.DerivativeMatrixSingle(OrdPoly)
   DS = KernelAbstractions.zeros(backend,FT,size(DSCPU))
   copyto!(DS,DSCPU)
   DW = KernelAbstractions.zeros(backend,FT,size(DWCPU))
   copyto!(DW,DWCPU)
   DST=DS'
   DWT=DW'
-
-  DV = KernelAbstractions.zeros(backend,FT,size(DSCPU))
-  DVCPU = 2 * DSCPU
-  DVCPU[1,1] += 1 / wCPU[1]
-  DVCPU[OrdPoly+1,OrdPoly+1] += -1 / wCPU[OrdPoly+1]
+  DV = KernelAbstractions.zeros(backend,FT,size(DVCPU))
   copyto!(DV,DVCPU)
   DVT=DV'
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
-  (DWZCPU,DSZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
+
+  (DWZCPU,DSZCPU,DVZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
   DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
   copyto!(DSZ,DSZCPU)
   DWZ = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
   copyto!(DWZ,DWZCPU)
-  (GlobCPU,GlobECPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
-    NumberingFemDGQuad(Grid,OrdPoly,Proc)  
-
-  DVZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
-  DVZCPU = 2 * DSZCPU
-  DVZCPU[1,1] += 1 / wZCPU[1]
-  DVZCPU[OrdPolyZ+1,OrdPolyZ+1] += -1 / wZCPU[OrdPolyZ+1]
+  DVZ = KernelAbstractions.zeros(backend,FT,size(DVZCPU))
   copyto!(DVZ,DVZCPU)
   DVZT=DVZ'
+
+  (GlobCPU,GlobECPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
+    NumberingFemDGQuad(Grid,OrdPoly,Proc)  
 
   Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
   GlobE = KernelAbstractions.zeros(backend,Int,size(GlobECPU))

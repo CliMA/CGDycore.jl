@@ -23,5 +23,6 @@ function DerivativeMatrixSingle(OrdPoly)
   B = zeros(OrdPoly+1,OrdPoly+1)
   B[1,1] = -1 / w[1]
   B[OrdPoly+1,OrdPoly+1] = 1 / w[OrdPoly+1]
+
   return (DW,DS,DV,DVT,B)
 end

@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverDGHEVI.jl \
+julia --project Examples/DriverDG.jl \
   --Problem="InertiaGravityLongCart" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
@@ -11,7 +11,7 @@ julia --project Examples/DriverDGHEVI.jl \
   --ModelType="Conservative" \
   --State="Dry" \
   --Discretization="DG" \
-  --FluxDG="Euler" \
+  --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
   --Buoyancy=false \
   --Coriolis=false \

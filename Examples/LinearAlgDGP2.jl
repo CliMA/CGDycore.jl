@@ -10,7 +10,7 @@ using StaticArrays
 using ArgParse
 using LinearAlgebra
 using SparseArrays
-using BandedMatrices
+using BandedMatrices, CliqueTrees
 
 mutable struct Interior 
   M::Int
@@ -20,12 +20,13 @@ mutable struct Interior
   A13::Array{Float64, 4}
   A23::Array{Float64, 4}
   A32::Array{Float64, 4}
-  B13::Array{Float64, 4}
-  B23::Array{Float64, 4}
-  B32::Array{Float64, 4}
+  B11::Array{Float64, 2}
+  B12::Array{Float64, 4}
+  B21::Array{Float64, 2}
+  B22::Array{Float64, 4}
+  B31::Array{Float64, 4}
   C13::Array{Float64, 4}
-  C23::Array{Float64, 4}
-  C32::Array{Float64, 4}
+  C22::Array{Float64, 4}
   luSA::Array{LU, 2}
 end  
 
@@ -33,15 +34,16 @@ function Interior(M,nz,NumG)
   M2 = M - 2
   fac = 0
   FacGrav = 0
-  A13 = zeros(M2,M2,nz,NumG)
+  A13 = zeros(M,M2,nz,NumG)
   A23 = zeros(M2,M2,nz,NumG)
   A32 = zeros(M2,M2,nz,NumG)
-  B13 = zeros(M2,2,nz,NumG)
-  B23 = zeros(M2,2,nz,NumG)
-  B32 = zeros(M2,2,nz,NumG)
+  B11 = zeros(nz,NumG)
+  B12 = zeros(M,2,nz,NumG)
+  B21 = zeros(nz,NumG)
+  B22 = zeros(M2,2,nz,NumG)
+  B31 = zeros(M2,2,nz,NumG)
   C13 = zeros(2,M2,nz,NumG)
-  C23 = zeros(2,M2,nz,NumG)
-  C32 = zeros(2,M2,nz,NumG)
+  C22 = zeros(2,M2,nz,NumG)
   luSA = Array{LU}(undef,nz,NumG)
 
   return Interior(
@@ -52,19 +54,20 @@ function Interior(M,nz,NumG)
     A13,
     A23,
     A32,
-    B13,
-    B23,
-    B32,
+    B11,
+    B12,
+    B21,
+    B22,
+    B31,
     C13,
-    C23,
-    C32,
+    C22,
     luSA,
   )
 end  
 
-function FillInteriorP1!(AI,JacP11,fac,Phys)
+function FillInterior!(AI,JacP11,JacP12,JacP21,fac,Phys)
   M2 = AI.M - 2
-  M23= M2 * 3
+  M23= M2 * 2 + M
   nz = AI.nz
   AI.fac = fac
   AI.FacGrav = 0.5 * Phys.Grav
@@ -72,49 +75,25 @@ function FillInteriorP1!(AI,JacP11,fac,Phys)
 
   for iz = 1 : nz
     A = JacP11[1+(iz-1)*M23:iz*M23,1+(iz-1)*M23:iz*M23]
-    @views @. AI.A13[:,:,iz,1] = A[1:M2,2*M2+1:3*M2]
-    @views @. AI.A23[:,:,iz,1] = A[M2+1:2*M2,2*M2+1:3*M2]
-    @views @. AI.A32[:,:,iz,1] = A[2*M2+1:3*M2,M2+1:2*M2]
-    @views SA = fac * I - (0.5 * Phys.Grav / fac) * AI.A13[:,:,iz,1] - 
+    @views @. AI.A13[:,:,iz,1] = A[1:M,M+M2+1:end]
+    @views @. AI.A23[:,:,iz,1] = A[M+1:M+M2,M+M2+1:end]
+    @views @. AI.A32[:,:,iz,1] = A[M+M2+1:end,M+1:M+M2]
+    @views SA = fac * I - (0.5 * Phys.Grav / fac) * AI.A13[2:M-1,:,iz,1] - 
       (1.0 / fac) *AI.A32[:,:,iz,1] * AI.A23[:,:,iz,1]
     AI.luSA[iz,1] = lu(SA)
-    B = JacP12[1+(iz-1)*M23:iz*M23,1+(iz-1)*6:iz*6]
-    @views @. AI.B13[:,:,iz,1] = B[1:M2,5:6]
-    @views @. AI.B23[:,:,iz,1] = B[M2+1:2*M2,5:6]
-    @views @. AI.B32[:,:,iz,1] = B[2*M2+1:3*M2,3:4]
-    C = JacP21[1+(iz-1)*6:iz*6,1+(iz-1)*M23:iz*M23]
-    @views @. AI.C13[:,:,iz,1] = C[1:2,2*M2+1:3*M2]
-    @views @. AI.C23[:,:,iz,1] = C[3:4,2*M2+1:3*M2]
-    @views @. AI.C32[:,:,iz,1] = C[5:6,M2+1:2*M2]
+    B = JacP12[1+(iz-1)*M23:iz*M23,1+(iz-1)*4:iz*4]
+    AI.B11[iz,1] = B[1,1]
+    @views @. AI.B12[:,:,iz,1] = B[1:M,3:4]
+    AI.B21[iz,1] = B[M,2]
+    @views @. AI.B22[:,:,iz,1] = B[1+M:M+M2,3:4]
+    @views @. AI.B31[:,:,iz,1] = B[M+M2+1:end,1:2]
+    C = JacP21[1+(iz-1)*4:iz*4,1+(iz-1)*M23:iz*M23]
+    @views @. AI.C13[:,:,iz,1] = C[1:2,M+M2+1:end]
+#   C21 = FacGrav Position 1 and N
+    @views @. AI.C13[:,:,iz,1] = C[1:2,M+M2+1:end]
+    @views @. AI.C22[:,:,iz,1] = C[3:4,M+1:M+M2]
   end
 end
-
-function FillInteriorP2!(AI,JacP11,fac,Phys)
-  M2 = AI.M - 2
-  M23= M2 * 3
-  nz = AI.nz
-  AI.fac = fac
-  AI.FacGrav = 0.5 * Phys.Grav
-
-  for iz = 1 : nz
-    A = JacP11[1+(iz-1)*M23:iz*M23,1+(iz-1)*M23:iz*M23]
-    @views @. AI.A13[:,:,iz,1] = A[1:M2,2*M2+1:3*M2]
-    @views @. AI.A23[:,:,iz,1] = A[M2+1:2*M2,2*M2+1:3*M2]
-    @views @. AI.A31[:,:,iz,1] = A[2*M2+1:3*M2,1:M2]
-    @views @. AI.A32[:,:,iz,1] = A[2*M2+1:3*M2,M2+1:2*M2]
-    @views AI.SA[:,:,iz,1] = fac * I - (0.5 * Phys.Grav / fac) * AI.A13[:,:,iz,1] -
-      (1.0 / fac) *AI.A32[:,:,iz,1] * AI.A23[:,:,iz,1]
-    B = JacP12[1+(iz-1)*M23:iz*M23,1+(iz-1)*6:iz*6]
-    @views @. AI.B13[:,:,iz,1] = B[1:M2,5:6]
-    @views @. AI.B23[:,:,iz,1] = B[M2+1:2*M2,5:6]
-    @views @. AI.B32[:,:,iz,1] = B[2*M2+1:3*M2,3:4]
-    C = JacP21[1+(iz-1)*6:iz*6,1+(iz-1)*M23:iz*M23]
-    @views @. AI.C13[:,:,iz,1] = C[1:2,2*M2+1:3*M2]
-    @views @. AI.C23[:,:,iz,1] = C[3:4,2*M2+1:3*M2]
-    @views @. AI.C32[:,:,iz,1] = C[5:6,M2+1:2*M2]
-  end
-end
-
 
 function BlockGauss(A11,A12,A21,A22,r1,r2)
   A11F = collect(A11)
@@ -129,48 +108,51 @@ function BlockGauss(A11,A12,A21,A22,r1,r2)
   return x1, x2, SS
 end
 
-function SchurBoundary!(AI,A22)
+function SchurBoundary!(AI,A22B)
   M2 = AI.M - 2
   invfac = 1.0 / AI.fac
   FacGrav = AI.FacGrav
-  A22F = collect(A22)
-  r1 = zeros(M2,2)
+  r1 = zeros(M,2)
   r2 = zeros(M2,2)
   r3 = zeros(M2,2)
   s1 = zeros(2,2)
   s2 = zeros(2,2)
-  s3 = zeros(2,2)
+  r11 = zeros(1,1)
+  r1M = zeros(1,1)
   for iz = 1 : nz
-    sh = (iz - 1) * 6  
-#   B32 3:4  
-    @. r3 = AI.B32[:,:,iz,1]   
+    sh = (iz - 1) * 4  
+#   Column 1:2  
+    @. r3 = AI.B31[:,:,iz,1]   
 
-#   r3 = AI.SA[:,:,iz,1] \ r3
-    ldiv!(AI.luSA[iz,1],r3)
-    r2 = -invfac * (AI.A23[:,:,iz,1] * r3)
-
-    s1 = -AI.C13[:,:,iz,1] * r3
-    s2 = -AI.C23[:,:,iz,1] * r3
-    s3 = -AI.C32[:,:,iz,1] * r2  
-    A22F[sh + 1:sh + 6,sh + 3:sh + 4] .+= [s1;s2;s3]
-
-
-    @. r1 = AI.B13[:,:,iz,1]
-    @. r2 = AI.B23[:,:,iz,1]
-    r3 = -invfac * (AI.A32[:,:,iz,1] * r2 + FacGrav * r1) 
-
-#   r3 = AI.SA[:,:,iz,1] \ r3
     ldiv!(AI.luSA[iz,1],r3)
 
-    r2 = invfac * (r2 - AI.A23[:,:,iz,1] * r3)
+    r11 = -invfac * (AI.A13[1:1,:,iz,1] * r3[:,1:1])
+    r1M = -invfac * (AI.A13[M:M,:,iz,1] * r3[:,2:2])
+    @views r2 = -invfac * (AI.A23[:,:,iz,1] * r3)
 
-    s1 = -AI.C13[:,:,iz,1] * r3
-    s2 = -AI.C23[:,:,iz,1] * r3
-    s3 = -AI.C32[:,:,iz,1] * r2  
-    A22F[sh + 1:sh + 6,sh + 5:sh + 6] .+= [s1;s2;s3]
+    @views s1 = -AI.C13[:,:,iz,1] * r3
+    @views s2 = -AI.C22[:,:,iz,1] * r2
+    s2[1] = s2[1] - FacGrav * r11[1,1]
+    s2[2] = s2[2] - FacGrav * r1M[1,1]
+    A22B[sh + 1:sh + 4,sh + 1:sh + 2] .+= [s1;s2]
 
+#   Column 3:4  
+    @. r1 = AI.B12[:,:,iz,1]
+    @. r2 = AI.B22[:,:,iz,1]
+    @views r3 = -invfac * (AI.A32[:,:,iz,1] * r2 + FacGrav * r1[2:M-1,:]) 
+
+    ldiv!(AI.luSA[iz,1],r3)
+
+    r11 = invfac * (r1[1:1,1:1] - AI.A13[1:1,:,iz,1] * r3[:,1:1])
+    r1M = invfac * (r1[M:M,2:2] - AI.A13[M:M,:,iz,1] * r3[:,2:2])
+    @views r2 = invfac * (r2 - AI.A23[:,:,iz,1] * r3)
+
+    @views s1 = -AI.C13[:,:,iz,1] * r3
+    @views s2 = -AI.C22[:,:,iz,1] * r2
+    s2[1] = s2[1] - FacGrav * r11[1,1]
+    s2[2] = s2[2] - FacGrav * r1M[1,1]
+    A22B[sh + 1:sh + 4,sh + 3:sh + 4] .+= [s1;s2]
   end    
-  SS = sparse(A22F)
 end
 
 function Permutation(M,nz)
@@ -179,13 +161,20 @@ function Permutation(M,nz)
   p = zeros(Int,3*N)
   ii = 0
   for iz = 1 : nz
-    for iv = 1 : 3
+    for iv = 1 : 1
+      for k = 1 : M 
+        ii += 1
+        p[ii] = k + (iz - 1) * M + (iv - 1) * N
+      end
+    end
+    for iv = 2 : 3
       for k = 2 : M - 1
         ii += 1
         p[ii] = k + (iz - 1) * M + (iv - 1) * N
       end
     end
   end
+
 #=
   iv = 1      
   for iz = 1 : nz
@@ -196,7 +185,7 @@ function Permutation(M,nz)
   end
 =#  
   for iz = 1 : nz
-    for iv = 1 : 3
+    for iv = 2 : 3
       ii += 1
       p[ii] = 1 + (iz-1) * M  + (iv - 1) * N
       ii += 1
@@ -238,9 +227,9 @@ Lx = 1000.0
 Ly = 1000.0
 x0 = 0.0
 y0 = 0.0
-nz = 20
+nz = 5
 OrdPoly = 4
-OrdPolyZ = 6
+OrdPolyZ = 3
 M = OrdPolyZ + 1
 N = M * nz
 Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
@@ -282,7 +271,7 @@ p = Permutation(M,nz)
 
 JacP = Jac[p,p]    
 
-n1 = nz * (M-2) * 3
+n1 = nz * (M-2) * 2 + nz * M
 
 JacP11 = JacP[1:n1,1:n1]
 JacP12 = JacP[1:n1,n1+1:end]
@@ -302,6 +291,7 @@ xxS = xP[invperm(p)]
 ldiv!(JacLU[1],r)
 @show sum(abs.(xxS-r))
 
+
 n1 = nz * 2
 SS11 = SS[1:n1,1:n1]
 SS12 = SS[1:n1,n1+1:end]
@@ -313,8 +303,12 @@ rP22 = rP2[n1+1:end]
 x21P, x22P, SSS = BlockGauss(SS11,SS12,SS21,SS22,rP21,rP22)
 
 AI = Interior(M,nz,1)
-FillInteriorP1!(AI,JacP11,fac,Phys)
-SSB = SchurBoundary!(AI,JacP22)
+FillInterior!(AI,JacP11,JacP12,JacP21,fac,Phys)
+JacP22B = BandedMatrix(JacP22)
+SSB = BandedMatrix(SS)
+luSSB = lu(SSB)
+SchurBoundary!(AI,JacP22B)
+stop
 #=
 
 #Individual inner block

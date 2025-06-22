@@ -445,6 +445,7 @@ if Proc == 1
 @show nPrint
 end
 
+@show DG.DCZ
 if IntMethod == "Rosenbrock"
   @show "Rosenbrock"  
   Ros = Integration.RosenbrockStruct{FTB}(Table)
