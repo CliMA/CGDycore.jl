@@ -10,7 +10,7 @@ using StaticArrays
 using ArgParse
 using LinearAlgebra
 using SparseArrays
-using BandedMatrices, CliqueTrees
+using BandedMatrices
 
 mutable struct Interior 
   M::Int
@@ -30,6 +30,7 @@ mutable struct Interior
   C23_2::Array{Float64, 4}
   C14_3::Array{Float64, 4}
   luSA::Array{LU, 2}
+  SchurBand::Array{Float64, 3}
 end  
 
 function Interior(M,nz,NumG)
@@ -49,6 +50,7 @@ function Interior(M,nz,NumG)
   C23_2 = zeros(2,M2,nz,NumG)
   C14_3 = zeros(2,M2,nz,NumG)
   luSA = Array{LU}(undef,nz,NumG)
+  SchurBand = zeros(7,4*nz,NumG)
 
   return Interior(
     M,

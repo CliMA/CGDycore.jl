@@ -133,6 +133,121 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
     )                 
 end
 
+function InputGridICON(backend,FT,filename,OrientFace,Rad,nz)
+
+  clon_vertices = ncread(filename, "vlon")
+  clat_vertices = ncread(filename, "vlat")
+  edge_of_cell = ncread(filename, "edge_of_cell")
+  edge_vertices = ncread(filename, "edge_vertices")
+  @show size(edge_of_cell)
+  @show edge_of_cell[1,:]
+  @show edge_of_cell[2,:]
+  @show edge_of_cell[3,:]
+  @show edge_of_cell[4,:]
+  @show edge_vertices[1,:]
+  @show edge_vertices[2,:]
+  @show edge_vertices[3,:]
+  @show edge_vertices[4,:]
+  nBar=[ 0  1   0   1
+             -1  0  -1   0]
+  Dim = 3
+  Type = Polygonal()
+  Form = "Sphere"
+  @show size(vlon)
+  NumNodes=size(vlon,1)
+  NumNodesB=0
+  NumNodesG=0
+  Nodes = map(1:NumNodes) do i
+    Node()
+  end
+  NodeNumber = 1
+  for i = 1 : NumNodes
+    (x,y,z) = sphere2cart(vlon[i],vlat[i],Rad)
+    P = Point(x,y,z) 
+    Nodes[NodeNumber] = Node(P,NodeNumber,' ')
+    NodeNumber += 1
+  end
+  NumEdges = size(edge_vertices,1)
+  Edges = map(1:NumEdges) do i
+    Edge()
+  end
+  EdgeNumber = 1
+  for i = 1 : NumEdges
+    Edges[EdgeNumber] = Edge(edge_vertices[i,:],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber;Rad=Rad)
+    EdgeNumber += 1
+  end
+  NumFaces = size(edge_of_cell,1)
+  NumFacesB = 0
+  NumFacesG = 0
+  Faces = map(1:NumFaces) do i
+    Face()
+  end
+  FaceNumber = 1
+  e = zeros(Int,size(edgesOnCell,1))
+  MidFace = Point()
+  for i = 1 : NumFaces
+   (Faces[FaceNumber],Edges)=Face(edge_of_cell[i,:],Nodes,Edges,FaceNumber,"",OrientFace;
+     P=zeros(Float64,0,0),Rad=Rad,Form="Sphere");
+    FaceNumber += 1
+  end
+  NumEdges = size(Edges,1)
+  NumEdgesB = 0
+  NumEdgesG = 0
+
+  FacesInNodes!(Nodes,Faces)
+  SortFacesInNodes!(Nodes,Faces)
+
+  for iE = 1 : NumEdges
+    if Edges[iE].F[2] == 0
+      Edges[iE].Type = "B"
+      Nodes[Edges[iE].N[1]].Type = 'B'
+      Nodes[Edges[iE].N[2]].Type = 'B'
+    end
+  end  
+  TestOrientation(Faces,Nodes)
+
+  zP=zeros(nz)
+  z=KernelAbstractions.zeros(backend,FT,nz+1)
+  dzeta=zeros(nz)
+  H=0.0
+  NumGhostFaces = 0
+  nBar3 = zeros(0,0)
+  nBar = zeros(0,0)
+  AdaptGrid = ""
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
+
+  return GridStruct{FT,
+                    typeof(z)}(
+    nz,
+    zP,
+    z,
+    dzeta,
+    H,
+    NumFaces,
+    NumFacesB,
+    NumFacesG,
+    Faces,
+    NumEdges,
+    NumEdgesB,
+    NumEdgesG,
+    Edges,
+    NumNodes,
+    NumNodesB,
+    NumNodesB,
+    Nodes,
+    Form,
+    Type,
+    Dim,
+    Rad,
+    nBar3,
+    nBar,
+    AdaptGrid,
+    EF,
+    FE,
+    )                 
+end
+
 function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
 
   coord = ncread(filename, "coord")
