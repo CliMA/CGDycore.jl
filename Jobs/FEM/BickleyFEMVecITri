@@ -2,7 +2,6 @@
 julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --Problem="BickleyJet" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
   --GridForm="Cartesian" \
   --GridType="Tri" \
   --Flat=false \
@@ -15,12 +14,12 @@ julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --BoundaryWE="Period" \
   --BoundarySN="Period" \
   --BoundaryBT="" \
-  --OrderFEM=0 \
   --SimTime=0 \
-  --SimDays=0 \
-  --SimHours=1 \
-  --PrintHours=0 \
-  --PrintSeconds=600 \
-  --PrintTime=0 \
+  --SimDays=6 \
+  --SimHours=0 \
+  --SimMinutes=0 \
+  --PrintHours=1 \
+  --PrintMinutes=0 \
+  --PrintSeconds=0 \
   --RefineOutput=0 \
   --vtkFileName="Bickley/VecITri" \

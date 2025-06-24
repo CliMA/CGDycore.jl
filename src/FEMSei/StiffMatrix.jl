@@ -1155,7 +1155,6 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  Omega = 2 * pi / 24.0 / 3600.0
 
   @inbounds for iF = 1 : Grid.NumFaces
     @. CrossLoc = 0
@@ -1241,7 +1240,6 @@ function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,F
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  Omega = 2 * pi / 24.0 / 3600.0
 
   @inbounds for iF = 1 : Grid.NumFaces
     @. CrossLoc = 0

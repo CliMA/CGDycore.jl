@@ -1,19 +1,20 @@
 #!/bin/bash
-julia --project Examples/FEMSei/VecINonLinShallow.jl \
-  --Problem="GalewskySphere" \
+julia --project Examples/FEMSei/ConsNonLinShallow.jl \
+  --Problem="ModonCollision" \
   --FloatTypeBackend="Float64" \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
   --RefineLevel=6 \
-  --Flat=false \
+  --Flat=true \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=6 \
+  --SimDays=100 \
   --SimHours=0 \
   --SimMinutes=0 \
-  --PrintHours=1 \
+  --PrintDays=1 \
+  --PrintHours=0 \
   --PrintMinutes=0 \
   --PrintSeconds=0 \
-  --vtkFileName="Galewsky/VecITri" \
+  --vtkFileName="ModonCollision/ConsQuad" \
   --RefineOutput=1 \
   --PrintTime=0

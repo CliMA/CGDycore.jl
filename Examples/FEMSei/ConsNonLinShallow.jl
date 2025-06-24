@@ -265,61 +265,34 @@ Model = DyCore.ModelStruct{FTB}()
 
 # Grid construction
 RadEarth = Phys.RadEarth
+
+# Parameters
 Param = Examples.Parameters(FTB,Problem)
+
+# Model
 if GridForm == "Spherical"
   # Grid construction
-  Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
+  Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
 
   # Jacobi
   Jacobi = FEMSei.Jacobi!
 
-  # Problem
-  if Problem == "GalewskySphere"
-    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-    cS = sqrt(Phys.Grav * Param.H0G)
-    dtau = GridLengthMin / cS / sqrt(2) * .05 / (k + 1)
-    EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-    nAdveVel::Int = round(EndTime / dtau)
-    dtau = EndTime / nAdveVel
-    PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-    nPrint::Int = ceil(PrintT/dtau)
-    FileNameOutput = vtkFileName
-    @show GridLengthMin,GridLengthMax
-    @show nAdveVel
-    @show dtau
-    @show nPrint
-  elseif Problem == "HaurwitzSphere"
-    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-    cS = sqrt(Phys.Grav * Param.h0)
-    dtau = GridLengthMin / cS / sqrt(2) * .1 / (k + 1)
-    EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-    nAdveVel::Int = round(EndTime / dtau)
-    dtau = EndTime / nAdveVel
-    PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-    nPrint::Int =ceil(PrintT/dtau)
-    FileNameOutput = vtkFileName
-    @show GridLengthMin,GridLengthMax
-    @show nAdveVel
-    @show dtau
-    @show nPrint
-  elseif Problem == "ModonCollisionExample"
-    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-    cS = sqrt(Phys.Grav * Param.h0)
-    dtau = GridLengthMin / cS / sqrt(2) * 0.2 / (k + 1)
-    EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-    nAdveVel::Int = round(EndTime / dtau)
-    dtau = EndTime / nAdveVel
-    PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-    nPrint::Int = ceil(PrintT/dtau)
-    FileNameOutput = vtkFileName
-    @show GridLengthMin,GridLengthMax
-    @show nAdveVel
-    @show dtau
-    @show nPrint
-  else
-    print("Error")
-  end
+  # Settings
+  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+  cS = Param.cS
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+  nAdveVel::Int = round(EndTime / dtau)
+  dtau = EndTime / nAdveVel
+  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+  nPrint::Int = ceil(PrintT/dtau)
+  FileNameOutput = vtkFileName
+  @show GridLengthMin,GridLengthMax
+  @show nAdveVel
+  @show dtau
+  @show nPrint
+  
 else
   # Grid construction
   Boundary = Grids.Boundary()
@@ -331,11 +304,10 @@ else
   # Jacobi
   Jacobi = FEMSei.JacobiCart!
 
-  # Problem
-  Problem == "BickleyJet"
+  # Settings
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-  #cS = sqrt(Phys.Grav * Param.H0G)
-  dtau = 0.2 * 2π / sqrt(nx * ny) / (k + 1)
+  cS = Param.cS
+  dtau = 0.05 * 2π / sqrt(nx * ny) / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
@@ -353,7 +325,6 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 # Output
-@show Flat
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
 
 # Quadrature rules
@@ -395,5 +366,5 @@ FEMSei.InterpolatehRT!(Uhu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 FEMSei.InterpolateDG!(Uh,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 
 # Time integration
-FEMSei.TimeStepperCons(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuad,nQuadM,nQuadS,Jacobi,
+FEMSei.TimeStepperCons(backend,FTB,U,dtau,FEMSei.FcnConsNonLinShallow!,ModelFEM,Grid,nQuad,nQuadM,nQuadS,Jacobi,
   nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)

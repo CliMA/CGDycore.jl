@@ -187,38 +187,21 @@ if GridForm == "Spherical"
   # Jacobi
   Jacobi = FEMSei.Jacobi!
 
-  # Problem
-  if Problem == "GalewskySphere"
-    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-    cS = sqrt(Phys.Grav * Param.H0G)
-    dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
-    EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-    nAdveVel::Int = round(EndTime / dtau)
-    dtau = EndTime / nAdveVel
-    PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-    nPrint::Int = ceil(PrintT/dtau)
-    FileNameOutput = vtkFileName
-    @show GridLengthMin,GridLengthMax
-    @show nAdveVel
-    @show dtau
-    @show nPrint
-  elseif Problem == "HaurwitzSphere"
-    GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-    cS = sqrt(Phys.Grav * Param.h0)
-    dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
-    EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-    nAdveVel::Int = round(EndTime / dtau)
-    dtau = EndTime / nAdveVel
-    PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-    nPrint::Int =ceil(PrintT/dtau)
-    FileNameOutput = vtkFileName
-    @show GridLengthMin,GridLengthMax
-    @show nAdveVel
-    @show dtau
-    @show nPrint
-  else
-    print("Error")
-  end
+  # Settings
+  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
+  cS = Param.cS
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
+  nAdveVel::Int = round(EndTime / dtau)
+  dtau = EndTime / nAdveVel
+  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
+  nPrint::Int = ceil(PrintT/dtau)
+  FileNameOutput = vtkFileName
+  @show GridLengthMin,GridLengthMax
+  @show nAdveVel
+  @show dtau
+  @show nPrint
+  
 else
   # Grid construction
   Boundary = Grids.Boundary()
@@ -230,10 +213,9 @@ else
   # Jacobi
   Jacobi = FEMSei.JacobiCart!
 
-  # Problem
-  Problem == "BickleyJet"
+  # Settings
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-  #cS = sqrt(Phys.Grav * Param.H0G)
+  cS = Param.cS
   dtau = 0.05 * 2π / sqrt(nx * ny) / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel = round(EndTime / dtau)
@@ -261,7 +243,7 @@ if Grid.Type == Grids.Quad()
   nQuadS = 2
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
-  nQuadM = 6
+  nQuadM = 4
   nQuadS = 4
 end
 
@@ -286,6 +268,6 @@ FEMSei.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 FEMSei.InterpolateRT!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
 # Time integration
-FEMSei.TimeStepperVecI(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,
+FEMSei.TimeStepperVecI(backend,FTB,U,dtau,FEMSei.FcnVecINonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,
   nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 
