@@ -1,18 +1,18 @@
 #!/bin/bash
 julia --project Examples/FEMSei/ConsNonLinShallow.jl \
-  --Problem="ModonCollisionExample" \
+  --Problem="ModonCollision" \
   --FloatTypeBackend="Float64" \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
-  --nPanel=50 \
-  --Flat=false \
+  --nPanel=96 \
+  --Flat=true \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=60 \
+  --SimDays=100 \
   --SimHours=0 \
   --SimMinutes=0 \
-  --PrintDays=0 \
-  --PrintHours=12 \
+  --PrintDays=1 \
+  --PrintHours=0 \
   --PrintMinutes=0 \
   --PrintSeconds=0 \
   --vtkFileName="ModonCollision/ConsQuad" \

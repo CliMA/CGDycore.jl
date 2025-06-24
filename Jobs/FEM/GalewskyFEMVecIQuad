@@ -2,16 +2,18 @@
 julia --project Examples/FEMSei/VecINonLinShallow.jl \
   --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
-  --nPanel=80 \
+  --nPanel=160 \
+  --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=1 \
+  --SimDays=6 \
   --SimHours=0 \
-  --PrintHours=0 \
-  --PrintSeconds=3600 \
+  --SimMinutes=0 \
+  --PrintHours=1 \
+  --PrintMinutes=0 \
+  --PrintSeconds=0 \
   --vtkFileName="Galewsky/VecIQuad" \
   --RefineOutput=1 \
-  --PrintTime=0
+  --PrintTime=0 \

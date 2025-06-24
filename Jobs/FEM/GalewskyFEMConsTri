@@ -8,11 +8,13 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=1 \
+  --SimDays=6 \
   --SimHours=0 \
-  --PrintHours=0 \
-  --PrintMinutes=2 \
+  --SimMinutes=0 \
+  --PrintHours=1 \
+  --PrintMinutes=0 \
   --PrintSeconds=0 \
-  --PrintTime=0 \
+  --vtkFileName="Galewsky/ConsTri" \
   --RefineOutput=1 \
-  --vtkFileName="Galewsky/ConsTri"
+  --PrintTime=0 \
+

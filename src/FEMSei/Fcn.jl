@@ -32,7 +32,7 @@ function FcnHeat!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
   ldiv!(DG.LUM,Fh)
 end
 
-function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
+function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
 
   @. F = 0
   DG = Model.DG
@@ -59,6 +59,32 @@ function FcnNonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;U
   ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
   DivRhs!(backend,FTB,Fh,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
   ldiv!(DG.LUM,Fh)
+end
+
+function FcnConsNonLinShallow!(backend,FTB,F,U,Model,Grid,nQuad,Jacobi;UCache=nothing)
+    hPosS = Model.hPosS
+    hPosE = Model.hPosE
+    huPosS = Model.huPosS
+    huPosE = Model.huPosE
+    uPosVec = Model.uPosVec
+
+    @views Uh = U[hPosS:hPosE]
+    @views Uhu = U[huPosS:huPosE]
+    @views Fh = F[hPosS:hPosE]
+    @views Fhu = F[huPosS:huPosE]
+    uRec = zeros(FTB, uPosVec)
+
+    # Tendency h
+    DivRhs!(backend,FTB,Fh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
+    ldiv!(Model.DG.LUM,Fh)
+    # Tendency hu
+    InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,Uh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
+    DivMomentumVector!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
+    if Grid.Form == "Sphere"
+        CrossRhs!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
+    end
+    GradHeightSquared!(backend,FTB,Fhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
+    ldiv!(Model.RT.LUM,Fhu)
 end
 
 function FcnNonLinShallowKent!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)

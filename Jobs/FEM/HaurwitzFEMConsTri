@@ -2,17 +2,18 @@
 julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --Problem="HaurwitzSphere" \
   --FloatTypeBackend="Float64" \
-  --NumberThreadGPU=512 \
   --GridForm="Spherical" \
   --GridType="TriangularSphere" \
   --RefineLevel=6 \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \
-  --SimDays=1 \
+  --SimDays=6 \
   --SimHours=0 \
+  --SimMinutes=0 \
   --PrintHours=1 \
+  --PrintMinutes=0 \
   --PrintSeconds=0 \
-  --PrintTime=0 \
+  --vtkFileName="Haurwitz/ConsTri" \
   --RefineOutput=1 \
-  --vtkFileName="Haurwitz/ConsTri"
+  --PrintTime=0 \
