@@ -287,5 +287,5 @@ FEMSei.InterpolateRT!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
 # Time integration
 FEMSei.TimeStepperVecI(backend,FTB,U,dtau,FEMSei.FcnNonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,
-  nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,ref)
+  nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 

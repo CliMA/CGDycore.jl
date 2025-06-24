@@ -70,6 +70,7 @@ function Interior(M,nz,NumG)
     C23_2,
     C14_3,
     luSA,
+    SchurBand,
   )
 end  
 

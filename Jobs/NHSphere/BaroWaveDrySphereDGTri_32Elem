@@ -50,7 +50,7 @@ julia --project Examples/DriverDG.jl \
   --Stretch=true \
   --StretchType="" \
   --GridForm="Spherical" \
-  --GridType="TriangularSphere" \
+  --GridType="ICON" \
   --RefineLevel=3 \
   --nz=8 \
   --nPanel=10 \

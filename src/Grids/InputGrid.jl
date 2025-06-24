@@ -133,27 +133,17 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
     )                 
 end
 
-function InputGridICON(backend,FT,filename,OrientFace,Rad,nz)
+function InputGridICON(backend,FT,filename,OrientFace,Rad,nz;ChangeOrient=3)
 
-  clon_vertices = ncread(filename, "vlon")
-  clat_vertices = ncread(filename, "vlat")
+  vlon = ncread(filename, "vlon")
+  vlat = ncread(filename, "vlat")
   edge_of_cell = ncread(filename, "edge_of_cell")
   edge_vertices = ncread(filename, "edge_vertices")
-  @show size(edge_of_cell)
-  @show edge_of_cell[1,:]
-  @show edge_of_cell[2,:]
-  @show edge_of_cell[3,:]
-  @show edge_of_cell[4,:]
-  @show edge_vertices[1,:]
-  @show edge_vertices[2,:]
-  @show edge_vertices[3,:]
-  @show edge_vertices[4,:]
-  nBar=[ 0  1   0   1
-             -1  0  -1   0]
+  nBar=[ 0  1  1
+        -1  1  0]           
   Dim = 3
-  Type = Polygonal()
+  Type = Tri()
   Form = "Sphere"
-  @show size(vlon)
   NumNodes=size(vlon,1)
   NumNodesB=0
   NumNodesG=0
@@ -173,7 +163,9 @@ function InputGridICON(backend,FT,filename,OrientFace,Rad,nz)
   end
   EdgeNumber = 1
   for i = 1 : NumEdges
-    Edges[EdgeNumber] = Edge(edge_vertices[i,:],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber;Rad=Rad)
+    n1 = Int(edge_vertices[i,1])  
+    n2 = Int(edge_vertices[i,2])  
+    Edges[EdgeNumber] = Edge([n1,n2],Nodes,EdgeNumber,EdgeNumber,"",EdgeNumber;Rad=Rad)
     EdgeNumber += 1
   end
   NumFaces = size(edge_of_cell,1)
@@ -183,11 +175,13 @@ function InputGridICON(backend,FT,filename,OrientFace,Rad,nz)
     Face()
   end
   FaceNumber = 1
-  e = zeros(Int,size(edgesOnCell,1))
-  MidFace = Point()
   for i = 1 : NumFaces
-   (Faces[FaceNumber],Edges)=Face(edge_of_cell[i,:],Nodes,Edges,FaceNumber,"",OrientFace;
-     P=zeros(Float64,0,0),Rad=Rad,Form="Sphere");
+    e1 = Int(edge_of_cell[i,1])  
+    e2 = Int(edge_of_cell[i,2])  
+    e3 = Int(edge_of_cell[i,3])  
+    ee = SortEdges([e1,e2,e3],Edges)
+    (Faces[FaceNumber],Edges)=Face(ee,Nodes,Edges,FaceNumber,"",OrientFace;
+      P=zeros(Float64,0,0),Rad=Rad,Form="Sphere",ChangeOrient=ChangeOrient);
     FaceNumber += 1
   end
   NumEdges = size(Edges,1)
@@ -204,7 +198,6 @@ function InputGridICON(backend,FT,filename,OrientFace,Rad,nz)
       Nodes[Edges[iE].N[2]].Type = 'B'
     end
   end  
-  TestOrientation(Faces,Nodes)
 
   zP=zeros(nz)
   z=KernelAbstractions.zeros(backend,FT,nz+1)
@@ -218,6 +211,7 @@ function InputGridICON(backend,FT,filename,OrientFace,Rad,nz)
   FE=KernelAbstractions.zeros(backend,Int,0,0)
 
   return GridStruct{FT,
+                    typeof(EF),
                     typeof(z)}(
     nz,
     zP,

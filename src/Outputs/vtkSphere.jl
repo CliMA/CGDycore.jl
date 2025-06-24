@@ -117,17 +117,18 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
               for i in 1 : 4
                 (lam[i],theta[i],z) = Grids.cart2sphere(NodeLoc[1,i],NodeLoc[2,i],NodeLoc[3,i])
               end
-              best_lam = copy(lam)
-              best_range = Inf
-              for shift in (-2π, 0.0, 2π)
-                shifted_lam = [mod(l + shift + π, 2π) - π for l in lam]
-                r = maximum(shifted_lam) - minimum(shifted_lam)
-                if r < best_range
-                  best_range = r
-                  best_lam .= shifted_lam
+              lammin = minimum(lam)
+              lammax = maximum(lam)
+              if abs(lammin - lammax) > 2*pi-dTol
+                for i = 1 : 4
+                  if lam[i] > pi
+                    lam[i] = lam[i] - 2*pi
+                    if lam[i] > 3*pi
+                      lam[i] = lam[i]  - 2*pi
+                    end
+                  end
                 end
               end
-              lam .= best_lam
               for i in 1 : 4
                 NumNodes += 1
                 pts[:,NumNodes] = [lam[i],theta[i],0.0]
@@ -227,6 +228,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
   RefineMidPoints,
   )
 end                   
+
 
 function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Global) where FT<:AbstractFloat
   DoF = FE.DoF

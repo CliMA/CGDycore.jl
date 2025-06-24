@@ -50,7 +50,7 @@ julia --project Examples/DriverDG.jl \
   --Stretch=true \
   --StretchType="" \
   --GridForm="Spherical" \
-  --GridType="ICON" \
+  --GridType="CubedSphere" \
   --nz=8 \
   --nPanel=20 \
   --H=30000.0 \

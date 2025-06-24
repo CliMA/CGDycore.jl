@@ -38,6 +38,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
     Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
       Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   end
+  Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
   NzG = min(div(NumberThreadGPU,DoF),nz)
   group = (DoF,NzG,1)
@@ -45,7 +46,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
   if Global.Grid.Form == "Sphere"
     KGridSizeSphereDGKernel! = GridSizeSphereDGKernel!(backend,group)
     Rad = Global.Grid.Rad
-    KGridSizeSphereDGKernel!(Metric.dz,Metric.X,DG.Glob,
+    KGridSizeSphereDGKernel!(Metric.zP,Metric.dz,Metric.X,DG.Glob,
       Rad,ndrange=ndrange)
   else
     KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)
@@ -202,6 +203,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
       Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   end
 
+  Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
   NzG = min(div(NumberThreadGPU,DoF),nz)
   group = (DoF,NzG,1)
@@ -209,7 +211,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
   if Global.Grid.Form == "Sphere"
     KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
     Rad = Global.Grid.Rad
-    KGridSizeSphereKernel!(Metric.dz,Metric.X,DG.Glob,
+    KGridSizeSphereKernel!(Metric.zP,Metric.dz,Metric.X,DG.Glob,
       Rad,ndrange=ndrange)
   else
     KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)
