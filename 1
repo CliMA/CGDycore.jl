@@ -957,8 +957,8 @@ function ProjectHDivScalarHDiv(backend,FTB,u,uFe::HDivElement,h,hFe::ScalarEleme
 #     uLoc1 = DF[1,1] * uLoc31 + DF[2,1] * uLoc32 + DF[3,1] * uLoc33
 #     uLoc2 = DF[1,2] * uLoc31 + DF[2,2] * uLoc32 + DF[3,2] * uLoc33
       @inbounds for iDoF = 1 : uFe.DoF
-        RhsLoc[iDoF] += Weights[i] * (fLoc[1,iDoF] * uLoc31 +
-          fLoc[2,iDoF] * uLoc32  + fLoc[3,iDoF] * uLoc33) / detDFLoc
+        RhsLoc[iDoF] += Weights[i] * (fLoc[1] * uLoc31 +
+          fLoc[2] * uLoc32  + fLoc[3] * uLoc33)
       end
     end
     @inbounds for iDoF = 1 : uFe.DoF
@@ -976,6 +976,8 @@ function ProjectHDivScalarHDiv(backend,FTB,u,uFe::HDivElement,h,hFe::ScalarEleme
     end
   end
   M = sparse(RowInd, ColInd, Val)
+  @show size(u)
   u .= M \ Rhs
+  @show sum(abs.(u))
 end
 

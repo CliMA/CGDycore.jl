@@ -91,6 +91,7 @@ time = 0.0
   UNew = zeros(FTB,huPosE)
   @views UNewh = UNew[hPosS:hPosE]  
   @views UNewhu = UNew[huPosS:huPosE]  
+  @views UNewu = UNew[huPosS:huPosE]  
   F =  zeros(FTB,huPosE)
   @views Fh = F[hPosS:hPosE]  
   @views Fhu = F[huPosS:huPosE]  
@@ -119,7 +120,9 @@ time = 0.0
   else
     ConvertScalarVelocityCart!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
   end
-  Vorticity!(backend,FTB,Vort,Model.CG,Uhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  ProjectHDivScalarHDiv(backend,FTB,UNewu,Model.RT,Uh,Model.DG,Uhu,Model.RT,
+  Grid,nQuadM,Jacobi)
+  Vorticity!(backend,FTB,Vort,Model.CG,UNewu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],FileNumber,cName)
 
   for i = 1 : nAdveVel
