@@ -28,7 +28,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   elseif GridType == "SphericalGrid"
     Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz)
   elseif GridType == "ICON"
-    Grid=Grids.InputGridICON(backend,FT,"Grid/icon_grid_0009_R02B03_R.nc", Grids.OrientFaceSphere,RadEarth,nz)
+    Grid=Grids.InputGridICON(backend,FT,"Grid/icon_grid_0009_R02B03_R.nc", Grids.OrientFaceSphere,
+      RadEarth,nz;ChangeOrient)
   else
     @show "False GridType"
   end

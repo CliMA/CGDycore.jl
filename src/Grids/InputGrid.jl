@@ -135,6 +135,7 @@ end
 
 function InputGridICON(backend,FT,filename,OrientFace,Rad,nz;ChangeOrient=3)
 
+  @show "InputGridICON"
   vlon = ncread(filename, "vlon")
   vlat = ncread(filename, "vlat")
   edge_of_cell = ncread(filename, "edge_of_cell")

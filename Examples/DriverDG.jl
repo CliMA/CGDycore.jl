@@ -418,7 +418,6 @@ Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
 
-
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
 
 
@@ -445,7 +444,6 @@ if Proc == 1
 @show nPrint
 end
 
-@show DG.DCZ
 if IntMethod == "Rosenbrock"
   @show "Rosenbrock"  
   Ros = Integration.RosenbrockStruct{FTB}(Table)

@@ -40,10 +40,10 @@ julia --project Examples/DriverDG.jl \
   --PrintHours=0 \
   --PrintDays=0 \
   --OrdPrint=4 \
-  --OrdPrintZ=4 \
+  --OrdPrintZ=3 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=1.5 \
+  --dtau=40 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \

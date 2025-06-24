@@ -251,20 +251,30 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
   theta = zeros(2*NumPoint,1)
   z = zeros(2*NumPoint,1)
   ipts = 1
-  for iF = 1 : NF
-    for iz = 1 : nz
+  phiEval = zeros(size(FE.phi,1),NumRefine,NumPoint)
+  @inbounds for iphi = 1 : size(FE.phi,1)
+    @inbounds for iNumRefine = 1 : NumRefine
+      @inbounds for iNumPoint = 1 : NumPoint
+        phiEval[iphi,iNumRefine,iNumPoint] = FE.phi[iphi](RefinePoints[iNumRefine,iNumPoint,1],
+          RefinePoints[iNumRefine,iNumPoint,2])
+      end  
+    end  
+  end  
+  GridType = Global.Grid.Type
+  @inbounds for iF = 1 : NF
+    @inbounds for iz = 1 : nz
       @views copyto!(X,Metric.X[:,:,:,iz,iF])
       zeta0 = -1.0
-      for kRef = 1 : (OrdPrintZ + 1) 
+      @inbounds for kRef = 1 : (OrdPrintZ + 1) 
         zeta1 = zeta0 + ddZ
-        for iNumRefine = 1 : NumRefine
-          for iNumPoint = 1 : NumPoint
-            @views Trans(x[iNumPoint,:],RefinePoints[iNumRefine,iNumPoint,1],
-              RefinePoints[iNumRefine,iNumPoint,2],zeta0,X,FE,Global,Global.Grid.Type)
+        @inbounds for iNumRefine = 1 : NumRefine
+          @inbounds for iNumPoint = 1 : NumPoint
+            @views Trans(x[iNumPoint,:],phiEval[:,iNumRefine,iNumPoint],
+              zeta0,X,FE,Global,GridType)
           end  
-          for iNumPoint = 1 : NumPoint
-            @views Trans(x[iNumPoint+NumPoint,:],RefinePoints[iNumRefine,iNumPoint,1],
-              RefinePoints[iNumRefine,iNumPoint,2],zeta1,X,FE,Global,Global.Grid.Type)
+          @inbounds for iNumPoint = 1 : NumPoint
+            @views Trans(x[iNumPoint+NumPoint,:],phiEval[:,iNumRefine,iNumPoint],
+              zeta1,X,FE,Global,GridType)
           end  
           if Global.Grid.Form == "Sphere" && Global.Output.Flat
             for i=1:2*NumPoint
@@ -277,25 +287,25 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
               greater = count(>=(pi), lam)
 
               if greater >= smaller
-                for i = 1 : 2*NumPoint
+                @inbounds for i = 1 : 2*NumPoint
                   if lam[i] < pi
                     lam[i] += 2 * pi
                   end
                 end
               else
-                for i = 1 : 2*NumPoint
+                @inbounds for i = 1 : 2*NumPoint
                   if lam[i] >= pi
                     lam[i] -= 2 * pi
                   end
                 end
               end
             end
-            for i = 1 : 2*NumPoint
+            @inbounds for i = 1 : 2*NumPoint
               pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Grid.Rad,0.0)/Global.Grid.H*3]
               ipts = ipts + 1
             end
           else
-            for i=1:2*NumPoint
+            @inbounds for i=1:2*NumPoint
               pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
               ipts = ipts + 1
             end

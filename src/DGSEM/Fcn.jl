@@ -133,14 +133,37 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
   @views AuxI = Aux[:,:,1:DG.NumI,:]
+  @views FS = CacheF[:,:,:,1:3]
   @. F = 0
+  @. FS = 0
+
+  if Model.Damping
+    DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
+    group = (Nz,M,DoFG,1)
+    ndrange = (Nz,M,DoF,NF)
+    if Grid.Form == "Sphere"
+      KDampKernel! = DampSphereKernel!(backend, group)
+      KDampKernel!(Damp,FS,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
+    else
+      KDampKernel! = DampCartKernel!(backend, group)
+      KDampKernel!(Damp,FS,U,Metric.X,DG.Glob;ndrange=ndrange)
+    end
+  end
+
+  if Model.Coriolis
+    DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
+    group = (Nz,M,DoFG,1)
+    ndrange = (Nz,M,DoF,NF)
+    KCoriolisKernel! = CoriolisKernel!(backend,group)
+    KCoriolisKernel!(FS,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
+  end
 
 
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
   group = (Nz,M,DoFG,1)
   ndrange = (Nz,M,DoF,NF)
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
-  @. KVSp2VCart3Kernel!(U[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
+  @views  KVSp2VCart3Kernel!(UI[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
   @views @. AuxI[:,:,:,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
   DoF = DoF
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
@@ -195,35 +218,7 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   @views KVCart2VSp3Kernel!(F[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
 
-  if Model.Damping
-    DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-    group = (Nz,M,DoFG,1)
-    ndrange = (Nz,M,DoF,NF)
-    if Grid.Form == "Sphere"
-      KDampKernel! = DampSphereKernel!(backend, group)
-      KDampKernel!(Damp,F,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
-    else  
-      KDampKernel! = DampCartKernel!(backend, group)
-      KDampKernel!(Damp,F,U,Metric.X,DG.Glob;ndrange=ndrange)
-    end  
-  end  
-
-  if Model.Coriolis
-    DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-    group = (Nz,M,DoFG,1)
-    ndrange = (Nz,M,DoF,NF)
-    KCoriolisKernel! = CoriolisKernel!(backend,group)
-    KCoriolisKernel!(F,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
-  end  
-#=
-  if Model.Buoyancy
-    NDG = min(div(NumberThreadGPU,Nz*M),size(F,3))
-    group = (Nz,M,NDG)
-    ndrange = (Nz,M,size(F,3))
-    KBuoyancyKernel! = BuoyancyKernel!(backend,group)
-    KBuoyancyKernel!(F,U,Phys;ndrange=ndrange)
-  end    
-=#  
+  @. F[:,:,:,2:4] += FS
 
 end
 

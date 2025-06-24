@@ -448,6 +448,7 @@ mutable struct DGTri{FT<:AbstractFloat,
     xwZ::AT1
     xwZCPU::Array{FT, 1}
     DSZ::AT2
+    DWZ::AT2
     PL2::AT2
     PL2CPU::Array{FT, 2}
     phi
@@ -874,6 +875,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     xwZ,
     xwZCPU,
     DSZ,
+    DWZ,
     PL2GPU,
     PL2,
     phi,
