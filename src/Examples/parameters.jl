@@ -6,8 +6,6 @@ Base.@kwdef struct ParamBickleyJet{FT}
   Ly::FT = 4.0*pi
   cS::FT = sqrt(9.81)
 end
-Base.@kwdef struct ParamBickleyJet1{FT}
-end
 
 Base.@kwdef struct ParamLinearGravity{FT}
   A::FT = 5000
@@ -60,9 +58,10 @@ Base.@kwdef struct ParamHaurwitzSphere
   K = 7.848e-6 # Hz
   h0 = 8000 # m
   R = 4
+  cS = sqrt(8000 * 9.81)
 end
 
-Base.@kwdef struct ParamModonCollisionExample{FT}
+Base.@kwdef struct ParamModonCollision{FT}
     u0::FT = 40.0         # Modon-Translation speed (m/s)
     r0::FT = 500000.0     # Modon-Radius (m)
     h0::FT = 10000.0      # Mean fluid depth (m)
@@ -506,12 +505,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "BickleyJet"
     @show Problem
     Param = ParamBickleyJet{FT}()
-  elseif Problem == "BickleyJet1"
-    @show Problem
-    Param = ParamBickleyJet1{FT}()
   elseif Problem == "ModonCollision"
     @show Problem
-    Param = ParamModonCollisionExample{FT}()  
+    Param = ParamModonCollision{FT}()  
   elseif Problem == "GalewskySphere"
     @show Problem
     Param = ParamGalewskySphere{FT}()

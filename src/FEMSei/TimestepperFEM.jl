@@ -35,6 +35,7 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,
   Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
     FileNumber,cName)
+
   time = 0.0
   UNew = similar(U)
   F = similar(U)
@@ -49,6 +50,8 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,
     @. UNew = U + 1/2 * dtau * F
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
     @. U = U + dtau * F
+
+    # Output
     if mod(i,nPrint) == 0
       @show "Druck ",i  
       ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
@@ -128,45 +131,15 @@ time = 0.0
   for i = 1 : nAdveVel
     @show i,(i-1)*dtau/3600 
     @. F = 0  
-    # Tendency h
-    DivRhs!(backend,FTB,Fh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.DG.LUM,Fh)
-    # Tendency hu
-    InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,Uh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    DivMomentumVector!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-    if Grid.Form == "Sphere"
-      CrossRhs!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    end
-    GradHeightSquared!(backend,FTB,Fhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.RT.LUM,Fhu)
+    FcnConsNonLinShallow!(backend, FTB, F, U, Model, Grid, nQuad, Jacobi)
     @. UNew = U + 1 / 3 * dtau * F
 
     @. F = 0  
-    # Tendency h
-    DivRhs!(backend,FTB,Fh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.DG.LUM,Fh)
-    # Tendency hu
-    InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,UNewh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    DivMomentumVector!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-    if Grid.Form == "Sphere"
-      CrossRhs!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    end
-    GradHeightSquared!(backend,FTB,Fhu,Model.RT,UNewh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.RT.LUM,Fhu)
+    FcnConsNonLinShallow!(backend, FTB, F, UNew, Model, Grid, nQuad, Jacobi)
     @. UNew = U + 0.5 * dtau * F
 
     @. F = 0  
-    # Tendency h
-    DivRhs!(backend,FTB,Fh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.DG.LUM,Fh)
-    # Tendency hu
-    InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,UNewh,Model.DG,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    DivMomentumVector!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-    if Grid.Form == "Sphere"
-      CrossRhs!(backend,FTB,Fhu,Model.RT,UNewhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
-    end
-    GradHeightSquared!(backend,FTB,Fhu,Model.RT,UNewh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
-    ldiv!(Model.RT.LUM,Fhu)
+    FcnConsNonLinShallow!(backend, FTB, F, UNew, Model, Grid, nQuad, Jacobi)
     @. U = U + dtau * F
       
     # Output
@@ -186,7 +159,8 @@ time = 0.0
     end
   end
   @show "finished"
-  end
+end
+
 function TimeStepperEul(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,GridType,Proc,ProcNumber)
 
   pPosS = Model.pPosS

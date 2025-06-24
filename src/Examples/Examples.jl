@@ -20,9 +20,6 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
   elseif Problem == "HaurwitzSphere"
     Profile = Examples.HaurwitzExample()(Param,Phys)
     Model.InitialProfile = Profile
-  elseif Problem == "BickleyJet1"
-    Profile = Examples.BickleyJetExample1()(Param,Phys)
-    Model.InitialProfile = Profile  
   elseif Problem == "ModonCollision"
     Profile = Examples.ModonCollisionExample()(Param,Phys)
     Model.InitialProfile = Profile  
