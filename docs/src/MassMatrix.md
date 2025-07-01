@@ -1,9 +1,5 @@
 # Massmatrix
 
-```@meta
-CurrentModule = ClimaCore.Operators
-```
-
 _The mass matrix_ represents the inner product in the discretized function space.
 
  - For efficiency, we avoid explicitly assembling the mass matrix and instead
@@ -17,5 +13,5 @@ broadcasting for performance and composability.
 
 ## MassMatrix with HCurlElement 
 ```@docs
-MassMatrix
+CGDycore.FEMSei.MassMatrix
 ```

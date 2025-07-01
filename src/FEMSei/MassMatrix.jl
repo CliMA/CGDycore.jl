@@ -1,5 +1,5 @@
 """
-  MassMatrix(backend, FTB, Fe::HCurlElement, Grid, QuadOrd, Jacobi)
+  MassMatrix
 
 Assembles the global mass matrix for a finite element discretization using H(curl) elements.
 
