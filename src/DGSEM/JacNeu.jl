@@ -208,17 +208,35 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
     sh = 1
     @views @. JacVert.SchurBand[:,:,ID] = 0.0
     @views @. JacVert.SchurBand[4,:,ID] = fac
-    @inbounds for iz = 1 : nz
+    @time @inbounds for iz = 1 : nz
       @views @. Th = U[:,iz,ID,ThPos]/U[:,iz,ID,RhoPos]
       @views @. dpdRhoTh = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
         (Phys.Rd * U[:,iz,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
       @views @. JacVert.A13[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[:,2:M1]
-      @views JacVert.A23[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(Th[2:M-1])
-      @views JacVert.A32[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(dpdRhoTh[2:M-1])
-      @views JacVert.SA[:,:,iz,ID] .= fac * I - (0.5 * Phys.Grav / fac) * JacVert.A13[2:M-1,:,iz,ID] - 
-        (1.0 / fac) *JacVert.A32[:,:,iz,ID] * JacVert.A23[:,:,iz,ID]
+      #@views JacVert.A23[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(Th[2:M-1])
+      #@views JacVert.A32[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(dpdRhoTh[2:M-1])
+      @inbounds for j = 2 : M1
+        @views @. JacVert.A23[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[j,2:M1] * Th[j]  
+        @views @. JacVert.A32[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[j,2:M1] * dpdRhoTh[j]  
+      end  
+      #@views JacVert.SA[:,:,iz,ID] .= fac * I - (0.5 * Phys.Grav / fac) * JacVert.A13[2:M-1,:,iz,ID] - 
+      #  (1.0 / fac) *JacVert.A32[:,:,iz,ID] * JacVert.A23[:,:,iz,ID]
+      @inbounds for i = 1 : M2
+        @inbounds for j = 1 : M2
+          JacVert.SA[i,j,iz,ID] = 0.0
+          @inbounds for k = 1 : M2
+            JacVert.SA[i,j,iz,ID] += JacVert.A32[i,k,iz,ID] * JacVert.A23[k,j,iz,ID]
+          end
+          if i == j
+            JacVert.SA[i,j,iz,ID] = fac - (0.5 * Phys.Grav / fac) * JacVert.A13[i+1,j,iz,ID] -
+              (1.0 / fac) * JacVert.SA[i,j,iz,ID]
+          else
+            JacVert.SA[i,j,iz,ID] = -(0.5 * Phys.Grav / fac) * JacVert.A13[i+1,j,iz,ID] -
+              (1.0 / fac) * JacVert.SA[i,j,iz,ID]
+          end    
+        end
+      end  
       @views LUFull!(JacVert.SA[:,:,iz,ID])  
-
 
       if iz > 1
         JacVert.B1m_34[1,iz,ID] = -1.0 / (wZ[1] * dz[iz-1,ID])
@@ -243,7 +261,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
       end  
       if iz < nz
         dpdRhoThP = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
-          (Phys.Rd * U[1,iz+1,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa))  
+          (Phys.Rd * U[1,iz+1,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
         JacVert.B1p_12[1,iz,ID] = dpdRhoThP / (cS * wZ[1] * dz[iz+1,ID])
         JacVert.B1p_12[2,iz,ID] = 1.0 / (wZ[1] * dz[iz+1,ID])
       end  
@@ -262,7 +280,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
         ThM = U[M,iz-1,1,ThPos] / U[M,iz-1,1,RhoPos]  
         Th1 = U[1,iz-1,1,ThPos] / U[1,iz-1,1,RhoPos]  
         dpdRhoThM = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
-          (Phys.Rd * U[M,iz-1,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa))  
+          (Phys.Rd * U[M,iz-1,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
         S[1,1] = ThM * dpdRhoThM / dz[iz-1,ID] / cS / wZ[1]
         S[2,1] = -Th[1] * dpdRhoThM / dz[iz-1,ID] / cS / wZ[1]
         S[1,2] = -ThM * dpdRhoTh[1] / dz[iz,ID] / cS / wZ[1]
@@ -303,7 +321,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
         #JacVert.SchurBand[ID][sh+1,sh] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
         JacVert.SchurBand[(sh+1) - sh + 4,sh,ID] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
         #JacVert.SchurBand[ID][sh+1,sh+1] += 2.0 * cS / dz[iz,ID] / wZ[1]  
-        JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
+        JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh+1,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
       end  
       #JacVert.SchurBand[ID][sh,sh+2] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
       JacVert.SchurBand[sh - (sh+2) + 4,sh+2,ID] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
@@ -324,6 +342,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
       sh += 4
     end
   end
+  stop
 end
 
 function SchurBoundary!(JacVert)
@@ -436,10 +455,10 @@ function SchurBoundary!(JacVert)
         @views @. s[3,:] += - JacVert.C23_2[2,j,iz,ID] * r2[j,:]
       end  
         
-      s[2,1] = s[2,1] - FacGrav * r11[1,1]
-      s[3,1] = s[3,1] - FacGrav * r1M[1,1]
-      s[2,2] = s[2,2] - FacGrav * r11[1,2]
-      s[3,2] = s[3,2] - FacGrav * r1M[1,2]
+      s[2,1] = s[2,1] - FacGrav * r11[1]
+      s[3,1] = s[3,1] - FacGrav * r1M[1]
+      s[2,2] = s[2,2] - FacGrav * r11[2]
+      s[3,2] = s[3,2] - FacGrav * r1M[2]
       #@views A22B[sh + 1:sh + 4,[sh + 2,sh + 3]] .+= s
       @inbounds for i = 1 : 4
          A22B[i + sh - (sh +2) + 4,sh + 2] += s[i,1]
