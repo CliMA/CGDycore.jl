@@ -13,16 +13,16 @@ GDycore is an experimental [Julia code](https://julialang.org/) to study numeric
 
 ## CGDycore.jl/FEMSei.jl
 
-In addition, you will find an experimental environment based on a finite element method for calculating test examples such as Galewsky, Haurwitz, Modon Collison on the sphere. With the help of a flat output it is also possible to calculate Bickley jet in the plane. An overview of all these options can be found in the table below. This Code is currently not parallelized for CPU or GPU. 
+In addition, you will find an experimental environment based on a finite element method for calculating test examples such as Galewsky, Haurwitz, Modon Collison on the sphere. The Bickley jet can also be computed on a standard Cartesian grid by appropriately adjusting the manifold’s metric terms. An overview of all these options can be found in the table below. This Code is currently not parallelized for CPU or GPU. 
 
 ### ✅ Grid Type and Possible Test Cases
 
 | **Nonlinear SWE**       | **Output/Grid** | **Galewsky** (Sphere) | **Haurwitz** (Sphere) | **Modon** (Sphere) | **Galewsky** (Flat) | **Haurwitz** (Flat) | **Modon** (Flat) | **Bickley** (Cartesian) |
 |------------------------|------------------|------------------------|------------------------|---------------------|----------------------|-----------------------|---------------------|---------------------------|
-| **Conservative**       | Tri              | ✓                      |   ✓                    |  (✓)                  |      ✓               |    ✓                  |    (✓)                 |    ✓                       |✓
-|                        | Quad             | ✓                      | ✓                      | (✓)                 |     ✓                | ✓                     |    (✓)                  |      ✓                     |✓
-| **Vector Invariant**   | Tri              | ✓                      | ✓                      |  (✓)                  |   ✓                  |   ✓                   | (✓)                 |   ✓                        |✓
-|                        | Quad             | ✓                      |      ✓                 | (✓)                 |  ✓                   |  ✓                    | (✓)                 |   ✓                        |✓
+| **Conservative**       | Tri              | ✓                      |   ✓                    |  ✓                  |      ✓               |    ✓                  |    ✓                 |    ✓                       |✓
+|                        | Quad             | ✓                      | ✓                      | ✓                 |     ✓                | ✓                     |    ✓                  |      ✓                     |✓
+| **Vector Invariant**   | Tri              | ✓                      | ✓                      |  ✓                  |   ✓                  |   ✓                   | ✓                 |   ✓                        |✓
+|                        | Quad             | ✓                      |      ✓                 | ✓                |  ✓                   |  ✓                    | ✓                 |   ✓                        |✓
 
 Our main setting is calculating with finite elements order 1, grid-output refining level 1. 
 ### 📌 Legend:
