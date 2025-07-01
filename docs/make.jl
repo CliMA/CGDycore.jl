@@ -14,6 +14,7 @@ makedocs(;
     checkdocs = :exports,
     pages = [
         "Home" => "index.md",
+        "Mass Matrix" => "MassMatrix.md",
         "New file" => "newfile.md",
         "functions" => "api.md"
     ],

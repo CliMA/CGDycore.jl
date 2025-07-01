@@ -1,3 +1,27 @@
+"""
+  MassMatrix(backend, FTB, Fe::HCurlElement, Grid, QuadOrd, Jacobi)
+
+Assembles the global mass matrix for a finite element discretization using H(curl) elements.
+
+# Arguments
+- `backend`: Computational backend to use (e.g., CPU, GPU).
+- `FTB`: Finite element basis or transformation object.
+- `Fe::HCurlElement`: The finite element object containing basis functions and related data for H(curl) elements.
+- `Grid`: The computational grid or mesh structure containing faces and geometry information.
+- `QuadOrd`: The order of the quadrature rule to use for numerical integration.
+- `Jacobi`: Function that computes the Jacobian, its determinant, and pseudo-inverse for mapping reference to physical elements.
+
+# Returns
+- `M`: The assembled sparse global mass matrix as a `SparseMatrixCSC`.
+
+# Description
+For each face in the grid, the function computes the local mass matrix by integrating the inner product of the mapped basis functions over the reference element using a specified quadrature rule. The local contributions are then assembled into the global sparse mass matrix. Only non-negligible entries (greater than `1.e-6` in magnitude) are included in the global matrix.
+
+# Notes
+- The function assumes that the basis functions and their mapping are provided in the `Fe` object.
+- The Jacobian and its pseudo-inverse are used to map basis functions from the reference to the physical element.
+- The function is tailored for H(curl) elements and may require adaptation for other element types.
+"""
 function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
