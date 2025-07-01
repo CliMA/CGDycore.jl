@@ -12,6 +12,9 @@ import ..FiniteElements
 using StaticArrays
 using SparseArrays
 using LinearAlgebra
+using SparseArrays
+using BandedMatrices
+using FillArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll
@@ -26,5 +29,6 @@ include("Source.jl")
 include("Fcn.jl")
 include("TimeStepper.jl")
 include("Jac.jl")
+include("JacNeu.jl")
 
 end

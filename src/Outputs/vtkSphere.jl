@@ -251,6 +251,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
   theta = zeros(2*NumPoint,1)
   z = zeros(2*NumPoint,1)
   ipts = 1
+  if Global.Grid.Type == Grids.Tri()
   phiEval = zeros(size(FE.phi,1),NumRefine,NumPoint)
   @inbounds for iphi = 1 : size(FE.phi,1)
     @inbounds for iNumRefine = 1 : NumRefine
@@ -260,6 +261,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
       end  
     end  
   end  
+  end
   GridType = Global.Grid.Type
   @inbounds for iF = 1 : NF
     @inbounds for iz = 1 : nz
@@ -268,14 +270,25 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
       @inbounds for kRef = 1 : (OrdPrintZ + 1) 
         zeta1 = zeta0 + ddZ
         @inbounds for iNumRefine = 1 : NumRefine
-          @inbounds for iNumPoint = 1 : NumPoint
-            @views Trans(x[iNumPoint,:],phiEval[:,iNumRefine,iNumPoint],
-              zeta0,X,FE,Global,GridType)
-          end  
-          @inbounds for iNumPoint = 1 : NumPoint
-            @views Trans(x[iNumPoint+NumPoint,:],phiEval[:,iNumRefine,iNumPoint],
-              zeta1,X,FE,Global,GridType)
-          end  
+          if Global.Grid.Type == Grids.Tri()
+            @inbounds for iNumPoint = 1 : NumPoint
+              @views Trans(x[iNumPoint,:],phiEval[:,iNumRefine,iNumPoint],
+                zeta0,X,FE,Global,GridType)
+            end  
+            @inbounds for iNumPoint = 1 : NumPoint
+              @views Trans(x[iNumPoint+NumPoint,:],phiEval[:,iNumRefine,iNumPoint],
+                zeta1,X,FE,Global,GridType)
+            end  
+          else
+            @inbounds for iNumPoint = 1 : NumPoint
+              @views Trans(x[iNumPoint,:],RefinePoints[iNumRefine,iNumPoint,1],RefinePoints[iNumRefine,iNumPoint,2],
+                zeta0,X,FE,Global,GridType)
+            end  
+            @inbounds for iNumPoint = 1 : NumPoint
+              @views Trans(x[iNumPoint+NumPoint,:],RefinePoints[iNumRefine,iNumPoint,1],RefinePoints[iNumRefine,iNumPoint,2],
+                zeta1,X,FE,Global,GridType)
+            end  
+          end    
           if Global.Grid.Form == "Sphere" && Global.Output.Flat
             for i=1:2*NumPoint
               (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
@@ -342,6 +355,7 @@ end
 
 function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   OrdPoly = FE.OrdPoly
+  OrdPolyZ = FE.OrdPolyZ
   NF = Global.Grid.NumFaces
   Npts = 4 * NF * OrdPrint * OrdPrint
   pts = Array{Float64,2}(undef,3,Npts)
@@ -353,9 +367,9 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   dTol = Global.Output.dTol
   FT = eltype(Metric.X)
   backend = get_backend(Metric.X)
-  X = zeros(FT,FE.DoF,3)
+  X = zeros(FT,FE.DoF,OrdPolyZ+1,3)
   for iF = 1 : NF
-    @views copyto!(X,reshape(Metric.X[:,1,:,1,iF],FE.DoF,3))
+    @views copyto!(X[:,:,:],reshape(Metric.X[:,:,:,1,iF],FE.DoF,OrdPolyZ+1,3))
     dd = 2 / OrdPrint
     eta0 = -1
     for jRef = 1 : OrdPrint

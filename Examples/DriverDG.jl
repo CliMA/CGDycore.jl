@@ -257,6 +257,7 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
+
 # Equation
 if Equation == "CompressibleShallow"
   Model.Equation = Models.CompressibleShallow()

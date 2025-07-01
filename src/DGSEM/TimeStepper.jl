@@ -17,19 +17,23 @@ function Rosenbrock(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys
   nStage = ROS.nStage
   k = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,nStage)
 
-  dSdS,dSdM,dMdS,dMdM = InitJacDG(DG,nz,Param)
-  N = size(dSdS,1)
+# dSdS,dSdM,dMdS,dMdM = InitJacDG(DG,nz,Param)
+# N = size(dSdS,1)
   M = DG.OrdPolyZ + 1
+  dz = Metric.dz 
 
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-  kLoc = zeros(3*N)
+# kLoc = zeros(3*N)
+  Jac = JacDGVert(M,nz,DG.NumI)
   @inbounds for i = 1 : IterTime
     if Proc == 1
       @show i,nPrint
     end  
     fac = (1.0 / (dtau * ROS.gamma))
-    Jac = JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,Metric.dz,Phys)  
+#   Jac = JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,Metric.dz,Phys)  
+    FillJacDGVert!(Jac,U,DG,dz,fac,Phys,Param)
+    SchurBoundary!(Jac)
     @inbounds for iStage = 1 : nStage
       @. UnI = UI
       @inbounds for jStage = 1 : iStage-1
@@ -40,28 +44,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys
         fac = ROS.c[iStage,jStage] / dtau
         @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
       end
-      @inbounds for ID = 1 : DG.NumI
-        ikLoc = 0
-        @inbounds for iv in [1,4,5]
-          @inbounds for iz = 1 : nz
-            @inbounds for i = 1 : M
-              ikLoc += 1 
-              kLoc[ikLoc] = k[i,iz,ID,iv,iStage]
-            end
-          end
-        end  
-#       @views ldiv!(Jac[ID],reshape(k[:,:,ID,[1,4,5],iStage],3*N))
-        ldiv!(Jac[ID],kLoc)
-        ikLoc = 0
-        @inbounds for iv in [1,4,5]
-          @inbounds for iz = 1 : nz
-            @inbounds for i = 1 : M
-              ikLoc += 1 
-              k[i,iz,ID,iv,iStage] = kLoc[ikLoc]
-            end
-          end
-        end  
-      end  
+      @views ldivVertical!(Jac,k[:,:,:,:,iStage])
       @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
     end
     @inbounds for iStage = 1 : nStage

@@ -28,7 +28,7 @@ julia --project Examples/Driver.jl \
   --PrintTime=0 \
   --OrdPrint=2 \
   --vtkFileName="output/VTK/InertiaGravityLong/CGQuad" \
-  --dtau=10.0 \
+  --dtau=20.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -45,10 +45,11 @@ julia --project Examples/Driver.jl \
   --Ly=40000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=20 \
-  --nx=100 \
+  --nz=5 \
+  --nx=80 \
   --ny=2 \
-  --OrdPoly=3 \
+  --OrdPoly=4 \
+  --OrdPolyZ=4 \
   --HyperVisc=true \
   --HyperDCurl=2.0e10 \
   --HyperDGrad=2.0e10 \
