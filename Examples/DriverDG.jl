@@ -446,7 +446,6 @@ if Proc == 1
 end
 
 if IntMethod == "Rosenbrock"
-  @show "Rosenbrock"  
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global)

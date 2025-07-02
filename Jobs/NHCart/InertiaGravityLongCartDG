@@ -33,7 +33,7 @@ julia --project Examples/DriverDG.jl \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --vtkFileName="output/VTK/InertiaGravityLong/DGQuad" \
-  --dtau=10.0 \
+  --dtau=20.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -46,8 +46,8 @@ julia --project Examples/DriverDG.jl \
   --Stretch=false \
   --StretchType="ICON" \
   --H=10000.0 \
-  --Lx=3000000.0 \
-  --Ly=120000.0 \
+  --Lx=6000000.0 \
+  --Ly=240000.0 \
   --x0=0.0 \
   --y0=0.0 \
   --nz=5 \

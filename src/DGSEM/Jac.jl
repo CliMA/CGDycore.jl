@@ -155,11 +155,22 @@ function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
     dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
       (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
     Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
-           sparse((0.5 * Phys.Grav)*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
+           sparse((1.0 * Phys.Grav)*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
            spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
     JacLU[ID] = lu(Jac)           
   end
-  return JacLU
+#-----------  
+  ID = 1
+  @views zCol = z[:,ID]
+    diagz = spdiagm(2.0 ./ reshape(vec(oneM*zCol'),N))
+    Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
+    dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
+      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
+    Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
+           sparse((1.0 * Phys.Grav)*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
+           spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
+#-----------  
+  return JacLU,Jac
 end
 
 function JacDGT(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
@@ -178,9 +189,9 @@ function JacDGT(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
     Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
     dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
       (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
-    Jac = [sparse(fac*I,N,N)  diagz* dSdS * diagm(dpdRhoTh) -diagz * dSdM
+    Jac = [sparse(fac*I,N,N)  -diagz* dSdS * diagm(dpdRhoTh) -diagz * dSdM
            spzeros(N,N) sparse(fac*I,N,N) - diagz*diagm(Th)*dSdS*diagm(dpdRhoTh)  -diagz*dSdM*diagm(Th)
-           sparse((0.5 * Phys.Grav)*I,N,N) -diagz*dMdS*diagm(dpdRhoTh) sparse(fac*I,N,N)-diagz*dMdM]
+           sparse((Phys.Grav)*I,N,N) -diagz*dMdS*diagm(dpdRhoTh) sparse(fac*I,N,N)-diagz*dMdM]
     JacLU[ID] = lu(Jac)
   return JacLU,Jac
 end

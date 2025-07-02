@@ -91,9 +91,9 @@ end
         Rotate[3,2,K,ID,Iz,IF] * v2 +
         Rotate[3,3,K,ID,Iz,IF] * v3
     end  
-    if Iz == Nz && K == M
-      V[K,Iz,ind,3] = eltype(V)(0)  
-    end  
+#   if Iz == Nz && K == M
+#     V[K,Iz,ind,3] = eltype(V)(0)  
+#   end  
   end  
 end
 

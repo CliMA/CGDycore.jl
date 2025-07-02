@@ -46,7 +46,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
   if Global.Grid.Form == "Sphere"
     KGridSizeSphereDGKernel! = GridSizeSphereDGKernel!(backend,group)
     Rad = Global.Grid.Rad
-    KGridSizeSphereDGKernel!(Metric.zP,Metric.dz,Metric.X,DG.Glob,
+    KGridSizeSphereDGKernel!(Metric.dz,Metric.X,DG.Glob,
       Rad,ndrange=ndrange)
   else
     KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)
@@ -209,9 +209,9 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
   group = (DoF,NzG,1)
   ndrange = (DoF,nz,NF)
   if Global.Grid.Form == "Sphere"
-    KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
+    KGridSizeSphereKernel! = GridSizeSphereDGKernel!(backend,group)
     Rad = Global.Grid.Rad
-    KGridSizeSphereKernel!(Metric.zP,Metric.dz,Metric.X,DG.Glob,
+    KGridSizeSphereKernel!(Metric.dz,Metric.X,DG.Glob,
       Rad,ndrange=ndrange)
   else
     KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)

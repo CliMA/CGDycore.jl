@@ -190,9 +190,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
   M23= M2 * 2 + M
   nz = JacVert.nz
   JacVert.fac = fac
-  JacVert.fac = fac
-  JacVert.FacGrav = 0.5 * Phys.Grav
-  JacVert.FacGrav = 0.5 * Phys.Grav
+  JacVert.FacGrav = Phys.Grav
   DW = DG.DWZ
   wZ = DG.wZ
   wZ = DG.wZ
@@ -201,14 +199,13 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
   Th = zeros(M)
   dpdRhoTh = zeros(M)
   cS = Param.cS
-  DoF  = size(U,3)
+  DoF  = DG.NumI
   S = zeros(2,2)
-
   @inbounds for ID = 1 : DoF
     sh = 1
     @views @. JacVert.SchurBand[:,:,ID] = 0.0
     @views @. JacVert.SchurBand[4,:,ID] = fac
-    @time @inbounds for iz = 1 : nz
+    @inbounds for iz = 1 : nz
       @views @. Th = U[:,iz,ID,ThPos]/U[:,iz,ID,RhoPos]
       @views @. dpdRhoTh = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
         (Phys.Rd * U[:,iz,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
@@ -216,8 +213,8 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
       #@views JacVert.A23[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(Th[2:M-1])
       #@views JacVert.A32[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(dpdRhoTh[2:M-1])
       @inbounds for j = 2 : M1
-        @views @. JacVert.A23[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[j,2:M1] * Th[j]  
-        @views @. JacVert.A32[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[j,2:M1] * dpdRhoTh[j]  
+        @views @. JacVert.A23[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[2:M1,j] * Th[j]  
+        @views @. JacVert.A32[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[2:M1,j] * dpdRhoTh[j]  
       end  
       #@views JacVert.SA[:,:,iz,ID] .= fac * I - (0.5 * Phys.Grav / fac) * JacVert.A13[2:M-1,:,iz,ID] - 
       #  (1.0 / fac) *JacVert.A32[:,:,iz,ID] * JacVert.A23[:,:,iz,ID]
@@ -228,10 +225,10 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
             JacVert.SA[i,j,iz,ID] += JacVert.A32[i,k,iz,ID] * JacVert.A23[k,j,iz,ID]
           end
           if i == j
-            JacVert.SA[i,j,iz,ID] = fac - (0.5 * Phys.Grav / fac) * JacVert.A13[i+1,j,iz,ID] -
+            JacVert.SA[i,j,iz,ID] = fac - (JacVert.FacGrav / fac) * JacVert.A13[i+1,j,iz,ID] -
               (1.0 / fac) * JacVert.SA[i,j,iz,ID]
           else
-            JacVert.SA[i,j,iz,ID] = -(0.5 * Phys.Grav / fac) * JacVert.A13[i+1,j,iz,ID] -
+            JacVert.SA[i,j,iz,ID] = -(JacVert.FacGrav / fac) * JacVert.A13[i+1,j,iz,ID] -
               (1.0 / fac) * JacVert.SA[i,j,iz,ID]
           end    
         end
@@ -243,7 +240,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
 
         dpdRhoThM = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
           (Phys.Rd * U[M,iz-1,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa))  
-        JacVert.B1m_34[2,iz,ID] = dpdRhoThM / (cS * wZ[1] * dz[iz-1,ID])
+        JacVert.B1m_34[2,iz,ID] = -dpdRhoThM / (cS * wZ[1] * dz[iz-1,ID])
       end  
       @views @. JacVert.B1_23[:,1,iz,ID] = 2.0 * DW[:,1] / dz[iz,ID]
       @views @. JacVert.B1_23[:,2,iz,ID] = 2.0 *  DW[:,M] / dz[iz,ID]
@@ -251,18 +248,18 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
         JacVert.B1_1[iz,ID] = 0
       else
         JacVert.B1_23[1,1,iz,ID] = 0.0
-        JacVert.B1_1[iz,ID] = -dpdRhoTh[1] / (cS * wZ[1] * dz[iz,ID])
+        JacVert.B1_1[iz,ID] = dpdRhoTh[1] / (cS * wZ[1] * dz[iz,ID])
       end  
       if iz == nz
         JacVert.B1_4[iz,ID] = 0
       else
         JacVert.B1_23[M,2,iz,ID] = 0.0
-        JacVert.B1_4[iz,ID] = -dpdRhoTh[M] / (cS * wZ[1] * dz[iz,ID])
+        JacVert.B1_4[iz,ID] = dpdRhoTh[M] / (cS * wZ[1] * dz[iz,ID])
       end  
       if iz < nz
         dpdRhoThP = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
           (Phys.Rd * U[1,iz+1,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
-        JacVert.B1p_12[1,iz,ID] = dpdRhoThP / (cS * wZ[1] * dz[iz+1,ID])
+        JacVert.B1p_12[1,iz,ID] = -dpdRhoThP / (cS * wZ[1] * dz[iz+1,ID])
         JacVert.B1p_12[2,iz,ID] = 1.0 / (wZ[1] * dz[iz+1,ID])
       end  
 
@@ -287,62 +284,83 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
         S[2,2] = Th[1] * dpdRhoTh[1] / dz[iz,ID] / cS / wZ[1]
         #JacVert.SchurBand[ID][sh-1:sh,sh-1:sh] .+= S
         #JacVert.SchurBand[ID][sh-1,sh-1] += S[1,1]
-        JacVert.SchurBand[(sh-1) - (sh-1) + 4,sh-1,ID] += S[1,1]
+        #JacVert.SchurBand[(sh-1) - (sh-1) + 4,sh-1,ID] += S[1,1]
+        JacVert.SchurBand[4,sh-1,ID] += S[1,1]
         #JacVert.SchurBand[ID][sh  ,sh-1] += S[2,1]
-        JacVert.SchurBand[sh - (sh-1) + 4,sh-1,ID] += S[2,1]
+        #JacVert.SchurBand[sh - (sh-1) + 4,sh-1,ID] += S[2,1]
+        JacVert.SchurBand[5,sh-1,ID] += S[2,1]
         #JacVert.SchurBand[ID][sh-1,sh  ] += S[1,2]
-        JacVert.SchurBand[(sh-1) - sh + 4,sh,ID] += S[1,2]
+        #JacVert.SchurBand[(sh-1) - sh + 4,sh,ID] += S[1,2]
+        JacVert.SchurBand[3,sh,ID] += S[1,2]
         #JacVert.SchurBand[ID][sh  ,sh  ] += S[2,2]
-        JacVert.SchurBand[sh - sh + 4,sh,ID] += S[2,2]
+        #JacVert.SchurBand[sh - sh + 4,sh,ID] += S[2,2]
+        JacVert.SchurBand[4,sh,ID] += S[2,2]
         S[1,1] = cS / dz[iz-1,ID] / wZ[1]
         S[2,1] = -cS / dz[iz-1,ID] / wZ[1]
         S[1,2] = -cS / dz[iz,ID] / wZ[1]
         S[2,2] = cS / dz[iz,ID] / wZ[1]
         #JacVert.SchurBand[ID][sh-2,sh-2] += S[1,1]
-        JacVert.SchurBand[(sh-2) - (sh-2) + 4,sh-2,ID] += S[1,1]
+        #JacVert.SchurBand[(sh-2) - (sh-2) + 4,sh-2,ID] += S[1,1]
+        JacVert.SchurBand[4,sh-2,ID] += S[1,1]
         #JacVert.SchurBand[ID][sh-2,sh+1] += S[1,2]
-        JacVert.SchurBand[(sh-2) - (sh+1) + 4,sh+1,ID] += S[1,2]
+        #JacVert.SchurBand[(sh-2) - (sh+1) + 4,sh+1,ID] += S[1,2]
+        JacVert.SchurBand[1,sh+1,ID] += S[1,2]
         #JacVert.SchurBand[ID][sh+1,sh-2] += S[2,1]
-        JacVert.SchurBand[(sh+1) - (sh-2) + 4,sh-2,ID] += S[2,1]
+        #JacVert.SchurBand[(sh+1) - (sh-2) + 4,sh-2,ID] += S[2,1]
+        JacVert.SchurBand[7,sh-2,ID] += S[2,1]
         #JacVert.SchurBand[ID][sh+1,sh+1] += S[2,2]
-        JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh+1,ID] += S[2,2]
+        #JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh+1,ID] += S[2,2]
+        JacVert.SchurBand[4,sh+1,ID] += S[2,2]
         #JacVert.SchurBand[ID][sh,sh-2] += -ThM / wZ[1] / dz[iz,ID]
-        JacVert.SchurBand[sh - (sh-2) + 4,sh-2,ID] += -ThM / wZ[1] / dz[iz,ID]
+        #JacVert.SchurBand[sh - (sh-2) + 4,sh-2,ID] += -ThM / wZ[1] / dz[iz,ID]
+        JacVert.SchurBand[6,sh-2,ID] += -ThM / wZ[1] / dz[iz,ID]
         #JacVert.SchurBand[ID][sh+1,sh-1] += -dpdRhoThM / wZ[1] / dz[iz,ID]
-        JacVert.SchurBand[(sh+1) - (sh-1) + 4,sh-1,ID] += -dpdRhoThM / wZ[1] / dz[iz,ID]
+        #JacVert.SchurBand[(sh+1) - (sh-1) + 4,sh-1,ID] += -dpdRhoThM / wZ[1] / dz[iz,ID]
+        JacVert.SchurBand[6,sh-1,ID] += -dpdRhoThM / wZ[1] / dz[iz,ID]
         #JacVert.SchurBand[ID][sh-1,sh+1] += Th[1] / wZ[1] / dz[iz-1,ID]
-        JacVert.SchurBand[(sh-1) - (sh+1) + 4,sh+1,ID] += Th[1] / wZ[1] / dz[iz-1,ID]
+        #JacVert.SchurBand[(sh-1) - (sh+1) + 4,sh+1,ID] += Th[1] / wZ[1] / dz[iz-1,ID]
+        JacVert.SchurBand[2,sh+1,ID] += Th[1] / wZ[1] / dz[iz-1,ID]
         #JacVert.SchurBand[ID][sh-2,sh] += dpdRhoTh[1] / wZ[1] / dz[iz-1,ID]
-        JacVert.SchurBand[(sh-2) - sh + 4,sh,ID] += dpdRhoTh[1] / wZ[1] / dz[iz-1,ID]
+        #JacVert.SchurBand[(sh-2) - sh + 4,sh,ID] += dpdRhoTh[1] / wZ[1] / dz[iz-1,ID]
+        JacVert.SchurBand[2,sh,ID] += dpdRhoTh[1] / wZ[1] / dz[iz-1,ID]
       end  
       if iz == 1
         #JacVert.SchurBand[ID][sh,sh+1] += 2.0 * DW[1,1] * Th[1] / dz[iz,ID]
-        JacVert.SchurBand[sh - (sh+1) + 4,sh+1,ID] += 2.0 * DW[1,1] * Th[1] / dz[iz,ID]
+        #JacVert.SchurBand[sh - (sh+1) + 4,sh+1,ID] += 2.0 * DW[1,1] * Th[1] / dz[iz,ID]
+        JacVert.SchurBand[3,sh+1,ID] += 2.0 * DW[1,1] * Th[1] / dz[iz,ID]
         #JacVert.SchurBand[ID][sh+1,sh] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
-        JacVert.SchurBand[(sh+1) - sh + 4,sh,ID] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
+        #JacVert.SchurBand[(sh+1) - sh + 4,sh,ID] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
+        JacVert.SchurBand[5,sh,ID] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
         #JacVert.SchurBand[ID][sh+1,sh+1] += 2.0 * cS / dz[iz,ID] / wZ[1]  
-        JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh+1,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
+        #JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh+1,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
+        JacVert.SchurBand[4,sh+1,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
       end  
       #JacVert.SchurBand[ID][sh,sh+2] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
-      JacVert.SchurBand[sh - (sh+2) + 4,sh+2,ID] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
+      #JacVert.SchurBand[sh - (sh+2) + 4,sh+2,ID] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
+      JacVert.SchurBand[2,sh+2,ID] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
       #JacVert.SchurBand[ID][sh+1,sh+3] += 2.0 * DW[1,M] * dpdRhoTh[M] / dz[iz,ID]
-      JacVert.SchurBand[(sh+1) - (sh+3) + 4,sh+3,ID] += 2.0 * DW[1,M] * dpdRhoTh[M] / dz[iz,ID]
+      #JacVert.SchurBand[(sh+1) - (sh+3) + 4,sh+3,ID] += 2.0 * DW[1,M] * dpdRhoTh[M] / dz[iz,ID]
+      JacVert.SchurBand[2,sh+3,ID] += 2.0 * DW[1,M] * dpdRhoTh[M] / dz[iz,ID]
       #JacVert.SchurBand[ID][sh+3,sh+1] += 2.0 * DW[M,1] * Th[1] / dz[iz,ID]
-      JacVert.SchurBand[(sh+3) - (sh+1) + 4,sh+1,ID] += 2.0 * DW[M,1] * Th[1] / dz[iz,ID]
+      #JacVert.SchurBand[(sh+3) - (sh+1) + 4,sh+1,ID] += 2.0 * DW[M,1] * Th[1] / dz[iz,ID]
+      JacVert.SchurBand[6,sh+1,ID] += 2.0 * DW[M,1] * Th[1] / dz[iz,ID]
       #JacVert.SchurBand[ID][sh+2,sh] += 2.0 * DW[M,1] * dpdRhoTh[1] / dz[iz,ID]
-      JacVert.SchurBand[(sh+2) - sh + 4,sh,ID] += 2.0 * DW[M,1] * dpdRhoTh[1] / dz[iz,ID]
+      #JacVert.SchurBand[(sh+2) - sh + 4,sh,ID] += 2.0 * DW[M,1] * dpdRhoTh[1] / dz[iz,ID]
+      JacVert.SchurBand[6,sh,ID] += 2.0 * DW[M,1] * dpdRhoTh[1] / dz[iz,ID]
       if iz == nz
         #JacVert.SchurBand[ID][sh+3,sh+2] += 2.0 * DW[M,M] * Th[M] / dz[iz,ID]
-        JacVert.SchurBand[(sh+3) - (sh+2) + 4,sh+2,ID] += 2.0 * DW[M,M] * Th[M] / dz[iz,ID]
+        #JacVert.SchurBand[(sh+3) - (sh+2) + 4,sh+2,ID] += 2.0 * DW[M,M] * Th[M] / dz[iz,ID]
+        JacVert.SchurBand[5,sh+2,ID] += 2.0 * DW[M,M] * Th[M] / dz[iz,ID]
         #JacVert.SchurBand[ID][sh+2,sh+3] += -2.0 * DW[M,M] * dpdRhoTh[M] / dz[iz,ID]
-        JacVert.SchurBand[(sh+2) - (sh+3) + 4,sh+3,ID] += -2.0 * DW[M,M] * dpdRhoTh[M] / dz[iz,ID]
+        #JacVert.SchurBand[(sh+2) - (sh+3) + 4,sh+3,ID] += -2.0 * DW[M,M] * dpdRhoTh[M] / dz[iz,ID]
+        JacVert.SchurBand[3,sh+3,ID] += -2.0 * DW[M,M] * dpdRhoTh[M] / dz[iz,ID]
         #JacVert.SchurBand[ID][sh+2,sh+2] += 2.0 * cS / dz[iz,ID] / wZ[1]  
-        JacVert.SchurBand[(sh+2) - (sh+2) + 4,sh+2,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
+        #JacVert.SchurBand[(sh+2) - (sh+2) + 4,sh+2,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
+        JacVert.SchurBand[4,sh+2,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
       end  
       sh += 4
     end
   end
-  stop
 end
 
 function SchurBoundary!(JacVert)
@@ -380,8 +398,8 @@ function SchurBoundary!(JacVert)
         @views @. r11 += JacVert.A13[1,j,iz,ID] * r3[j,:] 
         @views @. r1M += JacVert.A13[M,j,iz,ID] * r3[j,:] 
       end    
-      r11 .*= invfac
-      r1M .*= invfac
+      r11 .*= -invfac
+      r1M .*= -invfac
 
       #@views r2 = -invfac * (JacVert.A23[:,:,iz,ID] * r3)
       @inbounds for i = 1 : M2
@@ -407,8 +425,10 @@ function SchurBoundary!(JacVert)
       s[3,2] = s[3,2] - FacGrav * r1M[2]
       #@views A22B[sh + 1:sh + 4,[sh + 1,sh + 4]] .+= s
       @inbounds for i = 1 : 4
-         A22B[i + sh - (sh +1) + 4,sh + 1] += s[i,1]
-         A22B[i + sh - (sh +4) + 4,sh + 4] += s[i,2]
+         #A22B[i + sh - (sh +1) + 4,sh + 1] += s[i,1]
+         A22B[i + 3,sh + 1] += s[i,1]
+         #A22B[i + sh - (sh +4) + 4,sh + 4] += s[i,2]
+         A22B[i,sh + 4] += s[i,2]
       end   
 
 #     Column 2 and 3 
@@ -461,24 +481,30 @@ function SchurBoundary!(JacVert)
       s[3,2] = s[3,2] - FacGrav * r1M[2]
       #@views A22B[sh + 1:sh + 4,[sh + 2,sh + 3]] .+= s
       @inbounds for i = 1 : 4
-         A22B[i + sh - (sh +2) + 4,sh + 2] += s[i,1]
-         A22B[i + sh - (sh +3) + 4,sh + 3] += s[i,2]
+        #A22B[i + sh - (sh +2) + 4,sh + 2] += s[i,1]
+        A22B[i + 2,sh + 2] += s[i,1]
+        #A22B[i + sh - (sh +3) + 4,sh + 3] += s[i,2]
+        A22B[i + 1,sh + 3] += s[i,2]
       end   
       if iz > 1
         #Column -2   
-        #@time A22B[sh+2,sh-1] -= FacGrav * invfac * JacVert.B1m_34[1,iz,ID]
-        A22B[sh+2-(sh-1)+4,sh-1] -= FacGrav * invfac * JacVert.B1m_34[1,iz,ID]
+        #A22B[sh+2,sh-1] -= FacGrav * invfac * JacVert.B1m_34[1,iz,ID]
+        #A22B[sh+2-(sh-1)+4,sh-1] -= FacGrav * invfac * JacVert.B1m_34[1,iz,ID]
+        A22B[7,sh-1] -= FacGrav * invfac * JacVert.B1m_34[1,iz,ID]
         # Column -1
         #A22B[sh+2,sh] -= FacGrav * invfac * JacVert.B1m_34[2,iz,ID]
-        A22B[sh+2-sh+4,sh] -= FacGrav * invfac * JacVert.B1m_34[2,iz,ID]
+        #A22B[sh+2-sh+4,sh] -= FacGrav * invfac * JacVert.B1m_34[2,iz,ID]
+        A22B[6,sh] -= FacGrav * invfac * JacVert.B1m_34[2,iz,ID]
       end
       if iz < nz 
 #       Column +1  
         #A22B[sh+3,sh+5] -= FacGrav * invfac * JacVert.B1p_12[1,iz,ID]
-        A22B[sh+3-(sh+5)+4,sh+5] -= FacGrav * invfac * JacVert.B1p_12[1,iz,ID]
+        #A22B[sh+3-(sh+5)+4,sh+5] -= FacGrav * invfac * JacVert.B1p_12[1,iz,ID]
+        A22B[2,sh+5] -= FacGrav * invfac * JacVert.B1p_12[1,iz,ID]
 #       Column +2  
         #A22B[sh+3,sh+6] -= FacGrav * invfac * JacVert.B1p_12[2,iz,ID]
-        A22B[sh+3-(sh+6)+4,sh+6] -= FacGrav * invfac * JacVert.B1p_12[2,iz,ID]
+        #A22B[sh+3-(sh+6)+4,sh+6] -= FacGrav * invfac * JacVert.B1p_12[2,iz,ID]
+        A22B[1,sh+6] -= FacGrav * invfac * JacVert.B1p_12[2,iz,ID]
       end
     end    
     luBand!(A22B,3,3)
@@ -488,23 +514,22 @@ end
 function ldivBlockAF(M,invfac,FacGrav,A13,A23,A32,SA,r1,r2,r3,r11,r1M)
    
   @inbounds for i = 1 : M - 2 
-    r3[i] = FacGrav * r1[i+1]
+    r3[i] += -invfac * FacGrav * r1[i+1]
     @inbounds for j = 1 : M - 2  
-      r3[i] += A32[i,j] * r2[j]
+      r3[i] += -invfac * A32[i,j] * r2[j]
     end
-    r3[i] *= -invfac
   end  
 
   ldivFull!(SA,r3)
 
-  r11[1,1] = r1[1]
-  r1M[1,1] = r1[M]
+  r11[1] = r1[1]
+  r1M[1] = r1[M]
   @inbounds for j = 1 : M - 2
-    r11[1,1] += -A13[1,j] * r3[j]  
-    r1M[1,1] += -A13[M,j] * r3[j]  
+    r11[1] += -A13[1,j] * r3[j]  
+    r1M[1] += -A13[M,j] * r3[j]  
   end  
-  r11[1,1] *= invfac
-  r1M[1,1] *= invfac
+  r11[1] *= invfac
+  r1M[1] *= invfac
 
   @inbounds for i = 1 : M - 2
     @inbounds for j = 1 : M - 2  
@@ -575,7 +600,6 @@ function ldivVertical!(JacVert,b)
 
       @views ldivBlockAF(M,invfac,FacGrav,JacVert.A13[:,:,iz,ID],JacVert.A23[:,:,iz,ID],JacVert.A32[:,:,iz,ID],
         JacVert.SA[:,:,iz,ID],r1,r2,r3,r11,r1M)
-
       @inbounds for j = 1 : M2
         rs[sh + 1] += -JacVert.C14_3[1,j,iz,ID] * r3[j]
         rs[sh + 4] += -JacVert.C14_3[2,j,iz,ID] * r3[j]
@@ -602,12 +626,12 @@ function ldivVertical!(JacVert,b)
       r1[1] -= JacVert.B1_1[iz,ID] * rs[sh + 1]
       r1[M] -= JacVert.B1_4[iz,ID] * rs[sh + 4]
       #@views r1 .-= JacVert.B1_23[:,:,iz,ID] * rsC[2:3]
-      for j = 1 : M
+      @inbounds for j = 1 : M
         r1[j] -= JacVert.B1_23[j,1,iz,ID] * rs[sh + 2] + JacVert.B1_23[j,2,iz,ID] * rs[sh + 3] 
       end  
       #@views r2 .-= JacVert.B2_23[:,:,iz,ID] * rsC[2:3]
       #@views r3 .-= JacVert.B3_14[:,:,iz,ID] * rsC[[1,4]]
-      for j = 1 : M2
+      @inbounds for j = 1 : M2
         r2[j] -= JacVert.B2_23[j,1,iz,ID] * rs[sh + 2] + JacVert.B2_23[j,2,iz,ID] * rs[sh + 3] 
         r3[j] -= JacVert.B3_14[j,1,iz,ID] * rs[sh + 1] + JacVert.B3_14[j,2,iz,ID] * rs[sh + 4] 
       end  
@@ -640,15 +664,15 @@ function Permutation(M,nz)
         p[ii] = k + (iz - 1) * M + (iv - 1) * N
       end
     end
-    @inbounds for iv = 2 : 3
+    @inbounds for iv = [3 2] 
       @inbounds for k = 2 : M - 1
         ii += 1
         p[ii] = k + (iz - 1) * M + (iv - 1) * N
       end
     end
   end
-  ivw = 3
-  ivTh = 2
+  ivw = 2
+  ivTh = 3
   @inbounds for iz = 1 : nz
     ii += 1
     p[ii] = 1 + (iz-1) * M  + (ivTh - 1) * N
@@ -662,13 +686,4 @@ function Permutation(M,nz)
   return p
 end  
 
-#=
-FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
-SchurBoundary!(JacVert)
-
-b = ones(size(U))
-@. b[:,:,:,5] *= 2
-@. b[:,:,:,4] *= 3
-ldivVertical!(JacVert,b)
-=#
 
