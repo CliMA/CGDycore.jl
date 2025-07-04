@@ -28,7 +28,6 @@ include("PresSh.jl")
 include("Source.jl")
 include("Fcn.jl")
 include("TimeStepper.jl")
-include("Jac.jl")
-include("JacNeu.jl")
+include("JacGPU.jl")
 
 end

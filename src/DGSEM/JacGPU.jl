@@ -1,25 +1,44 @@
-mutable struct JacDGVert 
+mutable struct JacDGVert{FT<:AbstractFloat,
+                         AT2<:AbstractArray,
+                         AT3<:AbstractArray,
+                         AT4<:AbstractArray}
   M::Int
   nz::Int
-  fac::Float64
-  FacGrav::Float64
-  A13::Array{Float64, 4}
-  A23::Array{Float64, 4}
-  A32::Array{Float64, 4}
-  B1m_34::Array{Float64, 3}
-  B1_1::Array{Float64, 2}
-  B1_23::Array{Float64, 4}
-  B1_4::Array{Float64, 2}
-  B2_23::Array{Float64, 4}
-  B3_14::Array{Float64, 4}
-  B1p_12::Array{Float64, 3}
-  C23_2::Array{Float64, 4}
-  C14_3::Array{Float64, 4}
-  SA::Array{Float64, 4}
-  SchurBand::Array{Float64, 3}
+  fac::FT
+  FacGrav::FT
+  A13::AT4
+  A23::AT4
+  A32::AT4
+  B1m_34::AT3
+  B1_1::AT2
+  B1_23::AT4
+  B1_4::AT2
+  B2_23::AT4
+  B3_14::AT4
+  B1p_12::AT3
+  C23_2::AT4
+  C14_3::AT4
+  SA::AT4
+  SchurBand::AT3
 end  
 
-function LUFull!(A)
+function LowOrder(DG)
+
+  M = size(DG.xwZ,1)
+  D = zeros(M,M)
+  D[1,1] = 0.5
+  D[1,2] = 0.5
+  for i = 2 : M - 1
+    # cI = c  
+    D[i,i-1] = -0.5
+    D[i,i+1] = 0.5
+  end
+  D[M,M-1] = -0.5
+  D[M,M] = -0.5
+  DW = inv(diagm(DG.wZ)) * D
+end
+
+@inline function LUFull!(A)
 
   n = size(A,1)
   @inbounds for j = 1 : n - 1
@@ -32,7 +51,7 @@ function LUFull!(A)
   end  
 end
 
-function ldivFull2!(A,b)
+@inline function ldivFull2!(A,b)
 
 # Forward loop
   n = size(A,1)
@@ -50,7 +69,7 @@ function ldivFull2!(A,b)
   end
 end
 
-function ldivFull!(A,b)
+@inline function ldivFull!(A,b)
 
 # Forward loop
   n = size(A,1)
@@ -68,7 +87,7 @@ function ldivFull!(A,b)
   end
 end
 
-function ldivBand!(A,b,l,u)
+@inline function ldivBand!(A,b,l,u)
 
 # Ly = b
   A = A
@@ -90,7 +109,7 @@ function ldivBand!(A,b,l,u)
   end
 end
 
-function luBand!(A,l,u)
+@inline function luBand!(A,l,u)
 #1  *   *   *  a14  ...    
 #2  *   *  a13 a24  ... 
 #3  *  a12 a23 a34  ... 
@@ -140,26 +159,30 @@ function luBand!(A,l,u)
   end    
 end
 
-function JacDGVert(M,nz,NumG)
+function JacDGVert{FT}(backend,M,nz,NumG) where FT<:AbstractFloat
   M2 = M - 2
   fac = 0
   FacGrav = 0
-  A13 = zeros(M,M2,nz,NumG)
-  A23 = zeros(M2,M2,nz,NumG)
-  A32 = zeros(M2,M2,nz,NumG)
-  B1m_34 = zeros(2,nz,NumG)
-  B1_1 = zeros(nz,NumG)
-  B1_23 = zeros(M,2,nz,NumG)
-  B1_4 = zeros(nz,NumG)
-  B2_23 = zeros(M2,2,nz,NumG)
-  B3_14 = zeros(M2,2,nz,NumG)
-  B1p_12 = zeros(2,nz,NumG)
-  C23_2 = zeros(2,M2,nz,NumG)
-  C14_3 = zeros(2,M2,nz,NumG)
-  SA = zeros(M2,M2,nz,NumG)
-  SchurBand = zeros(7,4*nz,NumG)
+  A13 = KernelAbstractions.zeros(backend,FT,M,M2,nz,NumG)
+  A23 = KernelAbstractions.zeros(backend,FT,M2,M2,nz,NumG)
+  A32 = KernelAbstractions.zeros(backend,FT,M2,M2,nz,NumG)
+  B1m_34 = KernelAbstractions.zeros(backend,FT,2,nz,NumG)
+  B1_1 = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  B1_23 = KernelAbstractions.zeros(backend,FT,M,2,nz,NumG)
+  B1_4 = KernelAbstractions.zeros(backend,FT,nz,NumG)
+  B2_23 = KernelAbstractions.zeros(backend,FT,M2,2,nz,NumG)
+  B3_14 = KernelAbstractions.zeros(backend,FT,M2,2,nz,NumG)
+  B1p_12 = KernelAbstractions.zeros(backend,FT,2,nz,NumG)
+  C23_2 = KernelAbstractions.zeros(backend,FT,2,M2,nz,NumG)
+  C14_3 = KernelAbstractions.zeros(backend,FT,2,M2,nz,NumG)
+  SA = KernelAbstractions.zeros(backend,FT,M2,M2,nz,NumG)
+  SchurBand = KernelAbstractions.zeros(backend,FT,7,4*nz,NumG)
 
-  return JacDGVert(
+  return JacDGVert{FT,
+                   typeof(B1_1),
+                   typeof(B1m_34),
+                   typeof(A13)}(
+
     M,
     nz,
     fac,
@@ -181,7 +204,160 @@ function JacDGVert(M,nz,NumG)
   )
 end  
 
+
+@kernel inbounds = true function FillJacDGVertKernel!(JacVert,@Const(U),@Const(dz),@Const(DW),wB,fac,
+  cS,Phys, ::Val{M}) where {M}
+
+  iz,ID = @index(Global, NTuple)
+
+  nz = @uniform @ndrange()[1]
+  DoF = @uniform @ndrange()[2]
+  Th = @private eltype(U) (M,)
+  dpdRhoTh = @private eltype(U) (M,)
+  DWS = @localmem eltype(U) (M,M)
+  @uniform RhoPos = 1
+  @uniform ThPos = 5
+  @uniform invcS = eltype(U)(1) / cS
+
+  if iz == 1
+    @. DWS = DW   
+  end
+  @synchronize 
+
+  if ID <= DoF
+    sh = (iz - 1) * 4 + 1
+    inv2dz = eltype(U)(2) / dz[iz,ID]
+    invdz = eltype(U)(1) / dz[iz,ID]
+    @unroll for i = 1 : M
+      Th[i] = U[i,iz,ID,ThPos] / U[i,iz,ID,RhoPos]
+      dpdRhoTh[i] = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
+          (Phys.Rd * U[i,iz,ID,ThPos] / Phys.p0)^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
+    end      
+    @unroll for i = 1 : M 
+      @unroll for j = 1 : M - 2
+        JacVert.A13[i,j,iz,ID] = inv2dz * DWS[i,j+1]
+      end
+    end  
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        JacVert.A23[i,j,iz,ID] = inv2dz * DWS[i+1,j+1] * Th[j+1]  
+        JacVert.A32[i,j,iz,ID] = inv2dz * DWS[i+1,j+1] * dpdRhoTh[j+1]  
+      end
+    end  
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        JacVert.SA[i,j,iz,ID] = eltype(U)(0)
+        @unroll for k = 1 : M - 2
+          JacVert.SA[i,j,iz,ID] += JacVert.A32[i,k,iz,ID] * JacVert.A23[k,j,iz,ID]
+        end
+        if i == j
+          JacVert.SA[i,j,iz,ID] = fac - (JacVert.FacGrav / fac) * JacVert.A13[i+1,j,iz,ID] -
+            (eltype(U)(1) / fac) * JacVert.SA[i,j,iz,ID]
+        else
+          JacVert.SA[i,j,iz,ID] = -(JacVert.FacGrav / fac) * JacVert.A13[i+1,j,iz,ID] -
+            (eltype(U)(1) / fac) * JacVert.SA[i,j,iz,ID]
+        end
+      end
+    end
+    @views LUFull!(JacVert.SA[:,:,iz,ID])
+
+    if iz > 1
+      JacVert.B1m_34[1,iz,ID] = -eltype(U)(1) / (wB * dz[iz-1,ID])
+
+      dpdRhoThM = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
+        (Phys.Rd * U[M,iz-1,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
+      JacVert.B1m_34[2,iz,ID] = -dpdRhoThM * invcS / (wB * dz[iz-1,ID])
+    end
+    if iz == 1
+      JacVert.B1_1[iz,ID] = eltype(U)(0)
+    else
+      JacVert.B1_23[1,1,iz,ID] = eltype(U)(0)
+      JacVert.B1_1[iz,ID] = dpdRhoTh[1] * invcS * invdz / wB 
+    end
+    if iz == nz
+      JacVert.B1_4[iz,ID] = eltype(U)(0)
+    else
+      JacVert.B1_23[M,2,iz,ID] = eltype(U)(0)
+      JacVert.B1_4[iz,ID] = dpdRhoTh[M] * invcS * invdz / wB 
+    end
+    if iz < nz
+      dpdRhoThP = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
+        (Phys.Rd * U[1,iz+1,ID,ThPos] / Phys.p0)^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
+      JacVert.B1p_12[1,iz,ID] = -dpdRhoThP * invcS / (wB * dz[iz+1,ID])
+      JacVert.B1p_12[2,iz,ID] = eltype(U)(1) / (wB * dz[iz+1,ID])
+    end
+
+    @unroll for i = 1 : M - 2
+      JacVert.B2_23[i,1,iz,ID] = inv2dz * DWS[i+1,1] * Th[1]
+      JacVert.B2_23[i,2,iz,ID] = inv2dz * DWS[i+1,M] * Th[M]
+      JacVert.B3_14[i,1,iz,ID] = inv2dz * DWS[i+1,1] * dpdRhoTh[1]
+      JacVert.B3_14[i,2,iz,ID] = inv2dz * DWS[i+1,M] * dpdRhoTh[M]
+      JacVert.C23_2[1,i,iz,ID] = inv2dz * DWS[1,i+1] * dpdRhoTh[i+1]
+      JacVert.C23_2[2,i,iz,ID] = inv2dz * DWS[M,i+1] * dpdRhoTh[i+1]
+      JacVert.C14_3[1,i,iz,ID] = inv2dz * DWS[1,i+1] * Th[i+1]
+      JacVert.C14_3[2,i,iz,ID] = inv2dz * DWS[M,i+1] * Th[i+1]
+    end
+
+    if iz > 1
+      ThM = U[M,iz-1,1,ThPos] / U[M,iz-1,1,RhoPos]
+      Th1 = U[1,iz-1,1,ThPos] / U[1,iz-1,1,RhoPos]
+      dpdRhoThM = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
+        (Phys.Rd * U[M,iz-1,ID,ThPos] / Phys.p0)^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
+      @atomic :monotonic JacVert.SchurBand[4,sh-1,ID] += ThM * dpdRhoThM * invcS / dz[iz-1,ID] / wB
+      @atomic :monotonic JacVert.SchurBand[5,sh-1,ID] += -Th[1] * dpdRhoThM * invcS / dz[iz-1,ID] / wB
+      @atomic :monotonic JacVert.SchurBand[3,sh,ID] += -ThM * dpdRhoTh[1] * invcS * invdz / wB
+      @atomic :monotonic JacVert.SchurBand[4,sh,ID] += Th[1] * dpdRhoTh[1] * invcS * invdz  / wB
+      @atomic :monotonic JacVert.SchurBand[4,sh-2,ID] += cS / dz[iz-1,ID] / wB
+      @atomic :monotonic JacVert.SchurBand[7,sh-2,ID] += -cS / dz[iz-1,ID] / wB
+      @atomic :monotonic JacVert.SchurBand[1,sh+1,ID] += -cS * invdz / wB
+      @atomic :monotonic JacVert.SchurBand[4,sh+1,ID] += cS * invdz / wB
+      @atomic :monotonic JacVert.SchurBand[6,sh-2,ID] += -ThM * invdz / wB 
+      @atomic :monotonic JacVert.SchurBand[6,sh-1,ID] += -dpdRhoThM * invdz / wB 
+      @atomic :monotonic JacVert.SchurBand[2,sh+1,ID] += Th[1] / wB / dz[iz-1,ID]
+      @atomic :monotonic JacVert.SchurBand[2,sh,ID] += dpdRhoTh[1] / wB / dz[iz-1,ID]
+    end
+
+
+    if iz == 1
+      @atomic :monotonic JacVert.SchurBand[3,sh+1,ID] += inv2dz * DWS[1,1] * Th[1]
+      @atomic :monotonic JacVert.SchurBand[5,sh,ID] += -inv2dz * DWS[1,1] * dpdRhoTh[1] 
+      @atomic :monotonic JacVert.SchurBand[4,sh+1,ID] += inv2dz * cS / wB
+    end
+    @atomic :monotonic JacVert.SchurBand[2,sh+2,ID] += inv2dz * DWS[1,M] * Th[M]
+    @atomic :monotonic JacVert.SchurBand[2,sh+3,ID] += inv2dz * DWS[1,M] * dpdRhoTh[M]
+    @atomic :monotonic JacVert.SchurBand[6,sh+1,ID] += inv2dz * DWS[M,1] * Th[1]
+    @atomic :monotonic JacVert.SchurBand[6,sh,ID] += inv2dz * DWS[M,1] * dpdRhoTh[1]
+    if iz == nz
+      @atomic :monotonic JacVert.SchurBand[5,sh+2,ID] += inv2dz * DWS[M,M] * Th[M]
+      @atomic :monotonic JacVert.SchurBand[3,sh+3,ID] += -inv2dz * DWS[M,M] * dpdRhoTh[M]
+      @atomic :monotonic JacVert.SchurBand[4,sh+2,ID] += inv2dz * cS / wB
+    end
+  end  
+end
+
 function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
+
+  backend = get_backend(U)
+  FTB = eltype(U)
+
+  M = JacVert.M
+  nz = JacVert.nz
+  DoF  = DG.NumI
+
+  JacVert.fac = fac
+  JacVert.FacGrav = Phys.Grav
+
+  DoFG = 10
+  group = (nz, DoFG)
+  ndrange = (nz, DoF) 
+  @. JacVert.SchurBand = 0.0
+  @views @. JacVert.SchurBand[4,:,:] = fac
+  KFillJacDGVertKernel! = FillJacDGVertKernel!(backend,group)
+  KFillJacDGVertKernel!(JacVert,U,dz,DG.DWZ,DG.wZ[1],fac,Param.cS,Phys,Val(M);ndrange=ndrange) 
+
+end  
+
+function FillJacDGVertOld!(JacVert,U,DG,dz,fac,Phys,Param)
   backend = get_backend(U)
   FTB = eltype(U)
   M = JacVert.M
@@ -192,13 +368,14 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
   JacVert.fac = fac
   JacVert.FacGrav = Phys.Grav
   DW = DG.DWZ
-  wZ = DG.wZ
+# DW = LowOrder(DG)
   wZ = DG.wZ
   ThPos = 5
   RhoPos = 1
   Th = zeros(M)
   dpdRhoTh = zeros(M)
   cS = Param.cS
+  invcS = 1.0 / cS
   DoF  = DG.NumI
   S = zeros(2,2)
   @inbounds for ID = 1 : DoF
@@ -210,14 +387,10 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
       @views @. dpdRhoTh = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
         (Phys.Rd * U[:,iz,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
       @views @. JacVert.A13[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[:,2:M1]
-      #@views JacVert.A23[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(Th[2:M-1])
-      #@views JacVert.A32[:,:,iz,ID] = (2 / dz[iz,ID]) * DW[2:M1,2:M1] * diagm(dpdRhoTh[2:M-1])
       @inbounds for j = 2 : M1
         @views @. JacVert.A23[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[2:M1,j] * Th[j]  
         @views @. JacVert.A32[:,j-1,iz,ID] = 2 / dz[iz,ID] * DW[2:M1,j] * dpdRhoTh[j]  
       end  
-      #@views JacVert.SA[:,:,iz,ID] .= fac * I - (0.5 * Phys.Grav / fac) * JacVert.A13[2:M-1,:,iz,ID] - 
-      #  (1.0 / fac) *JacVert.A32[:,:,iz,ID] * JacVert.A23[:,:,iz,ID]
       @inbounds for i = 1 : M2
         @inbounds for j = 1 : M2
           JacVert.SA[i,j,iz,ID] = 0.0
@@ -240,26 +413,24 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
 
         dpdRhoThM = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
           (Phys.Rd * U[M,iz-1,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa))  
-        JacVert.B1m_34[2,iz,ID] = -dpdRhoThM / (cS * wZ[1] * dz[iz-1,ID])
+        JacVert.B1m_34[2,iz,ID] = -dpdRhoThM * invcS / (wZ[1] * dz[iz-1,ID])
       end  
-      @views @. JacVert.B1_23[:,1,iz,ID] = 2.0 * DW[:,1] / dz[iz,ID]
-      @views @. JacVert.B1_23[:,2,iz,ID] = 2.0 *  DW[:,M] / dz[iz,ID]
       if iz == 1
         JacVert.B1_1[iz,ID] = 0
       else
         JacVert.B1_23[1,1,iz,ID] = 0.0
-        JacVert.B1_1[iz,ID] = dpdRhoTh[1] / (cS * wZ[1] * dz[iz,ID])
+        JacVert.B1_1[iz,ID] = dpdRhoTh[1] * invcS / (wZ[1] * dz[iz,ID])
       end  
       if iz == nz
         JacVert.B1_4[iz,ID] = 0
       else
         JacVert.B1_23[M,2,iz,ID] = 0.0
-        JacVert.B1_4[iz,ID] = dpdRhoTh[M] / (cS * wZ[1] * dz[iz,ID])
+        JacVert.B1_4[iz,ID] = dpdRhoTh[M] * invcS / (wZ[1] * dz[iz,ID])
       end  
       if iz < nz
         dpdRhoThP = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
           (Phys.Rd * U[1,iz+1,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
-        JacVert.B1p_12[1,iz,ID] = -dpdRhoThP / (cS * wZ[1] * dz[iz+1,ID])
+        JacVert.B1p_12[1,iz,ID] = -dpdRhoThP * invcS / (wZ[1] * dz[iz+1,ID])
         JacVert.B1p_12[2,iz,ID] = 1.0 / (wZ[1] * dz[iz+1,ID])
       end  
 
@@ -278,84 +449,39 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
         Th1 = U[1,iz-1,1,ThPos] / U[1,iz-1,1,RhoPos]  
         dpdRhoThM = FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
           (Phys.Rd * U[M,iz-1,ID,ThPos] / Phys.p0)^(Phys.kappa / (1.0 - Phys.kappa))  
-        S[1,1] = ThM * dpdRhoThM / dz[iz-1,ID] / cS / wZ[1]
-        S[2,1] = -Th[1] * dpdRhoThM / dz[iz-1,ID] / cS / wZ[1]
-        S[1,2] = -ThM * dpdRhoTh[1] / dz[iz,ID] / cS / wZ[1]
-        S[2,2] = Th[1] * dpdRhoTh[1] / dz[iz,ID] / cS / wZ[1]
-        #JacVert.SchurBand[ID][sh-1:sh,sh-1:sh] .+= S
-        #JacVert.SchurBand[ID][sh-1,sh-1] += S[1,1]
-        #JacVert.SchurBand[(sh-1) - (sh-1) + 4,sh-1,ID] += S[1,1]
+        S[1,1] = ThM * dpdRhoThM * invcS / dz[iz-1,ID] / wZ[1]
+        S[2,1] = -Th[1] * dpdRhoThM * invcS / dz[iz-1,ID] / wZ[1]
+        S[1,2] = -ThM * dpdRhoTh[1] * invcS / dz[iz,ID] / wZ[1]
+        S[2,2] = Th[1] * dpdRhoTh[1] * invcS / dz[iz,ID] / wZ[1]
         JacVert.SchurBand[4,sh-1,ID] += S[1,1]
-        #JacVert.SchurBand[ID][sh  ,sh-1] += S[2,1]
-        #JacVert.SchurBand[sh - (sh-1) + 4,sh-1,ID] += S[2,1]
         JacVert.SchurBand[5,sh-1,ID] += S[2,1]
-        #JacVert.SchurBand[ID][sh-1,sh  ] += S[1,2]
-        #JacVert.SchurBand[(sh-1) - sh + 4,sh,ID] += S[1,2]
         JacVert.SchurBand[3,sh,ID] += S[1,2]
-        #JacVert.SchurBand[ID][sh  ,sh  ] += S[2,2]
-        #JacVert.SchurBand[sh - sh + 4,sh,ID] += S[2,2]
         JacVert.SchurBand[4,sh,ID] += S[2,2]
         S[1,1] = cS / dz[iz-1,ID] / wZ[1]
         S[2,1] = -cS / dz[iz-1,ID] / wZ[1]
         S[1,2] = -cS / dz[iz,ID] / wZ[1]
         S[2,2] = cS / dz[iz,ID] / wZ[1]
-        #JacVert.SchurBand[ID][sh-2,sh-2] += S[1,1]
-        #JacVert.SchurBand[(sh-2) - (sh-2) + 4,sh-2,ID] += S[1,1]
         JacVert.SchurBand[4,sh-2,ID] += S[1,1]
-        #JacVert.SchurBand[ID][sh-2,sh+1] += S[1,2]
-        #JacVert.SchurBand[(sh-2) - (sh+1) + 4,sh+1,ID] += S[1,2]
         JacVert.SchurBand[1,sh+1,ID] += S[1,2]
-        #JacVert.SchurBand[ID][sh+1,sh-2] += S[2,1]
-        #JacVert.SchurBand[(sh+1) - (sh-2) + 4,sh-2,ID] += S[2,1]
         JacVert.SchurBand[7,sh-2,ID] += S[2,1]
-        #JacVert.SchurBand[ID][sh+1,sh+1] += S[2,2]
-        #JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh+1,ID] += S[2,2]
         JacVert.SchurBand[4,sh+1,ID] += S[2,2]
-        #JacVert.SchurBand[ID][sh,sh-2] += -ThM / wZ[1] / dz[iz,ID]
-        #JacVert.SchurBand[sh - (sh-2) + 4,sh-2,ID] += -ThM / wZ[1] / dz[iz,ID]
         JacVert.SchurBand[6,sh-2,ID] += -ThM / wZ[1] / dz[iz,ID]
-        #JacVert.SchurBand[ID][sh+1,sh-1] += -dpdRhoThM / wZ[1] / dz[iz,ID]
-        #JacVert.SchurBand[(sh+1) - (sh-1) + 4,sh-1,ID] += -dpdRhoThM / wZ[1] / dz[iz,ID]
         JacVert.SchurBand[6,sh-1,ID] += -dpdRhoThM / wZ[1] / dz[iz,ID]
-        #JacVert.SchurBand[ID][sh-1,sh+1] += Th[1] / wZ[1] / dz[iz-1,ID]
-        #JacVert.SchurBand[(sh-1) - (sh+1) + 4,sh+1,ID] += Th[1] / wZ[1] / dz[iz-1,ID]
         JacVert.SchurBand[2,sh+1,ID] += Th[1] / wZ[1] / dz[iz-1,ID]
-        #JacVert.SchurBand[ID][sh-2,sh] += dpdRhoTh[1] / wZ[1] / dz[iz-1,ID]
-        #JacVert.SchurBand[(sh-2) - sh + 4,sh,ID] += dpdRhoTh[1] / wZ[1] / dz[iz-1,ID]
         JacVert.SchurBand[2,sh,ID] += dpdRhoTh[1] / wZ[1] / dz[iz-1,ID]
       end  
       if iz == 1
-        #JacVert.SchurBand[ID][sh,sh+1] += 2.0 * DW[1,1] * Th[1] / dz[iz,ID]
-        #JacVert.SchurBand[sh - (sh+1) + 4,sh+1,ID] += 2.0 * DW[1,1] * Th[1] / dz[iz,ID]
         JacVert.SchurBand[3,sh+1,ID] += 2.0 * DW[1,1] * Th[1] / dz[iz,ID]
-        #JacVert.SchurBand[ID][sh+1,sh] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
-        #JacVert.SchurBand[(sh+1) - sh + 4,sh,ID] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
         JacVert.SchurBand[5,sh,ID] += -2.0 * DW[1,1] * dpdRhoTh[1] / dz[iz,ID]
-        #JacVert.SchurBand[ID][sh+1,sh+1] += 2.0 * cS / dz[iz,ID] / wZ[1]  
-        #JacVert.SchurBand[(sh+1) - (sh+1) + 4,sh+1,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
         JacVert.SchurBand[4,sh+1,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
       end  
-      #JacVert.SchurBand[ID][sh,sh+2] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
-      #JacVert.SchurBand[sh - (sh+2) + 4,sh+2,ID] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
       JacVert.SchurBand[2,sh+2,ID] += 2.0 * DW[1,M] * Th[M] / dz[iz,ID]
-      #JacVert.SchurBand[ID][sh+1,sh+3] += 2.0 * DW[1,M] * dpdRhoTh[M] / dz[iz,ID]
-      #JacVert.SchurBand[(sh+1) - (sh+3) + 4,sh+3,ID] += 2.0 * DW[1,M] * dpdRhoTh[M] / dz[iz,ID]
       JacVert.SchurBand[2,sh+3,ID] += 2.0 * DW[1,M] * dpdRhoTh[M] / dz[iz,ID]
-      #JacVert.SchurBand[ID][sh+3,sh+1] += 2.0 * DW[M,1] * Th[1] / dz[iz,ID]
-      #JacVert.SchurBand[(sh+3) - (sh+1) + 4,sh+1,ID] += 2.0 * DW[M,1] * Th[1] / dz[iz,ID]
       JacVert.SchurBand[6,sh+1,ID] += 2.0 * DW[M,1] * Th[1] / dz[iz,ID]
-      #JacVert.SchurBand[ID][sh+2,sh] += 2.0 * DW[M,1] * dpdRhoTh[1] / dz[iz,ID]
-      #JacVert.SchurBand[(sh+2) - sh + 4,sh,ID] += 2.0 * DW[M,1] * dpdRhoTh[1] / dz[iz,ID]
       JacVert.SchurBand[6,sh,ID] += 2.0 * DW[M,1] * dpdRhoTh[1] / dz[iz,ID]
       if iz == nz
-        #JacVert.SchurBand[ID][sh+3,sh+2] += 2.0 * DW[M,M] * Th[M] / dz[iz,ID]
-        #JacVert.SchurBand[(sh+3) - (sh+2) + 4,sh+2,ID] += 2.0 * DW[M,M] * Th[M] / dz[iz,ID]
         JacVert.SchurBand[5,sh+2,ID] += 2.0 * DW[M,M] * Th[M] / dz[iz,ID]
-        #JacVert.SchurBand[ID][sh+2,sh+3] += -2.0 * DW[M,M] * dpdRhoTh[M] / dz[iz,ID]
-        #JacVert.SchurBand[(sh+2) - (sh+3) + 4,sh+3,ID] += -2.0 * DW[M,M] * dpdRhoTh[M] / dz[iz,ID]
         JacVert.SchurBand[3,sh+3,ID] += -2.0 * DW[M,M] * dpdRhoTh[M] / dz[iz,ID]
-        #JacVert.SchurBand[ID][sh+2,sh+2] += 2.0 * cS / dz[iz,ID] / wZ[1]  
-        #JacVert.SchurBand[(sh+2) - (sh+2) + 4,sh+2,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
         JacVert.SchurBand[4,sh+2,ID] += 2.0 * cS / dz[iz,ID] / wZ[1]
       end  
       sh += 4
@@ -686,4 +812,202 @@ function Permutation(M,nz)
   return p
 end  
 
+function DScalarDMomAc(NZ,DG,cS)
+  
+  fac = 0.5
+  M = DG.OrdPolyZ + 1
+  N = NZ * M
+  RowInd = Int[]
+  ColInd = Int[]
+  Val = Float64[]
+  D = DG.DWZ
+  D = LowOrder(DG)
+  for iZ = 1 : NZ
+    for i = 1 : M
+      for j = 1 : M
+        push!(RowInd,i+(iZ-1)*M)
+        push!(ColInd,j+(iZ-1)*M)
+        push!(Val,-D[i,j])
+      end
+    end  
+    if iZ < NZ
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M)  
+      push!(Val,-fac/DG.wZ[1])
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,-fac/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M)  
+      push!(Val,fac/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,fac/DG.wZ[1])
+    end  
+  end
+  dSdM = sparse(RowInd, ColInd, Val,N,N)
 
+  RowInd = Int[]
+  ColInd = Int[]
+  Val = Float64[]
+  for iZ = 1 : NZ
+    if iZ < NZ
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M)  
+      push!(Val,-fac/cS/DG.wZ[1])
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,+fac/cS/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M)  
+      push!(Val,fac/cS/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,-fac/cS/DG.wZ[1])
+    end  
+  end
+  dSdS = sparse(RowInd, ColInd, Val,N,N)
+  return dSdS,dSdM
+end
+
+function DMomDScalarAc(NZ,DG,cS)
+  
+  fac = 0.5
+  M = DG.OrdPolyZ + 1
+  N = NZ * M
+  RowInd = Int[]
+  ColInd = Int[]
+  Val = Float64[]
+  D = DG.DWZ
+  D = LowOrder(DG)
+  for iZ = 1 : NZ
+    for i = 1 : M
+      for j = 1 : M
+        push!(RowInd,i+(iZ-1)*M)
+        push!(ColInd,j+(iZ-1)*M)
+        push!(Val,-D[i,j])
+      end
+    end  
+    if iZ < NZ
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M)  
+      push!(Val,-fac/DG.wZ[1])
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,-fac/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M)  
+      push!(Val,fac/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,fac/DG.wZ[1])
+    end  
+    if iZ == 1
+      push!(RowInd,1)  
+      push!(ColInd,1)  
+      push!(Val,1/DG.wZ[1])
+    end    
+    if iZ == NZ
+      push!(RowInd,M*NZ)  
+      push!(ColInd,M*NZ)  
+      push!(Val,-1/DG.wZ[1])
+    end    
+  end
+  dMdS = sparse(RowInd, ColInd, Val,N,N)
+  RowInd = Int[]
+  ColInd = Int[]
+  Val = Float64[]
+  for iZ = 1 : NZ
+    if iZ < NZ
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M)  
+      push!(Val,-fac*cS/DG.wZ[1])
+      push!(RowInd,iZ*M)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,+fac*cS/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M)  
+      push!(Val,fac*cS/DG.wZ[1])
+      push!(RowInd,iZ*M+1)  
+      push!(ColInd,iZ*M+1)  
+      push!(Val,-fac*cS/DG.wZ[1])
+    end  
+    if iZ == 1
+      push!(RowInd,1)  
+      push!(ColInd,1)  
+      push!(Val,-cS/DG.wZ[1])
+    end    
+    if iZ == NZ
+      push!(RowInd,M*NZ)  
+      push!(ColInd,M*NZ)  
+      push!(Val,-cS/DG.wZ[1])
+    end    
+  end  
+  dMdM = sparse(RowInd, ColInd, Val,N,N)
+  return dMdS,dMdM
+end
+
+function InitJacDG(DG,nz,Param)
+  N = (DG.OrdPolyZ + 1) * nz
+  dSdS,dSdM = DScalarDMomAc(nz,DG,Param.cS)
+  dMdS,dMdM = DMomDScalarAc(nz,DG,Param.cS)
+  return dSdS,dSdM,dMdS,dMdM
+end  
+
+function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
+  FTB = eltype(U)
+  N = size(dSdM,1)
+  RhoPos = 1
+  ThPos = 5
+  nz = size(U,2)
+  M = size(U,1)
+  oneM = ones(M)
+  NF = size(z,3)
+  JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
+  for ID = 1 : DG.NumI
+    @views zCol = z[:,ID]
+    diagz = spdiagm(2.0 ./ reshape(vec(oneM*zCol'),N))
+    Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
+    dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
+      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
+    Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
+           sparse((1.0 * Phys.Grav)*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
+           spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
+    JacLU[ID] = lu(Jac)           
+  end
+#-----------  
+  ID = 1
+  @views zCol = z[:,ID]
+    diagz = spdiagm(2.0 ./ reshape(vec(oneM*zCol'),N))
+    Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
+    dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
+      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
+    Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
+           sparse((1.0 * Phys.Grav)*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
+           spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
+#-----------  
+  return JacLU,Jac
+end
+
+function JacDGT(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
+  FTB = eltype(U)
+  N = size(dSdM,1)
+  RhoPos = 1
+  ThPos = 5
+  nz = size(U,2)
+  M = size(U,1)
+  oneM = ones(M)
+  NF = size(z,3)
+  JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
+    ID = 1  
+    @views zCol = z[:,ID]
+    diagz = spdiagm(2.0 ./ reshape(vec(oneM*zCol'),N))
+    Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
+    dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
+      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
+    Jac = [sparse(fac*I,N,N)  -diagz* dSdS * diagm(dpdRhoTh) -diagz * dSdM
+           spzeros(N,N) sparse(fac*I,N,N) - diagz*diagm(Th)*dSdS*diagm(dpdRhoTh)  -diagz*dSdM*diagm(Th)
+           sparse((Phys.Grav)*I,N,N) -diagz*dMdS*diagm(dpdRhoTh) sparse(fac*I,N,N)-diagz*dMdM]
+    JacLU[ID] = lu(Jac)
+  return JacLU,Jac
+end
