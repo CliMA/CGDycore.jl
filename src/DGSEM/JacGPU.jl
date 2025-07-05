@@ -20,6 +20,7 @@ mutable struct JacDGVert{FT<:AbstractFloat,
   C14_3::AT4
   SA::AT4
   SchurBand::AT3
+  rs::AT2
 end  
 
 function LowOrder(DG)
@@ -177,6 +178,7 @@ function JacDGVert{FT}(backend,M,nz,NumG) where FT<:AbstractFloat
   C14_3 = KernelAbstractions.zeros(backend,FT,2,M2,nz,NumG)
   SA = KernelAbstractions.zeros(backend,FT,M2,M2,nz,NumG)
   SchurBand = KernelAbstractions.zeros(backend,FT,7,4*nz,NumG)
+  rs = KernelAbstractions.zeros(backend,FT,4*nz,NumG)
 
   return JacDGVert{FT,
                    typeof(B1_1),
@@ -201,8 +203,339 @@ function JacDGVert{FT}(backend,M,nz,NumG) where FT<:AbstractFloat
     C14_3,
     SA,
     SchurBand,
+    rs
   )
 end  
+
+@kernel inbounds = true function ldivVerticalFKernel!(JacVert,b,rs,invfac,FacGrav, ::Val{M}) where {M}
+
+  iz,ID = @index(Global, NTuple)
+
+  nz = @uniform @ndrange()[1]
+  DoF = @uniform @ndrange()[2]
+
+  @uniform FT = eltype(JacVert.SchurBand)
+
+  r1 = @private FT (M,)
+  r2 = @private FT (M-2,)
+  r3 = @private FT (M-2,)
+
+  @uniform RhoPos = 1
+  @uniform wPos = 4
+  @uniform ThPos = 5
+
+  if ID <= DoF
+    sh = (iz - 1) * 4
+    rs[sh + 1,ID] = b[1,iz,ID,ThPos]
+    rs[sh + 2,ID] = b[1,iz,ID,wPos]
+    rs[sh + 3,ID] = b[M,iz,ID,wPos]
+    rs[sh + 4,ID] = b[M,iz,ID,ThPos]
+    @unroll for i = 1 : M
+      r1[i] = b[i,iz,ID,RhoPos]
+    end  
+    @unroll for i = 1 : M - 2
+      r2[i] = b[i+1,iz,ID,ThPos]
+      r3[i] = b[i+1,iz,ID,wPos]
+    end  
+    @unroll for i = 1 : M - 2
+      r3[i] += -invfac * FacGrav * r1[i+1]
+      @unroll for j = 1 : M - 2
+        r3[i] += -invfac * JacVert.A32[i,j,iz,ID] * r2[j]
+      end
+    end  
+
+    @views ldivFull!(JacVert.SA[:,:,iz,ID],r3)
+
+    r11 = r1[1]
+    r1M = r1[M]
+    @unroll for j = 1 : M - 2
+      r11 += -JacVert.A13[1,j] * r3[j]
+      r1M += -JacVert.A13[M,j] * r3[j]
+    end
+    r11 *= invfac
+    r1M *= invfac
+
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        r2[i] += -JacVert.A23[i,j,iz,ID] * r3[j]
+      end
+      r2[i] *= invfac
+    end
+    @unroll for j = 1 : M - 2
+      rs[sh + 1,ID] += -JacVert.C14_3[1,j,iz,ID] * r3[j]
+      rs[sh + 4,ID] += -JacVert.C14_3[2,j,iz,ID] * r3[j]
+      rs[sh + 2,ID] += -JacVert.C23_2[1,j,iz,ID] * r2[j]
+      rs[sh + 3,ID] += -JacVert.C23_2[2,j,iz,ID] * r2[j]
+    end
+    rs[sh + 2,ID] += -FacGrav * r11
+    rs[sh + 3,ID] += -FacGrav * r1M
+  end
+end
+
+@kernel inbounds = true function ldivVerticalSKernel!(A,rs)
+
+  ID, = @index(Global, NTuple)
+
+  DoF = @uniform @ndrange()[1]
+
+  if ID <= DoF
+    @views ldivBand!(A[:,:,ID],rs,3,3)
+  end  
+end  
+
+@kernel inbounds = true function ldivVerticalBKernel!(JacVert,b,rs,invfac,FacGrav,  ::Val{M}) where {M}
+
+  iz,ID = @index(Global, NTuple)
+
+  nz = @uniform @ndrange()[1]
+  DoF = @uniform @ndrange()[2]
+
+  @uniform FT = eltype(JacVert.SchurBand)
+
+  r1 = @private FT (M,)
+  r2 = @private FT (M-2,)
+  r3 = @private FT (M-2,)
+
+  @uniform RhoPos = 1
+  @uniform wPos = 4
+  @uniform ThPos = 5
+
+  if ID <= DoF
+    sh = (iz - 1) * 4
+
+    b[1,iz,ID,ThPos] = rs[sh + 1]
+    b[1,iz,ID,wPos] = rs[sh + 2]
+    b[M,iz,ID,wPos] = rs[sh + 3]
+    b[M,iz,ID,ThPos] = rs[sh + 4]
+    @unroll for i = 1 : M
+      r1[i] = b[i,iz,ID,RhoPos]
+    end  
+    @unroll for i = 1 : M - 2
+      r2[i] = b[i+1,iz,ID,ThPos]
+      r3[i] = b[i+1,iz,ID,wPos]
+    end  
+    r1[1] -= JacVert.B1_1[iz,ID] * rs[sh + 1]
+    r1[M] -= JacVert.B1_4[iz,ID] * rs[sh + 4]
+    @unroll for i = 1 : M
+      r1[i] -= JacVert.B1_23[i,1,iz,ID] * rs[sh + 2] + JacVert.B1_23[i,2,iz,ID] * rs[sh + 3]
+    end
+    @unroll for i = 1 : M - 2
+      r2[i] -= JacVert.B2_23[i,1,iz,ID] * rs[sh + 2] + JacVert.B2_23[i,2,iz,ID] * rs[sh + 3]
+      r3[i] -= JacVert.B3_14[i,1,iz,ID] * rs[sh + 1] + JacVert.B3_14[i,2,iz,ID] * rs[sh + 4]
+    end
+    if iz > 1
+      r1[1] -= JacVert.B1m_34[1,iz,ID] * rs[sh-1] + JacVert.B1m_34[2,iz,ID] * rs[sh]
+    end
+    if iz < nz
+      r1[M] -= JacVert.B1p_12[1,iz,ID] * rs[sh+5] + JacVert.B1p_12[2,iz,ID] * rs[sh+6]
+    end
+    @unroll for i = 1 : M - 2
+      r3[i] += -invfac * FacGrav * r1[i+1]
+      @unroll for j = 1 : M - 2
+        r3[i] += -invfac * JacVert.A32[i,j,iz,ID] * r2[j]
+      end
+    end
+    @views ldivFull!(JacVert.SA[:,:,iz,ID],r3)
+    @unroll for i = 1 : M
+      @unroll for j = 1 : M - 2
+        r1[i] += -JacVert.A13[i,j,iz,ID] * r3[j]
+      end
+      r1[i] *= invfac
+    end
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        r2[i] += -JacVert.A23[i,j,iz,ID] * r3[j]
+      end
+      r2[i] *= invfac
+    end
+    @unroll for i = 1 : M
+      b[i,iz,ID,RhoPos] = r1[i]
+    end
+    @unroll for i = 1 : M -2 
+      b[i+1,iz,ID,ThPos] = r2[i]
+      b[i+1,iz,ID,wPos] = r3[i]
+    end  
+  end  
+end  
+
+
+@kernel inbounds = true function luBandKernel!(A)
+  ID, = @index(Global, NTuple)
+
+  DoF = @uniform @ndrange()[1]
+
+  if ID <= DoF
+    @views luBand!(A[:,:,ID],3,3)
+  end  
+end  
+
+@kernel inbounds = true function SchurBoundaryKernel!(JacVert, ::Val{M}) where {M}
+
+  iz,ID = @index(Global, NTuple)
+
+  nz = @uniform @ndrange()[1]
+  DoF = @uniform @ndrange()[2]
+
+  @uniform FT = eltype(JacVert.SchurBand)
+
+  r1 = @private FT (M,2,)
+  r2 = @private FT (M-2,2,)
+  r3 = @private FT (M-2,2,)
+  r11 = @private FT (2,)
+  r1M = @private FT (2,)
+  s = @private FT (4,2,)
+  invfac = 1.0 / JacVert.fac
+
+  @uniform FacGrav = JacVert.FacGrav
+
+  if ID <= DoF
+    sh = (iz - 1) * 4
+#   Column 1 and 4
+    @unroll for i = 1 : M - 2
+      r3[i,1] = JacVert.B3_14[i,1,iz,ID]
+      r3[i,2] = JacVert.B3_14[i,2,iz,ID]
+    end  
+
+    @views ldivFull2!(JacVert.SA[:,:,iz,ID],r3)
+
+    r11[1] = -JacVert.B1_1[iz,ID]
+    r11[2] = FT(0)
+    r1M[1] = FT(0)
+    r1M[2] = -JacVert.B1_4[iz,ID]
+    @unroll for j = 1 : M - 2
+      r11[1] += JacVert.A13[1,j,iz,ID] * r3[j,1]
+      r11[2] += JacVert.A13[1,j,iz,ID] * r3[j,2]
+      r1M[1] += JacVert.A13[M,j,iz,ID] * r3[j,1]
+      r1M[2] += JacVert.A13[M,j,iz,ID] * r3[j,2]
+    end  
+    r11[1] *= -invfac
+    r11[2] *= -invfac
+    r1M[1] *= -invfac
+    r1M[2] *= -invfac
+
+    @unroll for i = 1 : M - 2
+      r2[i,1] = FT(0)
+      r2[i,2] = FT(0)
+      @unroll for j = 1 : M - 2
+        r2[i,1] += JacVert.A23[i,j,iz,ID] * r3[j,1]
+        r2[i,2] += JacVert.A23[i,j,iz,ID] * r3[j,2]
+      end
+      r2[i,1] *= -invfac
+      r2[i,2] *= -invfac
+    end
+
+    s[1,1] = FT(0)
+    s[2,1] = FT(0)
+    s[3,1] = FT(0)
+    s[4,1] = FT(0)
+    s[1,2] = FT(0)
+    s[2,2] = FT(0)
+    s[3,2] = FT(0)
+    s[4,2] = FT(0)
+    @unroll for j = 1 : M - 2
+      s[1,1] += -JacVert.C14_3[1,j,iz,ID] * r3[j,1]
+      s[1,2] += -JacVert.C14_3[1,j,iz,ID] * r3[j,2]
+      s[4,1] += -JacVert.C14_3[2,j,iz,ID] * r3[j,1]
+      s[4,2] += -JacVert.C14_3[2,j,iz,ID] * r3[j,2]
+      s[2,1] += -JacVert.C23_2[1,j,iz,ID] * r2[j,1]
+      s[2,2] += -JacVert.C23_2[1,j,iz,ID] * r2[j,2]
+      s[3,1] += -JacVert.C23_2[2,j,iz,ID] * r2[j,1]
+      s[3,2] += -JacVert.C23_2[2,j,iz,ID] * r2[j,2]
+    end
+    s[2,1] = s[2,1] - FacGrav * r11[1]
+    s[3,1] = s[3,1] - FacGrav * r1M[1]
+    s[2,2] = s[2,2] - FacGrav * r11[2]
+    s[3,2] = s[3,2] - FacGrav * r1M[2]
+    @unroll for i = 1 : 4
+      @atomic :monotonic JacVert.SchurBand[i + 3,sh + 1,ID] += s[i,1]
+      @atomic :monotonic JacVert.SchurBand[i,sh + 4,ID] += s[i,2]
+    end
+
+    @unroll for i = 1 : M
+      r1[i,1] = JacVert.B1_23[i,1,iz,ID]
+      r1[i,2] = JacVert.B1_23[i,2,iz,ID]
+    end  
+    @unroll for i = 1 : M - 2
+      r2[i,1] = JacVert.B2_23[i,1,iz,ID]
+      r2[i,2] = JacVert.B2_23[i,2,iz,ID]
+    end  
+    @unroll for i = 1 : M - 2
+      r3[i,1] = FacGrav * r1[i+1,1]
+      r3[i,2] = FacGrav * r1[i+1,2]
+      @unroll for j = 1 : M - 2
+        r3[i,1] += JacVert.A32[i,j,iz,ID] * r2[j,1]
+        r3[i,2] += JacVert.A32[i,j,iz,ID] * r2[j,2]
+      end
+      r3[i,1] *= -invfac
+      r3[i,2] *= -invfac
+    end
+
+    @views ldivFull2!(JacVert.SA[:,:,iz,ID],r3)
+
+    #r11 = invfac * (r1[1:1,:] - JacVert.A13[1:1,:,iz,ID] * r3[:,:])
+    #r1M = invfac * (r1[M:M,:] - JacVert.A13[M:M,:,iz,ID] * r3[:,:])
+    r11[1] = r1[1,1]
+    r11[2] = r1[1,2]
+    r1M[1] = r1[M,1]
+    r1M[2] = r1[M,2]
+    @unroll for j = 1 : M - 2
+      r11[1] += -JacVert.A13[1,j,iz,ID] * r3[j,1]
+      r11[2] += -JacVert.A13[1,j,iz,ID] * r3[j,2]
+      r1M[1] += -JacVert.A13[M,j,iz,ID] * r3[j,1]
+      r1M[2] += -JacVert.A13[M,j,iz,ID] * r3[j,2]
+    end
+    r11[1] *= invfac
+    r11[2] *= invfac
+    r1M[1]*= invfac
+    r1M[2]*= invfac
+
+    #@views r2 = invfac * (r2 - JacVert.A23[:,:,iz,ID] * r3)
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        r2[i,1] += -JacVert.A23[i,j,iz,ID] * r3[j,1]
+        r2[i,2] += -JacVert.A23[i,j,iz,ID] * r3[j,2]
+      end
+      r2[i,1] *= invfac
+      r2[i,2] *= invfac
+    end
+
+    s[1,1] = FT(0)
+    s[2,1] = FT(0)
+    s[3,1] = FT(0)
+    s[4,1] = FT(0)
+    s[1,2] = FT(0)
+    s[2,2] = FT(0)
+    s[3,2] = FT(0)
+    s[4,2] = FT(0)
+    @unroll for j = 1 : M - 2
+      s[1,1] += - JacVert.C14_3[1,j,iz,ID] * r3[j,1]
+      s[1,2] += - JacVert.C14_3[1,j,iz,ID] * r3[j,2]
+      s[4,1] += - JacVert.C14_3[2,j,iz,ID] * r3[j,1]
+      s[4,2] += - JacVert.C14_3[2,j,iz,ID] * r3[j,2]
+      s[2,1] += - JacVert.C23_2[1,j,iz,ID] * r2[j,1]
+      s[2,2] += - JacVert.C23_2[1,j,iz,ID] * r2[j,2]
+      s[3,1] += - JacVert.C23_2[2,j,iz,ID] * r2[j,1]
+      s[3,2] += - JacVert.C23_2[2,j,iz,ID] * r2[j,2]
+    end
+
+    s[2,1] = s[2,1] - FacGrav * r11[1]
+    s[3,1] = s[3,1] - FacGrav * r1M[1]
+    s[2,2] = s[2,2] - FacGrav * r11[2]
+    s[3,2] = s[3,2] - FacGrav * r1M[2]
+    @unroll for i = 1 : 4
+      @atomic :monotonic JacVert.SchurBand[i + 2,sh + 2,ID] += s[i,1]
+      @atomic :monotonic JacVert.SchurBand[i + 1,sh + 3,ID] += s[i,2]
+    end
+    if iz > 1
+      @atomic :monotonic JacVert.SchurBand[7,sh-1,ID] -= FacGrav * invfac * JacVert.B1m_34[1,iz,ID]
+      @atomic :monotonic JacVert.SchurBand[6,sh,ID] -= FacGrav * invfac * JacVert.B1m_34[2,iz,ID]
+    end
+    if iz < nz
+      @atomic :monotonic JacVert.SchurBand[2,sh+5,ID] -= FacGrav * invfac * JacVert.B1p_12[1,iz,ID]
+      @atomic :monotonic JacVert.SchurBand[1,sh+6,ID] -= FacGrav * invfac * JacVert.B1p_12[2,iz,ID]
+    end
+  end
+end      
 
 
 @kernel inbounds = true function FillJacDGVertKernel!(JacVert,@Const(U),@Const(dz),@Const(DW),wB,fac,
@@ -490,6 +823,28 @@ function FillJacDGVertOld!(JacVert,U,DG,dz,fac,Phys,Param)
 end
 
 function SchurBoundary!(JacVert)
+
+  backend = get_backend(JacVert.SchurBand)
+  FTB = eltype(JacVert.SchurBand)
+
+  M = JacVert.M
+  nz = JacVert.nz
+  DoF = size(JacVert.SchurBand,3)
+
+  DoFG = 10
+  group = (nz, DoFG)
+  ndrange = (nz, DoF)
+  KSchurBoundaryKernel! = SchurBoundaryKernel!(backend,group)
+  KSchurBoundaryKernel!(JacVert,Val(M);ndrange=ndrange)
+
+  group = (DoFG)
+  ndrange = (DoF)
+  KluBandKernel! = luBandKernel!(backend,group)
+  KluBandKernel!(JacVert.SchurBand,ndrange=ndrange)
+
+end  
+
+function SchurBoundaryOld!(JacVert)
   M = JacVert.M
   nz = JacVert.nz
   M2 = M - 2
@@ -694,6 +1049,36 @@ function ldivBlockAB(M,invfac,FacGrav,A13,A23,A32,SA,r1,r2,r3)
 end
 
 function ldivVertical!(JacVert,b)
+
+  backend = get_backend(JacVert.SchurBand)
+  FTB = eltype(JacVert.SchurBand)
+
+  M = JacVert.M
+  nz = JacVert.nz
+  DoF = size(JacVert.SchurBand,3)
+
+  invfac = 1.0 / JacVert.fac
+  FacGrav = JacVert.FacGrav
+
+  DoFG = 10
+  group = (nz, DoFG)
+  ndrange = (nz, DoF)
+  KldivVerticalFKernel! = ldivVerticalFKernel!(backend,group)
+  KldivVerticalFKernel!(JacVert,b,JacVert.rs,invfac,FacGrav,Val(M);ndrange=ndrange)
+
+  group = (DoFG)
+  ndrange = (DoF)
+  KldivVerticalSKernel! = ldivVerticalSKernel!(backend,group)
+  KldivVerticalSKernel!(JacVert.SchurBand,JacVert.rs;ndrange=ndrange)
+
+  group = (nz, DoFG)
+  ndrange = (nz, DoF)
+  KldivVerticalBKernel! = ldivVerticalBKernel!(backend,group)
+  KldivVerticalBKernel!(JacVert,b,JacVert.rs,invfac,FacGrav,Val(M);ndrange=ndrange)
+
+end
+
+function ldivVerticalOld!(JacVert,b)
   M = JacVert.M
   nz = JacVert.nz
   M2 = M - 2
@@ -778,6 +1163,7 @@ function ldivVertical!(JacVert,b)
   end
 end
 
+
 function Permutation(M,nz)
 #Permutation
   N = M * nz
@@ -821,7 +1207,6 @@ function DScalarDMomAc(NZ,DG,cS)
   ColInd = Int[]
   Val = Float64[]
   D = DG.DWZ
-  D = LowOrder(DG)
   for iZ = 1 : NZ
     for i = 1 : M
       for j = 1 : M
@@ -879,7 +1264,6 @@ function DMomDScalarAc(NZ,DG,cS)
   ColInd = Int[]
   Val = Float64[]
   D = DG.DWZ
-  D = LowOrder(DG)
   for iZ = 1 : NZ
     for i = 1 : M
       for j = 1 : M

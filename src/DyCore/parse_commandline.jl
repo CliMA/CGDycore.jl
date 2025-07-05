@@ -611,6 +611,15 @@ function parse_commandline()
      arg_type = Int
      default = 0
 
+  # Examples
+
+    "--LengthOfAgnesiHill"
+     help = "Length of the hill"
+     arg_type = Float64
+     default = 1000.0
+
+   
+
   end
   return parse_args(s)
 end

@@ -128,6 +128,8 @@ GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 NumberThreadTriGPU = parsed_args["NumberThreadTriGPU"]
+# Examples
+aC = parsed_args["LengthOfAgnesiHill"]
 
 MPI.Init()
 comm = MPI.COMM_WORLD
@@ -296,7 +298,7 @@ end
 
 #Topography
 if TopoS == "AgnesiHill"
-  TopoProfile = Examples.AgnesiHill()()
+  TopoProfile = Examples.AgnesiHill(;aC=aC)()
 elseif TopoS == "SchaerHill"
   TopoProfile = Examples.SchaerHill()()
 elseif TopoS == "BaroWaveHill"

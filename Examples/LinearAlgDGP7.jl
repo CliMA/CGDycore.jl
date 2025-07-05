@@ -131,6 +131,8 @@ OrdPrintZ = 4
 DG = FiniteElements.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,ParallelCom.Proc)
 
 
+DG.NumG = 1
+DG.NumI = 1
 fac = 0.5
 U = ones(M,nz,DG.NumG,5)
 H = 10000.0
@@ -158,7 +160,6 @@ JacGPU = DGSEM.JacDGVert{FTB}(backend,M,nz,DG.NumI)
 fac = 2.0
 DGSEM.FillJacDGVertOld!(JacS,U,DG,dz,fac,Phys,Param)
 DGSEM.FillJacDGVert!(JacGPU,U,DG,dz,fac,Phys,Param)
-stop
 BP11,BP12,BP21,BP22= Recover(JacS,M,nz,Phys,fac)
 p = DGSEM.Permutation(M,nz)
 pI = invperm(p)
@@ -166,7 +167,12 @@ BP = [BP11 BP12
       BP21 BP22]
 B = BP[pI,pI]      
 
-DGSEM.SchurBoundary!(JacS)
+@show sum(abs.(JacS.SchurBand-JacGPU.SchurBand))
+DGSEM.SchurBoundaryOld!(JacS)
+DGSEM.SchurBoundary!(JacGPU)
+@show sum(abs.(JacS.SchurBand-JacGPU.SchurBand))
+stop
+
 JacVLU, A = DGSEM.JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
 
 b = ones(size(U))
