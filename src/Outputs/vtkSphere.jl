@@ -369,7 +369,7 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
   backend = get_backend(Metric.X)
   X = zeros(FT,FE.DoF,OrdPolyZ+1,3)
   for iF = 1 : NF
-    @views copyto!(X[:,:,:],reshape(Metric.X[:,:,:,1,iF],FE.DoF,OrdPolyZ+1,3))
+    @views copyto!(X,reshape(Metric.X[:,:,:,1,iF],FE.DoF,OrdPolyZ+1,3))
     dd = 2 / OrdPrint
     eta0 = -1
     for jRef = 1 : OrdPrint

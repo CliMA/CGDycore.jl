@@ -31,9 +31,9 @@ function (profile::InertiaGravityExample)(Param,Phys)
     u = Param.uMax
     v = eltype(x)(0)
     w = eltype(x)(0)
-    T = pLoc / (Rd * Rho)
-    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * x[3]
-    IE = Cvd * T
+    T = pLoc / (Phys.Rd * Rho)
+    E = Phys.Cvd * T + FT(0.5) * (u * u + v * v) + Phys.Grav * x[3]
+    IE = Phys.Cvd * T
     qv = eltype(x)(0)
     qc = eltype(x)(0)
 
