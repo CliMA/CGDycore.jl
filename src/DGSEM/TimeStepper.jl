@@ -21,7 +21,6 @@ function Rosenbrock(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys
   dz = Metric.dz 
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-# kLoc = zeros(3*N)
   Jac = JacDGVert{FTB}(backend,M,nz,DG.NumI)
   @inbounds for i = 1 : IterTime
     if Proc == 1

@@ -6,8 +6,6 @@
   ND = @uniform @ndrange()[3]
 
   if ID <= ND
-    uPos = 2  
-    vPos = 3  
     ind = Glob[ID,IF]
     fac = eltype(F)(2.0) * Phys.Omega * X[ID,K,3,Iz,IF] / sqrt(X[ID,K,1,Iz,IF]^2 + 
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2)
@@ -76,10 +74,6 @@ end
   ND = @uniform @ndrange()[3]
 
   if ID <= ND
-    RhoPos = 1
-    uPos = 2
-    vPos = 3
-    wPos = 4
     ind = Glob[ID,IF]
     h = sqrt(X[ID,K,1,Iz,IF]^2 +
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2) - Phys.RadEarth
@@ -97,16 +91,12 @@ end
   ND = @uniform @ndrange()[3]
 
   if ID <= ND
-    RhoPos = 1
-    uPos = 2
-    vPos = 3
-    wPos = 4
     ind = Glob[ID,IF]
     h = X[ID,K,3,Iz,IF]
     Fu,Fv,Fw = Damp(h,view(U,K,Iz,ind,1:5))
-    F[K,Iz,ind,2] += Fu
-    F[K,Iz,ind,3] += Fv
-    F[K,Iz,ind,4] += Fw
+    F[K,Iz,ind,1] += Fu
+    F[K,Iz,ind,2] += Fv
+    F[K,Iz,ind,3] += Fw
   end
 end
 

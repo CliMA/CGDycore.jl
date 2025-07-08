@@ -298,7 +298,7 @@ end
 
 #Topography
 if TopoS == "AgnesiHill"
-  TopoProfile = Examples.AgnesiHill(;aC=aC)()
+  TopoProfile = Examples.AgnesiHill{FTB}(;aC=aC)()
 elseif TopoS == "SchaerHill"
   TopoProfile = Examples.SchaerHill()()
 elseif TopoS == "BaroWaveHill"
