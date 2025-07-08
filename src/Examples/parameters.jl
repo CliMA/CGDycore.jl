@@ -177,6 +177,7 @@ Base.@kwdef struct ParamBaroWaveHillDrySphere{FT}
   q_t::FT = 1.0e-12
   # Surface flux
   CMom::FT = 1.e-3
+  cS::FT = 360
 end
 
 

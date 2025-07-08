@@ -211,8 +211,16 @@ end
   Nz = @uniform @ndrange()[4]
   NF = @uniform @ndrange()[5]
   H = @uniform z[Nz+1]
+  zsLoc = @localmem eltype(zs) (N,N)
 
   dXdx = @private eltype(X) (3,3)
+
+  if Iz <= Nz
+    ID = I + (J - 1) * N
+    zsLoc[I,J] = zs[ID,IF]
+  end
+
+  @synchronize 
 
   eta = ksi
   if Iz <= Nz
@@ -235,8 +243,8 @@ end
      F[3,3,IF] * (eltype(X)(1)+ksi1)*(eltype(X)(1)+ksi2) +
      F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-    #hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[I,J,IF])
-    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,eltype(X)(0))
+    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[ID,IF])
+    #hR,dhrdz,dhrdzs = AdaptGrid(zLoc,eltype(X)(0))
     r = sqrt(XT1 * XT1 + XT2 * XT2 + XT3 * XT3)
     f = eltype(X)(1) / r^3
     dX1dXT1 = f * (XT2^2 + XT3^2) 
@@ -251,16 +259,12 @@ end
     J1 = @SArray([dX1dXT1    dX1dXT2     dX1dXT3
                   dX2dXT1    dX2dXT2     dX2dXT3
                   dX3dXT1    dX3dXT2     dX3dXT3])
-    dzsdksi1 = eltype(X)(0)
-    dzsdksi2 = eltype(X)(0)
-#=
-    dzsdksi1 = D[I,1] * zs[1,J,IF]
-    dzsdksi2 = D[J,1] * zs[I,1,IF]
+    dzsdksi1 = D[I,1] * zsLoc[1,J]
+    dzsdksi2 = D[J,1] * zsLoc[I,1]
     for k = 2 : N
-      dzsdksi1 += D[I,k] * zs[k,J,IF]
-      dzsdksi2 += D[J,k] * zs[I,k,IF]
+      dzsdksi1 += D[I,k] * zsLoc[k,J]
+      dzsdksi2 += D[J,k] * zsLoc[I,k]
     end  
-=#    
     B = @SArray([F[1,1,IF] F[2,1,IF] F[3,1,IF] F[4,1,IF]
                  F[1,2,IF] F[2,2,IF] F[3,2,IF] F[4,2,IF]
                  F[1,3,IF] F[2,3,IF] F[3,3,IF] F[4,3,IF]])
