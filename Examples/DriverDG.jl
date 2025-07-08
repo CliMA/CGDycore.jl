@@ -455,4 +455,4 @@ elseif IntMethod == "RungeKutta"
   DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Grid,Global)
 end  
-
+MPI.Finalize()

@@ -40,7 +40,7 @@ julia --project Examples/DriverDG.jl \
   --PrintHours=0 \
   --PrintDays=0 \
   --OrdPrint=4 \
-  --OrdPrintZ=3 \
+  --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=100 \
@@ -52,7 +52,7 @@ julia --project Examples/DriverDG.jl \
   --GridForm="Spherical" \
   --GridType="ICON" \
   --RefineLevel=3 \
-  --nz=8 \
+  --nz=13 \
   --nPanel=10 \
   --H=30000.0 \
   --OrdPoly=4 \

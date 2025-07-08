@@ -712,6 +712,8 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
   JacVert.fac = fac
   JacVert.FacGrav = Phys.Grav
 
+  DWZ = DG.DWZ
+
   DoFG = 10
   group = (nz, DoFG)
   ndrange = (nz, DoF) 
@@ -720,7 +722,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
   KFillJacDGVertKernel! = FillJacDGVertKernel!(backend,group)
   KFillJacDGVertKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
   JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,JacVert.C23_2,
-  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,U,dz,DG.DWZ,DG.wZ,fac,Phys.Grav,
+  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,U,dz,DWZ,DG.wZ,fac,Phys.Grav,
   Param.cS,Phys,Val(M);ndrange=ndrange) 
 
 end  

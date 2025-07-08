@@ -4,7 +4,8 @@
   Iz,K,ID,IF = @index(Global, NTuple)
 
   ND = @uniform @ndrange()[3]
-
+  uPos = 2
+  vPos = 3
   if ID <= ND
     ind = Glob[ID,IF]
     fac = eltype(F)(2.0) * Phys.Omega * X[ID,K,3,Iz,IF] / sqrt(X[ID,K,1,Iz,IF]^2 + 
