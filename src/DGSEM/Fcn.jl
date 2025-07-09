@@ -1,4 +1,4 @@
-function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,::Grids.Quad)
+function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::Grids.Quad)
   backend = get_backend(F)
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
@@ -12,14 +12,23 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   Nz = Grid.nz
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Proc = Global.ParallelCom.Proc
-  NV = 5
-  NAUX = 2
+  NV = Model.NumV
+  NAUX = Model.NumAux
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
-  @views AuxI = Aux[:,:,1:DG.NumI,:]
-  @views FS = CacheF[:,:,:,1:3]
+  @views p = Aux[:,:,1:DG.NumI,1]
+  @views GeoPot = Aux[:,:,1:DG.NumI,2]
+  FS = CacheS
   @. F = 0
   @. FS = 0
+
+  @views @. p = Model.Pressure(U[:,:,1:DG.NumI,5])
+  NQ = N * N
+  NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+  group = (Nz,M,NQG,1)
+  ndrange = (Nz,M,NQ,NF)
+  KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
+  KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
 
   if Model.Damping
     NQ = N * N
@@ -44,14 +53,14 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
     KCoriolisKernel!(FS,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
   end
 
+  if Model.Forcing
+    NDG = min(div(NumberThreadGPU,Nz*M),DG.NumI)
+    group = (Nz,M,NDG)
+    ndrange = (Nz,M,DG.NumI)
+    KForceKernel! = ForceKernel!(backend, group)
+    KForceKernel!(Model.Force,FS,U,p,Metric.xS,ndrange=ndrange)
+  end
 
-  @views @. AuxI[:,:,:,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
-  NQ = N * N
-  NQG = min(div(NumberThreadGPU,Nz*M),NQ)
-  group = (Nz,M,NQG,1)
-  ndrange = (Nz,M,NQ,NF)
-  KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
-  @views KGeoPotentialKernel!(GeoPotential,AuxI[:,:,:,2],Metric.X,DG.Glob;ndrange=ndrange)
     
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz*M),NQ)
@@ -109,11 +118,12 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   @views KVCart2VSp3Kernel!(F[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
 
-  @. F[:,:,:,2:4] += FS
+  @. F += FS
+
 
 end
 
-function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,::Grids.Tri)
+function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::Grids.Tri)
   backend = get_backend(F)
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
@@ -132,10 +142,19 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   NAUX = Model.NumAux
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
-  @views AuxI = Aux[:,:,1:DG.NumI,:]
-  @views FS = CacheF[:,:,:,1:3]
+  @views p = Aux[:,:,1:DG.NumI,1]
+  @views GeoPot = Aux[:,:,1:DG.NumI,2]
+  @views FS = CacheS
   @. F = 0
   @. FS = 0
+
+  @views @. p = Model.Pressure(U[:,:,1:DG.NumI,5])
+  DoF = DoF
+  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
+  group = (Nz,M,DoFG,1)
+  ndrange = (Nz,M,DoF,NF)
+  KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
+  KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
 
   if Model.Damping
     DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
@@ -158,19 +177,21 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
     KCoriolisKernel!(FS,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
   end
 
+  if Model.Forcing
+    NQ = N * N
+    NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+    group = (Nz,M,NQG,1)
+    ndrange = (Nz,M,NQ,NF)
+    KForceKernel! = ForceKernel!(backend, group)
+    KForceKernel!(Model.Force,FS,U,p,Metric.xS,ndrange=ndrange)
+  end
+
 
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
   group = (Nz,M,DoFG,1)
   ndrange = (Nz,M,DoF,NF)
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   @views  KVSp2VCart3Kernel!(UI[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
-  @views @. AuxI[:,:,:,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
-  DoF = DoF
-  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (Nz,M,DoFG,1)
-  ndrange = (Nz,M,DoF,NF)
-  KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
-  @views KGeoPotentialKernel!(GeoPotential,AuxI[:,:,:,2],Metric.X,DG.Glob;ndrange=ndrange)
     
 
   @views Parallels.ExchangeData3DSendGPU(reshape(CacheU[:,:,:,1:NV+NAUX],
@@ -218,7 +239,7 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Globa
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   @views KVCart2VSp3Kernel!(F[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
 
-  @. F[:,:,:,2:4] += FS
+  @. F += FS
 
 end
 

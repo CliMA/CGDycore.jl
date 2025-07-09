@@ -11,7 +11,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
   nz = size(U,2)
   CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
   @views Un = CacheU[:,:,:,1:NumV]
-  CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
   @views UnI = Un[:,:,1:DG.NumI,:]
   nStage = ROS.nStage
@@ -33,7 +33,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
           @inbounds for jStage = 1 : iStage-1
             @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
           end
-          @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+          @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
           @inbounds for jStage = 1 : iStage - 1
             fac = ROS.c[iStage,jStage] / dtau
             @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
@@ -69,7 +69,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,P
   nz = size(U,2)
   CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
   @views Un = CacheU[:,:,:,1:NumV]
-  CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
   @views UnI = Un[:,:,1:DG.NumI,:]
   nStage = ROS.nStage
@@ -95,7 +95,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,P
       @inbounds for jStage = 1 : iStage-1
         @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
       end
-      @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+      @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
       @inbounds for jStage = 1 : iStage - 1
         fac = ROS.c[iStage,jStage] / dtau
         @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
@@ -147,7 +147,7 @@ function RosenbrockEul(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys
   NumAux = Model.NumAux
   nz = size(U,2)
   CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
-  CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   fU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   Un = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
@@ -168,7 +168,7 @@ function RosenbrockEul(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys
     for ID = 1 : DG.NumI
        Jac[ID] = (1.0 / dtau) * sparse(I,3*N,3*N) - Jac[ID]
     end  
-    Fcn(fU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+    Fcn(fU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
     for ID = 1 : DG.NumI
       @views fU[:,:,ID,[1,4,5]] .= reshape(Jac[ID] \ reshape(fU[:,:,ID,[1,4,5]],3*N),M,nz,3)
     end  
@@ -195,7 +195,7 @@ function RK3(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
   nz = size(U,1)
   CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
   @views UNew = CacheU[:,:,:,1:NumV]
-  CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
   @views UNewI = UNew[:,:,1:DG.NumI,:]
@@ -208,15 +208,15 @@ function RK3(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 
     @. UNewI = UI 
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
     fac = FTB(1/3 * dtau)
     @. UNewI = UI + fac * FU
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
     fac = FTB(1/2 * dtau)
     @. UNewI = UI + fac * FU
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
     fac = FTB(dtau)
     @. UI = UI + fac * FU
 
@@ -241,7 +241,7 @@ function RK1(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
   NumAux = Model.NumAux
   nz = size(U,1)
   CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
-  CacheF = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
   
@@ -251,7 +251,7 @@ function RK1(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
         @show i,nPrint
       end  
 
-    Fcn(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+    Fcn(FU,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
     fac = FTB(dtau)
     @. UI = UI + fac * FU
 

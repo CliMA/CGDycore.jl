@@ -804,8 +804,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   if Global.Model.Forcing
     KForceKernel! = ForceKernel!(backend, groupG)
-    @show maximum(xS[2,:])
-    @show minimum(xS[2,:])
     KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
     KernelAbstractions.synchronize(backend)
   end  

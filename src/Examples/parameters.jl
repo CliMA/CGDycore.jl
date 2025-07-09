@@ -218,6 +218,7 @@ Base.@kwdef struct ParamHeldSuarezDrySphere{FT}
   CMom::FT = 1.e-3
   Deep::Bool = false
   T_Init::FT = 300.0
+  cS::FT = 360
 end
 Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
   T0E::FT = 310.0
@@ -273,6 +274,7 @@ Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
   DeltaLat::FT = 26.0 * pi / 180.0
   CMom::FT = 1.e-3
   T_Init::FT = 300.0
+  cS::FT = 360
 end
 
 Base.@kwdef struct ParamHillSchaerCart

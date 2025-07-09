@@ -53,6 +53,14 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
     KGridSizeCartKernel!(Metric.dz,Metric.X,DG.Glob,ndrange=ndrange)
   end
 
+  NFG = min(div(NumberThreadGPU,DoF),NF)
+  group = (DoF, NFG)
+  ndrange = (DoF, NF)
+  if Grid.Form == "Sphere"
+    KMetricLowerBoundaryKernel! = MetricLowerBoundaryDGKernel!(backend,group)
+    KMetricLowerBoundaryKernel!(Metric.xS,Metric.X,DG.Glob,ndrange=ndrange)
+  end
+
   EFCPU = zeros(Int,2,NE)
   FECPU = zeros(Int,2,NE)
   for iE = 1 : NE
@@ -327,5 +335,22 @@ end
     rS = sqrt(X[ID,1,1,Iz,IF]^2 + X[ID,1,2,Iz,IF]^2 + X[ID,1,3,Iz,IF]^2)
     rE = sqrt(X[ID,end,1,Iz,IF]^2 + X[ID,end,2,Iz,IF]^2 + X[ID,end,3,Iz,IF]^2)
     dz[Iz,ind] = rE - rS
+  end
+end
+
+@kernel inbounds = true function MetricLowerBoundaryDGKernel!(xS,@Const(X),@Const(Glob))
+
+  ID,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[2]
+
+  if IF <= NF
+    ind = Glob[ID,IF]
+    x = X[ID,1,1,1,IF]
+    y = X[ID,1,2,1,IF]
+    z = X[ID,1,3,1,IF]
+    lon,lat,_ = Grids.cart2sphere(x,y,z)
+    xS[1,ind] = lon
+    xS[2,ind] = lat
   end
 end

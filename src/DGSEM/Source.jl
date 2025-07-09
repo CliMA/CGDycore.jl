@@ -10,8 +10,8 @@
     ind = Glob[ID,IF]
     fac = eltype(F)(2.0) * Phys.Omega * X[ID,K,3,Iz,IF] / sqrt(X[ID,K,1,Iz,IF]^2 + 
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2)
-    F[K,Iz,ind,1] += fac * U[K,Iz,ind,vPos]  
-    F[K,Iz,ind,2] += -fac * U[K,Iz,ind,uPos]
+    F[K,Iz,ind,uPos] += fac * U[K,Iz,ind,vPos]  
+    F[K,Iz,ind,vPos] += -fac * U[K,Iz,ind,uPos]
   end  
 end
 
@@ -74,14 +74,17 @@ end
 
   ND = @uniform @ndrange()[3]
 
+  uPos = 2
+  vPos = 3
+  wPos = 4
   if ID <= ND
     ind = Glob[ID,IF]
     h = sqrt(X[ID,K,1,Iz,IF]^2 +
       X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2) - Phys.RadEarth
     Fu,Fv,Fw = Damp(h,view(U,K,Iz,ind,1:5))
-    F[K,Iz,ind,1] += Fu
-    F[K,Iz,ind,2] += Fv
-    F[K,Iz,ind,3] += Fw
+    F[K,Iz,ind,uPos] += Fu
+    F[K,Iz,ind,vPos] += Fv
+    F[K,Iz,ind,wPos] += Fw
   end
 end
 
@@ -111,5 +114,16 @@ end
   if ID <= ND
     ind = Glob[ID,IF]
     GP[K,Iz,ind] = GPF(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF])
+  end
+end
+
+@kernel inbounds = true function ForceKernel!(Force,F,U,p,xS)
+  _,_,iD,  = @index(Local, NTuple)
+  Iz,K,ID = @index(Global, NTuple)
+
+  ND = @uniform @ndrange()[3]
+
+  if ID <= ND
+    Force(view(F,K,Iz,ID,:),view(U,K,Iz,ID,:),p[K,Iz,ID],xS[2,ID])
   end
 end
