@@ -1,4 +1,4 @@
-function Rosenbrock(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -22,39 +22,41 @@ function Rosenbrock(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
   Jac = JacDGVert{FTB}(backend,M,nz,DG.NumI)
-  @inbounds for i = 1 : IterTime
-    if Proc == 1
-      @show i,nPrint
-    end  
-    fac = (1.0 / (dtau * ROS.gamma))
-    FillJacDGVert!(Jac,U,DG,dz,fac,Phys,Param)
-    SchurBoundary!(Jac)
-    @inbounds for iStage = 1 : nStage
-      @. UnI = UI
-      @inbounds for jStage = 1 : iStage-1
-        @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+  @time begin
+    @inbounds for i = 1 : nIter
+      Δt = @elapsed begin
+        fac = (1.0 / (dtau * ROS.gamma))
+        FillJacDGVert!(Jac,U,DG,dz,fac,Phys,Param)
+        SchurBoundary!(Jac)
+        @inbounds for iStage = 1 : nStage
+          @. UnI = UI
+          @inbounds for jStage = 1 : iStage-1
+            @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+          end
+          @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
+          @inbounds for jStage = 1 : iStage - 1
+            fac = ROS.c[iStage,jStage] / dtau
+            @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
+          end
+          @views ldivVertical!(Jac,k[:,:,:,:,iStage])
+          @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
+        end
+        @inbounds for iStage = 1 : nStage
+          @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
+        end
+        if mod(i,nPrint) == 0 || i == nIter
+          Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+        end
       end
-      @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheF,Phys,Global,Grid.Type)
-      @inbounds for jStage = 1 : iStage - 1
-        fac = ROS.c[iStage,jStage] / dtau
-        @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
-      end
-      @views ldivVertical!(Jac,k[:,:,:,:,iStage])
-      @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
-    end
-    @inbounds for iStage = 1 : nStage
-      @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
-    end
-    if mod(i,nPrint) == 0 || i == IterTime
+      percent = i/nIter*100
       if Proc == 1
-        @show "Print",i
+        @info "Iteration: $i took $Δt, $percent% complete"
       end
-      Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
     end
   end  
 end  
 
-function RosenbrockSparse(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+function RosenbrockSparse(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -82,7 +84,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Tran
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
   kLoc = zeros(3*N)
-  @inbounds for i = 1 : IterTime
+  @inbounds for i = 1 : nIter
     if Proc == 1
       @show "Sparse",i,nPrint
     end  
@@ -124,7 +126,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Tran
     @inbounds for iStage = 1 : nStage
       @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
     end
-    if mod(i,nPrint) == 0 || i == IterTime
+    if mod(i,nPrint) == 0 || i == nIter
       if Proc == 1
         @show "Print",i
       end
@@ -134,7 +136,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Tran
 end  
 
 
-function RosenbrockEul(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+function RosenbrockEul(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -158,7 +160,7 @@ function RosenbrockEul(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,P
 
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-  @inbounds for i = 1 : IterTime
+  @inbounds for i = 1 : nIter
     if Proc == 1
       @show "RosEul",i,nPrint
     end  
@@ -172,7 +174,7 @@ function RosenbrockEul(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,P
     end  
     @views @. fU[:,:,:,2:3] = fU[:,:,:,2:3,:] * dtau 
     @. UI = UI + fU
-    if mod(i,nPrint) == 0 || i == IterTime
+    if mod(i,nPrint) == 0 || i == nIter
       if Proc == 1
         @show "Print",i
       end
@@ -181,7 +183,7 @@ function RosenbrockEul(ROS,U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,P
   end  
 end  
 
-function RK3(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
+function RK3(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -199,7 +201,7 @@ function RK3(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
   @views UNewI = UNew[:,:,1:DG.NumI,:]
   
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-  @inbounds for i = 1 : IterTime
+  @inbounds for i = 1 : nIter
       if Proc == 1
         @show i,nPrint
       end  
@@ -218,7 +220,7 @@ function RK3(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
     fac = FTB(dtau)
     @. UI = UI + fac * FU
 
-    if mod(i,nPrint) == 0 || i == IterTime
+    if mod(i,nPrint) == 0 || i == nIter
       if Proc == 1
         @show "Print",i
       end  
@@ -228,7 +230,7 @@ function RK3(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
 end
 
 
-function RK1(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
+function RK1(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -244,7 +246,7 @@ function RK1(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
   @views UI = U[:,:,1:DG.NumI,:]
   
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-  @inbounds for i = 1 : IterTime
+  @inbounds for i = 1 : nIter
       if Proc == 1
         @show i,nPrint
       end  
@@ -253,7 +255,7 @@ function RK1(U,Fcn,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Globa
     fac = FTB(dtau)
     @. UI = UI + fac * FU
 
-    if mod(i,nPrint) == 0 || i == IterTime
+    if mod(i,nPrint) == 0 || i == nIter
       if Proc == 1
         @show "Print",i
       end  
