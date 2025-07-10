@@ -431,6 +431,7 @@ mutable struct DGTri{FT<:AbstractFloat,
     OrdPolyZ::Int
     NumG::Int
     NumI::Int
+    ksiCPU::Array{FT, 2}
     ksi::AT2
     Glob::IT2
     GlobE::IT3
@@ -858,6 +859,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     OrdPolyZ,
     NumG,
     NumI,
+    ksi,
     ksiGPU,
     Glob,
     GlobE,

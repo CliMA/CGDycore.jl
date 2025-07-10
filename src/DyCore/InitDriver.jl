@@ -60,7 +60,7 @@ function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,
   if Topography.TopoS == "EarthOrography"
     @time zS, GradDx_zs, GradDy_zs = Grids.Orography4(backend,FT,CG,Exchange,Global)
   else
-    zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile)
+    zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
   Metric = DiscretizationDG(backend,FT,Grids.JacobiSphereDG3GPU!,DG,Exchange,Global,zS,Grid.Type)

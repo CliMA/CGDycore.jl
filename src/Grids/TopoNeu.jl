@@ -214,7 +214,7 @@ function TopoDataGLOBE()
   end  
 end
 
-function Orography(backend,FT,CG,Exchange,Global,TopoProfile)
+function Orography(backend,FT,CG,Exchange,Global,TopoProfile,type::Grids.Quad)
   Grid = Global.Grid
   Faces = Grid.Faces
   Proc = Global.ParallelCom.Proc
@@ -253,6 +253,39 @@ function Orography(backend,FT,CG,Exchange,Global,TopoProfile)
   HeightCG = KernelAbstractions.zeros(backend,FT,(OrdPoly+1)*(OrdPoly+1),NF)
   copyto!(HeightCG,reshape(HeightCGCPU,(OrdPoly+1)*(OrdPoly+1),NF))
 
+  return HeightCG
+end
+
+function Orography(backend,FT,FE,Exchange,Global,TopoProfile,type::Grids.Tri)
+  Grid = Global.Grid
+  Faces = Grid.Faces
+  Nodes = Grid.Nodes
+  Proc = Global.ParallelCom.Proc
+  NF = Grid.NumFaces
+  DoF = FE.DoF
+  HeightCGCPU = zeros(Float64,DoF,NF)
+  X = zeros(3)
+  for iF = 1 : NF
+    for iDoF = 1 : DoF  
+      P1 = Nodes[Faces[iF].N[1]].P
+      P2 = Nodes[Faces[iF].N[2]].P
+      P3 = Nodes[Faces[iF].N[3]].P
+      x1 = FE.ksi[1,iDoF]
+      x2 = FE.ksi[2,iDoF]
+      X[1] = -0.5 * (x1 + x2) * P1.x +
+         0.5 * (1 + x1) * P2.x + 
+         0.5 * (1 + x2) * P3.x  
+      X[2] = -0.5 * (x1 + x2) * P1.y +
+         0.5 * (1 + x1) * P2.y + 
+         0.5 * (1 + x2) * P3.y  
+      X[3] = -0.5 * (x1 + x2) * P1.z +
+         0.5 * (1 + x1) * P2.z + 
+         0.5 * (1 + x2) * P3.z  
+      HeightCGCPU[iDoF,iF] = TopoProfile(X)
+    end  
+  end  
+  HeightCG = KernelAbstractions.zeros(backend,FT,DoF,NF)
+  copyto!(HeightCG,HeightCGCPU)
   return HeightCG
 end
 

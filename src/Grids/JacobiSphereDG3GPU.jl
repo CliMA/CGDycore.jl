@@ -215,7 +215,7 @@ end
 
   dXdx = @private eltype(X) (3,3)
 
-  if Iz <= Nz
+  if Iz <= Nz && K == 1
     ID = I + (J - 1) * N
     zsLoc[I,J] = zs[ID,IF]
   end
@@ -244,7 +244,6 @@ end
      F[4,3,IF] * (eltype(X)(1)-ksi1)*(eltype(X)(1)+ksi2))
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
     hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[ID,IF])
-    #hR,dhrdz,dhrdzs = AdaptGrid(zLoc,eltype(X)(0))
     r = sqrt(XT1 * XT1 + XT2 * XT2 + XT3 * XT3)
     f = eltype(X)(1) / r^3
     dX1dXT1 = f * (XT2^2 + XT3^2) 
@@ -335,10 +334,10 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Tr
 
   KJacobiSphereDGTriKernel! = JacobiSphereDGTriKernel!(backend,group)
 
-  KJacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.ksi,FE.xwZ,FE.Dx1,FE.Dx2,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
+  KJacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.Glob,FE.ksi,FE.xwZ,FE.Dx1,FE.Dx2,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
 end
 
-@kernel inbounds = true function JacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,JJ,Rotate,@Const(ksi),@Const(zeta),
+@kernel inbounds = true function JacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,JJ,Rotate,@Const(Glob),@Const(ksi),@Const(zeta),
   @Const(Dx1),@Const(Dx2),@Const(DZ),@Const(F),@Const(z),@Const(zs),Rad)
 
   ID, K, iz   = @index(Local, NTuple)
@@ -352,6 +351,7 @@ end
   H = @uniform z[Nz+1]
 
   dXdx = @private eltype(X) (3,3)
+
 
   if Iz <= Nz
     z1 = z[Iz]
@@ -369,8 +369,7 @@ end
      F[2,3,IF] * (eltype(X)(1)+ksi1) +
      F[3,3,IF] * (eltype(X)(1)+ksi2)) 
     zLoc = eltype(X)(1/2) * ((eltype(X)(1)-ksi3) * z1 + (eltype(X)(1)+ksi3) * z2)
-#   hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[I,J,IF])
-    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,eltype(X)(0))
+    hR,dhrdz,dhrdzs = AdaptGrid(zLoc,zs[ID,IF])
     r = sqrt(XT1 * XT1 + XT2 * XT2 + XT3 * XT3)
     f = eltype(X)(1) / r^3
     dX1dXT1 = f * (XT2^2 + XT3^2) 
@@ -385,16 +384,14 @@ end
     J1 = @SArray([dX1dXT1    dX1dXT2     dX1dXT3
                   dX2dXT1    dX2dXT2     dX2dXT3
                   dX3dXT1    dX3dXT2     dX3dXT3])
-    dzsdksi1 = eltype(X)(0)
-    dzsdksi2 = eltype(X)(0)
-#=    
-    dzsdksi1 = D[I,1] * zs[1,J,IF]
-    dzsdksi2 = D[J,1] * zs[I,1,IF]
+
+    dzsdksi1 = Dx1[ID,1] * zs[1,ID]
+    dzsdksi2 = Dx2[ID,1] * zs[1,IF]
     for k = 2 : N
-      dzsdksi1 += D[I,k] * zs[k,J,IF]
-      dzsdksi2 += D[J,k] * zs[I,k,IF]
+      dzsdksi1 += Dx1[ID,k] * zs[ID,IF]
+      dzsdksi2 += Dx2[ID,k] * zs[ID,IF]
     end  
-=#    
+
     B = @SArray([F[1,1,IF] F[2,1,IF] F[3,1,IF] 
                  F[1,2,IF] F[2,2,IF] F[3,2,IF]
                  F[1,3,IF] F[2,3,IF] F[3,3,IF]])
