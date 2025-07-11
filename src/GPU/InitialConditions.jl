@@ -28,8 +28,6 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   end    
 
   U = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG,lengthU)
-  Global.ThetaBGrd = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG)
-  ThBG = Global.ThetaBGrd
   @views Rho = U[:,:,Model.RhoPos]
   @views u = U[:,:,Model.uPos]
   @views v = U[:,:,Model.vPos]
@@ -46,8 +44,8 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   if State == "Dry" || State == "Moist" || State == "ShallowWater"
     KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
-    KThBGFunCKernel! = ThBGFunCKernel!(backend, group)
-    KThBGFunCKernel!(Profile,ThBG,time,Glob,X,ndrange=ndrange)
+#   KThBGFunCKernel! = ThBGFunCKernel!(backend, group)
+#   KThBGFunCKernel!(Profile,ThBG,time,Glob,X,ndrange=ndrange)
   elseif State == "DryInternalEnergy" || State == "MoistInternalEnergy" || 
     State == "IceInternalEnergy"
     KRhoIEFunCKernel! = RhoIEFunCKernel!(backend, group)
