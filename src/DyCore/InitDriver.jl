@@ -168,7 +168,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,T
   if Topography.TopoS == "EarthOrography"
     zS = Grids.Orography(backend,FT,CG,Exchange,Global)
   else
-    zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile)
+    zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
   (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
