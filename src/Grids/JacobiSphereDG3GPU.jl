@@ -385,11 +385,11 @@ end
                   dX2dXT1    dX2dXT2     dX2dXT3
                   dX3dXT1    dX3dXT2     dX3dXT3])
 
-    dzsdksi1 = Dx1[ID,1] * zs[1,ID]
+    dzsdksi1 = Dx1[ID,1] * zs[1,IF]
     dzsdksi2 = Dx2[ID,1] * zs[1,IF]
     for k = 2 : N
-      dzsdksi1 += Dx1[ID,k] * zs[ID,IF]
-      dzsdksi2 += Dx2[ID,k] * zs[ID,IF]
+      dzsdksi1 += Dx1[ID,k] * zs[k,IF]
+      dzsdksi2 += Dx2[ID,k] * zs[k,IF]
     end  
 
     B = @SArray([F[1,1,IF] F[2,1,IF] F[3,1,IF] 

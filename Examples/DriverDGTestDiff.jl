@@ -325,6 +325,49 @@ else
     Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 end
 
+for iDoF = 1 : DG.DoF
+  @show DG.Dx1[iDoF,:]  
+end
+for iDoF = 1 : DG.DoF
+  @show DG.Dx2[iDoF,:]  
+end
+
+# Testing of Differentation
+  zzS = zeros(DG.DoF)
+  Dx1zzS = zeros(DG.DoF)
+  Dx2zzS = zeros(DG.DoF)
+# Quadratic
+  for iDoF = 1 : DG.DoF
+    x1 = DG.ksiCPU[1,iDoF] 
+    x2 = DG.ksiCPU[2,iDoF] 
+    zzS[iDoF] = 3.0 * x1^2 + 5 * x1 * x2 + 6 * x2^2 + 7 * x1 - 6 * x2
+    Dx1zzS[iDoF] = 6.0 * x1 + 5 * x2 + 7 
+    Dx2zzS[iDoF] = 5.0 * x1 + 12.0 * x2 - 6.0
+  end  
+  Dx1 = DG.Dx1 * zzS
+  Dx2 = DG.Dx2 * zzS
+  @show Dx1
+  @show Dx1zzS
+  @show Dx2
+  @show Dx2zzS
+# Cubed  
+  for iDoF = 1 : DG.DoF
+    x1 = DG.ksiCPU[1,iDoF] 
+    x2 = DG.ksiCPU[2,iDoF] 
+    zzS[iDoF] = 3.0 * x1^3 + 5 * x1^2 * x2 + 7.0 * x1*x2^2 - 4.0 * x2^3 
+    Dx1zzS[iDoF] = 9.0 * x1^2 + 10.0 * x1 * x2 + 7.0 * x2^2
+    Dx2zzS[iDoF] = 5.0 * x1^2 + 14.0 * x1 * x2 - 12.0 * x2^2
+  end  
+  Dx1 = DG.Dx1 * zzS
+  Dx2 = DG.Dx2 * zzS
+  phi,Gradphi = FiniteElements.ConstructDG(3,DG.ksiCPU,Grid.Type)
+  @show phi
+  for iDoF = 1 : DG.DoF
+    @show phi[iDoF](DG.ksiCPU[1,1],DG.ksiCPU[2,1])  
+    @show Gradphi[iDoF,1](DG.ksiCPU[1,1],DG.ksiCPU[2,1])  
+    @show Gradphi[iDoF,2](DG.ksiCPU[1,1],DG.ksiCPU[2,1])  
+  end  
+  stop
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)

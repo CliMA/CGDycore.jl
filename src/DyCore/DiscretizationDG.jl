@@ -226,6 +226,14 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
     KGridSizeCartKernel!(Metric.dz,Metric.X,DG.Glob,ndrange=ndrange)
   end
 
+  NFG = min(div(NumberThreadGPU,DoF),NF)
+  group = (DoF, NFG)
+  ndrange = (DoF, NF)
+  if Grid.Form == "Sphere"
+    KMetricLowerBoundaryKernel! = MetricLowerBoundaryDGKernel!(backend,group)
+    KMetricLowerBoundaryKernel!(Metric.xS,Metric.X,DG.Glob,ndrange=ndrange)
+  end
+
   EFCPU = zeros(Int,2,NE)
   FECPU = zeros(Int,2,NE)
   for iE = 1 : NE
