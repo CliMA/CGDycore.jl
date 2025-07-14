@@ -310,7 +310,7 @@ else
 end  
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
-DGMethod = "Kubatko2"
+DGMethod = "Kubatko2LGL"
 
 if GridForm == "Cartesian"
   if ParallelCom.Proc == 1

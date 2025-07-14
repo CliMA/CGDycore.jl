@@ -310,7 +310,7 @@ else
 end  
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
-DGMethod = "Kubatko2"
+DGMethod = "Kubatko2LGL"
 
 if GridForm == "Cartesian"
   if ParallelCom.Proc == 1
@@ -326,10 +326,10 @@ else
 end
 
 for iDoF = 1 : DG.DoF
-  @show DG.Dx1[iDoF,:]  
+  @show DG.DSx1[iDoF,:]
 end
 for iDoF = 1 : DG.DoF
-  @show DG.Dx2[iDoF,:]  
+  @show DG.DSx2[iDoF,:]
 end
 
 # Testing of Differentation
@@ -338,34 +338,52 @@ end
   Dx2zzS = zeros(DG.DoF)
 # Quadratic
   for iDoF = 1 : DG.DoF
-    x1 = DG.ksiCPU[1,iDoF] 
-    x2 = DG.ksiCPU[2,iDoF] 
+    x1 = DG.ksiCPU[1,iDoF]
+    x2 = DG.ksiCPU[2,iDoF]
     zzS[iDoF] = 3.0 * x1^2 + 5 * x1 * x2 + 6 * x2^2 + 7 * x1 - 6 * x2
-    Dx1zzS[iDoF] = 6.0 * x1 + 5 * x2 + 7 
+    Dx1zzS[iDoF] = 6.0 * x1 + 5 * x2 + 7
     Dx2zzS[iDoF] = 5.0 * x1 + 12.0 * x2 - 6.0
-  end  
-  Dx1 = DG.Dx1 * zzS
-  Dx2 = DG.Dx2 * zzS
+  end
+  Dx1 = DG.DSx1 * zzS
+  Dx2 = DG.DSx2 * zzS
   @show Dx1
   @show Dx1zzS
   @show Dx2
   @show Dx2zzS
-# Cubed  
+# Cubed
   for iDoF = 1 : DG.DoF
-    x1 = DG.ksiCPU[1,iDoF] 
-    x2 = DG.ksiCPU[2,iDoF] 
-    zzS[iDoF] = 3.0 * x1^3 + 5 * x1^2 * x2 + 7.0 * x1*x2^2 - 4.0 * x2^3 
+    x1 = DG.ksiCPU[1,iDoF]
+    x2 = DG.ksiCPU[2,iDoF]
+    zzS[iDoF] = 3.0 * x1^3 + 5 * x1^2 * x2 + 7.0 * x1*x2^2 - 4.0 * x2^3
     Dx1zzS[iDoF] = 9.0 * x1^2 + 10.0 * x1 * x2 + 7.0 * x2^2
     Dx2zzS[iDoF] = 5.0 * x1^2 + 14.0 * x1 * x2 - 12.0 * x2^2
-  end  
+  end
   Dx1 = DG.Dx1 * zzS
   Dx2 = DG.Dx2 * zzS
-  phi,Gradphi = FiniteElements.ConstructDG(3,DG.ksiCPU,Grid.Type)
+
+
+
+  ksi = zeros(2,10)
+  ksi[:,1] = [-1 -1]
+  ksi[:,2] = [-0.447213595499958 -1]
+  ksi[:,3] = [0.447213595499958 -1]
+  ksi[:,4] = [1 -1]
+  ksi[:,5] = [0.447213595499958 -0.447213595499958]
+  ksi[:,6] = [-0.447213595499958 0.447213595499958]
+  ksi[:,7] = [-1 1]
+  ksi[:,8] = [-1 0.447213595499958]
+  ksi[:,9] = [-1 -0.447213595499958]
+  ksi[:,10] = [-0.333333333333333 -0.333333333333333]
+  phi,Gradphi = FiniteElements.ConstructDG(3,ksi,Grid.Type)
   @show phi
   for iDoF = 1 : DG.DoF
-    @show phi[iDoF](DG.ksiCPU[1,1],DG.ksiCPU[2,1])  
     @show Gradphi[iDoF,1](DG.ksiCPU[1,1],DG.ksiCPU[2,1])  
-    @show Gradphi[iDoF,2](DG.ksiCPU[1,1],DG.ksiCPU[2,1])  
+  end  
+  @show "-----------------"
+  for iDoF = 1 : DG.DoF
+    t1 = Gradphi[iDoF,1](DG.ksiCPU[1,4],DG.ksiCPU[2,4])  
+    t2 = Gradphi[iDoF,2](DG.ksiCPU[1,4],DG.ksiCPU[2,4])  
+    @show t1 - t2
   end  
   stop
 

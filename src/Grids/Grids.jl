@@ -20,6 +20,8 @@ using LinearAlgebra
 using SparseArrays
 using Interpolations
 using MPI
+using FastGaussQuadrature
+using DynamicPolynomials
 
 EPS::Float64 = eps(Float64)
 EPS2 = EPS * EPS

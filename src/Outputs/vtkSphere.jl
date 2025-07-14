@@ -253,14 +253,14 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
   ipts = 1
   if Global.Grid.Type == Grids.Tri()
   phiEval = zeros(size(FE.phi,1),NumRefine,NumPoint)
-  @inbounds for iphi = 1 : size(FE.phi,1)
-    @inbounds for iNumRefine = 1 : NumRefine
-      @inbounds for iNumPoint = 1 : NumPoint
-        phiEval[iphi,iNumRefine,iNumPoint] = FE.phi[iphi](RefinePoints[iNumRefine,iNumPoint,1],
-          RefinePoints[iNumRefine,iNumPoint,2])
+    @inbounds for iphi = 1 : size(FE.phi,1)
+      @inbounds for iNumRefine = 1 : NumRefine
+        @inbounds for iNumPoint = 1 : NumPoint
+          phiEval[iphi,iNumRefine,iNumPoint] = FE.phi[iphi](RefinePoints[iNumRefine,iNumPoint,1],
+            RefinePoints[iNumRefine,iNumPoint,2])
+        end  
       end  
     end  
-  end  
   end
   GridType = Global.Grid.Type
   @inbounds for iF = 1 : NF

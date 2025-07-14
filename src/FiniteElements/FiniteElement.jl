@@ -425,6 +425,7 @@ mutable struct DGTri{FT<:AbstractFloat,
                         AT2<:AbstractArray,
                         IT2<:AbstractArray,
                         IT3<:AbstractArray} <: DGElement 
+    k::Int                   
     DoFN::Int                   
     DoFE::Int                   
     DoF::Int
@@ -519,6 +520,73 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     PosDoFE[1,3] = 3 
     PosDoFE[2,3] = 4 
     @. wF = w[1:k+1] / wF
+  elseif Method  == "Kubatko2LGL"
+    k = 2
+    n = 10
+    ksi = zeros(2,n)
+    N = zeros(2,n)
+    w = zeros(n)
+    wFR = zeros(n)
+
+    ksi[:,1] = [-1 -1] 
+    ksi[:,2] = [-0.447213595499958 -1] 
+    ksi[:,3] = [0.447213595499958 -1] 
+    ksi[:,4] = [1 -1] 
+    ksi[:,5] = [0.447213595499958 -0.447213595499958]
+    ksi[:,6] = [-0.447213595499958 0.447213595499958]
+    ksi[:,7] = [-1 1] 
+    ksi[:,8] = [-1 0.447213595499958] 
+    ksi[:,9] = [-1 -0.447213595499958] 
+    ksi[:,10] = [-0.333333333333333 -0.333333333333333]
+
+    N[:,1] = N1 + N3
+    N[:,2] = N1
+    N[:,3] = N1
+    N[:,4] = N1 + N2
+    N[:,5] = N2
+    N[:,6] = N2
+    N[:,7] = N2 + N3
+    N[:,8] = N3
+    N[:,9] = N3
+
+    w[1] = 0.033333333333333 
+    w[2] = 0.166666666666667
+    w[3] = 0.166666666666667
+    w[4] = 0.033333333333333 
+    w[5] = 0.166666666666667
+    w[6] = 0.166666666666667
+    w[7] = 0.033333333333333 
+    w[8] = 0.166666666666667
+    w[9] = 0.166666666666667
+    w[10] = 0.9
+
+    _, wF = gausslobatto(k+2)
+    @. wFR[1:4] = wF
+    @. wFR[4:7] = wF
+    @. wFR[7:9] = wF[1:3]
+    wFR[1] = wF[4]
+
+    DoFE = 4
+    PosDoFE = zeros(Int,DoFE,3)
+
+    PosDoFE[1,1] = 1
+    PosDoFE[2,1] = 2
+    PosDoFE[3,1] = 3
+    PosDoFE[4,1] = 4
+
+    PosDoFE[1,2] = 4
+    PosDoFE[2,2] = 5
+    PosDoFE[3,2] = 6
+    PosDoFE[4,2] = 7
+
+    PosDoFE[1,3] = 7
+    PosDoFE[2,3] = 8
+    PosDoFE[3,3] = 9
+    PosDoFE[4,3] = 1
+
+    wE = [w[1], w[2], w[3], w[4]] 
+    @. wF = wE / wF
+
   elseif Method  == "Kubatko2"
     k = 2
     n = 10
@@ -567,12 +635,20 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     wFR[k+1+1:2*(k+1)] = wF
     wFR[2*(k+1)+1:3*(k+1)] = wF
     DoFE = k + 1
+
     PosDoFE = zeros(Int,DoFE,3)
-    for i = 1 : k + 1
-      PosDoFE[i,1] = i
-      PosDoFE[i,2] = i + k + 1 
-      PosDoFE[i,3] = i + 2 * (k + 1) 
-    end  
+    PosDoFE[1,1] = 1
+    PosDoFE[2,1] = 2
+    PosDoFE[3,1] = 3
+
+    PosDoFE[1,2] = 4
+    PosDoFE[2,2] = 5
+    PosDoFE[3,2] = 6
+
+    PosDoFE[1,3] = 7
+    PosDoFE[2,3] = 8
+    PosDoFE[3,3] = 9
+
     @. wF = w[1:k+1] / wF
   elseif Method  == "Kubatko5"
     k = 5
@@ -729,6 +805,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     PosDoFE[2,3] = 6 
     PosDoFE[3,3] = 3 
   end
+
   DoF = n
   wFx1 = wFR .* N[1,:]
   wFx2 = wFR .* N[2,:]
@@ -853,6 +930,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
                typeof(Dx1),
                typeof(Glob),
                typeof(GlobE)}(
+    k,           
     DoFN,
     DoFE,
     DoF,
@@ -937,47 +1015,5 @@ function DG1{FT}(backend,OrdPolyZ,OrdPrintZ) where FT<:AbstractFloat
     DVZ,
     DVZT,
   )
-end
-
-
-function ConstructDG(k,NodalPoints,ElemType::Grids.Tri)
-  s = @polyvar x[1:2]
-
-  if k == 0
-    println("error: k must be greater than 0")
-    return
-  end  
-  phi = DG.Polynomial_k(k,s)
-  DoF = length(phi)
-  phiB = Array{Polynomial,1}(undef,DoF)
-  Gradphi = Array{Polynomial,2}(undef,DoF,2)
-  I = zeros(DoF,DoF)
-# Compute functional over nodes
-  @inbounds for iDoF = 1 : DoF
-    @inbounds for jDoF = 1 : DoF
-      I[iDoF,jDoF] = phi[jDoF](NodalPoints[1,iDoF],NodalPoints[2,iDoF])
-    end
-  end  
-  @inbounds for iDoF = 1 : DoF  
-    @inbounds for jDoF = 1 : DoF  
-      if abs(I[iDoF,jDoF]) < 1.e-12
-        I[iDoF,jDoF] = 0
-      end
-    end
-  end  
-  r = zeros(DoF)
-  @inbounds for iDoF = 1 : DoF  
-    r[iDoF] = 1
-    c = I \ r
-    phiB[iDoF] = 0.0 * x[1] + 0.0 * x[2]
-    @inbounds for jDoF = 1 : DoF  
-      phiB[iDoF] += c[jDoF] * phi[jDoF]
-    end  
-    phiB[iDoF] = round.(phiB[iDoF], digits=5)
-    r[iDoF] = 0
-    Gradphi[iDoF,1] = differentiate(phiB[iDoF],x[1])
-    Gradphi[iDoF,2] = differentiate(phiB[iDoF],x[2])
-  end  
-  return phiB, Gradphi
 end
 

@@ -318,7 +318,7 @@ end
 end  
 
 
-function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Tri)
+function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::Grids.Tri)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -332,9 +332,28 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Tr
   group = (N, M, NzG, 1)
   ndrange = (N, M, Nz, NF)
 
+  if FE.k+1 == FE.DoFE
+    ConstructDG(FE.k,FE.ksiCPU,ElemType)
+  else
+    Gradphi = ConstructDG(FE.k+1,FE.ksiCPU,ElemType)
+    Dx1 = zeros(N,N)
+    Dx2 = zeros(N,N)
+    for iDoF = 1 : N
+      for jDoF = 1 : N
+        Dx1[iDoF,jDoF] = Gradphi[jDoF,1](FE.ksiCPU[1,iDoF],FE.ksiCPU[2,iDoF])  
+        Dx2[iDoF,jDoF] = Gradphi[jDoF,2](FE.ksiCPU[1,iDoF],FE.ksiCPU[2,iDoF])  
+      end
+    end  
+  end  
+  Dx1GPU = KernelAbstractions.zeros(backend,FT,N,N)
+  copyto!(Dx1GPU,Dx1)
+  Dx2GPU = KernelAbstractions.zeros(backend,FT,N,N)
+  copyto!(Dx2GPU,Dx2)
+
   KJacobiSphereDGTriKernel! = JacobiSphereDGTriKernel!(backend,group)
 
-  KJacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.Glob,FE.ksi,FE.xwZ,FE.Dx1,FE.Dx2,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
+  KJacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.Glob,FE.ksi,FE.xwZ,Dx1GPU,Dx2GPU,
+    FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
 end
 
 @kernel inbounds = true function JacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,JJ,Rotate,@Const(Glob),@Const(ksi),@Const(zeta),
@@ -444,4 +463,44 @@ end
   end
 end  
 
+function ConstructDG(k,NodalPoints,ElemType::Tri)
+  s = @polyvar x[1:2]
+
+  if k == 0
+    println("error: k must be greater than 0")
+    return
+  end  
+  phi = DG.Polynomial_k(k,s)
+  DoF = length(phi)
+  phiB = Array{Polynomial,1}(undef,DoF)
+  Gradphi = Array{Polynomial,2}(undef,DoF,2)
+  I = zeros(DoF,DoF)
+# Compute functional over nodes
+  @inbounds for iDoF = 1 : DoF
+    @inbounds for jDoF = 1 : DoF
+      I[iDoF,jDoF] = phi[jDoF](NodalPoints[1,iDoF],NodalPoints[2,iDoF])
+    end
+  end  
+  @inbounds for iDoF = 1 : DoF  
+    @inbounds for jDoF = 1 : DoF  
+      if abs(I[iDoF,jDoF]) < 1.e-12
+        I[iDoF,jDoF] = 0
+      end
+    end
+  end  
+  r = zeros(DoF)
+  @inbounds for iDoF = 1 : DoF  
+    r[iDoF] = 1
+    c = I \ r
+    phiB[iDoF] = 0.0 * x[1] + 0.0 * x[2]
+    @inbounds for jDoF = 1 : DoF  
+      phiB[iDoF] += c[jDoF] * phi[jDoF]
+    end  
+    phiB[iDoF] = round.(phiB[iDoF], digits=5)
+    r[iDoF] = 0
+    Gradphi[iDoF,1] = differentiate(phiB[iDoF],x[1])
+    Gradphi[iDoF,2] = differentiate(phiB[iDoF],x[2])
+  end  
+  return Gradphi
+end
 

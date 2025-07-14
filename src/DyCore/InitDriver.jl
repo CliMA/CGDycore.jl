@@ -228,7 +228,7 @@ function InitCartDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,To
   if Topography.TopoS == "EarthOrography"
     zS = Grids.Orography(backend,FT,CG,Exchange,Global)
   else
-    zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile)
+    zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
   Metric = DiscretizationDG(backend,FT,Grids.JacobiCartDG3GPU!,DG,Exchange,Global,zS,Grid.Type)

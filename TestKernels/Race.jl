@@ -8,24 +8,25 @@ using ImageShow, ImageIO
 function index_fun(arr; backend=get_backend(arr))
 	out = similar(arr)
 	fill!(out, 0)
+        NumKernel = 2
 	kernel! = my_kernel!(backend)
 	kernel!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
         KernelAbstractions.synchronize(backend)
-        @time for i = 1 : 200
+        @time for i = 1 : NumKernel
 	    kernel!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
             KernelAbstractions.synchronize(backend)
         end    
 	kernel1! = my_kernel1!(backend)
 	kernel1!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
         KernelAbstractions.synchronize(backend)
-        @time for i = 1 : 200
+        @time for i = 1 : NumKernel
 	    kernel1!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
             KernelAbstractions.synchronize(backend)
         end    
 	kernel2! = my_kernel2!(backend)
 	kernel2!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
         KernelAbstractions.synchronize(backend)
-        @time for i = 1 : 200
+        @time for i = 1 : NumKernel
 	    kernel2!(out, arr, ndrange=(size(arr, 1), size(arr, 2)))
             KernelAbstractions.synchronize(backend)
         end    
@@ -76,10 +77,13 @@ end
 
 FT = Float32
 
-imgGPU = KernelAbstractions.zeros(backend, FT, (500, 500));
-img = zeros(FT, (500, 500));
-img[100:200, 100:200] .= 1;
-img[350:450, 350:450] .= 2;
+@show backend
+n=10
+imgGPU = KernelAbstractions.zeros(backend, FT, (5*n, 5*n));
+img = zeros(FT, (5*n, 5*n));
+img[1*n:2*n, 1*n:2*n] .= 1;
+img[3*n:4*n, 3*n:4*n] .= 2;
 copyto!(imgGPU,img)
 
 out = Array(index_fun(imgGPU));
+@show "Ende",sum(abs.(out))
