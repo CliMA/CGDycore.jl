@@ -327,7 +327,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KLimitKernel! = LimitKernel!(backend, groupL)
 
 # BoundaryValues
-  @. @views U[:,BoundaryDoF,vPos] = FT(0.0)
+  @. @views U[:,BoundaryDoF,vPos] = FT(0)
 
   if HorLimit
     @views KLimitKernel!(DoF,q[:,:,1:NumTr],q[:,:,NumTr+1:2*NumTr],UTr,

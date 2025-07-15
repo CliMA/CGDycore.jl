@@ -1,24 +1,23 @@
-mutable struct RungeKuttaMethod{FT<:AbstractFloat}
+mutable struct RungeKuttaStruct
   nStage::Int
   Type::String
-  ARKE::Array{FT, 2}
-  bRKE::Array{FT, 1}
-  cRKE::Array{FT, 1}
-  ARKI::Array{FT, 2}
-  bRKI::Array{FT, 1}
-  gRKI::Array{FT, 1}
+  ARKE::Array{Float64, 2}
+  bRKE::Array{Float64, 1}
+  cRKE::Array{Float64, 1}
+  ARKI::Array{Float64, 2}
+  bRKI::Array{Float64, 1}
+  gRKI::Array{Float64, 1}
 end
-
-function RungeKuttaMethod{FT}() where FT<:AbstractFloat
+function RungeKuttaMethod()
   nStage=0
   Type=""
-  ARKE=zeros(FT,0,0)
-  bRKE=zeros(FT,0)
-  cRKE=zeros(FT,0)
-  ARKI=zeros(FT,0,0)
-  bRKI=zeros(FT,0)
-  gRKI=zeros(FT,0)
-  return RungeKuttaMethod{FT}(
+  ARKE=zeros(0,0)
+  bRKE=zeros(0)
+  cRKE=zeros(0)
+  ARKI=zeros(0,0)
+  bRKI=zeros(0)
+  gRKI=zeros(0)
+  return RungeKuttaStruct(
   nStage,
   Type,
   ARKE,
@@ -29,13 +28,12 @@ function RungeKuttaMethod{FT}() where FT<:AbstractFloat
   gRKI,
   )
 end  
-
-function RungeKuttaMethod{FT}(Method) where FT<:AbstractFloat
+function RungeKuttaMethod(Method)
   str = Method
 if str == "ARK32"
     RK.nStage=3;
-    RK.ARKE=zeros(FT,RK.nStage,RK.nStage);
-    RK.bRKE=zeros(FT,1,RK.nStage);
+    RK.ARKE=zeros(RK.nStage,RK.nStage);
+    RK.bRKE=zeros(1,RK.nStage);
     RK.ARKE[2,1]=2-sqrt(2);
     ARKE32=1/6*(3 + sqrt(2));
     RK.ARKE[3,1]=1-ARKE32;
@@ -43,8 +41,8 @@ if str == "ARK32"
     RK.bRKE[1]=1/(2*sqrt(2));
     RK.bRKE[2]=1/(2*sqrt(2));
     RK.bRKE[3]=1-1/(sqrt(2));
-    RK.ARKI=zeros(FT,RK.nStage,RK.nStage);
-    RK.bRKI=zeros(FT,1,RK.nStage);
+    RK.ARKI=zeros(RK.nStage,RK.nStage);
+    RK.bRKI=zeros(1,RK.nStage);
     RK.ARKI[2,1]=1-1/(sqrt(2));
     RK.ARKI[2,2]=1-1/(sqrt(2));
     RK.ARKI[3,1]=1/(2*sqrt(2));
@@ -57,8 +55,8 @@ if str == "ARK32"
 elseif str == "Trap2(2,3,2)"
     #Trap2(2,3,2)
     RK.nStage=4;
-    RK.ARKE=zeros(FT,RK.nStage,RK.nStage);
-    RK.bRKE=zeros(FT,1,RK.nStage);
+    RK.ARKE=zeros(RK.nStage,RK.nStage);
+    RK.bRKE=zeros(1,RK.nStage);
     RK.ARKE[2,1]=1;
     RK.ARKE[3,1]=1/2;
     RK.ARKE[3,2]=1/2;
@@ -71,69 +69,69 @@ elseif str == "Trap2(2,3,2)"
 elseif str == "RK1"
     nStage=1
     Type=""
-    ARKE=zeros(FT,nStage,nStage);
+    ARKE=zeros(nStage,nStage);
     bRKE=[1];
     cRKE=[0];
-    ARKI=zeros(FT,0,0)
-    bRKI=zeros(FT,0)
-    gRKI=zeros(FT,0)
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "RK1I"
     RK.nStage=1;
-    RK.ARKE=zeros(FT,RK.nStage,RK.nStage);
+    RK.ARKE=zeros(RK.nStage,RK.nStage);
     RK.ARKE[1,1]=1;
-    RK.bRKE=zeros(FT,1,RK.nStage);
+    RK.bRKE=zeros(1,RK.nStage);
     RK.bRKE[1]=1;
 elseif str == "RK4"
     nStage=4;
     Type=""
-    ARKE=zeros(FT,nStage,nStage);
+    ARKE=zeros(nStage,nStage);
     ARKE[2,1]=1/2;
     ARKE[3,2]=1/2;
     ARKE[4,3]=1;
     bRKE=[1/6,1/3,1/3,1/6];
     cRKE=[0,1/2,1/2,1];
-    ARKI=zeros(FT,0,0)
-    bRKI=zeros(FT,0)
-    gRKI=zeros(FT,0)
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "SSP3"
     nStage=3;
     Type=""
-    ARKE=zeros(FT,nStage,nStage);
+    ARKE=zeros(nStage,nStage);
     ARKE[2,1] = 1.0
     ARKE[3,1] = 0.25
     ARKE[3,2] = 0.25
     bRKE = [1/6,1/6,1/3]
     cRKE = [0,1,1/2]
-    ARKI=zeros(FT,0,0)
-    bRKI=zeros(FT,0)
-    gRKI=zeros(FT,0)
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "Kinnmark"
     nStage=5;
     Type="LowStorage"
-    ARKE=zeros(FT,nStage,nStage);
+    ARKE=zeros(nStage,nStage);
     ARKE[2,1]=1/5;
     ARKE[3,2]=1/5;
     ARKE[4,3]=1/3;
     ARKE[5,4]=1/2;
     bRKE=[0,0,0,0,1];
-    ARKI=zeros(FT,0,0)
-    bRKI=zeros(FT,0)
-    gRKI=zeros(FT,0)
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "RK3"
     nStage=3;
     Type=""
-    ARKE=zeros(FT,nStage,nStage);
+    ARKE=zeros(nStage,nStage);
     ARKE[2,1]=1/3;
     ARKE[3,2]=1/2;
     bRKE = [0,0,1]
     cRKE=[0,1/3,1/2];
-    ARKI=zeros(FT,0,0)
-    bRKI=zeros(FT,0)
-    gRKI=zeros(FT,0)
+    ARKI=zeros(0,0)
+    bRKI=zeros(0)
+    gRKI=zeros(0)
 elseif str == "DBM453"
     RK.nStage=5;
-    RK.ARKE=zeros(FT,RK.nStage,RK.nStage);
-    RK.bRKE=zeros(FT,1,RK.nStage);
+    RK.ARKE=zeros(RK.nStage,RK.nStage);
+    RK.bRKE=zeros(1,RK.nStage);
     RK.ARKE[2,1]=0.10306208811591838;
     RK.ARKE[3,1]=-0.94124866143519894;
     RK.ARKE[3,2]=1.6626399742527356;
@@ -152,8 +150,8 @@ elseif str == "DBM453"
     RK.bRKE[5]=0.32591194130117247;
 
     RK.gRKI=0.32591194130117247;
-    RK.ARKI=zeros(FT,RK.nStage,RK.nStage);
-    RK.bRKI=zeros(FT,1,RK.nStage);
+    RK.ARKI=zeros(RK.nStage,RK.nStage);
+    RK.bRKI=zeros(1,RK.nStage);
     RK.ARKI[2,1]=-0.22284985318525410;
     RK.ARKI[2,2]=RK.gRKI;
     RK.ARKI[3,1]=-0.46801347074080545;
@@ -170,7 +168,7 @@ elseif str == "DBM453"
     RK.ARKI[5,5]=RK.gRKI;
     RK.bRKI=RK.bRKE;
 end
-  return RungeKuttaMethod{FT}(
+  return RungeKuttaStruct(
   nStage,
   Type,
   ARKE,

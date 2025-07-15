@@ -8,7 +8,7 @@ function JacobiCartDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad
   M = size(FE.xwZ,1)
   Nz = size(X,4)
 
-  NzG = min(div(512,N*N*M),Nz)
+  NzG = min(div(256,N*N*M),Nz)
   group = (N, N, M, NzG, 1)
   ndrange = (N, N, M, Nz, NF)
 
@@ -135,7 +135,7 @@ function JacobiDG1GPU!(X,dXdxI,J,FE,z)
   M = size(FE.xwZ,1)
   Nz = size(X,2)
 
-  NzG = min(div(512,M),Nz)
+  NzG = min(div(256,M),Nz)
   group = (M, NzG)
   ndrange = (M, Nz)
 
@@ -189,7 +189,7 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Qu
   M = size(FE.xwZ,1)
   Nz = size(X,4)
 
-  NzG = min(div(512,N*N*M),Nz)
+  NzG = min(div(256,N*N*M),Nz)
   group = (N, N, M, NzG, 1)
   ndrange = (N, N, M, Nz, NF)
 
@@ -328,7 +328,7 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::
   M = size(FE.xwZ,1)
   Nz = size(X,4)
 
-  NzG = min(div(512,N*M),Nz)
+  NzG = min(div(256,N*M),Nz)
   group = (N, M, NzG, 1)
   ndrange = (N, M, Nz, NF)
 

@@ -424,16 +424,13 @@ if Microphysics
 end
 
 # Surface flux
-Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,CG.NumG)
-Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
-#copyto!(Global.LandUseData.z0M,FTB(0.01))
-#copyto!(Global.LandUseData.z0H,FTB(0.01))
-#copyto!(Global.LandUseData.LandClass,5)
-@. Global.LandUseData.z0M = FTB(0.01)
-@. Global.LandUseData.z0H = FTB(0.01)
-@. Global.LandUseData.LandClass = 5
-# SurfaceValues
 if Model.SurfaceFlux
+# SurfaceValues
+  Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,CG.NumG)
+  Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
+  @. Global.LandUseData.z0M = FTB(0.01)
+  @. Global.LandUseData.z0H = FTB(0.01)
+  @. Global.LandUseData.LandClass = 5
   if Problem == "HeldSuarezMoistSphere"  
     SurfaceValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)  
     Model.SurfaceValues = SurfaceValues

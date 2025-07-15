@@ -11,7 +11,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
     TimeStepper.ROS=RosenbrockStruct{FT}(Table)  
   elseif IntMethod == "RungeKutta"  
-    TimeStepper.RK=RungeKuttaMethod(Table)
+    TimeStepper.RK=RungeKuttaMethod{FT}(Table)
   elseif IntMethod == "IMEX"   
     TimeStepper.IMEX=IMEXMethod(Table)
   elseif IntMethod == "MIS"  
@@ -234,6 +234,7 @@ end
 
 function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,Profile)  
   
+  FTB = eltype(U) 
   TimeStepper = Global.TimeStepper
   Output = Global.Output
   Proc = Global.ParallelCom.Proc
@@ -245,7 +246,7 @@ function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP"
     TimeStepper.ROS=RosenbrockMethod(Table)  
   elseif IntMethod == "RungeKutta"  
-    TimeStepper.RK=RungeKuttaMethod(Table)
+    TimeStepper.RK=RungeKuttaMethod{FTB}(Table)
   elseif IntMethod == "SSPRungeKutta"  
     TimeStepper.SSP=SSPRungeKuttaMethod(Table)
   end
@@ -354,7 +355,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Metric,Global,Param)
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP"
     TimeStepper.ROS=RosenbrockMethod(Table)  
   elseif IntMethod == "RungeKutta"  
-    TimeStepper.RK=RungeKuttaMethod(Table)
+    TimeStepper.RK=RungeKuttaMethod{FTB}(Table)
   elseif IntMethod == "SSPRungeKutta"  
     TimeStepper.SSP=SSPRungeKuttaMethod(Table)
   end
