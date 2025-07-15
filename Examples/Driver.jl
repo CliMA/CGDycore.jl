@@ -5,6 +5,7 @@ using Base
 using CUDA
 using AMDGPU
 using Metal
+using oneAPI
 using KernelAbstractions
 using StaticArrays
 using ArgParse
@@ -152,10 +153,10 @@ elseif JuliaDevice == "GPU"
     AMDGPU.allowscalar(false)
   elseif JuliaGPU == "Metal"
     backend = MetalBackend()
-    Metal.allowscalar(true)
-# elseif JuliaGPU == "oneAPI"
-#   backend = oneAPIBackend()
-#   oneAPI.allowscalar(true)
+    Metal.allowscalar(false)
+  elseif JuliaGPU == "oneAPI"
+    backend = oneAPIBackend()
+    oneAPI.allowscalar(false)
   end
 else
   backend = CPU()
