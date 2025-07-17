@@ -43,6 +43,47 @@ function (profile::InertiaGravityExample)(Param,Phys)
   return local_profile
 end
 
+"""
+  BickleyJetExample <: Example
+
+Implements the classic "Bickley jet" initial condition, widely used to study barotropic instability and nonlinear jet evolution in atmospheric and oceanic flows.
+
+# Usage
+
+  profile = BickleyJetExample()
+  initial_conditions = profile(Param, Phys)
+
+# Arguments
+
+- `Param`: Parameter object containing jet and perturbation parameters (e.g., `L`, `Ly`, `l`, `k`, `ϵ`).
+- `Phys`: Physical parameters (not directly used in this function).
+
+# Returns
+
+A function `local_profile(x, time)` that computes the initial conditions at position `x` and time `time`:
+- `Rho`: Density (set to 1.0).
+- `u`: Zonal velocity, consisting of the jet profile and perturbations.
+- `v`: Meridional velocity, consisting of perturbations.
+- `w`: Vertical velocity (set to 0.0).
+- `Th`: Potential temperature (set to 1.0).
+
+# Physical Background
+
+The Bickley jet is a model for a narrow, east-west (zonal) jet centered at y=0, defined by the velocity profile `U = sech(y)^2`.  
+A streamfunction `Ψ = -tanh(y)` describes the main flow structure.  
+Sinusoidal tracer fields and localized vortical perturbations (Gaussian-modulated cosines) are added to trigger barotropic instability and jet meandering.  
+Velocity perturbations are computed from the streamfunction derivatives, resulting in small-scale turbulence superimposed on the jet.
+
+This setup is commonly used to investigate the nonlinear evolution of jets, the formation of coherent structures, and the transition to turbulence (see Oceananigans.jl example and Beron-Vera et al. 2003).
+
+# References
+
+- Beron-Vera, F. J., Olascoaga, M. J., & Brown, M. G. (2003).  
+  "The Nonlinear Evolution of Bickley Jets". Journal of Physical Oceanography, 33(10), 2173–2188.  
+  https://journals.ametsoc.org/view/journals/phoc/33/10/1520-0485_2003_033_2173_tneobu_2.0.co_2.xml
+
+"""
+
 Base.@kwdef struct BickleyJetExample <: Example end
 
 function (profile::BickleyJetExample)(Param,Phys)
@@ -340,21 +381,6 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     Grav = Phys.Grav
     p0 = Phys.p0
     Rd = Phys.Rd
-
-Base.@kwdef struct ModonCollisionExample <: Example end
-
-function (profile::ModonCollisionExample)(Param, Phys)
-    @inline function local_profile(x, time)
-        FT = eltype(x)
-        (lon, lat, r) = Grids.cart2sphere(x[1], x[2], x[3])
-        R = Phys.RadEarth
-
-        # Modon centers (in radians)
-        lonC1, latC1 = Param.lonC1, Param.latC1
-        lonC2, latC2 = Param.lonC2, Param.latC2
-
-        r1 = Grids.SizeGreatCircle(lon, lat, lonC1, latC1) * R
-   
     Rv = Phys.Rv
     Cvd = Phys.Cvd
     kappa = Phys.kappa
