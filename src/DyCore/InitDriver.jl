@@ -234,11 +234,11 @@ function InitCartDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,To
   Metric = DiscretizationDG(backend,FT,Grids.JacobiCartDG3GPU!,DG,Exchange,Global,zS,Grid.Type)
 
   # Output Orography
-  nzTemp = Global.Grid.nz
-  Global.Grid.nz = 1
-  vtkCacheOrography = Outputs.vtkInit2D(DG.OrdPoly,Outputs.TransCartX!,DG,Metric,Global)
-  Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,DG,Proc,ProcNumber)
-  Global.Grid.nz = nzTemp
+# nzTemp = Global.Grid.nz
+# Global.Grid.nz = 1
+# vtkCacheOrography = Outputs.vtkInit2D(DG.OrdPoly,Outputs.TransCartX!,DG,Metric,Global)
+# Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,DG,Proc,ProcNumber)
+# Global.Grid.nz = nzTemp
 
   # Output partition
   nzTemp = Global.Grid.nz

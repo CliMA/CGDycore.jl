@@ -63,7 +63,7 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
 end  
 
 function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;
-  order=true,GridType="Quad",Discretization="CG")
+  order=true,GridType="Quad",Discretization="CG",ChangeOrient=3)
 
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc
@@ -71,7 +71,7 @@ function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,Par
   if GridType == "Quad"
     Grid = Grids.CartGrid(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order)
   else GridType == "Tri"  
-    Grid = Grids.CartGridTri(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order)
+    Grid = Grids.CartGridTri(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order,ChangeOrient=ChangeOrient)
   end  
   CellToProc = Grids.Decompose(Grid,nx,ny,ProcNumber)
   SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc;order)

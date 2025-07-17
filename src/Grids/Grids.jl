@@ -12,7 +12,6 @@ using NCDatasets
 using PairedLinkedLists
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
-using CUDA
 using StaticArrays    
 using NearestNeighbors
 using Distances

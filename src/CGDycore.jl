@@ -1,19 +1,19 @@
 module CGDycore
 
-using LinearAlgebra
-using SparseArrays
-using UnPack
-using StructArrays
-using StaticArrays
-using ArgParse
-using NetCDF
-using Statistics
-using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
-using RootSolvers
-using CUDA
-using KernelAbstractions
-using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
-using PairedLinkedLists
+#using LinearAlgebra
+#using SparseArrays
+#using UnPack
+#using StructArrays
+#using StaticArrays
+#using ArgParse
+#using NetCDF
+#using Statistics
+#using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
+#using RootSolvers
+#using CUDA
+#using KernelAbstractions
+#using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+#using PairedLinkedLists
 
 include("DG/DG.jl")
 include("Parallels/Parallels.jl")

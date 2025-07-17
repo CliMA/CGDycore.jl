@@ -159,6 +159,23 @@ function TransSphereX!(XP,phiEval,zeta,X,CG,Global,::Grids.Tri)
   XP=XP*(Global.Output.RadPrint+z)
 end
 
+function TransCartX!(XP,phiEval,zeta,X,CG,Global,::Grids.Tri)
+  DoF = CG.DoF
+  OrdPolyZ=CG.OrdPolyZ
+  @. XP = 0
+  @inbounds for k = 1 : OrdPolyZ + 1
+    Fac = DG.Lagrange(zeta,CG.xwZCPU,k)
+    @inbounds for i = 1 : size(phiEval,1)
+      @views XR1 = dot(CG.PL2CPU[i,:],X[:,k,1])
+      @views XR2 = dot(CG.PL2CPU[i,:],X[:,k,2])
+      @views XR3 = dot(CG.PL2CPU[i,:],X[:,k,3])
+      XP[1] += Fac * phiEval[i] * XR1
+      XP[2] += Fac * phiEval[i] * XR2
+      XP[3] += Fac * phiEval[i] * XR3
+    end
+  end
+end
+
 function TransCart(ksi,eta,z,F,Topo,Grid)
 X=zeros(3);
 X[1]=0.25*((1-ksi)*(1-eta)*F.P[1].x+

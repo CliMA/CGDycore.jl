@@ -6,7 +6,7 @@ using CUDA
 using AMDGPU
 using Metal
 using KernelAbstractions
-using StaticArrays
+#using StaticArrays
 using ArgParse
 
 
@@ -151,7 +151,7 @@ elseif JuliaDevice == "GPU"
     CUDA.allowscalar(false)
     if machine == "levante" || machine == "derecho"
     else
-       CUDA.device!(Proc-1)
+      CUDA.device!(Proc-1)
     end
   elseif JuliaGPU == "AMD"
     backend = ROCBackend()
@@ -163,7 +163,6 @@ elseif JuliaDevice == "GPU"
 else
   backend = CPU()
 end
-
 if FloatTypeBackend == "Float64"
   FTB = Float64
 elseif FloatTypeBackend == "Float32"
@@ -280,7 +279,8 @@ if GridForm == "Cartesian"
               P3=P3,
               P4=P4,
               )
-  Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom,Discretization=Discretization)
+  Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;
+    Discretization=Discretization,GridType=GridType,ChangeOrient=2)
   Trans = Outputs.TransCartX!
 else  
   if RadEarth == 0.0
