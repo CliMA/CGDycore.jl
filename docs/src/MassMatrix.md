@@ -11,7 +11,7 @@ The mass matrix acts as a "pseudo-operator": it cannot be called directly, but
 can be applied to fields in a manner similar to other operators, leveraging
 broadcasting for performance and composability.
 
-## MassMatrix with HCurlElement 
+### General Usage
 ```@docs
 CGDycore.FEMSei.MassMatrix
 ```
