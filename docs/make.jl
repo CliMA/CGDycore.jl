@@ -13,6 +13,7 @@ makedocs(;
     ),
     checkdocs = :exports,
     pages = [
+        "Home" => "index.md",
         "Mass Matrix" => "MassMatrix.md",
 
     ],
