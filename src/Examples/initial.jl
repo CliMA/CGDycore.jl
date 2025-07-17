@@ -73,23 +73,6 @@ function (profile::BickleyJetExample)(Param,Phys)
   return local_profile
 end
 
-Base.@kwdef struct BickleyJetExample1 <: Example end
-
-function (profile::BickleyJetExample1)(Param,Phys)
-  @inline function local_profile(x,time)
-    Rho = cos(x[1]) + cos(x[2]) #2 * (x[1] + x[2])
-    Rho = 2 * (x[1] + x[2])
-    Th = 1.0
-    u = -sin(x[2]) #-x[2]^2
-    v = sin(x[1]) #x[1]^2
-    u = -x[2]^2
-    v = x[1]^2
-    w = 0
-    return (Rho,u,v,w,Th)
-  end
-  return local_profile
-end
-
 Base.@kwdef struct ModonCollisionExample <: Example end
 
 function (profile::ModonCollisionExample)(Param, Phys)
@@ -357,6 +340,21 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     Grav = Phys.Grav
     p0 = Phys.p0
     Rd = Phys.Rd
+
+Base.@kwdef struct ModonCollisionExample <: Example end
+
+function (profile::ModonCollisionExample)(Param, Phys)
+    @inline function local_profile(x, time)
+        FT = eltype(x)
+        (lon, lat, r) = Grids.cart2sphere(x[1], x[2], x[3])
+        R = Phys.RadEarth
+
+        # Modon centers (in radians)
+        lonC1, latC1 = Param.lonC1, Param.latC1
+        lonC2, latC2 = Param.lonC2, Param.latC2
+
+        r1 = Grids.SizeGreatCircle(lon, lat, lonC1, latC1) * R
+   
     Rv = Phys.Rv
     Cvd = Phys.Cvd
     kappa = Phys.kappa
