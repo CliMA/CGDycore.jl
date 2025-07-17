@@ -15,8 +15,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Mass Matrix" => "MassMatrix.md",
-        "New file" => "newfile.md",
-        "functions" => "api.md"
+        "Stiffness Matrix" => "StiffMatrix.md",
     ],
 )
 
