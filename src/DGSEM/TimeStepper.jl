@@ -38,7 +38,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
             fac = ROS.c[iStage,jStage] / dtau
             @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
           end
-          @views ldivVertical!(Jac,k[:,:,:,:,iStage])
+          @views Solve!(Jac,k[:,:,:,:,iStage])
           @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
         end
         @inbounds for iStage = 1 : nStage

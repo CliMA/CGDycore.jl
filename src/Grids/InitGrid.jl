@@ -70,8 +70,10 @@ function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,Par
 
   if GridType == "Quad"
     Grid = Grids.CartGrid(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order)
-  else GridType == "Tri"  
+  elseif GridType == "Tri"  
     Grid = Grids.CartGridTri(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order,ChangeOrient=ChangeOrient)
+  else  
+    stop  
   end  
   CellToProc = Grids.Decompose(Grid,nx,ny,ProcNumber)
   SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc;order)

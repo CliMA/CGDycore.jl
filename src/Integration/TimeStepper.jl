@@ -1,4 +1,4 @@
-function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,DiscType)  
+function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,DiscType)  
   backend = get_backend(U)
   FT = eltype(U)
   TimeStepper = Global.TimeStepper
@@ -99,18 +99,18 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
 
 
 # Print initial conditions
-  FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+  GPUS.FcnPrepareGPU!(U,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
   if IntMethod == "Rosenbrock"
     # For time measuring  
-    RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
+    Rosenbrock!(U,dtau,Fcn!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
     if mod(1,PrintInt) == 0 && time[1] >= PrintStartTime
       Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
     end
     @time begin
       for i=2:nIter
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
+          Rosenbrock!(U,dtau,Fcn!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
@@ -132,7 +132,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
       for i=1:nIter
         @show "RosenbrockAMD"  
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
+          Rosenbrock!(U,dtau,Fcn!,FcnPrepare!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
         end
         percent = i/nIter*100
         if Proc == 1
@@ -144,7 +144,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockDSchur!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
+          RosenbrockD!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
@@ -158,7 +158,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockSchurSSP!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
+          RosenbrockSSP!(U,dtau,FcnNHCurlVec!,JacSchur!,CG,Global);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
@@ -214,7 +214,7 @@ function TimeStepper!(U,Fcn!,FcnPrepare!,Jac!,Trans,CG,Metric,Phys,Exchange,Glob
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RungeKuttaExplicit!(U,dtau,Fcn!,FcnPrepare!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+          RungeKuttaExplicit!(U,dtau,Fcn!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
@@ -301,7 +301,7 @@ function TimeStepperAdvection!(U,Fcn,Trans,CG,Metric,Phys,Exchange,Global,Param,
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
+          Rosenbrock!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)
@@ -407,7 +407,7 @@ function TimeStepperAdvectionConv!(U,Trans,CG,Metric,Global,Param)
     @time begin
       for i=1:nIter
         Δt = @elapsed begin
-          RosenbrockSchur!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
+          Rosenbrock!(U,dtau,FcnTracer!,JacSchur!,CG,Global,Param);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
             unstructured_vtkSphere(U,Trans,CG,Phys,Global,Proc,ProcNumber)

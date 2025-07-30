@@ -16,19 +16,21 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   NAUX = Model.NumAux
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
-  @views p = Aux[:,:,1:DG.NumI,1]
-  @views GeoPot = Aux[:,:,1:DG.NumI,2]
   FS = CacheS
   @. F = 0
   @. FS = 0
 
+  @views p = Aux[:,:,1:DG.NumI,1]
   @views @. p = Model.Pressure(U[:,:,1:DG.NumI,5])
-  NQ = N * N
-  NQG = min(div(NumberThreadGPU,Nz*M),NQ)
-  group = (Nz,M,NQG,1)
-  ndrange = (Nz,M,NQ,NF)
-  KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
-  KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
+  if NAUX > 1
+    @views GeoPot = Aux[:,:,1:DG.NumI,2]
+    NQ = N * N
+    NQG = min(div(NumberThreadGPU,Nz*M),NQ)
+    group = (Nz,M,NQG,1)
+    ndrange = (Nz,M,NQ,NF)
+    KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
+    KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
+  end  
 
   if Model.Damping
     NQ = N * N
@@ -120,7 +122,6 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
 
   @. F += FS
 
-
 end
 
 function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::Grids.Tri)
@@ -143,18 +144,20 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
   @views p = Aux[:,:,1:DG.NumI,1]
-  @views GeoPot = Aux[:,:,1:DG.NumI,2]
   @views FS = CacheS
   @. F = 0
   @. FS = 0
 
   @views @. p = Model.Pressure(U[:,:,1:DG.NumI,5])
-  DoF = DoF
-  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (Nz,M,DoFG,1)
-  ndrange = (Nz,M,DoF,NF)
-  KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
-  KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
+  if NAUX > 1
+    @views GeoPot = Aux[:,:,1:DG.NumI,2]
+    DoF = DoF
+    DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
+    group = (Nz,M,DoFG,1)
+    ndrange = (Nz,M,DoF,NF)
+    KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
+    KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
+  end
 
   if Model.Damping
     DoFG = min(div(NumberThreadGPU,Nz*M),DoF)

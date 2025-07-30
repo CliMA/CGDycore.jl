@@ -4,6 +4,7 @@ import ..Grids
 import ..Outputs
 import ..Parallels
 import ..Statistics
+import ..GPUS
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
@@ -18,9 +19,9 @@ include("MISSchur.jl")
 include("SSPRungeKuttaMethod.jl")
 include("RosenbrockMethod.jl")
 include("RungeKuttaMethod.jl")
-include("RosenbrockSchur.jl")
+include("Rosenbrock.jl")
 include("RungeKuttaExplicit.jl")
-include("SchurSolve.jl")
+include("Solve.jl")
 include("SSPRungeKutta.jl")
 include("TimeStepper.jl")
 include("cache.jl")

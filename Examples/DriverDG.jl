@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, GPU, DyCore
+  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, GPUS, DyCore
 using MPI
 using Base
 using CUDA
@@ -155,7 +155,7 @@ elseif JuliaDevice == "GPU"
     end
   elseif JuliaGPU == "AMD"
     backend = ROCBackend()
-    AMDGPU.allowscalar(false)
+    AMDGPUS.allowscalar(false)
   elseif JuliaGPU == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
@@ -328,7 +328,7 @@ end
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
-U = GPU.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
+U = GPUS.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 pAuxPos = 1
 GPAuxPos = 2
@@ -354,7 +354,7 @@ elseif FluxDG == "LinearBoussinesqFlux"
 end  
 
 if ModelType == "Boussinesq"
-  Model.BuoyancyFun = GPU.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
+  Model.BuoyancyFun = GPUS.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
 end  
     
 
@@ -369,13 +369,13 @@ elseif State  == "ShallowWater"
 end
 
 if Damping
-  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
+  Damp = GPUS.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
   Model.Damp = Damp
 end
 if Grid.Form == "Sphere"
-  Model.GeoPotential = GPU.GeoPotentialDeep()(Phys)
+  Model.GeoPotential = GPUS.GeoPotentialDeep()(Phys)
 else
-  Model.GeoPotential = GPU.GeoPotentialCart()(Phys)
+  Model.GeoPotential = GPUS.GeoPotentialCart()(Phys)
 end  
     
 

@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  GPU, DyCore
+  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  GPUS, DyCore
 using MPI
 using Base
 #using CUDA
@@ -329,42 +329,42 @@ end
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
-U = GPU.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
+U = GPUS.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 #Coriolis
 if Coriolis
   if CoriolisType == "Shallow"
-    CoriolisFun = GPU.CoriolisShallow()(Phys)
+    CoriolisFun = GPUS.CoriolisShallow()(Phys)
     Model.CoriolisFun = CoriolisFun
   elseif CoriolisType == "Deep"
-    CoriolisFun = GPU.CoriolisDeep()(Phys)
+    CoriolisFun = GPUS.CoriolisDeep()(Phys)
     Model.CoriolisFun = CoriolisFun
   elseif CoriolisType == "FPlane"
-    CoriolisFun = GPU.FPlane()(Param,Phys)
+    CoriolisFun = GPUS.FPlane()(Param,Phys)
     Model.CoriolisFun = CoriolisFun
   else
-    CoriolisFun = GPU.CoriolisNo()()
+    CoriolisFun = GPUS.CoriolisNo()()
     Model.CoriolisFun = CoriolisFun
   end
 else
-  CoriolisFun = GPU.CoriolisNo()()
+  CoriolisFun = GPUS.CoriolisNo()()
   Model.CoriolisFun = CoriolisFun
 end
 
 #Buoyancy
 if Buoyancy
   if Equation == "CompressibleShallow"
-    GravitationFun = GPU.GravitationShallow()(Phys)
+    GravitationFun = GPUS.GravitationShallow()(Phys)
     Model.GravitationFun = GravitationFun
   elseif Equation == "CompressibleDeep"
-    GravitationFun = GPU.GravitationDeep()(Phys)
+    GravitationFun = GPUS.GravitationDeep()(Phys)
     Model.GravitationFun = GravitationFun
   else
-    GravitationFun = GPU.GravitationNo()()
+    GravitationFun = GPUS.GravitationNo()()
     Model.GravitationFun = GravitationFun
   end
 else
-  GravitationFun = GPU.GravitationNo()()
+  GravitationFun = GPUS.GravitationNo()()
   Model.GravitationFun = GravitationFun
 end
 
@@ -475,7 +475,7 @@ if Model.Turbulence
 end
 # Damping
 if Damping
-  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
+  Damp = GPUS.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
   Model.Damp = Damp
 end
 
@@ -571,22 +571,14 @@ elseif ModelType == "Conservative"
   DiscType = Val(:Conservative)
 end
 
-if Device == "CPU"  || Device == "GPU"
-  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
-  Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU
-  if JuliaGPU == "Metal"
-    Global.ParallelCom.NumberThreadGPU = NumberThreadGPU / 2
-    Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU / 2
-  end  
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  Integration.TimeStepper!(U,GPU.FcnGPU!,GPU.FcnPrepareGPU!,DyCore.JacGPU!,
-    Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
-else
-  nT = max(7 + NumTr, NumV + NumTr)
-  Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
-  @show "vor CPU Timestepper"
-  Integration.TimeStepper!(U,DyCore.Fcn!,DyCore.FcnPrepare!,DyCore.JacGPU!,
-    Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
-end
+Global.ParallelCom.NumberThreadGPU = NumberThreadGPU
+Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU
+if JuliaGPU == "Metal"
+  Global.ParallelCom.NumberThreadGPU = NumberThreadGPU / 2
+  Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU / 2
+end  
+nT = max(7 + NumTr, NumV + NumTr)
+Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+Integration.TimeStepper!(U,GPUS.FcnGPU!,DyCore.JacGPU!,
+  Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 

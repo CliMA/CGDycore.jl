@@ -1,5 +1,3 @@
-using KernelAbstractions
-
 function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
 
   backend = get_backend(U)

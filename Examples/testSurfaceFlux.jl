@@ -130,7 +130,7 @@ Phys = DyCore.PhysParameters{FTB}()
 
 z0M = 0.05
 z0H = 0.05
-dz = 30.0
+dz = 10.0
 RiB = 0.4
 LandClass = 1
 TSurf = 280.0
@@ -138,7 +138,7 @@ T1 = 280.0
 VT = 2.0
 uf = Surfaces.Businger{FTB}()
 theta = FTB(300)
-thetaS = FTB(299.0)
+thetaS = FTB(301.0)
 RhoPos = 1
 uPos = 2
 vPos = 3
@@ -155,14 +155,27 @@ nS = zeros(FTB,3)
 nS[3] = 1
 p::FTB = 1
 #thetaS = FTB(295)
-landuse = Surfaces.LandUse{FTB}(thetaS, 0.0, z0M, z0H, LandClass)
 
-SurfaceData = Surfaces.MOSurface()(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
-uStar, CT, CH = SurfaceData(dz,U,p,dXdxI,nS,landuse)
-@show uStar, CT, CH
-stop    
+NumG = 10
+SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,NumG)
+LandUseData = Surfaces.LandUseData{FTB}(backend,NumG)
+@. LandUseData.z0M = FTB(0.01)
+@. LandUseData.z0H = FTB(0.01)
+@. LandUseData.LandClass = 5
 
-Surfaces.MOSTIteration(uf,z0M,z0h,dz,VT,theta,thetaS,LandClass,Phys)
+#SurfaceData = Surfaces.MOSurface()(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
+#uStar, CT, CH = SurfaceData(dz,U,p,dXdxI,nS,landuse)
+#@show uStar, CT, CH
+#stop    
+
+@show dz, VT, theta, thetaS
+CM, CT, uStar = Surfaces.MOSTIteration(uf,z0M,z0H,dz,VT,theta,thetaS,LandClass,Phys)
+@show CM, CT, uStar
+VT = 5.0
+theta = FTB(300)
+thetaS = FTB(299.0)
+CM, CT, uStar = Surfaces.MOSTSeaIteration(uf,z0M,z0H,dz,VT,theta,thetaS,LandClass,Phys)
+@show CM, CT, uStar
 stop
 
 

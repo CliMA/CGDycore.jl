@@ -29,7 +29,7 @@ Base.@kwdef struct HeldSuarezMoistSurfaceFlux <: SurfaceFluxValues end
 function (::HeldSuarezMoistSurfaceFlux)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceFluxValues(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
-    SD[uStarPos] = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    SD[uStarPos] = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     SD[CMPos] = FT(Param.CM)
     SD[CTPos] = FT(Param.CE)
     SD[CHPos] = FT(Param.CH)
@@ -53,7 +53,7 @@ Base.@kwdef struct HeldSuarezDrySurfaceFlux <: SurfaceFluxValues end
 function (::HeldSuarezDrySurfaceFlux)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceFluxValues(z,U,p,nS,TS,z0M,z0H,LandClass)
     FT = eltype(U)
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    uStar = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     CM = FT(Param.CM)
     CT = FT(Param.CE)
     CH = FT(0)
@@ -82,7 +82,7 @@ function (::FriersonSurfaceFlux)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
     norm_uh = U[uPos]^2 + U[vPos]^2
     Th = U[ThPos] / U[RhoPos]
     SD[RiBSurfPos] = Phys.Grav * z * (Th - SD[TS]) / SD[TS] / norm_uh
-    SD[uStarPos] = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    SD[uStarPos] = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
     if RiBSurf < FT(0)
       SD[CMPos] = Phys.Karman^2 / log(z / Param.z_0)^2  
     elseif RiBSurf < Param.Ri_C
@@ -97,7 +97,7 @@ function (::FriersonSurfaceFlux)(Phys,Param,RhoPos,uPos,vPos,wPos,ThPos)
 end
 
 
-@inline function uStarCoefficientGPU(v1,v2,w,nS)
+@inline function UzCoefficientGPU(v1,v2,w,nS)
 # Computation norm_v_a
 # |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)
   wS = -(nS[1]* v1 + nS[2] * v2) / nS[3]
@@ -116,9 +116,9 @@ function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
   @inline function SurfaceFluxValues(SD,z,U,p,nSS,z0M,z0H,LandClass)
     FT = eltype(U)
     TS = SD[TSurfPos]
-    uStar = uStarCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
+    Uz = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
     theta = U[ThPos] / U[RhoPos]
-    CM, CT = MOSTIteration(uf,z0M,z0H,z,uStar,theta,TS,LandClass,Phys)
+    CM, CT, uStar= MOSTIteration(uf,z0M,z0H,z,uStar,theta,TS,LandClass,Phys)
     SD[uStarPos] = uStar
     SD[CMPos] = CM
     SD[CTPos] = CT

@@ -1,4 +1,4 @@
-module GPU
+module GPUS
 
 import ..Parallels
 import ..Models

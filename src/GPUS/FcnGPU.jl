@@ -138,6 +138,8 @@ end
 
 function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
+  FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation)
+
   backend = get_backend(F)
   FT = eltype(F)
   State = Global.Model.State
