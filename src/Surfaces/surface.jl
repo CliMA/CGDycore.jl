@@ -103,34 +103,41 @@ end
   wS = -(nS[1]* v1 + nS[2] * v2) / nS[3]
   wC = eltype(v1)(0.5) * (wS + w)
   nU = nS[1] * v1 + nS[2] * v2 + nS[3] * wC
-  uStar = sqrt((v1 - nS[1] * nU) * (v1 - nS[1] * nU) +
+  uT = sqrt((v1 - nS[1] * nU) * (v1 - nS[1] * nU) +
     (v2 - nS[2] * nU) * (v2 - nS[2] * nU) +
     (wC - nS[3] * nU) * (wC - nS[3] * nU))
-  uStar = max(uStar, 0.1)
-  return uStar
+  uT = max(uT, 0.1)
+  return uT
 end
 
 Base.@kwdef struct MOSurfaceFlux <: SurfaceFluxValues end
 
-function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
-  @inline function SurfaceFluxValues(SD,z,U,p,nSS,z0M,z0H,LandClass)
+function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos,LandClassData)
+  @inline function SurfaceFluxValues(SD,z,U,p,nSS,LandClass)
     FT = eltype(U)
     TS = SD[TSurfPos]
     Uz = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
     theta = U[ThPos] / U[RhoPos]
-    CM, CT, uStar= MOSTIteration(uf,z0M,z0H,z,uStar,theta,TS,LandClass,Phys)
+    z0M = LandClassData.z0M[LandClass]
+    z0H = LandClassData.z0H[LandClass]
+    zeta = SD[zetaPos]
+    if LandClass == SeaClass
+      uStar = SD[uStarPos]
+      CM, CT, uStar, zeta = MOSTSeaIteration(uf,z0M,z0H,z,Uz,theta,TS,zeta,uStar,Phys)
+    else    
+      CM, CT, uStar, zeta = MOSTIteration(uf,z0M,z0H,z,Uz,theta,TS,zeta,Phys)
+    end  
     SD[uStarPos] = uStar
     SD[CMPos] = CM
     SD[CTPos] = CT
     SD[CHPos] = CT
+    SD[zetaPos] = zeta
   end  
   return SurfaceFluxValues
 end  
 
-
-
 @kernel inbounds = true function SurfaceFluxDataKernel!(SurfaceFluxValues!,SurfaceData,@Const(U),@Const(p),@Const(dz),
-  @Const(nSS),@Const(z0M),@Const(z0H),@Const(LandClass))
+  @Const(nSS),@Const(LandClass))
 
   IC, = @index(Global, NTuple)
 
@@ -139,7 +146,7 @@ end
   if IC <= NumG
     SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
       view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
-      z0M[IC],z0H[IC],LandClass[IC])
+      LandClass[IC])
   end
 end
 
@@ -153,7 +160,7 @@ function SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,Number
   ndrangeS = (NumG)
   KSurfaceFluxDataKernel! = SurfaceFluxDataKernel!(backend,groupS)
   KSurfaceFluxDataKernel!(Model.SurfaceFluxValues,SurfaceData,U,p,dz,nSS,
-    z0M,z0H,LandClass,ndrange=ndrangeS)
+    LandClass,ndrange=ndrangeS)
   KernelAbstractions.synchronize(backend)
 end
 

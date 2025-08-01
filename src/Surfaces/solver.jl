@@ -7,86 +7,70 @@ end
   psi(uf, z0 / z * zeta, tt)
 end  
 
-@inline function MOSTIteration(uf,z0M,z0H,z,U,theta,thetaS,LandClass,Phys)
+@inline function MOSTIteration(uf,z0M,z0H,z,U,theta,thetaS,zeta,Phys)
   FT = eltype(theta)
   Karm = FT(0.4)
   Pr = FT(0.74)
   U2 = U^2
   Ri_b = max(min(Phys.Grav / thetaS *(theta - thetaS) * z  / U2, FT(0.2)), FT(-10.0))
-  L = (theta - thetaS) / U2
-  L = L + sign(L) * eps(FT) + eps(FT)
-
-  zeta = L / z
-  for Iter = 1 : 15
+  for Iter = 1 : 10
     f = Ri_b - Pr * zeta *
       VertProfile(uf, z0H, z, zeta, HeatTransport()) / 
       VertProfile(uf, z0M, z, zeta, MomentumTransport())^2 
-    zetaP = zeta * (FT(1) + sqrt(eps(FT))) + flipsign(sqrt(eps(FT)), L)
+    zetaP = zeta * (FT(1) + sqrt(eps(FT))) + flipsign(sqrt(eps(FT)), zeta)
     fP = Ri_b - Pr * zetaP *
       VertProfile(uf, z0H, z, zetaP, HeatTransport()) / 
       VertProfile(uf, z0M, z, zetaP, MomentumTransport())^2 
     df = (fP - f) /(zetaP - zeta)
     zetaNew = zeta - f/df
-    zeta = zetaNew
-    @show zeta
-#   if abs(zetaNew-zeta) < eps(FT)^FT(1/3)
-#     zeta  = zetaNew 
-#     break
-#   else
-#     zeta = zetaNew  
-#   end  
+    if abs(zetaNew-zeta) < eps(FT)^FT(1/3)
+      zeta  = zetaNew 
+      break
+    else
+      zeta = zetaNew  
+    end  
   end  
 
   CM = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport()))^2
   CT = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport())) /
     (log(z/z0H) - psi(uf, zeta, HeatTransport()))
   uStar = Karm * U / VertProfile(uf, z0M, z, zeta, MomentumTransport())
-  @show Karm , U, VertProfile(uf, z0M, z, zeta, MomentumTransport())
-  return CM, CT, uStar
+  return CM, CT, uStar, zeta
 
 end
 
-@inline function MOSTSeaIteration(uf,z0M,z0H,z,U,theta,thetaS,LandClass,Phys)
+@inline function MOSTSeaIteration(uf,z0M,z0H,z,U,theta,thetaS,zeta,uStar,Phys)
   FT = eltype(theta)
   Karm = FT(0.4)
   Pr = FT(0.74)
   U2 = U^2
   Ri_b = max(min(Phys.Grav / thetaS *(theta - thetaS) * z  / U2, FT(0.2)), FT(-10.0))
-  L = (theta - thetaS) / U2
-  L = L + sign(L) * eps(FT) + eps(FT)
-
-  zeta = L / z
-  for Iter = 1 : 30
-    uStar = Karm * U / VertProfile(uf, z0M, z, zeta, MomentumTransport())
-    z0M = 1.1e-2 * uStar * uStar / Phys.Grav
-    z0H = 1.1e-2 * uStar * uStar / Phys.Grav
+  for Iter = 1 : 10
+    z0M = exp((2.7 * uStar - 14.4) / (uStar + 1.39))
+    z0H = z0M
     f = Ri_b - Pr * zeta *
       VertProfile(uf, z0H, z, zeta, HeatTransport()) / 
       VertProfile(uf, z0M, z, zeta, MomentumTransport())^2 
-    zetaP = zeta * (FT(1) + sqrt(eps(FT))) + flipsign(sqrt(eps(FT)), L)
-#   uStar = Karm * U / VertProfile(uf, z0M, z, zetaP, MomentumTransport())
-#   z0M = 1.1e-2 * uStar * uStar / Phys.Grav
-#   z0H = 1.1e-2 * uStar * uStar / Phys.Grav
+    zetaP = zeta * (FT(1) + sqrt(eps(FT))) + flipsign(sqrt(eps(FT)), zeta)
     fP = Ri_b - Pr * zetaP *
       VertProfile(uf, z0H, z, zetaP, HeatTransport()) / 
       VertProfile(uf, z0M, z, zetaP, MomentumTransport())^2 
     df = (fP - f) /(zetaP - zeta)
     zetaNew = zeta - f/df
-    zeta = zetaNew
-    @show zeta,f,uStar,z0M
-#   if abs(zetaNew-zeta) < eps(FT)^FT(1/3)
-#     zeta  = zetaNew 
-#     break
-#   else
-#     zeta = zetaNew  
-#   end  
+    if abs(zetaNew-zeta) < eps(FT)^FT(1/3)
+      zeta  = zetaNew 
+      break
+    else
+      zeta = zetaNew  
+    end  
+    uStar = Karm * U / VertProfile(uf, z0M, z, zeta, MomentumTransport())
   end  
 
   CM = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport()))^2
   CT = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport())) /
     (log(z/z0H) - psi(uf, zeta, HeatTransport()))
   uStar = Karm * U / VertProfile(uf, z0M, z, zeta, MomentumTransport())
-  return CM, CT, uStar
+  return CM, CT, uStar, zeta
 
 end
 

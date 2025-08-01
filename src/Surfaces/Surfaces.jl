@@ -20,7 +20,12 @@ global const CTPos = 5
 global const CHPos = 6
 global const RiBSurfPos = 7
 global const hBLPos = 8
-global const LenSurfaceData = 8
+global const zetaPos = 8
+global const LenSurfaceData = 9
+
+global const NumLandClasses = 2
+global const SeaClass = 2
+
 
 
 mutable struct LandUseData{FT<:AbstractFloat,
@@ -31,10 +36,19 @@ mutable struct LandUseData{FT<:AbstractFloat,
   LandClass::IT1
 end
 
+
 function LandUseData{FT}(backend,NumG) where FT<:AbstractFloat
-  z0M = KernelAbstractions.zeros(backend,FT,NumG)
-  z0H = KernelAbstractions.zeros(backend,FT,NumG)
+  z0M = KernelAbstractions.zeros(backend,FT,NumLandClasses)
+  z0H = KernelAbstractions.zeros(backend,FT,NumLandClasses)
   LandClass = KernelAbstractions.zeros(backend,Int,NumG)
+  z0MCPU = zeros(NumLandClasses)
+  z0HCPU = zeros(NumLandClasses)
+  z0MCPU[1] = 0.01
+  z0MCPU[2] = 0.01
+  z0HCPU[1] = 0.01
+  z0HCPU[2] = 0.01
+  copyto!(z0M,z0MCPU)
+  copyto!(z0H,z0HCPU)
   return LandUseData{FT,
                      typeof(z0M),
                      typeof(LandClass)}(
@@ -49,8 +63,10 @@ mutable struct SurfaceData{FT<:AbstractFloat,
   Data::AT2                         
 end
 
-function SurfaceData{FT}(backend,LenSurfaceData,NumG) where FT<:AbstractFloat
+function SurfaceData{FT}(backend,NumG) where FT<:AbstractFloat
   Data = KernelAbstractions.zeros(backend,FT,LenSurfaceData,NumG)
+  @. Data[zetaPos,:] = FT(1)
+  @. Data[uStarPos,:] = FT(1)
   return SurfaceData{FT,
                      typeof(Data)}(
     Data,                 

@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, Surfaces
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPUS, DyCore, Surfaces
 using MPI
 using Base
 using CUDA
@@ -130,7 +130,6 @@ Phys = DyCore.PhysParameters{FTB}()
 
 z0M = 0.05
 z0H = 0.05
-dz = 10.0
 RiB = 0.4
 LandClass = 1
 TSurf = 280.0
@@ -144,24 +143,49 @@ uPos = 2
 vPos = 3
 wPos = 4
 ThPos = 5
-U = zeros(FTB,5)
-U[1] = 1.0
-U[2] = 2.0
-U[3] = 2.0
-U[5] = theta
+NumG = 10
+nz = 2
+U = zeros(FTB,nz,NumG,5)
+p = zeros(FTB,nz,NumG)
+@. U[:,:,1] = 1.0
+@. U[:,:,2] = 2.0
+@. U[:,:,3] = 2.0
+@. U[:,:,5] = theta
 dXdxI = zeros(FTB,3)
 dXdxI[3] = 1
-nS = zeros(FTB,3)
-nS[3] = 1
-p::FTB = 1
+nS = zeros(FTB,3,NumG)
+dz = zeros(nz,NumG)
+@. dz = 10.0
+@. nS[3,:] = 1
+@. p = 1
 #thetaS = FTB(295)
 
-NumG = 10
 SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,NumG)
 LandUseData = Surfaces.LandUseData{FTB}(backend,NumG)
-@. LandUseData.z0M = FTB(0.01)
-@. LandUseData.z0H = FTB(0.01)
-@. LandUseData.LandClass = 5
+@. LandUseData.LandClass[1:5] = 1
+@. LandUseData.LandClass[6:end] = 2
+
+for iG = 1 : NumG
+  a = rand(1)  
+  SurfaceData.Data[Surfaces.TSurfPos,iG] = 300.0 + a[1]
+end  
+
+SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,RhoPos,uPos,
+      vPos,wPos,ThPos,LandUseData)
+
+
+LandClass = LandUseData.LandClass
+NumG = size(U,2)
+groupS = (1)
+ndrangeS = (NumG)
+KSurfaceFluxDataKernel! = Surfaces.SurfaceFluxDataKernel!(backend,groupS)
+KSurfaceFluxDataKernel!(SurfaceFluxValues,SurfaceData.Data,U,p,dz,nS,
+    LandClass,ndrange=ndrangeS)
+@. U[:,:,5] = theta + 0.05
+@show "Second "
+KSurfaceFluxDataKernel!(SurfaceFluxValues,SurfaceData.Data,U,p,dz,nS,
+    LandClass,ndrange=ndrangeS)
+stop
 
 #SurfaceData = Surfaces.MOSurface()(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)
 #uStar, CT, CH = SurfaceData(dz,U,p,dXdxI,nS,landuse)
@@ -171,9 +195,22 @@ LandUseData = Surfaces.LandUseData{FTB}(backend,NumG)
 @show dz, VT, theta, thetaS
 CM, CT, uStar = Surfaces.MOSTIteration(uf,z0M,z0H,dz,VT,theta,thetaS,LandClass,Phys)
 @show CM, CT, uStar
-VT = 5.0
+VT = 20.0
 theta = FTB(300)
-thetaS = FTB(299.0)
+thetaS = FTB(300)
+z0M = 0.00001
+z0H = 0.00001
+@show dz, VT, theta, thetaS
+CM, CT, uStar = Surfaces.MOSTSeaIteration(uf,z0M,z0H,dz,VT,theta,thetaS,LandClass,Phys)
+@show CM, CT, uStar
+theta = FTB(301)
+thetaS = FTB(300)
+@show dz, VT, theta, thetaS
+CM, CT, uStar = Surfaces.MOSTSeaIteration(uf,z0M,z0H,dz,VT,theta,thetaS,LandClass,Phys)
+@show CM, CT, uStar
+theta = FTB(300)
+thetaS = FTB(301)
+@show dz, VT, theta, thetaS
 CM, CT, uStar = Surfaces.MOSTSeaIteration(uf,z0M,z0H,dz,VT,theta,thetaS,LandClass,Phys)
 @show CM, CT, uStar
 stop

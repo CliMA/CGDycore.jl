@@ -427,11 +427,9 @@ end
 # Surface flux
 if Model.SurfaceFlux
 # SurfaceValues
-  Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,CG.NumG)
+  Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.NumG)
   Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
-  @. Global.LandUseData.z0M = FTB(0.01)
-  @. Global.LandUseData.z0H = FTB(0.01)
-  @. Global.LandUseData.LandClass = 5
+  @. Global.LandUseData.LandClass = 2 # Need more Oswald
   if Problem == "HeldSuarezMoistSphere"  
     SurfaceValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)  
     Model.SurfaceValues = SurfaceValues
@@ -447,7 +445,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   elseif SurfaceScheme == "MOST"
     @show "SurfaceScheme MOST"
     SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
-      Model.vPos,Model.wPos,Model.ThPos)
+      Model.vPos,Model.wPos,Model.ThPos,Global.LandUseData)
     Model.SurfaceFluxValues = SurfaceFluxValues
   end
 end
@@ -512,7 +510,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "v",
       "wB",
       "Th",
-      "ThE",
+#     "ThE",
       "Pres",
       ]
     if TkePos > 0
