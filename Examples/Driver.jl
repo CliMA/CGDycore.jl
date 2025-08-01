@@ -2,10 +2,10 @@ import CGDycore:
   Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  GPUS, DyCore
 using MPI
 using Base
-#using CUDA
-#using AMDGPU
-#using Metal
-#using oneAPI
+using CUDA
+using AMDGPU
+using Metal
+using oneAPI
 using KernelAbstractions
 using StaticArrays
 using ArgParse
@@ -140,24 +140,24 @@ machine = get(ENV, "machine", "")
 
 if JuliaDevice == "CPU"
   backend = CPU()
-#elseif JuliaDevice == "GPU"
-#  if JuliaGPU == "CUDA"
-#    backend = CUDABackend()
-#    CUDA.allowscalar(false)
-#    if machine == "levante" || machine == "derecho"
-#    else
-#       CUDA.device!(Proc-1)
-#    end
-#  elseif JuliaGPU == "AMD"
-#    backend = ROCBackend()
-#    AMDGPU.allowscalar(false)
-# elseif JuliaGPU == "Metal"
-#   backend = MetalBackend()
-#   Metal.allowscalar(false)
-# elseif JuliaGPU == "oneAPI"
-#   backend = oneAPIBackend()
-#   oneAPI.allowscalar(false)
-#  end
+elseif JuliaDevice == "GPU"
+  if JuliaGPU == "CUDA"
+    backend = CUDABackend()
+    CUDA.allowscalar(false)
+    if machine == "levante" || machine == "derecho"
+    else
+       CUDA.device!(Proc-1)
+    end
+  elseif JuliaGPU == "AMD"
+    backend = ROCBackend()
+    AMDGPU.allowscalar(false)
+ elseif JuliaGPU == "Metal"
+   backend = MetalBackend()
+   Metal.allowscalar(false)
+ elseif JuliaGPU == "oneAPI"
+   backend = oneAPIBackend()
+   oneAPI.allowscalar(false)
+  end
 else
   backend = CPU()
 end
@@ -445,7 +445,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   elseif SurfaceScheme == "MOST"
     @show "SurfaceScheme MOST"
     SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
-      Model.vPos,Model.wPos,Model.ThPos,Global.LandUseData)
+      Model.vPos,Model.wPos,Model.ThPos,Global.LandUseData.z0M,Global.LandUseData.z0H)
     Model.SurfaceFluxValues = SurfaceFluxValues
   end
 end
