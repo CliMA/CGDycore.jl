@@ -71,10 +71,6 @@ end
     @views FLoc, KLoc = Source(U[Iz+1,IC,:],U[Iz,IC,:],dz[Iz+1,IC],dz[Iz,IC])  
     @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc
     @atomic :monotonic FTke[Iz+1,IC] += eltype(FTke)(.5) * FLoc
-    if KLoc < 0.0
-      @show KLoc  
-      @show Iz,IC
-    end  
     KV[Iz,IC] = KLoc
     if Iz == 1
       @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc  
