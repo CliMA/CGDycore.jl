@@ -66,8 +66,9 @@ end
 function SurfaceData{FT}(backend,NumG) where FT<:AbstractFloat
   Data = KernelAbstractions.zeros(backend,FT,LenSurfaceData,NumG)
   if NumG > 0
-  @. Data[zetaPos,:] = FT(1)
-  @. Data[uStarPos,:] = FT(1)
+    @. Data[zetaPos,:] = FT(1)
+    @. Data[uStarPos,:] = FT(1)
+  end
   return SurfaceData{FT,
                      typeof(Data)}(
     Data,                 

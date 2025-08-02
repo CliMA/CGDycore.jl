@@ -112,14 +112,14 @@ end
 
 Base.@kwdef struct MOSurfaceFlux <: SurfaceFluxValues end
 
-function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos,z0M,z0H)
+function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos,z0MData,z0HData)
   @inline function SurfaceFluxValues(SD,z,U,p,nSS,LandClass)
     FT = eltype(U)
     TS = SD[TSurfPos]
     Uz = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
     theta = U[ThPos] / U[RhoPos]
-    z0M = z0M[LandClass]
-    z0H = z0H[LandClass]
+    z0M = z0MData[LandClass]
+    z0H = z0HData[LandClass]
     zeta = SD[zetaPos]
     if LandClass == SeaClass
       uStar = SD[uStarPos]
@@ -144,6 +144,9 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
+    SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
+      view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
+      LandClass[IC])
     SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
       view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
       LandClass[IC])

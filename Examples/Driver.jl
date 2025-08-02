@@ -3,9 +3,9 @@ import CGDycore:
 using MPI
 using Base
 using CUDA
-using AMDGPU
+#using AMDGPU
 using Metal
-using oneAPI
+#using oneAPI
 using KernelAbstractions
 using StaticArrays
 using ArgParse
@@ -148,15 +148,15 @@ elseif JuliaDevice == "GPU"
     else
        CUDA.device!(Proc-1)
     end
-  elseif JuliaGPU == "AMD"
-    backend = ROCBackend()
-    AMDGPU.allowscalar(false)
- elseif JuliaGPU == "Metal"
-   backend = MetalBackend()
-   Metal.allowscalar(false)
- elseif JuliaGPU == "oneAPI"
-   backend = oneAPIBackend()
-   oneAPI.allowscalar(false)
+#  elseif JuliaGPU == "AMD"
+#    backend = ROCBackend()
+#    AMDGPU.allowscalar(false)
+  elseif JuliaGPU == "Metal"
+    backend = MetalBackend()
+    Metal.allowscalar(false)
+#  elseif JuliaGPU == "oneAPI"
+#    backend = oneAPIBackend()
+#    oneAPI.allowscalar(false)
   end
 else
   backend = CPU()
