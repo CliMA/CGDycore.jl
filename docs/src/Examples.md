@@ -11,7 +11,6 @@ The classic Bickley jet setup is a standard test case for barotropic instability
 Additional initializations and test cases are included in the `Examples` module and can be used analogously.
 
 ### General Usage
-```markdown
+
 ```@autodocs
 CGDycore.Examples.initial
-```

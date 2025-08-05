@@ -11,11 +11,10 @@ _The stiffness matrix_ represents the discretized weak form of differential oper
 The `StiffMatrix` function assembles the global stiffness matrix for various finite element types (e.g., `HCurlElement`, `HDivElement`, `ScalarElement`, `VectorElement`).  
 It uses numerical quadrature and the mapping from reference to physical elements.
 
-### General Usage
-```markdown
-```@autodocs
+### General 
+```@autodocs 
 CGDycore.FEMSei.StiffMatrix
-```
+
 
 ### Notes
 
