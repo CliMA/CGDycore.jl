@@ -40,37 +40,39 @@ end
 function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
   @inline function Model(UT,UB,dzT,dzB)
 
-#   Constants
-    SigT = 0.74e0
-    fTke = 0.1
-
     FT = eltype(UB)
+#   Constants
+    SigT = FT(0.74e0)
+    fTke = FT(0.1)
+
     dzF = FT(0.5) * (dzB + dzT)
 
-    dudzF = (UT[uPos] - UB[uPos]) / dzF
-    dvdzF = (UT[vPos] - UB[vPos]) / dzF
-    S = sqrt(dudzF * dudzF + dvdzF * dvdzF)
+    @inbounds begin
+      dudzF = (UT[uPos] - UB[uPos]) / dzF
+      dvdzF = (UT[vPos] - UB[vPos]) / dzF
+      S = sqrt(dudzF * dudzF + dvdzF * dvdzF)
 
-    ThT = UT[ThPos] / UT[RhoPos]
-    ThB = UB[ThPos] / UB[RhoPos]
-    N2 = Phys.Grav * FT(2.0) * (ThT- ThB) / dzF / (ThT + ThB)
+      ThT = UT[ThPos] / UT[RhoPos]
+      ThB = UB[ThPos] / UB[RhoPos]
+      N2 = Phys.Grav * FT(2.0) * (ThT- ThB) / dzF / (ThT + ThB)
 
-    LenScale = min(dzF, FT(200.0))
-#   Diffusion Koefficient
-    RhoF = FT(0.5) * (UT[RhoPos] + UB[RhoPos])
-    TkeF = FT(0.5) * (UB[TkePos] / UB[RhoPos] + UT[TkePos] / UT[RhoPos])
+      LenScale = min(dzF, FT(200.0))
+#     Diffusion Koefficient
+      RhoF = FT(0.5) * (UT[RhoPos] + UB[RhoPos])
+      TkeF = FT(0.5) * (UB[TkePos] / UB[RhoPos] + UT[TkePos] / UT[RhoPos])
+    end
     TkeFAbs = max(TkeF, FT(1.e-8))
     sqrTkeFAbs = sqrt(TkeFAbs)
-    DiffKoeff = RhoF * max(Phys.Cd * sqrTkeFAbs * LenScale, 1.e-2)
+    DiffKoeff = RhoF * max(Phys.Cd * sqrTkeFAbs * LenScale, FT(1.e-1))
 
 #   Richardson-number and production terms
-    Rich = N2 / (S * S + 1.e-3)
-    Rich = max(Rich,-4.0/3.0)
-    Ptke = max(1.0 - DiffKoeff*Rich/(SigT*DiffKoeff),fTke)
+    Rich = N2 / (S * S + FT(1.e-3))
+    Rich = max(Rich,FT(-4/3))
+    Ptke = max(FT(1) - DiffKoeff*Rich/(SigT*DiffKoeff),fTke)
 
 #   Local Length Scale
     if N2 > 0.0
-      Len = min(LenScale, 0.76 * sqrTkeFAbs / N2)
+      Len = min(LenScale, FT(0.76) * sqrTkeFAbs / N2)
     else
       Len = LenScale
     end

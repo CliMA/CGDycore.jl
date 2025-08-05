@@ -78,6 +78,7 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
     Cache.Vn=zeros(size(U))
   elseif IntMethod == "RungeKutta"
     Cache.f=KernelAbstractions.zeros(backend,FT,size(U)..., TimeStepper.RK.nStage)
+    Cache.Vn = similar(U)
   elseif IntMethod == "MIS"
     Cache.f=zeros(size(U)..., TimeStepper.MIS.nStage)
     Cache.VS=zeros(size(U)..., TimeStepper.MIS.nStage - 1)

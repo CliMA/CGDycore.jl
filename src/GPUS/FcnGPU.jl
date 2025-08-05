@@ -523,12 +523,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KV = Cache.KV
     KTkeSourceKernel! = TkeSourceKernel!(backend, groupG)
     KTkeSourceKernel!(Global.Model.TurbulenceSource,FTke,KV,U,dz,ndrange=ndrangeG)
-    if minimum(KV) < 0.0
-      @show size(KV)  
-      @show minimum(KV)  
-      @show findmin(KV)  
-      stop
-    end  
   end 
   if Global.Model.VerticalDiffusionMom
     KVerticalDiffusionMomentumKernel! = VerticalDiffusionMomentumKernel!(backend,groupG)

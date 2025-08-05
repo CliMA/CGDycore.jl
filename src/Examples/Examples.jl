@@ -68,6 +68,10 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
     Profile = Examples.StratifiedExample()(Param,Phys)
     Model.InitialProfile = Profile
     @show "Stratified"
+  elseif Problem == "NeutralCart"
+    Profile = Examples.NeutralCartExample()(Param,Phys)
+    Model.InitialProfile = Profile
+    @show "NeutralCartExample"
   elseif Problem == "WarmBubble2DXCart"
     Profile = Examples.WarmBubbleCartExample()(Param,Phys)
     Model.InitialProfile = Profile

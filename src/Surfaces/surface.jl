@@ -6,6 +6,7 @@ Base.@kwdef struct DefaultSurface <: SurfaceValues end
 function (::DefaultSurface)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceValues(SD,xS,U,p)
     SD[TSurfPos] = Param.TSurf
+    SD[RhoVSurfPos] = Param.RhoVSurf
   end  
   return SurfaceValues
 end  

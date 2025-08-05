@@ -410,6 +410,37 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct NeutralCartExample <: Example end
+
+function (profile::NeutralCartExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    u = Param.uMax
+    v = Param.vMax
+    w = FT(0)
+    z = x[3]
+    Grav = Phys.Grav
+    p0 = Phys.p0
+    Rd = Phys.Rd
+    Rv = Phys.Rv
+    Cvd = Phys.Cvd
+    kappa = Phys.kappa
+    Th0 = Param.Th0
+    pLoc = p0 * (FT(1) - Grav * z * kappa / (Rd * Th0))^(FT(1) / kappa)
+    Th = Th0
+    Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
+    T = pLoc / (Rd * Rho)
+    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
+    IE = Cvd * T 
+    qV = FT(0)
+    qC = FT(0)
+    ThBGrd = Th0
+
+    return (Rho,u,v,w,Th,E,IE,qV,qC,ThBGrd)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct StratifiedExample <: Example end
 
 function (profile::StratifiedExample)(Param,Phys)

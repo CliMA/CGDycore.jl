@@ -330,6 +330,16 @@ Base.@kwdef struct ParamWarmBubble2DXCart{FT}
   cS::FT = 360
 end
 
+Base.@kwdef struct ParamNeutralCart{FT}
+  Th0::FT = 300
+  uMax::FT = 20
+  vMax::FT = 0
+  wMax::FT = 0
+  TSurf::FT=301
+  RhoVSurf::FT=1.e-2
+  cS::FT = 360
+end
+
 Base.@kwdef struct ParamBryanFritschCart
   Th0::Float64 = 300.0
   uMax::Float64 = 0.0
@@ -577,6 +587,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "WarmBubble2DXCart"
     @show Problem
     Param = ParamWarmBubble2DXCart{FT}()
+  elseif Problem == "NeutralCart"
+    @show Problem
+    Param = ParamNeutralCart{FT}()
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()

@@ -651,9 +651,8 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
     elseif  str == "DiffKoeff" 
       DiffKoeff = Cache.KV  
       RhoPos = Global.Model.RhoPos
-      DiffKoeffCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
       if length(size(U)) == 3
-        DiffKoeffR = reshape(DiffKoeff,size(DiffKoeff,1),1,size(DiffKoeff,2))  
+        DiffKoeffR = reshape(DiffKoeff,1,size(DiffKoeff,1),size(DiffKoeff,2))  
       else
         DiffKoeffR = DiffKoeff  
       end  
