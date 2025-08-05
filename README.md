@@ -2,22 +2,22 @@
 <img src="https://github.com/user-attachments/assets/bf53eeb8-d610-4114-98a8-de3bc9067e69" width="250"/>
 </div>
 
-GDycore is an experimental [Julia code](https://julialang.org/) to study numerical methods and implementational details of numerical dycores for weather prediction. The code is parallelized by MPI and the time integration part of the code is already ported to an accelerator by using the Julia package KernelAbstractions.jl. Within this programming paradigm, the code runs on CPUs and different GPU backends (CUDA, Metal). At the moment, a spectral continuous Galerkin method following the HOMME philosophy is implemented as the first numerical dycore.
+GDycore is an experimental [Julia code](https://julialang.org/) for studying numerical methods and implementing the details of numerical dycores for weather prediction. The code is parallelised by MPI and the time integration part of the code is already ported to an accelerator by using the Julia package KernelAbstractions.jl. Within this programming paradigm, the code runs on CPUs and different GPU backends (CUDA, Metal). Currently, a spectral continuous Galerkin method, following the HOMME philosophy, is implemented as the first numerical dycore.
 
 ## Code structure and usage
-* The code has a general data structure for unstructured grids on the sphere. There exist grid generators for cubed sphere grids, icosahedral triangular and hexagonal grids. In addition, there are options to read in other types of unstructured quad grids n the sphere.
+* The code has a general data structure for unstructured grids on the sphere. There exist grid generators for cubed sphere grids, icosahedral triangular and hexagonal grids. In addition, there are options to read in other types of unstructured quad grids on the sphere.
 * Three-dimensional grids (extension to the vertical) are constructed by extruding the two-dimensional horizontal grids.
-* The code is parallelized by two-dimensional domain decomposition of the spherical grid. The decomposition is based either on space-filling curves or an equi-area decomposition of the sphere in two polar caps and further spherical bands. 
+* The code is parallelised by two-dimensional domain decomposition of the spherical grid. The decomposition is based either on space-filling curves or an equi-area decomposition of the sphere in two polar caps and further spherical bands. 
 * AbstractionKernels.jl is used to run the code solely on CPU's or also partly on GPU's of different vendors. 
 * For time integration, different explicit and partially implicit methods are available. Our favoured scheme is the  Rosenbrock-W method.
 
 ## CGDycore.jl/FEMSei.jl
 
-In addition, you will find an experimental environment based on a finite element method for calculating test examples such as Galewsky, Haurwitz, Modon Collison on the sphere. The Bickley jet can also be computed on a standard Cartesian grid by appropriately adjusting the manifold’s metric terms. An overview of all these options can be found in the table below. This Code is currently not parallelized for CPU or GPU. 
+In addition, you will find an experimental environment based on a finite element method for calculating test examples such as Galewsky, Haurwitz, Modon Collison on the sphere. The Bickley jet can also be computed on a planar grid by appropriately adjusting the manifold’s metric terms. An overview of all these options can be found in the table below. This Code is currently not parallelised for CPU or GPU. 
 
 ### ✅ Grid Type and Possible Test Cases
 
-| **Nonlinear SWE**       | **Output/Grid** | **Galewsky** (Sphere) | **Haurwitz** (Sphere) | **Modon** (Sphere) | **Galewsky** (Flat) | **Haurwitz** (Flat) | **Modon** (Flat) | **Bickley** (Cartesian) |
+| **Nonlinear SWE**       | **Output/Grid** | **Galewsky** (Sphere) | **Haurwitz** (Sphere) | **Modon** (Sphere) | **Galewsky** (Flat) | **Haurwitz** (Flat) | **Modon** (Flat) | **Bickley** (Planar) |
 |------------------------|------------------|------------------------|------------------------|---------------------|----------------------|-----------------------|---------------------|---------------------------|
 | **Conservative**       | Tri              | ✓                      |   ✓                    |  ✓                  |      ✓               |    ✓                  |    ✓                 |    ✓                       |✓
 |                        | Quad             | ✓                      | ✓                      | ✓                 |     ✓                | ✓                     |    ✓                  |      ✓                     |✓
