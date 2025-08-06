@@ -1,5 +1,5 @@
 """
-  VortCrossVel
+  VortCrossVel!(backend, FTB, Rhs, u, uFe::HDivConfElement, q, qFe::ScalarElement, FeT::HDivConfElement, Grid, QuadOrd, Jacobi)
 
 Assembles the right-hand side (Rhs) vector for the vorticity-cross-velocity term in a finite element method (FEM) context, specifically for mixed HDiv and scalar elements.
 
@@ -34,7 +34,6 @@ For each face in the grid, this function:
 - `QuadRule`
 - `Jacobi`
 """
-
 function VortCrossVel!(backend,FTB,Rhs,u,uFe::HDivConfElement,q,qFe::ScalarElement,FeT::HDivConfElement,
   Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
@@ -105,7 +104,6 @@ Assembles the divergence matrix for a finite element method (FEM) problem, coupl
 - Assumes that `FeT.phi` and `FeF.Divphi` are arrays of functions for evaluating basis functions and their divergences at quadrature points.
 - The orientation of each face is taken into account via `Grid.Faces[iF].Orientation`.
 """
-
 function DivMatrix(backend,FTB,FeF::HDivConfElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,NumQuad)
@@ -176,7 +174,6 @@ This function computes the global Laplacian matrix by looping over all faces of 
 - The local-to-global mapping for degrees of freedom is provided by `FeT.Glob` and `FeF.Glob`.
 - The function is optimized for performance using `@inbounds` and preallocated arrays.
 """
-
 function LaplMatrix(backend,FTB,FeF::ScalarElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
   fFRef  = zeros(2,FeF.DoF,NumQuad)
@@ -259,7 +256,6 @@ For each face in the grid, this function:
 - Uses `@inbounds` for performance; ensure input data is valid to avoid out-of-bounds errors.
 
 """
-
 function DivRhs!(backend,FTB,Div,FeT::ScalarElement,u,uFeF::HDivConfElement,
   Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -341,7 +337,6 @@ The function is optimized with `@inbounds` for performance and assumes that the 
 - `HDivConfElement`
 - `QuadRule`
 """
-
 function GradRhs!(backend,FTB,Grad,h,hFeF::ScalarElement,FeT::HDivConfElement,Grid,ElemType::Grids.ElementType,
   QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
@@ -411,8 +406,6 @@ Assembles the curl matrix for a finite element method (FEM) problem involving an
 - Assumes that `FeT.phi` and `FeF.Curlphi` are arrays of function handles for evaluating basis functions and their curls at quadrature points.
 - The function is performance-optimized using `@inbounds` and preallocated arrays.
 """
-
-#HDiv->HCurl
 function CurlMatrix(backend,FTB,FeF::HCurlConfElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,NumQuad)
@@ -479,7 +472,6 @@ Assembles the divergence matrix for a finite element method (FEM) discretization
 - The function assumes that the basis functions and their divergences are provided as callable objects in `FeT.phi`, `FeF.phi`, and `FeF.Divphi`.
 - The grid and element structures must provide necessary geometric and topological information, including face orientations and global DoF mappings.
 """
-
 function DivMatrix(backend,FTB,FeF::HDivKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,NumQuad)
@@ -578,10 +570,9 @@ Assembles the right-hand side vector for the divergence operator in a finite ele
 - Uses in-place modification for performance.
 
 # See also
-- [`QuadRule`](@ref): For quadrature rule generation.
-- [`HDivKiteDElement`](@ref), [`ScalarElement`](@ref): For finite element definitions.
+- [`QuadRule`]: For quadrature rule generation.
+- [`HDivKiteDElement`], [`ScalarElement`]: For finite element definitions.
 """
-
 function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,FeT::ScalarElement,Grid,ElemType::Grids.ElementType,
   QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
@@ -682,7 +673,6 @@ Assembles the curl matrix for a finite element method (FEM) discretization invol
 - Assumes that `FeF` and `FeT` provide callable basis and curl-basis functions, as well as global DoF mappings.
 - The function is performance-optimized using `@inbounds` and preallocated arrays.
 """
-
 function CurlMatrix(backend,FTB,FeF::HCurlKiteDElement,FeT::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(FeT.Type,QuadOrd)
   fFRef  = zeros(FeF.Comp,FeF.DoF,NumQuad)
@@ -770,7 +760,6 @@ The function computes the local contributions to the gradient matrix for each fa
 - The assembly is performed in a memory-efficient way using sparse matrix construction.
 
 """
-
 function GradMatrix(backend,FTB,FeF::ScalarElement,FeT::HDivConfElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,NumQuad)
@@ -841,7 +830,6 @@ The function computes the local contributions to the gradient matrix by evaluati
 - The assembly uses in-place operations and preallocated arrays for efficiency.
 - The function is specialized for 2D elements with two components and their corresponding edge integrals.
 """
-
 function GradMatrix(backend,FTB,FeF::ScalarElement,FeT::HDivKiteDElement,Grid,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(Grid.Type,QuadOrd)
   fFRef  = zeros(FeT.Comp,FeF.DoF,NumQuad)
@@ -946,7 +934,6 @@ For each face in the grid, the function:
 - `HDivConfElement`
 - `ScalarElement`
 """
-
 function GradHeightSquared!(backend,FTB,Rhs,FeT::HDivConfElement,h,hFeF::ScalarElement,
   Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -1031,7 +1018,6 @@ The gravitational constant is hardcoded as `Grav = 9.80616`.
 # Returns
 Nothing. The function updates `Rhs` in-place.
 """
-
 function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfElement,
   FeT::HDivConfElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -1133,11 +1119,10 @@ This function computes the local contributions of the gradient of the kinetic he
 - The function is intended for use in the assembly phase of a mixed finite element method for shallow water or similar PDEs.
 
 # See also
-- [`ScalarElement`](@ref)
-- [`HDivConfElement`](@ref)
-- [`QuadRule`](@ref)
+- [`ScalarElement`]
+- [`HDivConfElement`]
+- [`QuadRule`]
 """
-
 function GradKinHeightInter!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivConfElement,
   FeT::HDivConfElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -1258,7 +1243,6 @@ projected onto a finite element basis.
 - `ScalarElement`
 - `HDivKiteDElement`
 """
-
 #! heißt drin berechnet
 function GradKinHeight!(backend,FTB,Rhs,h,hFeF::ScalarElement,u,uFeF::HDivKiteDElement,
   FeT::HDivKiteDElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
@@ -1433,7 +1417,6 @@ Assembles the right-hand side (RHS) vector for the divergence operator in a fini
 - `HDivKiteDElement`
 - `ScalarElement`
 """
-
 function DivRhs!(backend,FTB,Div,u,uFeF::HDivKiteDElement,h,hFeF::ScalarElement,FeT::ScalarElement,Grid,
   ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
@@ -1572,7 +1555,6 @@ The function supports mixed finite element spaces (scalar and H(div) vector fiel
 - `HDivKiteDElement`
 - `Grids.ElementType`
 """
-
 function GradRhs!(backend,FTB,Grad,h,hFeF::ScalarElement,u,uFeF::HDivKiteDElement,FeT::HDivKiteDElement,Grid,
   ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
@@ -1743,7 +1725,6 @@ For each face in the grid, the function:
 - `QuadRule`
 - `HDivElement`
 """
-
 function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
   ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -1819,7 +1800,6 @@ Compute the local Coriolis parameter and unit vector for a given position.
 # Description
 If `Form` is `"Sphere"`, computes the Coriolis parameter based on the latitude derived from the position vector `X` on a sphere (assuming Earth-like rotation). Otherwise, returns a constant Coriolis parameter and a vertical unit vector for planar geometry.
 """
-
 function Coriolis(X,Form)
   if Form == "Sphere"
     Omega = 2 * pi / 24.0 / 3600.0
@@ -1878,7 +1858,6 @@ Modifies the `Cross` vector in-place.
 - `Coriolis`
 - `Jacobi`
 """
-
 function CrossRhs!(backend,FTB,Cross,q,qFeF::ScalarElement,u,uFeF::HDivElement,FeT::HDivElement,Grid,
   ElemType::Grids.ElementType,QuadOrd,Jacobi)
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
@@ -1995,7 +1974,6 @@ The function:
 - `Grids.ElementType`
 - `Jacobi`
 """
-
 function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::HDivElement,
   uVecDG,FeVecDG::VectorElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
@@ -2335,9 +2313,9 @@ using numerical quadrature over all faces of the grid.
 - The function is performance-optimized using `@inbounds` and preallocated arrays.
 
 # See also
-- [`QuadRule`](@ref)
-- [`HDivElement`](@ref)
-- [`ldiv!`](@ref)
+- [`QuadRule`]
+- [`HDivElement`]
+- [`ldiv!`]
 """
 function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
 #
@@ -2432,7 +2410,6 @@ over all faces of the computational grid, using the provided finite element spac
 - Assumes that all input structures (`FeT`, `uFe`, `hFe`, `Grid`) are properly initialized and compatible.
 - The function is performance-critical and uses in-place operations and `@inbounds` for efficiency.
 """
-
 function CurlVel!(q,FeT,u,uFe::HDivElement,h,hFe::ScalarElement,QuadOrd,ElemType,Grid,Jacobi)
 #
 #
@@ -2549,7 +2526,6 @@ Assembles the right-hand side (Rhs) vector for the divergence of the momentum eq
 - `Grids.ElementType`
 - `Jacobi`
 """
-
 function DivMomentumVectorOld!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::HDivElement,
   uVecDG,FeVecDG::VectorElement,Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
