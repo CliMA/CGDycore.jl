@@ -15,7 +15,7 @@ It uses numerical quadrature and the mapping from reference to physical elements
 ```markdown
 ```@docs
 CGDycore.FEMSei.VortCrossVel!
-
+```
 ### Notes
 
 - The function assumes that basis functions and their derivatives are provided in the element objects.
