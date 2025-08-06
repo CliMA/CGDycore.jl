@@ -1,6 +1,5 @@
 """
-  VortCrossVel!(backend, FTB, Rhs, u, uFe::HDivConfElement, q, qFe::ScalarElement, FeT::HDivConfElement,
-          Grid, QuadOrd, Jacobi)
+  VortCrossVel
 
 Assembles the right-hand side (Rhs) vector for the vorticity-cross-velocity term in a finite element method (FEM) context, specifically for mixed HDiv and scalar elements.
 

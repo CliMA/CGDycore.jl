@@ -14,7 +14,7 @@ It uses numerical quadrature and the mapping from reference to physical elements
 ### General 
 ```markdown
 ```@docs
-CGDycore.FEMSei.VortCrossVel!
+CGDycore.FEMSei.VortCrossVel
 
 ### Notes
 
