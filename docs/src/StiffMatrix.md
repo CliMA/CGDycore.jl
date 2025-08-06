@@ -13,7 +13,7 @@ It uses numerical quadrature and the mapping from reference to physical elements
 
 ### General 
 ```markdown
-```@docs
+```@autodocs
 CGDycore.FEMSei.VortCrossVel!
 ```
 ### Notes
