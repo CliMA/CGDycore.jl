@@ -21,7 +21,6 @@ using DynamicPolynomials
 using FastGaussQuadrature
 
 export parse_commandline 
-export MassMatrix, StiffMatrix
 
 abstract type FiniteElement end
 abstract type ScalarElement <: FiniteElement end

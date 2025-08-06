@@ -12,9 +12,9 @@ The `StiffMatrix` function assembles the global stiffness matrix for various fin
 It uses numerical quadrature and the mapping from reference to physical elements.
 
 ### General 
-```@docs 
-CGDycore.FEMSei.StiffMatrix
-
+```markdown
+```@docs
+CGDycore.FEMSei.VortCrossVel!
 
 ### Notes
 

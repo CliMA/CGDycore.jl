@@ -14,3 +14,4 @@ broadcasting for performance and composability.
 ### General Usage
 ```@docs
 CGDycore.FEMSei.MassMatrix
+```
