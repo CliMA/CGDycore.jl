@@ -11,7 +11,7 @@ _The stiffness matrix_ represents the discretized weak form of differential oper
 The `StiffMatrix` function assembles the global stiffness matrix for various finite element types (e.g., `HCurlElement`, `HDivElement`, `ScalarElement`, `VectorElement`).  
 It uses numerical quadrature and the mapping from reference to physical elements.
 
-### General 
+## General 
 
 ```@docs
 CGDycore.FEMSei.VortCrossVel!
@@ -30,7 +30,7 @@ CGDycore.FEMSei.DivMomentumVector!
 CGDycore.FEMSei.DivMomentumVectorOld!
 CGDycore.FEMSei.CurlVel!
 ```
-### Notes
+## Notes
 
 - The function assumes that basis functions and their derivatives are provided in the element objects.
 - The Jacobian and its inverse are used for mapping and integration.
