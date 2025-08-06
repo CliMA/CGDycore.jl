@@ -21,5 +21,4 @@ makedocs(;
     ],
 )
 
-
 deploydocs(; repo = "github.com/Ofenblech/CGDycore.jl", push_preview = true)
