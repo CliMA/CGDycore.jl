@@ -12,7 +12,7 @@ The `StiffMatrix` function assembles the global stiffness matrix for various fin
 It uses numerical quadrature and the mapping from reference to physical elements.
 
 ### General 
-```@autodocs 
+```@docs 
 CGDycore.FEMSei.StiffMatrix
 
 
