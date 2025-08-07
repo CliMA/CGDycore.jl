@@ -80,7 +80,7 @@ This setup is commonly used to investigate the nonlinear evolution of jets, the 
 
 - Beron-Vera, F. J., Olascoaga, M. J., & Brown, M. G. (2003).  
   "The Nonlinear Evolution of Bickley Jets". Journal of Physical Oceanography, 33(10), 2173–2188.  
-  https://journals.ametsoc.org/view/journals/phoc/33/10/1520-0485_2003_033_2173_tneobu_2.0.co_2.xml
+  [Link](https://journals.ametsoc.org/view/journals/phoc/33/10/1520-0485_2003_033_2173_tneobu_2.0.co_2.xml)
 
 """
 Base.@kwdef struct BickleyJetExample <: Example end
@@ -142,6 +142,7 @@ function (profile::ModonCollisionExample)(Param, Phys)
     end
     return local_profile
 end
+
 Base.@kwdef struct DivergentSphereExample <: Example end
 
 function (profile::DivergentSphereExample)(Param,Phys)
