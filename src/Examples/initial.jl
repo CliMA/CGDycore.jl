@@ -83,7 +83,6 @@ This setup is commonly used to investigate the nonlinear evolution of jets, the 
   https://journals.ametsoc.org/view/journals/phoc/33/10/1520-0485_2003_033_2173_tneobu_2.0.co_2.xml
 
 """
-
 Base.@kwdef struct BickleyJetExample <: Example end
 
 function (profile::BickleyJetExample)(Param,Phys)

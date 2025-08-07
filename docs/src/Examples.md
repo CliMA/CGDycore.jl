@@ -13,5 +13,5 @@ Additional initializations and test cases are included in the `Examples` module 
 ## General Usage
 
 ```@docs
-CGDycore.Examples.initial
+CGDycore.Examples.BickleyJetExample
 ```
