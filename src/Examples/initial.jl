@@ -113,6 +113,42 @@ function (profile::BickleyJetExample)(Param,Phys)
   return local_profile
 end
 
+"""
+  ModonCollisionExample <: Example
+
+Implements the initial condition for a modon collision on the sphere, following the setup in 
+McRae & Dritschel (2018), "The modon test: A barotropic test case for numerical methods on the sphere".
+
+# Usage
+
+    profile = ModonCollisionExample()
+    initial_conditions = profile(Param, Phys)
+
+# Arguments
+
+- `Param`: Parameter object containing modon parameters (e.g., modon centers, radii, amplitudes).
+- `Phys`: Physical parameters (e.g., gravity, planetary radius).
+
+# Returns
+
+A function `local_profile(x, time)` that computes the initial conditions at position `x` and time `time`:
+- `Rho`: Layer depth (height field).
+- `u`: Zonal velocity.
+- `v`: Meridional velocity.
+- `w`: Vertical velocity (set to 0.0).
+- `Th`: Passive tracer or potential temperature (set to 1.0).
+
+# Reference
+
+- McRae, A. T. T., & Dritschel, D. G. (2018). 
+  "The modon test: A barotropic test case for numerical methods on the sphere." 
+  Geoscientific Model Development, 11(2), 645–655. 
+  [Link](https://doi.org/10.5194/gmd-11-645-2018)
+- Lin, S.-J., Chen, J.-H., Harris, L. M., & Zhou, L. (2017). 
+  "Colliding modons on the sphere: A barotropic test case for numerical methods." 
+  Geoscientific Model Development, 10(10), 3801–3817.
+  [Link](https://doi.org/10.1002/2017MS000965)
+"""
 Base.@kwdef struct ModonCollisionExample <: Example end
 
 function (profile::ModonCollisionExample)(Param, Phys)
@@ -506,6 +542,41 @@ function (profile::StratifiedSphereExample)(Param,Phys)
   return local_profile
 end
 
+"""
+  GalewskyExample <: Example
+
+Implements the Galewsky barotropic instability initial condition, a standard test case for shallow water models on the sphere.
+
+# Usage
+
+  profile = GalewskyExample()
+  initial_conditions = profile(Param, Phys)
+
+# Arguments
+
+- `Param`: Parameter object containing Galewsky test parameters (e.g., `H0G`, `hH`, `alphaG`, `betaG`, `lat0G`, `lat1G`, `uM`, `eN`).
+- `Phys`: Physical parameters (e.g., `Grav`, `Omega`, `RadEarth`).
+
+# Returns
+
+A function `local_profile(x, time)` that computes the initial conditions at position `x` and time `time`:
+- `Rho`: Layer thickness (height field).
+- `u`: Zonal velocity.
+- `v`: Meridional velocity (set to 0).
+- `w`: Vertical velocity (set to 0).
+- `Th`: Potential temperature (set to 1).
+
+# Physical Background
+
+The Galewsky test case is designed to study barotropic instability and the nonlinear evolution of a midlatitude jet on the sphere. The initial zonal velocity is confined between two latitudes and is in geostrophic balance with the height field. A localized height perturbation is added to trigger instability. This setup is widely used to benchmark shallow water models and study the development of jets and eddies (see Galewsky et al. 2004).
+
+# References
+
+- Galewsky, J., Scott, R. K., & Polvani, L. M. (2004).  
+  "An initial-value problem for testing numerical models of the global shallow-water equations." Tellus A: Dynamic Meteorology and Oceanography, 56(5), 429–440.  
+  [Link](https://doi.org/10.1111/j.1600-0870.2004.00049.x)
+
+"""
 Base.@kwdef struct GalewskyExample <: Example end
 
 function (profile::GalewskyExample)(Param,Phys)
@@ -534,6 +605,49 @@ function (profile::GalewskyExample)(Param,Phys)
   return local_profile
 end
 
+"""
+  HaurwitzExample <: Example
+
+Implements the Haurwitz wave initial condition, a standard test case for the shallow water equations on the sphere, as described in Williamson et al. (1992).
+
+# Usage
+
+  profile = HaurwitzExample()
+  initial_conditions = profile(Param, Phys)
+
+# Arguments
+
+- `Param`: Parameter object containing Haurwitz wave parameters:
+  - `ω`: Angular velocity of the wave (rad/s)
+  - `K`: Amplitude parameter (m/s)
+  - `R`: Zonal wavenumber (integer, e.g., 4)
+  - `h0`: Mean fluid depth (m)
+- `Phys`: Physical parameters:
+  - `Grav`: Gravitational acceleration (m/s²)
+  - `Omega`: Planetary rotation rate (rad/s)
+  - `RadEarth`: Planetary radius (m)
+
+# Returns
+
+A function `local_profile(x, time)` that computes the initial conditions at position `x` and time `time`:
+- `Rho`: Layer thickness (height field).
+- `u`: Zonal velocity.
+- `v`: Meridional velocity.
+- `w`: Vertical velocity (set to 0).
+- `Th`: Potential temperature (set to 1).
+
+# Physical Background
+
+The Haurwitz wave is a classic analytic solution for the barotropic vorticity equation on the sphere, featuring a wavenumber-R pattern that propagates westward. It is widely used to test the accuracy and stability of global shallow water models.
+
+# References
+
+- Williamson, D. L., Drake, J. B., Hack, J. J., Jakob, R., & Swarztrauber, P. N. (1992).
+  "A standard test set for numerical approximations to the shallow water equations in spherical geometry."
+  Journal of Computational Physics, 102(1), 211–224.
+  [Link](https://doi.org/10.1016/S0021-9991(05)80016-6)
+
+"""
 Base.@kwdef struct HaurwitzExample <: Example end
 
 function (profile::HaurwitzExample)(Param,Phys)

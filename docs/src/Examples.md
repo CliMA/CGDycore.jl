@@ -14,4 +14,7 @@ Additional initializations and test cases are included in the `Examples` module 
 
 ```@docs
 CGDycore.Examples.BickleyJetExample
+CGDycore.Examples.ModonCollisionExample
+CGDycore.Examples.GalewskyExample
+CGDycore.Examples.HaurwitzExample
 ```
