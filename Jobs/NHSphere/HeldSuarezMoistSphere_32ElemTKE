@@ -33,13 +33,16 @@ julia --project Examples/Driver.jl \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
+  --SimHours=0 \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=12 \
+  --PrintHours=1 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/HeldSuarezMoist0/CGQuad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
