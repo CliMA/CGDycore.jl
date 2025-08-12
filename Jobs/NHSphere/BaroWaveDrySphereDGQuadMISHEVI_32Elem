@@ -43,8 +43,8 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=100.0 \
-  --IntMethod="Rosenbrock" \
+  --dtau=1000.0 \
+  --IntMethod="MIS" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=true \
