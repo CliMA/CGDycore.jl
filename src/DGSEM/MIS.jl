@@ -31,6 +31,8 @@ function MIS_Method(ROS,MIS,U,FcnSlow,FcnFast,dtau,nIter,nPrint,DG,Exchange,Metr
   dZn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   Sdu = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,MIS.nStage)
   Yn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,MIS.nStage)
+  CacheUp = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
+
   @time begin
 	@inbounds for i = 1 : nIter
 		time_elapsed = @elapsed begin
@@ -46,10 +48,10 @@ function MIS_Method(ROS,MIS,U,FcnSlow,FcnFast,dtau,nIter,nPrint,DG,Exchange,Metr
 		if iStage == 1
 		@. Yn[:,:,:,:,iStage] = UI 
 		else
-	RosenbrockMIS!(ROS, dt_small, MIS.d[iStage] * dtau, iStage,Yn, Zn0, dZn, yn, y, k, FcnFast,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,Jac,CacheU,CacheS)
+	RosenbrockMIS!(ROS, dt_small, MIS.d[iStage] * dtau, iStage,Yn, Zn0, dZn, yn, y, k, FcnFast,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,Jac,CacheU,CacheS,CacheUp)
 		end
-		@views @. yn = Yn[:,:,:,:,iStage]
-	@views FcnSlow(Sdu[:,:,:,:,iStage],yn,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
+	@views @. CacheUp[:,:,:,1:NumV] = Yn[:,:,:,:,iStage]
+	@views FcnSlow(Sdu[:,:,:,:,iStage],CacheUp,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
 
 		end ## Fine Stages
 		
@@ -81,7 +83,7 @@ function InitialConditionMIS!(Zn0, Yn, u, alfa, stage)
 end
 
 
-function RosenbrockMIS!(ROS,dt_small, dt, stage,Yn,Zn0, dZn, UI, UIn, k, Fcn,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,Jac,CacheU,CacheS)
+function RosenbrockMIS!(ROS,dt_small, dt, stage,Yn,Zn0, dZn, UI, UIn, k, Fcn,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,Jac,CacheU,CacheS, CacheUp)
   numit = round(dt/dt_small)
 	if numit <= 1.0
 	   numit = 1.0
@@ -97,17 +99,19 @@ function RosenbrockMIS!(ROS,dt_small, dt, stage,Yn,Zn0, dZn, UI, UIn, k, Fcn,DG,
   dtau = dt/numit
   @. UI = Zn0
 
+  @views tmp = CacheUp[:,:,:,1:NumV]
         fac = (1.0 / (dtau * ROS.gamma))
 	FillJacDGVert!(Jac,UI,DG,dz,fac,Phys,Param)
        SchurBoundary!(Jac)
     @inbounds for i = 1 : numit
         @inbounds for iStage = 1 : nStage
-          @. UIn = UI
-          @inbounds for jStage = 1 : iStage-1
+            @. UIn = UI
+            @inbounds for jStage = 1 : iStage-1
             @views @. UIn = UIn + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
           end
-          @views Fcn(k[:,:,:,:,iStage],UIn,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
-	@. k[:,:,:,:,iStage] += dZn 
+	  @. tmp = UIn
+          @views Fcn(k[:,:,:,:,iStage],tmp,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
+	  @. k[:,:,:,:,iStage] += dZn 
 	 @inbounds for jStage = 1 : iStage - 1
             fac = ROS.c[iStage,jStage] / dtau
             @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
@@ -116,7 +120,7 @@ function RosenbrockMIS!(ROS,dt_small, dt, stage,Yn,Zn0, dZn, UI, UIn, k, Fcn,DG,
           @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
         end
 		
-        @inbounds for iStage = 1 : nStage
+          @inbounds for iStage = 1 : nStage
           @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
         end
     end 
