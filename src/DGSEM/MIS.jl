@@ -50,7 +50,7 @@ function MIS_Method(ROS,MIS,U,FcnSlow,FcnFast,dtau,nIter,nPrint,DG,Exchange,Metr
 		else
 	RosenbrockMIS!(ROS, dt_small, MIS.d[iStage] * dtau, iStage,Yn, Zn0, dZn, yn, y, k, FcnFast,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,Jac,CacheU,CacheS,CacheUp)
 		end
-	@views @. CacheUp[:,:,:,1:NumV] = Yn[:,:,:,:,iStage]
+	@views @. CacheUp[:,:,1:DG.NumI,1:NumV] = Yn[:,:,:,:,iStage]
 	@views FcnSlow(Sdu[:,:,:,:,iStage],CacheUp,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
 
 		end ## Fine Stages
@@ -109,7 +109,7 @@ function RosenbrockMIS!(ROS,dt_small, dt, stage,Yn,Zn0, dZn, UI, UIn, k, Fcn,DG,
             @inbounds for jStage = 1 : iStage-1
             @views @. UIn = UIn + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
           end
-	  @. tmp = UIn
+	  @. tmp[:,:,1:DG.NumI,:] = UIn
           @views Fcn(k[:,:,:,:,iStage],tmp,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
 	  @. k[:,:,:,:,iStage] += dZn 
 	 @inbounds for jStage = 1 : iStage - 1
