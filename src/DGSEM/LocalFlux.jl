@@ -197,7 +197,7 @@ function (::KennedyGruberGravMod)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
     dpdrhoR = gamma * pR / (RhoR * ThR)
     dpdrhoAv = FT(0.5) * (dpdrhoL + dpdrhoR)
     grav_term = FT(0.5) * RhoAv * (GPR - GPL)
-    dpdrho = FT(0.5) * dpdrhoL * (RhoR * ThR - RhoL * ThL)
+    dpdrho = FT(0.5) * dpdrhoAv * (RhoR * ThR - RhoL * ThL)
     # @show dpdrhoL * RhoR * ThR
     # @show pL
     # @show dpdrhoL
@@ -290,8 +290,9 @@ function (::RiemannLMARSMod)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     RhoR = VRR[RhoPos]
     ThL = VLL[ThPos] / RhoL
     ThR = VRR[ThPos] / RhoR
-    dpdrhoL = 1.4002789f0 * pLL / (VLL[RhoPos] * VLL[ThPos])
-    dpdrhoR = 1.4002789f0 * pRR / (VRR[RhoPos] * VRR[ThPos])
+    gamma = FT(1004.0)/FT(717.0)
+    dpdrhoL = gamma * pLL / (VLL[RhoPos] * VLL[ThPos])
+    dpdrhoR = gamma * pRR / (VRR[RhoPos] * VRR[ThPos])
     if FT(0.5) * (vLL + vRR) > FT(0)
     pM = FT(0.5) * dpdrhoL * (RhoR * ThR - RhoL * ThL)
     else
