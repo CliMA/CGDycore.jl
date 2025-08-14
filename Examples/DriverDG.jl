@@ -336,6 +336,9 @@ GPAuxPos = 2
 if InterfaceFluxDG == "RiemannLMARS"
   RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
   Model.RiemannSolver = RiemannSolver
+elseif InterfaceFluxDG == "RiemannLMARSMod"
+  RiemannSolver = DGSEM.RiemannLMARSMod()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "RiemannBoussinesqLMARS"  
   RiemannSolver = DGSEM.RiemannBoussinesqLMARS()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
   Model.RiemannSolver = RiemannSolver
@@ -348,6 +351,9 @@ if FluxDG == "KennedyGruber"
   Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.ThPos,pAuxPos,GPAuxPos)
+elseif FluxDG == "KennedyGruberGravMod"
+  Model.FluxAverage = DGSEM.KennedyGruberGravMod()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.ThPos,pAuxPos,GPAuxPos)
 elseif FluxDG == "LinearBoussinesqFlux"
   Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)

@@ -13,8 +13,8 @@ julia --project Examples/DriverDG.jl \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Discretization="DG" \
-  --FluxDG="KennedyGruberGrav" \
-  --InterfaceFluxDG="RiemannLMARS" \
+  --FluxDG="KennedyGruberGravMod" \
+  --InterfaceFluxDG="RiemannLMARSMod" \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \
@@ -43,7 +43,7 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=150.0 \
+  --dtau=25.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \

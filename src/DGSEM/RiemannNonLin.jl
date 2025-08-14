@@ -4,8 +4,7 @@
 
   Iz,iD,_  = @index(Local, NTuple)
   Iz,ID,IF = @index(Global, NTuple)
-
-
+  
   Nz = @uniform @ndrange()[1]
   NQ = @uniform @ndrange()[2]
 
