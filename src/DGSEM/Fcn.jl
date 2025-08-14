@@ -131,8 +131,8 @@ function FcnGPUSplitFast!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,G
   NonConservativeFlux = Model.NonConservativeFlux
   RiemannSolver = Model.RiemannSolver
 
-pAuxPos = 1
-GPAuxPos = 2
+  pAuxPos = 1
+  GPAuxPos = 2
   FluxAverageFast = KennedyGruberGravFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.ThPos,pAuxPos,GPAuxPos)
   RiemannSolverFast = RiemannLMARSFast()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)

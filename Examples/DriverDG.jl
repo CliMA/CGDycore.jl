@@ -67,6 +67,7 @@ SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
 SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
+dtauSmall = parsed_args["dtauSmall"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
 GridForm = parsed_args["GridForm"]
@@ -455,7 +456,7 @@ if IntMethod == "Rosenbrock"
 elseif IntMethod == "MIS"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   Mis = DGSEM.MISStruct{FTB}("MISRK4")
-DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 elseif IntMethod == "RungeKutta"    
   DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Grid,Global)

@@ -217,35 +217,27 @@ Base.@kwdef struct KennedyGruberGravSlow <: AverageFlux end
 function (::KennedyGruberGravSlow)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
   @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
     FT = eltype(flux)
-    pL = AuxL[pPos]
-    pR = AuxR[pPos]
-    GPL = AuxL[GPPos]
-    GPR = AuxR[GPPos]
     RhoL = VL[RhoPos]
     RhoR = VR[RhoPos]
     uL = VL[uPos] / RhoL
     vL = VL[vPos] / RhoL
     wL = VL[wPos] / RhoL
-    ThL = VL[ThPos] / RhoL
     uR = VR[uPos] / RhoR
     vR = VR[vPos] / RhoR
     wR = VR[wPos] / RhoR
-    ThR = VR[ThPos] / RhoR
 
-    pAv = FT(0.5) * ((pL + pR) + FT(0.5) * (RhoL + RhoR) * (GPR - GPL))
     uAv = FT(0.5) * (uL + uR)
     vAv = FT(0.5) * (vL + vR)
     wAv = FT(0.5) * (wL + wR)
     RhoAv = FT(0.5) * (RhoL + RhoR)
-    ThAv = FT(0.5) * (ThL + ThR)
     mAv1 = FT(0.5) * (m_L[1] + m_R[1])
     mAv2 = FT(0.5) * (m_L[2] + m_R[2])
     mAv3 = FT(0.5) * (m_L[3] + m_R[3])
     qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-    flux[1] = RhoAv * qHat
-    flux[2] = flux[1] * uAv
-    flux[3] = flux[1] * vAv
-    flux[4] = flux[1] * wAv
+    temp = RhoAv * qHat
+    flux[2] = temp * uAv
+    flux[3] = temp * vAv
+    flux[4] = temp * wAv
     flux[5] = 0.0
     flux[1] = 0.0
 
@@ -356,7 +348,6 @@ function (::RiemannLMARSSlow)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
     vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
-    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
       F[RhoPos] = 0.0

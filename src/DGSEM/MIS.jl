@@ -1,6 +1,6 @@
 # MIS Method
 
-function MIS_Method(ROS,MIS,U,FcnSlow,FcnFast,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+function MIS_Method(ROS,MIS,U,FcnSlow,FcnFast,dtauSmall,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 	
   backend = get_backend(U)
   FTB = eltype(U)
@@ -21,108 +21,89 @@ function MIS_Method(ROS,MIS,U,FcnSlow,FcnFast,dtau,nIter,nPrint,DG,Exchange,Metr
 
   M = DG.OrdPolyZ + 1
   dz = Metric.dz 
-  dt_small = dtau * 20/340.0	
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
   Jac = JacDGVert{FTB}(backend,M,nz,DG.NumI)
   SlowStages = MIS.nStage
-  Zn0 = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
-  yn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
-  y = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   dZn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   Sdu = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,MIS.nStage)
-  Yn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,MIS.nStage)
-  CacheUp = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
+  Yn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,MIS.nStage+1)
 
   @time begin
-	@inbounds for i = 1 : nIter
-		time_elapsed = @elapsed begin
-
-		## MIS Slow
-		@inbounds for iStage = 1:SlowStages
-		@. Zn0 = UI
-	InitialConditionMIS!(Zn0, Yn, UI, MIS.alfa, iStage)
-		
-		@. dZn = 0.0
-	PreparationODEMIS!(dZn, Yn, Sdu, UI, MIS.d, MIS.gamma, MIS.beta, dtau, SlowStages)
-
-		if iStage == 1
-		@. Yn[:,:,:,:,iStage] = UI 
-		else
-	RosenbrockMIS!(ROS, dt_small, MIS.d[iStage] * dtau, iStage,Yn, Zn0, dZn, yn, y, k, FcnFast,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,Jac,CacheU,CacheS,CacheUp)
-		end
-	@views @. CacheUp[:,:,1:DG.NumI,1:NumV] = Yn[:,:,:,:,iStage]
-	@views FcnSlow(Sdu[:,:,:,:,iStage],CacheUp,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
-
-		end ## Fine Stages
-		
-		@. UI = Yn[:,:,:,:,end] 
-        if mod(i,nPrint) == 0 || i == nIter
-          Outputs.unstructured_vtkSphere(UI,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-        end
-		end
-      		percent = i/nIter*100
-      		if Proc == 1
-        	@info "Iteration: $i took $time_elapsed, $percent% complete"
-      		end
-		## fine n_Iter
-	end
+    @inbounds for i = 1 : nIter
+      time_elapsed = @elapsed begin
+        @views @. Yn[:,:,:,:,1] = UI
+        @inbounds for iStage = 1 : SlowStages
+          @. UnI = Yn[:,:,:,:,iStage]
+          @views FcnSlow(Sdu[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
+          @views @.  Yn[:,:,:,:,iStage+1] = UI
+          @views InitialConditionMIS!(Yn[:,:,:,:,iStage+1], Yn, UI, MIS.alfa, iStage)
+          @views SlowTendency!(dZn, Yn, Sdu, UI, MIS.d, MIS.gamma, MIS.beta, dtau, iStage)
+          @views RosenbrockMIS!(ROS, dtauSmall, MIS.d[iStage+1] * dtau,Yn[:,:,:,:,iStage+1],dZn,FcnFast,DG,
+            Exchange,Metric,Phys,Param,Grid,Global,Jac,CacheU,CacheS,k)
+        end 
+        @views @. UI = Yn[:,:,:,:,end] 
+      end  
+      percent = i/nIter*100
+      if Proc == 1
+        @info "Iteration: $i took $time_elapsed, $percent% complete"
+      end
+      if mod(i,nPrint) == 0 || i == nIter
+        Outputs.unstructured_vtkSphere(UI,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+      end
     end
-
+  end
 end  
 
-function PreparationODEMIS!(dZn, Yn, Sdu, u, d, gamma, beta, dtL, stage)
-	@inbounds for j in 1:(stage-1)
-		@views @. dZn = dZn + 1/d[stage] * (1/dtL * gamma[stage,j] * (Yn[:,:,:,:,j] - u) + beta[stage,j] * Sdu[:,:,:,:,j])
-	end
+function SlowTendency!(dZn, Yn, Sdu, u, d, gamma, beta, dtL, stage)
+  @views @. dZn = (beta[stage+1,1] / d[stage+1]) * Sdu[:,:,:,:,1]
+  @inbounds for j in 2 : stage
+    @views @. dZn += (gamma[stage+1,j] / (dtL * d[stage+1])) * (Yn[:,:,:,:,j] - u) + 
+      (beta[stage+1,j] / d[stage+1]) * Sdu[:,:,:,:,j]
+  end
 end
 
 function InitialConditionMIS!(Zn0, Yn, u, alfa, stage)
-	@inbounds for j in 1:(stage-1)
-	@views @. Zn0 = Zn0 + alfa[stage, j] * (Yn[:,:,:,:,j] - u)
-	end
+  @inbounds for j in 2 : stage
+    @views @. Zn0 += alfa[stage+1, j] * (Yn[:,:,:,:,j] - u)
+  end
 end
 
-
-function RosenbrockMIS!(ROS,dt_small, dt, stage,Yn,Zn0, dZn, UI, UIn, k, Fcn,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,Jac,CacheU,CacheS, CacheUp)
-  numit = round(dt/dt_small)
-	if numit <= 1.0
-	   numit = 1.0
-	end
-  FTB = eltype(UI)
+function RosenbrockMIS!(ROS,dt_small,dt,U,FSlow,Fcn,DG,Exchange,Metric,Phys,Param,Grid,Global,
+  Jac,CacheU,CacheS,k)
+  numit = ceil(Int,dt/dt_small)
+  FTB = eltype(U)
   Model = Global.Model
   NumV = Model.NumV
-  M = size(UI,1)
-  nz = size(UI,2)
+  M = size(U,1)
+  nz = size(U,2)
   nStage = ROS.nStage
   M = DG.OrdPolyZ + 1
   dz = Metric.dz
   dtau = dt/numit
-  @. UI = Zn0
+  @views UI = U[:,:,1:DG.NumI,:]
+  @views Un = CacheU[:,:,:,1:NumV] 
+  @views UIn = Un[:,:,1:DG.NumI,:]
 
-  @views tmp = CacheUp[:,:,:,1:NumV]
-        fac = (1.0 / (dtau * ROS.gamma))
-	FillJacDGVert!(Jac,UI,DG,dz,fac,Phys,Param)
-       SchurBoundary!(Jac)
-    @inbounds for i = 1 : numit
-        @inbounds for iStage = 1 : nStage
-            @. UIn = UI
-            @inbounds for jStage = 1 : iStage-1
-            @views @. UIn = UIn + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
-          end
-	  @. tmp[:,:,1:DG.NumI,:] = UIn
-          @views Fcn(k[:,:,:,:,iStage],tmp,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type, Param)
-	  @. k[:,:,:,:,iStage] += dZn 
-	 @inbounds for jStage = 1 : iStage - 1
-            fac = ROS.c[iStage,jStage] / dtau
-            @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
-          end
-          @views Solve!(Jac,k[:,:,:,:,iStage])
-          @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
-        end
-		
-          @inbounds for iStage = 1 : nStage
-          @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
-        end
-    end 
-	@. Yn[:,:,:,:,stage] = UI
+  fac = (1.0 / (dtau * ROS.gamma))
+  FillJacDGVert!(Jac,U,DG,dz,fac,Phys,Param)
+  SchurBoundary!(Jac)
+  @inbounds for i = 1 : numit
+    @inbounds for iStage = 1 : nStage
+      @. UIn = UI
+      @inbounds for jStage = 1 : iStage-1
+        @views @. UIn = UIn + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+      end
+      @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type,Param)
+      @views @. k[:,:,:,:,iStage] += FSlow 
+      @inbounds for jStage = 1 : iStage - 1
+        fac = ROS.c[iStage,jStage] / dtau
+        @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
+       end
+       @views Solve!(Jac,k[:,:,:,:,iStage])
+       @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
+     end
+     @inbounds for iStage = 1 : nStage
+       @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
+    end
+  end 
 end  

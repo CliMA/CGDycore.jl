@@ -24,11 +24,11 @@ end
 function MISStruct{FT}(Method) where FT<:AbstractFloat
   str = Method
   if str == "MISRK4"
-    nStage = 5
-	    beta = zeros(FT, nStage, nStage)
-            alfa = zeros(FT, nStage, nStage)
-            gamma = zeros(FT, nStage, nStage)
-            d = zeros(FT, nStage, 1)
+    nStage = 4
+	    beta = zeros(FT, nStage+1, nStage)
+            alfa = zeros(FT, nStage+1, nStage)
+            gamma = zeros(FT, nStage+1, nStage)
+            d = zeros(FT, nStage+1, 1)
     	    beta[2, 1] = 0.38758444641450318
             beta[3, 1] = -2.5318448354142823E-002
             beta[3, 2] = 0.38668943087310403
@@ -58,6 +58,40 @@ function MISStruct{FT}(Method) where FT<:AbstractFloat
 		d[3] = beta[3, 1] + beta[3, 2]
 		d[4] = beta[4, 1] + beta[4, 2] + beta[4, 3]
 		d[5] = beta[5, 1] + beta[5, 2] + beta[5, 3] + beta[5, 4]
+  elseif str == "RK3"
+    nStage = 3
+    beta = zeros(FT, nStage+1, nStage)
+    alfa = zeros(FT, nStage+1, nStage)
+    gamma = zeros(FT, nStage+1, nStage)
+    d = zeros(FT, nStage+1, 1)
+    beta[2, 1] = 1/3
+    beta[3, 2] = 1/2
+    beta[4, 3] = 1
+    d[2] = 1/3
+    d[3] = 1/2
+    d[4] = 1
+#=            
+   MIS.Method='RKJeb';
+    MIS.nStage=3;
+    MIS.A=zeros(MIS.nStage+1,MIS.nStage);
+    MIS.G=zeros(MIS.nStage+1,MIS.nStage);
+    MIS.D=zeros(MIS.nStage+1,MIS.nStage);
+    MIS.d=zeros(MIS.nStage+1);
+    MIS.A(2,1)=2.0492941060709863e-001;
+    MIS.A(3,1)=-4.5477553356788974e-001;
+    MIS.A(3,2)=9.5613538239378981e-001;
+    MIS.A(4,1)=-3.5970281266252929e-002;
+    MIS.A(4,2)=-1.5363649484946584e-001;
+    MIS.A(4,3)=7.0259062712330234e-001;
+
+    MIS.G(3,2)=-8.2176071248067006e-001;
+    MIS.G(4,2)=-3.8080670922635063e-001;
+    MIS.G(4,3)=4.5653105107801978e-001;
+
+    MIS.D(3,2)=7.0302371060435331e-001;
+    MIS.D(4,2)=4.2492220536139252e-001;
+    MIS.D(4,3)=5.4545718243573982e-001;
+=#   
    end
   return MISStruct{FT}(
     nStage,
