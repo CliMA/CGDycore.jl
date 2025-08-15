@@ -143,7 +143,34 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = a[end,:]
-  end
+	
+  elseif str == "SSP-MaExperimental"
+    nStage = 4
+    alpha = zeros(FT,nStage,nStage)
+    alpha[3,2] = 1
+    alpha[4,2] = 1/4
+    alpha[4,3] = 1/4
+    b = zeros(FT,nStage)
+    b[2] = 1/6
+    b[3] = 1/6
+    b[4] = 2/3
+    Gamma = zeros(FT,nStage,nStage)
+    Gamma[1,1] = 1
+    Gamma[2,2] = 1
+    Gamma[2,1] = sqrt(2)
+    Gamma[3,2] = 2*sqrt(2) - 3
+    Gamma[3,3] = 1
+    Gamma[4,1] = (3 - sqrt(2))/4
+    Gamma[4,2] = -3/4
+    Gamma[4,3] = -3/4
+    Gamma[4,4] = 1
+    gamma = FT(1)        
+    aCPU = alpha / Gamma
+    cCPU = -inv(Gamma)
+    mCPU = Gamma'\b
+    aCPU=[aCPU
+       mCPU']
+end
   return RosenbrockStruct{FT}(
     nStage,
     aCPU,
