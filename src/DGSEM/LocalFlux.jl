@@ -197,11 +197,7 @@ function (::KennedyGruberGravMod)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
     dpdrhoR = gamma * pR / (RhoR * ThR)
     dpdrhoAv = FT(0.5) * (dpdrhoL + dpdrhoR)
     grav_term = FT(0.5) * RhoAv * (GPR - GPL)
-    dpdrho = FT(0.5) * dpdrhoAv * (RhoR * ThR - RhoL * ThL)
-    # @show dpdrhoL * RhoR * ThR
-    # @show pL
-    # @show dpdrhoL
-    # @show gamma * R * (R * RhoL * ThL/p0)^(gamma-1.0) * RhoR * ThR
+    dpdrho = FT(0.5) * dpdrhoL * (RhoR * ThR - RhoL * ThL)
     pAv = grav_term + dpdrho
     flux[1] = RhoAv * qHat
     flux[2] = flux[1] * uAv + mAv1 * pAv
@@ -285,30 +281,31 @@ function (::RiemannLMARSMod)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
-
+    c_adv = 0.5 * abs((vLL + vLL))
+    diss =  FT(0.5) * c_adv * RhoM * (vRR - vLL)
     RhoL = VLL[RhoPos]
     RhoR = VRR[RhoPos]
     ThL = VLL[ThPos] / RhoL
     ThR = VRR[ThPos] / RhoR
-    gamma = FT(1004.0)/FT(717.0)
-    dpdrhoL = gamma * pLL / (VLL[RhoPos] * VLL[ThPos])
-    dpdrhoR = gamma * pRR / (VRR[RhoPos] * VRR[ThPos])
+    gamma = Phys.Gamma
+    dpdrhoL = gamma * pLL / (VLL[RhoPos] * VLL[ThPos]) 
+    dpdrhoR = gamma * pRR / (VRR[RhoPos] * VRR[ThPos]) 
     if FT(0.5) * (vLL + vRR) > FT(0)
-    pM = FT(0.5) * dpdrhoL * (RhoR * ThR - RhoL * ThL)
+    pM = FT(0.5) * dpdrhoL * (RhoR * ThR - RhoL * ThL) - FT(0.5) * cS * RhoM * (vRR - vLL) 
     else
-    pM = FT(0.5) * dpdrhoR * (RhoR * ThR - RhoL * ThL)
+    pM = FT(0.5) * dpdrhoR * (RhoR * ThR - RhoL * ThL) - FT(0.5) * cS * RhoM * (vRR - vLL)
     end
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
-      F[uPos] = vM * VLL[uPos] + Normal[1] * pM
-      F[vPos] = vM * VLL[vPos] + Normal[2] * pM
-      F[wPos] = vM * VLL[wPos] + Normal[3] * pM
+      F[uPos] = vM * VLL[uPos] + Normal[1] * pM -diss
+      F[vPos] = vM * VLL[vPos] + Normal[2] * pM -diss
+      F[wPos] = vM * VLL[wPos] + Normal[3] * pM -diss
       F[ThPos] = vM * VLL[ThPos]
     else
       F[RhoPos] = vM * VRR[RhoPos]
-      F[uPos] = vM * VRR[uPos] + Normal[1] * pM
-      F[vPos] = vM * VRR[vPos] + Normal[2] * pM
-      F[wPos] = vM * VRR[wPos] + Normal[3] * pM
+      F[uPos] = vM * VRR[uPos] + Normal[1] * pM -diss
+      F[vPos] = vM * VRR[vPos] + Normal[2] * pM -diss
+      F[wPos] = vM * VRR[wPos] + Normal[3] * pM -diss
       F[ThPos] = vM * VRR[ThPos]
     end
   end
