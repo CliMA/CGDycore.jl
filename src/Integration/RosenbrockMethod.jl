@@ -157,7 +157,7 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
     Gamma = zeros(FT,nStage,nStage)
     Gamma[1,1] = 1
     Gamma[2,2] = 1
-    Gamma[2,1] = sqrt(2)
+    Gamma[2,1] = -sqrt(2)
     Gamma[3,2] = 2*sqrt(2) - 3
     Gamma[3,3] = 1
     Gamma[4,1] = (3 - sqrt(2))/4
