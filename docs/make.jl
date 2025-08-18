@@ -20,4 +20,4 @@ makedocs(;
     ],
 )
 
-deploydocs(; repo = "github.com/Ofenblech/CGDycore.jl", push_preview = true)
+deploydocs(; repo = "github.com/CliMA/CGDycore.jl", push_preview = true)
