@@ -1,6 +1,9 @@
 #!/bin/bash
 julia --project Examples/Driver.jl \
   --Problem="HeldSuarezMoistSphere" \
+  --Equation="CompressibleShallow" \
+  --ModelType="VectorInvariant" \
+  --State="Moist" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
@@ -13,18 +16,15 @@ julia --project Examples/Driver.jl \
   --Source=true \
   --Forcing=true \
   --Curl=false \
-  --ModelType="VectorInvariant" \
   --Turbulence=true \
   --VerticalDiffusion=true \
-  --VerticalDiffusionMom=true \
+  --VerticalDiffusionMom=false \
   --SurfaceFlux=true \
   --SurfaceFluxMom=true \
   --SurfaceScheme="MOST" \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
-  --Equation="CompressibleShallow" \
-  --State="Moist" \
   --Microphysics=true \
   --TypeMicrophysics="SimpleMicrophysics" \
   --Buoyancy=true \
@@ -33,13 +33,16 @@ julia --project Examples/Driver.jl \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
+  --SimHours=0 \
   --SimDays=10 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=12 \
+  --PrintHours=1 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/HeldSuarezMoist1/CGQuad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

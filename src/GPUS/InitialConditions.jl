@@ -1,4 +1,4 @@
-function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Global,Profile,Param)
+function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Exchange,Phys,Global,Profile,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
@@ -44,6 +44,12 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Phys,Glo
   if State == "Dry" || State == "Moist" || State == "ShallowWater"
     KRhoThFunCKernel! = RhoThFunCKernel!(backend, group)
     KRhoThFunCKernel!(Profile,RhoTh,time,Glob,X,ndrange=ndrange)
+#   @. RhoTh[3:5,:] = RhoTh[3:5,:] + (2.0*rand(size(RhoTh[3:5,:]))-1.0) * 0.1
+    PertRhoTh = KernelAbstractions.zeros(backend,FTB,Nz,CG.NumG)
+    @. PertRhoTh[1:8,:] = (2.0*rand()-1.0)  
+    Parallels.ExchangeData!(PertRhoTh,Exchange)
+    @. RhoTh += PertRhoTh
+
 #   KThBGFunCKernel! = ThBGFunCKernel!(backend, group)
 #   KThBGFunCKernel!(Profile,ThBG,time,Glob,X,ndrange=ndrange)
   elseif State == "DryInternalEnergy" || State == "MoistInternalEnergy" || 

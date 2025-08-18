@@ -329,7 +329,7 @@ end
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
-U = GPUS.InitialConditions(backend,FTB,CG,Metric,Phys,Global,Model.InitialProfile,Param)
+U = GPUS.InitialConditions(backend,FTB,CG,Metric,Exchange,Phys,Global,Model.InitialProfile,Param)
 
 #Coriolis
 if Coriolis

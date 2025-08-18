@@ -55,6 +55,7 @@ function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
       ThT = UT[ThPos] / UT[RhoPos]
       ThB = UB[ThPos] / UB[RhoPos]
       N2 = Phys.Grav * FT(2.0) * (ThT- ThB) / dzF / (ThT + ThB)
+      N2 = 0.0
 
       LenScale = min(dzF, FT(200.0))
 #     Diffusion Koefficient
@@ -66,9 +67,9 @@ function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
     DiffKoeff = RhoF * max(Phys.Cd * sqrTkeFAbs * LenScale, FT(1.e-1))
 
 #   Richardson-number and production terms
-    Rich = N2 / (S * S + FT(1.e-3))
+    Rich = N2 / (S * S + FT(1.e-2))
     Rich = max(Rich,FT(-4/3))
-    Ptke = max(FT(1) - DiffKoeff*Rich/(SigT*DiffKoeff),fTke)
+    Ptke = max(FT(1) - Rich/SigT,fTke)
 
 #   Local Length Scale
     if N2 > 0.0
