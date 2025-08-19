@@ -4,7 +4,7 @@ julia --project Examples/FEMSei/ConsNonLinShallow.jl \
   --FloatTypeBackend="Float64" \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
-  --nPanel=160 \
+  --nPanel=90 \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \

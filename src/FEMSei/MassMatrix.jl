@@ -92,7 +92,6 @@ Assembles the global mass matrix for a finite element space defined by `Fe` over
 - The function assumes that the finite element basis functions are provided as callable objects in `Fe.phi`.
 - The function is tailored for `H(div)`-conforming elements, where basis functions are vector-valued.
 """
-
 function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
