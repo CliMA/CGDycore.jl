@@ -35,9 +35,6 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
       KBuoyancyKernel!(FS,U,DG.Glob,Phys;ndrange=ndrange)
     end  
   end  
-  @show "Buo"
-  @show FS[end,1,DG.Glob[:,1],3]
-
 
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz*M),NQ)
@@ -55,17 +52,13 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   KFluxVolumeNonLinH3Kernel! = FluxVolumeNonLinH3Kernel!(backend,group)
   KFluxVolumeNonLinH3Kernel!(Model.FluxLin,F,U,Aux,Metric.dXdxI,DG.DW,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
-  @show "VolH",sum(abs.(F))
-  @show F[1,1,DG.Glob[:,1],3]
 
   NDG = min(div(NumberThreadGPU,M*Nz),N*N)
   group = (M,Nz,NDG,1)
   ndrange = (M,Nz,N*N,NF)
   KFluxVolumeNonLinV3Kernel! = FluxVolumeNonLinV3Kernel!(backend,group)
-# KFluxVolumeNonLinV3Kernel!(Model.FluxLin,F,U,Aux,Metric.dXdxI,DG.DWT,DG.Glob,
-#   Val(NV),Val(NAUX);ndrange=ndrange)
-  @show "VolV",sum(abs.(F))
-  @show F[1,1,DG.Glob[:,1],3]
+  KFluxVolumeNonLinV3Kernel!(Model.FluxLin,F,U,Aux,Metric.dXdxI,DG.DWZ,DG.Glob,
+    Val(NV),Val(NAUX);ndrange=ndrange)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(reshape(U,
     Nz*M,size(U,3),NV),Exchange)
@@ -76,8 +69,6 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   KRiemanNonLinH3Kernel! = RiemanNonLinH3Kernel!(backend,group)
   KRiemanNonLinH3Kernel!(Model.RiemannSolverLin,F,U,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
     Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange) 
-  @show "RieH",sum(abs.(F))
-  @show F[1,1,DG.Glob[:,1],3]
 
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz+1),NQ)
@@ -86,8 +77,6 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
   KRiemanNonLinV3Kernel!(Model.RiemannSolverLin,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
     Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
-  @show "RieV",sum(abs.(F))
-  @show F[1,1,DG.Glob[:,1],3]
 
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz*M),NQ)
@@ -102,10 +91,8 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   ndrange = (Nz,M,NQ,NF)
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   @views KVCart2VSp3Kernel!(F[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
-  @show F[1,1,DG.Glob[:,1],3]
 
   @. F += FS
-
 end
 
 function FcnGPU!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::Grids.Tri)

@@ -34,16 +34,16 @@ julia --project Examples/DriverDGLin.jl \
   --Flat=false \
   --TopoS="" \
   `#Topography `        \
-  --H=200.0 \
-  --Lx=200.0 \
-  --Ly=200.0 \
+  --H=1000.0 \
+  --Lx=2000.0 \
+  --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=2 \
-  --nx=2 \
-  --ny=2 \
-  --OrdPoly=1 \
-  --OrdPolyZ=1 \
+  --nz=8 \
+  --nx=16 \
+  --ny=16 \
+  --OrdPoly=4 \
+  --OrdPolyZ=4 \
   --HyperVisc=true \
   --HyperDCurl=1.e7 \
   --HyperDGrad=1.e7 \

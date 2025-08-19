@@ -199,7 +199,7 @@ end
       @unroll for k = 2 : M
         FF += DW[K,k] * Con[k,Iz,iD,iv]
       end
-      F[K,Iz,ind,iv] += FF
+      F[K,Iz,ind,iv] -= FF
     end
   end  
 end  
@@ -242,9 +242,9 @@ end
     ID = I + (J - 1) * N
     ind = Glob[ID,IF]
     for iv = 1 : NV
-      FF = DW[1,I] * ConX[1,J,iz,iv] + DW[J,1] * ConY[I,1,iz,iv]
+      FF = DW[I,1] * ConX[1,J,iz,iv] + DW[J,1] * ConY[I,1,iz,iv]
       for k = 2 : N
-        FF = FF + DW[k,I] * ConX[k,J,iz,iv] + DW[J,k] * ConY[I,k,iz,iv]
+        FF = FF + DW[I,k] * ConX[k,J,iz,iv] + DW[J,k] * ConY[I,k,iz,iv]
       end
       F[K,Iz,ind,iv] -= FF
     end

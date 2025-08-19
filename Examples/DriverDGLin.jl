@@ -465,11 +465,6 @@ CacheS = zeros(size(U,1),size(U,2),DG.NumI,5)
 @views @. Th = U[:,:,:,Model.ThPos] / U[:,:,:,Model.RhoPos]
 DGSEM.FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,Grid.Type)
 @show sum(abs.(F))
-@show F[end,1,DG.Glob[:,1],1]
-@show F[end,1,DG.Glob[:,1],2]
-@show F[end,1,DG.Glob[:,1],3]
-@show F[end,1,DG.Glob[:,1],4]
-@show F[end,1,DG.Glob[:,1],5]
 stop
 
 if IntMethod == "Rosenbrock"

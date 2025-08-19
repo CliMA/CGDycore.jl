@@ -51,7 +51,7 @@ Base.@kwdef struct LinearizedEulerFlux <: Flux end
 
 function (::LinearizedEulerFlux)(RhoPos,uPos,vPos,wPos,RhoThPos,dpdRhoThPos,ThPos)
   @inline function Flux(flux,V,Aux)
-    p = Aux[dpdRhoThPos]*V[ThPos]
+    p = Aux[dpdRhoThPos]*V[RhoThPos]
     Th = Aux[ThPos]
 
     flux[1,RhoPos] = V[uPos]
@@ -258,7 +258,6 @@ function (::RiemannLMARSLin)(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,dpdRhoThP
     cS = Param.cS
     pLL = AuxL[dpdRhoThPos] * VLL[RhoThPos]
     pRR = AuxR[dpdRhoThPos] * VRR[RhoThPos]
-    @show pLL,pRR
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
     vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
