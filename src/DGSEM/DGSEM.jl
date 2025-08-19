@@ -31,5 +31,6 @@ include("TimeStepper.jl")
 include("Jac.jl")
 include("MIS.jl")
 include("MISMethod.jl")
+include("FcnLin.jl")
 
 end

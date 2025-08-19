@@ -117,6 +117,7 @@ end
       view(Aux,K,Iz,indL,1:NAUX),view(Aux,K,Iz,indR,1:NAUX),
       view(NH,1:3,K,I,Iz,IE))
     Surf = VolSurfH[K,I,Iz,IE] / w[I]  
+    @show Surf,w[I],FLoc[vPos]
     FLoc[RhoPos] = FLoc[RhoPos] * Surf
     FLoc[uPos] = FLoc[uPos] * Surf
     FLoc[vPos] = FLoc[vPos] * Surf

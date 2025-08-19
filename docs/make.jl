@@ -17,7 +17,6 @@ makedocs(;
         "Mass Matrix" => "MassMatrix.md",
         "Stiffness Matrix" => "StiffMatrix.md",
         "Examples" => "Examples.md",
-
     ],
 )
 

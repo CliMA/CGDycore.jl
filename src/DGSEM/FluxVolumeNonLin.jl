@@ -241,12 +241,12 @@ end
     Iz = div(IZ-1,M) + 1
     ID = I + (J - 1) * N
     ind = Glob[ID,IF]
-    @unroll for iv = 1 : NV
-      FF = DW[I,1] * ConX[1,J,iz,iv] + DW[1,J] * ConY[I,1,iz,iv]
-      @unroll for k = 2 : M
-        FF = DW[I,k] * ConX[k,J,iz,iv] + DW[k,J] * ConY[I,k,iz,iv]
+    for iv = 1 : NV
+      FF = DW[1,I] * ConX[1,J,iz,iv] + DW[J,1] * ConY[I,1,iz,iv]
+      for k = 2 : N
+        FF = FF + DW[k,I] * ConX[k,J,iz,iv] + DW[J,k] * ConY[I,k,iz,iv]
       end
-      F[K,Iz,ind,iv] += FF
+      F[K,Iz,ind,iv] -= FF
     end
   end
 end  

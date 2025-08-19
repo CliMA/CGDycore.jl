@@ -1,14 +1,15 @@
 #!/bin/bash
-julia --project Examples/testNHSphere.jl \
+julia --project Examples/Driver.jl \
   --Problem="HeldSuarezMoistSphere" \
+  --Equation="CompressibleShallow" \
+  --ModelType="VectorInvariant" \
+  --State="Moist" \
   --FloatTypeBackend="Float32" \
   --NumberThreadGPU=512 \
   --NumV=5 \
   --NumTr=2 \
   --RhoVPos=6 \
   --RhoCPos=7 \
-  --Equation="CompressibleShallow" \
-  --State="Moist" \
   --Buoyancy=true \
   --Coriolis=true \
   --Damping=true \
@@ -16,7 +17,7 @@ julia --project Examples/testNHSphere.jl \
   --Relax=1.0e-3 \
   --VerticalDiffusion=true \
   --SurfaceFlux=true \
-  --SurfaceScheme="" \
+  --SurfaceScheme="MOST" \
   --Forcing=true \
   --Microphysics=true \
   --TypeMicrophysics="SimpleMicrophysics" \
@@ -24,15 +25,18 @@ julia --project Examples/testNHSphere.jl \
   --Upwind=true \
   --HorLimit=true \
   --Decomp="EqualArea" \
-  --SimDays=365 \
+  --SimDays=10 \
   --SimHours=0 \
   --SimSeconds=0 \
-  --PrintSeconds=900 \
+  --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=1 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
+  --Flat=true \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/HeldSuarezMoist2/CGQuad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
@@ -42,7 +46,7 @@ julia --project Examples/testNHSphere.jl \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=32 \
-  --H=55000.0 \
+  --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \

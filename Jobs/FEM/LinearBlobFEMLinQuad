@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/FEMSei/LinShallow.jl \
+julia --project Examples/FEM/LinShallow.jl \
   --Problem="LinearBlob" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=512 \

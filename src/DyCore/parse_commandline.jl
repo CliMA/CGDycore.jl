@@ -17,6 +17,11 @@ function parse_commandline()
     arg_type = String
     default = "KennedyGruberGrav"
 
+    "--FluxDGLin"
+    help = "Linearized flux for DG"
+    arg_type = String
+    default = "LinearizedEuler"
+
     "--InterfaceFluxDG"
     help = "Interface flux for DG"
     arg_type = String

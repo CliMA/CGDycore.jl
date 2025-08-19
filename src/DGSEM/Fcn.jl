@@ -2,8 +2,6 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   backend = get_backend(F)
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
-  NonConservativeFlux = Model.NonConservativeFlux
-  RiemannSolver = Model.RiemannSolver
   FT = eltype(F)
   N = DG.OrdPoly + 1
   M = DG.OrdPolyZ + 1
@@ -103,7 +101,7 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   group = (Nz+1,NQG,1)
   ndrange = (Nz+1,NQ,NF)
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
-  KRiemanNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
+  KRiemanNonLinV3Kernel!(Model.RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
     Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
 
   NQ = N * N
@@ -352,8 +350,6 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   backend = get_backend(F)
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
-  NonConservativeFlux = Model.NonConservativeFlux
-  RiemannSolver = Model.RiemannSolver
   FT = eltype(F)
   DoF = DG.DoF
   DoFE = DG.DoFE
@@ -451,7 +447,7 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   group = (Nz+1,DoFG,1)
   ndrange = (Nz+1,DoF,NF)
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
-  KRiemanNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
+  KRiemanNonLinV3Kernel!(Model.RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
     Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
 
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)

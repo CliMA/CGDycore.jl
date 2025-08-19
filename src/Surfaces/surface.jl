@@ -148,9 +148,6 @@ end
     SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
       view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
       LandClass[IC])
-    SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
-      view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
-      LandClass[IC])
   end
 end
 
