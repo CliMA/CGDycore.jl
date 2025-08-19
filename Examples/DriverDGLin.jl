@@ -1,24 +1,21 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, DGSEM, GPU, 
-  DyCore
+  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, GPUS, DyCore
 using MPI
 using Base
 using CUDA
 using AMDGPU
 using Metal
 using KernelAbstractions
-using StaticArrays
+#using StaticArrays
 using ArgParse
 
 
 # Model
-@show "Hallo-1"
 parsed_args = DyCore.parse_commandline()
-@show "Hallo0"
 Problem = parsed_args["Problem"]
-@show "Hallo1"
 Discretization = parsed_args["Discretization"]
 FluxDG = parsed_args["FluxDG"]
+FluxDGLin = parsed_args["FluxDGLin"]
 InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -26,7 +23,6 @@ PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfpBGrd = parsed_args["ProfpBGrd"]
 ProfRhoBGrd = parsed_args["ProfRhoBGrd"]
-@show "Hallo2"
 RhoTPos = parsed_args["RhoTPos"]
 RhoVPos = parsed_args["RhoVPos"]
 RhoCPos = parsed_args["RhoCPos"]
@@ -133,6 +129,8 @@ GPUType = parsed_args["GPUType"]
 FloatTypeBackend = parsed_args["FloatTypeBackend"]
 NumberThreadGPU = parsed_args["NumberThreadGPU"]
 NumberThreadTriGPU = parsed_args["NumberThreadTriGPU"]
+# Examples
+aC = parsed_args["LengthOfAgnesiHill"]
 
 MPI.Init()
 comm = MPI.COMM_WORLD
@@ -154,11 +152,11 @@ elseif JuliaDevice == "GPU"
     CUDA.allowscalar(false)
     if machine == "levante" || machine == "derecho"
     else
-       CUDA.device!(Proc-1)
+      CUDA.device!(Proc-1)
     end
   elseif JuliaGPU == "AMD"
     backend = ROCBackend()
-    AMDGPU.allowscalar(false)
+    AMDGPUS.allowscalar(false)
   elseif JuliaGPU == "Metal"
     backend = MetalBackend()
     Metal.allowscalar(true)
@@ -166,7 +164,6 @@ elseif JuliaDevice == "GPU"
 else
   backend = CPU()
 end
-
 if FloatTypeBackend == "Float64"
   FTB = Float64
 elseif FloatTypeBackend == "Float32"
@@ -262,6 +259,7 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
+
 # Equation
 if Equation == "CompressibleShallow"
   Model.Equation = Models.CompressibleShallow()
@@ -282,7 +280,8 @@ if GridForm == "Cartesian"
               P3=P3,
               P4=P4,
               )
-  Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom,Discretization=Discretization)
+  Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;
+    Discretization=Discretization,GridType=GridType,ChangeOrient=2)
   Trans = Outputs.TransCartX!
 else  
   if RadEarth == 0.0
@@ -300,7 +299,7 @@ end
 
 #Topography
 if TopoS == "AgnesiHill"
-  TopoProfile = Examples.AgnesiHill()()
+  TopoProfile = Examples.AgnesiHill{FTB}(;aC=aC)()
 elseif TopoS == "SchaerHill"
   TopoProfile = Examples.SchaerHill()()
 elseif TopoS == "BaroWaveHill"
@@ -312,7 +311,7 @@ else
 end  
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
-DGMethod = "Kubatko5"
+DGMethod = "Kubatko2LGL"
 
 if GridForm == "Cartesian"
   if ParallelCom.Proc == 1
@@ -327,9 +326,10 @@ else
     Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 end
 
+
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
-U = GPU.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
+U = GPUS.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 pAuxPos = 1
 GPAuxPos = 2
@@ -352,14 +352,16 @@ elseif FluxDG == "KennedyGruberGrav"
   Model.ThPos,pAuxPos,GPAuxPos)
 elseif FluxDG == "LinearBoussinesqFlux"
   Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
-elseif FluxDG == "Euler"
-  Model.Flux = DGSEM.EulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
-  Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-  Model.ThPos,pAuxPos,GPAuxPos)
+end  
+
+if FluxDGLin == "LinearizedEuler"
+  Model.FluxLin = DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1,2)
+  RiemannSolverLin = DGSEM.RiemannLMARSLin()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1,2)
+  Model.RiemannSolverLin = RiemannSolverLin
 end  
 
 if ModelType == "Boussinesq"
-  Model.BuoyancyFun = GPU.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
+  Model.BuoyancyFun = GPUS.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
 end  
     
 
@@ -374,13 +376,13 @@ elseif State  == "ShallowWater"
 end
 
 if Damping
-  Damp = GPU.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
+  Damp = GPUS.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
   Model.Damp = Damp
 end
 if Grid.Form == "Sphere"
-  Model.GeoPotential = GPU.GeoPotentialDeep()(Phys)
+  Model.GeoPotential = GPUS.GeoPotentialDeep()(Phys)
 else
-  Model.GeoPotential = GPU.GeoPotentialCart()(Phys)
+  Model.GeoPotential = GPUS.GeoPotentialCart()(Phys)
 end  
     
 
@@ -425,10 +427,7 @@ end
 Global.Output.nPanel = nPanel
 Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
-@show Global.Output.OrdPrint
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
-@show "nach Outputs.vtkStruct"
-
 
 Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
 
@@ -438,12 +437,9 @@ GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
 if dtau == 0.0
   dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
 end  
-#if nz > 1
-#  @show dtau
-#  dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
-#  @show dtau
-#end  
-
+if nz > 1 && IntMethod == "RungeKutta"
+  dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
+end  
 EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
 IterTime::Int = round(EndTime / dtau)
 dtau = EndTime / IterTime
@@ -459,8 +455,29 @@ if Proc == 1
 @show nPrint
 end
 
-Ros = Integration.RosenbrockStruct{FTB}("SSP-Knoth")
+F = zeros(size(U,1),size(U,2),DG.NumI,5)
+Cache = zeros(size(U,1),size(U,2),DG.NumI,2)
+CacheS = zeros(size(U,1),size(U,2),DG.NumI,5)
+@views p = Cache[:,:,:,1]
+@views Th = Cache[:,:,:,2]
+@views @. p = Model.Pressure(U[:,:,:,5]) 
+@views @. p = p / U[:,:,:,Model.ThPos]
+@views @. Th = U[:,:,:,Model.ThPos] / U[:,:,:,Model.RhoPos]
+DGSEM.FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,Grid.Type)
+@show sum(abs.(F))
+@show F[end,1,DG.Glob[:,1],1]
+@show F[end,1,DG.Glob[:,1],2]
+@show F[end,1,DG.Glob[:,1],3]
+@show F[end,1,DG.Glob[:,1],4]
+@show F[end,1,DG.Glob[:,1],5]
+stop
 
-DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
-
-
+if IntMethod == "Rosenbrock"
+  Ros = Integration.RosenbrockStruct{FTB}(Table)
+  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+    Trans,Phys,Param,Grid,Global)
+elseif IntMethod == "RungeKutta"    
+  DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+    Trans,Phys,Grid,Global)
+end  
+MPI.Finalize()

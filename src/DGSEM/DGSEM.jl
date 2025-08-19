@@ -29,5 +29,6 @@ include("Source.jl")
 include("Fcn.jl")
 include("TimeStepper.jl")
 include("Jac.jl")
+include("FcnLin.jl")
 
 end
