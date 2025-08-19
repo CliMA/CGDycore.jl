@@ -350,6 +350,11 @@ function parse_commandline()
     arg_type = Float64
     default = 100.0
 
+    "--dtauSmall"
+    help = "Small time step"
+    arg_type = Float64
+    default = 100.0
+
 #   Orography
     "--TopoS"
     help = "Orography type"
