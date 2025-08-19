@@ -34,7 +34,7 @@ julia --project Examples/DriverDG.jl \
   --SimHours=0 \
   --SimMinutes=0 \
   --SimSeconds=0 \
-  --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuadMIS" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
   --PrintHours=1 \
@@ -43,8 +43,9 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=100.0 \
-  --IntMethod="Rosenbrock" \
+  --dtau=1000.0 \
+  --dtauSmall=100.0 \
+  --IntMethod="MIS" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=true \
