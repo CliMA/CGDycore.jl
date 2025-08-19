@@ -1,4 +1,4 @@
-module FEMSei
+module FEM
 
 import ..DG
 import ..Parallels

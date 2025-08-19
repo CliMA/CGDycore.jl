@@ -37,7 +37,7 @@ function ConstructND(k,ElemType::Grids.Tri)
   @polyvar t
   phiL = DG.CGLine(k,t)
   QuadOrd = 3
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
 # Compute functional over edges
@@ -72,7 +72,7 @@ function ConstructND(k,ElemType::Grids.Tri)
     end  
   end  
   rDoF += k + 1
-  NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Tri(),QuadOrd)
+  NumQuadT, WeightsT, PointsT = FEM.QuadRule(Grids.Tri(),QuadOrd)
 # Interior  
   @inbounds for i = 1 : lP_km1
     @inbounds for iDoF = 1 : DoF
@@ -148,7 +148,7 @@ function ConstructND(k,ElemType::Grids.Quad)
   @polyvar t
   phiL = DG.CGLine(k,t)
   QuadOrd = 3
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
 # Compute functional over edges
@@ -192,7 +192,7 @@ function ConstructND(k,ElemType::Grids.Quad)
     end  
   end  
   rDoF += k + 1
-  NumQuadT, WeightsT, PointsT = FEMSei.QuadRule(Grids.Quad(),QuadOrd)
+  NumQuadT, WeightsT, PointsT = FEM.QuadRule(Grids.Quad(),QuadOrd)
 # Interior  
   @inbounds for i = 1 : k+1
     @inbounds for j = 1 : k
@@ -256,7 +256,7 @@ end
 function NDStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:AbstractFloat
   @polyvar x[1:2]
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  DoF, DoFE, DoFF, phi, Curlphi = FEMSei.ConstructND(k,ElemType)
+  DoF, DoFE, DoFF, phi, Curlphi = FEM.ConstructND(k,ElemType)
   Comp = 2
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)

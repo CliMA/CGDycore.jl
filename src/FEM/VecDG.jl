@@ -163,7 +163,7 @@ function VecDGStruct{FT}(backend,k::Int,Type::Grids.Tri,Grid) where FT<:Abstract
           
   else
     Comp = 3 
-    DoF, DoFE, DoFF, phiDG, GradphiDG, points = FEMSei.ConstructCG(k,Type)
+    DoF, DoFE, DoFF, phiDG, GradphiDG, points = FEM.ConstructCG(k,Type)
     phi = Array{Polynomial,2}(undef,Comp*DoF,Comp)
     Gradphi = Array{Polynomial,3}(undef,Comp*DoF,Comp,2)
 

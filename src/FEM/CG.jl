@@ -226,7 +226,7 @@ end
 
 function CGStruct{FT}(backend,k::Int,Type::Grids.Tri,Grid) where FT<:AbstractFloat
   @polyvar x[1:2]
-  DoF, DoFE, DoFF, phi, Gradphi, points = FEMSei.ConstructCG(k,Type)
+  DoF, DoFE, DoFF, phi, Gradphi, points = FEM.ConstructCG(k,Type)
   Comp = 1
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = DoFF * Grid.NumFaces + DoFE * Grid.NumEdges + Grid.NumNodes

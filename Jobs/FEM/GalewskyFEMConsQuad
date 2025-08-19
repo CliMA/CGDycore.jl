@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/FEMSei/ConsNonLinShallow.jl \
+julia --project Examples/FEM/ConsNonLinShallow.jl \
   --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
   --GridForm="Spherical" \

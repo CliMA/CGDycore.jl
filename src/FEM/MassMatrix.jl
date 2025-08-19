@@ -23,7 +23,7 @@ For each face in the grid, the function computes the local mass matrix by integr
 - The function is tailored for H(curl) elements and may require adaptation for other element types.
 """
 function MassMatrix(backend,FTB,Fe::HCurlElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
+  NumQuad,Weights,Points = FEM.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
   DF  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
@@ -93,7 +93,7 @@ Assembles the global mass matrix for a finite element space defined by `Fe` over
 - The function is tailored for `H(div)`-conforming elements, where basis functions are vector-valued.
 """
 function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
+  NumQuad,Weights,Points = FEM.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
   DF  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
@@ -158,10 +158,10 @@ This function computes the mass matrix by looping over all faces in the mesh, ev
 # Notes
 - The function assumes that `Fe.phi` contains callable basis functions.
 - The global degree of freedom mapping is provided by `Fe.Glob`.
-- The quadrature rule is determined by `FEMSei.QuadRule`.
+- The quadrature rule is determined by `FEM.QuadRule`.
 """
 function MassMatrix(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
+  NumQuad,Weights,Points = FEM.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
   for i = 1 : NumQuad
@@ -229,7 +229,7 @@ The function computes the local mass matrix for each face in the grid using nume
 - The function supports assembling weighted mass matrices by incorporating the vector `w` and its associated basis functions.
 """
 function MassMatrix(backend,FTB,Fe::ScalarElement,w,wFe::ScalarElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
+  NumQuad,Weights,Points = FEM.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
   fwRef  = zeros(wFe.Comp,wFe.DoF,NumQuad)
 
@@ -310,7 +310,7 @@ For each face in the grid, this function computes the local mass matrix using nu
 - Only nonzero entries are stored in the sparse matrix.
 """
 function MassMatrix(backend,FTB,Fe::VectorElement,Grid,QuadOrd,Jacobi)
-  NumQuad,Weights,Points = FEMSei.QuadRule(Fe.Type,QuadOrd)
+  NumQuad,Weights,Points = FEM.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
   for i = 1 : NumQuad

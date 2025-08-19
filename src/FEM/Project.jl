@@ -887,7 +887,7 @@ end
 function ProjectHDivScalarHDiv(backend,FTB,u,uFe::HDivElement,h,hFe::ScalarElement,hu,huFe::HDivElement,
   Grid,QuadOrd,Jacobi)
 
-  NumQuad,Weights,Points = FEMSei.QuadRule(Grid.Type,QuadOrd)
+  NumQuad,Weights,Points = FEM.QuadRule(Grid.Type,QuadOrd)
   ufRef  = zeros(uFe.Comp,uFe.DoF,NumQuad)
   hfRef  = zeros(hFe.Comp,hFe.DoF,NumQuad)
   hufRef  = zeros(huFe.Comp,huFe.DoF,NumQuad)

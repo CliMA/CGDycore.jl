@@ -54,7 +54,7 @@ end
 
 function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order
   DoF = FE.DoF
   s = @polyvar x[1:2]
@@ -138,7 +138,7 @@ end
 
 function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order
   DoF = FE.DoF
   s = @polyvar x[1:2]
@@ -222,7 +222,7 @@ end
 
 function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order
   DoF = FE.DoF
   s = @polyvar x[1:2]
@@ -256,7 +256,7 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   @polyvar t
   phiL = DG.CGLine(k,t)
   QuadOrd = 3
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
 
@@ -349,7 +349,7 @@ end
 
 function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order
   DoF = FE.DoF
   s = @polyvar x[1:2]
@@ -383,7 +383,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   @polyvar t
   phiL = DG.CGLine(k,t)
   QuadOrd = 3
-  NumQuadL, WeightsL, PointsL = FEMSei.QuadRule(Grids.Line(),QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   I = zeros(DoF,DoF)
   rDoF = 1
 

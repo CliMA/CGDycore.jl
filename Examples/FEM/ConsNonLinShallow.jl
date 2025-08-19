@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEMSei, FiniteVolumes
+  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -124,6 +124,96 @@ NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 # Finite elements
 k = parsed_args["OrderFEM"]
+# Grid Output Refine
+ref = parsed_args["RefineOutput"]
+
+MPI.Init()
+Device = "CPU"
+FloatTypeBackend = "Float64"
+
+if Device == "CPU" 
+  backend = CPU()
+elseif Device == "GPU" 
+  if GPUType == "CUDA"
+    backend = CUDABackend()
+    CUDA.allowscalar(true)
+#   CUDA.device!(MPI.Comm_rank(MPI.COMM_WORLD))
+  elseif GPUType == "AMD"
+    backend = ROCBackend()
+    AMDGPU.allowscalar(false)
+  elseif GPUType == "Metal"
+    backend = MetalBackend()
+    Metal.allowscalar(true)
+  end
+else
+  backend = CPU()
+end
+
+if FloatTypeBackend == "Float64"
+  FTB = Float64
+elseif FloatTypeBackend == "Float32"
+  FTB = Float32
+else
+  @show "False FloatTypeBackend"
+  stop
+end
+
+MPI.Init()
+comm = MPI.COMM_WORLD
+Proc = MPI.Comm_rank(comm) + 1
+ProcNumber = MPI.Comm_size(comm)
+ParallelCom = DyCore.ParallelComStruct()
+ParallelCom.Proc = Proc
+ParallelCom.ProcNumber  = ProcNumber
+
+# Physical parameters
+Phys = DyCore.PhysParameters{FTB}()
+
+# ModelParameters
+Model = DyCore.ModelStruct{FTB}()
+
+# Grid construction
+RadEarth = Phys.RadEarth
+
+# flat
+nx = parsed_args["nx"]
+ny = parsed_args["ny"]
+nz = parsed_args["nz"]
+H = parsed_args["H"]
+Lx = parsed_args["Lx"]
+Ly = parsed_args["Ly"]
+x0 = parsed_args["x0"]
+y0 = parsed_args["y0"]
+BoundaryWE = parsed_args["BoundaryWE"]
+BoundarySN = parsed_args["BoundarySN"]
+BoundaryBT = parsed_args["BoundaryBT"]
+# CG Element
+OrdPoly = parsed_args["OrdPoly"]
+# Viscosity
+HyperVisc = parsed_args["HyperVisc"]
+HyperDCurl = parsed_args["HyperDCurl"]
+HyperDGrad = parsed_args["HyperDGrad"]
+HyperDRhoDiv = parsed_args["HyperDRhoDiv"]
+HyperDDiv = parsed_args["HyperDDiv"]
+HyperDDivW = parsed_args["HyperDDivW"]
+# Output
+PrintDays = parsed_args["PrintDays"]
+PrintHours = parsed_args["PrintHours"]
+PrintMinutes = parsed_args["PrintMinutes"]
+PrintSeconds = parsed_args["PrintSeconds"]
+PrintTime = parsed_args["PrintTime"]
+PrintStartTime = parsed_args["PrintStartTime"]
+Flat = parsed_args["Flat"]
+vtkFileName = parsed_args["vtkFileName"]
+
+# Device
+Device = parsed_args["Device"]
+GPUType = parsed_args["GPUType"]
+FloatTypeBackend = parsed_args["FloatTypeBackend"]
+NumberThreadGPU = parsed_args["NumberThreadGPU"]
+
+# Finite elements
+k = parsed_args["OrderFEM"]
 
 # Grid Output Refine
 ref = parsed_args["RefineOutput"]
@@ -179,13 +269,14 @@ RadEarth = Phys.RadEarth
 # Parameters
 Param = Examples.Parameters(FTB,Problem)
 
+# Model
 if GridForm == "Spherical"
   # Grid construction
   Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
 
   # Jacobi
-  Jacobi = FEMSei.Jacobi!
+  Jacobi = FEM.Jacobi!
 
   # Settings
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
@@ -211,7 +302,7 @@ else
   Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;GridType=GridType)
   
   # Jacobi
-  Jacobi = FEMSei.JacobiCart!
+  Jacobi = FEM.JacobiCart!
 
   # Settings
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
@@ -248,26 +339,32 @@ elseif Grid.Type == Grids.Tri()
 end
 
 # Finite elements
-DG = FEMSei.DGStruct{FTB}(backend,k,Grid.Type,Grid)
-CG = FEMSei.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
-RT = FEMSei.RTStruct{FTB}(backend,k,Grid.Type,Grid)
-ND = FEMSei.NDStruct{FTB}(backend,k,Grid.Type,Grid)
+DG = FEM.DGStruct{FTB}(backend,k,Grid.Type,Grid)
+VecDG = FEM.VecDGStruct{FTB}(backend,k+1,Grid.Type,Grid)
+CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
+RT = FEM.RTStruct{FTB}(backend,k,Grid.Type,Grid)
+ND = FEM.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
-ModelFEM = FEMSei.ModelFEMVecI(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+# Model
+ModelFEM = FEM.ModelFEMCons(backend,FTB,ND,RT,CG,DG,VecDG,Grid,nQuadM,nQuadS,Jacobi)
 
-pPosS = ModelFEM.pPosS
-pPosE = ModelFEM.pPosE
-uPosS = ModelFEM.uPosS
-uPosE = ModelFEM.uPosE
-U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
-@views Up = U[pPosS:pPosE]
-@views Uu = U[uPosS:uPosE]
+hPosS = ModelFEM.hPosS
+hPosE = ModelFEM.hPosE
+huPosS = ModelFEM.huPosS
+huPosE = ModelFEM.huPosE
+uPosVec = ModelFEM.uPosVec
+U = zeros(FTB,huPosE)
+UNew = zeros(FTB,huPosE)
+F = zeros(FTB,huPosE)
+uRec = zeros(FTB,uPosVec)
+
+@views Uh = U[hPosS:hPosE]
+@views Uhu = U[huPosS:huPosE]
 
 # Interpolation
-FEMSei.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
-FEMSei.InterpolateRT!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
+FEM.InterpolatehRT!(Uhu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
+FEM.InterpolateDG!(Uh,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 
 # Time integration
-FEMSei.TimeStepperVecI(backend,FTB,U,dtau,FEMSei.FcnVecINonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,
+FEM.TimeStepperCons(backend,FTB,U,dtau,FEM.FcnConsNonLinShallow!,ModelFEM,Grid,nQuad,nQuadM,nQuadS,Jacobi,
   nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
-
