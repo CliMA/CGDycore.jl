@@ -30,8 +30,8 @@ julia --project Examples/Driver.jl \
   --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=12 \
-  --PrintDays=0 \
+  --PrintHours=0 \
+  --PrintDays=100 \
   --StartAverageDays=100 \
   --Flat=true \
   --OrdPrint=2 \
@@ -40,7 +40,7 @@ julia --project Examples/Driver.jl \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
-  --Stretch=true \
+  --Stretch=false \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \

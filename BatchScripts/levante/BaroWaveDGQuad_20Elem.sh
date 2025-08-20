@@ -10,7 +10,7 @@
 #SBATCH --time=00:30:00            # Set a limit on the total run time
 #SBATCH --mail-type=FAIL           # Notify user by email in case of job failure
 #SBATCH --account=bb1143           # Charge resources on this project account
-#SBATCH --output=BaroWaveDGQuad_32Elem   # File name for standard output
+#SBATCH --output=BaroWaveDGQuad_20   # File name for standard output
 
 set -e
 ulimit -s 204800
@@ -24,5 +24,5 @@ ulimit -s 204800
 export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
 export UCX_ERROR_SIGNALS=""
-export machine="levante"
-srun -n 4 gpu_wrapper.sh -n 4 -e "./Jobs/NHSphere/BaroWaveDrySphereDGQuad_32Elem"
+#export machine="levante"
+srun -n 4 ./Jobs/NHSphere/BaroWaveDrySphereDGQuad_20Elem
