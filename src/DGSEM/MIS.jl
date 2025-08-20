@@ -1,5 +1,66 @@
 # MIS Method
 
+function MISLin_Method(RK,MIS,U,Fcn,FcnLin,dtauSmall,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+
+  backend = get_backend(U)
+  FTB = eltype(U)
+  Proc = Global.ParallelCom.Proc
+  ProcNumber = Global.ParallelCom.ProcNumber
+  Model = Global.Model
+  NumV = Model.NumV
+  NumAux = Model.NumAux
+  NumAuxF = Model.NumAuxF
+  M = size(U,1)
+  nz = size(U,2)
+  CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux+NumAuxF)
+  @views Un = CacheU[:,:,:,1:NumV]
+  @views CacheAuxF = CacheU[:,:,:,NumV+NumAux+1:NumV+NumAux+NumAuxF]
+  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  @views UI = U[:,:,1:DG.NumI,:]
+  @views UnI = Un[:,:,1:DG.NumI,:]
+  nStage = RK.nStage
+  k = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,nStage)
+
+  M = DG.OrdPolyZ + 1
+  dz = Metric.dz
+  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+  Jac = JacDGVert{FTB}(backend,M,nz,DG.NumI)
+  SlowStages = MIS.nStage
+  dZn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  Sdu = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,MIS.nStage)
+  Yn = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,MIS.nStage+1)
+  Delta = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+
+  @time begin
+    @inbounds for i = 1 : nIter
+      time_elapsed = @elapsed begin
+        @views @. Yn[:,:,:,:,1] = UI
+        @inbounds for iStage = 1 : SlowStages
+          @. UnI = Yn[:,:,:,:,iStage]
+          @views Fcn(Sdu[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+          @views @.  Yn[:,:,:,:,iStage+1] = UI
+          @views InitialConditionMIS!(Yn[:,:,:,:,iStage+1], Yn, UI, MIS.alfa, iStage)
+          @views SlowTendency!(dZn, Delta, Yn, Sdu, UI, MIS.d, MIS.gamma, MIS.beta, dtau, iStage)
+#         @views RosenbrockMIS!(ROS, dtauSmall, MIS.d[iStage+1] * dtau,Yn[:,:,:,:,iStage+1],dZn,FcnLin,DG,
+#           Exchange,Metric,Phys,Param,Grid,Global,Jac,CacheAuxF,CacheS,k)
+          Yn[:,:,:,:,iStage+1] -= Delta
+          @views RungeKuttaMIS!(RK, dtauSmall, MIS.d[iStage+1] * dtau,Yn[:,:,:,:,iStage+1],dZn,FcnLin,DG,
+            Exchange,Metric,Phys,Param,Grid,Global,CacheU,CacheS,k)
+          Yn[:,:,:,:,iStage+1] += Delta
+        end
+        @views @. UI = Yn[:,:,:,:,end]
+      end
+      percent = i/nIter*100
+      if Proc == 1
+        @info "Iteration: $i took $time_elapsed, $percent% complete"
+      end
+      if mod(i,nPrint) == 0 || i == nIter
+        Outputs.unstructured_vtkSphere(UI,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+      end
+    end
+  end
+end
+
 function MIS_Method(ROS,MIS,U,FcnSlow,FcnFast,dtauSmall,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 	
   backend = get_backend(U)
@@ -62,6 +123,16 @@ function SlowTendency!(dZn, Yn, Sdu, u, d, gamma, beta, dtL, stage)
   end
 end
 
+function SlowTendency!(dZn, Delta, Yn, Sdu, u, d, gamma, beta, dtL, stage)
+  @views @. dZn = (beta[stage+1,1] / d[stage+1]) * Sdu[:,:,:,:,1]
+  @views @. Delta = (beta[stage+1,1] / d[stage+1]) * Yn[:,:,:,:,1]
+  @inbounds for j in 2 : stage
+    @views @. dZn += (gamma[stage+1,j] / (dtL * d[stage+1])) * (Yn[:,:,:,:,j] - u) +
+      (beta[stage+1,j] / d[stage+1]) * Sdu[:,:,:,:,j]
+    @views @. Delta += (beta[stage+1,j] / d[stage+1]) * Yn[:,:,:,:,j]
+  end
+end
+
 function InitialConditionMIS!(Zn0, Yn, u, alfa, stage)
   @inbounds for j in 2 : stage
     @views @. Zn0 += alfa[stage+1, j] * (Yn[:,:,:,:,j] - u)
@@ -107,3 +178,40 @@ function RosenbrockMIS!(ROS,dt_small,dt,U,FSlow,Fcn,DG,Exchange,Metric,Phys,Para
     end
   end 
 end  
+
+function RungeKuttaMIS!(RK,dt_small,dt,U,FSlow,Fcn,DG,Exchange,Metric,Phys,Param,Grid,Global,
+  CacheU,CacheS,F)
+  numit = ceil(Int,dt/dt_small)
+  FTB = eltype(U)
+  Model = Global.Model
+  NumV = Model.NumV
+  NumAux = Model.NumAux
+  NumAuxF = Model.NumAuxF
+  M = size(U,1)
+  nz = size(U,2)
+  nStage = RK.nStage
+  M = DG.OrdPolyZ + 1
+  dz = Metric.dz
+  dtau = dt/numit
+  @views UI = U[:,:,1:DG.NumI,:]
+  @views Un = CacheU[:,:,:,1:NumV]
+  @views UIn = Un[:,:,1:DG.NumI,:]
+  @views AuxCache = CacheU[:,:,:,NumV+NumAux+1:NumV+NumAux+NumAuxF] 
+
+  @. UIn = UI
+  @inbounds for i = 1 : numit
+    @inbounds for iStage = 2 : nStage
+      @views Fcn(F[:,:,:,:,iStage-1],Un,DG,Model,Metric,Exchange,Grid,AuxCache,CacheS,Phys,Global,Grid.Type)
+      @views @. F[:,:,:,:,iStage-1] += FSlow
+      @. UIn = UI
+      @inbounds for jStage = 1 : iStage - 1
+        @views @. UIn += dtau * RK.ARKE[iStage,jStage] * F[:,:,:,:,jStage]
+      end
+    end
+    @views Fcn(F[:,:,:,:,end],Un,DG,Model,Metric,Exchange,Grid,AuxCache,CacheS,Phys,Global,Grid.Type)
+    @views @. F[:,:,:,:,end] += FSlow
+    @inbounds for iStage = 1 : nStage
+      @views @. UI = UI + dtau * RK.bRKE[iStage] * F[:,:,:,:,iStage]
+    end
+  end
+end

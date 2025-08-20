@@ -31,6 +31,7 @@ RhoRPos = parsed_args["RhoRPos"]
 TkePos = parsed_args["TkePos"]
 NumV = parsed_args["NumV"]
 NumAux = parsed_args["NumAux"]
+NumAuxF = parsed_args["NumAuxF"]
 NumTr = parsed_args["NumTr"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
@@ -68,6 +69,7 @@ SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
 SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
+dtauSmall = parsed_args["dtauSmall"]
 IntMethod = parsed_args["IntMethod"]
 Table = parsed_args["Table"]
 GridForm = parsed_args["GridForm"]
@@ -187,6 +189,7 @@ Model = DyCore.ModelStruct{FTB}()
 # Initial conditions
 Model.NumV = NumV
 Model.NumAux = NumAux
+Model.NumAuxF = NumAuxF
 Model.NumTr = NumTr
 Model.NumThermo = 4
 if State == "MoistInternalEnergy"
@@ -429,7 +432,7 @@ Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
 
-Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
+Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+NumAuxF+1,Exchange)
 
 
 # Simulation time
@@ -455,23 +458,6 @@ if Proc == 1
 @show nPrint
 end
 
-F = zeros(size(U,1),size(U,2),DG.NumI,5)
-Cache = zeros(size(U,1),size(U,2),DG.NumI,2)
-CacheS = zeros(size(U,1),size(U,2),DG.NumI,5)
-@views p = Cache[:,:,:,1]
-@views Th = Cache[:,:,:,2]
-@views @. p = Model.Pressure(U[:,:,:,5]) 
-@views @. p = p / U[:,:,:,Model.ThPos]
-@views @. Th = U[:,:,:,Model.ThPos] / U[:,:,:,Model.RhoPos]
-DGSEM.FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,Grid.Type)
-@show sum(abs.(F))
-@show F[end,1,DG.Glob[:,1],1]
-@show F[end,1,DG.Glob[:,1],2]
-@show F[end,1,DG.Glob[:,1],3]
-@show F[end,1,DG.Glob[:,1],4]
-@show F[end,1,DG.Glob[:,1],5]
-stop
-
 if IntMethod == "Rosenbrock"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
@@ -479,5 +465,10 @@ if IntMethod == "Rosenbrock"
 elseif IntMethod == "RungeKutta"    
   DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Grid,Global)
+elseif IntMethod == "MISLin"
+  RK = Integration.RungeKuttaMethod{FTB}(Table)
+  Mis = DGSEM.MISStruct{FTB}("MISRK4")
+  DGSEM.MISLin_Method(RK,Mis,U,DGSEM.FcnGPUSplit!,DGSEM.FcnGPULin!,dtauSmall,dtau,IterTime,nPrint,
+  DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)  
 end  
 MPI.Finalize()

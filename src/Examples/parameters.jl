@@ -291,7 +291,7 @@ Base.@kwdef struct ParamHillAgnesiXCart{FT}
   Deep::Bool = false
   NBr::FT = 1.e-2
   Th0::FT =300.0
-  uMax::FT =10
+  uMax::FT =0
   vMax::FT =0
   wMax::FT =0
   TEq::FT =300.0

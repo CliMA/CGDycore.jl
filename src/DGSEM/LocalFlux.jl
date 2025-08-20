@@ -63,7 +63,7 @@ Base.@kwdef struct LinearizedEulerFlux <: Flux end
 
 function (::LinearizedEulerFlux)(RhoPos,uPos,vPos,wPos,RhoThPos,dpdRhoThPos,ThPos)
   @inline function Flux(flux,V,Aux)
-    p = Aux[dpdRhoThPos]*V[ThPos]
+    p = Aux[dpdRhoThPos]*V[RhoThPos]
     Th = Aux[ThPos]
 
     flux[1,RhoPos] = V[uPos]
@@ -278,6 +278,7 @@ abstract type RiemannSolver end
 
 Base.@kwdef struct RiemannLMARS <: RiemannSolver end
 Base.@kwdef struct RiemannLMARSFast <: RiemannSolver end
+Base.@kwdef struct RiemannLMARSLin <: RiemannSolver end
 Base.@kwdef struct RiemannLMARSSlow <: RiemannSolver end
 
 function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,wPos,pPos)
@@ -339,7 +340,7 @@ end
 
 
 function (::RiemannLMARSFast)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
-  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSFast!(F,VLL,VRR,AuxL,AuxR,Normal)
 
     FT = eltype(F)
     cS = Param.cS
@@ -355,9 +356,33 @@ function (::RiemannLMARSFast)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     F[wPos] = Normal[3] * pM
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
-      F[RhoThPos] = F[RhoPos] * AuxL[ThPos]
+      F[RhoThPos] = F[RhoPos] * VLL[RhoThPos]
     else
       F[RhoPos] = vM * VRR[RhoPos]
+      F[RhoThPos] = F[RhoPos] * VRR[RhoThPos]
+    end
+  end
+  return RiemannByLMARSFast!
+end
+
+function (::RiemannLMARSLin)(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,dpdRhoThPos,ThPos)
+  @inline function RiemannByLMARSLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+
+    FT = eltype(F)
+    cS = Param.cS
+    pLL = AuxL[dpdRhoThPos] * VLL[RhoThPos]
+    pRR = AuxR[dpdRhoThPos] * VRR[RhoThPos]
+    RhovLL = VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3] 
+    RhovRR = VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]
+    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * (RhovRR - RhovLL)
+    RhovM = FT(0.5) * (RhovRR + RhovLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) 
+    F[uPos] = Normal[1] * pM
+    F[vPos] = Normal[2] * pM
+    F[wPos] = Normal[3] * pM
+    F[RhoPos] = RhovM 
+    if RhovM > FT(0)
+      F[RhoThPos] = F[RhoPos] * AuxL[ThPos]
+    else
       F[RhoThPos] = F[RhoPos] * AuxR[ThPos]
     end
   end

@@ -47,6 +47,11 @@ function parse_commandline()
     arg_type = Int
     default = 1
 
+    "--NumAuxF"
+    help = "Number of auxilary variables fast rhs"
+    arg_type = Int
+    default = 0
+
     "--ProfRho"
     help = "Initial conditions for density"
     arg_type = String

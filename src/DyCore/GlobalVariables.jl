@@ -315,6 +315,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   ThEDMFPos::Int
   NumV::Int
   NumAux::Int
+  NumAuxF::Int
   NumTr::Int
   NumThermo::Int
   Equation::Models.EquationType
@@ -413,6 +414,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   ThEDMFPos = 0
   NumV = 0
   NumAux = 0
+  NumAuxF = 0
   NumTr = 0
   NumThermo = 0
   Equation = Models.CompressibleShallow()
@@ -509,6 +511,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    ThEDMFPos,
    NumV,
    NumAux,
+   NumAuxF,
    NumTr,
    NumThermo,
    Equation,

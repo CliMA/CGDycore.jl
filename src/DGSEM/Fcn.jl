@@ -12,8 +12,10 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   Proc = Global.ParallelCom.Proc
   NV = Model.NumV
   NAUX = Model.NumAux
+  NAUXF = Model.NumAuxF
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
+  @views AuxF = CacheU[:,:,:,NV+NAUX+1:NV+NAUX+NAUXF]
   FS = CacheS
   @. F = 0
   @. FS = 0
@@ -28,6 +30,12 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
     ndrange = (Nz,M,NQ,NF)
     KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
     KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
+  end  
+  if NAUXF > 0
+    @views dp = AuxF[:,:,1:DG.NumI,1]
+    @views @. dp = p / U[:,:,1:DG.NumI,Model.ThPos]
+    @views Th = AuxF[:,:,1:DG.NumI,2]
+    @views @. Th = U[:,:,1:DG.NumI,Model.ThPos] / U[:,:,1:DG.NumI,Model.RhoPos]   
   end  
 
   if Model.Damping
@@ -69,8 +77,8 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   @views KVSp2VCart3Kernel!(UI[:,:,:,2:4],Metric.Rotate,DG.Glob;ndrange=ndrange)
 
-  @views Parallels.ExchangeData3DSendGPU(reshape(CacheU[:,:,:,1:NV+NAUX],
-    Nz*M,size(CacheU,3),NV+NAUX),Exchange)
+  @views Parallels.ExchangeData3DSendGPU(reshape(CacheU[:,:,:,1:NV+NAUX+NAUXF],
+    Nz*M,size(CacheU,3),NV+NAUX+NAUXF),Exchange)
 
   NzG = min(div(NumberThreadGPU,N*N),M*Nz)
   group = (N,N,NzG,1)
@@ -86,8 +94,8 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   KFluxSplitVolumeNonLinV3Kernel!(Model.FluxAverage,F,U,Aux,Metric.dXdxI,DG.DVZT,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
-  @views Parallels.ExchangeData3DRecvSetGPU!(reshape(CacheU[:,:,:,1:NV+NAUX],
-    Nz*M,size(CacheU,3),NV+NAUX),Exchange)
+  @views Parallels.ExchangeData3DRecvSetGPU!(reshape(CacheU[:,:,:,1:NV+NAUX+NAUXF],
+    Nz*M,size(CacheU,3),NV+NAUX+NAUXF),Exchange)
 
   NEG = min(div(NumberThreadGPU,N*M),Nz)
   group = (N,M,NEG,1)

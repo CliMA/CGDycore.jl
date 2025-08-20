@@ -42,7 +42,7 @@ julia --project Examples/DriverDG.jl \
   --nx=40 \
   --ny=2 \
   --OrdPoly=4 \
-  --OrdPolyZ=1 \
+  --OrdPolyZ=4 \
   --HyperVisc=true \
   --HyperDCurl=1.e7 \
   --HyperDGrad=1.e7 \

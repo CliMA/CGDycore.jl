@@ -456,7 +456,13 @@ if IntMethod == "Rosenbrock"
 elseif IntMethod == "MIS"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   Mis = DGSEM.MISStruct{FTB}("MISRK4")
-DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+  DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtauSmall,dtau,IterTime,nPrint,
+  DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+elseif IntMethod == "MISLin"
+  Ros = Integration.RosenbrockStruct{FTB}(Table)
+  Mis = DGSEM.MISStruct{FTB}("MISRK4")
+  DGSEM.MISLin_Method(Ros,Mis,U,DGSEM.FcnGPUSplit!,DGSEM.FcnGPULin!,dtauSmall,dtau,IterTime,nPrint,
+  DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 elseif IntMethod == "RungeKutta"    
   DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Grid,Global)
