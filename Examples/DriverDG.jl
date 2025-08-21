@@ -452,7 +452,7 @@ end
 if IntMethod == "Rosenbrock"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global)
+    Trans,Phys,Param,Grid,Global,Grid.Type)
 elseif IntMethod == "MIS"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   Mis = DGSEM.MISStruct{FTB}("MISRK4")

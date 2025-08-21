@@ -1,4 +1,4 @@
-function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,ElemType::Grids.ElementType)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -33,7 +33,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
           @inbounds for jStage = 1 : iStage-1
             @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
           end
-          @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+          @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,ElemType)
           @inbounds for jStage = 1 : iStage - 1
             fac = ROS.c[iStage,jStage] / dtau
             @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
