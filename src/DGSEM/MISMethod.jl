@@ -70,13 +70,35 @@ function MISStruct{FT}(Method) where FT<:AbstractFloat
     d[2] = 1/3
     d[3] = 1/2
     d[4] = 1
+  elseif str == "RKJeb"
+    nStage = 3
+    beta = zeros(FT, nStage+1, nStage)
+    alfa = zeros(FT, nStage+1, nStage)
+    gamma = zeros(FT, nStage+1, nStage)
+    d = zeros(FT, nStage+1, 1)
+    beta[2,1] = 2.0492941060709863e-001
+    beta[3,1] = -4.5477553356788974e-001
+    beta[3,2] = 9.5613538239378981e-001
+    beta[4,1] = -3.5970281266252929e-002 
+    beta[4,2] = -1.5363649484946584e-001
+    beta[4,3] = 7.0259062712330234e-001
+
+    alfa[3, 2] = 7.0302371060435331e-001
+    alfa[4, 2] = 4.2492220536139252e-001
+    alfa[4, 3] = 5.4545718243573982e-001
+
+    gamma[3, 2] = -8.2176071248067006e-001
+    gamma[4, 2] = -3.8080670922635063e-001
+    gamma[4, 3] = 4.5653105107801978e-001
+
+    d[2] = beta[2, 1]
+    d[3] = beta[3, 1] + beta[3, 2]
+    d[4] = beta[4, 1] + beta[4, 2] + beta[4, 3]
+
 #=            
-   MIS.Method='RKJeb';
-    MIS.nStage=3;
-    MIS.A=zeros(MIS.nStage+1,MIS.nStage);
-    MIS.G=zeros(MIS.nStage+1,MIS.nStage);
-    MIS.D=zeros(MIS.nStage+1,MIS.nStage);
-    MIS.d=zeros(MIS.nStage+1);
+
+
+
     MIS.A(2,1)=2.0492941060709863e-001;
     MIS.A(3,1)=-4.5477553356788974e-001;
     MIS.A(3,2)=9.5613538239378981e-001;

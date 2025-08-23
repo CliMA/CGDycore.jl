@@ -468,6 +468,8 @@ elseif IntMethod == "RungeKutta"
 elseif IntMethod == "MISLin"
   RK = Integration.RungeKuttaMethod{FTB}(Table)
   Mis = DGSEM.MISStruct{FTB}("MISRK4")
+# Mis = DGSEM.MISStruct{FTB}("RK3")
+  Mis = DGSEM.MISStruct{FTB}("RKJeb")
   DGSEM.MISLin_Method(RK,Mis,U,DGSEM.FcnGPUSplit!,DGSEM.FcnGPULin!,dtauSmall,dtau,IterTime,nPrint,
   DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)  
 end  

@@ -205,13 +205,17 @@ function RungeKuttaMIS!(RK,dt_small,dt,U,FSlow,Fcn,DG,Exchange,Metric,Phys,Param
       @views @. F[:,:,:,:,iStage-1] += FSlow
       @. UIn = UI
       @inbounds for jStage = 1 : iStage - 1
-        @views @. UIn += dtau * RK.ARKE[iStage,jStage] * F[:,:,:,:,jStage]
+        if RK.ARKE[iStage,jStage] != 0.0
+          @views @. UIn += dtau * RK.ARKE[iStage,jStage] * F[:,:,:,:,jStage]
+        end  
       end
     end
     @views Fcn(F[:,:,:,:,end],Un,DG,Model,Metric,Exchange,Grid,AuxCache,CacheS,Phys,Global,Grid.Type)
     @views @. F[:,:,:,:,end] += FSlow
     @inbounds for iStage = 1 : nStage
-      @views @. UI = UI + dtau * RK.bRKE[iStage] * F[:,:,:,:,iStage]
+      if RK.bRKE[iStage] != 0.0
+        @views @. UI += dtau * RK.bRKE[iStage] * F[:,:,:,:,iStage]
+      end  
     end
   end
 end

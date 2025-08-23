@@ -21,15 +21,15 @@ julia --project Examples/DriverDGLin.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=10 \
-  --vtkFileName="output/VTK/DGCartLin/DGQuad" \
+  --PrintTime=1000 \
+  --vtkFileName="output/VTK/WarmBubble/DGQuadLin" \
   --OrdPrint=3 \
   --OrdPrintZ=3 \
   --Curl=false \
-  --dtau=0.8 \
-  --dtauSmall=.08 \
+  --dtau=1.6 \
+  --dtauSmall=.2 \
   --IntMethod="MISLin" \
-  --Table="RK2" \
+  --Table="RK3" \
   `#Grid       `        \
   --GridForm="Cartesian" \
   --GridType="Quad" \

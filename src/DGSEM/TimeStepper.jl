@@ -201,30 +201,34 @@ function RK3(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
   @views UNewI = UNew[:,:,1:DG.NumI,:]
   
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-  @inbounds for i = 1 : nIter
+  @time begin
+    @inbounds for i = 1 : nIter
+      Δt = @elapsed begin
+        @. UNewI = UI 
+
+        Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+        fac = FTB(1/3 * dtau)
+        @. UNewI = UI + fac * FU
+
+        Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+        fac = FTB(1/2 * dtau)
+        @. UNewI = UI + fac * FU
+
+        Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+        fac = FTB(dtau)
+        @. UI = UI + fac * FU
+
+        if mod(i,nPrint) == 0 || i == nIter
+          if Proc == 1
+            @show "Print",i
+          end  
+          Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+        end
+      end
+      percent = i/nIter*100
       if Proc == 1
-        @show i,nPrint
-      end  
-
-    @. UNewI = UI 
-
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
-    fac = FTB(1/3 * dtau)
-    @. UNewI = UI + fac * FU
-
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
-    fac = FTB(1/2 * dtau)
-    @. UNewI = UI + fac * FU
-
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
-    fac = FTB(dtau)
-    @. UI = UI + fac * FU
-
-    if mod(i,nPrint) == 0 || i == nIter
-      if Proc == 1
-        @show "Print",i
-      end  
-      Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+        @info "Iteration: $i took $Δt, $percent% complete"
+      end
     end
   end
 end

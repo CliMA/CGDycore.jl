@@ -101,7 +101,18 @@ elseif str == "RK2"
     ARKE=zeros(FT,nStage,nStage);
     ARKE[2,1]=1/2;
     bRKE=[0,1];
-    cRKE=[0,1/2,1/2,1];
+    cRKE=[0,1/2];
+    ARKI=zeros(FT,0,0)
+    bRKI=zeros(FT,0)
+    gRKI=zeros(FT,0)    
+elseif str == "RK3"
+    nStage=3;
+    Type=""
+    ARKE=zeros(FT,nStage,nStage);
+    ARKE[2,1]=1/3;
+    ARKE[3,2]=1/2;
+    bRKE=[0,0,1];
+    cRKE=[0,1/3,1/2];
     ARKI=zeros(FT,0,0)
     bRKI=zeros(FT,0)
     gRKI=zeros(FT,0)    
