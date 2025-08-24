@@ -33,6 +33,7 @@
   @synchronize
 
   if ID <= ND
+    ind = Glob[ID,IF]  
     @unroll for l = 1 : M
       @views FluxAver!(hTilde,VLoc[K,Iz,iD,:],VLoc[l,Iz,iD,:],
         AuxLoc[K,Iz,iD,:],AuxLoc[l,Iz,iD,:],
@@ -41,7 +42,6 @@
         FLoc[K,Iz,iD,iv] += -DVT[l,K] * hTilde[iv] 
       end  
     end  
-    ind = Glob[ID,IF]  
     @unroll for iv = 1 : NV
       F[K,Iz,ind,iv] += FLoc[K,Iz,iD,iv] 
     end

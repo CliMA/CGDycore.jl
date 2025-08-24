@@ -443,6 +443,7 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   KRiemanNonLinH3Kernel! = RiemanNonLinH3Kernel!(backend,group)
   KRiemanNonLinH3Kernel!(Model.RiemannSolver,F,U,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
     Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange) 
+
   DoFG = min(div(NumberThreadGPU,Nz+1),DoF)
   group = (Nz+1,DoFG,1)
   ndrange = (Nz+1,DoF,NF)

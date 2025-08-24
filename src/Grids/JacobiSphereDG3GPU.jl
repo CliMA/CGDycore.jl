@@ -352,7 +352,6 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::
   copyto!(Dx2GPU,Dx2)
 
   KJacobiSphereDGTriKernel! = JacobiSphereDGTriKernel!(backend,group)
-
   KJacobiSphereDGTriKernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.Glob,FE.ksi,FE.xwZ,Dx1GPU,Dx2GPU,
     FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
 end
@@ -408,7 +407,6 @@ end
   H = @uniform z[Nz+1]
 
   dXdx = @private eltype(X) (3,3)
-
 
   if Iz <= Nz
     z1 = z[Iz]
@@ -486,7 +484,8 @@ end
     dXdxI[3,3,K,ID,Iz,IF] = dXdx[1,1] * dXdx[2,2] - dXdx[1,2] * dXdx[2,1]
 
     lon,lat,_ = cart2sphere(XT1,XT2,XT3)
-    Rotate[1,1,K,ID,Iz,IF] = 1
+
+    Rotate[1,1,K,ID,Iz,IF] = -sin(lon)
     Rotate[2,1,K,ID,Iz,IF] = -sin(lat)*cos(lon)
     Rotate[3,1,K,ID,Iz,IF] =  cos(lat)*cos(lon)
 
