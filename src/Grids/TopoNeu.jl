@@ -270,8 +270,8 @@ function Orography(backend,FT,FE,Exchange,Global,TopoProfile,type::Grids.Tri)
       P1 = Nodes[Faces[iF].N[1]].P
       P2 = Nodes[Faces[iF].N[2]].P
       P3 = Nodes[Faces[iF].N[3]].P
-      x1 = FE.ksi[1,iDoF]
-      x2 = FE.ksi[2,iDoF]
+      x1 = FE.ksiCPU[1,iDoF]
+      x2 = FE.ksiCPU[2,iDoF]
       X[1] = -0.5 * (x1 + x2) * P1.x +
          0.5 * (1 + x1) * P2.x + 
          0.5 * (1 + x2) * P3.x  
