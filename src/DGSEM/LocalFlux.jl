@@ -165,27 +165,14 @@ Base.@kwdef struct KennedyGruberGrav <: AverageFlux end
 function (::KennedyGruberGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
   @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
     FT = eltype(flux)
-    pL = AuxL[pPos]
-    pR = AuxR[pPos]
-    GPL = AuxL[GPPos]
-    GPR = AuxR[GPPos]
-    RhoL = VL[RhoPos]
-    RhoR = VR[RhoPos]
-    uL = VL[uPos] / RhoL
-    vL = VL[vPos] / RhoL
-    wL = VL[wPos] / RhoL
-    ThL = VL[ThPos] / RhoL
-    uR = VR[uPos] / RhoR
-    vR = VR[vPos] / RhoR
-    wR = VR[wPos] / RhoR
-    ThR = VR[ThPos] / RhoR
 
-    pAv = FT(0.5) * ((pL + pR) + FT(0.5) * (RhoL + RhoR) * (GPR - GPL))
-    uAv = FT(0.5) * (uL + uR)
-    vAv = FT(0.5) * (vL + vR)
-    wAv = FT(0.5) * (wL + wR)
-    RhoAv = FT(0.5) * (RhoL + RhoR)
-    ThAv = FT(0.5) * (ThL + ThR)
+    pAv = FT(0.5) * ((AuxL[pPos] + AuxR[pPos]) + 
+      FT(0.5) * (VL[RhoPos] + VR[RhoPos]) * (AuxR[GPPos] - AuxL[GPPos]))
+    uAv = FT(0.5) * (VL[uPos] + VR[uPos])
+    vAv = FT(0.5) * (VL[vPos] + VR[vPos])
+    wAv = FT(0.5) * (VL[wPos] + VR[wPos])
+    RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
+    ThAv = FT(0.5) * (VL[ThPos] + VR[ThPos])
     mAv1 = FT(0.5) * (m_L[1] + m_R[1])
     mAv2 = FT(0.5) * (m_L[2] + m_R[2])
     mAv3 = FT(0.5) * (m_L[3] + m_R[3])

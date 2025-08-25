@@ -20,8 +20,10 @@
     @unroll for iaux = 1 : NAUX
       AuxLoc[K,Iz,iD,iaux] = Aux[K,Iz,ind,iaux]  
     end
-    @unroll for iv = 1 : NV
-      VLoc[K,Iz,iD,iv] = V[K,Iz,ind,iv]  
+    VLoc[K,Iz,iD,1] = V[K,Iz,ind,1]  
+    FLoc[K,Iz,iD,1] = 0.0
+    @unroll for iv = 2 : NV
+      VLoc[K,Iz,iD,iv] = V[K,Iz,ind,iv] / VLoc[K,Iz,iD,1]  
       FLoc[K,Iz,iD,iv] = 0.0
     end
 
@@ -75,8 +77,10 @@ end
     @unroll for iaux = 1 : NAUX
       AuxLoc[I,J,iz,iaux] = Aux[K,Iz,ind,iaux]  
     end
-    @unroll for iv = 1 : NV
-      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv]  
+    VLoc[I,J,iz,1] = V[K,Iz,ind,1]  
+    FLoc[I,J,iz,1] = 0.0
+    @unroll for iv = 2 : NV
+      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv] / VLoc[I,J,iz,1]  
       FLoc[I,J,iz,iv] = 0.0
     end
     @unroll for j = 1 : 3
@@ -136,8 +140,10 @@ end
     @unroll for iaux = 1 : NAUX
       AuxLoc[ID,iz,iaux] = Aux[K,Iz,ind,iaux]  
     end
-    @unroll for iv = 1 : NV
-      VLoc[ID,iz,iv] = V[K,Iz,ind,iv]  
+    VLoc[ID,iz,1] = V[K,Iz,ind,1]  
+    FLoc[ID,iz,1] = 0.0
+    @unroll for iv = 2 : NV
+      VLoc[ID,iz,iv] = V[K,Iz,ind,iv] / VLoc[ID,iz,1] 
       FLoc[ID,iz,iv] = 0.0
     end
     @unroll for j = 1 : 3

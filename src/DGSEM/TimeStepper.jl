@@ -44,7 +44,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
         @inbounds for iStage = 1 : nStage
           @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
         end
-        if mod(i,nPrint) == 0 || i == nIter
+        if mod(i,nPrint) == 0
           Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
         end
       end
@@ -53,6 +53,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
+    Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
   end  
 end  
 
