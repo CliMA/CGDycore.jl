@@ -992,7 +992,6 @@ function ExchangeData3DSendGPU(U,Exchange)
     ndrange = (Nz,length(IndSendBuffer[iP]),nT)
     KExchangeData3DSendKernel!(U,SendBuffer3[iP],IndSendBuffer[iP],ndrange=ndrange)
   end
-  KernelAbstractions.synchronize(backend)
 
   i = 0
   @inbounds for iP in NeiProc

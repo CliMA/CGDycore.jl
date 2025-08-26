@@ -25,8 +25,11 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   elseif GridType == "MPAS"
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/x4.163842.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
 #   Grid=Grids.InputGridMPASO(backend,FT,"Grid/x1.40962.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
+  elseif GridType == "MPAS2Triangle"
+    Grid=Grids.InputGridMPAS2Triangular(backend,FT,"Grid/x1.2562.grid.nc", 
+      Grids.OrientFaceSphere,RadEarth,nz;ChangeOrient)
   elseif GridType == "SphericalGrid"
-    Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz)
+    Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz;ChangeOrient)
   elseif GridType == "ICON"
     Grid=Grids.InputGridICON(backend,FT,"Grid/icon_grid_0009_R02B03_R.nc", Grids.OrientFaceSphere,
       RadEarth,nz;ChangeOrient)
