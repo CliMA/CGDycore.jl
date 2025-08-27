@@ -24,5 +24,4 @@ ulimit -s 204800
 export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
 export UCX_ERROR_SIGNALS=""
-#export machine="levante"
 srun -n 4 ./Jobs/NHSphere/BaroWaveDrySphereDGQuad_40Elem

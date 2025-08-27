@@ -1,8 +1,9 @@
 #!/bin/bash
 julia --project Examples/Driver.jl \
   --Problem="BaroWaveDrySphere" \
-  --FloatTypeBackend="Float32" \
-  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=256 \
+  --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumTr=0 \
   --ProfpBGrd="" \
@@ -25,9 +26,11 @@ julia --project Examples/Driver.jl \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
   --PrintHours=0 \
-  --PrintDays=0 \
+  --PrintDays=5 \
   --StartAverageDays=100 \
   --Flat=true \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/CG64Quad" \
   --dtau=75 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

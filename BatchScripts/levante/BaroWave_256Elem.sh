@@ -23,6 +23,5 @@ ulimit -s 204800
 
 export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
-export machine="levante"
 export UCX_ERROR_SIGNALS=""
-srun -n 64 gpu_wrapper.sh -n 64 -e "./Jobs/NHSphere/BaroWaveDrySphere_256Elem"
+srun -n 64 ./Jobs/NHSphere/BaroWaveDrySphere_256Elem

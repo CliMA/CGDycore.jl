@@ -6,6 +6,7 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Exchange
   NumTr = Model.NumTr
   State = Model.State
   N = CG.OrdPoly + 1
+  M = 1
   Glob = CG.Glob
   X = Metric.X
   time = 0
@@ -161,41 +162,6 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGElement,Metric,Phys,
   if Model.TkePos > 0
     @views @. U[:,:,:,Model.TkePos] = U[:,:,:,Model.RhoPos] * 1.e-2 
   end  
-  return U
-end  
-
-function InitialConditionsDG2(backend,FTB,DG::FiniteElements.DGQuad,Metric,Phys,Global,Profile,Param)
-  Model = Global.Model
-  Nz = Global.Grid.nz
-  NF = Global.Grid.NumFaces
-  NumV = Model.NumV
-  NumTr = Model.NumTr
-  State = Model.State
-  N = DG.OrdPoly + 1
-  M = DG.OrdPolyZ + 1
-  Glob = DG.Glob
-  X = Metric.X
-  time = 0
-
-
-  # Ranges
-  NzG = min(div(256,N*N),Nz)
-  group = (N * N, M, NzG, 1)
-  ndrange = (N * N, M, Nz, NF)
-  lengthU = NumV
-
-  U = KernelAbstractions.zeros(backend,FTB,Nz,M,DG.NumI,lengthU)
-  @views Rho = U[:,:,:,Model.RhoPos]
-  @views u = U[:,:,:,Model.uPos]
-  @views v = U[:,:,:,Model.vPos]
-  KRhoFunCKernel! = RhoFunCDGKernel!(backend, group)
-  KuvFunCKernel! = uvFunCDGKernel!(backend, group)
-
-  KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
-  KernelAbstractions.synchronize(backend)
-  KuvFunCKernel!(Profile,u,v,time,Glob,X,Param,Phys,ndrange=ndrange)
-  @. u *= Rho
-  @. v *= Rho
   return U
 end  
 

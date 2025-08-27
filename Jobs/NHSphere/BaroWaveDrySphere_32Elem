@@ -1,8 +1,8 @@
 #!/bin/bash
 julia --project Examples/Driver.jl \
   --Problem="BaroWaveDrySphere" \
-  --FloatTypeBackend="Float32" \
-  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=256 \
   --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumTr=0 \
@@ -25,7 +25,7 @@ julia --project Examples/Driver.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
+  --SimDays=8 \
   --SimHours=0 \
   --SimSeconds=0 \
   --PrintSeconds=0 \
@@ -40,7 +40,7 @@ julia --project Examples/Driver.jl \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
-  --Stretch=false \
+  --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \

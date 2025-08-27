@@ -25,4 +25,4 @@ export JuliaDevice="GPU"
 export JuliaGPU="CUDA"
 export UCX_ERROR_SIGNALS=""
 #export machine="levante"
-srun -n 4 ./Jobs/NHSphere/BaroWaveDrySphere_32Elem
+srun -n 1 ./Jobs/NHSphere/BaroWaveDrySphere_32Elem

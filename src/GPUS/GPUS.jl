@@ -25,7 +25,5 @@ include("ViscKernel.jl")
 include("GradKineticKernel.jl")
 include("GradPressureKernel.jl")
 include("Coriolis.jl")
-include("Riemann.jl")
-include("Volume.jl")
 
 end
