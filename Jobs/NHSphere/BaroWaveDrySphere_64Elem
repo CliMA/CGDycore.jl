@@ -27,6 +27,8 @@ julia --project Examples/Driver.jl \
   --PrintMinutes=0 \
   --PrintHours=0 \
   --PrintDays=5 \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/CG64Quad" \
   --StartAverageDays=100 \
   --Flat=true \
   --OrdPrint=2 \
