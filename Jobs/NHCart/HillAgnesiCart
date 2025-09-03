@@ -1,8 +1,8 @@
 #!/bin/bash
-julia --project Examples/testNHCart.jl \
+julia --project Examples/Driver.jl \
   --Problem="HillAgnesiXCart" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumTr=0 \
   --RefProfile=false \

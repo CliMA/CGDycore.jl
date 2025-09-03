@@ -176,13 +176,13 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   zP = Metric.zP  
   DoF = FE.DoF
   N = size(FE.DS,1)
-  Nz = size(F,1)
-  NDoF = size(F,2)
+  Nz = size(F,2)
+  NDoF = size(F,3)
   NumV  = Global.Model.NumV 
   NumTr  = Global.Model.NumTr 
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
-  @views q = Cache.q[:,:,1:2*NumTr]
+  @views q = Cache.q[:,:,:,1:2*NumTr]
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Proc = Global.ParallelCom.Proc
   Force = Global.Model.Force
@@ -208,17 +208,17 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   ThPos = Global.Model.ThPos
   TkePos = Global.Model.TkePos
 # State vector
-  @views Rho = U[:,:,RhoPos]
-  @views u = U[:,:,uPos]
-  @views v = U[:,:,vPos]
-  @views w = U[:,:,wPos]
-  @views Th = U[:,:,ThPos]
+  @views Rho = U[:,:,:,RhoPos]
+  @views u = U[:,:,:,uPos]
+  @views v = U[:,:,:,vPos]
+  @views w = U[:,:,:,wPos]
+  @views Th = U[:,:,:,ThPos]
   TrPos = NumV
   if TkePos > 0
-    @views Tke = U[:,:,TkePos]  
+    @views Tke = U[:,:,:,TkePos]  
     TrPos += 1
   end  
-  @views UTr = U[:,:,TrPos+1:TrPos+NumTr]
+  @views UTr = U[:,:,:,TrPos+1:TrPos+NumTr]
   if EDMF
     aRhoEDMFPos = NumV + NumTr  
     if TkePos > 0
@@ -227,22 +227,22 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     wEDMFPos = aRhoEDMFPos + ND
     ThEDMFPos = wEDMFPos + ND
     TrEDMFPos = ThEDMFPos + ND
-    @views aRhoEDMF = U[:,:,aRhoEDMFPos+ND-1] 
-    @views wEDMF = U[:,:,wEDMFPos:wEDMFPos+ND-1]  
-    @views ThEDMF = U[:,:,ThEDMFPos:ThEDMFPos+ND-1]  
-    @views TrEDMF = U[:,:,TrEDMFPos:end]  
-    @views FaRhoEDMF = F[:,:,aRhoEDMFPos+ND-1] 
-    @views FwEDMF = F[:,:,wEDMFPos:wEDMFPos+ND-1]  
-    @views FThEDMF = F[:,:,ThEDMFPos:ThEDMFPos+ND-1]  
-    @views FTrEDMF = F[:,:,TrEDMFPos:end]  
+    @views aRhoEDMF = U[:,:,:,aRhoEDMFPos+ND-1] 
+    @views wEDMF = U[:,:,:,wEDMFPos:wEDMFPos+ND-1]  
+    @views ThEDMF = U[:,:,:,ThEDMFPos:ThEDMFPos+ND-1]  
+    @views TrEDMF = U[:,:,:,TrEDMFPos:end]  
+    @views FaRhoEDMF = F[:,:,:,aRhoEDMFPos+ND-1] 
+    @views FwEDMF = F[:,:,:,wEDMFPos:wEDMFPos+ND-1]  
+    @views FThEDMF = F[:,:,:,ThEDMFPos:ThEDMFPos+ND-1]  
+    @views FTrEDMF = F[:,:,:,TrEDMFPos:end]  
     RhoEDMF = Cache.RhoEDMF
   end  
 # Tendency
-  @views FRho = F[:,:,1]
+  @views FRho = F[:,:,:,1]
   if TkePos > 0
-    @views FTke = F[:,:,TkePos]  
+    @views FTke = F[:,:,:,TkePos]  
   end  
-  @views FTr = F[:,:,TrPos+1:TrPos+NumTr]
+  @views FTr = F[:,:,:,TrPos+1:TrPos+NumTr]
 # Cache
 # Need clearer cache distribution for different setups
 #   1...4 Horizontal momentum   
@@ -257,28 +257,28 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   LenTemp1 = 5
   if KoeffDivW > 0
     LenTemp1 += 1  
-    @views Cachew = Temp1[:,:,LenTemp1]
+    @views Cachew = Temp1[:,:,:,LenTemp1]
   end  
   if TkePos > 0
     LenTemp1 += 1
-    @views CacheTke = Temp1[:,:,LenTemp1]
+    @views CacheTke = Temp1[:,:,:,LenTemp1]
   end  
   if ~HorLimit && NumTr > 0
-    @views CacheTr = Temp1[:,:,LenTemp1+1:LenTemp1+NumTr]
+    @views CacheTr = Temp1[:,:,:,LenTemp1+1:LenTemp1+NumTr]
     LenTemp1 += NumTr
   end  
   if EDMF
-    @views CachewEDMF = Temp1[:,:,LenTemp1+1:LenTemp1+ND]
+    @views CachewEDMF = Temp1[:,:,:,LenTemp1+1:LenTemp1+ND]
     LenTemp1 += ND 
-    @views CacheThEDMF = Temp1[:,:,LenTemp1+1:LenTemp1+ND]
+    @views CacheThEDMF = Temp1[:,:,:,LenTemp1+1:LenTemp1+ND]
     LenTemp1 += ND 
-    @views CacheTrEDMF = Temp1[:,:,LenTemp1+1:LenTemp1+ND*NumTr]
+    @views CacheTrEDMF = Temp1[:,:,:,LenTemp1+1:LenTemp1+ND*NumTr]
     LenTemp1 += ND * NumTr
   end  
       
-  @views CacheF = Temp1[:,:,1:5]
+  @views CacheF = Temp1[:,:,:,1:5]
   Thermo = Cache.Thermo
-  @views p = Cache.Thermo[:,:,1]
+  @views p = Cache.Thermo[:,:,:,1]
 
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
@@ -329,10 +329,10 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KLimitKernel! = LimitKernel!(backend, groupL)
 
 # BoundaryValues
-  @. @views U[:,BoundaryDoF,vPos] = FT(0)
+  @. @views U[:,:,BoundaryDoF,vPos] = FT(0)
 
   if HorLimit
-    @views KLimitKernel!(DoF,q[:,:,1:NumTr],q[:,:,NumTr+1:2*NumTr],UTr,
+    @views KLimitKernel!(DoF,q[:,:,:,1:NumTr],q[:,:,:,NumTr+1:2*NumTr],UTr,
       Rho,Glob,ndrange=ndrangeL)
     Parallels.ExchangeDataFSendGPU(q,Exchange)
   end
@@ -341,11 +341,12 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 ####
 # First phase  
 ####
+  begin 
   Temp1 .= FT(0)
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   if ~HorLimit
     for iT = 1 : NumTr
-      @views KHyperViscTracerKernel!(CacheTr[:,:,iT],UTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+      @views KHyperViscTracerKernel!(CacheTr[:,:,:,iT],UTr[:,:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
     end  
   end  
   if TkePos > 0
@@ -354,7 +355,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
       
   if KoeffDivW > 0
     KHyperViscWKernel! = HyperViscWKernel!(backend, groupTr)
-    @views KHyperViscWKernel!(Cachew,U[:,:,4],DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    @views KHyperViscWKernel!(Cachew,U[:,:,:,4],DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
   
   if EDMF
@@ -372,19 +373,19 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   if HorLimit
     Parallels.ExchangeDataFRecvGPU!(q,Exchange)  
   end  
-  @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,1:LenTemp1],Exchange)
+  @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,:,1:LenTemp1],Exchange)
 
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   if ~HorLimit
     for iT = 1 : NumTr
-      @views KHyperViscTracerKernel!(CacheTr[:,:,iT],UTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+      @views KHyperViscTracerKernel!(CacheTr[:,:,:,iT],UTr[:,:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
     end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if KoeffDivW > 0
-    @views KHyperViscWKernel!(Cachew,U[:,:,4],DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    @views KHyperViscWKernel!(Cachew,U[:,:,:,4],DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if EDMF
     ndrangeIEDMF = (N, N, Nz, NF-NBF, ND)
@@ -394,9 +395,10 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
       ndrangeIEDMFTr = (N, N, Nz, NF-NBF, ND*NumTr)
       @views KHyperViscTracerEDMFKernel!(CacheTrEDMF,TrEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMFTr)
     end
-  end    
+  end   
+  end
 
-  @views Parallels.ExchangeData3DRecvGPU!(Temp1[:,:,1:LenTemp1],Exchange)
+  @views Parallels.ExchangeData3DRecvGPU!(Temp1[:,:,:,1:LenTemp1],Exchange)
 
 ####
 # Second phase  
@@ -405,7 +407,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
   if ~HorLimit
     for iT = 1 : NumTr
-      @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,
+      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,iT],CacheTr[:,:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,
         KoeffDiv,ndrange=ndrangeB)
     end  
   end  
@@ -416,7 +418,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   end  
   if KoeffDivW > 0
     KHyperViscWKoeffKernel! = HyperViscWKoeffKernel!(backend, groupTr)
-    @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI,J,M,Glob,KoeffDivW,ndrange=ndrangeB)
+    @views KHyperViscWKoeffKernel!(F[:,:,:,4],Cachew,DS,DW,dXdxI,J,M,Glob,KoeffDivW,ndrange=ndrangeB)
   end  
   if EDMF
     KHyperViscWKoeffEDMFKernel! = HyperViscWKoeffEDMFKernel!(backend, groupTr)
@@ -432,15 +434,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     if HorLimit  
       KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
       for iT = 1 : NumTr
-        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-          dXdxI,J,M,Glob,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
+        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,iT],U,DS,
+          dXdxI,J,M,Glob,dtau,ww,q[:,:,:,iT],q[:,:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
       end  
     else  
       KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
     end 
     if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
         State == "IceInternalEnergy"
-      @views KSourceIntEnergyKernel!(F[:,:,ThPos],U,p,DS,dXdxI,M,Glob,ndrange=ndrangeB)
+      @views KSourceIntEnergyKernel!(F[:,:,:,ThPos],U,p,DS,dXdxI,M,Glob,ndrange=ndrangeB)
     end    
   elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy" ||
   State == "IceInternalEnergy"
@@ -463,7 +465,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)
   if ~HorLimit
     for iT = 1 : NumTr
-      @views KHyperViscTracerKoeffKernel!(FTr[:,:,iT],CacheTr[:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
+      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,iT],CacheTr[:,:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
         KoeffDiv,ndrange=ndrangeI)
     end  
   end  
@@ -473,7 +475,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if KoeffDivW > 0
-    @views KHyperViscWKoeffKernel!(F[:,:,4],Cachew,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffDivW,ndrange=ndrangeI)
+    @views KHyperViscWKoeffKernel!(F[:,:,:,4],Cachew,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffDivW,ndrange=ndrangeI)
   end  
   if EDMF
     @views KHyperViscWKoeffEDMFKernel!(FwEDMF,CachewEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffDivW,ndrange=ndrangeIEDMF)
@@ -494,15 +496,15 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     if HorLimit  
       KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
       for iT = 1 : NumTr
-        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,iT],UTr[:,:,iT],U,DS,
-          dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,iT],q[:,:,NumTr+iT],Stencil_I,ndrange=ndrangeI)
+        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,:,iT],U,DS,
+          dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,:,iT],q[:,:,:,NumTr+iT],Stencil_I,ndrange=ndrangeI)
       end  
     else  
       KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
     end  
     if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
         State == "IceInternalEnergy"
-      @views KSourceIntEnergyKernel!(F[:,:,ThPos],U,p,DS,dXdxI_I,M,Glob_I,ndrange=ndrangeI)
+      @views KSourceIntEnergyKernel!(F[:,:,:,ThPos],U,p,DS,dXdxI_I,M,Glob_I,ndrange=ndrangeI)
     end  
   elseif State == "DryTotalEnergy"
     KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -537,8 +539,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   if Global.Model.VerticalDiffusion
     KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend,groupG)
     KV = Cache.KV
-    @views FTh = F[:,:,5]
-    @views Th = U[:,:,5]
+    @views FTh = F[:,:,:,5]
+    @views Th = U[:,:,:,5]
     KVerticalDiffusionScalarKernel!(FTh,Th,Rho,KV,dz,ndrange=ndrangeG)
     if TkePos > 0
       KVerticalDiffusionScalarKernel!(FTke,Tke,Rho,KV,dz,ndrange=ndrangeG)

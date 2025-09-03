@@ -27,19 +27,19 @@
   tempwZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
 
   if Iz <= Nz
-    uCol[I,J,iz] = U[Iz,ind,2]
-    vCol[I,J,iz] = U[Iz,ind,3]
-    RhoCol[I,J,iz+1] = U[Iz,ind,1]
-    wCol[I,J,iz+1] = U[Iz,ind,4]
+    uCol[I,J,iz] = U[1,Iz,ind,2]
+    vCol[I,J,iz] = U[1,Iz,ind,3]
+    RhoCol[I,J,iz+1] = U[1,Iz,ind,1]
+    wCol[I,J,iz+1] = U[1,Iz,ind,4]
     if iz == 1 && Iz == 1
-      wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
-        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
-        RhoCol[I,J,1] = U[1,ind,1]
+      wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[1,Iz,ind,2] +
+        dXdxI[3,2,1,ID,1,IF] * U[1,Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+      RhoCol[I,J,1] = U[1,Iz,ind,1]
     elseif iz == 1
-      wCol[I,J,1] = U[Iz-1,ind,4]
-      RhoCol[I,J,1] = U[Iz-1,ind,1]
+      wCol[I,J,1] = U[1,Iz-1,ind,4]
+      RhoCol[I,J,1] = U[1,Iz-1,ind,1]
     elseif iz == ColumnTilesDim && Iz < Nz  
-      RhoCol[I,J,ColumnTilesDim+2] = U[Iz+1,ind,1]
+      RhoCol[I,J,ColumnTilesDim+2] = U[1,Iz+1,ind,1]
     end   
   end 
   @synchronize 
@@ -57,15 +57,15 @@
     tempwZ[I,J,1,iz+1] = dXdxI[3,2,1,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[3,1,1,ID,Iz,IF] * vCol[I,J,iz]
     tempwZ[I,J,2,iz+1] = dXdxI[3,2,2,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[3,1,2,ID,Iz,IF] * vCol[I,J,iz] 
     if iz == 1 && Iz > 1
-      um1 = U[Iz-1,ind,2]  
-      vm1 = U[Iz-1,ind,3]  
+      um1 = U[1,Iz-1,ind,2]  
+      vm1 = U[1,Iz-1,ind,3]  
       tempuZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1,IF] * vm1 - dXdxI[3,2,2,ID,Iz-1,IF] * wCol[I,J,1]
       tempvZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1,IF] * um1 - dXdxI[3,1,2,ID,Iz-1,IF] * wCol[I,J,1]
       tempwZ[I,J,2,1] = dXdxI[3,2,2,ID,Iz-1,IF] * um1 - dXdxI[3,1,2,ID,Iz-1,IF] * vm1 
     end  
     if iz == ColumnTilesDim && Iz < Nz
-      up1 = U[Iz+1,ind,2]  
-      vp1 = U[Iz+1,ind,3]  
+      up1 = U[1,Iz+1,ind,2]  
+      vp1 = U[1,Iz+1,ind,3]  
       tempuZ[I,J,1,iz+2] = dXdxI[3,3,1,ID,Iz+1,IF] * vp1 - dXdxI[3,2,1,ID,Iz+1,IF] * wCol[I,J,iz+1]
       tempvZ[I,J,1,iz+2] = dXdxI[3,3,1,ID,Iz+1,IF] * up1 - dXdxI[3,1,1,ID,Iz+1,IF] * wCol[I,J,iz+1]
       tempwZ[I,J,1,iz+2] = dXdxI[3,2,1,ID,Iz+1,IF] * up1 - dXdxI[3,1,1,ID,Iz+1,IF] * vp1 
@@ -162,16 +162,16 @@
     FW1 += FwCor * JJ[ID,1,Iz,IF]
     FW2 += FwCor * JJ[ID,2,Iz,IF]
 
-    @atomic :monotonic F[Iz,ind,2] += (-vCol[I,J,iz] * W1 - wCol[I,J,iz] * V1 -
+    @atomic :monotonic F[1,Iz,ind,2] += (-vCol[I,J,iz] * W1 - wCol[I,J,iz] * V1 -
       vCol[I,J,iz] * W2 - wCol[I,J,iz+1] * V2 + FU) / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,3] += (uCol[I,J,iz] * W1 - wCol[I,J,iz] * U1 +
+    @atomic :monotonic F[1,Iz,ind,3] += (uCol[I,J,iz] * W1 - wCol[I,J,iz] * U1 +
       uCol[I,J,iz] * W2 - wCol[I,J,iz+1] * U2 + FV) / (M[Iz,ind,1] + M[Iz,ind,2])
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += RhoCol[I,J,iz+1] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
+      @atomic :monotonic F[1,Iz-1,ind,4] += RhoCol[I,J,iz+1] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
         (RhoCol[I,J,iz] * M[Iz-1,ind,2] + RhoCol[I,J,iz+1] * M[Iz,ind,1])
     end
     if Iz < Nz
-      @atomic :monotonic F[Iz,ind,4] += RhoCol[I,J,iz+1] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
+      @atomic :monotonic F[1,Iz,ind,4] += RhoCol[I,J,iz+1] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
         (RhoCol[I,J,iz+2] * M[Iz+1,ind,1] + RhoCol[I,J,iz+1] * M[Iz,ind,2])
     end  
   end
@@ -207,12 +207,12 @@ end
   tempwZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
 
   if Iz <= Nz
-    uCol[I,J,iz] = U[Iz,ind,2]
-    vCol[I,J,iz] = U[Iz,ind,3]
+    uCol[I,J,iz] = U[1,Iz,ind,2]
+    vCol[I,J,iz] = U[1,Iz,ind,3]
     wCol[I,J,iz+1] = w[Iz,ind,IE]
     RhoCol[I,J,iz+1] = Rho[Iz,ind,IE]
     if iz == 1 && Iz == 1
-      wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
+      wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[1,Iz,ind,2] +
         dXdxI[3,2,1,ID,1,IF] * w[Iz,ind,IE]) / dXdxI[3,3,1,ID,1,IF]
       RhoCol[I,J,1] = Rho[1,ind,IE]
     elseif iz == 1
@@ -232,14 +232,14 @@ end
     tempvZ[I,J,1,iz+1] = dXdxI[3,3,1,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[3,1,1,ID,Iz,IF] * wCol[I,J,iz]
     tempvZ[I,J,2,iz+1] = dXdxI[3,3,2,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[3,1,2,ID,Iz,IF] * wCol[I,J,iz+1]
     if iz == 1 && Iz > 1
-      um1 = U[Iz-1,ind,2]  
-      vm1 = U[Iz-1,ind,3]  
+      um1 = U[1,Iz-1,ind,2]  
+      vm1 = U[1,Iz-1,ind,3]  
       tempuZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1,IF] * vm1 - dXdxI[3,2,2,ID,Iz-1,IF] * wCol[I,J,1]
       tempvZ[I,J,2,1] = dXdxI[3,3,2,ID,Iz-1,IF] * um1 - dXdxI[3,1,2,ID,Iz-1,IF] * wCol[I,J,1]
     end  
     if iz == ColumnTilesDim && Iz < Nz
-      up1 = U[Iz+1,ind,2]  
-      vp1 = U[Iz+1,ind,3]  
+      up1 = U[1,Iz+1,ind,2]  
+      vp1 = U[1,Iz+1,ind,3]  
       tempuZ[I,J,1,iz+2] = dXdxI[3,3,1,ID,Iz+1,IF] * vp1 - dXdxI[3,2,1,ID,Iz+1,IF] * wCol[I,J,iz+1]
       tempvZ[I,J,1,iz+2] = dXdxI[3,3,1,ID,Iz+1,IF] * up1 - dXdxI[3,1,1,ID,Iz+1,IF] * wCol[I,J,iz+1]
     end  
@@ -313,11 +313,11 @@ end
     FW2 += FwCor * JJ[ID,2,Iz,IF]
 
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
+      @atomic :monotonic F[1,Iz-1,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V1 + vCol[I,J,iz] * U1 + FW1) /
         (RhoCol[I,J,iz-1] * M[Iz-1,ind,2] + RhoCol[I,J,iz] * M[Iz,ind,1])
     end
     if Iz < Nz
-      @atomic :monotonic F[Iz,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
+      @atomic :monotonic F[1,Iz,ind,4] += RhoCol[I,J,iz] * (uCol[I,J,iz] * V2 + vCol[I,J,iz] * U2 + FW2) / 
         (RhoCol[I,J,iz+1] * M[Iz+1,ind,1] + RhoCol[I,J,iz] * M[Iz,ind,2])
     end  
   end
@@ -332,14 +332,14 @@ end
 
   if Iz < Nz && IC <= NumG
     fac = eltype(F)(2) * K[Iz,IC] / (dz[Iz,IC] + dz[Iz+1,IC]) 
-    facDiv1 = eltype(dz)(1) / dz[Iz,IC] / U[Iz,IC,1]
-    facDiv2 = -eltype(dz)(1) / dz[Iz+1,IC] / U[Iz+1,IC,1]
-    grad = fac * (U[Iz+1,IC,2] - U[Iz,IC,2])
-    @atomic :monotonic F[Iz,IC,2] +=  facDiv1 * grad
-    @atomic :monotonic F[Iz+1,IC,2] += facDiv2 * grad 
-    grad = fac * (U[Iz+1,IC,3] - U[Iz,IC,3])
-    @atomic :monotonic F[Iz,IC,3] +=  facDiv1 * grad
-    @atomic :monotonic F[Iz+1,IC,3] += facDiv2 * grad 
+    facDiv1 = eltype(dz)(1) / dz[Iz,IC] / U[1,Iz,IC,1]
+    facDiv2 = -eltype(dz)(1) / dz[Iz+1,IC] / U[1,Iz+1,IC,1]
+    grad = fac * (U[1,Iz+1,IC,2] - U[1,Iz,IC,2])
+    @atomic :monotonic F[1,Iz,IC,2] +=  facDiv1 * grad
+    @atomic :monotonic F[1,Iz+1,IC,2] += facDiv2 * grad 
+    grad = fac * (U[1,Iz+1,IC,3] - U[1,Iz,IC,3])
+    @atomic :monotonic F[1,Iz,IC,3] +=  facDiv1 * grad
+    @atomic :monotonic F[1,Iz+1,IC,3] += facDiv2 * grad 
   end  
 end  
 

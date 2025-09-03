@@ -3,8 +3,8 @@ function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equation
   backend = get_backend(U)
   FT = eltype(U)
 
-  Nz = size(U,1)
-  NumG = size(U,2)
+  Nz = size(U,2)
+  NumG = size(U,3)
 
   NG = div(256,Nz)
   group = (Nz, NG)
@@ -12,11 +12,11 @@ function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equation
   dPresdRhoTh = Global.Model.dPresdRhoTh
   dPresdRho = Global.Model.dPresdRho
   if Global.Model.State == "Dry" || Global.Model.State == "Moist" || Global.Model.State == "ShallowWater"
-    @views p = Cache.Thermo[:,:,4]
+    @views p = Cache.Thermo[:,:,:,4]
   elseif  Global.Model.State == "DryInternalEnergy" || Global.Model.State == "MoistInternalEnergy"  
-    @views p = Cache.Thermo[:,:,4]
+    @views p = Cache.Thermo[:,:,:,4]
   elseif Global.Model.State == "DryTotalEnergy"  
-    @views p = Cache.Thermo[:,:,1]
+    @views p = Cache.Thermo[:,:,:,1]
   end  
 
   KJacAcousticKernel! = JacAcousticKernel!(backend,group)
@@ -27,7 +27,7 @@ function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equation
     ndrange = (Nz-1, NumG)  
     @. J.JDiff = FT(0)  
     KJacTransportKernel! = JacTransportKernel!(backend,group)
-    @views KJacTransportKernel!(J.JDiff,U[:,:,1],Cache.KV,Metric.dz,ndrange=ndrange)
+    @views KJacTransportKernel!(J.JDiff,U[:,:,:,1],Cache.KV,Metric.dz,ndrange=ndrange)
   end  
 
 end
@@ -44,10 +44,10 @@ end
   if Iz < Nz && IC <= NumG
     RhoPos = 1
     ThPos = 5
-    RhoL = U[Iz,IC,RhoPos]
-    RhoR = U[Iz+1,IC,RhoPos]
-    RhoThL = U[Iz,IC,ThPos] + p[Iz,IC]
-    RhoThR = U[Iz+1,IC,ThPos] + p[Iz+1,IC]
+    RhoL = U[1,Iz,IC,RhoPos]
+    RhoR = U[1,Iz+1,IC,RhoPos]
+    RhoThL = U[1,Iz,IC,ThPos] + p[1,Iz,IC]
+    RhoThR = U[1,Iz+1,IC,ThPos] + p[1,Iz+1,IC]
     dzL = dz[Iz,IC]
     dzR = dz[Iz+1,IC]
 

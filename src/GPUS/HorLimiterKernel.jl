@@ -58,8 +58,8 @@ end
   if Iz <= Nz
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
-    cCol[I,J,iz+1] = Tr[Iz,ind] / U[Iz,ind,1]
-    @views (uCon, vCon) = Contra12(-U[Iz,ind,1],U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    cCol[I,J,iz+1] = Tr[Iz,ind] / U[1,Iz,ind,1]
+    @views (uCon, vCon) = Contra12(-U[1,Iz,ind,1],U[1,Iz,ind,2],U[1,Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uConCol[I,J,iz] = uCon
     vConCol[I,J,iz] = vCon
     if ID == 1
@@ -77,13 +77,13 @@ end
   end
   if iz == 1
     Izm1 = max(Iz - 1,1)
-    cCol[I,J,iz] = Tr[Izm1,ind] / U[Izm1,ind,1]
+    cCol[I,J,iz] = Tr[Izm1,ind] / U[1,Izm1,ind,1]
   end
   if iz == ColumnTilesDim || Iz == Nz
     Izp1 = min(Iz + 1,Nz)
-    cCol[I,J,iz+2] = Tr[Izp1,ind] / U[Izp1,ind,1]
+    cCol[I,J,iz+2] = Tr[Izp1,ind] / U[1,Izp1,ind,1]
     Izp2 = min(Iz + 2,Nz)
-    cCol[I,J,iz+3] = Tr[Izp2,ind] / U[Izp2,ind,1]
+    cCol[I,J,iz+3] = Tr[Izp2,ind] / U[1,Izp2,ind,1]
   end
   @synchronize
 
@@ -101,8 +101,8 @@ end
     cR = cCol[I,J,iz+2]
     cRR = cCol[I,J,iz+3]
 
-    @views wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
-      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+    @views wCon = Contra3(U[1,Iz:Iz+1,ind,1],U[1,Iz:Iz+1,ind,2],U[1,Iz:Iz+1,ind,3],
+      U[1,Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
 
     Izm1 = max(Iz - 1,1)
     Izp2 = min(Iz + 2, Nz)
@@ -130,7 +130,7 @@ end
     end
     ind = Glob[ID,IF]
     RhoTrColS[I,J,iz] = Tr[Iz,ind] + dt * DivRhoTr[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    RhoColS[I,J,iz] = U[Iz,ind,1] + dt * DivRho[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    RhoColS[I,J,iz] = U[1,Iz,ind,1] + dt * DivRho[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     #   Finite difference step
     q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +
       l0,  qMaxS[iz])
@@ -234,11 +234,11 @@ end
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
     CacheCol[I,J,iz] = Cache[Iz,ind]
-    wCol[I,J,iz] = U[Iz,ind,4]
-    RhoCol[I,J,iz] = U[Iz,ind,1]
+    wCol[I,J,iz] = U[1,Iz,ind,4]
+    RhoCol[I,J,iz] = U[1,Iz,ind,1]
     cCol[I,J,iz] = Tr[Iz,ind] / RhoCol[I,J,iz]
-    uCol[I,J,iz] = U[Iz,ind,2]
-    vCol[I,J,iz] = U[Iz,ind,3]
+    uCol[I,J,iz] = U[1,Iz,ind,2]
+    vCol[I,J,iz] = U[1,Iz,ind,3]
     DivRho[I,J,iz] = eltype(FTr)(0)
     DivRhoTr[I,J,iz] = eltype(FTr)(0)
     if ID == 1
@@ -261,17 +261,17 @@ end
       cLL = cCol[I,J,iz-1]
     else
       Izm1 = max(Iz - 1,1)
-      cLL = U[Izm1,ind,5] / U[Izm1,ind,1]
+      cLL = U[1,Izm1,ind,5] / U[1,Izm1,ind,1]
     end
     if iz < ColumnTilesDim - 1
       cRR = cCol[I,J,iz+2]
     else
       Izp2 = min(Iz + 2, Nz)
-      cRR = U[Izp2,ind,5] / U[Izp2,ind,1]
+      cRR = U[1,Izp2,ind,5] / U[1,Izp2,ind,1]
     end
 
-    @views wCon = Contra3(U[Iz:Iz+1,ind,1],U[Iz:Iz+1,ind,2],U[Iz:Iz+1,ind,3],
-      U[Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+    @views wCon = Contra3(U[1,Iz:Iz+1,ind,1],U[1,Iz:Iz+1,ind,2],U[1,Iz:Iz+1,ind,3],
+      U[1,Iz,ind,4],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
 
     Izm1 = max(Iz - 1,1)
     Izp2 = min(Iz + 2, Nz)
@@ -320,7 +320,7 @@ end
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]  
     RhoTrColS[I,J,iz] = Tr[Iz,ind] + dt * DivRhoTr[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    RhoColS[I,J,iz] = U[Iz,ind,1] + dt * DivRho[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    RhoColS[I,J,iz] = U[1,Iz,ind,1] + dt * DivRho[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     #   Finite difference step
     q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +
       l0,  qMaxS[iz])

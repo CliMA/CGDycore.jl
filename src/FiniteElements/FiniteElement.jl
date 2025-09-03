@@ -44,7 +44,6 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
   nz = Grid.nz
 
 # CG = CGStruct{FT}(backend)
-  OrdPolyZ=OrdPolyZ
   DoF = OP * OP
   DoFN = 1
   DoFE = OrdPoly - 1

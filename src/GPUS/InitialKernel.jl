@@ -16,8 +16,8 @@
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,uP,vP,_ = Profile(xS,time)
-    u[Iz,ind] = uP
-    v[Iz,ind] = vP
+    u[1,Iz,ind] = uP
+    v[1,Iz,ind] = vP
   end
   if Iz <= Nz - 1
     ind = Glob[I,IF]
@@ -25,7 +25,7 @@
     x2 = eltype(X)(0.5) * (X[I,2,2,Iz,IF] + X[I,1,2,Iz+1,IF])
     x3 = eltype(X)(0.5) * (X[I,2,3,Iz,IF] + X[I,1,3,Iz+1,IF])
     xS = SVector{3}(x1, x2 ,x3)
-    _,_,_,w[Iz,ind] = Profile(xS,time)
+    _,_,_,w[1,Iz,ind] = Profile(xS,time)
   end
 end
 
@@ -97,8 +97,8 @@ end
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,uP,vP,_ = Profile(xS,time)
     Rho[Iz,ind] = RhoP
-    u[Iz,ind] = uP
-    v[Iz,ind] = vP
+    u[1,Iz,ind] = uP
+    v[1,Iz,ind] = vP
   end
 end
 
@@ -119,7 +119,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ = Profile(xS,time)
-    Rho[Iz,ind] = RhoP
+    Rho[1,Iz,ind] = RhoP
   end
 end
 
@@ -140,7 +140,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,_,_,_,_,_,_,_,_,ThBGP = Profile(xS,time)
-    ThBG[Iz,ind] = ThBGP
+    ThBG[1,Iz,ind] = ThBGP
   end
 end
 
@@ -183,7 +183,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,TrP = Profile(xS,time)
-    Tr[Iz,ind] = RhoP * TrP
+    Tr[1,Iz,ind] = RhoP * TrP
   end
 end
 
@@ -204,7 +204,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,ThP = Profile(xS,time)
-    RhoTh[Iz,ind] = RhoP * ThP
+    RhoTh[1,Iz,ind] = RhoP * ThP
   end
 end
 
@@ -267,7 +267,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_ ,_,EP = Profile(xS,time)
-    RhoE[Iz,ind] = RhoP * EP
+    RhoE[1,Iz,ind] = RhoP * EP
   end
 end
 
@@ -288,7 +288,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_,_,_,IEP = Profile(xS,time)
-    RhoIE[Iz,ind] = RhoP * IEP
+    RhoIE[1,Iz,ind] = RhoP * IEP
   end
 end
 
@@ -309,7 +309,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_,_,_,_,QvP,QcP = Profile(xS,time)
-    RhoV[Iz,ind] = RhoP * (QvP + QcP)
+    RhoV[1,Iz,ind] = RhoP * (QvP + QcP)
   end
 end
 
@@ -330,7 +330,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_,_,_,_,QvP = Profile(xS,time)
-    RhoV[Iz,ind] = RhoP * QvP
+    RhoV[1,Iz,ind] = RhoP * QvP
   end
 end
 
@@ -351,7 +351,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     RhoP,_,_,_,_,_,_,_,QcP = Profile(xS,time)
-    RhoC[Iz,ind] = RhoP * QcP
+    RhoC[1,Iz,ind] = RhoP * QcP
   end
 end
 
@@ -372,7 +372,7 @@ end
     x3 = eltype(X)(0.5) * (X[I,1,3,Iz,IF] + X[I,2,3,Iz,IF])
     xS = SVector{3}(x1, x2 ,x3)
     _,_,_,wP = Profile(xS,time)
-    w[Iz,ind] = wP
+    w[1,Iz,ind] = wP
   end
 end
 

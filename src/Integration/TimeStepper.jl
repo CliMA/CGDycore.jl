@@ -51,14 +51,16 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
   NumThermo = Global.Model.NumThermo
   ND = Global.Model.NDEDMF
   nz = Global.Grid.nz
+  M = CG.OrdPolyZ 
+  @show M
   NumG = CG.NumG
   TkePos = Global.Model.TkePos
-  Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumFacesG,NumG,nz,
+  Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumFacesG,NumG,M,nz,
     NumV,NumTr,ND,NumThermo)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockAMD"
     JCache = JStruct{FT}(backend,NumG,nz,NumTr,TkePos)
-    Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,:])..., TimeStepper.ROS.nStage);
+    Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,:,:])..., TimeStepper.ROS.nStage);
     Cache.fV = similar(U)
     Cache.Vn = similar(U)
   elseif IntMethod == "RosenbrockSSP"

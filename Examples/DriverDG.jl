@@ -349,7 +349,10 @@ if FluxDG == "KennedyGruber"
   Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-  Model.ThPos,pAuxPos,GPAuxPos)
+    Model.ThPos,pAuxPos,GPAuxPos)
+elseif FluxDG == "ArtianoGrav"  
+  Model.FluxAverage = DGSEM.ArtianoGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.ThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "LinearBoussinesqFlux"
   Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
 end  

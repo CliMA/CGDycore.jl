@@ -94,10 +94,11 @@ end
   Nz = @uniform @ndrange()[1]
   if IC <= NumG
     if Iz < Nz
-      v[Iz,IC,4] = v[Iz,IC,4] / fac + JWRho[2,Iz,IC] * v[Iz,IC,1] + JWRho[1,Iz,IC] * v[Iz+1,IC,1] +
-        JWRhoTh[2,Iz,IC] * v[Iz,IC,5] + JWRhoTh[1,Iz,IC] * v[Iz+1,IC,5]          
+      v[1,Iz,IC,4] = v[1,Iz,IC,4] / fac + JWRho[2,Iz,IC] * v[1,Iz,IC,1] +
+        JWRho[1,Iz,IC] * v[1,Iz+1,IC,1] +
+        JWRhoTh[2,Iz,IC] * v[1,Iz,IC,5] + JWRhoTh[1,Iz,IC] * v[1,Iz+1,IC,5]          
     else
-      k[Iz,IC,4] = 0
+      k[1,Iz,IC,4] = 0
     end    
   end  
 end
@@ -109,21 +110,21 @@ end
 
   if IC <= NumG
     if Iz == 1
-      v[Iz,IC,1] += JRhoW[1,Iz,IC] * k[Iz,IC,4] 
-      v[Iz,IC,5] += JRhoThW[1,Iz,IC] * k[Iz,IC,4] 
+      v[1,Iz,IC,1] += JRhoW[1,Iz,IC] * k[1,Iz,IC,4] 
+      v[1,Iz,IC,5] += JRhoThW[1,Iz,IC] * k[1,Iz,IC,4] 
     elseif Iz == Nz  
-      v[Iz,IC,1] += JRhoW[2,Iz-1,IC] * k[Iz-1,IC,4] 
-      v[Iz,IC,5] += JRhoThW[2,Iz-1,IC] * k[Iz-1,IC,4] 
+      v[1,Iz,IC,1] += JRhoW[2,Iz-1,IC] * k[1,Iz-1,IC,4] 
+      v[1,Iz,IC,5] += JRhoThW[2,Iz-1,IC] * k[1,Iz-1,IC,4] 
     else    
-      v[Iz,IC,1] += JRhoW[1,Iz,IC] * k[Iz,IC,4] + JRhoW[2,Iz-1,IC] *  k[Iz-1,IC,4] 
-      v[Iz,IC,5] += JRhoThW[1,Iz,IC] * k[Iz,IC,4] + JRhoThW[2,Iz-1,IC] *  k[Iz-1,IC,4] 
+      v[1,Iz,IC,1] += JRhoW[1,Iz,IC] * k[1,Iz,IC,4] + JRhoW[2,Iz-1,IC] *  k[1,Iz-1,IC,4] 
+      v[1,Iz,IC,5] += JRhoThW[1,Iz,IC] * k[1,Iz,IC,4] + JRhoThW[2,Iz-1,IC] *  k[1,Iz-1,IC,4] 
     end  
-    k[Iz,IC,1] = fac * v[Iz,IC,1]
-    k[Iz,IC,2] = fac * v[Iz,IC,2]
-    k[Iz,IC,3] = fac * v[Iz,IC,3]
-    k[Iz,IC,5] = fac * v[Iz,IC,5]
+    k[1,Iz,IC,1] = fac * v[1,Iz,IC,1]
+    k[1,Iz,IC,2] = fac * v[1,Iz,IC,2]
+    k[1,Iz,IC,3] = fac * v[1,Iz,IC,3]
+    k[1,Iz,IC,5] = fac * v[1,Iz,IC,5]
     for iT = 6 : NumVTr
-      k[Iz,IC,iT] = fac * v[Iz,IC,iT]
+      k[1,Iz,IC,iT] = fac * v[1,Iz,IC,iT]
     end
   end
 end
@@ -141,13 +142,13 @@ end
 
   if IC <= NumG
     @. @views triCol[:,:,IG] = tri[:,:,IC]
-    @. @views vCol[:,IG] = v[:,IC]
+    @. @views vCol[:,IG] = v[1,:,IC]
   end
   if IC <= NumG
     @views triSolve!(kCol[:,IG],triCol[:,:,IG],vCol[:,IG])
   end
   if IC <= NumG
-    @. @views k[:,IC] = kCol[:,IG]
+    @. @views k[1,:,IC] = kCol[:,IG]
   end
 end
 
@@ -169,13 +170,13 @@ end
   for iT = 1 : NT
     ind = ListTracer[iT]  
     if IC <= NumG
-      @. @views vCol[:,IG] = v[:,IC,ind]
+      @. @views vCol[:,IG] = v[1,:,IC,ind]
     end
     if IC <= NumG
       @views triSolve!(kCol[:,IG],triCol[:,:,IG],SN[iT],C[iT],invfac,vCol[:,IG])
     end
     if IC <= NumG
-      @. @views v[:,IC,ind] = invfac * kCol[:,IG]
+      @. @views v[1,:,IC,ind] = invfac * kCol[:,IG]
     end
   end
 end
@@ -184,9 +185,9 @@ function Solve!(k,v,J,fac,Cache,Global)
   backend = get_backend(k)
   FT = eltype(k)
 
-  Nz = size(k,1)
-  NumG = size(k,2)
-  NumVTr = size(k,3)
+  Nz = size(k,2)
+  NumG = size(k,3)
+  NumVTr = size(k,4)
 
   group = (Nz,10)
   ndrange = (Nz,NumG)
@@ -211,7 +212,7 @@ function Solve!(k,v,J,fac,Cache,Global)
   KSchurSolveFKernel! = SchurSolveFKernel!(backend,group)
   KSchurSolveFKernel!(k,v,J.JWRho,J.JWRhoTh,fac,ndrange=ndrange)
   KSchurSolveTriKernel! = SchurSolveTriKernel!(backend,groupTri)
-  @views KSchurSolveTriKernel!(Val(Nz-1),k[1:Nz-1,:,4],v[1:Nz-1,:,4],J.tri,ndrange=ndrangeTri)
+  @views KSchurSolveTriKernel!(Val(Nz-1),k[:,1:Nz-1,:,4],v[:,1:Nz-1,:,4],J.tri,ndrange=ndrangeTri)
   KSchurSolveBKernel! = SchurSolveBKernel!(backend,group)
   KSchurSolveBKernel!(NumVTr,k,v,J.JRhoW,J.JRhoThW,fac,ndrange=ndrange)
 end

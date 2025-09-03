@@ -17,18 +17,18 @@
   ind = Glob[ID,IF]
 
   if Iz <= Nz
-    KinF[I,J,iz] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
+    KinF[I,J,iz] = eltype(F)(0.5) * (U[1,Iz,ind,2]^2 + U[1,Iz,ind,3]^2)
     if iz == 1 && Iz == 1
-      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
-        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[1,Iz,ind,2] +
+        dXdxI[3,2,1,ID,1,IF] * U[1,Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
       KinF[I,J,iz] +=  eltype(F)(0.5) * wCol^2
     elseif iz == 1
-      KinF[I,J,iz] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
+      KinF[I,J,iz] +=  eltype(F)(0.5) * U[1,Iz-1,ind,4]^2
     else
-      KinF[I,J,1,iz] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
+      KinF[I,J,1,iz] +=  eltype(F)(0.5) * U[1,Iz-1,ind,4]^2
     end
     if iz == ColumnTilesDim && Iz < Nz
-      KinF[I,J,iz] +=  eltype(F)(0.5) * U[Iz,ind,4]^2
+      KinF[I,J,iz] +=  eltype(F)(0.5) * U[1,Iz,ind,4]^2
     end
   end
   if Iz <= Nz && IF <= NF
@@ -47,13 +47,13 @@ end
     SU = eltype(Strain)(0)
     SL = eltype(Strain)(0)
     if Iz < Nz
-      dudzU = (U[Iz+1,IC,2] - U[Iz,IC,2]) / (dz[Iz+1] - dz[Iz])
-      dvdzU = (U[Iz+1,IC,3] - U[Iz,IC,3]) / (dz[Iz+1] - dz[Iz])
+      dudzU = (U[1,Iz+1,IC,2] - U[1,Iz,IC,2]) / (dz[Iz+1] - dz[Iz])
+      dvdzU = (U[1,Iz+1,IC,3] - U[1,Iz,IC,3]) / (dz[Iz+1] - dz[Iz])
       SU = sqrt(dudzU * dudzU + dvdzU * dvdzU)
     end
     if Iz > 1
-      dudzL = (U[Iz,IC,2] - U[Iz-1,IC,2]) / (dz[Iz] - dz[Iz-1])
-      dvdzL = (U[Iz,IC,3] - U[Iz-1,IC,3]) / (dz[Iz] - dz[Iz-1])
+      dudzL = (U[1,Iz,IC,2] - U[1,Iz-1,IC,2]) / (dz[Iz] - dz[Iz-1])
+      dvdzL = (U[1,Iz,IC,3] - U[1,Iz-1,IC,3]) / (dz[Iz] - dz[Iz-1])
       SL = sqrt(dudzL * dudzL + dvdzL * dvdzL)
     end   
     Strain[Iz,IC] = eltype(Strain)(0.5) * (SU + SL)
@@ -68,7 +68,7 @@ end
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG && Iz < Nz
-    @views FLoc, KLoc = Source(U[Iz+1,IC,:],U[Iz,IC,:],dz[Iz+1,IC],dz[Iz,IC])  
+    @views FLoc, KLoc = Source(U[1,Iz+1,IC,:],U[1,Iz,IC,:],dz[Iz+1,IC],dz[Iz,IC])  
     @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc
     @atomic :monotonic FTke[Iz+1,IC] += eltype(FTke)(.5) * FLoc
     KV[Iz,IC] = KLoc
@@ -101,16 +101,16 @@ end
 
   if IC <= NumG
     if Iz == 1
-      wL = wCol = -(nS[1,Iz] * U[Iz,IC,2] + nS[1,Iz] * U[Iz,IC,3]) / nS[3,Iz]
+      wL = wCol = -(nS[1,Iz] * U[1,Iz,IC,2] + nS[1,Iz] * U[1,Iz,IC,3]) / nS[3,Iz]
     else
-      wL = U[Iz,IC,4]
+      wL = U[1,Iz,IC,4]
     end
     if Iz == Nz
       wR = eltype(U)(0)
     else
-      wR = U[Iz+1,IC,4] 
+      wR = U[1,Iz+1,IC,4] 
     end  
-    Pressure!(view(Thermo,Iz,IC,:),view(U,Iz,IC,:),wL,wR,zP[Iz,IC];T=Thermo[Iz,IC,2])
+    Pressure!(view(Thermo,1,Iz,IC,:),view(U,1,Iz,IC,:),wL,wR,zP[Iz,IC];T=Thermo[1,Iz,IC,2])
   end
 end
 
@@ -123,16 +123,16 @@ end
 
   if IC <= NumG
     if Iz == 1 && K == 1
-      wL = wCol = -(nS[1,Iz] * U[Iz,K,IC,2] + nS[1,Iz] * U[Iz,K,IC,3]) / nS[3,Iz]
+      wL = wCol = -(nS[1,Iz] * U[1,Iz,K,IC,2] + nS[1,Iz] * U[1,Iz,K,IC,3]) / nS[3,Iz]
     else
-      wL = U[Iz,K,IC,4]
+      wL = U[1,Iz,K,IC,4]
     end
     if Iz == Nz
       wR = eltype(U)(0)
     else
-      wR = U[Iz+1,k,IC,4] 
+      wR = U[1,Iz+1,k,IC,4] 
     end  
-    p[Iz,K,IC], T[Iz,K,IC], PotT[Iz,K,IC] = Pressure(view(U,Iz,K,IC,:),wL,wR,zP[Iz,IC])
+    p[Iz,K,IC], T[Iz,K,IC], PotT[Iz,K,IC] = Pressure(view(U,1,Iz,K,IC,:),wL,wR,zP[Iz,IC])
   end
 end
 
@@ -175,7 +175,7 @@ end
 
   if IC <= NumG
     LenScale = 100.0  
-    @views K[Iz,IC] = Eddy(U[Iz,IC,:],Surf[:,IC],p[Iz,IC],dz[1,IC],LenScale) 
+    @views K[Iz,IC] = Eddy(U[1,Iz,IC,:],Surf[:,IC],p[Iz,IC],dz[1,IC],LenScale) 
   end
 end
 
@@ -209,8 +209,8 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   nSS = Metric.nSS
   FT = eltype(U)
   N = size(FE.DS,1)
-  Nz = size(U,1)
-  NumG = size(U,2)
+  Nz = size(U,2)
+  NumG = size(U,3)
   Glob = FE.Glob
   NumF = size(Glob,2)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
@@ -223,12 +223,12 @@ function FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
   groupG = (Nz, NDoFG)
   ndrangeG = (Nz, NumG)
   Thermo = Cache.Thermo
-  @views p = Cache.Thermo[:,:,1]
-  @views T = Cache.Thermo[:,:,2]
-  @views PotT = Cache.Thermo[:,:,3]
-  @views RhoP = Cache.Thermo[:,:,5:end]
+  @views p = Cache.Thermo[:,:,:,1]
+  @views T = Cache.Thermo[:,:,:,2]
+  @views PotT = Cache.Thermo[:,:,:,3]
+  @views RhoP = Cache.Thermo[:,:,:,5:end]
   @views KV = Cache.KV
-  @views Rho = U[:,:,1]
+  @views Rho = U[:,:,:,1]
   dz = Metric.dz
   zP = Metric.zP
   Eddy = Global.Model.Eddy

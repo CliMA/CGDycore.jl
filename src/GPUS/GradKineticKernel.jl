@@ -18,27 +18,27 @@
   ind = Glob[ID,IF]
 
   if Iz <= Nz
-    pCol[I,J,iz] = p[Iz,ind]  
-    RhoCol[I,J,iz+1] = U[Iz,ind,1]
-    KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
-    KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + eltype(F)(0.5) * U[Iz,ind,4]^2
+    pCol[I,J,iz] = p[1,Iz,ind]  
+    RhoCol[I,J,iz+1] = U[1,Iz,ind,1]
+    KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[1,Iz,ind,2]^2 + U[1,Iz,ind,3]^2)
+    KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + eltype(F)(0.5) * U[1,Iz,ind,4]^2
     if iz == 1 && Iz == 1
-      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
-        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[1,Iz,ind,2] +
+        dXdxI[3,2,1,ID,1,IF] * U[1,Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * wCol^2
       KinF[I,J,2,iz] = KinF[I,J,1,iz+1]
     elseif iz == 1
-      RhoCol[I,J,1] = U[Iz-1,ind,1]
-      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
-      KinF[I,J,2,iz] =  eltype(F)(0.5) * (U[Iz-1,ind,4]^2 + U[Iz-1,ind,2]^2 + U[Iz-1,ind,3]^2)
+      RhoCol[I,J,1] = U[1,Iz-1,ind,1]
+      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[1,Iz-1,ind,4]^2
+      KinF[I,J,2,iz] =  eltype(F)(0.5) * (U[1,Iz-1,ind,4]^2 + U[1,Iz-1,ind,2]^2 + U[1,Iz-1,ind,3]^2)
     else
-      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2  
+      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[1,Iz-1,ind,4]^2  
     end
     if iz == ColumnTilesDim && Iz < Nz
-      pCol[I,J,iz+1] = p[Iz+1,ind]  
-      RhoCol[I,J,iz+2] = U[Iz+1,ind,1]
-      KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[Iz+1,ind,2]^2 + U[Iz+1,ind,3]^2)
-      KinF[I,J,1,iz+2] +=  eltype(F)(0.5) * U[Iz,ind,4]^2
+      pCol[I,J,iz+1] = p[1,Iz+1,ind]  
+      RhoCol[I,J,iz+2] = U[1,Iz+1,ind,1]
+      KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[1,Iz+1,ind,2]^2 + U[1,Iz+1,ind,3]^2)
+      KinF[I,J,1,iz+2] +=  eltype(F)(0.5) * U[1,Iz,ind,4]^2
     end  
   end
 
@@ -103,9 +103,9 @@
     Gradu += GradZ * (dXdxI[3,1,1,ID,Iz,IF] + dXdxI[3,1,2,ID,Iz,IF])
     Gradv += GradZ * (dXdxI[3,2,1,ID,Iz,IF] + dXdxI[3,2,2,ID,Iz,IF])
 
-    @atomic :monotonic F[Iz,ind,2] += (GraduF1 + GraduF2 - Gradu / RhoCol[I,J,iz+1]) / 
+    @atomic :monotonic F[1,Iz,ind,2] += (GraduF1 + GraduF2 - Gradu / RhoCol[I,J,iz+1]) / 
       (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,3] += (GradvF1 + GradvF2 - Gradv / RhoCol[I,J,iz+1]) / 
+    @atomic :monotonic F[1,Iz,ind,3] += (GradvF1 + GradvF2 - Gradv / RhoCol[I,J,iz+1]) / 
       (M[Iz,ind,1] + M[Iz,ind,2])
 
     if Iz < Nz
@@ -117,11 +117,11 @@
       Grav = Gravitation(x,y,z)
       Gradp = -(Gradw +
         Grav * (RhoCol[I,J,iz+1] * JJ[ID,2,Iz,IF] + RhoCol[I,J,iz+2] * JJ[ID,1,Iz+1,IF])) 
-      @atomic :monotonic F[Iz,ind,4] += (GradwF2 + Gradp) / 
+      @atomic :monotonic F[1,Iz,ind,4] += (GradwF2 + Gradp) / 
         (RhoCol[I,J,iz+2] * M[Iz+1,ind,1] + RhoCol[I,J,iz+1] * M[Iz,ind,2])
     end  
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += GradwF1 / 
+      @atomic :monotonic F[1,Iz-1,ind,4] += GradwF1 / 
         (RhoCol[I,J,iz] * M[Iz-1,ind,2] + RhoCol[I,J,iz+1] * M[Iz,ind,1])
     end  
   end
@@ -147,25 +147,25 @@ end
   ind = Glob[ID,IF]
 
   if Iz <= Nz
-    RhoCol[I,J,iz+1] = U[Iz,ind,1]
-    KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
-    KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + 1/2 * U[Iz,ind,4]^2
+    RhoCol[I,J,iz+1] = U[1,Iz,ind,1]
+    KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[1,Iz,ind,2]^2 + U[1,Iz,ind,3]^2)
+    KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + 1/2 * U[1,Iz,ind,4]^2
     if iz == 1 && Iz == 1
-      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
-        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[1,Iz,ind,2] +
+        dXdxI[3,2,1,ID,1,IF] * U[1,Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * wCol^2
       KinF[I,J,2,iz] = KinF[I,J,1,iz+1]
     elseif iz == 1
-      RhoCol[I,J,1] = U[Iz-1,ind,1]
-      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2
-      KinF[I,J,2,iz] =  eltype(F)(0.5) * (U[Iz-1,ind,4]^2 + U[Iz-1,ind,2]^2 + U[Iz-1,ind,3]^2)
+      RhoCol[I,J,1] = U[1,Iz-1,ind,1]
+      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[1,Iz-1,ind,4]^2
+      KinF[I,J,2,iz] =  eltype(F)(0.5) * (U[1,Iz-1,ind,4]^2 + U[1,Iz-1,ind,2]^2 + U[1,Iz-1,ind,3]^2)
     else
-      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[Iz-1,ind,4]^2  
+      KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * U[1,Iz-1,ind,4]^2  
     end
     if iz == ColumnTilesDim && Iz < Nz
-      RhoCol[I,J,iz+2] = U[Iz+1,ind,1]
-      KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[Iz+1,ind,2]^2 + U[Iz+1,ind,3]^2)
-      KinF[I,J,1,iz+2] +=  eltype(F)(0.5) * U[Iz,ind,4]^2
+      RhoCol[I,J,iz+2] = U[1,Iz+1,ind,1]
+      KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[1,Iz+1,ind,2]^2 + U[1,Iz+1,ind,3]^2)
+      KinF[I,J,1,iz+2] +=  eltype(F)(0.5) * U[1,Iz,ind,4]^2
     end  
   end
 
@@ -216,15 +216,15 @@ end
     GradwF2 += -RhoCol[I,J,iz+1] * GradZ * dXdxI[3,3,2,ID,Iz,IF]
     GradwF1 += -RhoCol[I,J,iz+1] * GradZ * dXdxI[3,3,1,ID,Iz,IF]
 
-    @atomic :monotonic F[Iz,ind,2] += (GraduF1 + GraduF2) / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,3] += (GradvF1 + GradvF2) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,2] += (GraduF1 + GraduF2) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,3] += (GradvF1 + GradvF2) / (M[Iz,ind,1] + M[Iz,ind,2])
 
     if Iz < Nz
-      @atomic :monotonic F[Iz,ind,4] += GradwF2 / 
+      @atomic :monotonic F[1,Iz,ind,4] += GradwF2 / 
         (RhoCol[I,J,iz+2] * M[Iz+1,ind,1] + RhoCol[I,J,iz+1] * M[Iz,ind,2])
     end  
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += GradwF1 / 
+      @atomic :monotonic F[1,Iz-1,ind,4] += GradwF1 / 
         (RhoCol[I,J,iz] * M[Iz-1,ind,2] + RhoCol[I,J,iz+1] * M[Iz,ind,1])
     end  
   end
@@ -252,22 +252,22 @@ end
 
   if Iz <= Nz
     RhoCol[I,J,iz] = Rho[Iz,ind,IE]
-    KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[Iz,ind,2]^2 + U[Iz,ind,3]^2)
+    KinF[I,J,1,iz+1] = eltype(F)(0.5) * (U[1,Iz,ind,2]^2 + U[1,Iz,ind,3]^2)
     KinF[I,J,2,iz+1] = KinF[I,J,1,iz+1] + 1/2 * w[Iz,ind,IE]^2
     if iz == 1 && Iz == 1
-      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[Iz,ind,2] +
-        dXdxI[3,2,1,ID,1,IF] * U[Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
+      wCol = -(dXdxI[3,1,1,ID,1,IF] * U[1,Iz,ind,2] +
+        dXdxI[3,2,1,ID,1,IF] * U[1,Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * wCol^2
       KinF[I,J,2,iz] = KinF[I,J,1,iz+1]
     elseif iz == 1
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * w[Iz-1,ind,IE]^2
-      KinF[I,J,2,iz] =  eltype(F)(0.5) * (w[Iz-1,ind,IE]^2 + U[Iz-1,ind,2]^2 + U[Iz-1,ind,3]^2)
+      KinF[I,J,2,iz] =  eltype(F)(0.5) * (w[Iz-1,ind,IE]^2 + U[1,Iz-1,ind,2]^2 + U[1,Iz-1,ind,3]^2)
     else
       KinF[I,J,1,iz+1] +=  eltype(F)(0.5) * w[Iz-1,ind,IE]^2  
     end
     if iz == ColumnTilesDim && Iz < Nz
       RhoCol[I,J,iz+1] = Rho[Iz+1,ind,IE]
-      KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[Iz+1,ind,2]^2 + U[Iz+1,ind,3]^2)
+      KinF[I,J,1,iz+2] = eltype(F)(0.5) * (U[1,Iz+1,ind,2]^2 + U[1,Iz+1,ind,3]^2)
       KinF[I,J,1,iz+2] +=  eltype(F)(0.5) * w[Iz,ind,IE]^2
     end  
   end
@@ -296,11 +296,11 @@ end
 
 
     if Iz < Nz
-      @atomic :monotonic F[Iz,ind,4] += GradwF2 / 
+      @atomic :monotonic F[1,Iz,ind,4] += GradwF2 / 
       (RhoCol[I,J,iz] * M[Iz,ind,2] + RhoCol[I,J,iz+1] * M[Iz+1,ind,1])
     end  
     if Iz > 1  
-      @atomic :monotonic F[Iz-1,ind,4] += GradwF1 / 
+      @atomic :monotonic F[1,Iz-1,ind,4] += GradwF1 / 
         (RhoCol[I,J,iz] * M[Iz,ind,1] + RhoCol[I,J,iz-1] * M[Iz-1,ind,2])
     end  
   end

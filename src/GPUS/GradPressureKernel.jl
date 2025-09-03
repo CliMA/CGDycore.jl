@@ -19,11 +19,11 @@
 
   if Iz <= Nz
     pCol[I,J,iz] = p[Iz,ind]
-    RhoCol[I,J,iz] = U[Iz,ind,1]
+    RhoCol[I,J,iz] = U[1,Iz,ind,1]
   end
   if iz == ColumnTilesDim && Iz < Nz
     pCol[I,J,iz+1] = p[Iz+1,ind]
-    RhoCol[I,J,iz+1] = U[Iz+1,ind,1]
+    RhoCol[I,J,iz+1] = U[1,Iz+1,ind,1]
   end  
 
   @synchronize
@@ -48,8 +48,8 @@
         (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / (dXdxI[3,3,1,ID,Iz,IF] + dXdxI[3,3,2,ID,Iz,IF])
     Gradu += GradZ * (dXdxI[3,1,1,ID,Iz,IF] + dXdxI[3,1,2,ID,Iz,IF])
     Gradv += GradZ * (dXdxI[3,2,1,ID,Iz,IF] + dXdxI[3,2,2,ID,Iz,IF])
-    @atomic :monotonic F[Iz,ind,2] += -Gradu / (M[Iz,ind,1] + M[Iz,ind,2]) / RhoCol[I,J,iz]
-    @atomic :monotonic F[Iz,ind,3] += -Gradv / (M[Iz,ind,1] + M[Iz,ind,2]) / RhoCol[I,J,iz]
+    @atomic :monotonic F[1,Iz,ind,2] += -Gradu / (M[Iz,ind,1] + M[Iz,ind,2]) / RhoCol[I,J,iz]
+    @atomic :monotonic F[1,Iz,ind,3] += -Gradv / (M[Iz,ind,1] + M[Iz,ind,2]) / RhoCol[I,J,iz]
   end  
 
   if Iz < Nz
@@ -59,7 +59,7 @@
     y = eltype(F)(0.5) * (X[ID,2,2,Iz,IF] + X[ID,1,2,Iz+1,IF])
     z = eltype(F)(0.5) * (X[ID,2,3,Iz,IF] + X[ID,1,3,Iz+1,IF])
     Grav = Gravitation(x,y,z)
-    @atomic :monotonic F[Iz,ind,4] += -(Gradw + 
+    @atomic :monotonic F[1,Iz,ind,4] += -(Gradw + 
       Grav * (RhoCol[I,J,iz] * JJ[ID,2,Iz,IF] + RhoCol[I,J,iz+1] * JJ[ID,1,Iz+1,IF])) /
       (RhoCol[I,J,iz] * M[Iz,ind,2] + RhoCol[I,J,iz+1] * M[Iz+1,ind,1])
   end      

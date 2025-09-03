@@ -13,7 +13,7 @@ NVTX.@annotate function Rosenbrock!(V,dt,Fcn!,Jac,CG,Metric,Phys,Cache,JCache,Ex
   @inbounds for iStage = 1 : nStage
     @. V = Vn
     @inbounds for jStage = 1 : iStage-1
-      @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,jStage]
+      @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
     end
     Fcn!(fV,V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
     if iStage == 1
@@ -21,13 +21,13 @@ NVTX.@annotate function Rosenbrock!(V,dt,Fcn!,Jac,CG,Metric,Phys,Cache,JCache,Ex
     end  
     @inbounds for jStage = 1 : iStage - 1
       fac = ROS.c[iStage,jStage] / dt
-      @views @. fV = fV + fac * k[:,:,:,jStage]
+      @views @. fV = fV + fac * k[:,:,:,:,jStage]
     end
-    @views Solve!(k[:,:,:,iStage],fV,JCache,dt*ROS.gamma,Cache,Global)
+    @views Solve!(k[:,:,:,:,iStage],fV,JCache,dt*ROS.gamma,Cache,Global)
   end
   @. V = Vn
   @inbounds for iStage = 1 : nStage
-    @views @. V = V + ROS.m[iStage] * k[:,:,:,iStage]
+    @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
   end
 end
 

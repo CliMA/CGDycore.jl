@@ -11,7 +11,7 @@ julia --project --check-bounds=yes  Examples/DriverDG.jl \
   --ModelType="Conservative" \
   --State="Dry" \
   --Discretization="DG" \
-  --FluxDG="KennedyGruberGrav" \
+  --FluxDG="ArtianoGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
   --Buoyancy=false \
   --Coriolis=false \
@@ -43,6 +43,7 @@ julia --project --check-bounds=yes  Examples/DriverDG.jl \
   --P3=400.0\
   `#Grid       `        \
   --GridForm="Cartesian" \
+  --GridType="Quad" \
   --Stretch=false \
   --StretchType="ICON" \
   --H=10000.0 \

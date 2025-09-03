@@ -160,6 +160,35 @@ function (::KennedyGruber)(RhoPos,uPos,vPos,wPos,ThPos,pPos)
   return FluxNonLinAver!
 end
 
+Base.@kwdef struct ArtianoGrav <: AverageFlux end
+
+function (::ArtianoGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
+  @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
+    FT = eltype(flux)
+
+    RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
+    pAv = FT(0.5) * ((AuxL[pPos] + AuxR[pPos]) + 
+      RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
+    uAv = FT(0.5) * (VL[uPos] + VR[uPos])
+    vAv = FT(0.5) * (VL[vPos] + VR[vPos])
+    wAv = FT(0.5) * (VL[wPos] + VR[wPos])
+    RhoThAv = stolarsky_mean(VL[ThPos], VR[ThPos], Phys.Gamma)
+    RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
+    ThAv = FT(0.5) * (VL[ThPos] + VR[ThPos])
+    mAv1 = FT(0.5) * (m_L[1] + m_R[1])
+    mAv2 = FT(0.5) * (m_L[2] + m_R[2])
+    mAv3 = FT(0.5) * (m_L[3] + m_R[3])
+    qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
+    flux[1] = RhoAv * qHat
+    flux[2] = flux[1] * uAv + mAv1 * pAv
+    flux[3] = flux[1] * vAv + mAv2 * pAv
+    flux[4] = flux[1] * wAv + mAv3 * pAv
+    flux[5] = RhoThAv * qHat
+
+  end
+  return FluxNonLinAver!
+end
+
 Base.@kwdef struct KennedyGruberGrav <: AverageFlux end
 
 function (::KennedyGruberGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
@@ -379,6 +408,31 @@ function (::RiemannBoussinesqLMARS)(Param,pPos,uPos,vPos,wPos,bPos)
     end
   end
   return RiemannByLMARS
+end
+
+@inline function ln_mean(x, y)
+  FT = eltype(x)  
+  if abs(x-y) <= max(x,y) * eps(FT)
+    return FT(0.5) * (x + y)
+  else
+    return (x - y) / log(x / y)  
+  end
+end  
+
+@inline function stolarsky_mean(x, y, gamma) 
+  FT = eltype(x)
+  epsilon_f2 = convert(FT, 1.0e-4)
+  f2 = (x * (x - 2 * y) + y * y) / (x * (x + 2 * y) + y * y) # f2 = f^2
+   if f2 < epsilon_f2
+     # convenience coefficients
+     c1 = FT(1 / 3) * (gamma - FT(2))
+     c2 = FT(-1 / 15) * (gamma + FT(1)) * (gamma - FT(3)) * c1
+     c3 = FT(-1 / 21) * (2 * gamma * (gamma - FT(2)) - FT(9)) * c2
+    return FT(0.5) * (x + y) * @evalpoly(f2, FT(1), c1, c2, c3)
+  else
+    return (gamma - FT(1)) / gamma * (y^gamma - x^gamma) /
+     (y^(gamma - FT(1)) - x^(gamma - FT(1)))
+  end
 end
 
 

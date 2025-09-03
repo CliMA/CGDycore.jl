@@ -23,13 +23,13 @@
   ThCyCol = @localmem eltype(F) (N,N, ColumnTilesDim)
 
   if Iz <= Nz
-    @views uC, vC = Curl12(U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @views uC, vC = Curl12(U[1,Iz,ind,2],U[1,Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uCCol[I,J,iz] = uC
     vCCol[I,J,iz] = vC
-    @views uD, vD = Contra12(U[Iz,ind,2],U[Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @views uD, vD = Contra12(U[1,Iz,ind,2],U[1,Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uDCol[I,J,iz] = uD
     vDCol[I,J,iz] = vD
-    ThCol[I,J,iz] = U[Iz,ind,5] / U[Iz,ind,1]
+    ThCol[I,J,iz] = U[1,Iz,ind,5] / U[1,Iz,ind,1]
   end
   @synchronize
 
@@ -75,11 +75,11 @@
     end
     @views FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF]) 
-    @atomic :monotonic F[Iz,ind,1] += -FuC / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,2] += -FvC / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,3] += FuD / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,4] += FvD / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,5] += DivTh / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,1] += -FuC / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,2] += -FvC / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,3] += FuD / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,4] += FvD / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,5] += DivTh / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -109,13 +109,13 @@ end
   ind = Glob[ID,IF]
 
   if Iz <= Nz
-    @views uC, vC = Curl12(Cache[Iz,ind,1],Cache[Iz,ind,2],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @views uC, vC = Curl12(Cache[1,Iz,ind,1],Cache[1,Iz,ind,2],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uCCol[I,J,iz] = uC
     vCCol[I,J,iz] = vC
-    @views uD, vD = Contra12(Cache[Iz,ind,3],Cache[Iz,ind,4],dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @views uD, vD = Contra12(Cache[1,Iz,ind,3],Cache[1,Iz,ind,4],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uDCol[I,J,iz] = uD
     vDCol[I,J,iz] = vD
-    ThCol[I,J,iz] = Cache[Iz,ind,5] 
+    ThCol[I,J,iz] = Cache[1,Iz,ind,5] 
   end
   @synchronize
 
@@ -136,7 +136,7 @@ end
     Curl[I,J,iz] /= (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     Div[I,J,iz] /= (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     @views (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @views (tempx, tempy) = Contra12(U[Iz,ind,1],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @views (tempx, tempy) = Contra12(U[1,Iz,ind,1],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
     ThCxCol[I,J,iz] = tempx
     ThCyCol[I,J,iz] = tempy
   end
@@ -160,9 +160,9 @@ end
     end
     @views FuC, FvC = Rot12(DxCurl,DyCurl,dXdxI[1:2,1:2,:,ID,Iz,IF])
     @views FuD, FvD = Grad12(DxDiv,DyDiv,dXdxI[1:2,1:2,:,ID,Iz,IF])
-    @atomic :monotonic F[Iz,ind,2] += -(-KoeffCurl * FuC + KoeffGrad * FuD) / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,3] += -(-KoeffCurl * FvC + KoeffGrad * FvD) / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic F[Iz,ind,5] += -KoeffDiv * DivTh / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,2] += -(-KoeffCurl * FuC + KoeffGrad * FuD) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,3] += -(-KoeffCurl * FvC + KoeffGrad * FvD) / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic F[1,Iz,ind,5] += -KoeffDiv * DivTh / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 

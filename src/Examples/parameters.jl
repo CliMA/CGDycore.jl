@@ -323,7 +323,7 @@ Base.@kwdef struct ParamWarmBubble2DXCart{FT}
   uMax::FT = 20
   vMax::FT = 0
   wMax::FT = 0
-  DeltaTh::FT = 2
+  DeltaTh::FT = 50
   xC0::FT = 10000
   zC0::FT = 2000
   rC0::FT = 2000
