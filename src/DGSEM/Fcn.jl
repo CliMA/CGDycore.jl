@@ -1,5 +1,7 @@
-function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::Grids.Quad)
+function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,::Grids.Quad)
   backend = get_backend(F)
+  Model = Global.Model
+  Grid = Global.Grid
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
   FT = eltype(F)
@@ -13,13 +15,18 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   NV = Model.NumV
   NAUX = Model.NumAux
   @views UI = U[:,:,1:DG.NumI,:]
+  CacheU = Cache.U
+  CacheS = Cache.S
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
   FS = CacheS
   @. F = 0
   @. FS = 0
 
+
   @views p = Aux[:,:,1:DG.NumI,1]
+  @views Exp = Aux[:,:,1:DG.NumI,3]
   @views @. p = Model.Pressure(U[:,:,1:DG.NumI,5])
+  @. Exp = Models.fast_powGPU(p / Phys.p0, Phys.kappa)
   if NAUX > 1
     @views GeoPot = Aux[:,:,1:DG.NumI,2]
     NQ = N * N

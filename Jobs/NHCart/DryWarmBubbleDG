@@ -4,14 +4,14 @@ julia --project Examples/DriverDG.jl \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
-  --NumAux=2 \
+  --NumAux=3 \
   --NumTr=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Discretization="DG" \
-  --FluxDG="KennedyGruberGrav" \
-  --InterfaceFluxDG="RiemannLMARS" \
+  --FluxDG="ArtianoExGrav" \
+  --InterfaceFluxDG="RiemannExLMARS" \
   --Buoyancy=false \
   --Damping=false \
   --Upwind=true \
@@ -19,8 +19,8 @@ julia --project Examples/DriverDG.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=50.0 \
-  --vtkFileName="output/VTK/WarmBubble/DGTri" \
+  --PrintTime=0.08 \
+  --vtkFileName="output/VTK/WarmBubble/DGQuad" \
   --OrdPrint=2 \
   --OrdPrintZ=3 \
   --Curl=false \
@@ -29,7 +29,7 @@ julia --project Examples/DriverDG.jl \
   --Table="RK4" \
   `#Grid       `        \
   --GridForm="Cartesian" \
-  --GridType="Tri" \
+  --GridType="Quad" \
   --Flat=false \
   --TopoS="" \
   `#Topography `        \
@@ -38,11 +38,11 @@ julia --project Examples/DriverDG.jl \
   --Ly=2000.0 \
   --x0=0.0 \
   --y0=0.0 \
-  --nz=20 \
-  --nx=40 \
+  --nz=32 \
+  --nx=16 \
   --ny=2 \
-  --OrdPoly=4 \
-  --OrdPolyZ=1 \
+  --OrdPoly=3 \
+  --OrdPolyZ=3 \
   --HyperVisc=true \
   --HyperDCurl=1.e7 \
   --HyperDGrad=1.e7 \

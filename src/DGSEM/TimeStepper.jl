@@ -1,3 +1,20 @@
+mutable struct CacheStructDG{FT<:AbstractFloat,
+                           AT4<:AbstractArray}
+  U::AT4
+  S::AT4
+end
+
+function CacheStructDG{FT}(backend,NumG,NumI,M,nz,NumV,NumAux) where FT<:AbstractFloat
+  U = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV+NumAux)
+  S = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
+  return CacheStructDG{FT,
+                     typeof(U)}(
+  # AT4
+    U,
+    S,
+  )
+end
+
 function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,ElemType::Grids.ElementType)
 
   backend = get_backend(U)
@@ -9,15 +26,14 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
   NumAux = Model.NumAux
   M = size(U,1)
   nz = size(U,2)
-  CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
+  Cache = CacheStructDG{FTB}(backend,DG.NumG,DG.NumI,M,nz,NumV,NumAux)
+  CacheU = Cache.U
   @views Un = CacheU[:,:,:,1:NumV]
-  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
   @views UnI = Un[:,:,1:DG.NumI,:]
   nStage = ROS.nStage
   k = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,nStage)
 
-  M = DG.OrdPolyZ + 1
   dz = Metric.dz 
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
@@ -33,7 +49,8 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
           @inbounds for jStage = 1 : iStage-1
             @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
           end
-          @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,ElemType)
+#         @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,ElemType)
+          @views Fcn(k[:,:,:,:,iStage],Un,DG,Metric,Phys,Cache,Exchange,Global,ElemType)
           @inbounds for jStage = 1 : iStage - 1
             fac = ROS.c[iStage,jStage] / dtau
             @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
@@ -194,13 +211,20 @@ function RK3(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
   Model = Global.Model
   NumV = Model.NumV
   NumAux = Model.NumAux
-  nz = size(U,1)
-  CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
+  M = size(U,1)
+  nz = size(U,2)
+  Cache = CacheStructDG{FTB}(backend,DG.NumG,DG.NumI,M,nz,NumV,NumAux)
+  CacheU = Cache.U
+  @views Un = CacheU[:,:,:,1:NumV]
+  @views UI = U[:,:,1:DG.NumI,:]
+  @views UnI = Un[:,:,1:DG.NumI,:]
   @views UNew = CacheU[:,:,:,1:NumV]
-  CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
+  CacheS = Cache.S
   FU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
   @views UNewI = UNew[:,:,1:DG.NumI,:]
+
+  ElemType = Grid.Type
   
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
   @inbounds for i = 1 : nIter
@@ -210,15 +234,15 @@ function RK3(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
 
     @. UNewI = UI 
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+    Fcn(FU,UNew,DG,Metric,Phys,Cache,Exchange,Global,ElemType)
     fac = FTB(1/3 * dtau)
     @. UNewI = UI + fac * FU
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+    Fcn(FU,UNew,DG,Metric,Phys,Cache,Exchange,Global,ElemType)
     fac = FTB(1/2 * dtau)
     @. UNewI = UI + fac * FU
 
-    Fcn(FU,UNew,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,Grid.Type)
+    Fcn(FU,UNew,DG,Metric,Phys,Cache,Exchange,Global,ElemType)
     fac = FTB(dtau)
     @. UI = UI + fac * FU
 

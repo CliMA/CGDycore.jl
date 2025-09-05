@@ -42,6 +42,7 @@ function (::DryDG)(Phys)
   @inline function Pressure(RhoTh)
     FT = eltype(RhoTh)
     p = Phys.p0 * fast_powGPU(Phys.Rd * RhoTh / Phys.p0, FT(1) / (FT(1) - Phys.kappa))
+    return p
   end
   @inline function dPresdRhoTh(RhoTh)
     FT = eltype(RhoTh)
