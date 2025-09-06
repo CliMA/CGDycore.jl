@@ -340,6 +340,9 @@ if InterfaceFluxDG == "RiemannLMARS"
 elseif InterfaceFluxDG == "RiemannExLMARS"
   RiemannSolver = DGSEM.RiemannExLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
   Model.RiemannSolver = RiemannSolver
+elseif InterfaceFluxDG == "RiemannExPLMARS"
+  RiemannSolver = DGSEM.RiemannExPLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "RiemannBoussinesqLMARS"  
   RiemannSolver = DGSEM.RiemannBoussinesqLMARS()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
   Model.RiemannSolver = RiemannSolver
@@ -358,6 +361,9 @@ elseif FluxDG == "ArtianoGrav"
   Model.ThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "ArtianoExGrav"  
   Model.FluxAverage = DGSEM.ArtianoExGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.ThPos,pAuxPos,GPAuxPos,Phys)
+elseif FluxDG == "ArtianoExPGrav"  
+  Model.FluxAverage = DGSEM.ArtianoExPGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.ThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "LinearBoussinesqFlux"
   Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)

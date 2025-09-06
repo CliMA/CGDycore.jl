@@ -217,6 +217,34 @@ function (::ArtianoExGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
   return FluxNonLinAver!
 end
 
+Base.@kwdef struct ArtianoExPGrav <: AverageFlux end
+
+function (::ArtianoExPGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
+  @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
+    FT = eltype(flux)
+
+    RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
+    ThAv = FT(0.5) * (VL[ThPos] + VR[ThPos])
+    RhoThAv = FT(0.5) * (VL[RhoPos] * VL[ThPos] + VR[RhoPos] * VR[ThPos])
+    pAv = FT(0.5) * (Phys.Cpd * VL[RhoPos] * VL[ThPos] * (AuxL[3] + AuxR[3]) +
+      RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
+    uAv = FT(0.5) * (VL[uPos] + VR[uPos])
+    vAv = FT(0.5) * (VL[vPos] + VR[vPos])
+    wAv = FT(0.5) * (VL[wPos] + VR[wPos])
+    mAv1 = FT(0.5) * (m_L[1] + m_R[1])
+    mAv2 = FT(0.5) * (m_L[2] + m_R[2])
+    mAv3 = FT(0.5) * (m_L[3] + m_R[3])
+    qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
+    flux[1] = RhoAv * qHat
+    flux[2] = flux[1] * uAv + mAv1 * pAv
+    flux[3] = flux[1] * vAv + mAv2 * pAv
+    flux[4] = flux[1] * wAv + mAv3 * pAv
+    flux[5] = flux[1] * ThAv
+
+  end
+  return FluxNonLinAver!
+end
+
 Base.@kwdef struct KennedyGruberGrav <: AverageFlux end
 
 function (::KennedyGruberGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
@@ -322,6 +350,7 @@ abstract type RiemannSolver end
 
 Base.@kwdef struct RiemannLMARS <: RiemannSolver end
 Base.@kwdef struct RiemannExLMARS <: RiemannSolver end
+Base.@kwdef struct RiemannExPLMARS <: RiemannSolver end
 Base.@kwdef struct RiemannLMARSFast <: RiemannSolver end
 Base.@kwdef struct RiemannLMARSSlow <: RiemannSolver end
 
@@ -398,7 +427,39 @@ function (::RiemannExLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
 #   pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     pM = -FT(0.5) * cS * RhoM * (vRR - vLL)
-    pM += 0.5 * Phys.Cpd * RhoThM * (AuxR[3] - AuxL[3])  
+    pM += 0.5 * Phys.Cpd * RhoThM * (ExpRR - ExpLL)  
+    if vM > FT(0)
+      F[RhoPos] = vM * VLL[RhoPos]
+      F[uPos] = vM * VLL[uPos] + Normal[1] * pM
+      F[vPos] = vM * VLL[vPos] + Normal[2] * pM
+      F[wPos] = vM * VLL[wPos] + Normal[3] * pM
+      F[ThPos] = vM * VLL[ThPos]
+    else
+      F[RhoPos] = vM * VRR[RhoPos]
+      F[uPos] = vM * VRR[uPos] + Normal[1] * pM
+      F[vPos] = vM * VRR[vPos] + Normal[2] * pM
+      F[wPos] = vM * VRR[wPos] + Normal[3] * pM
+      F[ThPos] = vM * VRR[ThPos]
+    end
+  end
+  return RiemannByLMARSNonLin!
+end
+
+function (::RiemannExPLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+
+    FT = eltype(F)
+    cS = Param.cS
+    pLL = AuxL[pPos]
+    pRR = AuxR[pPos]
+    ExpLL = AuxL[3]
+    ExpRR = AuxR[3]
+    RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
+    RhoThM = FT(0.5) * (VLL[ThPos] + VRR[ThPos])
+    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
+    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    pM = FT(0.5) * Phys.Cpd * (VLL[ThPos] * ExpLL + VRR[ThPos]* ExpRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
       F[uPos] = vM * VLL[uPos] + Normal[1] * pM
