@@ -217,15 +217,13 @@ function (::ArtianoExGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
   return FluxNonLinAver!
 end
 
-Base.@kwdef struct ArtianoExPGrav <: AverageFlux end
+Base.@kwdef struct KennedyGruberExPGrav <: AverageFlux end
 
-function (::ArtianoExPGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
+function (::KennedyGruberExPGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
   @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
     FT = eltype(flux)
 
     RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
-    ThAv = FT(0.5) * (VL[ThPos] + VR[ThPos])
-    RhoThAv = FT(0.5) * (VL[RhoPos] * VL[ThPos] + VR[RhoPos] * VR[ThPos])
     pAv = FT(0.5) * (Phys.Cpd * VL[RhoPos] * VL[ThPos] * (AuxL[3] + AuxR[3]) +
       RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
     uAv = FT(0.5) * (VL[uPos] + VR[uPos])

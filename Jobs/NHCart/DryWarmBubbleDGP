@@ -10,7 +10,7 @@ julia --project Examples/DriverDG.jl \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Discretization="DG" \
-  --FluxDG="ArtianoExPGrav" \
+  --FluxDG="KennedyGruberExPGrav" \
   --InterfaceFluxDG="RiemannExPLMARS" \
   --Buoyancy=false \
   --Damping=false \
