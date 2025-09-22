@@ -191,7 +191,7 @@ end
 
 Base.@kwdef struct ArtianoExner <: AverageFlux end
 
-function (::ArtianoExner)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
+function (::ArtianoExner)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
   @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
     FT = eltype(flux)
     RhoL = VL[RhoPos]
@@ -214,12 +214,15 @@ function (::ArtianoExner)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
     mAv2 = FT(0.5) * (m_L[2] + m_R[2])
     mAv3 = FT(0.5) * (m_L[3] + m_R[3])
     qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-
-    g2 = FT(0.5) * mAv1 * (Phys.Cpd * RhoAv * ThAv * (AuxR[3] - AuxL[3]) +
+    pR = VR[pPos]
+    pL = VL[pPos]
+    ExR = pR/(Phys.Rd*VR[ThPos])
+    ExL = pL/(Phys.Rd*VL[ThPos])
+    g2 = FT(0.5) * mAv1 * (Phys.Cpd * RhoAv * ThAv * (ExR - ExL) +
           RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
-    g3 = FT(0.5) * mAv2 * (Phys.Cpd * RhoAv * ThAv * (AuxR[3] - AuxL[3]) +
+    g3 = FT(0.5) * mAv2 * (Phys.Cpd * RhoAv * ThAv * (ExR - ExL) +
           RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
-    g4 = FT(0.5) * mAv3 * (Phys.Cpd * RhoAv * ThAv * (AuxR[3] - AuxL[3]) +
+    g4 = FT(0.5) * mAv3 * (Phys.Cpd * RhoAv * ThAv * (ExR - ExL) +
           RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
 
     flux[1] = RhoAv * qHat
@@ -469,21 +472,27 @@ end
 function (::RiemannExnerLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
   @inline function RiemannByLMARSNonLin!(FL,FR,VLL,VRR,AuxL,AuxR,Normal)
 
-    FT = eltype(F)
+    FT = eltype(FL)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
+    pLL = FT(100000)*(VLL[ThPos] * Phys.Rd/FT(100000))^(Phys.Cpd/Phys.Cvd)
+    pRR = FT(100000)*(VRR[ThPos] * Phys.Rd/FT(100000))^(Phys.Cpd/Phys.Cvd)
+
     ExpLL = AuxL[3]
     ExpRR = AuxR[3]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     RhoThM = FT(0.5) * (VLL[ThPos] + VRR[ThPos])
     vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
     vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
-    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
-    pM = FT(0.5) * Phys.Cpd * RhoThM * (ExpRR - ExpLL) 
-    diss1 = cS * rhoM * 0.5f0 * (vRR - vLL) * Normal[1] / norm_
-    diss2 = cS * rhoM * 0.5f0 * (vRR - vLL) * Normal[2] / norm_
-    diss3 = cS * rhoM * 0.5f0 * (vRR - vLL) * Normal[3] / norm_
+        norm_ = sqrt(Normal[1]^2 + Normal[2]^2 + Normal[3]^2)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM * norm_
+    ExRR = pRR/(Phys.Rd*VRR[ThPos])
+    ExLL = pLL/(Phys.Rd*VLL[ThPos])
+    pM = FT(0.5) * Phys.Cpd * RhoThM * (ExpRR - ExpLL)
+    diss1 = cS * RhoM * 0.5f0 * (vRR - vLL) * Normal[1] / norm_
+    diss2 = cS * RhoM * 0.5f0 * (vRR - vLL) * Normal[2] / norm_
+    diss3 = cS * RhoM * 0.5f0 * (vRR - vLL) * Normal[3] / norm_
     if vM > FT(0)
       FL[RhoPos] = vM * VLL[RhoPos]
       FL[uPos] = vM * VLL[uPos] - diss1

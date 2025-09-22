@@ -20,7 +20,7 @@ julia --project Examples/DriverDG.jl \
   --BoundaryBT="" \
   --SimTime=1000 \
   --PrintTime=0.08 \
-  --vtkFileName="output/VTK/WarmBubble/DGQuad" \
+  --vtkFileName="output/VTK/WarmBubble/DGQuadExner" \
   --OrdPrint=2 \
   --OrdPrintZ=3 \
   --Curl=false \

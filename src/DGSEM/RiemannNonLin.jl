@@ -266,11 +266,16 @@ end
       view(Aux,K,Iz,indL,1:NAUX),view(Aux,K,Iz,indR,1:NAUX),
       view(NH,1:3,K,I,Iz,IE))
     Surf = VolSurfH[K,I,Iz,IE] / w[I]  
-    FLoc[RhoPos] = FLoc[RhoPos] * Surf
-    FLoc[uPos] = FLoc[uPos] * Surf
-    FLoc[vPos] = FLoc[vPos] * Surf
-    FLoc[wPos] = FLoc[wPos] * Surf
-    FLoc[ThPos] = FLoc[ThPos] * Surf
+    FLocL[RhoPos] *= Surf
+    FLocL[uPos] *= Surf
+    FLocL[vPos] *= Surf
+    FLocL[wPos] *= Surf
+    FLocL[ThPos] *= Surf
+    FLocR[RhoPos] *= Surf
+    FLocR[uPos] *= Surf
+    FLocR[vPos] *= Surf
+    FLocR[wPos] *= Surf
+    FLocR[ThPos] *= Surf
     if iFL <= NF
       @atomic :monotonic F[K,Iz,indL,RhoPos] += -FLocR[RhoPos]
       @atomic :monotonic F[K,Iz,indL,uPos] += -FLocR[uPos]
