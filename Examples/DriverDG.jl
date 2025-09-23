@@ -340,6 +340,12 @@ if InterfaceFluxDG == "RiemannLMARS"
 elseif InterfaceFluxDG == "RiemannExLMARS"
   RiemannSolver = DGSEM.RiemannExLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
   Model.RiemannSolver = RiemannSolver
+elseif InterfaceFluxDG == "RiemannExnerLMARS"
+  RiemannSolver = DGSEM.RiemannExnerLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  Model.RiemannSolver = RiemannSolver
+elseif InterfaceFluxDG == "ArtianoEnergyStable"
+  RiemannSolver = DGSEM.RiemannExnerLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "RiemannExPLMARS"
   RiemannSolver = DGSEM.RiemannExPLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
   Model.RiemannSolver = RiemannSolver
@@ -356,6 +362,9 @@ if FluxDG == "KennedyGruber"
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.ThPos,pAuxPos,GPAuxPos)
+elseif FluxDG == "ArtianoExner"  
+  Model.FluxAverage = DGSEM.ArtianoExner()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+    Model.ThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "KennedyGruberExPGrav"  
   Model.FluxAverage = DGSEM.ArtianoExPGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.ThPos,pAuxPos,GPAuxPos,Phys)
@@ -474,6 +483,9 @@ elseif IntMethod == "MIS"
 DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 elseif IntMethod == "RungeKutta"    
   DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+    Trans,Phys,Grid,Global)
+elseif IntMethod == "RungeKuttaNonConservative"    
+  DGSEM.RK3(U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Grid,Global)
 end  
 MPI.Finalize()
