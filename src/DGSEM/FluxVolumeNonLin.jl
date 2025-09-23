@@ -33,7 +33,6 @@
   end
 
   @synchronize
-
   if ID <= ND
     ind = Glob[ID,IF]  
     @unroll for l = 1 : M
@@ -154,7 +153,6 @@ end
   end
 
   @synchronize
-
   if IZ <= NZ
     @unroll for l = 1 : N
       @views FluxAver!(fTilde,VLoc[ID,iz,:],VLoc[l,iz,:],

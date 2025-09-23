@@ -214,17 +214,18 @@ function (::ArtianoExner)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
     mAv2 = FT(0.5) * (m_L[2] + m_R[2])
     mAv3 = FT(0.5) * (m_L[3] + m_R[3])
     qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-    pR = VR[pPos]
-    pL = VL[pPos]
+    pR = AuxL[pPos]
+    pL = AuxR[pPos]
     ExR = pR/(Phys.Rd*VR[ThPos])
     ExL = pL/(Phys.Rd*VL[ThPos])
-    g2 = FT(0.5) * mAv1 * (Phys.Cpd * RhoAv * ThAv * (ExR - ExL) +
+    ExR = AuxR[3]
+    ExL = AuxL[3]
+		pAv =FT(0.5) *  (Phys.Cpd * RhoAv * ThAv * (ExR - ExL) +
           RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
-    g3 = FT(0.5) * mAv2 * (Phys.Cpd * RhoAv * ThAv * (ExR - ExL) +
-          RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
-    g4 = FT(0.5) * mAv3 * (Phys.Cpd * RhoAv * ThAv * (ExR - ExL) +
-          RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
-
+    pAv = FT(0.5) * ((pL + pR) + FT(0.5) * (RhoL + RhoR) * (AuxR[GPPos] - AuxL[GPPos]))
+    g2 = mAv1 * pAv     
+    g3 = mAv2 * pAv   
+    g4 = mAv3 * pAv 
     flux[1] = RhoAv * qHat
     flux[2] = flux[1] * uAv + g2
     flux[3] = flux[1] * vAv + g3
@@ -422,7 +423,8 @@ function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,wPos,pPos)
     hM = FT(0.5) * (VLL[hPos] + VRR[hPos])
     vLL = VLL[uPos] / VLL[hPos]
     vRR = VRR[uPos] / VRR[hPos]
-    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * hM * (vRR - vLL)
+   
+   pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * hM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / hM
     if vM > FT(0)
       F[hPos] = vM * VLL[hPos]
@@ -450,6 +452,7 @@ function (::RiemannLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
     vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
@@ -476,8 +479,6 @@ function (::RiemannExnerLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
-    pLL = FT(100000)*(VLL[ThPos] * Phys.Rd/FT(100000))^(Phys.Cpd/Phys.Cvd)
-    pRR = FT(100000)*(VRR[ThPos] * Phys.Rd/FT(100000))^(Phys.Cpd/Phys.Cvd)
 
     ExpLL = AuxL[3]
     ExpRR = AuxR[3]
@@ -486,13 +487,12 @@ function (::RiemannExnerLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
     vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
         norm_ = sqrt(Normal[1]^2 + Normal[2]^2 + Normal[3]^2)
-    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM * norm_
-    ExRR = pRR/(Phys.Rd*VRR[ThPos])
-    ExLL = pLL/(Phys.Rd*VLL[ThPos])
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     pM = FT(0.5) * Phys.Cpd * RhoThM * (ExpRR - ExpLL)
-    diss1 = cS * RhoM * 0.5f0 * (vRR - vLL) * Normal[1] / norm_
-    diss2 = cS * RhoM * 0.5f0 * (vRR - vLL) * Normal[2] / norm_
-    diss3 = cS * RhoM * 0.5f0 * (vRR - vLL) * Normal[3] / norm_
+    pM = FT(0.5) * (pLL + pRR)    
+	diss1 = cS * RhoM * FT(0.5) * (vRR - vLL) * Normal[1]
+	diss2 = cS * RhoM * FT(0.5) * (vRR - vLL) * Normal[2]
+	diss3 = cS * RhoM * FT(0.5) * (vRR - vLL) * Normal[3]
     if vM > FT(0)
       FL[RhoPos] = vM * VLL[RhoPos]
       FL[uPos] = vM * VLL[uPos] - diss1
@@ -508,9 +508,9 @@ function (::RiemannExnerLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     end
 
     FR[RhoPos] = FL[RhoPos] 
-    FR[uPos] = FL[uPos] - pM * Normal[1]
-    FR[vPos] = FL[vPos] - pM * Normal[2]
-    FR[wPos] = FL[wPos] - pM * Normal[3]
+    FR[uPos] = FL[uPos] + pM * Normal[1]
+    FR[vPos] = FL[vPos] + pM * Normal[2]
+    FR[wPos] = FL[wPos] + pM * Normal[3]
     FR[ThPos] = FL[ThPos]
     
     FL[RhoPos] = FL[RhoPos] 
@@ -518,7 +518,6 @@ function (::RiemannExnerLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     FL[vPos] = FL[vPos] + pM * Normal[2]
     FL[wPos] = FL[wPos] + pM * Normal[3]
     FL[ThPos] = FL[ThPos]
-
   end
   return RiemannByLMARSNonLin!
 end
