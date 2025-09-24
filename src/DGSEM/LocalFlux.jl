@@ -224,6 +224,7 @@ function (::KennedyGruberExPGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
     FT = eltype(flux)
 
     RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
+    ThAv = FT(0.5) * (VL[ThPos] + VR[ThPos])
     pAv = FT(0.5) * (Phys.Cpd * VL[RhoPos] * VL[ThPos] * (AuxL[3] + AuxR[3]) +
       RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
     uAv = FT(0.5) * (VL[uPos] + VR[uPos])

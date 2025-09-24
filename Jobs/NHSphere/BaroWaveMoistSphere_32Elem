@@ -35,6 +35,8 @@ julia --project Examples/Driver.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/BaroWaveMoistSphere/CG32Quad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

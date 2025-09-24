@@ -503,6 +503,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   for i=1:length(Global.Output.cNames)
     str = Global.Output.cNames[i]
     if str == "Rho"
+      @show OrdPrintZ  
       RhoPos = Global.Model.RhoPos
       @views InterpolateGPU!(cCell,UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))

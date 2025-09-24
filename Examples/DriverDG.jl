@@ -357,7 +357,7 @@ elseif FluxDG == "KennedyGruberGrav"
   Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.ThPos,pAuxPos,GPAuxPos)
 elseif FluxDG == "KennedyGruberExPGrav"  
-  Model.FluxAverage = DGSEM.ArtianoExPGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.FluxAverage = DGSEM.KennedyGruberExPGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.ThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "ArtianoGrav"  
   Model.FluxAverage = DGSEM.ArtianoGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
