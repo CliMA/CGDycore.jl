@@ -344,7 +344,7 @@ elseif InterfaceFluxDG == "RiemannExnerLMARS"
   RiemannSolver = DGSEM.RiemannExnerLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
   Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "ArtianoEnergyStable"
-  RiemannSolver = DGSEM.RiemannExnerLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  RiemannSolver = DGSEM.ArtianoEnergyStable()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
   Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "RiemannExPLMARS"
   RiemannSolver = DGSEM.RiemannExPLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)

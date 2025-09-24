@@ -139,6 +139,7 @@ end
   end  
 end
 
+
 @kernel inbounds = true function RiemanNonLinV3NonConservativeKernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
   @Const(NV),@Const(VolSurfV),
   @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
@@ -210,6 +211,7 @@ end
     FLocL[vPos] *= Surf
     FLocL[wPos] *= Surf
     FLocL[ThPos] *= Surf
+    
     FLocR[RhoPos] *= Surf
     FLocR[uPos] *= Surf
     FLocR[vPos] *= Surf
@@ -265,16 +267,16 @@ end
       view(Aux,K,Iz,indL,1:NAUX),view(Aux,K,Iz,indR,1:NAUX),
       view(NH,1:3,K,I,Iz,IE))
     Surf = VolSurfH[K,I,Iz,IE] / w[I]  
-    FLocL[RhoPos] *= Surf
-    FLocL[uPos] *= Surf
-    FLocL[vPos] *= Surf
-    FLocL[wPos] *= Surf
-    FLocL[ThPos] *= Surf
-    FLocR[RhoPos] *= Surf
-    FLocR[uPos] *= Surf
-    FLocR[vPos] *= Surf
-    FLocR[wPos] *= Surf
-    FLocR[ThPos] *= Surf
+    FLocL[RhoPos] = FLocL[RhoPos] * Surf
+    FLocL[uPos] = FLocL[uPos] * Surf
+    FLocL[vPos] = FLocL[vPos] * Surf
+    FLocL[wPos] = FLocL[wPos] * Surf
+    FLocL[ThPos] = FLocL[ThPos] * Surf
+    FLocR[RhoPos] = FLocR[RhoPos] * Surf
+    FLocR[uPos] = FLocR[uPos] * Surf
+    FLocR[vPos] = FLocR[vPos] * Surf
+    FLocR[wPos] = FLocR[wPos] * Surf
+    FLocR[ThPos] = FLocR[ThPos] * Surf
     if iFL <= NF
       @atomic :monotonic F[K,Iz,indL,RhoPos] += -FLocR[RhoPos]
       @atomic :monotonic F[K,Iz,indL,uPos] += -FLocR[uPos]
@@ -291,3 +293,4 @@ end
     end  
   end  
 end
+
