@@ -184,7 +184,7 @@ end
   TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   if Iz <= Nz && IF <= NF
-    TrCol[I,J,iz] = Tr[Iz,ind] / Rho[Iz,ind]
+    TrCol[I,J,iz] = Tr[1,Iz,ind] / Rho[1,Iz,ind]
   end
   @synchronize
 
@@ -213,7 +213,7 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[Iz,ind] += DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[1,Iz,ind] += DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 
@@ -293,7 +293,7 @@ end
   ind = Glob[ID,IF]
 
   if Iz <= Nz && IF <= NF
-    TrCol[I,J,iz] = Cache[Iz,ind] 
+    TrCol[I,J,iz] = Cache[1,Iz,ind] 
   end
   @synchronize
 
@@ -308,7 +308,7 @@ end
       Dyc += D[J,k] * TrCol[I,k,iz] 
     end
     @views (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @views (tempx, tempy) = Contra12(Rho[Iz,ind],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
+    @views (tempx, tempy) = Contra12(Rho[1,Iz,ind],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
     TrCxCol[I,J,iz] = tempx
     TrCyCol[I,J,iz] = tempy
   end
@@ -322,7 +322,7 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[Iz,ind] += -KoeffDiv * DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[1,Iz,ind] += -KoeffDiv * DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
 

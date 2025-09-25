@@ -1114,7 +1114,7 @@ end
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    Fu,Fv,Fw = Damp(zP[Iz,IC],view(U,Iz,IC,1:5))
+    Fu,Fv,Fw = Damp(zP[Iz,IC],view(U,1,Iz,IC,1:5))
     F[1,Iz,IC,2] += Fu
     F[1,Iz,IC,3] += Fv
     F[1,Iz,IC,4] += Fw
@@ -1126,7 +1126,7 @@ end
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    Force(view(F,1,Iz,IC,:),view(U,Iz,IC,:),p[Iz,IC],xS[2,IC])
+    Force(view(F,1,Iz,IC,:),view(U,1,Iz,IC,:),p[Iz,IC],xS[2,IC])
   end
 end  
 
@@ -1135,7 +1135,7 @@ end
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    Source(view(F,Iz,IC,:),view(U,Iz,IC,:),view(Thermo,Iz,IC,:))
+    Source(view(F,1,Iz,IC,:),view(U,1,Iz,IC,:),view(Thermo,1,Iz,IC,:))
   end
 end  
 

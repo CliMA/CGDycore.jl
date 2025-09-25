@@ -899,7 +899,7 @@ function (profile::BaroWaveMoistExample)(Param,Phys)
     eta = Pressure / Phys.p0
     eta_crit = Param.p_w / Phys.p0
     if eta > eta_crit
-      qV = Param.q_0 * exp(-(Lat / Param.lat_w)^4) * exp(-((eta-FT(1)) * Param.p0 / Param.p_w)^2)
+      qV = Param.q_0 * exp(-(Lat / Param.lat_w)^4) * exp(-((eta-FT(1)) * Phys.p0 / Param.p_w)^2)
     else
       qV = Param.q_t  
     end 
