@@ -166,7 +166,7 @@ end
   end
 end
 
-@kernel inbounds = true function HyperViscTracerKernel!(FTr,@Const(Tr),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
+@kernel inbounds = true function HyperViscTracerKernel!(FTr,NumTr,@Const(Tr),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob)) 
 
   I, J, iz   = @index(Local, NTuple)
@@ -177,14 +177,15 @@ end
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
 
   TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+  for it = 1 : NumTr
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
   if Iz <= Nz && IF <= NF
-    TrCol[I,J,iz] = Tr[1,Iz,ind] / Rho[1,Iz,ind]
+    TrCol[I,J,iz] = Tr[1,Iz,ind,it] / Rho[1,Iz,ind]
   end
   @synchronize
 
@@ -213,7 +214,8 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[1,Iz,ind] += DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[1,Iz,ind,it] += DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
+  end
   end
 end
 
@@ -274,7 +276,7 @@ end
   end
 end
 
-@kernel inbounds = true function HyperViscTracerKoeffKernel!(FTr,@Const(Cache),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
+@kernel inbounds = true function HyperViscTracerKoeffKernel!(FTr,NumTr,@Const(Cache),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),KoeffDiv) 
 
   I, J, iz   = @index(Local, NTuple)
@@ -289,11 +291,12 @@ end
   TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
 
+  for it = 1 : NumTr
   ID = I + (J - 1) * N  
   ind = Glob[ID,IF]
 
   if Iz <= Nz && IF <= NF
-    TrCol[I,J,iz] = Cache[1,Iz,ind] 
+    TrCol[I,J,iz] = Cache[1,Iz,ind,it] 
   end
   @synchronize
 
@@ -322,7 +325,8 @@ end
     for k = 2 : N
       DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
     end
-    @atomic :monotonic FTr[1,Iz,ind] += -KoeffDiv * DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[1,Iz,ind,it] += -KoeffDiv * DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
+  end
   end
 end
 

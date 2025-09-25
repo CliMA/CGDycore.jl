@@ -4,7 +4,7 @@ julia --project Examples/Driver.jl \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   --NumV=5 \
-  --NumTr=2 \
+  --NumTr=5 \
   --TkePos=0 \
   --RhoVPos=6 \
   --RhoCPos=7 \

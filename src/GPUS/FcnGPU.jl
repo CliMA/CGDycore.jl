@@ -345,9 +345,9 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   Temp1 .= FT(0)
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   if ~HorLimit
-    for iT = 1 : NumTr
-      @views KHyperViscTracerKernel!(CacheTr[:,:,:,iT],UTr[:,:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
-    end  
+#   for iT = 1 : NumTr
+      @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+#   end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
@@ -377,9 +377,9 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   if ~HorLimit
-    for iT = 1 : NumTr
-      @views KHyperViscTracerKernel!(CacheTr[:,:,:,iT],UTr[:,:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-    end  
+#   for iT = 1 : NumTr
+      @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+#   end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -406,10 +406,10 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   F .= FT(0)
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
   if ~HorLimit
-    for iT = 1 : NumTr
-      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,iT],CacheTr[:,:,:,iT],Rho,DS,DW,dXdxI,J,M,Glob,
+#   for iT = 1 : NumTr
+      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,
         KoeffDiv,ndrange=ndrangeB)
-    end  
+#   end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI,J,M,Glob,
@@ -464,10 +464,10 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)
   if ~HorLimit
-    for iT = 1 : NumTr
-      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,iT],CacheTr[:,:,:,iT],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
+#   for iT = 1 : NumTr
+      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
         KoeffDiv,ndrange=ndrangeI)
-    end  
+#   end  
   end  
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
