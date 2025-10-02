@@ -157,9 +157,7 @@ function FcnGPUNonConservativeSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,::
 
 
   @views p = Aux[:,:,1:DG.NumI,1]
-  @views Exp = Aux[:,:,1:DG.NumI,3]
   @views @. p = Model.Pressure(U[:,:,1:DG.NumI,5])
-  @. Exp = Models.fast_powGPU(p / Phys.p0, Phys.kappa)
   if NAUX > 1
     @views GeoPot = Aux[:,:,1:DG.NumI,2]
     NQ = N * N
@@ -168,6 +166,10 @@ function FcnGPUNonConservativeSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,::
     ndrange = (Nz,M,NQ,NF)
     KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
     KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
+  end  
+  if NAUX > 2
+    @views Exp = Aux[:,:,1:DG.NumI,3]
+    @. Exp = Models.fast_powGPU(p / Phys.p0, Phys.kappa)
   end  
 
   if Model.Damping
