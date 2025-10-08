@@ -447,7 +447,7 @@ Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
 
-Parallels.InitExchangeData3D(backend,FTB,nz*(OrdPolyZ+1),NumV+NumAux+1,Exchange)
+Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV+NumAux+1,Exchange)
 
 
 # Simulation time
@@ -476,6 +476,10 @@ end
 if IntMethod == "Rosenbrock"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+    Trans,Phys,Param,Grid,Global,Grid.Type)
+elseif IntMethod == "RosenbrockNonConservative"
+  Ros = Integration.RosenbrockStruct{FTB}(Table)
+  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type)
 elseif IntMethod == "MIS"
   Ros = Integration.RosenbrockStruct{FTB}(Table)

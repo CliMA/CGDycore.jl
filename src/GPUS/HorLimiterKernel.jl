@@ -9,14 +9,14 @@
   NT = @uniform @ndrange()[3]
 
 
-  qMin[Iz,IF,IT] = eltype(Rhoq)(1/0)
-  qMax[Iz,IF,IT] = eltype(Rhoq)(-1/0)
+  qMin[1,Iz,IF,IT] = eltype(Rhoq)(1/0)
+  qMax[1,Iz,IF,IT] = eltype(Rhoq)(-1/0)
 
   if Iz <= Nz && IF <= NF && IT <= NT
     for ID = 1 : DoF
       ind = Glob[ID,IF]
-      qMin[Iz,IF,IT] = min(qMin[Iz,IF,IT],Rhoq[Iz,ind,IT] / Rho[Iz,ind])
-      qMax[Iz,IF,IT] = max(qMax[Iz,IF,IT],Rhoq[Iz,ind,IT] / Rho[Iz,ind])
+      qMin[1,Iz,IF,IT] = min(qMin[1,Iz,IF,IT],Rhoq[1,Iz,ind,IT] / Rho[1,Iz,ind])
+      qMax[1,Iz,IF,IT] = max(qMax[1,Iz,IF,IT],Rhoq[1,Iz,ind,IT] / Rho[1,Iz,ind])
     end
   end
 end  
@@ -58,7 +58,7 @@ end
   if Iz <= Nz
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
-    cCol[I,J,iz+1] = Tr[Iz,ind] / U[1,Iz,ind,1]
+    cCol[I,J,iz+1] = Tr[1,Iz,ind] / U[1,Iz,ind,1]
     @views (uCon, vCon) = Contra12(-U[1,Iz,ind,1],U[1,Iz,ind,2],U[1,Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uConCol[I,J,iz] = uCon
     vConCol[I,J,iz] = vCon
@@ -67,23 +67,23 @@ end
       resc[iz] = eltype(FTr)(0)  
       sumJ[iz] = eltype(FTr)(0)  
       conv[iz] = true
-      qMinS[iz] = qMin[Iz,Stencil[IF,1]]
-      qMaxS[iz] = qMax[Iz,Stencil[IF,1]]
+      qMinS[iz] = qMin[1,Iz,Stencil[IF,1]]
+      qMaxS[iz] = qMax[1,Iz,Stencil[IF,1]]
       for iS = 2 : 13
-        qMinS[iz] = min(qMin[Iz,Stencil[IF,iS]],qMinS[iz])
-        qMaxS[iz] = max(qMax[Iz,Stencil[IF,iS]],qMaxS[iz])
+        qMinS[iz] = min(qMin[1,Iz,Stencil[IF,iS]],qMinS[iz])
+        qMaxS[iz] = max(qMax[1,Iz,Stencil[IF,iS]],qMaxS[iz])
       end
     end  
   end
   if iz == 1
     Izm1 = max(Iz - 1,1)
-    cCol[I,J,iz] = Tr[Izm1,ind] / U[1,Izm1,ind,1]
+    cCol[I,J,iz] = Tr[1,Izm1,ind] / U[1,Izm1,ind,1]
   end
   if iz == ColumnTilesDim || Iz == Nz
     Izp1 = min(Iz + 1,Nz)
-    cCol[I,J,iz+2] = Tr[Izp1,ind] / U[1,Izp1,ind,1]
+    cCol[I,J,iz+2] = Tr[1,Izp1,ind] / U[1,Izp1,ind,1]
     Izp2 = min(Iz + 2,Nz)
-    cCol[I,J,iz+3] = Tr[Izp2,ind] / U[1,Izp2,ind,1]
+    cCol[I,J,iz+3] = Tr[1,Izp2,ind] / U[1,Izp2,ind,1]
   end
   @synchronize
 
@@ -112,8 +112,8 @@ end
     JRR = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF]
     cFL, cFR = RecU4(cLL,cL,cR,cRR,JLL,JL,JR,JRR) 
     Flux = eltype(FTr)(0.25) * ((abs(wCon) + wCon) * cFL + (-abs(wCon) + wCon) * cFR)
-    @atomic :monotonic FTr[Iz,ind] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
-    @atomic :monotonic FTr[Iz+1,ind] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
+    @atomic :monotonic FTr[1,Iz,ind] += -Flux / (M[Iz,ind,1] + M[Iz,ind,2])
+    @atomic :monotonic FTr[1,Iz+1,ind] += Flux / (M[Iz+1,ind,1] + M[Iz+1,ind,2])
   end 
 
   if Iz <= Nz
@@ -129,7 +129,7 @@ end
       DivRho[I,J,iz] += D[J,k] * vConCol[I,k,iz]
     end
     ind = Glob[ID,IF]
-    RhoTrColS[I,J,iz] = Tr[Iz,ind] + dt * DivRhoTr[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    RhoTrColS[I,J,iz] = Tr[1,Iz,ind] + dt * DivRhoTr[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     RhoColS[I,J,iz] = U[1,Iz,ind,1] + dt * DivRho[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     #   Finite difference step
     q[I,J,iz] = medianGPU(qMinS[iz], RhoTrColS[I,J,iz] / RhoColS[I,J,iz] +
@@ -190,7 +190,7 @@ end
   if Iz <= Nz
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
-    @atomic :monotonic FTr[Iz,ind] += (q[I,J,iz] * RhoColS[I,J,iz] - Tr[Iz,ind]) *
+    @atomic :monotonic FTr[1,Iz,ind] += (q[I,J,iz] * RhoColS[I,J,iz] - Tr[1,Iz,ind]) *
       (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]) / dt / (M[Iz,ind,1] + M[Iz,ind,2]) 
   end  
 end

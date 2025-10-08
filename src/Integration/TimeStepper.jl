@@ -52,7 +52,6 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
   ND = Global.Model.NDEDMF
   nz = Global.Grid.nz
   M = CG.OrdPolyZ 
-  @show M
   NumG = CG.NumG
   TkePos = Global.Model.TkePos
   Cache=CacheStruct{FT}(backend,CG.DoF,Global.Grid.NumFaces,Global.Grid.NumFacesG,NumG,M,nz,

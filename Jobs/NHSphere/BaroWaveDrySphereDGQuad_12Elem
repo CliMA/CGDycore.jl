@@ -13,8 +13,8 @@ julia --project Examples/DriverDG.jl \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Discretization="DG" \
-  --FluxDG="ArtianoExner" \
-  --InterfaceFluxDG="ArtianoEnergyStable" \
+  --FluxDG="KennedyGruberGrav" \
+  --InterfaceFluxDG="RiemannLMARS" \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \
@@ -34,7 +34,7 @@ julia --project Examples/DriverDG.jl \
   --SimHours=0 \
   --SimMinutes=0 \
   --SimSeconds=0 \
-  --vtkFileName="output/VTK/BaroWaveDrySphere/DG12ExPArQuad" \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/DG12Quad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
   --PrintHours=1 \
@@ -45,7 +45,7 @@ julia --project Examples/DriverDG.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=80.0 \
-  --IntMethod="RosenbrockNonConservative" \
+  --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=false \

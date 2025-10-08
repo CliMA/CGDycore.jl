@@ -442,7 +442,7 @@ end
 
 function (::ArtianoEnergyStable)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
   @inline function RiemannByLMARSNonLin!(FL,FR,VLL,VRR,AuxL,AuxR,Normal)
-FT = eltype(FL)
+    FT = eltype(FL)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
@@ -460,28 +460,28 @@ FT = eltype(FL)
     pM = -FT(0.5) * Phys.Cpd * RhoM * ThM * (AuxR[3] - AuxL[3])
     diss = FT(0.5) * cS * RhoM * (vRR - vLL)/norm_ 
     if vM > FT(0)
-    ThUpwind = VLL[ThPos]/VLL[RhoPos]
+      ThUpwind = VLL[ThPos]/VLL[RhoPos]
     else 
-    ThUpwind = VRR[ThPos]/VRR[RhoPos]			
+      ThUpwind = VRR[ThPos]/VRR[RhoPos]			
     end
-	 Cad = FT(0.5) * abs((vRR + vLL))	
+    Cad = FT(0.5) * abs((vRR + vLL))	
 
-      FL[RhoPos] = RhoM * vM 
-      FL[uPos] = FL[RhoPos] * uAv - diss * Normal[1] - FT(0.5) * RhoM * Cad * (VRR[uPos]/VRR[RhoPos] - VLL[uPos]/VLL[RhoPos])
-      FL[vPos] = FL[RhoPos] * vAv - diss * Normal[2] - FT(0.5) * RhoM * Cad * (VRR[vPos]/VRR[RhoPos] - VLL[vPos]/VLL[RhoPos])
-      FL[wPos] = FL[RhoPos] * wAv - diss * Normal[3] - FT(0.5) * RhoM * Cad * (VRR[wPos]/VRR[RhoPos] - VLL[wPos]/VLL[RhoPos])
-      FL[ThPos] = FL[RhoPos] * ThUpwind
-     
-		FR[RhoPos] = FL[RhoPos]
-		FR[uPos] = FL[uPos] - pM * Normal[1]
-		FR[vPos] = FL[vPos] - pM * Normal[2]
-		FR[wPos] = FL[wPos] - pM * Normal[3]
-		FR[ThPos] = FL[ThPos]
-		FL[RhoPos] = FL[RhoPos]
-		FL[uPos] = FL[uPos] + pM * Normal[1]
-		FL[vPos] = FL[vPos] + pM * Normal[2]
-		FL[wPos] = FL[wPos] + pM * Normal[3]
-		FL[ThPos] = FL[ThPos]
+    FL[RhoPos] = RhoM * vM 
+    FL[uPos] = FL[RhoPos] * uAv - diss * Normal[1] - FT(0.5) * RhoM * Cad * (VRR[uPos]/VRR[RhoPos] - VLL[uPos]/VLL[RhoPos])
+    FL[vPos] = FL[RhoPos] * vAv - diss * Normal[2] - FT(0.5) * RhoM * Cad * (VRR[vPos]/VRR[RhoPos] - VLL[vPos]/VLL[RhoPos])
+    FL[wPos] = FL[RhoPos] * wAv - diss * Normal[3] - FT(0.5) * RhoM * Cad * (VRR[wPos]/VRR[RhoPos] - VLL[wPos]/VLL[RhoPos])
+    FL[ThPos] = FL[RhoPos] * ThUpwind
+       
+    FR[RhoPos] = FL[RhoPos]
+    FR[uPos] = FL[uPos] - pM * Normal[1]
+    FR[vPos] = FL[vPos] - pM * Normal[2]
+    FR[wPos] = FL[wPos] - pM * Normal[3]
+    FR[ThPos] = FL[ThPos]
+    FL[RhoPos] = FL[RhoPos]
+    FL[uPos] = FL[uPos] + pM * Normal[1]
+    FL[vPos] = FL[vPos] + pM * Normal[2]
+    FL[wPos] = FL[wPos] + pM * Normal[3]
+    FL[ThPos] = FL[ThPos]
 
   end
   return RiemannByLMARSNonLin!

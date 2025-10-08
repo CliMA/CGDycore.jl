@@ -576,7 +576,7 @@ if JuliaGPU == "Metal"
   Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU / 2
 end  
 nT = max(7 + NumTr, NumV + NumTr)
-Parallels.InitExchangeData3D(backend,FTB,nz,nT,Exchange)
+Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
 Integration.TimeStepper!(U,GPUS.FcnGPU!,DyCore.JacGPU!,
   Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 

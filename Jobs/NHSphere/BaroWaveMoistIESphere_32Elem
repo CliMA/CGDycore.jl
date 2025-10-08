@@ -14,7 +14,7 @@ julia --project Examples/Driver.jl \
   --SurfaceScheme="" \
   --Coriolis=true \
   --Upwind=true \
-  --HorLimit=false \
+  --HorLimit=true \
   --Microphysics=true \
   --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
   --Sedimentation=false \
@@ -32,6 +32,8 @@ julia --project Examples/Driver.jl \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
+  --OrdPrint=2 \
+  --OrdPrintZ=1 \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

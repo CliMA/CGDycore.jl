@@ -19,10 +19,10 @@
     @views (uCon, vCon) = Contra12(U[1,Iz,ind,2],U[1,Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uConCol[I,J,iz] = uCon
     vConCol[I,J,iz] = vCon
-    pCol[I,J,iz] = p[Iz,ind]
+    pCol[I,J,iz] = p[1,Iz,ind]
   end
   if iz == ColumnTilesDim && Iz < Nz 
-    pCol[I,J,iz+1] = p[Iz+1,ind]   
+    pCol[I,J,iz+1] = p[1,Iz+1,ind]   
   end  
 
   @synchronize

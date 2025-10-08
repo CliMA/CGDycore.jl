@@ -434,7 +434,7 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
     if HorLimit  
       KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
       for iT = 1 : NumTr
-        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,iT],U,DS,
+        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,:,iT],U,DS,
           dXdxI,J,M,Glob,dtau,ww,q[:,:,:,iT],q[:,:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
       end  
     else  
