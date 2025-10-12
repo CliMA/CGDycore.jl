@@ -1,21 +1,21 @@
 #!/bin/bash
 julia --project Examples/Driver.jl \
-  --Problem="BaroWaveMoistSphere" \
+  --Problem="BaroWaveDrySphere" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float32" \
   `#Model `    \
   --NumV=5 \
-  --NumTr=2 \
-  --RhoTPos=6 \
-  --RhoRPos=7 \
+  --NumTr=0 \
+  --RhoTPos=0 \
+  --RhoRPos=0 \
   --Equation="CompressibleShallow" \
-  --State="MoistInternalEnergy" \
+  --State="DryTotalEnergy" \
   --ModelType="VectorInvariant" \
   --SurfaceScheme="" \
   --Coriolis=true \
   --Upwind=true \
-  --HorLimit=true \
-  --Microphysics=true \
+  --HorLimit=false \
+  --Microphysics=false \
   --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
   --Sedimentation=false \
   --Buoyancy=true \
@@ -34,7 +34,7 @@ julia --project Examples/Driver.jl \
   --Flat=true \
   --OrdPrint=2 \
   --OrdPrintZ=1 \
-  --vtkFileName="output/VTK/BaroWaveMoistSphere/CGEE32Quad" \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/CGE32Quad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

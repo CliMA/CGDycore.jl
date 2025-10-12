@@ -341,13 +341,10 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 ####
 # First phase  
 ####
-  begin 
   Temp1 .= FT(0)
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
-  if ~HorLimit
-#   for iT = 1 : NumTr
-      @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
-#   end  
+  if ~HorLimit && NumTr > 0
+    @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
   if TkePos > 0
     @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
@@ -376,10 +373,8 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,:,1:LenTemp1],Exchange)
 
   KHyperViscKernel!(CacheF,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-  if ~HorLimit
-#   for iT = 1 : NumTr
-      @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
-#   end  
+  if ~HorLimit && NumTr > 0
+    @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if TkePos > 0
     @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -396,7 +391,6 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
       @views KHyperViscTracerEDMFKernel!(CacheTrEDMF,TrEDMF,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMFTr)
     end
   end   
-  end
 
   @views Parallels.ExchangeData3DRecvGPU!(Temp1[:,:,:,1:LenTemp1],Exchange)
 
@@ -405,11 +399,9 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 ####
   F .= FT(0)
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
-  if ~HorLimit
-#   for iT = 1 : NumTr
-      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,
-        KoeffDiv,ndrange=ndrangeB)
-#   end  
+  if ~HorLimit && NumTr > 0
+    @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,
+      KoeffDiv,ndrange=ndrangeB)
   end  
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI,J,M,Glob,
@@ -463,11 +455,9 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   Parallels.ExchangeData3DSendGPU(F,Exchange)
 
   KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)
-  if ~HorLimit
-#   for iT = 1 : NumTr
-      @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
-        KoeffDiv,ndrange=ndrangeI)
-#   end  
+  if ~HorLimit && NumTr > 0
+    @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
+      KoeffDiv,ndrange=ndrangeI)
   end  
   if TkePos > 0
     @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,

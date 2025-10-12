@@ -304,23 +304,23 @@ end
   uConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   vConCol = @localmem eltype(F) (N,N, ColumnTilesDim)
   if Iz <= Nz
-    cCol[I,J,iz+1] = (U[1,Iz,ind,5] + p[Iz,ind]) / U[1,Iz,ind,1] 
+    cCol[I,J,iz+1] = (U[1,Iz,ind,5] + p[1,Iz,ind]) / U[1,Iz,ind,1] 
     @views (uCon, vCon) = Contra12(-U[1,Iz,ind,1],U[1,Iz,ind,2],U[1,Iz,ind,3],dXdxI[1:2,1:2,:,ID,Iz,IF])
     uConCol[I,J,iz] = uCon
     vConCol[I,J,iz] = vCon
   end
   if iz == 1
     Izm1 = max(Iz - 1,1)
-    cCol[I,J,iz] = (U[1,Izm1,ind,5] + p[Izm1,ind]) / U[1,Izm1,ind,1] 
+    cCol[I,J,iz] = (U[1,Izm1,ind,5] + p[1,Izm1,ind]) / U[1,Izm1,ind,1] 
 #   if Iz == 1
 #     cCol[I,J,iz] = eltype(F)(2) * cCol[I,J,iz] - U[2,ind,5] / U[2,ind,1]  
 #   end  
   end
   if iz == ColumnTilesDim || Iz == Nz
     Izp1 = min(Iz + 1,Nz)
-    cCol[I,J,iz+2] = (U[1,Izp1,ind,5] + p[Izp1,ind]) / U[1,Izp1,ind,1] 
+    cCol[I,J,iz+2] = (U[1,Izp1,ind,5] + p[1,Izp1,ind]) / U[1,Izp1,ind,1] 
     Izp2 = min(Iz + 2,Nz)
-    cCol[I,J,iz+3] = (U[1,Izp2,ind,5] + p[Izp2,ind]) / U[1,Izp2,ind,1] 
+    cCol[I,J,iz+3] = (U[1,Izp2,ind,5] + p[1,Izp2,ind]) / U[1,Izp2,ind,1] 
   end
   @synchronize
 

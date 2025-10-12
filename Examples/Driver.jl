@@ -380,9 +380,10 @@ elseif State == "DryInternalEnergy"
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State == "DryTotalEnergy"
-  Pressure, dPresdRhoTh = Models.DryTotalEnergy()(Phys)
+  Pressure, dPresdRhoTh, dPresdRho = Models.DryTotalEnergy()(Phys)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
+  Model.dPresdRho = dPresdRho
 elseif State == "Moist"
   Pressure, dPresdRhoTh, dPresdRho = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoVPos,Model.RhoCPos)

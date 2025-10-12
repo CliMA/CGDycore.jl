@@ -79,21 +79,26 @@ function (::Dry)(Phys)
 end 
 
 function (::DryTotalEnergy)(Phys)
-  @inline function Pressure(Thermo,U,wL,wR,z)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)
     KE = FT(0.5) * (U[2]^2 + U[3]^2 + FT(0.5) * (wL^2 + wR^2))
-    p = (Phys.Rd / Phys.Cvd) * (U[5] - U[1] * (KE + Phys.Grav * z))
-    T = p / (Phys.Rd * U[1])
-    PotT = (Phys.p0/p)^(Phys.Rd/Phys.Cpd)*T
+    IE = U[5] - U[1] * (KE + Phys.Grav * z)
+    TLoc = Thermodynamics.fTempIE(U[1],IE,Phys)
+    p = Phys.Rd * U[1] * TLoc
+    PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
     Thermo[1] = p
-    Thermo[2] = T
+    Thermo[2] = TLoc
     Thermo[3] = PotT
   end
   @inline function dPresdRhoE(RhoE)
     dpdRhoE = Phys.Rd / Phys.Cvd
     return dpdRhoE
   end  
-  return Pressure,dPresdRhoE
+  @inline function dPresdRho()
+    dpdRho = Phys.Rd * Phys.Cpd * Phys.T0 / Phys.Cvd
+    return dpdRho
+  end
+  return Pressure,dPresdRhoE,dPresdRho
 end 
 
 function (::DryInternalEnergy)(Phys)
@@ -101,12 +106,6 @@ function (::DryInternalEnergy)(Phys)
     FT = eltype(U)
     TLoc = Thermodynamics.fTempIE(U[1],U[5],Phys)
     p = Phys.Rd * U[1] * TLoc
-    if p < 0.0
-      @show p,T
-      @show Thermo
-      @show U
-      @show z
-    end  
     PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
     Thermo[1] = p
     Thermo[2] = TLoc
