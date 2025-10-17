@@ -42,7 +42,7 @@ function (::OneMomentMicrophysicsMoistEquil)(Phys,RhoPos,RhoIEPos,RhoTPos,RhoRPo
     T = Thermo[TPos]
     RhoV = Thermo[RhoVPos]
     RhoC = Thermo[RhoCPos]
-    RhoR = U[RhoRPos]
+    RhoR = max(U[RhoRPos],FT(0))
 
     RhoVS = Thermodynamics.fpws(T,Phys) / (Phys.Rv * T)
     SRhoR2RhoV =  (FT(3.86e-3) - FT(9.41e-5) * (T - Phys.T0)) * (FT(1) + FT(9.1) * RhoR^FT(3/16)) * 

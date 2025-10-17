@@ -311,13 +311,13 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
    State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
    State == "IceInternalEnergy"
-    KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
     if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
         State == "IceInternalEnergy"
       KSourceIntEnergyKernel! = SourceIntEnergyKernel!(backend, group)
     end  
   elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"
     KDivRhoKEUpwind3Kernel! = DivRhoKEUpwind3Kernel!(backend, group)
+    KDivRhoKETrUpwind3New2Kernel! = DivRhoKETrUpwind3New2Kernel!(backend, groupTr)
   end
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
   KMomentumCoriolisKernel! = MomentumVectorInvariantCoriolisKernel!(backend, group)
@@ -436,9 +436,16 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
         State == "IceInternalEnergy"
       @views KSourceIntEnergyKernel!(F[:,:,:,ThPos],U,p,DS,dXdxI,M,Glob,ndrange=ndrangeB)
     end    
-  elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy" ||
-  State == "IceInternalEnergy"
-    KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+  elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy" 
+    if HorLimit  
+      KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+      for iT = 1 : NumTr
+        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,:,iT],U,DS,
+          dXdxI,J,M,Glob,dtau,ww,q[:,:,:,iT],q[:,:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
+      end  
+    else  
+      KDivRhoKETrUpwind3New2Kernel!(F,NumV,NumTr,U,p,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    end  
   end
   if EDMF
     KMomentumCoriolisDraftKernel! = MomentumVectorInvariantCoriolisDraftKernel!(backend,group)  
@@ -496,8 +503,16 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
         State == "IceInternalEnergy"
       @views KSourceIntEnergyKernel!(F[:,:,:,ThPos],U,p,DS,dXdxI_I,M,Glob_I,ndrange=ndrangeI)
     end  
-  elseif State == "DryTotalEnergy"
-    KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+  elseif State == "DryTotalEnergy" || State == "MoistTotalEnergy"
+    if HorLimit  
+      KDivRhoKEUpwind3Kernel!(F,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+      for iT = 1 : NumTr
+        @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,:,iT],U,DS,
+          dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,:,iT],q[:,:,:,NumTr+iT],Stencil_I,ndrange=ndrangeI)
+      end  
+    else  
+      KDivRhoKETrUpwind3New2Kernel!(F,NumV,NumTr,U,p,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    end  
   end
 
   if EDMF

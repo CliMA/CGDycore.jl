@@ -1,31 +1,33 @@
 #!/bin/bash
 julia --project Examples/Driver.jl \
-  --Problem="BaroWaveMoistSphere" \
-  --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float32" \
-  `#Model `    \
+  --Problem=""BaroWaveMoistSphere"" \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=256 \
+  --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumTr=2 \
   --RhoTPos=6 \
   --RhoRPos=7 \
   --Equation="CompressibleShallow" \
   --State="MoistInternalEnergy" \
-  --ModelType="VectorInvariant" \
-  --SurfaceScheme="" \
+  --Buoyancy=true \
   --Coriolis=true \
-  --Upwind=true \
-  --HorLimit=true \
+  --Damping=false \
+  --StrideDamp=20000 \
+  --Relax=1.0e-3 \
+  --VerticalDiffusion=false \
+  --SurfaceFlux=false \
+  --SurfaceScheme="" \
+  --Forcing=false \
   --Microphysics=true \
   --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
-  --Sedimentation=false \
-  --Buoyancy=true \
-  --Damping=false \
-  --StrideDamp=10000 \
-  --Relax=1.0e-3 \
+  --RelCloud=1.e-2 \
+  --Upwind=true \
+  --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimSeconds=0 \
   --SimDays=1 \
-  `#Output `        \
+  --SimHours=0 \
+  --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
   --PrintHours=1 \
@@ -33,25 +35,19 @@ julia --project Examples/Driver.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --OrdPrint=2 \
-  --OrdPrintZ=1 \
-  --vtkFileName="output/VTK/BaroWaveMoistSphere/CGEE32Quad" \
+  --vtkFileName="output/VTK/BaroWaveMoistSphere/CGIE32Quad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  `#Grid `        \
-  --GridForm="Spherical" \
+  --TopoS="" \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=32 \
   --H=30000.0 \
-  `#Topography `     \
-  --TopoS="" \
-  `#Discretization `     \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \
   --HyperDGrad=5.e14 \
-  --HyperDDiv=5.e14 \
-  --HyperDDivW=0.e15
+  --HyperDDiv=5.e14

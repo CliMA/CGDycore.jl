@@ -10,10 +10,11 @@ struct ShallowWaterState  <: State  end
 struct ShallowWaterStateDG  <: State  end
 struct Dry  <: State  end
 struct DryDG  <: State  end
-struct Moist  <: State end
 struct DryTotalEnergy  <: State  end
 struct DryInternalEnergy  <: State  end
+struct Moist  <: State end
 struct MoistInternalEnergy  <: State  end
+struct MoistTotalEnergy  <: State  end
 struct IceInternalEnergy  <: State  end
 
 
@@ -171,6 +172,32 @@ function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
     return dpdRho
   end
   return Pressure,dPresdRhoIE,dPresdRho
+end
+
+function (::MoistTotalEnergy)(Phys,RhoPos,RhoEPos,RhoTPos)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
+    FT = eltype(U)
+    TLoc = T
+    KE = FT(0.5) * (U[2]^2 + U[3]^2 + FT(0.5) * (wL^2 + wR^2))
+    IE = U[5] - U[1] * (KE + Phys.Grav * z)
+    RhoV, RhoC, TLoc = SaturationAdjustmentIEW(U[RhoPos],IE,U[RhoTPos],TLoc,Phys)
+    p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * TLoc
+    PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
+    Thermo[1] = p
+    Thermo[2] = TLoc
+    Thermo[3] = PotT
+    Thermo[5] = RhoV
+    Thermo[6] = RhoC
+  end
+  @inline function dPresdRhoE(RhoE)
+    dpdRhoE = Phys.Rd / Phys.Cvd
+    return dpdRhoE
+  end
+  @inline function dPresdRho()
+    dpdRho = Phys.Rd * Phys.Cpd * Phys.T0 / Phys.Cvd
+    return dpdRho
+  end
+  return Pressure,dPresdRhoE,dPresdRho
 end
 
 

@@ -15,7 +15,7 @@ function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equation
     @views p = Cache.Thermo[:,:,:,4]
   elseif  Global.Model.State == "DryInternalEnergy" || Global.Model.State == "MoistInternalEnergy"  
     @views p = Cache.Thermo[:,:,:,4]
-  elseif Global.Model.State == "DryTotalEnergy"  
+  elseif Global.Model.State == "DryTotalEnergy" || Global.Model.State == "MoistTotalEnergy"  
     @views p = Cache.Thermo[:,:,:,1]
   end  
 

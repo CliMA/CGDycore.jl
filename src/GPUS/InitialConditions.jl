@@ -39,6 +39,7 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Exchange
 
 
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
+  @show sum(abs.(Rho))
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)

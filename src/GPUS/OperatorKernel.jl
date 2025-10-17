@@ -366,6 +366,7 @@ end
     @atomic :monotonic F[1,Iz,ind,5] += DivRhoTr / (M[Iz,ind,1] + M[Iz,ind,2])
   end
 end
+
 @kernel inbounds = true function DivRhoThUpwind3Kernel!(F,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 
@@ -681,6 +682,7 @@ end
     end
   end
 end
+
 @kernel inbounds = true function DivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,@Const(U),@Const(D),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob))
 
@@ -722,6 +724,131 @@ end
     JCol[I,J,iz+2] = JJ[ID,1,Izp1,IF] + JJ[ID,2,Izp1,IF] 
     Izp2 = min(Iz + 2,Nz)
     cCol[I,J,iz+3] = U[1,Izp2,ind,5] / U[1,Izp2,ind,1]
+    JCol[I,J,iz+3] = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF] 
+    RhoCol[I,J,iz+1] = U[1,Izp1,ind,1]
+    uCol[I,J,iz+1] = U[1,Izp1,ind,2]
+    vCol[I,J,iz+1] = U[1,Izp1,ind,3]
+    MCCol[I,J,iz+1] = M[Izp1,ind,1] + M[Izp1,ind,2]
+  end
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  if Iz < Nz 
+    @views wCon = Contra3(RhoCol[I,J,iz:iz+1],uCol[I,J,iz:iz+1],vCol[I,J,iz:iz+1],
+      wCol[I,J,iz],dXdxI[3,:,:,ID,Iz:Iz+1,IF])
+    wCol[I,J,iz] = wCon
+    cFL, cFR = RecU4(cCol[I,J,iz],cCol[I,J,iz+1],cCol[I,J,iz+2],cCol[I,J,iz+3],
+      JCol[I,J,iz],JCol[I,J,iz+1],JCol[I,J,iz+2],JCol[I,J,iz+3]) 
+    Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + 
+      (-abs(wCon) + wCon) * cFR)
+    @atomic :monotonic F[1,Iz,ind,5] += -Flux / MCCol[I,J,iz]
+    @atomic :monotonic F[1,Iz+1,ind,5] += Flux / MCCol[I,J,iz+1]
+    Flux = eltype(F)(0.5)*wCon
+    @atomic :monotonic F[1,Iz,ind,1] += -Flux / MCCol[I,J,iz]
+    @atomic :monotonic F[1,Iz+1,ind,1] += Flux / MCCol[I,J,iz+1]
+  end 
+
+  if Iz <= Nz
+    uCol[I,J,iz], vCol[I,J,iz] = Contra12(-RhoCol[I,J,iz],uCol[I,J,iz],vCol[I,J,iz],view(dXdxI,1:2,1:2,:,ID,Iz,IF))
+  end  
+  @synchronize
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+  if Iz <= Nz
+    DivRhoTr = D[I,1] * uCol[1,J,iz] * cCol[1,J,iz+1] + D[J,1] * vCol[I,1,iz] * cCol[I,1,iz+1]
+    DivRho = D[I,1] * uCol[1,J,iz] + D[J,1] * vCol[I,1,iz] 
+    for k = 2 : N
+      DivRhoTr += D[I,k] * uCol[k,J,iz] * cCol[k,J,iz+1] + D[J,k] * vCol[I,k,iz] * cCol[I,k,iz+1]
+      DivRho += D[I,k] * uCol[k,J,iz] + D[J,k] * vCol[I,k,iz]
+    end
+    @atomic :monotonic F[1,Iz,ind,5] += DivRhoTr / MCCol[I,J,iz]
+    @atomic :monotonic F[1,Iz,ind,1] += DivRho / MCCol[I,J,iz]
+  end
+
+  for iT = NumV + 1 : NumV + NumTr
+#   Second tracer  
+    ID = I + (J - 1) * N  
+    ind = Glob[ID,IF]
+    if Iz <= Nz
+      cCol[I,J,iz+1] = U[1,Iz,ind,iT] / U[1,Iz,ind,1]
+    end
+    if iz == 1
+      Izm1 = max(Iz - 1,1)
+      cCol[I,J,iz] = U[1,Izm1,ind,iT] / U[1,Izm1,ind,1]
+    end
+    if iz == ColumnTilesDim || Iz == Nz
+      Izp1 = min(Iz + 1,Nz)
+      cCol[I,J,iz+2] = U[1,Izp1,ind,iT] / U[1,Izp1,ind,1]
+      Izp2 = min(Iz + 2,Nz)
+      cCol[I,J,iz+3] = U[1,Izp2,ind,iT] / U[1,Izp2,ind,1]
+    end
+    @synchronize
+
+    ID = I + (J - 1) * N
+    ind = Glob[ID,IF]
+    if Iz < Nz
+      wCon = wCol[I,J,iz]
+      cFL, cFR = RecU4(cCol[I,J,iz],cCol[I,J,iz+1],cCol[I,J,iz+2],cCol[I,J,iz+3],
+        JCol[I,J,iz],JCol[I,J,iz+1],JCol[I,J,iz+2],JCol[I,J,iz+3]) 
+      Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + 
+        (-abs(wCon) + wCon) * cFR)
+      @atomic :monotonic F[1,Iz,ind,iT] += -Flux / MCCol[I,J,iz]
+      @atomic :monotonic F[1,Iz+1,ind,iT] += Flux / MCCol[I,J,iz+1]
+    end
+    if Iz <= Nz
+      DivRhoTr = D[I,1] * uCol[1,J,iz] * cCol[1,J,iz+1] + D[J,1] * vCol[I,1,iz] * cCol[I,1,iz+1]
+      for k = 2 : N
+        DivRhoTr += D[I,k] * uCol[k,J,iz] * cCol[k,J,iz+1] + D[J,k] * vCol[I,k,iz] * cCol[I,k,iz+1]
+      end
+      @atomic :monotonic F[1,Iz,ind,iT] += DivRhoTr / MCCol[I,J,iz]
+    end
+  end
+end
+
+@kernel inbounds = true function DivRhoKETrUpwind3New2Kernel!(F,NumV,NumTr,@Const(U),@Const(p),@Const(D),@Const(dXdxI),
+  @Const(JJ),@Const(M),@Const(Glob))
+
+  I, J, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  ColumnTilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  ID = I + (J - 1) * N  
+  ind = Glob[ID,IF]
+
+  cCol = @localmem eltype(F) (N,N, ColumnTilesDim+3)
+  RhoCol = @localmem eltype(F) (N,N, ColumnTilesDim+1)
+  uCol = @localmem eltype(F) (N,N, ColumnTilesDim+1)
+  vCol = @localmem eltype(F) (N,N, ColumnTilesDim+1)
+  wCol = @localmem eltype(F) (N,N, ColumnTilesDim)
+  JCol = @localmem eltype(F) (N,N, ColumnTilesDim+3)
+  MCCol = @localmem eltype(F) (N,N, ColumnTilesDim+1)
+  if Iz <= Nz
+    cCol[I,J,iz+1] = (U[1,Iz,ind,5] + p[1,Iz,ind]) / U[1,Iz,ind,1]
+    JCol[I,J,iz+1] = JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF]
+    RhoCol[I,J,iz] = U[1,Iz,ind,1]
+    uCol[I,J,iz] = U[1,Iz,ind,2]
+    vCol[I,J,iz] = U[1,Iz,ind,3]
+    wCol[I,J,iz] = U[1,Iz,ind,4]
+    MCCol[I,J,iz] = M[Iz,ind,1] + M[Iz,ind,2]
+  end
+  if iz == 1
+    Izm1 = max(Iz - 1,1)
+    cCol[I,J,iz] = (U[1,Izm1,ind,5] + p[1,Izm1,ind]) / U[1,Izm1,ind,1]
+    JCol[I,J,iz] = JJ[ID,1,Izm1,IF] + JJ[ID,2,Izm1,IF] 
+  end
+  if iz == ColumnTilesDim || Iz == Nz
+    Izp1 = min(Iz + 1,Nz)
+    cCol[I,J,iz+2] = (U[1,Izp1,ind,5] + p[1,Izp1,ind]) / U[1,Izp1,ind,1]
+    JCol[I,J,iz+2] = JJ[ID,1,Izp1,IF] + JJ[ID,2,Izp1,IF] 
+    Izp2 = min(Iz + 2,Nz)
+    cCol[I,J,iz+3] = (U[1,Izp2,ind,5] + p[1,Izp2,ind])/ U[1,Izp2,ind,1]
     JCol[I,J,iz+3] = JJ[ID,1,Izp2,IF] + JJ[ID,2,Izp2,IF] 
     RhoCol[I,J,iz+1] = U[1,Izp1,ind,1]
     uCol[I,J,iz+1] = U[1,Izp1,ind,2]

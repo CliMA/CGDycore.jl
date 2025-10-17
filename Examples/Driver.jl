@@ -187,7 +187,7 @@ Model = DyCore.ModelStruct{FTB}()
 Model.NumV=NumV
 Model.NumTr=NumTr
 Model.NumThermo = 4
-if State == "MoistInternalEnergy"
+if State == "MoistInternalEnergy" || State == "MoistTotalEnergy"
   Model.NumThermo +=2
 elseif State == "IceInternalEnergy"
   Model.NumThermo +=3
@@ -396,6 +396,12 @@ elseif State == "MoistInternalEnergy"
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
+elseif State == "MoistTotalEnergy"
+  Pressure, dPresdRhoTh, dPresdRho = Models.MoistTotalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+    Model.RhoTPos)
+  Model.Pressure = Pressure
+  Model.dPresdRhoTh = dPresdRhoTh
+  Model.dPresdRho = dPresdRho
 elseif State == "IceInternalEnergy"
   Pressure, dPresdRhoTh = Models.IceInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
     Model.RhoTPos)
@@ -504,7 +510,7 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
       "u",
       "v",
       ]
-  elseif State == "Moist" || State == "MoistInternalEnergy" || State == "IceInternalEnergy"
+  elseif State == "Moist" || State == "MoistInternalEnergy" || State == "MoistTotalEnergy" || State == "IceInternalEnergy"
     Global.Output.cNames = [
       "Rho",
       "u",
@@ -519,6 +525,9 @@ if ModelType == "VectorInvariant" || ModelType == "Advection"
     end
     if RhoVPos > 0
       push!(Global.Output.cNames,"qV")
+    end
+    if RhoTPos > 0
+      push!(Global.Output.cNames,"qT")
     end
     if RhoCPos > 0
       push!(Global.Output.cNames,"qC")
