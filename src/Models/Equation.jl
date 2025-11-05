@@ -174,6 +174,32 @@ function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoTPos)
   return Pressure,dPresdRhoIE,dPresdRho
 end
 
+function (::MoistInternalEnergy)(Phys,RhoPos,RhoIEPos,RhoVPos,RhoCPos)
+  @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
+    FT = eltype(U)
+    Rho = U[RhoPos]
+    RhoV = U[RhoVPos]
+    RhoC = U[RhoCPos]
+    RhoIE = U[RhoIEPos]
+    TLoc = Thermodynamics.fTempIE(Rho,RhoIE,RhoV,RhoC,Phys)
+    p = ((U[RhoPos] - RhoV - RhoC) * Phys.Rd + RhoV * Phys.Rv) * TLoc
+    PotT = (Phys.p0 / p)^(Phys.Rd / Phys.Cpd) * TLoc
+    Thermo[1] = p
+    Thermo[2] = TLoc
+    Thermo[3] = PotT
+  end
+  @inline function dPresdRhoIE(RhoE)
+    dpdRhoE = Phys.Rd / Phys.Cvd
+    return dpdRhoE
+  end
+  @inline function dPresdRho()
+    dpdRho = Phys.Rd * Phys.Cpd * Phys.T0 / Phys.Cvd
+    return dpdRho
+  end
+  return Pressure,dPresdRhoIE,dPresdRho
+end
+
+
 function (::MoistTotalEnergy)(Phys,RhoPos,RhoEPos,RhoTPos)
   @inline function Pressure(Thermo,U,wL,wR,z;T=300.0)
     FT = eltype(U)

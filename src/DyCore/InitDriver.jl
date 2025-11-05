@@ -16,7 +16,7 @@ function InitSphereDG2(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoP
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Outputs.TransSphereX!,DG,Metric,Global)
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,DG,Metric,Global)
   Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
@@ -68,7 +68,7 @@ function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Outputs.TransSphereX!,DG,Metric,Global)
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Grids.TransSphereX!,DG,Metric,Global)
   Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
@@ -106,7 +106,9 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
   end
 
   if Topography.TopoS == "EarthOrography"
-    zS, GradDx_zs, GradDy_zs = Grids.Orography4(backend,FT,CG,Exchange,Global)
+    #zS, GradDx_zs, GradDy_zs = Grids.Orography4(backend,FT,CG,Exchange,Global)
+#   zS = Grids.Orography2(backend,FT,CG,Exchange,Global)
+    zS = Grids.Orography4(backend,FT,CG,Exchange,Global)
   else
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile,Grid.Type)
   end
@@ -120,14 +122,14 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
 # Output.Flat=true
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Outputs.TransSphere2DX!,CG,Metric,Global)
+  vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Grids.TransSphere2DX!,CG,Metric,Global)
   Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Outputs.TransSphereX!,CG,Metric,Global)
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Grids.TransSphereX!,CG,Metric,Global)
   Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
@@ -176,14 +178,14 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,T
   # Output Orography
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Outputs.TransCartX!,CG,Metric,Global)
+  vtkCacheOrography = Outputs.vtkInit2D(CG.OrdPoly,Grids.TransCartX!,CG,Metric,Global)
   Outputs.unstructured_vtkOrography(zS,vtkCacheOrography,Global.Grid.NumFaces,CG,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Outputs.TransCartX!,CG,Metric,Global)
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Grids.TransCartX!,CG,Metric,Global)
   Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
   nzTemp = Global.Grid.nz
@@ -243,7 +245,7 @@ function InitCartDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,To
   # Output partition
   nzTemp = Global.Grid.nz
   Global.Grid.nz = 1
-  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Outputs.TransCartX!,DG,Metric,Global)
+  vtkCachePart = Outputs.vtkStruct{FT}(backend,0,0,Grids.TransCartX!,DG,Metric,Global)
   Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
   Global.Grid.nz = nzTemp
 

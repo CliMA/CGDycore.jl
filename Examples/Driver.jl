@@ -315,14 +315,14 @@ if GridForm == "Cartesian"
   if ParallelCom.Proc == 1  
     @show "InitCart"
   end  
-  Trans = Outputs.TransCartX!
+  Trans = Grids.TransCartX!
   (CG, Metric, Exchange, Global) = DyCore.InitCart(backend,FTB,OrdPoly,OrdPolyZ,OrdPrint,H,
     Topography,Model,Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 else  
   if ParallelCom.Proc == 1  
     @show "InitSphere"
   end  
-  Trans = Outputs.TransSphereX!
+  Trans = Grids.TransSphereX!
   (CG, Metric, Exchange, Global) = DyCore.InitSphere(backend,FTB,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,
     Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 end  
@@ -391,8 +391,13 @@ elseif State == "Moist"
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State == "MoistInternalEnergy"
-  Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
-    Model.RhoTPos)
+  if Model.RhoTPos > 0
+    Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+      Model.RhoTPos)
+  elseif Model.RhoVPos > 0  
+    Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+      Model.RhoVPos,Model.RhoCPos)
+  end  
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
@@ -414,8 +419,12 @@ end
 
 #Microphysics
 if Microphysics
-  if TypeMicrophysics == "SimpleMicrophysics"
-    MicrophysicsSource  = Models.SimpleMicrophysics()(Phys,Model.RhoPos,Model.ThPos,
+  if TypeMicrophysics == "SimpleMicrophysicsPot"
+    MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.ThPos,
+      Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
+    Model.MicrophysicsSource = MicrophysicsSource
+  elseif TypeMicrophysics == "SimpleMicrophysicsIE"
+    MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.ThPos,
       Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
   elseif TypeMicrophysics == "OneMomentMicrophysicsMoistEquil"

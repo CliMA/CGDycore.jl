@@ -1,3 +1,90 @@
+function TopographySmoothing!(Height,CG,Exchange,Global)
+ 
+  backend = get_backend(Height)
+  FT = eltype(Height)
+
+  Grid = Global.Grid
+  DoF = CG.DoF
+  N = CG.OrdPoly + 1
+  NF = Global.Grid.NumFaces
+  X = KernelAbstractions.zeros(backend,FT,DoF,3,NF)
+  dXdxI = KernelAbstractions.zeros(backend,FT,2,2,DoF,NF)
+  J = KernelAbstractions.zeros(backend,FT,DoF,NF)
+  Rad = Grid.Rad
+  F = zeros(4,3,NF)
+  FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
+  for iF = 1 : NF
+    F[1,1,iF] = Grid.Faces[iF].P[1].x
+    F[1,2,iF] = Grid.Faces[iF].P[1].y
+    F[1,3,iF] = Grid.Faces[iF].P[1].z
+    F[2,1,iF] = Grid.Faces[iF].P[2].x
+    F[2,2,iF] = Grid.Faces[iF].P[2].y
+    F[2,3,iF] = Grid.Faces[iF].P[2].z
+    F[3,1,iF] = Grid.Faces[iF].P[3].x
+    F[3,2,iF] = Grid.Faces[iF].P[3].y
+    F[3,3,iF] = Grid.Faces[iF].P[3].z
+    F[4,1,iF] = Grid.Faces[iF].P[4].x
+    F[4,2,iF] = Grid.Faces[iF].P[4].y
+    F[4,3,iF] = Grid.Faces[iF].P[4].z
+  end
+  copyto!(FGPU,F)
+  JacobiSphere2GPU!(X,dXdxI,J,CG,F,Rad)
+  M = MassCGGPU2(CG,J,Exchange,Global)
+
+  NFG = min(div(512,N*N),NF)
+  group = (N, N, NFG)
+  ndrange = (N, N, NF)
+  KHyperViscHeightKernel! = HyperViscHeightKernel!(backend,group)
+  SmoothType = "Hyper"
+  SmoothType = "Diff"
+  NumSmoothSteps = 120
+  FHeight = similar(Height)
+  Height1 = similar(Height)
+  if SmoothType == "Diff"
+    SmoothFac = 1.0e8
+    for i = 1 : NumSmoothSteps
+      @. FHeight = 0
+      KHyperViscHeightKernel!(FHeight,Height,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
+      KernelAbstractions.synchronize(backend)
+      Parallels.ExchangeData!(FHeight,Exchange)
+#     @. Height1 = Height + 0.5 * SmoothFac * FHeight
+#     @. FHeight = 0
+#     KHyperViscHeightKernel!(FHeight,Height1,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
+#     KernelAbstractions.synchronize(backend)
+#     Parallels.ExchangeData!(FHeight,Exchange)
+      @. Height += SmoothFac * FHeight
+    end
+    @. Height = max(Height,0)
+  elseif SmoothType == "Hyper"
+    SmoothFac=1.e16
+    FHeight1 = similar(Height)
+    Height1 = similar(Height)
+    for i = 1 : NumSmoothSteps
+      @. FHeight1 = 0
+      KHyperViscHeightKernel!(FHeight1,Height,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
+      KernelAbstractions.synchronize(backend)
+      Parallels.ExchangeData!(FHeight1,Exchange)
+      @. FHeight = 0
+      KHyperViscHeightKernel!(FHeight,FHeight1,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
+      KernelAbstractions.synchronize(backend)
+      Parallels.ExchangeData!(FHeight,Exchange)
+      @. Height1 = Height - 0.5 * SmoothFac * FHeight
+
+      @. FHeight1 = 0
+      KHyperViscHeightKernel!(FHeight1,Height1,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
+      KernelAbstractions.synchronize(backend)
+      Parallels.ExchangeData!(FHeight1,Exchange)
+      @. FHeight = 0
+      KHyperViscHeightKernel!(FHeight,FHeight1,CG.DS,CG.DW,dXdxI,J,M,CG.Glob,ndrange=ndrange) 
+      KernelAbstractions.synchronize(backend)
+      Parallels.ExchangeData!(FHeight,Exchange)
+      @. Height -= SmoothFac * FHeight
+      @show minimum(Height),maximum(Height)
+      @. Height = max(Height,0)
+    end
+  end    
+end
+
 function TopographySmoothing!(Height,GradDxH,GradDyH,CG,Exchange,Global)
  
   backend = get_backend(Height)
@@ -113,7 +200,7 @@ end
 
   HeightCol = @localmem eltype(Height) (N,N, ColumnTilesDim)
   if IF <= NF
-    HeightCol[I,J,iz] = AdaptGrid(z[Iz],Height[ind]) 
+    HeightCol[I,J,iz],_,_ = AdaptGrid(z[Iz],Height[ind]) 
   end
   @synchronize
 

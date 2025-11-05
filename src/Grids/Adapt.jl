@@ -15,7 +15,6 @@ end
 Base.@kwdef struct Sleve{T} <: AdaptGrid 
   etaH::T = .7
   s::T = 8/10
-
 end
 
 function (F::Sleve)(H)

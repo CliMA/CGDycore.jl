@@ -290,6 +290,7 @@ function Orography(backend,FT,FE,Exchange,Global,TopoProfile,type::Grids.Tri)
 end
 
 function Orography(backend,FT,CG,Exchange,Global)
+  @show "Orography"
   Grid = Global.Grid
   Proc = Global.ParallelCom.Proc
   OrdPoly = CG.OrdPoly
@@ -510,12 +511,12 @@ function Orography2(backend,FT,CG,Exchange,Global)
   RadEarth = Grid.Rad
   NF = Grid.NumFaces
   OP = OrdPoly + 1
-  HeightCG = zeros(Float64,OP,OP,NF)
+  HeightCG = zeros(FT,OP,OP,NF)
   (lonL, lonR, lat, zLevelL, zLevelR) = TopoDataETOPO(MinLonL,MaxLonL,MinLonR,MaxLonR,MinLat,MaxLat)
   start_Face = 1
-  Height = zeros(Float64,NumG)
+  Height = zeros(FT,NumG)
   HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
-  NumHeight = zeros(Float64,NumG)
+  NumHeight = zeros(FT,NumG)
   xe = CG.xe
   PointsTree = zeros(3,Grid.NumFaces)
   for iF = 1 : Grid.NumFaces
@@ -580,6 +581,15 @@ function Orography2(backend,FT,CG,Exchange,Global)
   @inbounds for iF = 1:NF
     @views ChangeBasisHeight!(HeightCG[:,:,iF],HeightCG[:,:,iF],CG)
   end
+  @inbounds for iF = 1:NF
+    @inbounds for jP=1:OP
+      @inbounds for iP=1:OP
+        iD = iP + (jP - 1) * OP
+        ind = Glob[iD,iF]
+        Height[ind] = HeightCG[iP,jP,iF] 
+      end
+    end
+  end
   
   copyto!(HeightGPU,Height)
   @show maximum(HeightGPU)
@@ -588,12 +598,13 @@ function Orography2(backend,FT,CG,Exchange,Global)
   @show maximum(HeightGPU)
   @show minimum(HeightGPU)
   copyto!(Height,HeightGPU)
+  HeightCG = zeros(FT,OP*OP,NF)
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         iD = iP + (jP - 1) * OP
         ind = Glob[iD,iF]
-        HeightCG[iP,jP,iF] = Height[ind]
+        HeightCG[iD,iF] = Height[ind]
       end
     end
   end
@@ -796,8 +807,8 @@ function Orography4(backend,FT,CG,Exchange,Global)
   earth_spline = linear_interpolation((lon, lat), esmth, extrapolation_bc = (Periodic(), Flat()),)
   PS = Point()
   xw = CG.xw
-  HeightCG = zeros(Float64,OP,OP,NF)
-  Height = zeros(Float64,NumG)
+  HeightCG = zeros(FT,OP,OP,NF)
+  Height = zeros(FT,NumG)
   HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
   for iF = 1 : Grid.NumFaces
     for j = 1 : OrdPoly + 1
@@ -813,20 +824,21 @@ function Orography4(backend,FT,CG,Exchange,Global)
 
   copyto!(HeightGPU,Height)
   nz = Grid.nz
-  GradDxH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
-  GradDyH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
-  TopographySmoothing!(HeightGPU,GradDxH,GradDyH,CG,Exchange,Global)
+# GradDxH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
+# GradDyH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
+  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
   copyto!(Height,HeightGPU)
+  HeightCG = zeros(FT,OP*OP,NF)
   @inbounds for iF = 1:NF
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         iD = iP + (jP - 1) * OP
         ind = Glob[iD,iF]
-        HeightCG[iP,jP,iF] = Height[ind]
+        HeightCG[iD,iF] = Height[ind]
       end
     end
   end
-  return HeightCG, GradDxH, GradDyH
+  return HeightCG
 end
 
 function BoundingBoxFace(Face,Grid)

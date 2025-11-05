@@ -16,6 +16,5 @@ include("vtkCG.jl")
 include("vtkCGGrid.jl")	
 include("vtkSphere.jl")
 include("vtkOutputKernel.jl")
-include("Trans.jl")
 
 end

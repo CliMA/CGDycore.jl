@@ -759,17 +759,12 @@ end
   ind = Glob[ID,IF]
   if Iz <= Nz
     DivRhoTr = D[I,1] * uCol[1,J,iz] * cCol[1,J,iz+1] + D[J,1] * vCol[I,1,iz] * cCol[I,1,iz+1]
-    DivTr1 = D[I,1] * cCol[1,J,iz+1] 
-    DivTr2 = D[J,1] * cCol[I,1,iz+1]
     DivRho = D[I,1] * uCol[1,J,iz] + D[J,1] * vCol[I,1,iz] 
     for k = 2 : N
       DivRhoTr += D[I,k] * uCol[k,J,iz] * cCol[k,J,iz+1] + D[J,k] * vCol[I,k,iz] * cCol[I,k,iz+1]
-      DivTr1 += D[I,k] * cCol[k,J,iz+1]
-      DivTr2 += D[J,k] * cCol[I,k,iz+1]
       DivRho += D[I,k] * uCol[k,J,iz] + D[J,k] * vCol[I,k,iz]
     end
-    @atomic :monotonic F[1,Iz,ind,5] += eltype(F)(0.5) * (DivRhoTr + uCol[I,J,iz] * DivTr1 + vCol[I,J,iz] * DivTr2 +
-      cCol[I,J,iz+1] * DivRho)/ MCCol[I,J,iz]
+    @atomic :monotonic F[1,Iz,ind,5] += DivRhoTr / MCCol[I,J,iz]
     @atomic :monotonic F[1,Iz,ind,1] += DivRho / MCCol[I,J,iz]
   end
 

@@ -997,8 +997,12 @@ function unstructured_vtkOrography(Height,vtkGrid, NF, FE,  part::Int, nparts::I
   FTB = eltype(Height)
   cCell = KernelAbstractions.zeros(backend,FTB,OrdPrint,OrdPrint,NF)
   #@views InterpolateFE!(HeightCell,Height,vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz)
+  @show maximum(Height)
+  @show minimum(Height)
   InterpolateCGDim2GPU!(cCell,reshape(Height,1,1,(OrdPoly+1)^2*NF),vtkInter,FE.Glob)
   copyto!(HeightCell,cCell)
+  @show maximum(HeightCell)
+  @show minimum(HeightCell)
   vtk["Height", VTKCellData()] = HeightCell
   outfiles=vtk_save(vtk)
   return outfiles::Vector{String}

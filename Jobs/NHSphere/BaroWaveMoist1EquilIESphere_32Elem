@@ -6,8 +6,8 @@ julia --project Examples/Driver.jl \
   --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumTr=2 \
-  --RhoVPos=6 \
-  --RhoCPos=7 \
+  --RhoTPos=6 \
+  --RhoRPos=7 \
   --Equation="CompressibleShallow" \
   --State="MoistInternalEnergy" \
   --Buoyancy=true \
@@ -20,7 +20,7 @@ julia --project Examples/Driver.jl \
   --SurfaceScheme="" \
   --Forcing=false \
   --Microphysics=true \
-  --TypeMicrophysics="SimpleMicrophysicsIE" \
+  --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
   --RelCloud=1.e-2 \
   --Upwind=true \
   --HorLimit=false \

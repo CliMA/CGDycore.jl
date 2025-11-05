@@ -106,6 +106,29 @@ end
   T = (RhoIE / Rho + Phys.Cpd * Phys.T0) / Phys.Cvd 
 end
 
+@inline function fTempIE(Rho,RhoIE,RhoV,RhoC,Phys;RhoR=eltype(Rho)(0))
+  #@inline function SpIntEnergyDry(T,Phys)
+  #  Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0 =
+  #    Phys.Cvd * T - Phys.Cpd * Phys.T0
+  #
+  # end
+  #@inline function SpIntEnergyVap(T,Phys)
+  #  Phys.Cvv * (T - Phys.T0) + Phys.L0V - Phys.Rv * Phys.T0 =
+  #    Phys.Cvv * T - Phys.Cpv * Phys.T0
+  #end
+  #@inline function SpIntEnergyLiq(T,Phys)
+  #  Phys.Cpl * (T - Phys.T0) =
+  #    Phys.Cpl * T - Phys.Cpl * Phys.T0
+  #end
+  #e = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) +
+  # RhoV * SpIntEnergyVap(T,Phys) +
+  # (RhoC + RhoR) * SpIntEnergyLiq(T,Phys)
+   t1 = ((Rho - RhoV - RhoC - RhoR) * Phys.Cpd + RhoV * Phys.Cpv + (RhoC + RhoR) * Phys.Cpl) * Phys.T0 - RhoV * Phys.L0V
+   t2 = (Rho - RhoV - RhoC - RhoR) * Phys.Cvd + RhoV * Phys.Cvv + (RhoC + RhoR) * Phys.Cpl
+   T = (RhoIE + t1) / t2
+  return T
+end
+
 @inline function LatHeatV(T,Phys)
   # Vaporization
   L = Phys.L0V + (Phys.Cpv - Phys.Cpl) * (T - Phys.T0)
@@ -207,6 +230,19 @@ end
 end
 
 @inline function InternalEnergyW(Rho,RhoV,RhoC,T,Phys;RhoR=eltype(Rho)(0))
+  #@inline function SpIntEnergyDry(T,Phys)
+  #  Phys.Cvd * (T - Phys.T0) - Phys.Rd * Phys.T0 =
+  #    Phys.Cvd * T - Phys.Cpd * Phys.T0
+  #    
+  # end
+  #@inline function SpIntEnergyVap(T,Phys)
+  #  Phys.Cvv * (T - Phys.T0) + Phys.L0V - Phys.Rv * Phys.T0 =
+  #    Phys.Cvv * T - Phys.Cpv * Phys.T0
+  #end  
+  #@inline function SpIntEnergyLiq(T,Phys)
+  #  Phys.Cpl * (T - Phys.T0) =
+  #    Phys.Cpl * T - Phys.Cpl * Phys.T0
+  #end  
   e = (Rho - RhoV -RhoC) * SpIntEnergyDry(T,Phys) + 
    RhoV * SpIntEnergyVap(T,Phys) + 
    (RhoC + RhoR) * SpIntEnergyLiq(T,Phys)   
