@@ -28,7 +28,7 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
     F[4,3,iF] = Grid.Faces[iF].P[4].z
   end
   copyto!(FGPU,F)
-  JacobiSphere2GPU!(X,dXdxI,J,CG,F,Rad)
+  JacobiSphere2GPU!(X,dXdxI,J,CG,FGPU,Rad)
   M = MassCGGPU2(CG,J,Exchange,Global)
 
   NFG = min(div(512,N*N),NF)

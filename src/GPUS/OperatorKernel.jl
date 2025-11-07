@@ -1258,7 +1258,7 @@ end
   NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    Force(view(F,1,Iz,IC,:),view(U,1,Iz,IC,:),p[Iz,IC],xS[2,IC])
+    Force(view(F,1,Iz,IC,:),view(U,1,Iz,IC,:),p[1,Iz,IC],xS[2,IC])
   end
 end  
 

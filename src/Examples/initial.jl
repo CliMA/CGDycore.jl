@@ -960,7 +960,8 @@ function (::HeldSuarezDryExample)(Param,Phys)
     #                 }
 
     uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
-    vS = 0
+    uS = FT(0)
+    vS = FT(0)
     w = FT(0)
 
     E = Phys.Cvd * Temperature + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z

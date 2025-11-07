@@ -792,6 +792,8 @@ function Orography4(backend,FT,CG,Exchange,Global)
   Proc = Global.ParallelCom.Proc
   OrdPoly = CG.OrdPoly
   Glob = CG.Glob
+  GlobCPU = zeros(Int,size(Glob))
+  copyto!(GlobCPU,Glob)
   NumG = CG.NumG
   RadEarth = Grid.Rad
   NF = Grid.NumFaces
@@ -806,7 +808,7 @@ function Orography4(backend,FT,CG,Exchange,Global)
   esmth = deepcopy(zlevels)
   earth_spline = linear_interpolation((lon, lat), esmth, extrapolation_bc = (Periodic(), Flat()),)
   PS = Point()
-  xw = CG.xw
+  xw = CG.xwCPU
   HeightCG = zeros(FT,OP,OP,NF)
   Height = zeros(FT,NumG)
   HeightGPU = KernelAbstractions.zeros(backend,FT,NumG)
@@ -816,7 +818,7 @@ function Orography4(backend,FT,CG,Exchange,Global)
         TransSphereS!(PS,xw[i],xw[j],Grid.Faces[iF],RadEarth)
         (lonLoc, latLoc) = cart2sphereDeg(PS.x,PS.y,PS.z)
         iD = i + (j - 1) * (OrdPoly + 1)
-        ind = Glob[iD,iF]
+        ind = GlobCPU[iD,iF]
         Height[ind] = max(earth_spline(lonLoc,latLoc), 0.0)
       end
     end
@@ -833,12 +835,14 @@ function Orography4(backend,FT,CG,Exchange,Global)
     @inbounds for jP=1:OP
       @inbounds for iP=1:OP
         iD = iP + (jP - 1) * OP
-        ind = Glob[iD,iF]
+        ind = GlobCPU[iD,iF]
         HeightCG[iD,iF] = Height[ind]
       end
     end
   end
-  return HeightCG
+  HeightCGGPU = KernelAbstractions.zeros(backend,FT,size(HeightCG))
+  copyto!(HeightCGGPU,HeightCG)
+  return HeightCGGPU
 end
 
 function BoundingBoxFace(Face,Grid)
