@@ -1107,7 +1107,7 @@ function ExchangeData3DRecvSetGPU!(U,Exchange)
   backend = get_backend(U)
   FT = eltype(U)
 
-  M = size(U,2)
+  M = size(U,1)
   Nz = size(U,2)
   nT = size(U,4)
   IndRecvBuffer = Exchange.IndRecvBuffer
