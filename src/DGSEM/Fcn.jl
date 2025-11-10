@@ -480,8 +480,10 @@ function FcnGPUSplitSlow!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,G
 end
 
 
-function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::Grids.Tri)
+function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,::Grids.Tri)
   backend = get_backend(F)
+  Grid = Global.Grid
+  Model = Global.Model
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
   FT = eltype(F)
@@ -495,6 +497,8 @@ function FcnGPUSplit!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Globa
   Proc = Global.ParallelCom.Proc
   NV = Model.NumV
   NAUX = Model.NumAux
+  CacheU = Cache.U
+  CacheS = Cache.S
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
   @views p = Aux[:,:,1:DG.NumI,1]

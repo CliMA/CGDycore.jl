@@ -282,7 +282,7 @@ if GridForm == "Cartesian"
               )
   Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;
     Discretization=Discretization,GridType=GridType,ChangeOrient=2)
-  Trans = Outputs.TransCartX!
+  Trans = Grids.TransCartX!
 else  
   if RadEarth == 0.0
     RadEarth = Phys.RadEarth
@@ -293,7 +293,7 @@ else
   Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
     GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization,ChangeOrient=2)
   Topography = (TopoS=TopoS,H=H,Rad=RadEarth)
-  Trans = Outputs.TransSphereX!
+  Trans = Grids.TransSphereX!
 end  
 
 
