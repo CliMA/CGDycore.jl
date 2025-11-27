@@ -243,7 +243,7 @@ function (::KennedyGruberExPGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
   return FluxNonLinAver!
 end
 
-
+# Test
 Base.@kwdef struct ArtianoExner <: AverageFlux end
 
 function (::ArtianoExner)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
