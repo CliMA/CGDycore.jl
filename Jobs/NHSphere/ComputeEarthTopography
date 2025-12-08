@@ -1,0 +1,10 @@
+#!/bin/bash
+julia --project Examples/CreateOrography.jl \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=256 \
+  --NumberThreadTriGPU=32 \
+  --TopoS="EarthOrography" \
+  --Stretch=true \
+  --GridType="CubedSphere" \
+  --nPanel=32 \
+  --OrdPoly=3 

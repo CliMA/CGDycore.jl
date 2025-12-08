@@ -1,0 +1,19 @@
+#!/bin/bash
+julia --project Examples/FV/ShallowWater.jl \
+  --Problem="GalewskySphere" \
+  --FloatTypeBackend="Float64" \
+  --GridForm="Spherical" \
+  --GridType="CubedSphere" \
+  --nPanel=90 \
+  --Flat=false \
+  --OrderFEM=1 \
+  --SimTime=0 \
+  --SimDays=6 \
+  --SimHours=0 \
+  --SimMinutes=0 \
+  --PrintHours=1 \
+  --PrintMinutes=0 \
+  --PrintSeconds=0 \
+  --vtkFileName="Galewsky/ConsQuad" \
+  --RefineOutput=1 \
+  --PrintTime=0
