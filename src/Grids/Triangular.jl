@@ -592,8 +592,11 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   AdaptGrid = ""
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
 
   return GridStruct{FT,
+                    typeof(EF),
                     typeof(z)}(
     nz,
     zP,
@@ -619,6 +622,8 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
     nBar3,
     nBar,
     AdaptGrid,
+    EF,
+    FE,
     )
 
 end

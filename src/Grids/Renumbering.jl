@@ -21,7 +21,7 @@ function PosEdgeInFace!(Edge,Edges,Faces)
   for i = 1:size(Edge.F,1)
     iF = Edge.F[i]
     if iF > 0
-      for iE = 1 : 4
+      for iE = 1 : size(Faces[iF].E,1)
         if Edge.EI == Edges[Faces[iF].E[iE]].EI
           Edge.FE[i] = iE
           break

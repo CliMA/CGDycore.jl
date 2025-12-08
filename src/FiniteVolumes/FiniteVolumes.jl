@@ -19,12 +19,13 @@ using LinearAlgebra
 
 mutable struct MetricFiniteVolume{FT<:AbstractFloat,
                         AT1<:AbstractArray, 
-                        AT2<:AbstractArray} 
+                        AT2<:AbstractArray, 
+                        AT3<:AbstractArray} 
   PrimalVolume::AT1
   DualVolume::AT1
   PrimalEdge::AT1
   DualEdge::AT1
-  DualEdgeVolume::AT2                      
+  DualEdgeVolume::AT3                      
   PrimalNormal::AT2
 end
 
@@ -38,6 +39,7 @@ mutable struct CacheFV
   Div
   Curl
   Tang
+  TangV::Array{Float64, 2}
 end
 
 include("Divergence.jl")

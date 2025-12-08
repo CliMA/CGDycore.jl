@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project --check-bounds=yes Examples/DriverDG.jl \
+julia --project Examples/DriverDG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \

@@ -160,31 +160,34 @@ dz = zeros(nz,NumG)
 @. p = 1
 #thetaS = FTB(295)
 
-SurfaceData = Surfaces.SurfaceData{FTB}(backend,Surfaces.LenSurfaceData,NumG)
+SurfaceData = Surfaces.SurfaceData{FTB}(backend,NumG)
 LandUseData = Surfaces.LandUseData{FTB}(backend,NumG)
-@. LandUseData.LandClass[1:5] = 1
-@. LandUseData.LandClass[6:end] = 2
+
 
 for iG = 1 : NumG
   a = rand(1)  
-  SurfaceData.Data[Surfaces.TSurfPos,iG] = 300.0 + a[1]
+  SurfaceData.Data[Surfaces.TSurfPos,iG] = 300.0 #+ a[1]
 end  
 
+@show size(LandUseData.z0M)
+@show size(LandUseData.z0H)
 SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,RhoPos,uPos,
-      vPos,wPos,ThPos,LandUseData)
+      vPos,wPos,ThPos,LandUseData.z0M,LandUseData.z0H)
 
 
-LandClass = LandUseData.LandClass
+LandClass = 1
 NumG = size(U,2)
 groupS = (1)
 ndrangeS = (NumG)
 KSurfaceFluxDataKernel! = Surfaces.SurfaceFluxDataKernel!(backend,groupS)
 KSurfaceFluxDataKernel!(SurfaceFluxValues,SurfaceData.Data,U,p,dz,nS,
     LandClass,ndrange=ndrangeS)
-@. U[:,:,5] = theta + 0.05
+@. U[:,:,5] = theta + 0.0005
 @show "Second "
 KSurfaceFluxDataKernel!(SurfaceFluxValues,SurfaceData.Data,U,p,dz,nS,
     LandClass,ndrange=ndrangeS)
+@show SurfaceData.Data[Surfaces.TSurfPos,1]
+@show SurfaceData.Data[Surfaces.zetaPos,1]
 stop
 
 #SurfaceData = Surfaces.MOSurface()(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos)

@@ -258,7 +258,7 @@ function LocalInterpolation1!(ILoc,Face,Grid)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  FEMSei.Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Face,Grid)
+  FEM.Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Face,Grid)
   eInv = 2.0 * J / (Grids.SizeGreatCircle(P1,P2) * Grid.Rad)
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
@@ -278,7 +278,7 @@ function LocalInterpolation1!(ILoc,Face,Grid)
   n[2] = 1.0
   P1 = Grid.Nodes[Face.N[3]].P
   P2 = Grid.Nodes[Face.N[4]].P
-  FEMSei.Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Face,Grid)
+  FEM.Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Face,Grid)
   eInv = 2.0 * J / (Grids.SizeGreatCircle(P1,P2) * Grid.Rad)
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
@@ -328,7 +328,7 @@ function LocalInterpolationGrad!(ILoc,P1,P2,P3,P4,Rad)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
+  FEM.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
 
   eInv = 1 / norm(pinvDF * n) 
   grad[1] = gradphi1x(ksi1,ksi2) 
@@ -347,7 +347,7 @@ function LocalInterpolationGrad!(ILoc,P1,P2,P3,P4,Rad)
   ksi2 = 1.0
   n[1] = 0.0
   n[2] = 1.0
-  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
+  FEM.Jacobi!(DF,detDF,pinvDF,X,Grids.Quad(),ksi1,ksi2,P1,P2,P3,P4,Rad)
   eInv = 1 / norm(pinvDF * n) 
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
@@ -394,7 +394,7 @@ function LocalInterpolationGradTri!(ILoc,P1,P2,P3,n1,n2,Rad)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+  FEM.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
 
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
@@ -409,7 +409,7 @@ function LocalInterpolationGradTri!(ILoc,P1,P2,P3,n1,n2,Rad)
   ksi2 = 1.0
   n[1] = 1.0
   n[2] = 0.0
-  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+  FEM.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 
   ILoc[3,1] = -n2' * (pinvDF * grad)
@@ -451,7 +451,7 @@ function LocalInterpolationGradTriOld!(ILoc,P1,P2,P3,Rad)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
-  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+  FEM.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
 
   eInv = 1 / norm(pinvDF * n) 
   grad[1] = gradphi1x(ksi1,ksi2) 
@@ -467,7 +467,7 @@ function LocalInterpolationGradTriOld!(ILoc,P1,P2,P3,Rad)
   ksi2 = 1.0
   n[1] = 0.0
   n[2] = 1.0
-  FEMSei.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
+  FEM.Jacobi!(DF,detDF,pinvDF,X,Grids.Tri(),ksi1,ksi2,P1,P2,P3,Rad)
   eInv = 1 / norm(pinvDF * n) 
   grad[1] = gradphi1x(ksi1,ksi2) 
   grad[2] = gradphi1y(ksi1,ksi2) 

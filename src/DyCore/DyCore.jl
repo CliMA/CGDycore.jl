@@ -15,6 +15,8 @@ using SparseArrays
 using ArgParse
 using UnPack
 using StaticArrays
+using NetCDF
+using NCDatasets
 using Statistics
 using StrideArraysCore: @gc_preserve, StrideArray, StaticInt
 using KernelAbstractions

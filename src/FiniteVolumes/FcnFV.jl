@@ -3,10 +3,14 @@ function CacheFV(backend,FTB,MetricFV,Grid)
   TangUu = zeros(FTB,Grid.NumEdges)
   hE = zeros(FTB,Grid.NumEdges)
   K = zeros(FTB,Grid.NumFaces)
-  Grad,Inter = GradMPFATri(backend,FTB,Grid)
+  #Grad,Inter = GradMPFATri(backend,FTB,Grid)
+  Grad,Inter = GradMPFA(backend,FTB,Grid)
   Div = DivMPFA(backend,FTB,MetricFV,Grid)
   Curl = CurlNodeMatrix(MetricFV,Grid)
-  Tang = TagentialVelocity2Matrix(MetricFV,Grid)
+# Tang = TagentialVelocity2Matrix(MetricFV,Grid)
+# Tang = TagentialVelocityMatrix(MetricFV,Grid)
+  Tang = TagentialVelocityMatrix3(MetricFV,Grid)
+  TangN = TagentialNode(MetricFV,Grid)
   return CacheFV(
   CurlUu,
   TangUu,
@@ -17,8 +21,43 @@ function CacheFV(backend,FTB,MetricFV,Grid)
   Div,
   Curl,
   Tang,
+  TangN,
     )
 end  
+
+function FcnFVLin!(F,U,MetricFV,Grid,Cache,Phys)
+
+  pPosS = 1
+  pPosEI = Grid.NumFaces
+  pPosE = Grid.NumFaces + Grid.NumFacesG
+  uPosS = pPosE + 1
+  uPosE = pPosE + Grid.NumEdges
+  @views rp = F[pPosS:pPosE]
+  @views rpI = F[pPosS:pPosEI]
+  @views ru = F[uPosS:uPosE]
+  @views Up = U[pPosS:pPosE]
+  @views UpI = U[pPosS:pPosEI]
+  @views Uu = U[uPosS:uPosE]
+  TangUu = Cache.TangUu
+
+  Grad = Cache.Grad
+  Div = Cache.Div
+  Tang = Cache.Tang
+
+  mul!(ru,Grad,UpI)
+  mul!(TangUu,Tang,Uu)
+  @inbounds for iE = 1 : Grid.NumEdges
+    iN1 = Grid.Edges[iE].N[1]
+    iN2 = Grid.Edges[iE].N[2]
+    x = Grid.Edges[iE].Mid.x
+    y = Grid.Edges[iE].Mid.y
+    z = Grid.Edges[iE].Mid.z
+    sinlat = z / sqrt(x^2 + y^2 + z^2)
+    ru[iE] = -TangUu[iE] * (2 * Phys.Omega * sinlat) - ru[iE]
+  end
+  mul!(rpI,Div,Uu)
+  @. rpI *= -1.0
+end
 
 function FcnFV!(F,U,MetricFV,Grid,Cache,Phys)
 
@@ -35,7 +74,7 @@ function FcnFV!(F,U,MetricFV,Grid,Cache,Phys)
   @views Uu = U[uPosS:uPosE]
 
   CurlUu = Cache.CurlUu
-  @views TangUu = Cache.TangUu
+  TangUu = Cache.TangUu
   hE = Cache.hE
   grad = Cache.hE
   K = Cache.K
@@ -59,12 +98,13 @@ function FcnFV!(F,U,MetricFV,Grid,Cache,Phys)
     sinlat = z / sqrt(x^2 + y^2 + z^2)
     CurlEdge = (CurlUu[iN1] * MetricFV.DualVolume[iN1] + CurlUu[iN2] * MetricFV.DualVolume[iN2]) / 
       (MetricFV.DualVolume[iN1] + MetricFV.DualVolume[iN2])  
-    ru[iE] = -TangUu[iE] * (CurlEdge + 2 * Phys.Omega * sinlat) - grad[iE]
+    ru[iE] = -TangUu[iE] * (CurlEdge + 2 * Phys.Omega * sinlat) - 0.5 * grad[iE]
   end
   mul!(hE,Inter,Up)
   @. hE *= Uu
   mul!(rpI,Div,hE)
 end
+
 function FcnFV1!(F,U,MetricFV,Grid,Cache,Phys)
 
   pPosS = 1

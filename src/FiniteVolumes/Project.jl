@@ -46,6 +46,21 @@ function ProjectEdge!(backend,FTB,u,Grid,F)
   end
 end
 
+function ProjectDualEdge!(backend,FTB,u,Grid,F)
+  x = zeros(3)
+  n = zeros(3)
+  VelSp = zeros(3)
+  for iE = 1 : Grid.NumEdges
+    x[1] = Grid.Edges[iE].Mid.x
+    x[2] = Grid.Edges[iE].Mid.y
+    x[3] = Grid.Edges[iE].Mid.z
+    _,VelSp[1],VelSp[2],VelSp[3], = F(x,0.0)
+    lon,lat,r = Grids.cart2sphere(x[1],x[2],x[3])
+    VelCa = VelSphere2Cart(VelSp,lon,lat)
+    u[iE] = Grid.Edges[iE].t.x * VelCa[1] + Grid.Edges[iE].t.y * VelCa[2] + Grid.Edges[iE].t.z * VelCa[3]
+  end
+end
+
 function ConvertVelocityCart!(backend,FTB,VelCa,Vel,Grid)
   for iF = 1 : Grid.NumFaces
     N = zeros(length(Grid.Faces[iF].E)+1,3)  

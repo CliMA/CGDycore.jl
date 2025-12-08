@@ -201,7 +201,30 @@ function CurlNodeMatrix(Metric,Grid)
   M = sparse(RowInd, ColInd, Val)
 end
 
-function TagentialVelocity(uT,uN,Metric,Grid)
+function TangentialVelocity(uT,uN,Metric,Grid)
+
+  @. uT = 0
+  for iN = 1 : Grid.NumNodes
+    for iE in Grid.Nodes[iN].E  
+      @show dyad(Grid.Edges[iE].n)  
+      if Grid.Edges[iE].N[1] == iN  
+        for jE in Grid.Nodes[iN].E  
+          uT[1,iE] += uN[jE] * (Metric.DualEdgeVolume[1,1,jE] + Metric.DualEdgeVolume[1,2,jE]) *
+            dot(Grid.Edges[iE].t,Grid.Edges[jE].n) /
+            Metric.DualVolume[iN]
+        end
+      else
+        for jE in Grid.Nodes[iN].E  
+          uT[2,iE] += uN[jE] * (Metric.DualEdgeVolume[2,1,jE] + Metric.DualEdgeVolume[2,2,jE]) *
+            dot(Grid.Edges[iE].t,Grid.Edges[jE].n) /
+            Metric.DualVolume[iN]
+        end
+      end    
+    end
+  end
+end  
+
+function TangentialVelocity3(uT,uN,Metric,Grid)
 
 # u = unL * nL + unR * nR
 # (u,tL) = utR * (tL,nR)
@@ -230,8 +253,8 @@ function TagentialVelocity(uT,uN,Metric,Grid)
       tR = Grid.Edges[iER].t
       uuR = uN[iER]
 
-      uTR = uuR / dot(nR,tL) * dot(tL,tR) + uuL / dot(nL,tR) * dot(tR,tR)  
-      uTL = uuR / dot(nR,tL) * dot(tL,tL) + uuL / dot(nL,tR) * dot(tR,tL)  
+      uTR = uuL / dot(nL,tR) 
+      uTL = uuR / dot(nR,tL) 
 
       uT[iER] += 0.25 * uTR
       uT[iEL] += 0.25 * uTL
@@ -239,7 +262,7 @@ function TagentialVelocity(uT,uN,Metric,Grid)
   end
 end
 
-function TagentialVelocity2(uT,uN,Metric,Grid)
+function TangentialVelocity2(uT,uN,Metric,Grid)
 
 
   FT = eltype(Metric.DualVolume)
@@ -267,7 +290,7 @@ function TagentialVelocity2(uT,uN,Metric,Grid)
   end    
 end
 
-function TagentialVelocity1(uT,uN,Metric,Grid)
+function TangentialVelocity1(uT,uN,Metric,Grid)
 
 # u = unL * nL + unR * nR
 # (u,tL) = utR * (tL,nR)
@@ -325,7 +348,7 @@ function TagentialVelocity1(uT,uN,Metric,Grid)
   @. @views uT /= (Metric.DualEdgeVolume[1,:] + Metric.DualEdgeVolume[2,:])
 end
 
-function TagentialVelocityMatrix(Metric,Grid)
+function TangentialVelocityMatrix(Metric,Grid)
 
 # u = utL * tL + utR * tR
 # (u,nL) = utR * (tR,nL)
@@ -354,11 +377,11 @@ function TagentialVelocityMatrix(Metric,Grid)
       nR = Grid.Edges[iER].n
       tR = Grid.Edges[iER].t
 
-      utL = 1.0 / dot(nR,tL)
+      utL = 1.0 / dot(nR,tL) 
       utR = 1.0 / dot(nL,tR)
 
-#     uTR = uuR / dot(nR,tL) * dot(tL,tR) + uuL / dot(nL,tR) * dot(tR,tR)  
-#     uTL = uuR / dot(nR,tL) * dot(tL,tL) + uuL / dot(nL,tR) * dot(tR,tL)  
+#     uTR = uuL / dot(nL,tR) 
+#     uTL = uuR / dot(nR,tL) 
 
 #     uI[iER] += 0.25 * utR
 #     uI[iEL] += 0.25 * utL
@@ -366,15 +389,7 @@ function TagentialVelocityMatrix(Metric,Grid)
       push!(ColInd,iEL)
       temp = 0.25 / dot(nL,tR) 
       push!(Val,temp)
-      push!(RowInd,iER)
-      push!(ColInd,iER)
-      temp = 0.25 * dot(tL,tR) / dot(nR,tL) 
-      push!(Val,temp)
 
-      push!(RowInd,iEL)
-      push!(ColInd,iEL)
-      temp = 0.25 * dot(tR,tL) / dot(nL,tR)
-      push!(Val,temp)
       push!(RowInd,iEL)
       push!(ColInd,iER)
       temp = 0.25 / dot(nR,tL)
@@ -385,7 +400,71 @@ function TagentialVelocityMatrix(Metric,Grid)
   sparse(RowInd, ColInd, Val)
 end
 
-function TagentialVelocity2Matrix(Metric,Grid)
+function TangentialNode(Metric,Grid)
+
+  FT = eltype(Metric.DualVolume)
+  TangN = zeros(FT,8,8,Grid.NumNodes)
+  for iN = 1 : Grid.NumNodes
+    for i = 1 : length(Grid.Nodes[iN].E)
+      iE = Grid.Nodes[iN].E[i]
+      if i == 1
+        iEP = Grid.Nodes[iN].E[length(Grid.Nodes[iN].E)] 
+      else
+        iEP = Grid.Nodes[iN].E[i-1]
+      end  
+      t1 = dot(Grid.Edges[iE].n,Grid.Edges[iEP].t)
+      t2 = dot(Grid.Edges[iEP].n,Grid.Edges[iE].t)
+      if length(Grid.Nodes[iN].E) == 3
+      @show iN,Grid.Nodes[iN].E  
+      @show i,iE,iEP  
+      @show t1,t2
+      end
+    end  
+  end    
+end
+
+function TangentialVelocityMatrix3(Metric,Grid)
+
+# u = utL * tL + utR * tR
+# (u,nL) = utR * (tR,nL)
+# utR = unL / (tR,nL)
+# (u,nR) = utL * (tL,nR)
+# utL = unR / (tL,nR)
+
+  FT = eltype(Metric.DualVolume)
+  t = zeros(FT,3)
+  RowInd = Int64[]
+  ColInd = Int64[]
+  Val = FT[]
+
+  for iF = 1 : Grid.NumFaces
+    for iE in Grid.Faces[iF].E
+      t = Grid.Edges[iE].t
+      for jE in Grid.Faces[iF].E  
+        if iE != jE
+          n = Grid.Edges[jE].n
+          if Grid.Edges[jE].F[1] == iF  
+            temp = Metric.DualEdgeVolume[1,jE] * dot(t,n) / Metric.PrimalVolume[iF]
+          else
+            temp = Metric.DualEdgeVolume[2,jE] * dot(t,n) / Metric.PrimalVolume[iF]
+          end  
+          if Grid.Edges[iE].F[1] == iF 
+            temp = temp * Metric.DualEdgeVolume[1,iE]  
+          else
+            temp = temp * Metric.DualEdgeVolume[2,iE]  
+          end  
+          temp = temp / (Metric.DualEdgeVolume[1,iE] + Metric.DualEdgeVolume[2,iE])
+          push!(RowInd,iE)
+          push!(ColInd,jE)
+          push!(Val,temp)
+        end    
+      end
+    end
+  end
+  sparse(RowInd, ColInd, Val)
+end
+
+function TangentialVelocity2Matrix(Metric,Grid)
 
 
   FT = eltype(Metric.DualVolume)
@@ -394,6 +473,7 @@ function TagentialVelocity2Matrix(Metric,Grid)
   RowInd = Int64[]
   ColInd = Int64[]
   Val = FT[]
+  @show "TangentialVelocity2Matrix"
   for iF = 1 : Grid.NumFaces
     uN = zeros(length(Grid.Faces[iF].E))  
     for iE in Grid.Faces[iF].E
@@ -412,8 +492,8 @@ function TagentialVelocity2Matrix(Metric,Grid)
           end
         end
         u /= Metric.PrimalVolume[iF]
-        k = Mid / norm(Mid)
-        u = u - dot(u,k) * k
+        kN = Mid / norm(Mid)
+        u = u - dot(u,kN) * kN
         uTE = 0.5 * dot(Grid.Edges[iE].t,u)
         push!(RowInd,iE)
         push!(ColInd,kE)
@@ -422,4 +502,20 @@ function TagentialVelocity2Matrix(Metric,Grid)
     end
   end
   sparse(RowInd, ColInd, Val)
+end
+
+function dyad(n)
+  a=zeros(3,3)
+  a[1,1] = n.x * n.x   
+  a[1,2] = n.x * n.y   
+  a[1,3] = n.x * n.z   
+  a[2,1] = n.y * n.x   
+  a[2,2] = n.y * n.y   
+  a[2,3] = n.y * n.z   
+  a[3,1] = n.z * n.x   
+  a[3,2] = n.z * n.y   
+  a[3,3] = n.z * n.z   
+
+  return a 
+  
 end
