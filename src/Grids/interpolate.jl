@@ -39,7 +39,7 @@ function interpolate(SrcGrid,DestGrid)
     end
     FaceSource = unique(FaceSource)
     for iFS in FaceSource
-      areaLoc = Grids.intersect(DestGrid.Faces[iFD],DestGrid,SrcGrid.Faces[iFS],SrcGrid,2.0*EPS)
+      areaLoc = Grids.intersectFace(DestGrid.Faces[iFD],DestGrid,SrcGrid.Faces[iFS],SrcGrid,2.0*EPS)
       push!(Val,areaLoc/areaDest)
       push!(RowInd,iFD)
       push!(ColInd,iFS)

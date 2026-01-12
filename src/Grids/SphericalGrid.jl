@@ -143,7 +143,11 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
   NumEdgesG = 0
   NumNodesG = 0
   AdaptGrid = ""
+  AdaptGrid = ""
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
   return GridStruct{FT,
+                    typeof(EF),
                     typeof(z)}(
     nz,
     zP,
@@ -169,6 +173,8 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
     nBar3,
     nBar,
     AdaptGrid,
+    EF,
+    FE,
     )
 
 end

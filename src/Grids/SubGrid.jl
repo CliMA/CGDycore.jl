@@ -296,7 +296,8 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
   for iE = 1 : length(Edges)
     PosEdgeInFace!(Edges[iE],Edges,Faces)
   end
-  EdgesInNodes!(Nodes,Edges,Faces)
+  @show NumNodes,NumNodesB,NumNodesG
+  @views EdgesInNodes!(Nodes[1:NumNodes],Edges,Faces)
  
 
   H = GlobalGrid.H

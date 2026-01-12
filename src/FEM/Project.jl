@@ -979,3 +979,63 @@ function ProjectHDivScalarHDiv(backend,FTB,u,uFe::HDivElement,h,hFe::ScalarEleme
   u .= M \ Rhs
 end
 
+function KineticEnergy!(backend,FTB,Kin,FeT::ScalarElement,u,uFeF::HDivElement,
+  Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
+
+  NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
+  uFRef  = zeros(uFeF.Comp,uFeF.DoF,NumQuad)
+  KinTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
+
+
+  @show "KineticEnergy"
+
+  @. Kin = 0
+  @inbounds for iQ = 1 : NumQuad
+    @inbounds for iComp = 1 : FeT.Comp
+      @inbounds for iD = 1 : FeT.DoF
+        KinTRef[iComp,iD,iQ] = FeT.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+    @inbounds for iComp = 1 : uFeF.Comp
+      @inbounds for iD = 1 : uFeF.DoF
+        uFRef[iComp,iD,iQ] = uFeF.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
+      end
+    end
+  end
+  KinLoc = zeros(FeT.DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  uLoc = zeros(uFeF.DoF)
+
+  @inbounds for iF = 1 : Grid.NumFaces
+    KinLoc .= 0
+    @inbounds for iDoF = 1 : uFeF.DoF
+      ind = uFeF.Glob[iDoF,iF]  
+      uLoc[iDoF] = u[ind]
+    end  
+    @inbounds for iQ = 1 : NumQuad
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
+      detDFLoc = detDF[1]
+      u1 = 0.0
+      u2 = 0.0
+      @inbounds for iDoF = 1 : uFeF.DoF
+        u1 += uFRef[1,iDoF,iQ] * uLoc[iDoF]
+        u2 += uFRef[2,iDoF,iQ] * uLoc[iDoF]
+      end  
+      uLoc1 = 1 / detDFLoc * (DF[1,1] * u1 + DF[1,2] * u2)
+      uLoc2 = 1 / detDFLoc * (DF[2,1] * u1 + DF[2,2] * u2)
+      uLoc3 = 1 / detDFLoc * (DF[3,1] * u1 + DF[3,2] * u2)
+      temp = 0.5 * (uLoc1 * uLoc1 + uLoc2 * uLoc2 + uLoc3 * uLoc3)
+      @inbounds for iDoF = 1 : FeT.DoF
+        KinLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[iQ] * KinTRef[1,iDoF,iQ] * temp * detDFLoc
+      end  
+    end
+    @inbounds for iDoF = 1 : FeT.DoF
+      ind = FeT.Glob[iDoF,iF]  
+      Kin[ind] += KinLoc[iDoF]
+    end  
+  end
+  ldiv!(FeT.LUM,Kin)
+end

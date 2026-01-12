@@ -40,15 +40,15 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
     N2 = Grid.NumNodes + iE
     Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"E1",EdgeNumber)
     EdgeNumber += 1
-    N1 = Grid.NumNodes + iE
-    N2 = Grid.Edges[iE].N[2]  
+    N1 = Grid.Edges[iE].N[2]  
+    N2 = Grid.NumNodes + iE
     Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"E2",EdgeNumber)
     EdgeNumber += 1
   end  
   for iF = 1 : Grid.NumFaces
     for i = 1 : length(Grid.Faces[iF].E)  
-      N1 = Grid.NumNodes + Grid.NumEdges + iF
-      N2 = Grid.NumNodes + Grid.Faces[iF].E[i]
+      N1 = Grid.NumNodes + Grid.Faces[iF].E[i]
+      N2 = Grid.NumNodes + Grid.NumEdges + iF
       Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"EM",EdgeNumber)
       EdgeNumber += 1
     end
@@ -64,33 +64,33 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
   end
   ie1 = 1
   FaceNumber = 1
+  NumFaces = 0
   for iF = 1 : Grid.NumFaces
-    for i = 1 : length(Grid.Faces[iF].E)  
-       E4 = ie1 + 2 * Grid.NumEdges 
-       if i == 1
-         E1 = ie1 + 2 * Grid.NumEdges + length(Grid.Faces[iF].N) - 1
-         if Grid.Faces[iF].OrientE[end] * Grid.Faces[iF].Orientation == 1
-           E2 = 2 * Grid.Faces[iF].E[end] 
-         else
-           E2 = 2 * Grid.Faces[iF].E[end] - 1  
-         end  
-       else
-         E1 = E4 - 1
-         if Grid.Faces[iF].OrientE[i-1] * Grid.Faces[iF].Orientation == 1
-           E2 = 2 * Grid.Faces[iF].E[i-1] 
-         else
-           E2 = 2 * Grid.Faces[iF].E[i-1] - 1 
-         end  
-       end
-       if Grid.Faces[iF].OrientE[i] * Grid.Faces[iF].Orientation == 1
-         E3 = 2 * Grid.Faces[iF].E[i] - 1
-       else  
-         E3 = 2 * Grid.Faces[iF].E[i]
-       end  
-       (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,"Quad",OrientFace;P=zeros(Float64,0,0))
-       FaceNumber += 1
-       ie1 += 1
+    for i = 1 : length(Grid.Faces[iF].N)  
+      E2 = 2 * Grid.NumEdges + NumFaces + i
+      iN = Grid.Faces[iF].N[i]  
+      iEP = Grid.Faces[iF].E[i]
+      if i == 1 
+        E3 = 2 * Grid.NumEdges + NumFaces + length(Grid.Faces[iF].E)    
+        iEM = Grid.Faces[iF].E[length(Grid.Faces[iF].N)]  
+      else
+        iEM = Grid.Faces[iF].E[i-1] 
+        E3 = 2 * Grid.NumEdges + NumFaces + i - 1    
+      end  
+      if iN == Grid.Edges[iEP].N[1]
+        E1 = 2 * iEP - 1
+      else  
+        E1 = 2 * iEP
+      end  
+      if iN == Grid.Edges[iEM].N[1]
+        E4 = 2 * iEM - 1
+      else  
+        E4 = 2 * iEM
+      end  
+      (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,"Quad",OrientFace;P=zeros(Float64,0,0))
+      FaceNumber += 1
     end
+    NumFaces += length(Grid.Faces[iF].E)
   end  
 
 # Orientation!(Edges,Faces)
@@ -110,7 +110,10 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
   NumEdgesG = 0
   NumFacesB = 0
   NumFacesG = 0
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
   return GridStruct{FT,
+                    typeof(EF),
                     typeof(z)}(
     Grid.nz,
     Grid.zP,
@@ -136,6 +139,8 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
     Grid.nBar3,
     Grid.nBar,
     Grid.AdaptGrid,
+    EF,
+    FE,
     )
 end
 

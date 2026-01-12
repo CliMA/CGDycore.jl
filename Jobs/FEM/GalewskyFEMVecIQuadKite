@@ -1,0 +1,21 @@
+#!/bin/bash
+julia --project Examples/FEM/VecINonLinShallowKite.jl \
+  --Problem="GalewskySphere" \
+  --FloatTypeBackend="Float64" \
+  --GridForm="Spherical" \
+  --GridType="DelaunaySphere" \
+  --RefineLevel=6 \
+  --nPanel=100 \
+  --Flat=false \
+  --OrderFEM=1 \
+  --SimTime=0 \
+  --SimDays=1 \
+  --SimHours=0 \
+  --SimMinutes=0 \
+  --SimSeconds=0 \
+  --PrintHours=0 \
+  --PrintMinutes=0 \
+  --PrintSeconds=10 \
+  --vtkFileName="Galewsky/VecIQuad" \
+  --RefineOutput=1 \
+  --PrintTime=0 \

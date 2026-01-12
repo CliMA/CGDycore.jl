@@ -37,7 +37,8 @@ function InterpolateKE!(k,FE::DGStruct,u,uFE::HDivConfElement,Jacobi,Grid,ElemTy
   end
 end
 
-function InterpolateDG!(u,FE::DGStruct,Jacobi,Grid,ElemType,F)
+#function InterpolateDG!(u,FE::DGStruct,Jacobi,Grid,ElemType,F)
+function InterpolateDG!(u,FE,Jacobi,Grid,ElemType,F)
   DF = zeros(3,2)
   detDF = zeros(1)
   pinvDF = zeros(3,2)

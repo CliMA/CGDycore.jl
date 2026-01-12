@@ -594,6 +594,7 @@ function (profile::GalewskyExample)(Param,Phys)
     else
       u=Param.uM/Param.eN*exp(FT(1.0)/((lat-Param.lat0G)*(lat-Param.lat1G)))
     end
+#   u = Param.uM * cos(lat)
     v = FT(0)
     w = FT(0)
     Th = FT(1)

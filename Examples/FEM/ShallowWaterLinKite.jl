@@ -58,7 +58,6 @@ SimDays = parsed_args["SimDays"]
 SimHours = parsed_args["SimHours"]
 SimMinutes = parsed_args["SimMinutes"]
 SimSeconds = parsed_args["SimSeconds"]
-SimTime = parsed_args["SimTime"]
 StartAverageDays = parsed_args["StartAverageDays"]
 dtau = parsed_args["dtau"]
 IntMethod = parsed_args["IntMethod"]
@@ -91,7 +90,6 @@ PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
 PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
-PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 Flat = parsed_args["Flat"]
 
@@ -103,6 +101,10 @@ NumberThreadGPU = parsed_args["NumberThreadGPU"]
 
 # Finite elements
 k = parsed_args["OrderFEM"]
+
+# Grid Output Refine
+ref = parsed_args["RefineOutput"]
+
 MPI.Init()
 
 Device = "CPU"
@@ -149,102 +151,86 @@ Phys = DyCore.PhysParameters{FTB}()
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-#Grid construction
+RefineLevel = 5
+nz = 1
+nPanel = 50
+nQuad = 3
+Decomp = ""
+Decomp = "EqualArea"
+Problem = "GalewskySphere"
 RadEarth = Phys.RadEarth
-Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
-  nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
-
-
+Problem = "LinearBlob"
 Param = Examples.Parameters(FTB,Problem)
-
-if Problem == "GalewskySphere"
-  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-  cS = sqrt(Phys.Grav * Param.H0G)
-  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
-  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-  nAdveVel::Int = round(EndTime / dtau)
-  dtau = EndTime / nAdveVel
-  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nprint::Int = ceil(PrintT/dtau)
-  FileNameOutput = "Galewsky/"*GridType*"LSGalewsky"
-  @show GridLengthMin,GridLengthMax
-  @show nAdveVel
-  @show dtau
-  @show nprint
-elseif Problem == "LinearBlob"
-  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-  cS = sqrt(Phys.Grav * 1.0)
-  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
-  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-  nAdveVel::Int = round(EndTime / dtau)
-  dtau = EndTime / nAdveVel
-  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nprint::Int = ceil(PrintT/dtau)
-  FileNameOutput = GridType*"LSBlob"
-  FileNameOutput = "Blob/"*GridType*"LSBlob"
-  @show GridLengthMin,GridLengthMax
-  @show nAdveVel
-  @show dtau
-  @show nprint
-else
-    print("Error")
-end
-
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
-#Output
-vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
+#TRI
+Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
+  nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=2)
 
-#Quadrature rules
-if Grid.Type == Grids.Quad()
+KiteGrid = Grids.Grid2KiteGrid(backend,FTB,Grid,Grids.OrientFaceSphere)
+
+
+# Quadrature rules
   nQuad = 3
   nQuadM = 3
   nQuadS = 3
-elseif Grid.Type == Grids.Tri()
-  nQuad = 4
-  nQuadM = 4
-  nQuadS = 4
-end
 
-#Finite elements
-DG = FEM.DGStruct{FTB}(backend,k,Grid.Type,Grid)
-RT = FEM.RTStruct{FTB}(backend,k,Grid.Type,Grid)
-ND = FEM.NDStruct{FTB}(backend,k,Grid.Type,Grid)
+Jacobi = FEM.Jacobi!  
 
-#for iE = 1 : Grid.NumEdges
-#  @show iE
-#  @show Grid.Edges[iE].F
-#  @show Grid.Edges[iE].FE
-#  iFL = Grid.Edges[iE].F[1]
-#  iFR = Grid.Edges[iE].F[2]
-#  for iDoF = 1 : RT.DoF
-#    indL = RT.Glob[iDoF,iFL]  
-#    indR = RT.Glob[iDoF,iFR]  
-#    @show iDoF,indL,indR  
-#  end  
-#end  
-#stop
+# Finite elements
+RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,KiteGrid)
+DG = FEM.CGKitePrimalStruct{FTB}(1,Grids.Quad(),backend,KiteGrid)
+CG = FEM.CGKitePrimalStruct{FTB}(1,Grids.Quad(),backend,KiteGrid)
 
-ModelFEM = FEM.ModelFEMLin(backend,FTB,ND,RT,DG,Grid,nQuadM,nQuadS,FEM.Jacobi!)
+# Finite elements
+k = 1
+#DG = FEM.DGStruct{FTB}(backend,k,KiteGrid.Type,KiteGrid)
+#CG = FEM.CGStruct{FTB}(backend,k+1,KiteGrid.Type,KiteGrid)
+#RT = FEM.RTStruct{FTB}(backend,k,KiteGrid.Type,KiteGrid)
 
-pPosS = ModelFEM.pPosS
-pPosE = ModelFEM.pPosE
-uPosS = ModelFEM.uPosS
-uPosE = ModelFEM.uPosE
-U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
+ModelFEM = FEM.ModelFEMLin(backend,FTB,RT,CG,DG,KiteGrid,nQuadM,nQuadS,Jacobi)
+
+
+
+pPosS = 1
+pPosE = DG.NumG
+uPosS = DG.NumG + 1
+uPosE = DG.NumG + RT.NumG
+U = zeros(FTB,DG.NumG+RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
+UNew = zeros(FTB,DG.NumG+RT.NumG)
+@views UNewp = U[pPosS:pPosE]
+@views UNewu = U[uPosS:uPosE]
+F = zeros(FTB,DG.NumG+RT.NumG)
+@views Fp = F[pPosS:pPosE]
+@views Fu = F[uPosS:uPosE]
 
-FEM.InterpolateDG!(Up,DG,FEM.Jacobi!,Grid,Grid.Type,Model.InitialProfile)
-FEM.InterpolateRT!(Uu,RT,FEM.Jacobi!,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
-cName = ["h";"Vort";"uS";"vS"]
 
-nPrint = 100
-ref = 1
-dtau = 100
+
+pM = zeros(KiteGrid.NumFaces)
+VelCa = zeros(KiteGrid.NumFaces,Grid.Dim)
+VelSp = zeros(KiteGrid.NumFaces,2)
+
+FEM.Project!(backend,FTB,Uu,RT,KiteGrid,nQuad, FEM.Jacobi!,Model.InitialProfile)
+FEM.Project!(backend,FTB,Up,DG,KiteGrid,nQuad, FEM.Jacobi!,Model.InitialProfile)
+
+
+time = 0.0
+dtau = 50
 nAdveVel = 1000
-@show  nAdveVel
-@show dtau
-FEM.TimeStepperLin(backend,FTB,U,dtau,FEM.FcnLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,FEM.Jacobi!,
+nPrint = 50
+FileNameOutput = "KiteGrid"
+
+# Time integration
+FEM.TimeStepperLin(backend,FTB,U,dtau,FEM.FcnLinShallow!,ModelFEM,KiteGrid,nQuadM,nQuadS,Jacobi,
   nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
+
+nothing
+
+
+
+
+
+

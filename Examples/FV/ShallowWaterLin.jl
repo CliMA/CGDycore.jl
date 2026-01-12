@@ -166,7 +166,7 @@ Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
 
 RefineLevel = 7
 nz = 1
-nPanel = 20
+nPanel = 100
 nQuad = 100
 ns = 120
 Decomp = ""
@@ -190,7 +190,7 @@ vtkSkeletonMeshGhost = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces+Gri
 
 MetricFV = FiniteVolumes.MetricFiniteVolume(backend,FTB,Grid)
 
-#Cache = FiniteVolumes.CacheFV(backend,FTB,MetricFV,Grid)
+Cache = FiniteVolumes.CacheFV(backend,FTB,MetricFV,Grid)
 
 U = zeros(FTB,Grid.NumFaces+Grid.NumFacesG+Grid.NumEdges)
 r = similar(U)
@@ -206,9 +206,12 @@ uPosE = pPosE + Grid.NumEdges
 @views rp = r[pPosS:pPosE]
 @views rpI = r[pPosS:pPosEI]
 @views ru = r[uPosS:uPosE]
+uE = zeros(Grid.NumEdges)
+uE1 = zeros(Grid.NumEdges)
 
 FiniteVolumes.ProjectFace!(backend,FTB,UpI,Grid,Model.InitialProfile)
 FiniteVolumes.ProjectEdge!(backend,FTB,Uu,Grid,Model.InitialProfile)
+FiniteVolumes.ProjectDualEdge!(backend,FTB,uE,Grid,Model.InitialProfile)
 FileNumber = 0
 VelCa = zeros(Grid.NumFaces,Grid.Dim)
 VelSp = zeros(Grid.NumFaces,2)
@@ -227,14 +230,52 @@ PrintStp = 2000
 nAdveVel=80000
 uT = zeros(2,Grid.NumEdges)
 FiniteVolumes.TangentialVelocity(uT,Uu,MetricFV,Grid)
-@. uT[1,:] = uT[1,:] + uT[2,:]
+TT = FiniteVolumes.TangentialVelocity2Matrix(MetricFV,Grid)
+#@. uT[1,:] = uT[1,:] + uT[2,:]
+uE1 = TT * Uu
+for iN = 1 : Grid.NumNodes  
+  if length(Grid.Nodes[iN].E) == 3
+    @show "----",iN  
+    iE = Grid.Nodes[iN].E[1]
+    @show Grid.Edges[Grid.Nodes[iN].E[1]].N
+    @show uE[iE],2*uT[1,iE],2*uT[2,iE],Uu[iE]
+    iE = Grid.Nodes[iN].E[2]
+    @show Grid.Edges[Grid.Nodes[iN].E[2]].N
+    @show uE[iE],2*uT[1,iE],2*uT[2,iE],Uu[iE]
+    iE = Grid.Nodes[iN].E[3]
+    @show Grid.Edges[Grid.Nodes[iN].E[3]].N
+    @show uE[iE],2*uT[1,iE],2*uT[2,iE],Uu[iE]
+  end  
+end    
+iN = 20403
+@show "          "
+@show "----",iN  
+iE = Grid.Nodes[iN].E[1]
+@show Grid.Edges[Grid.Nodes[iN].E[1]].N
+@show uE[iE],2*uT[1,iE],2*uT[2,iE],Uu[iE]
+iE = Grid.Nodes[iN].E[2]
+@show Grid.Edges[Grid.Nodes[iN].E[2]].N
+@show uE[iE],2*uT[1,iE],2*uT[2,iE],Uu[iE]
+iE = Grid.Nodes[iN].E[3]
+@show Grid.Edges[Grid.Nodes[iN].E[3]].N
+@show uE[iE],2*uT[1,iE],2*uT[2,iE],Uu[iE]
+iE = Grid.Nodes[iN].E[4]
+@show Grid.Edges[Grid.Nodes[iN].E[4]].N
+@show uE[iE],2*uT[1,iE],2*uT[2,iE],Uu[iE]
+stop
 @views FiniteVolumes.ConvertVelocityTCart!(backend,FTB,VelCa,uT[1,:],Grid)
 @views FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSp,uT[1,:],Grid)
+@views FiniteVolumes.ConvertVelocityTCart!(backend,FTB,VelCa,uE1,Grid)
+@views FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSp,uE1,Grid)
 #FiniteVolumes.FcnFV!(r,U,MetricFV,Grid,Cache,Phys)
 #    FiniteVolumes.ConvertVelocityCart!(backend,FTB,VelCa,ru,Grid)
 #    FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,ru,Grid)
+for iF = 1 : Grid.NumFaces
+  rpI[iF] = iF  
+end  
      Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [rpI VelCa VelSp], FileNumber,SpeciesList)
      stop
+    global FileNumber += 1
 PrintStp = 300
 nAdveVel=30000
 for i = 1 : nAdveVel

@@ -36,7 +36,7 @@ julia --project Examples/Driver.jl \
   --vtkFileName="output/VTK/VortexHillSphere/CGQuad_64Elem" \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=6.0 \
+  --dtau=3.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="VortexHillSphere" \

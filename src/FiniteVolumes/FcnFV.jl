@@ -9,8 +9,8 @@ function CacheFV(backend,FTB,MetricFV,Grid)
   Curl = CurlNodeMatrix(MetricFV,Grid)
 # Tang = TagentialVelocity2Matrix(MetricFV,Grid)
 # Tang = TagentialVelocityMatrix(MetricFV,Grid)
-  Tang = TagentialVelocityMatrix3(MetricFV,Grid)
-  TangN = TagentialNode(MetricFV,Grid)
+  Tang = TangentialVelocity2Matrix(MetricFV,Grid)
+# TangN = TangentialNode(MetricFV,Grid)
   return CacheFV(
   CurlUu,
   TangUu,
@@ -21,7 +21,7 @@ function CacheFV(backend,FTB,MetricFV,Grid)
   Div,
   Curl,
   Tang,
-  TangN,
+# TangN,
     )
 end  
 

@@ -205,20 +205,40 @@ function TangentialVelocity(uT,uN,Metric,Grid)
 
   @. uT = 0
   for iN = 1 : Grid.NumNodes
+#   if length(Grid.Nodes[iN].F) == 3
+    if iN == 20403
+      @show "--------",iN,"----------"
+      @show Grid.Nodes[iN].F
+    end  
     for iE in Grid.Nodes[iN].E  
-      @show dyad(Grid.Edges[iE].n)  
       if Grid.Edges[iE].N[1] == iN  
         for jE in Grid.Nodes[iN].E  
           uT[1,iE] += uN[jE] * (Metric.DualEdgeVolume[1,1,jE] + Metric.DualEdgeVolume[1,2,jE]) *
             dot(Grid.Edges[iE].t,Grid.Edges[jE].n) /
             Metric.DualVolume[iN]
+#         if length(Grid.Nodes[iN].F) == 3
+          if iN == 20403
+            @show dot(Grid.Edges[iE].t,Grid.Edges[jE].n)
+          end  
         end
+#       if length(Grid.Nodes[iN].F) == 3
+        if iN == 20403
+          @show "C1",uT[1,iE],uN[iE]  
+        end  
       else
         for jE in Grid.Nodes[iN].E  
           uT[2,iE] += uN[jE] * (Metric.DualEdgeVolume[2,1,jE] + Metric.DualEdgeVolume[2,2,jE]) *
             dot(Grid.Edges[iE].t,Grid.Edges[jE].n) /
             Metric.DualVolume[iN]
-        end
+#         if length(Grid.Nodes[iN].F) == 3
+          if iN == 20403
+            @show dot(Grid.Edges[iE].t,Grid.Edges[jE].n)
+          end
+        end  
+#       if length(Grid.Nodes[iN].F) == 3
+        if iN == 20403
+          @show "C2",uT[2,iE],uN[iE]  
+        end  
       end    
     end
   end
@@ -494,7 +514,7 @@ function TangentialVelocity2Matrix(Metric,Grid)
         u /= Metric.PrimalVolume[iF]
         kN = Mid / norm(Mid)
         u = u - dot(u,kN) * kN
-        uTE = 0.5 * dot(Grid.Edges[iE].t,u)
+        uTE = -0.5 * dot(Grid.Edges[iE].t,u)
         push!(RowInd,iE)
         push!(ColInd,kE)
         push!(Val,uTE)

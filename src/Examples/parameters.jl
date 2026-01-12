@@ -43,7 +43,7 @@ end
 
 Base.@kwdef struct ParamGalewskySphere{FT}
   H0G::FT = 10000.0
-  hH::FT = 0.0 #120.0 
+  hH::FT = 120.0 
   alphaG::FT = 1.0/3.0
   betaG::FT = 1.0/15.0
   lat0G::FT = pi/7.0
@@ -74,10 +74,11 @@ end
 
 Base.@kwdef struct ParamLinearBlob
 # lat0 = 4.0*atan(1.0)
-  lat0 = 2.0*atan(1.0)
-  lon0 = 2.0*atan(1.0)
+  lat0 = 0.0
+  lon0 = 0.0
   Width = 0.8
   H = 1.0e2
+  cS = 360.0
 end
 
 Base.@kwdef struct ParamBaroWaveDryCart{FT}
@@ -429,6 +430,7 @@ Base.@kwdef struct ParamAdvectionSphereDCMIP{FT}
   tau::FT = tau
   omega_0::FT = omega_0
   TimeDependent::Bool = true
+  EndTime::Float64 = 5.0
 end
 
 
@@ -437,6 +439,7 @@ Base.@kwdef struct ParamAdvectionSphereSpherical{FT}
   lat0 = -4.0*atan(1.0)
   lon0 = 0.0 #-2.0*atan(1.0)
   Width = 0.8
+  EndTime::Float64 = 5.0
 end
 
 Base.@kwdef struct ParamAdvectionCubeCart
