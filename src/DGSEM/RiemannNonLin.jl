@@ -1,4 +1,34 @@
-@kernel inbounds = true function RiemanNonLinV3Kernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
+function RiemannNonLinH(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  DoFE = DG.DoFE
+  M = DG.OrdPolyZ + 1
+  NE = Grid.NumEdges
+  Nz = Grid.nz
+  NEG = min(div(NumberThreadGPU,DoFE*M),Nz)
+  group = (DoFE,M,NEG,1)
+  ndrange = (DoFE,M,Nz,NE)
+  KRiemannNonLinH3Kernel! = RiemannNonLinH3Kernel!(backend,group)
+  KRiemannNonLinH3Kernel!(RiemannSolver,F,U,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
+    Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange)
+end
+
+
+function RiemannNonLinV(RiemannSolver,NonConservativeFlux,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  M = DG.OrdPolyZ + 1
+  Nz = Grid.nz
+  NF = Grid.NumFaces
+  DoFG = min(div(NumberThreadGPU,Nz+1),DoF)
+  group = (Nz+1,DoFG,1)
+  ndrange = (Nz+1,DoF,NF)
+  KRiemannNonLinV3Kernel! = RiemannNonLinV3Kernel!(backend,group)
+  KRiemannNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
+    Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange)
+end  
+
+@kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
   @Const(NV),@Const(VolSurfV),
   @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
 
@@ -85,7 +115,7 @@
   end  
 end
 
-@kernel inbounds = true function RiemanNonLinH3Kernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
+@kernel inbounds = true function RiemannNonLinH3Kernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
   @Const(EF),@Const(FTE),@Const(NH),@Const(VolSurfH),
   @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
@@ -99,7 +129,6 @@ end
   Nz = @uniform @ndrange()[3]
 
   FLoc = @private eltype(F) (NUMV,)
-# FLoc = @localmem eltype(F) (N,M,TilesDim,NUMV)
 
   RhoPos = @uniform 1
   uPos = @uniform 2
@@ -140,7 +169,7 @@ end
 end
 
 
-@kernel inbounds = true function RiemanNonLinV3NonConservativeKernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
+@kernel inbounds = true function RiemannNonLinV3NonConservativeKernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
   @Const(NV),@Const(VolSurfV),
   @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
 
@@ -234,7 +263,7 @@ end
   end  
 end
 
-@kernel inbounds = true function RiemanNonLinH3NonConservativeKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
+@kernel inbounds = true function RiemannNonLinH3NonConservativeKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
   @Const(EF),@Const(FTE),@Const(NH),@Const(VolSurfH),
   @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 

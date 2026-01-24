@@ -45,7 +45,7 @@ function Face()
   )
 end  
 
-function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",Rad=1.0,
+function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form=CartesianGrid(),Rad=1.0,
   P::Array{Float64,2}=[],ChangeOrient=3,MidFace=nothing)
   F = Face()
   if EdgesF[1]==0
@@ -101,7 +101,7 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",
       F.P[i]=Point(P[:,i])
     end
   end
-  if Form == "Sphere"
+  if Form == SphericalGrid()
     F.Area = AreaFace(F,Nodes) * Rad * Rad
   else  
     PT=Point([0.0, 0.0, 0.0]);
@@ -121,10 +121,10 @@ function Face(EdgesF::Array{Int, 1},Nodes,Edges,Pos,Type,OrientFace;Form="Cart",
     F.Mid.y = MidFace.y
     F.Mid.z = MidFace.z
   end  
-  if Form == "Sphere"
+  if Form == SphericalGrid()
     F.Mid = F.Mid / norm(F.Mid) * Rad
   end  
-  if Form == "Sphere"
+  if Form == SphericalGrid()
     F.Radius = Rad
   else
   end    

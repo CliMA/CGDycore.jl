@@ -1,12 +1,11 @@
-function TopographySmoothing!(Height,CG,Exchange,Global)
+function TopographySmoothing!(Height,CG,Exchange,Grid,ParallelCom)
  
   backend = get_backend(Height)
   FT = eltype(Height)
 
-  Grid = Global.Grid
   DoF = CG.DoF
   N = CG.OrdPoly + 1
-  NF = Global.Grid.NumFaces
+  NF = Grid.NumFaces
   X = KernelAbstractions.zeros(backend,FT,DoF,3,NF)
   dXdxI = KernelAbstractions.zeros(backend,FT,2,2,DoF,NF)
   J = KernelAbstractions.zeros(backend,FT,DoF,NF)
@@ -29,7 +28,7 @@ function TopographySmoothing!(Height,CG,Exchange,Global)
   end
   copyto!(FGPU,F)
   JacobiSphere2GPU!(X,dXdxI,J,CG,FGPU,Rad)
-  M = MassCGGPU2(CG,J,Exchange,Global)
+  M = MassCGGPU2(CG,J,Exchange,ParallelCom)
 
   NFG = min(div(512,N*N),NF)
   group = (N, N, NFG)
@@ -272,14 +271,14 @@ end
   end
 end
 
-function MassCGGPU2(CG,J,Exchange,Global)
+function MassCGGPU2(CG,J,Exchange,ParallelCom)
   backend = get_backend(J)
   FT = eltype(J)
   N = CG.OrdPoly + 1
   DoF = CG.DoF
   NF = size(CG.Glob,2)
 
-  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  NumberThreadGPU = ParallelCom.NumberThreadGPU
 
   NFG = min(div(NumberThreadGPU,N*N),NF)
   group = (N, N, NFG)

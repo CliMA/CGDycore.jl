@@ -400,7 +400,7 @@ function TriangularGridToGrid(backend,FT,TriangularGrid,Rad,nz;ChangeOrient=3)
         -1  1  0]
   Dim = 3
   Type = Tri()
-  Form = "Sphere"
+  Form = SphericalGrid()
 
   NumNodes = TriangularGrid.NumNodes
 
@@ -515,7 +515,7 @@ function DelaunayGridToPolyGrid(backend,FT,TriangularGrid,Rad,nz)
   Dim = 3
   Type = Tri()
   Rad = Rad
-  Form = "Sphere"
+  Form = SphericalGrid()
 
   NumNodes = TriangularGrid.NumFaces
 

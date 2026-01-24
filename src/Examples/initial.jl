@@ -185,11 +185,11 @@ function (profile::DivergentSphereExample)(Param,Phys)
   @inline function local_profile(x,time)
     FT = eltype(x)
     Rho = FT(1)
-    Lon,Lat,R = Grids.cart2sphere(x[1],x[2],x[3])
-    lonP = Lon - FT(2) * pi * time / Param.EndTime
+    lon,lat,R = Grids.cart2sphere(x[1],x[2],x[3])
+    lonP = lon - FT(2) * pi * time / Param.EndTime
     uS = FT(10) / Param.EndTime * sin(lonP) * sin(lonP) *
-      sin(FT(2) * Lat) * cos(pi * time / Param.EndTime) + FT(2) * pi / Param.EndTime * cos(Lat)
-    vS = FT(10) / Param.EndTime * sin(FT(2) * lonP) * cos(Lat) * cos(pi * time / Param.EndTime)
+      sin(FT(2) * lat) * cos(pi * time / Param.EndTime) + FT(2) * pi / Param.EndTime * cos(lat)
+    vS = FT(10) / Param.EndTime * sin(FT(2) * lonP) * cos(lat) * cos(pi * time / Param.EndTime)
     w = FT(0)
     lon1 = Param.lon1
     lat1 = Param.lat1
@@ -197,15 +197,15 @@ function (profile::DivergentSphereExample)(Param,Phys)
     lat2 = Param.lat2
     R = FT(1)
     r = FT(0.5) * R
-    r1 = R * Grids.SizeGreatCircle(Lon,Lat,lon1,lat1)
-    r2 = R * Grids.SizeGreatCircle(Lon,Lat,lon2,lat2)
-    if r1 <= r && abs(Lon - lon1) >= r / (FT(6.0) * R)
+    r1 = R * Grids.SizeGreatCircle(lon,lat,lon1,lat1)
+    r2 = R * Grids.SizeGreatCircle(lon,lat,lon2,lat2)
+    if r1 <= r && abs(lon - lon1) >= r / (FT(6.0) * R)
       Tr = FT(1.0)
-    elseif r2 <= r && abs(Lon - lon2) >= r / (FT(6.0) * R)
+    elseif r2 <= r && abs(lon - lon2) >= r / (FT(6.0) * R)
       Tr = FT(1.0)
-    elseif r1 <= r && abs(Lon - lon1) < r / (FT(6.0) * R) && Lat - lat1 < FT(-5.0 / 12.0) * r / R
+    elseif r1 <= r && abs(lon - lon1) < r / (FT(6.0) * R) && lat - lat1 < FT(-5.0 / 12.0) * r / R
       Tr = FT(1.0)
-    elseif r2 <= r && abs(Lon - lon2) < r / (FT(6.0) * R) && Lat - lat2 > FT(5.0 / 12.0) * r / R
+    elseif r2 <= r && abs(lon - lon2) < r / (FT(6.0) * R) && lat - lat2 > FT(5.0 / 12.0) * r / R
       Tr = FT(1.0)
     else
       Tr = FT(.1)
@@ -242,13 +242,13 @@ Base.@kwdef struct AdvectionSphereSpherical <: Example end
 function (profile::AdvectionSphereSpherical)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R-Phys.RadEarth,FT(0))
-    uS = Param.uMax * cos(Lat)
+    uS = Param.uMax * cos(lat)
     vS = 0.0
     w = 0.0
     RhoZ = 1.0
-    d = acos(sin(Param.lat0)*sin(Lat)+cos(Param.lat0)*cos(Lat)*cos(Lon-Param.lon0))
+    d = acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0))
     if abs(d) <= Param.Width
       Tr1 = cos(pi*d/Param.Width/2)^2 + 1.0
     else
@@ -266,13 +266,13 @@ Base.@kwdef struct AdvectionVelocity<: Example end
 function (profile::AdvectionVelocity)(Param,Phys)
   function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R-Phys.RadEarth,FT(0))
-    uS = Param.uMax * cos(Lat)
+    uS = Param.uMax * cos(lat)
     vS = 0.0
     w = 0.0
     RhoZ = 1.0
-    d = acos(sin(Param.lat0)*sin(Lat)+cos(Param.lat0)*cos(Lat)*cos(Lon-Param.lon0))
+    d = acos(sin(Param.lat0)*sin(lat)+cos(Param.lat0)*cos(lat)*cos(lon-Param.lon0))
     if abs(d) <= Param.Width
       uS = cos(pi*d/Param.Width/2)^2 
     else
@@ -289,30 +289,30 @@ Base.@kwdef struct AdvectionSphereDCMIP <: Example end
 function (profile::AdvectionSphereDCMIP)(Param,Phys)
   @inline function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R) = Grids.cart2sphere(x[1],x[2],x[3])
     Z=max(R-Phys.RadEarth,FT(0))
     pZ = Phys.p0 * exp(-Z / Param.ScaleHeight)
-    LonP = Lon - FT(2)* FT(pi) * time / Param.tau
+    lonP = lon - FT(2)* FT(pi) * time / Param.tau
     k = FT(10) * Phys.RadEarth / Param.tau
-    ua = k * sin(LonP)^2 * sin(2 * Lat) * cos(FT(pi) * time / Param.tau) +
-      FT(2) * FT(pi) * Phys.RadEarth / Param.tau * cos(Lat)
+    ua = k * sin(lonP)^2 * sin(2 * lat) * cos(FT(pi) * time / Param.tau) +
+      FT(2) * FT(pi) * Phys.RadEarth / Param.tau * cos(lat)
     ud = Param.omega_0 * Phys.RadEarth / Param.b / Param.p_top *
-      cos(LonP) *
-      cos(Lat)^2 *
+      cos(lonP) *
+      cos(lat)^2 *
       cos(2 * pi * time / Param.tau) *
       (-exp((pZ - Phys.p0) / Param.b / Param.p_top) + exp((Param.p_top - pZ) / Param.b / Param.p_top))
     uS = ua + ud
-    vS = k * sin(FT(2) * LonP) * cos(Lat) * cos(FT(pi) * time / Param.tau)
+    vS = k * sin(FT(2) * lonP) * cos(lat) * cos(FT(pi) * time / Param.tau)
     RhoZ = pZ / Phys.Rd / Param.T_0
     sp =
        FT(1) + exp((Param.p_top - Phys.p0) / Param.b / Param.p_top) - exp((pZ - Phys.p0) / Param.b / Param.p_top) -
          exp((Param.p_top - pZ) / Param.b / Param.p_top)
-    omega = Param.omega_0 * sin(LonP) * cos(Lat) * cos(FT(2) * FT(pi) * time / Param.tau) * sp
+    omega = Param.omega_0 * sin(lonP) * cos(lat) * cos(FT(2) * FT(pi) * time / Param.tau) * sp
     w = -omega / RhoZ / Phys.Grav
     zd = Z - Param.z_c
     # great circle distances
-    rd1 = Phys.RadEarth * Grids.SizeGreatCircle(Param.Lon_c1,Param.Lat_c,Lon,Lat)
-    rd2 = Phys.RadEarth * Grids.SizeGreatCircle(Param.Lon_c2,Param.Lat_c,Lon,Lat)
+    rd1 = Phys.RadEarth * Grids.SizeGreatCircle(Param.lon_c1,Param.lat_c,lon,lat)
+    rd2 = Phys.RadEarth * Grids.SizeGreatCircle(Param.lon_c2,Param.lat_c,lon,lat)
     d1 = min(FT(1), (rd1 / Param.R_t)^2 + (zd / Param.Z_t)^2)
     d2 = min(FT(1), (rd2 / Param.R_t)^2 + (zd / Param.Z_t)^2)
     Tr1 = FT(0.5) * (FT(1) + cos(FT(pi) * d1)) + FT(0.5) * (FT(1) + cos(FT(pi) * d2))
@@ -579,7 +579,7 @@ The Galewsky test case is designed to study barotropic instability and the nonli
 """
 Base.@kwdef struct GalewskyExample <: Example end
 
-function (profile::GalewskyExample)(Param,Phys)
+function (profile::GalewskyExample)(Param,Phys,::VelocityS)
   @inline function local_profile(x,time)
     FT = eltype(x)
     Grav=Phys.Grav 
@@ -594,12 +594,33 @@ function (profile::GalewskyExample)(Param,Phys)
     else
       u=Param.uM/Param.eN*exp(FT(1.0)/((lat-Param.lat0G)*(lat-Param.lat1G)))
     end
-#   u = Param.uM * cos(lat)
     v = FT(0)
     w = FT(0)
     Th = FT(1)
 
     return (Rho,u,v,w,Th)
+  end
+  return local_profile
+end
+
+function (profile::GalewskyExample)(Param,Phys,::VelocityC)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    Grav=Phys.Grav 
+    Omega=Phys.Omega
+    (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
+    r=Phys.RadEarth
+    Rho=(Grav*Param.H0G-(simpson(-FT(0.5)*pi,lat,r,pi/FT(100.0),integrandG,Param,Phys)))/Grav +
+      Param.hH*cos(lat)*exp(-((lon-pi)/Param.alphaG)^2)*exp(-((pi/FT(4.0)-lat)/Param.betaG)^2)
+    Th = FT(1)   
+    if (lat<=Param.lat0G) || (lat>=Param.lat1G)
+      uS=FT(0)
+    else
+      uS=Param.uM/Param.eN*exp(FT(1.0)/((lat-Param.lat0G)*(lat-Param.lat1G)))
+    end
+    UC = Grids.VelSphere2Cart(SVector{3}(uS, FT(0), FT(0)),lon,lat)
+    @show UC
+    return (Rho,UC[1],UC[2],UC[3],Th)
   end
   return local_profile
 end
@@ -745,10 +766,10 @@ end
 
 Base.@kwdef struct BaroWaveDryExample <: Example end
 
-function (profile::BaroWaveDryExample)(Param,Phys)
+function (profile::BaroWaveDryExample)(Param,Phys,::VelocityS)
   @inline function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R - Phys.RadEarth, FT(0))
     T0 = FT(0.5) * (Param.T0E + Param.T0P)
     ConstA = FT(1.0) / Param.LapseRate
@@ -767,34 +788,34 @@ function (profile::BaroWaveDryExample)(Param,Phys)
     else
       RRatio = FT(1.0)
     end
-    InteriorTerm = (RRatio * cos(Lat))^Param.K -
-    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    InteriorTerm = (RRatio * cos(lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
     Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
     Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
     Rho = Pressure / (Phys.Rd * Temperature)
     Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
-    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
-         (RRatio * cos(Lat))^(Param.K + FT(1.0))
+    InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(lat))^(Param.K + FT(1.0))
     BigU = Phys.Grav / Phys.RadEarth * Param.K *
       IntTau2 * InteriorTermU * Temperature
     if Param.Deep
-      RCosLat = R * cos(Lat)
+      RCoslat = R * cos(lat)
     else
-      RCosLat =Phys.RadEarth * cos(Lat)
+      RCoslat =Phys.RadEarth * cos(lat)
     end
-    OmegaRCosLat = Phys.Omega*RCosLat
+    OmegaRCoslat = Phys.Omega*RCoslat
 
-    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                 if (dOmegaRCoslat * dOmegaRCoslat + dRCoslat * dBigU < 0.0) {
     #                         _EXCEPTIONT("Negative discriminant detected.")
     #                 }
 
-    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    uS = -OmegaRCoslat + sqrt(OmegaRCoslat * OmegaRCoslat + RCoslat * BigU)
     vS = 0
     # Exponential perturbation
-    GreatCircleR = acos(sin(Param.PertLat) * sin(Lat) +
-      cos(Param.PertLat) * cos(Lat) * cos(Lon - Param.PertLon))
+    GreatCircleR = acos(sin(Param.PertLat) * sin(lat) +
+      cos(Param.PertLat) * cos(lat) * cos(lon - Param.PertLon))
 
     GreatCircleR = GreatCircleR / Param.PertExpR
 
@@ -823,12 +844,11 @@ function (profile::BaroWaveDryExample)(Param,Phys)
   end
   return local_profile
 end
-Base.@kwdef struct BaroWaveMoistExample <: Example end
 
-function (profile::BaroWaveMoistExample)(Param,Phys)
+function (profile::BaroWaveDryExample)(Param,Phys,::VelocityC)
   @inline function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R - Phys.RadEarth, FT(0))
     T0 = FT(0.5) * (Param.T0E + Param.T0P)
     ConstA = FT(1.0) / Param.LapseRate
@@ -847,34 +867,116 @@ function (profile::BaroWaveMoistExample)(Param,Phys)
     else
       RRatio = FT(1.0)
     end
-    InteriorTerm = (RRatio * cos(Lat))^Param.K -
-    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    InteriorTerm = (RRatio * cos(lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
     Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
     Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
     Rho = Pressure / (Phys.Rd * Temperature)
     Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
-    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
-         (RRatio * cos(Lat))^(Param.K + FT(1.0))
+    InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(lat))^(Param.K + FT(1.0))
     BigU = Phys.Grav / Phys.RadEarth * Param.K *
       IntTau2 * InteriorTermU * Temperature
     if Param.Deep
-      RCosLat = R * cos(Lat)
+      RCoslat = R * cos(lat)
     else
-      RCosLat =Phys.RadEarth * cos(Lat)
+      RCoslat =Phys.RadEarth * cos(lat)
     end
-    OmegaRCosLat = Phys.Omega*RCosLat
+    OmegaRCoslat = Phys.Omega*RCoslat
 
-    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                 if (dOmegaRCoslat * dOmegaRCoslat + dRCoslat * dBigU < 0.0) {
     #                         _EXCEPTIONT("Negative discriminant detected.")
     #                 }
 
-    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    uS = -OmegaRCoslat + sqrt(OmegaRCoslat * OmegaRCoslat + RCoslat * BigU)
     vS = 0
     # Exponential perturbation
-    GreatCircleR = acos(sin(Param.PertLat) * sin(Lat) +
-      cos(Param.PertLat) * cos(Lat) * cos(Lon - Param.PertLon))
+    GreatCircleR = acos(sin(Param.PertLat) * sin(lat) +
+      cos(Param.PertLat) * cos(lat) * cos(lon - Param.PertLon))
+
+    GreatCircleR = GreatCircleR / Param.PertExpR
+
+    # Tapered perturbation with height
+    if Z < Param.PertZ
+      PertTaper = FT(1.0) - FT(3.0) * Z * Z / (Param.PertZ * Param.PertZ) +
+         FT(2.0) * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
+    else
+      PertTaper = FT(0.0)
+    end
+
+    # Apply perturbation in zonal velocity
+    if GreatCircleR < FT(1.0)
+      uSPert = Param.Up * PertTaper * exp(-GreatCircleR * GreatCircleR)
+    else
+      uSPert = FT(0.0)
+    end
+    uS = uS + uSPert
+    w = FT(0)
+    UC = Grids.VelSphere2Cart(SVector{3}(uS, vS, w),lon,lat)
+
+    qV = FT(0)
+    qC = FT(0)
+    IE = Thermodynamics.InternalEnergyW(FT(1),qV,qC,Temperature,Phys)
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
+    return (Rho,UC[1],UC[2],UC[3],Th,E,IE,qV,qC)
+  end
+  return local_profile
+end
+
+Base.@kwdef struct BaroWaveMoistExample <: Example end
+
+function (profile::BaroWaveMoistExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    Z = max(R - Phys.RadEarth, FT(0))
+    T0 = FT(0.5) * (Param.T0E + Param.T0P)
+    ConstA = FT(1.0) / Param.LapseRate
+    ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
+    ConstC = FT(0.5) * (Param.K + FT(2.0)) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
+    ConstH = Phys.Rd * T0 / Phys.Grav
+    ScaledZ = Z / (Param.B * ConstH)
+    Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
+    ConstB * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    Tau2 = ConstC * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
+    IntTau1 = ConstA * (exp(Param.LapseRate / T0 * Z) - FT(1.0)) +
+    ConstB * Z * exp(-ScaledZ * ScaledZ)
+    IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
+    if Param.Deep
+      RRatio = R / Phys.RadEarth
+    else
+      RRatio = FT(1.0)
+    end
+    InteriorTerm = (RRatio * cos(lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
+    Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
+    Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
+      (IntTau1 - IntTau2 * InteriorTerm))
+    Rho = Pressure / (Phys.Rd * Temperature)
+    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
+
+    InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(lat))^(Param.K + FT(1.0))
+    BigU = Phys.Grav / Phys.RadEarth * Param.K *
+      IntTau2 * InteriorTermU * Temperature
+    if Param.Deep
+      RCoslat = R * cos(lat)
+    else
+      RCoslat =Phys.RadEarth * cos(lat)
+    end
+    OmegaRCoslat = Phys.Omega*RCoslat
+
+    #                 if (dOmegaRCoslat * dOmegaRCoslat + dRCoslat * dBigU < 0.0) {
+    #                         _EXCEPTIONT("Negative discriminant detected.")
+    #                 }
+
+    uS = -OmegaRCoslat + sqrt(OmegaRCoslat * OmegaRCoslat + RCoslat * BigU)
+    vS = 0
+    # Exponential perturbation
+    GreatCircleR = acos(sin(Param.PertLat) * sin(lat) +
+      cos(Param.PertLat) * cos(lat) * cos(lon - Param.PertLon))
 
     GreatCircleR = GreatCircleR / Param.PertExpR
 
@@ -898,7 +1000,7 @@ function (profile::BaroWaveMoistExample)(Param,Phys)
     eta = Pressure / Phys.p0
     eta_crit = Param.p_w / Phys.p0
     if eta > eta_crit
-      qV = Param.q_0 * exp(-(Lat / Param.lat_w)^4) * exp(-((eta-FT(1)) * Phys.p0 / Param.p_w)^2)
+      qV = Param.q_0 * exp(-(lat / Param.lat_w)^4) * exp(-((eta-FT(1)) * Phys.p0 / Param.p_w)^2)
     else
       qV = Param.q_t  
     end 
@@ -916,7 +1018,7 @@ Base.@kwdef struct HeldSuarezDryExample <: Example end
 function (::HeldSuarezDryExample)(Param,Phys)
   @inline function profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R - Phys.RadEarth, FT(0))
     T0 = FT(0.5) * (Param.T0E + Param.T0P)
     ConstA = FT(1.0) / Param.LapseRate
@@ -935,30 +1037,30 @@ function (::HeldSuarezDryExample)(Param,Phys)
     else
       RRatio = FT(1.0)
     end
-    InteriorTerm = (RRatio * cos(Lat))^Param.K -
-    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    InteriorTerm = (RRatio * cos(lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
     Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
     Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
     Rho = Pressure / (Phys.Rd * Temperature)
     Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
-    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
-         (RRatio * cos(Lat))^(Param.K + FT(1.0))
+    InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(lat))^(Param.K + FT(1.0))
     BigU = Phys.Grav / Phys.RadEarth * Param.K *
       IntTau2 * InteriorTermU * Temperature
     if Param.Deep
-      RCosLat = R * cos(Lat)
+      RCoslat = R * cos(lat)
     else
-      RCosLat =Phys.RadEarth * cos(Lat)
+      RCoslat =Phys.RadEarth * cos(lat)
     end
-    OmegaRCosLat = Phys.Omega*RCosLat
+    OmegaRCoslat = Phys.Omega*RCoslat
 
-    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                 if (dOmegaRCoslat * dOmegaRCoslat + dRCoslat * dBigU < 0.0) {
     #                         _EXCEPTIONT("Negative discriminant detected.")
     #                 }
 
-    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    uS = -OmegaRCoslat + sqrt(OmegaRCoslat * OmegaRCoslat + RCoslat * BigU)
     uS = FT(0)
     vS = FT(0)
     w = FT(0)
@@ -992,7 +1094,7 @@ Base.@kwdef struct HeldSuarezMoistExample <: Example end
 function (::HeldSuarezMoistExample)(Param,Phys)
   @inline function profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     Z = max(R - Phys.RadEarth, FT(0))
     T0 = FT(0.5) * (Param.T0E + Param.T0P)
     ConstA = FT(1.0) / Param.LapseRate
@@ -1011,30 +1113,30 @@ function (::HeldSuarezMoistExample)(Param,Phys)
     else
       RRatio = FT(1.0)
     end
-    InteriorTerm = (RRatio * cos(Lat))^Param.K -
-    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(Lat))^(Param.K + FT(2.0))
+    InteriorTerm = (RRatio * cos(lat))^Param.K -
+    Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
     Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
     Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
     Rho = Pressure / (Phys.Rd * Temperature)
     Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
-    InteriorTermU = (RRatio * cos(Lat))^(Param.K - FT(1.0)) -
-         (RRatio * cos(Lat))^(Param.K + FT(1.0))
+    InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
+         (RRatio * cos(lat))^(Param.K + FT(1.0))
     BigU = Phys.Grav / Phys.RadEarth * Param.K *
       IntTau2 * InteriorTermU * Temperature
     if Param.Deep
-      RCosLat = R * cos(Lat)
+      RCoslat = R * cos(lat)
     else
-      RCosLat =Phys.RadEarth * cos(Lat)
+      RCoslat =Phys.RadEarth * cos(lat)
     end
-    OmegaRCosLat = Phys.Omega*RCosLat
+    OmegaRCoslat = Phys.Omega*RCoslat
 
-    #                 if (dOmegaRCosLat * dOmegaRCosLat + dRCosLat * dBigU < 0.0) {
+    #                 if (dOmegaRCoslat * dOmegaRCoslat + dRCoslat * dBigU < 0.0) {
     #                         _EXCEPTIONT("Negative discriminant detected.")
     #                 }
 
-    uS = -OmegaRCosLat + sqrt(OmegaRCosLat * OmegaRCosLat + RCosLat * BigU)
+    uS = -OmegaRCoslat + sqrt(OmegaRCoslat * OmegaRCoslat + RCoslat * BigU)
     uS = FT(0)
     vS = FT(0)
     w = FT(0)
@@ -1070,12 +1172,12 @@ Base.@kwdef struct SchaerSphereExample <: Example end
 function (profile::SchaerSphereExample)(Param,Phys)
   @inline function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z = max(FT(0), R - Phys.RadEarth / Param.X)
-    uS = Param.uEq * cos(Lat)
+    uS = Param.uEq * cos(lat)
     vS = FT(0.0)
     w = FT(0.0)
-    pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(Lat)^2 -
+    pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(lat)^2 -
       Phys.Grav * z / (Phys.Rd * Param.TEq))
     Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
     Rho = pLoc / (Phys.Rd * Param.TEq)
@@ -1089,12 +1191,12 @@ Base.@kwdef struct GapSphereExample <: Example end
 function (profile::GapSphereExample)(Param,Phys)
   @inline function local_profile(x,time)
     FT = eltype(x)
-    (Lon,Lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
     z = max(FT(0), R - Phys.RadEarth / Param.X)
-    uS = Param.uEq * cos(Lat)
+    uS = Param.uEq * cos(lat)
     vS = FT(0.0)
     w = FT(0.0)
-    pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(Lat)^2 -
+    pLoc = Phys.p0 * exp(-Param.uEq * Param.uEq / (2.0 * Phys.Rd * Param.TEq) * sin(lat)^2 -
       Phys.Grav * z / (Phys.Rd * Param.TEq))
     Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
     Rho = pLoc / (Phys.Rd * Param.TEq)

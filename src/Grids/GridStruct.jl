@@ -34,7 +34,7 @@ mutable struct GridStruct{FT<:AbstractFloat,
   NumNodesB::Int
   NumNodesG::Int
   Nodes::Array{Node, 1}
-  Form::String
+  Form::GridForm
   Type::ElementType
   Dim::Int
   Rad::FT

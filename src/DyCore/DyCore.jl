@@ -8,6 +8,7 @@ import ..Grids
 import ..Outputs
 import ..Integration
 import ..FiniteElements
+import ..DGSEM
 
 using MPI
 using LinearAlgebra

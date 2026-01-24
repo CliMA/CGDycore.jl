@@ -787,9 +787,8 @@ function Orography3(backend,FT,CG,Exchange,Global)
   return HeightCG
 end
 
-function Orography4(backend,FT,CG,Exchange,Global)
-  Grid = Global.Grid
-  Proc = Global.ParallelCom.Proc
+function Orography4(backend,FT,CG,Exchange,Grid,ParallelCom)
+  Proc = ParallelCom.Proc
   OrdPoly = CG.OrdPoly
   Glob = CG.Glob
   GlobCPU = zeros(Int,size(Glob))
@@ -828,7 +827,7 @@ function Orography4(backend,FT,CG,Exchange,Global)
   nz = Grid.nz
 # GradDxH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
 # GradDyH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
-  TopographySmoothing!(HeightGPU,CG,Exchange,Global)
+  TopographySmoothing!(HeightGPU,CG,Exchange,Grid,ParallelCom)
   copyto!(Height,HeightGPU)
   HeightCG = zeros(FT,OP*OP,NF)
   @inbounds for iF = 1:NF

@@ -1,3 +1,45 @@
+function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
+  backend = get_backend(F)
+  DoF = DG.DoF 
+  DoFE = DG.DoFE 
+  N = DG.OrdPoly + 1
+  M = DG.OrdPolyZ + 1
+  NzG = min(div(NumberThreadGPU,DoF),M*Nz)
+  group = (N,N,NzG,1)
+  ndrange = (N,N,M*Nz,NF)
+  KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHQuadKernel!(backend,group)
+  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.Glob,
+    Val(NV),Val(NAUX);ndrange=ndrange)
+end  
+
+function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Tri)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  DoFE = DG.DoFE
+  N = DG.OrdPoly + 1
+  M = DG.OrdPolyZ + 1
+  NzG = min(div(NumberThreadGPU,DoF),M*Nz)
+  group = (N,N,NzG,1)
+  ndrange = (N,N,M*Nz,NF)
+  KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHTriKernel!(backend,group)
+  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.Dx1,DG.Dx2,DG.Glob,
+    Val(NV),Val(NAUX);ndrange=ndrange)
+end
+
+function FluxSplitVolumeNonLinV(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+  backend = get_backend(F)
+  DoF = DG.DoF 
+  DoFE = DG.DoFE 
+  N = DG.OrdPoly + 1
+  M = DG.OrdPolyZ + 1
+  NDG = min(div(NumberThreadGPU,M*Nz),DoF)
+  group = (M,Nz,NDG,1)
+  ndrange = (M,Nz,DoF,NF)
+  KFluxSplitVolumeNonLinV3Kernel! = FluxSplitVolumeNonLinV3Kernel!(backend,group)
+  KFluxSplitVolumeNonLinV3Kernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVZT,DG.Glob,
+    Val(NV),Val(NAUX);ndrange=ndrange)
+end  
+
 @kernel inbounds = true function FluxSplitVolumeNonLinV3Kernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
   @Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
 

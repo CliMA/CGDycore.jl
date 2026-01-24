@@ -19,6 +19,7 @@ mutable struct DGStruct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   points::Array{Float64,2}
+  Order::Int
   M::AbstractSparseMatrix
   LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
@@ -83,6 +84,7 @@ function DGStruct{FT}(backend,k::Int,Type::Grids.Quad,Grid) where FT<:AbstractFl
     NumI,
     Type,
     points,
+    k,
     M,
     LUM,
       )

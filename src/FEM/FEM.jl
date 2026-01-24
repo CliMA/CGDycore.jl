@@ -19,6 +19,9 @@ using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using DynamicPolynomials
 using FastGaussQuadrature
+using LoopVectorization
+using SparseArrays
+import SparseArrays.ldiv!
 
 export parse_commandline 
 
@@ -36,6 +39,7 @@ abstract type HCurlConfElement <: HCurlElement end
 abstract type TensorElement <: VectorElement end
 
 include("Quadratur.jl")
+include("LinearAlgebra.jl")
 include("RT.jl")
 include("ND.jl")
 include("DG.jl")

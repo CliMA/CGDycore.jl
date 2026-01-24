@@ -1,6 +1,7 @@
 function Grid2KiteGrid(backend,FT,Grid,OrientFace)
 
   Type=Quad()
+  Form = SphericalGrid()
 
   NumNodes = Grid.NumNodes + Grid.NumEdges + Grid.NumFaces
   Nodes = map(1:NumNodes) do i
@@ -132,7 +133,7 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
     NumNodesB,
     NumNodesG,
     Nodes,
-    Grid.Form,
+    Form,
     Type,
     Grid.Dim,
     Grid.Rad,

@@ -505,24 +505,24 @@ function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
   hfFRef  = zeros(hFeF.Comp,hFeF.DoF,NumQuad)
 
   @. huDiv = 0
-  @inbounds for i = 1 : NumQuad
+  @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : Fe.Comp
       @inbounds for iD = 1 : Fe.DoF
-        fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
+        fRef[iComp,iD,iQ] = Weights[iQ] * Fe.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
   end
-  @inbounds for i = 1 : NumQuad
+  @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : hFeF.Comp
       @inbounds for iD = 1 : hFeF.DoF
-        hfFRef[iComp,iD,i] = hFeF.phi[iD,iComp](Points[i,1],Points[i,2])
+        hfFRef[iComp,iD,iQ] = hFeF.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
   end
-  @inbounds for i = 1 : NumQuad
+  @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : uFeF.Comp
       @inbounds for iD = 1 : uFeF.DoF
-        ufFRef[iComp,iD,i] = uFeF.phi[iD,iComp](Points[i,1],Points[i,2])
+        ufFRef[iComp,iD,iQ] = uFeF.phi[iD,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
   end
@@ -544,26 +544,26 @@ function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
       hhF[iDoF] = h[ind]
     end  
     @inbounds for iQ = 1 : NumQuad
-      ufFRefLoc1 = 0.0
-      ufFRefLoc2 = 0.0
-      @inbounds for iDoF = 1 : uFeF.DoF
+      ufFRefLoc1 = ufFRef[1,1,iQ] * uuF[1]
+      ufFRefLoc2 = ufFRef[2,1,iQ] * uuF[1]
+      @inbounds for iDoF = 2 : uFeF.DoF
         ufFRefLoc1 += ufFRef[1,iDoF,iQ] * uuF[iDoF]  
         ufFRefLoc2 += ufFRef[2,iDoF,iQ] * uuF[iDoF]  
       end  
-      hfFRefLoc = 0.0
-      @inbounds for iDoF = 1 : hFeF.DoF
+      hfFRefLoc = hfFRef[1,1,iQ] * hhF[1]
+      @inbounds for iDoF = 2 : hFeF.DoF
         hfFRefLoc += hfFRef[1,iDoF,iQ] * hhF[iDoF]  
       end  
-      Jacobi(DF,detDF,pinvDF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF], Grid)
-      detDFLoc = detDF[1]
+      Jacobi(DF,X,Grid.Type,Points[iQ,1],Points[iQ,2],Grid.Faces[iF],Grid)
+      @views detDFLoc = det(DF[:,1],DF[:,2])
+      hfFRefLoc /= detDFLoc
       uLoc31 = DF[1,1] * ufFRefLoc1 + DF[1,2] * ufFRefLoc2
       uLoc32 = DF[2,1] * ufFRefLoc1 + DF[2,2] * ufFRefLoc2
       uLoc33 = DF[3,1] * ufFRefLoc1 + DF[3,2] * ufFRefLoc2
-      uLoc1 = DF[1,1] * uLoc31 + DF[2,1] * uLoc32 + DF[3,1] * uLoc33
-      uLoc2 = DF[1,2] * uLoc31 + DF[2,2] * uLoc32 + DF[3,2] * uLoc33
+      uLoc1 = (DF[1,1] * uLoc31 + DF[2,1] * uLoc32 + DF[3,1] * uLoc33) * hfFRefLoc
+      uLoc2 = (DF[1,2] * uLoc31 + DF[2,2] * uLoc32 + DF[3,2] * uLoc33) * hfFRefLoc
       @inbounds for iDoF = 1 : Fe.DoF
-        huDivLoc[iDoF] += Weights[iQ] * hfFRefLoc * (fRef[1,iDoF,iQ] * uLoc1 +
-          fRef[2,iDoF,iQ] * uLoc2) / detDFLoc
+        huDivLoc[iDoF] += (fRef[1,iDoF,iQ] * uLoc1 + fRef[2,iDoF,iQ] * uLoc2) 
       end  
     end
     @inbounds for iDoF = 1 : Fe.DoF
@@ -985,9 +985,6 @@ function KineticEnergy!(backend,FTB,Kin,FeT::ScalarElement,u,uFeF::HDivElement,
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   uFRef  = zeros(uFeF.Comp,uFeF.DoF,NumQuad)
   KinTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
-
-
-  @show "KineticEnergy"
 
   @. Kin = 0
   @inbounds for iQ = 1 : NumQuad

@@ -2,6 +2,8 @@ mutable struct CGStruct{FT<:AbstractFloat,
                         IT2<:AbstractArray} <: ScalarElement
   Glob::IT2
   DoF::Int
+  DoFE::Int
+  DoFN::Int
   Comp::Int                      
   phi::Array{Polynomial,2} 
   Gradphi::Array{Polynomial,3}                           
@@ -9,8 +11,10 @@ mutable struct CGStruct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   points::Array{Float64,2}
+  Order::Int
   M::AbstractSparseMatrix
-  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
+  LUM
+# LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 #CG Quad
@@ -20,6 +24,8 @@ function CGStruct{FT}(backend,k::Int,Type::Grids.Quad,Grid) where FT<:AbstractFl
   kp1 = k + 1
   km1 = k - 1
   DoF = kp1 * kp1
+  DoFE = km1
+  DoFN = 1
   Comp = 1
   points = KernelAbstractions.zeros(backend,Float64,DoF,2)
   phi = Array{Polynomial,2}(undef,DoF,1)
@@ -91,6 +97,8 @@ function CGStruct{FT}(backend,k::Int,Type::Grids.Quad,Grid) where FT<:AbstractFl
                   typeof(Glob)}( 
     Glob,
     DoF,
+    DoFE,
+    DoFN,
     Comp,
     phi,
     Gradphi,
@@ -98,6 +106,7 @@ function CGStruct{FT}(backend,k::Int,Type::Grids.Quad,Grid) where FT<:AbstractFl
     NumI,
     Type,
     points,
+    k,
     M,
     LUM,
       )

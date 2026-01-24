@@ -58,21 +58,12 @@ function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,
   end
 
   if Topography.TopoS == "EarthOrography"
-    OrdPolyS = "$OrdPoly"
-    nPanel = 32
-    nPanelS = "$nPanel"
-    filename = "TopoO" * OrdPolyS * "P" * nPanelS * ".nc"  
-    zSG = ncread(filename,"Height")
-    zS = zeros(FT,DoF,Global.Grid.NumFaces)
-    for iF = 1 : Global.Grid.NumFaces
-      iFG = Global.Grid.Faces[iF].FG  
-      @. zS[:,iF] = zSG[:,iFG]
-    end  
+    zS = DGSEM.OrographyDG(backend,FT,Global.Grid,CellToProc,ParallelCom,OrdPoly)  
   else
     zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-  Metric = DiscretizationDG(backend,FT,Grids.JacobiSphereDG3GPU!,DG,Exchange,Global,zS,Grid.Type)
+  Metric = DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
 
   # Output partition
   nzTemp = Global.Grid.nz
@@ -144,27 +135,6 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
 
   return CG, Metric, Exchange, Global
 end  
-
-function ComputeOrography(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,
-  CellToProc,Grid,ParallelCom)
-  nz = Grid.nz 
-  Proc = ParallelCom.Proc
-  ProcNumber = ParallelCom.ProcNumber
-
-  TimeStepper = TimeStepperStruct{FT}(backend)
-
-  Output = OutputStruct()
-  DoF = (OrdPoly + 1) * (OrdPoly + 1)
-  Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
-    Model.NumV,Model.NumTr)
-  CG = FiniteElements.CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Global.Grid)
-  Exchange = Parallels.ExchangeStruct{FT}(backend,Grid,CG,CellToProc,Proc,ProcNumber,
-      Model.HorLimit;Discretization="CG")
-
-  zS = Grids.Orography4(backend,FT,CG,Exchange,Global)
-
-end  
-
 
 function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,TopoProfile,
   CellToProc,Grid,ParallelCom)

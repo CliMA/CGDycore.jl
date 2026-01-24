@@ -4,33 +4,33 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc
 
-  if GridType == "HealPix"
+  if occursin("HealPix",GridType)
   # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
   # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
   # Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
     Grid = Grids.HealpixGrid(backend,FT,ns,RadEarth,nz)
-  elseif GridType == "SQuadGen"
+  elseif occursin("SQuadGen",GridType)
     Grid = Grids.InputGrid(backend,FT,"Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "Msh"
+  elseif occursin("Msh",GridType)
 #   Grid = Grids.InputGridMsh(backend,FT,"Grid/natural_earth.msh",Grids.OrientFaceSphere,RadEarth,nz)
     Grid = Grids.InputGridMsh(backend,FT,"Grid/Quad.msh",Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "CubedSphere"
+  elseif occursin("CubedSphere",GridType)
     Grid = Grids.CubedGrid(backend,FT,nPanel,Grids.OrientFaceSphere,RadEarth,nz,order=order)
-  elseif GridType == "TriangularSphere"
+  elseif occursin("TriangularSphere",GridType)
     Grid = TriangularGrid(backend,FT,RefineLevel,RadEarth,nz;ChangeOrient=ChangeOrient)
-  elseif GridType == "DelaunaySphere"
+  elseif occursin("DelaunaySphere",GridType)
     Grid = DelaunayGrid(backend,FT,RefineLevel,RadEarth,nz)
-  elseif GridType == "MPASO"
+  elseif occursin("MPASO",GridType)
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/QU240.nc", Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "MPAS"
+  elseif occursin("MPAS",GridType)
     Grid=Grids.InputGridMPASO(backend,FT,"Grid/x4.163842.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
 #   Grid=Grids.InputGridMPASO(backend,FT,"Grid/x1.40962.grid.nc", Grids.OrientFaceSphere,RadEarth,nz)
-  elseif GridType == "MPAS2Triangle"
+  elseif occursin("MPAS2Triangle",GridType)
     Grid=Grids.InputGridMPAS2Triangular(backend,FT,"Grid/x1.2562.grid.nc", 
       Grids.OrientFaceSphere,RadEarth,nz;ChangeOrient)
-  elseif GridType == "SphericalGrid"
+  elseif occursin("SphericalGrid",GridType)
     Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz;ChangeOrient)
-  elseif GridType == "ICON"
+  elseif occursin("ICON",GridType)
     Grid=Grids.InputGridICON(backend,FT,"Grid/icon_grid_0009_R02B03_R.nc", Grids.OrientFaceSphere,
       RadEarth,nz;ChangeOrient)
   else
@@ -40,13 +40,22 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
     @show Grid.NumFaces   
     @show Grid.NumEdges   
   end  
+  if occursin("Kite",GridType)
+    @show "Grid2KiteGrid",Grid.NumFaces  
+    Grid = Grid2KiteGrid(backend,FT,Grid,OrientFaceSphere)  
+    @show "Grid2KiteGrid N",Grid.NumFaces  
+  end  
 
 
   if Decomp == "Hilbert"
     Parallels.HilbertFaceSphere!(Grid)
     CellToProc = Grids.Decompose(Grid,ProcNumber)
   elseif Decomp == "EqualArea"
-    CellToProc = Grids.DecomposeEqualArea(Grid,ProcNumber)
+    if occursin("Kite",GridType)
+      CellToProc = Grids.DecomposeKiteEqualArea(Grid,ProcNumber)
+    else
+      CellToProc = Grids.DecomposeEqualArea(Grid,ProcNumber)
+    end
   else
     CellToProc = ones(Int,Grid.NumFaces)
     println(" False Decomp method ")

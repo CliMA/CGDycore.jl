@@ -4,7 +4,12 @@ import ..Grids
 import ..Thermodynamics
 
 using NLsolve
+using StaticArrays
 using KernelAbstractions
+
+abstract type VelocityForm end
+struct VelocityC <: VelocityForm end
+struct VelocityS <: VelocityForm end
 
 include("parameters.jl")
 include("initial.jl")
@@ -12,10 +17,11 @@ include("force.jl")
 include("topography.jl")
 include("InitProfileBryanFritsch.jl")
 
-function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
+function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
   # Initial values
   if Problem == "GalewskySphere"
-    Profile = Examples.GalewskyExample()(Param,Phys)
+    @show "GalewskySphere"  
+    Profile = Examples.GalewskyExample()(Param,Phys,VelForm)
     Model.InitialProfile = Profile
   elseif Problem == "HaurwitzSphere"
     Profile = Examples.HaurwitzExample()(Param,Phys)
@@ -42,7 +48,7 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
     Profile = Examples.AdvectionSphereSpherical()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere"
-    Profile = Examples.BaroWaveDryExample()(Param,Phys)
+    Profile = Examples.BaroWaveDryExample()(Param,Phys,VelForm)
     Model.InitialProfile = Profile
   elseif Problem == Problem == "BaroWaveMoistSphere"
     Profile = Examples.BaroWaveMoistExample()(Param,Phys)

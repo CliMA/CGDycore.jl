@@ -263,8 +263,6 @@ function DivRhs!(backend,FTB,Div,FeT::ScalarElement,u,uFeF::HDivConfElement,
   uFRef  = zeros(FeT.Comp,uFeF.DoF,NumQuad)
   fTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
 
-  @show "DivRhs! Lin"
-
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : FeT.Comp
       @inbounds for iDoF = 1 : FeT.DoF
@@ -345,8 +343,6 @@ function GradRhs!(backend,FTB,Grad,FeT::HDivElement,h,hFeF::ScalarElement,Grid,E
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   fFRef  = zeros(hFeF.Comp,hFeF.DoF,NumQuad)
   fTRef  = zeros(hFeF.Comp,FeT.DoF,NumQuad)
-
-  @show "GradRhs! Lin"
 
   @inbounds for i = 1 : NumQuad
     @inbounds for iComp = 1 : hFeF.Comp
@@ -649,8 +645,6 @@ function GradKinHeight1!(backend,FTB,Rhs,FeT::HDivConfElement,h,hFeF::ScalarElem
   uFRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
   DivfTRef  = zeros(hFeF.Comp,FeT.DoF,NumQuad)
 
-
-  @show "GradKinHeight1"
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : hFeF.Comp
       @inbounds for iD = 1 : FeT.DoF
@@ -867,7 +861,6 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,u,uFeF::HDivElement,Grid,
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   fTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
 
-  @show "CrossRhs Coriolis"
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : FeT.Comp
       @inbounds for iD = 1 : FeT.DoF
@@ -1000,7 +993,6 @@ function CrossRhs!(backend,FTB,Cross,FeT::HDivElement,q,qFeF::ScalarElement,u,uF
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   qFFRef  = zeros(qFeF.Comp,qFeF.DoF,NumQuad)
   fTRef  = zeros(FeT.Comp,FeT.DoF,NumQuad)
-  @show "CrossRhs!"
 
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : FeT.Comp
@@ -1462,8 +1454,6 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
 #
 #
   @. q = 0
-
-  @show "CurlVel! Lin"
 
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)  
   RotqRef  = zeros(2,FeT.DoF,NumQuad)

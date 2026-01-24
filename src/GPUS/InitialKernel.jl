@@ -376,6 +376,7 @@ end
   end
 end
 
+#=
 @inline function VelSphere2Cart(VelSp,lon,lat)
   VelCa1 = -sin(lon) * VelSp[1] -
     sin(lat) * cos(lon)* VelSp[2] + 
@@ -387,3 +388,4 @@ end
     sin(lat) * VelSp[3]
   return SVector{3}(VelCa1, VelCa2 ,VelCa3)
 end
+=#

@@ -579,7 +579,6 @@ function GradRhs!(backend,FTB,Rhs,FeT::HDivKiteDElement,h,hFeF::ScalarElement,
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   hFRef  = zeros(hFeF.Comp,hFeF.DoF,NumQuad)
   fTRef  = zeros(hFeF.Comp,FeT.DoF,NumQuad)
-  @show "GradRhs! LinKite"
 
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : hFeF.Comp
@@ -696,8 +695,6 @@ function DivRhs!(backend,FTB,Div,FeT::ScalarElement,u,uFeF::HDivElement,h,hFeF::
   hFFRef  = zeros(FeT.Comp,hFeF.DoF,NumQuad)
   GradfTRef  = zeros(uFeF.Comp,hFeF.DoF,NumQuad)
 
-
-  @show "DivRhs! Kite"
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : uFeF.Comp
       @inbounds for iD = 1 : uFeF.DoF
@@ -832,7 +829,6 @@ function DivRhs!(backend,FTB,Div,FeT::ScalarElement,u,uFeF::HDivKiteDElement,Gri
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)
   uFFRef  = zeros(uFeF.Comp,uFeF.DoF,NumQuad)
   GradfTRef  = zeros(uFeF.Comp,FeT.DoF,NumQuad)
-  @show "DivRhs! LinKite"
 
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : uFeF.Comp
@@ -1080,7 +1076,6 @@ function CurlVel!(q,FeT::CGKitePrimalStruct,u,uFe::HDivKiteDElement,QuadOrd,Elem
 #
 #
 
-  @show "CurlKite Primal"
   @. q = 0
 
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)  
@@ -1188,7 +1183,6 @@ function CurlVel!(q,FeT::CGKiteDualStruct,u,uFe::HDivKiteDElement,QuadOrd,ElemTy
 # int q*v dx = int Curl u * v dx = - int u * rot v dx 
 #
 #
-  @show "CurlKite Dual"
 
   @. q = 0
 

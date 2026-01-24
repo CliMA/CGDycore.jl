@@ -1,4 +1,4 @@
-function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grids.Quad)
+function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Quad)
 # Discretization
   Grid = Global.Grid
   OP = DG.DoFE
@@ -31,32 +31,21 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
     F[4,3,iF] = Grid.Faces[iF].P[4].z
   end
   copyto!(FGPU,F)
-  if Grid.Form == "Sphere"
-    Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
-  else
-    Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
-  end
+  Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+    Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType,Grid.Form)
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
   NzG = min(div(NumberThreadGPU,DoF),nz)
   group = (DoF,NzG,1)
   ndrange = (DoF,nz,NF)
-  if Global.Grid.Form == "Sphere"
-    KGridSizeSphereDGKernel! = GridSizeSphereDGKernel!(backend,group)
-    Rad = Global.Grid.Rad
-    KGridSizeSphereDGKernel!(Metric.dz,Metric.X,DG.Glob,
-      Rad,ndrange=ndrange)
-  else
-    KGridSizeCartKernel! = GridSizeCartDGKernel!(backend,group)
-    KGridSizeCartKernel!(Metric.dz,Metric.X,DG.Glob,ndrange=ndrange)
-  end
+  KGridSizeDGKernel! = GridSizeDGKernel!(backend,group)
+  Rad = Global.Grid.Rad
+  KGridSizeDGKernel!(Metric.dz,Metric.X,DG.Glob,Rad,Grid.Form,ndrange=ndrange)
 
   NFG = min(div(NumberThreadGPU,DoF),NF)
   group = (DoF, NFG)
   ndrange = (DoF, NF)
-  if Grid.Form == "Sphere"
+  if Grid.Form == Grids.SphericalGrid()
     KMetricLowerBoundaryKernel! = MetricLowerBoundaryDGKernel!(backend,group)
     KMetricLowerBoundaryKernel!(Metric.xS,Metric.X,DG.Glob,ndrange=ndrange)
   end
@@ -203,7 +192,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
     F[3,3,iF] = Grid.Faces[iF].P[3].z
   end  
   copyto!(FGPU,F)
-  if Grid.Form == "Sphere"
+  if Grid.Form == Grids.SphericalGrid()
     Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
       Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
   else
@@ -216,7 +205,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
   NzG = min(div(NumberThreadGPU,DoF),nz)
   group = (DoF,NzG,1)
   ndrange = (DoF,nz,NF)
-  if Global.Grid.Form == "Sphere"
+  if Global.Grid.Form == Grids.SphericalGrid()
     KGridSizeSphereKernel! = GridSizeSphereDGKernel!(backend,group)
     Rad = Global.Grid.Rad
     KGridSizeSphereKernel!(Metric.dz,Metric.X,DG.Glob,
@@ -229,7 +218,7 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
   NFG = min(div(NumberThreadGPU,DoF),NF)
   group = (DoF, NFG)
   ndrange = (DoF, NF)
-  if Grid.Form == "Sphere"
+  if Grid.Form == Grids.SphericalGrid()
     KMetricLowerBoundaryKernel! = MetricLowerBoundaryDGKernel!(backend,group)
     KMetricLowerBoundaryKernel!(Metric.xS,Metric.X,DG.Glob,ndrange=ndrange)
   end
@@ -318,7 +307,7 @@ end
   end
 end
 
-@kernel inbounds = true function GridSizeCartDGKernel!(dz,@Const(X),@Const(Glob))
+@kernel inbounds = true function GridSizeDGKernel!(dz,@Const(X),@Const(Glob),Rad,::Grids.CartesianGrid)
 
   ID,Iz,IF = @index(Global, NTuple)
 
@@ -331,13 +320,13 @@ end
   end
 end
 
-@kernel inbounds = true function GridSizeSphereDGKernel!(dz,@Const(X),@Const(Glob),Rad)
+@kernel inbounds = true function GridSizeDGKernel!(dz,@Const(X),@Const(Glob),Rad,::Grids.SphericalGrid)
 
   ID,Iz,IF = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
-
+  
   if Iz <= Nz && IF <= NF
     ind = Glob[ID,IF]
     rS = sqrt(X[ID,1,1,Iz,IF]^2 + X[ID,1,2,Iz,IF]^2 + X[ID,1,3,Iz,IF]^2)

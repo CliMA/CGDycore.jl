@@ -1,4 +1,17 @@
-@kernel inbounds = true function CoriolisKernel!(F,U,X,Glob,Phys)
+function Coriolis!(F,U,DG,NumberThreadGPU,Phys)
+  backend = get_backend(F)
+  M = size(U,1)
+  Nz = size(U,2)
+  DoF = size(DG.Glob,1)
+  NF = size(DG.Glob,2)
+  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
+  group = (Nz,M,DoFG,1)
+  ndrange = (Nz,M,DoF,NF)
+  KCoriolisKernel! = CoriolisKernel!(backend,group)
+  KCoriolisKernel!(F,U,DG.Glob,Phys;ndrange=ndrange)
+end    
+
+@kernel inbounds = true function CoriolisKernel!(F,U,Glob,Phys)
 
   _,_,iD,  = @index(Local, NTuple)
   Iz,K,ID,IF = @index(Global, NTuple)
@@ -8,11 +21,10 @@
   vPos = 3
   if ID <= ND
     ind = Glob[ID,IF]
-    fac = eltype(F)(2.0) * Phys.Omega * X[ID,K,3,Iz,IF] / sqrt(X[ID,K,1,Iz,IF]^2 + 
-      X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2)
-    F[K,Iz,ind,uPos] += fac * U[K,Iz,ind,vPos]  
+    fac = eltype(F)(2.0) * Phys.Omega
+    F[K,Iz,ind,uPos] += fac * U[K,Iz,ind,vPos]
     F[K,Iz,ind,vPos] += -fac * U[K,Iz,ind,uPos]
-  end  
+  end
 end
 
 @kernel inbounds = true function BuoyancyKernel!(Fun,F,@Const(U),@Const(X),@Const(Glob))
@@ -78,15 +90,30 @@ end
   vPos = 3
   wPos = 4
   if ID <= ND
+    x1 = X[ID,K,1,Iz,IF]  
+    x2 = X[ID,K,1,Iz,IF]  
+    x3 = X[ID,K,1,Iz,IF]  
     ind = Glob[ID,IF]
-    h = sqrt(X[ID,K,1,Iz,IF]^2 +
-      X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2) - Phys.RadEarth
-    Fu,Fv,Fw = Damp(h,view(U,K,Iz,ind,1:5))
-    F[K,Iz,ind,uPos] += Fu
-    F[K,Iz,ind,vPos] += Fv
-    F[K,Iz,ind,wPos] += Fw
+    Rad = sqrt(x1^2 + x2^2 + x3^2) - Phys.RadEarth
+    h = Rad - Phys.RadEarth
+    Damp = -DampF(h) / Rad^2 * 
+      (U[K,Iz,ind,uPos] * x1 + U[K,Iz,ind,vPos] * x2 + U[K,Iz,ind,wPos] * x3)
+    F[K,Iz,ind,uPos] += Damp * x1
+    F[K,Iz,ind,vPos] += Damp * x2
+    F[K,Iz,ind,wPos] += Damp * x3
   end
 end
+
+#=
+Radius = SQRT(SUM(Elem_xGP(:,i,j,k,iElem)*Elem_xGP(:,i,j,k,iElem)))
+      zPloc=Radius-RadEarth
+      Ut(2:4,i,j,k,iElem) = Ut(2:4,i,j,k,iElem) - Grav*(RadEarth/Radius)**2*Elem_xGP(:,i,j,k,iElem)/Radius*U(1,i,j,k,iElem)
+      Ut(2:4,i,j,k,iElem) = Ut(2:4,i,j,k,iElem) - 2.0*OmegaEarth*CROSS((/0.0,0.0,1.0/),U(2:4,i,j,k,iElem))
+      IF (zPLoc>=Height-StrideDamp) THEN
+        Damp = Relax*DampF((1.0 - (Height - zPLoc)/StrideDamp))
+        Ut(2:4,i,j,k,iElem) = Ut(2:4,i,j,k,iElem) - &
+             Damp*SUM(U(2:4,i,j,k,iElem)*Elem_xGP(:,i,j,k,iElem))/Radius*Elem_xGP(:,i,j,k,iElem)/Radius
+=#             
 
 @kernel inbounds = true function DampCartKernel!(Damp,F,@Const(U),@Const(X),@Const(Glob))
   _,_,iD,  = @index(Local, NTuple)

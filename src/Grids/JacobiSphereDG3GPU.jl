@@ -1,4 +1,4 @@
-function JacobiCartDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad)
+function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad,::Grids.CartesianGrid)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -180,7 +180,7 @@ end
 end  
 
 
-function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad)
+function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad,::Grids.SphericalGrid)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -194,6 +194,7 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Qu
   group = (N, N, M, NzG, 1)
   ndrange = (N, N, M, Nz, NF)
 
+  @show "JacobiSphereDG3QuadKernel"
   KJacobiSphereDG3Kernel! = JacobiSphereDG3QuadKernel!(backend,group)
 
   KJacobiSphereDG3Kernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
@@ -303,23 +304,14 @@ end
     dXdxI[3,3,K,ID,Iz,IF] = dXdx[1,1] * dXdx[2,2] - dXdx[1,2] * dXdx[2,1]
 
     lon,lat,_ = cart2sphere(XT1,XT2,XT3)
-    Rotate[1,1,K,ID,Iz,IF] = -sin(lon)
-    Rotate[2,1,K,ID,Iz,IF] = -sin(lat)*cos(lon)
-    Rotate[3,1,K,ID,Iz,IF] =  cos(lat)*cos(lon)
-
-    Rotate[1,2,K,ID,Iz,IF] = cos(lon)
-    Rotate[2,2,K,ID,Iz,IF] = -sin(lat)*sin(lon)
-    Rotate[3,2,K,ID,Iz,IF] = cos(lat) * sin(lon)
-
-    Rotate[1,3,K,ID,Iz,IF] = 0.0
-    Rotate[2,3,K,ID,Iz,IF] = cos(lat)  
-    Rotate[3,3,K,ID,Iz,IF] = sin(lat)  
+     
+    Rotate[:,:,K,ID,Iz,IF] =  MCart2Sphere(lon,lat) 
 
   end
 end  
 
 
-function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::Grids.Tri)
+function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::Grids.Tri,::Grids.SphericalGrid)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -356,7 +348,7 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::
     FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
 end
 
-function JacobiCartDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::Grids.Tri)
+function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,ElemType::Grids.Tri,::Grids.CartesianGrid)
 
   backend = get_backend(X)
   FT = eltype(X)
@@ -485,17 +477,18 @@ end
 
     lon,lat,_ = cart2sphere(XT1,XT2,XT3)
 
-    Rotate[1,1,K,ID,Iz,IF] = -sin(lon)
-    Rotate[2,1,K,ID,Iz,IF] = -sin(lat)*cos(lon)
-    Rotate[3,1,K,ID,Iz,IF] =  cos(lat)*cos(lon)
+#   Rotate[1,1,K,ID,Iz,IF] = -sin(lon)
+#   Rotate[2,1,K,ID,Iz,IF] = -sin(lat)*cos(lon)
+#   Rotate[3,1,K,ID,Iz,IF] =  cos(lat)*cos(lon)
 
-    Rotate[1,2,K,ID,Iz,IF] = cos(lon)
-    Rotate[2,2,K,ID,Iz,IF] = -sin(lat)*sin(lon)
-    Rotate[3,2,K,ID,Iz,IF] = cos(lat) * sin(lon)
+#   Rotate[1,2,K,ID,Iz,IF] = cos(lon)
+#   Rotate[2,2,K,ID,Iz,IF] = -sin(lat)*sin(lon)
+#   Rotate[3,2,K,ID,Iz,IF] = cos(lat) * sin(lon)
 
-    Rotate[1,3,K,ID,Iz,IF] = 0.0
-    Rotate[2,3,K,ID,Iz,IF] = cos(lat)  
-    Rotate[3,3,K,ID,Iz,IF] = sin(lat)  
+#   Rotate[1,3,K,ID,Iz,IF] = 0.0
+#   Rotate[2,3,K,ID,Iz,IF] = cos(lat)  
+#   Rotate[3,3,K,ID,Iz,IF] = sin(lat)  
+    Rotate[:,:,K,ID,Iz,IF] =  MCart2Sphere(lon,lat) 
 
   end
 end  

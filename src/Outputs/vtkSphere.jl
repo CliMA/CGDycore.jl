@@ -41,7 +41,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       RefineMidPoints[1,2] = -1/3  
     end  
     for iF in 1 : NumFaces
-      if Grid.Form == "Sphere"
+      if Grid.Form == Grids.SphericalGrid()
         if Flat
           lam = zeros(length(Grid.Faces[iF].N))
           theta = zeros(length(Grid.Faces[iF].N))
@@ -103,7 +103,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       NumNodes = 0
       for iF in 1 : NumFaces
         for iR in 1 : NumRefine  
-          if Grid.Form == "Sphere" 
+          if Grid.Form == Grids.SphericalGrid()
             for i in 1 : 4  
               NodeLoc[1,i], NodeLoc[2,i], NodeLoc[3,i] =
                 Bilinear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
@@ -170,7 +170,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       NumNodes = 0
       for iF in 1 : NumFaces
         for iR in 1 : NumRefine  
-          if Grid.Form == "Sphere" 
+          if Grid.Form == Grids.SphericalGrid()
             for i in 1 : 3  
               NodeLoc[1,i], NodeLoc[2,i], NodeLoc[3,i] =
                 Linear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
@@ -289,7 +289,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
                 zeta1,X,FE,Global,GridType)
             end  
           end    
-          if Global.Grid.Form == "Sphere" && Global.Output.Flat
+          if Global.Grid.Form == Grids.SphericalGrid() && Global.Output.Flat
             for i=1:2*NumPoint
               (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
             end 
@@ -381,7 +381,7 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
         @views Trans(x[2,:],ksi1,eta0, -1.0,X,FE,Global,Global.Grid.Type)
         @views Trans(x[3,:],ksi1,eta1, -1.0,X,FE,Global,Global.Grid.Type)
         @views Trans(x[4,:],ksi0,eta1, -1.0,X,FE,Global,Global.Grid.Type)
-        if Global.Grid.Form == "Sphere" && Global.Output.Flat
+        if Global.Grid.Form == Grids.SphericalGrid() && Global.Output.Flat
           for i=1:4
             (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
           end 
@@ -1021,7 +1021,7 @@ function Bilinear(ksi1,ksi2,P1,P2,P3,P4,Form,R)
     (1 + ksi1) * (1 - ksi2) * P2.z +
     (1 + ksi1) * (1 + ksi2) * P3.z +
     (1 - ksi1) * (1 + ksi2) * P4.z) 
-  if Form == "Sphere"
+  if Form == Grids.SphericalGrid()
     r = sqrt(x^2 + y^2 + z^2)
     x = x / r * R
     y = y / r * R
@@ -1039,7 +1039,7 @@ function Linear(ksi1,ksi2,P1,P2,P3,Form,R)
   z = 0.5 * ((-ksi1 - ksi2) * P1.z +
     (1 + ksi1) * P2.z +
     (1 + ksi2) * P3.z)
-  if Form == "Sphere"
+  if Form == Grids.SphericalGrid()
     r = sqrt(x^2 + y^2 + z^2)
     x = x / r * R
     y = y / r * R

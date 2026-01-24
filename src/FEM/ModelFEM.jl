@@ -10,12 +10,11 @@ mutable struct ModelFEMLin
   Grad::AbstractMatrix
 end
 
-function ModelFEMLin(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+function ModelFEMLin(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS::Int,Jacobi)
   pPosS = 1
   pPosE = DG.NumG
   uPosS = pPosE + 1
   uPosE = pPosE + RT.NumG
-  @show nQuadM
   DG.M = FEM.MassMatrix(backend,FTB,DG,Grid,nQuadM,Jacobi)
   DG.LUM = lu(DG.M)
 
@@ -23,7 +22,7 @@ function ModelFEMLin(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
   RT.LUM = lu(RT.M)
   CG.M = FEM.MassMatrix(backend,FTB,CG,Grid,nQuadM,Jacobi)
   CG.LUM = lu(CG.M)
-  Div = FEM.DivMatrix(backend,FTB,RT,DG,Grid,nQuadS,Jacobi)
+  Div = FEM.DivMatrix(backend,FTB,RT,DG,Grid,nQuadM,Jacobi)
   Grad = -Div'
 
   return ModelFEMLin(
@@ -40,7 +39,6 @@ function ModelFEMLin(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
 end
 
 mutable struct ModelFEMVecI
-  ND
   RT
   CG
   DG
@@ -53,25 +51,31 @@ mutable struct ModelFEMVecI
 end
 
 
-function ModelFEMVecI(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+function ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG)
   pPosS = 1
   pPosE = DG.NumG
   uPosS = pPosE + 1
   uPosE = pPosE + RT.NumG
-  DG.M = FEM.MassMatrix(backend,FTB,DG,Grid,nQuadM,Jacobi)
-  DG.LUM = lu(DG.M)
+  DG.M = FEM.MassMatrix(backend,FTB,DG,Grid,DG.Order+1,Jacobi)
+  DG.LUM = DiagonalMatrix(FTB,DG)
+  DE = reshape(DG.LUM.D,1,1,length(DG.LUM.D),1)
+  Parallels.ExchangeData3DSendGPU(DE,ExchangeDG)
+  Parallels.ExchangeData3DRecvGPU!(DE,ExchangeDG)
+# DG.LUM = lu(DG.M)
 
   RT.M = FEM.MassMatrix(backend,FTB,RT,Grid,nQuadM,Jacobi)
-  RT.LUM = lu(RT.M)
+  RT.LUM = BlockDiagonalDualMatrix(FTB,RT,Grid)
+# RT.LUM = lu(RT.M)
   Div = FEM.DivMatrix(backend,FTB,RT,DG,Grid,nQuadS,Jacobi)
   Grad = -Div'
 
-  ND.M = FEM.MassMatrix(backend,FTB,ND,Grid,nQuadM,Jacobi)
-  ND.LUM = lu(ND.M)
-  CG.M = FEM.MassMatrix(backend,FTB,CG,Grid,nQuadM,Jacobi)
-  CG.LUM = lu(CG.M)
+  CG.M = FEM.MassMatrix(backend,FTB,CG,Grid,CG.Order,Jacobi)
+  CG.LUM = DiagonalMatrix(FTB,CG)
+  DE = reshape(CG.LUM.D,1,1,length(CG.LUM.D),1)
+  Parallels.ExchangeData3DSendGPU(DE,ExchangeCG)
+  Parallels.ExchangeData3DRecvGPU!(DE,ExchangeCG)
+# CG.LUM = lu(CG.M)
   return ModelFEMVecI(
-    ND,
     RT,
     CG,
     DG,

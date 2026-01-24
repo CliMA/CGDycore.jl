@@ -30,7 +30,7 @@ function FcnHeat!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
   ldiv!(DG.LUM,Fh)
 end
 
-function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
+function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi,ExchangeDG,ExchangeCG;UCache)
 
   @. F = 0
   DG = Model.DG
@@ -42,20 +42,36 @@ function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jaco
   @views Uu = U[Model.uPosS:Model.uPosE]
   @views UCachep = UCache[Model.pPosS:Model.pPosE]
   @views k = UCache[Model.pPosS:Model.pPosE]
+  kE = reshape(k,1,1,length(k),1)
   @views q = UCache[Model.uPosE+1:end]
+  qE = reshape(q,1,1,length(q),1)
   @views hUu = UCache[Model.uPosS:Model.uPosE]
+  @views hUuE = reshape(hUu,1,1,length(hUu),1)
   @views Fh = F[Model.pPosS:Model.pPosE]
+  FhE = reshape(Fh,1,1,length(Fh),1)
   @views Fu = F[Model.uPosS:Model.uPosE]
 
+
   CurlVel!(q,CG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
-  CrossRhs!(backend,FTB,Fu,RT,q,CG,Uu,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+  Parallels.ExchangeData3DSendGPU(qE,ExchangeCG)
+  Parallels.ExchangeData3DRecvGPU!(qE,ExchangeCG)
+
   KineticEnergy!(backend,FTB,k,DG,Uu,RT,Grid,Grids.Quad(),QuadOrdM,Jacobi)
+  Parallels.ExchangeData3DSendGPU(kE,ExchangeDG)
+  Parallels.ExchangeData3DRecvGPU!(kE,ExchangeDG)
+
+  CrossRhs!(backend,FTB,Fu,RT,q,CG,Uu,RT,Grid,RT.Type,QuadOrdS,Jacobi)
   @. k += Grav * Uh
   GradRhs!(backend,FTB,Fu,RT,k,DG,Grid,Grids.Quad(),QuadOrdS,Jacobi)
   ldiv!(RT.LUM,Fu)
+ 
+
   ProjecthScalaruHDivHDiv!(backend,FTB,hUu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
   DivRhs!(backend,FTB,Fh,DG,hUu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
+  Parallels.ExchangeData3DSendGPU(FhE,ExchangeDG)
+  Parallels.ExchangeData3DRecvGPU!(FhE,ExchangeDG)
   ldiv!(DG.LUM,Fh)
+
 
 #=
   views Uh = U[Model.pPosS:Model.pPosE]

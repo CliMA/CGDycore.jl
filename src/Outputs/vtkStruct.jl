@@ -20,7 +20,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       RefineMidPoints[1,2] = -1/3  
     end  
     for iF in 1 : NumFaces
-      if Grid.Form == "Sphere"
+      if Grid.Form == Grids.SphericalGrid()
         if Flat
           lam = zeros(length(Grid.Faces[iF].N))
           theta = zeros(length(Grid.Faces[iF].N))
@@ -82,7 +82,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       NumNodes = 0
       for iF in 1 : NumFaces
         for iR in 1 : NumRefine  
-          if Grid.Form == "Sphere" 
+          if Grid.Form == Grids.SphericalGrid() 
             for i in 1 : 4  
               NodeLoc[1,i], NodeLoc[2,i], NodeLoc[3,i] =
                 Bilinear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],
@@ -149,7 +149,7 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
       NumNodes = 0
       for iF in 1 : NumFaces
         for iR in 1 : NumRefine  
-          if Grid.Form == "Sphere" 
+          if Grid.Form == Grids.SphericalGrid() 
             for i in 1 : 3  
               NodeLoc[1,i], NodeLoc[2,i], NodeLoc[3,i] =
                 Linear(RefinePoints[iR,i,1],RefinePoints[iR,i,2],

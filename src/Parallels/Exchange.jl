@@ -89,7 +89,7 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
   InBoundEdges = zeros(Int,NumInBoundEdges)
   InBoundEdgesP = zeros(Int,NumInBoundEdges)
   NumInBoundEdges = 0
-  for i = 1:SubGrid.NumEdges
+  for i = 1 : SubGrid.NumEdges
     if SubGrid.Edges[i].FG[1] > 0
       if CellToProc[SubGrid.Edges[i].FG[1]] == Proc  
       else
@@ -126,9 +126,12 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
         iE = InBoundEdges[iEB] 
         push!(GlobTemp,SubGrid.Edges[iE].EG)
         for k = 1 : OrdEdge
-          if Discretization == "CG"  
+          if Discretization == "CG" 
             push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
-          elseif Discretization == "DG"  
+          elseif Discretization == "Kite" 
+            iEP = FE.EdgesP[iE]  
+            push!(LocTemp,FE.NumNodesP + k + (iEP - 1) * OrdEdge)
+          elseif Discretization == "DG"
             if SubGrid.Edges[iEB].F[1] < SubGrid.Edges[iEB].F[2]
               F = SubGrid.Edges[iE].F[1]
               FEE = SubGrid.Edges[iE].FE[1]
@@ -174,9 +177,12 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
         iEB1 += 1  
         (iE,) = DictE[GlobInd[iEB1]]  
         for k = 1 : OrdEdge
-          if Discretization == "CG"  
+          if Discretization == "CG"
             push!(LocTemp,k + SubGrid.NumNodes + (iE - 1) * OrdEdge)
-          elseif Discretization == "DG" 
+          elseif Discretization == "Kite"   
+            iEP = FE.EdgesP[iE]  
+            push!(LocTemp,FE.NumNodesP + k + (iEP - 1) * OrdEdge)
+          elseif Discretization == "DG"
             if SubGrid.Edges[iE].F[1] < SubGrid.Edges[iE].F[2]
               k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + OrdEdge - k + 1
               k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + k 
@@ -195,10 +201,18 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
   # Nodes 
   NumInBoundNodes = 0
   InBoundNodes = zeros(Int,0)
+  InBoundNodesPos = zeros(Int,0)
   InBoundNodesP = zeros(Int,0)
   InBoundNodesFG = zeros(Int,0)
   if OrdNode > 0
-    for i = 1 : SubGrid.NumNodes
+    for i = 1 : SubGrid.NumNodesB
+      if Discretization == "CG"
+        iPos = SubGrid.Nodes[i].N  
+      elseif Discretization == "Kite" && SubGrid.Nodes[i].Type == 'F'
+        iPos = FE.NodesP[i]
+      else
+        continue
+      end  
       NeiProcLoc = zeros(Int,0)  
       NeiFG = zeros(Int,0)  
       for iF in eachindex(SubGrid.Nodes[i].FG)
@@ -209,7 +223,8 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
       end
       NeiProcLoc = unique(NeiProcLoc)
       for iC in eachindex(NeiProcLoc)
-        push!(InBoundNodes,SubGrid.Nodes[i].N)  
+        push!(InBoundNodes,i)  
+        push!(InBoundNodesPos,iPos)  
         push!(InBoundNodesP,NeiProcLoc[iC])
         push!(InBoundNodesFG,NeiFG[iC])
         NumInBoundNodes += 1
@@ -232,8 +247,9 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
       for iNB = 1 : NumInBoundNodes
         if InBoundNodesP[iNB] == NeiProcN[iP]
           iN = InBoundNodes[iNB]
+          iPos = InBoundNodesPos[iNB]
           push!(GlobTemp,SubGrid.Nodes[iN].NG)
-          push!(LocTemp,iN)
+          push!(LocTemp,iPos)
         end
       end
       SendBufferN[NeiProcN[iP]] = LocTemp
@@ -266,7 +282,12 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
         if InBoundNodesP[iNB] == NeiProcN[iP]
           iNB1 += 1
           (iN,) = DictN[(GlobInd[iNB1],NeiProcN[iP])]
-          push!(LocTemp,iN)
+          if Discretization == "Kite"
+            iPos = FE.NodesP[iN]  
+          else
+            iPos = iN
+          end  
+          push!(LocTemp,iPos)
         end
       end
       RecvBufferN[NeiProcN[iP]] = LocTemp

@@ -12,6 +12,11 @@ function parse_commandline()
     arg_type = String
     default = "CG"
 
+    "--VelocityForm"
+    help = "Spherical or Cartesian velocity components"
+    arg_type = String
+    default = "Spherical"
+
     "--FluxDG"
     help = "Average flux for DG"
     arg_type = String

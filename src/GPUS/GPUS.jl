@@ -1,6 +1,7 @@
 module GPUS
 
 import ..Parallels
+import ..Examples
 import ..Models
 import ..Grids
 import ..FiniteElements

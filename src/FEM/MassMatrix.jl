@@ -164,10 +164,10 @@ function MassMatrix(backend,FTB,Fe::ScalarElement,Grid,QuadOrd,Jacobi)
   NumQuad,Weights,Points = FEM.QuadRule(Fe.Type,QuadOrd)
   fRef  = zeros(Fe.Comp,Fe.DoF,NumQuad)
 
-  for i = 1 : NumQuad
+  for iQ = 1 : NumQuad
     for iComp = 1 : Fe.Comp
-      for iD = 1 : Fe.DoF
-        fRef[iComp,iD,i] = Fe.phi[iD,iComp](Points[i,1],Points[i,2])
+      for iDoF = 1 : Fe.DoF
+        fRef[iComp,iDoF,iQ] = Fe.phi[iDoF,iComp](Points[iQ,1],Points[iQ,2])
       end
     end
   end

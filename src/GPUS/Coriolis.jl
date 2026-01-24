@@ -60,7 +60,7 @@ end
 
 Base.@kwdef struct CoriolisDeepDG <: CoriolisType end
 
-function (CoriolisFun::CoriolisDeepDG)(Phys)
+function (CoriolisFun::CoriolisDeepDG)(Phys,::Examples.VelocityS)
   @inline function Coriolis(x,y,z,u,v,w)
     FT = eltype(x)
     sinlat = z / sqrt(x^2 + y^2 + z^2)
@@ -70,6 +70,17 @@ function (CoriolisFun::CoriolisDeepDG)(Phys)
     Fu = v * Ws - Wc * w
     Fv = -u * Ws
     Fw = Wc * u
+    return Fu,Fv,Fw
+  end
+  return Coriolis
+end
+
+function (CoriolisFun::CoriolisDeepDG)(Phys,::Examples.VelocityC)
+  @inline function Coriolis(x,y,z,u,v,w)
+    FT = eltype(x)
+    Fu = -FT(2) * Phys.Omega * v
+    Fv = FT(2) * Phys.Omega * u
+    Fw = FT(0)
     return Fu,Fv,Fw
   end
   return Coriolis
@@ -131,9 +142,10 @@ function (GeoPotentialFun::GeoPotentialShallow)(Phys)
   return GeoPotential
 end
 
+
 Base.@kwdef struct GeoPotentialDeep <: GeoPotentialType end
 
-function (GeoPotentialFun::GeoPotentialDeep)(Phys)
+function (GeoPotentialFun::GeoPotentialDeep)(Phys,::Grids.SphericalGrid)
   @inline function GeoPotential(x,y,z)
     FT = eltype(x)
     r = sqrt(x^2 + y^2 + z^2)
@@ -143,9 +155,7 @@ function (GeoPotentialFun::GeoPotentialDeep)(Phys)
   return GeoPotential
 end
 
-Base.@kwdef struct GeoPotentialCart <: GeoPotentialType end
-
-function (GeoPotentialFun::GeoPotentialCart)(Phys)
+function (GeoPotentialFun::GeoPotentialDeep)(Phys,::Grids.CartesianGrid)
   @inline function GeoPotential(x,y,z)
     return Phys.Grav * z 
   end

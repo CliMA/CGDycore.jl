@@ -15,12 +15,13 @@ function CacheStructDG{FT}(backend,NumG,NumI,M,nz,NumV,NumAux) where FT<:Abstrac
   )
 end
 
-function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,ElemType::Grids.ElementType)
+function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,ElemType::Grids.ElementType,VelForm)
 
   backend = get_backend(U)
   FTB = eltype(U)
   Proc = Global.ParallelCom.Proc
   ProcNumber = Global.ParallelCom.ProcNumber
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Model = Global.Model
   NumV = Model.NumV
   NumAux = Model.NumAux
@@ -49,14 +50,15 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
           @inbounds for jStage = 1 : iStage-1
             @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
           end
-#         @views Fcn(k[:,:,:,:,iStage],Un,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,ElemType)
-          @views Fcn(k[:,:,:,:,iStage],Un,DG,Metric,Phys,Cache,Exchange,Global,ElemType)
+          @views Fcn(k[:,:,:,:,iStage],Un,DG,Metric,Phys,Cache,Exchange,Global,ElemType,VelForm)
           @inbounds for jStage = 1 : iStage - 1
             fac = ROS.c[iStage,jStage] / dtau
             @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
           end
+          @views TendVCart2VSp!(k[:,:,:,2:4,iStage],DG,Metric,NumberThreadGPU,VelForm)
           @views Solve!(Jac,k[:,:,:,:,iStage])
           @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
+          @views TendVSp2VCart!(k[:,:,:,2:4,iStage],DG,Metric,NumberThreadGPU,VelForm)
         end
         @inbounds for iStage = 1 : nStage
           @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
@@ -71,7 +73,6 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
       end
     end
     Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
-    @show sum(abs.(U))
   end  
 end  
 

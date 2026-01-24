@@ -2,8 +2,8 @@ abstract type AbstractForcing end
 
 Base.@kwdef struct HeldSuarezForcing <: AbstractForcing end
 
-function (Force::HeldSuarezForcing)(Param,Phys)
-  function local_force(F,U,p,lat)
+function (Force::HeldSuarezForcing)(Param,Phys,::VelocityS)
+  function local_force(F,U,p,lon,lat)
     FT = eltype(U)
     Sigma = p / Phys.p0
     SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
@@ -23,6 +23,36 @@ function (Force::HeldSuarezForcing)(Param,Phys)
     DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
     F[5]  += -U[1] * DeltaT / SigmaPowKappa
   end  
+  return local_force
+end
+
+function (Force::HeldSuarezForcing)(Param,Phys,::VelocityC)
+  function local_force(F,U,p,lon,lat)
+    FT = eltype(U)
+    Sigma = p / Phys.p0
+    SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
+    height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
+    coslat = cos(lat)
+    sinlat = sin(lat)
+    coslon = cos(lon)
+    sinlon = sin(lon)
+    uS = -sinlon * U[1] + coslon * U[2]
+    vS = -sinlat * coslon * U[1] - sinlat * sinlon * U[2] + coslat * U[3]
+    wS = 0.0
+    F[2] += -(Param.k_f * height_factor) * (-sinlon * uS - sinlat * coslon * vS)
+    F[3] += -(Param.k_f * height_factor) * (coslon * uS - sinlat * sinlon * vS)
+    F[4] += -(Param.k_f * height_factor) * coslat * vS
+    if Sigma < FT(0.7)
+      kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
+    else
+      kT = FT(0)
+    end
+    Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
+      Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
+    Teq = max(Param.T_min, Teq)
+    DeltaT =  kT * (Phys.p0 * Sigma / (U[1] * Phys.Rd) - Teq)
+    F[5]  += -U[1] * DeltaT / SigmaPowKappa
+  end
   return local_force
 end
 

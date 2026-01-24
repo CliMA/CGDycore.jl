@@ -14,7 +14,7 @@ function TimeStepperLin(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
   # Output of the initial values
   FileNumber = 0
   NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
-  if Grid.Form == "Sphere"
+  if Grid.Form == Grids.SphericalGrid()
     VelOut = zeros(Grid.NumFaces*NumRefine,2)
     hout = zeros(Grid.NumFaces*NumRefine)
     Vort = zeros(Grid.NumFaces*NumRefine)
@@ -27,11 +27,8 @@ function TimeStepperLin(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
   end  
  
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  if Grid.Form == "Sphere"
-    ConvertVelocitySp!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  else
-    ConvertVelocityCart!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-  end  
+  ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+    Grid.Form)
   Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[Vort hout VelOut],
     FileNumber,cName)
@@ -53,11 +50,8 @@ function TimeStepperLin(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
     if mod(i,nPrint) == 0
       @show "Druck ",i  
       ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      if Grid.Form == "Sphere"
-        ConvertVelocitySp!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      else
-        ConvertVelocityCart!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-      end  
+      ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+        Grid.Form)
       Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
       FileNumber += 1
       Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[Vort hout VelOut],
@@ -66,11 +60,8 @@ function TimeStepperLin(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
     time += dtau
   end
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  if Grid.Form == "Sphere"
-    ConvertVelocitySp!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  else
-    ConvertVelocityCart!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-  end  
+  ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+    Grid.Form)
   Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   FileNumber += 1
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[Vort hout VelOut],
@@ -78,7 +69,8 @@ function TimeStepperLin(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
 end
 
 #TimeStepper for Vectorinvariant Nonlinear Shallow Water Equations
-function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
+function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,ExchangeDG,ExchangeCG,Grid,
+  nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 
   pPosS = Model.pPosS
   pPosE = Model.pPosE
@@ -93,7 +85,7 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,
   # Output of the initial values
   FileNumber = 0
   NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
-  if Grid.Form == "Sphere"
+  if Grid.Form == Grids.SphericalGrid()
     VelOut = zeros(Grid.NumFaces*NumRefine,2)
     hout = zeros(Grid.NumFaces*NumRefine)
     Vort = zeros(Grid.NumFaces*NumRefine)
@@ -106,52 +98,46 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,
   end  
  
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  if Grid.Form == "Sphere"
-    ConvertVelocitySp!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  else
-    ConvertVelocityCart!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-  end  
+  ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+    Grid.Form)
   Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
     FileNumber,cName)
 
   time = 0.0
   UNew = similar(U)
-  F = similar(U)
-  @views Fp = F[pPosS:pPosE]
-  @views Fu = F[uPosS:uPosE]
+  F = zeros(FTB,Model.DG.NumG+Model.RT.NumG)
   time = 0.0
   for i = 1 : nAdveVel
-    @show i,(i-1)*dtau/3600   
-    Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
+    if Proc == 1  
+      @show i,(i-1)*dtau/3600   
+    end  
+    Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG;UCache)
     @. UNew = U + 1/3 * dtau * F
-    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
+    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG;UCache)
     @. UNew = U + 1/2 * dtau * F
-    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
+    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG;UCache)
     @. U = U + dtau * F
 
     # Output
     if mod(i,nPrint) == 0
-      @show "Druck ",i  
-      ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      if Grid.Form == "Sphere"
-        ConvertVelocitySp!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      else
-        ConvertVelocityCart!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
+      if Proc == 1  
+        @show "Druck",i
       end  
+      ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+      ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+        Grid.Form)
       Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
       FileNumber += 1
       Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
         FileNumber,cName)
+      MPI.Barrier(MPI.COMM_WORLD)
     end  
     time += dtau
   end
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  if Grid.Form == "Sphere"
-    ConvertVelocitySp!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  else
-    ConvertVelocityCart!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-  end  
+  ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+    Grid.Form)
   Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   FileNumber += 1
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
@@ -184,7 +170,7 @@ time = 0.0
   # Output of the initial values
   FileNumber = 0
   NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
-  if Grid.Form == "Sphere"
+  if Grid.Form == Grids.SphericalGrid()
     VelOut = zeros(Grid.NumFaces*NumRefine,2)
     hout = zeros(Grid.NumFaces*NumRefine)
     Vort = zeros(Grid.NumFaces*NumRefine)
@@ -197,11 +183,8 @@ time = 0.0
   end  
 
   ConvertScalar!(backend,FTB,hout,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  if Grid.Form == "Sphere"
-    ConvertScalarVelocitySp!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  else
-    ConvertScalarVelocityCart!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-  end
+  ConvertScalarVelocity!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,
+    vtkSkeletonMesh.RefineMidPoints,Grid.Form)
   ProjectHDivScalarHDiv(backend,FTB,UNewu,Model.RT,Uh,Model.DG,Uhu,Model.RT,
   Grid,nQuadM,Jacobi)
   Vorticity!(backend,FTB,Vort,Model.CG,UNewu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
@@ -226,11 +209,8 @@ time = 0.0
       FileNumber += 1
       @show "Print",i
       ConvertScalar!(backend,FTB,hout,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      if Grid.Form == "Sphere"
-        ConvertScalarVelocitySp!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-      else
-        ConvertScalarVelocityCart!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)  
-      end
+      ConvertScalarVelocity!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,
+        vtkSkeletonMesh.RefineMidPoints,Grid.Form)
       ProjectHDivScalarHDiv(backend,FTB,UNewu,Model.RT,Uh,Model.DG,Uhu,Model.RT,
       Grid,nQuadM,Jacobi)
       Vorticity!(backend,FTB,Vort,Model.CG,UNewu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
@@ -260,8 +240,8 @@ function TimeStepperEul(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
   pC = zeros(Grid.NumFaces,1)
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi!)
   if uPosS > 0
-    ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
-    ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!)
+    ConvertScalarVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
+    ConvertScalarVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!)
     Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [hout VelCa VelSp], FileNumber)
   else
     Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [hout;], FileNumber)  
@@ -278,8 +258,8 @@ function TimeStepperEul(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
     if mod(i,1) == 0
       ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi)
       if uPosS > 0
-        ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
-        ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!)
+        ConvertScalarVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
+        ConvertScalarVelocity!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!,Grid.Form)
         FileNumber += 1
         Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
       else
@@ -291,8 +271,8 @@ function TimeStepperEul(backend,FTB,U,dtau,Fcn,Model,Grid,nQuadM,nQuadS,Jacobi,n
   end
   ConvertScalar!(backend,FTB,pC,Up,Model.DG,Grid,Jacobi!)
   if uPosS > 0
-    ConvertVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
-    ConvertVelocitySp!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!)
+    ConvertScalarVelocityCart!(backend,FTB,VelCa,Uu,Model.RT,Grid,Jacobi!)
+    ConvertScalarVelocity!(backend,FTB,VelSp,Uu,Model.RT,Grid,Jacobi!,Grid.Form)
     FileNumber += 1
     Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType, Proc, ProcNumber, [pC VelCa VelSp], FileNumber)
   else

@@ -1,6 +1,7 @@
 function QuadRule(type::Grids.QuadPrimal,n)
   NumQuad = n * n
   x, w = gaussradau(n)
+  @. x = -x
   Weights = zeros(NumQuad)
   Points = zeros(NumQuad,2)
   ii = 1

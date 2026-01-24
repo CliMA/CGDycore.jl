@@ -14,6 +14,7 @@ using ArgParse
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
+VelocityForm = parsed_args["VelocityForm"]
 FluxDG = parsed_args["FluxDG"]
 InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
 ProfRho = parsed_args["ProfRho"]
@@ -259,6 +260,13 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
+if VelocityForm == "Spherical"  
+   VelForm = Examples.VelocityS()
+elseif VelocityForm == "Cartesian"  
+   VelForm = Examples.VelocityC()
+end   
+@show VelForm
+@show typeof(VelForm)
 
 # Equation
 if Equation == "CompressibleShallow"
@@ -297,6 +305,9 @@ else
 end  
 
 
+#zS = DGSEM.OrographyDG(backend,FTB,Grid,CellToProc,ParallelCom,OrdPoly)
+
+
 #Topography
 if TopoS == "AgnesiHill"
   TopoProfile = Examples.AgnesiHill{FTB}(;aC=aC)()
@@ -328,7 +339,9 @@ end
 
 
 # Initial values
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
+@show "InitialProfile!"
+@show VelForm
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = GPUS.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 pAuxPos = 1
@@ -397,11 +410,7 @@ if Damping
   Damp = GPUS.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
   Model.Damp = Damp
 end
-if Grid.Form == "Sphere"
-  Model.GeoPotential = GPUS.GeoPotentialDeep()(Phys)
-else
-  Model.GeoPotential = GPUS.GeoPotentialCart()(Phys)
-end  
+Model.GeoPotential = GPUS.GeoPotentialDeep()(Phys,Grid.Form)
     
 
 
@@ -476,7 +485,7 @@ end
 if IntMethod == "Rosenbrock"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type)
+    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
 elseif IntMethod == "RosenbrockNonConservative"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,

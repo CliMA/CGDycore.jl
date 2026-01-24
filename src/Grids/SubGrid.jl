@@ -1,15 +1,15 @@
 function Decompose(Grid,nx,ny,NumProc)
 
   NumFaces=Grid.NumFaces
-  LocalNumfaces=zeros(Int,NumProc)
-  LocalNumfaces.= floor(NumFaces / NumProc)
+  LocalNumFaces=zeros(Int,NumProc)
+  LocalNumFaces.= floor(NumFaces / NumProc)
   Rest = mod(NumFaces, NumProc)
   @inbounds for iP=1:Rest
-    LocalNumfaces[iP]+=1
+    LocalNumFaces[iP]+=1
   end
   CellToProc = zeros(Int,NumFaces)
   @inbounds for ic = 1 : NumProc
-    CellToProc[sum(LocalNumfaces[1:ic-1])+1:sum(LocalNumfaces[1:ic])] .= ic
+    CellToProc[sum(LocalNumFaces[1:ic-1])+1:sum(LocalNumFaces[1:ic])] .= ic
   end  
   LenLocalX = div(nx,NumProc) 
   RestX = mod(nx,NumProc)
@@ -39,11 +39,11 @@ end
 function DecomposeEqualArea(Grid,NumProc)
 
   NumFaces=Grid.NumFaces
-  LocalNumfaces=zeros(Int,NumProc)
-  LocalNumfaces.= floor(NumFaces / NumProc)
+  LocalNumFaces=zeros(Int,NumProc)
+  LocalNumFaces.= floor(NumFaces / NumProc)
   Rest = mod(NumFaces, NumProc)
   @inbounds for iP=1:Rest
-    LocalNumfaces[iP]+=1
+    LocalNumFaces[iP]+=1
   end
   (n_regions,s_cap) = Parallels.eq_caps(NumProc)
   n_collars = size(n_regions,1) - 2
@@ -57,7 +57,7 @@ function DecomposeEqualArea(Grid,NumProc)
   end  
   p=sortslices(coord, dims=1, lt=Parallels.compare_NS_WE)
   NumNodeA = 1
-  NumNodeE = LocalNumfaces[1]
+  NumNodeE = LocalNumFaces[1]
   iP = zeros(Int,NumNodeE-NumNodeA+1)
   @. iP = round(Int,p[NumNodeA:NumNodeE,3])
   CellToProc[iP] .= 1
@@ -68,14 +68,14 @@ function DecomposeEqualArea(Grid,NumProc)
       NumNodeACol = NumNodeECol + 1
       region_nCol = region_n
       @inbounds for region_ew = 1 : n_regions[collar_n + 1]
-        NumNodeECol += LocalNumfaces[region_nCol]  
+        NumNodeECol += LocalNumFaces[region_nCol]  
         region_nCol += 1
       end
       pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=Parallels.compare_WE_NS)
       NumNodeE = 0
       @inbounds for region_ew = 1 : n_regions[collar_n + 1]
         NumNodeA = NumNodeE + 1  
-        NumNodeE +=  LocalNumfaces[region_n] 
+        NumNodeE +=  LocalNumFaces[region_n] 
         iP = zeros(Int,NumNodeE-NumNodeA+1)
         @. iP = round(Int,pCol[NumNodeA:NumNodeE,3])
         CellToProc[iP] .= region_n
@@ -83,10 +83,230 @@ function DecomposeEqualArea(Grid,NumProc)
       end
     end
     NumNodeA = NumNodeECol + 1
-    NumNodeE =  NumNodeECol + LocalNumfaces[end]
+    NumNodeE =  NumNodeECol + LocalNumFaces[end]
     iP = zeros(Int,NumNodeE-NumNodeA+1)
     @. iP = round(Int,p[NumNodeA:NumNodeE,3])
     CellToProc[iP] .= NumProc
+  end   
+  return CellToProc
+end
+
+function DecomposeKiteEqualArea1(Grid,NumProc)
+
+  NumFaces = Grid.NumFaces
+  NumNodes = Grid.NumNodes
+  Nodes = Grid.Nodes
+  Faces = Grid.Faces
+
+  NumNodesF = 0
+  @inbounds for iN = 1 : NumNodes
+    if Nodes[iN].Type == 'F'
+      NumNodesF += 1
+    end
+  end  
+  LocalNumNodesF = zeros(Int,NumProc)
+  LocalNumNodesF .= floor(NumNodesF / NumProc)
+  Rest = mod(NumNodesF, NumProc)
+  @inbounds for iP = 1 : Rest
+    LocalNumNodesF[iP] += 1
+  end
+
+
+  (n_regions,s_cap) = Parallels.eq_caps(NumProc)
+  n_collars = size(n_regions,1) - 2
+  CellToProc = zeros(Int,NumFaces)
+  coord = zeros(Float64,NumNodesF,3)
+  iNF = 1
+  @inbounds for iN = 1 : NumNodes
+    if Nodes[iN].Type == 'F'
+      P = Nodes[iN].P  
+      coord[iNF,3] = iN
+      (coord[iNF,1],coord[iNF,2],r) = cart2sphere(P.x,P.y,P.z)  
+      iNF += 1
+    end  
+  end  
+
+  p = sortslices(coord, dims=1, lt=Parallels.compare_NS_WE)
+
+  NumNodeA = 1
+  NumNodeE = LocalNumNodesF[1]
+  iP = zeros(Int,NumNodeE-NumNodeA+1)
+  @. iP = round(Int,p[NumNodeA:NumNodeE,3])
+  NumF = 0
+  for iN in iP
+    NumF += length(Nodes[iN].F)
+  end  
+  iPF = zeros(Int,NumF)
+  NumF = 0
+  for iN in iP
+    for iF in Nodes[iN].F
+      NumF += 1  
+      iPF[NumF] = iF
+    end  
+  end  
+      
+  CellToProc[iPF] .= 1
+
+  if NumProc > 1
+    region_n = 2
+    NumNodeECol = NumNodeE   
+    @inbounds for collar_n = 1 : n_collars
+      NumNodeACol = NumNodeECol + 1
+      region_nCol = region_n
+      @inbounds for region_ew = 1 : n_regions[collar_n + 1]
+        NumNodeECol += LocalNumNodesF[region_nCol]  
+        region_nCol += 1
+      end
+      pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=Parallels.compare_WE_NS)
+      NumNodeE = 0
+      @inbounds for region_ew = 1 : n_regions[collar_n + 1]
+        NumNodeA = NumNodeE + 1  
+        NumNodeE +=  LocalNumNodesF[region_n] 
+        iP = zeros(Int,NumNodeE-NumNodeA+1)
+        @. iP = round(Int,pCol[NumNodeA:NumNodeE,3])
+        NumF = 0
+        for iN in iP
+          NumF += length(Nodes[iN].F)
+        end  
+        iPF = zeros(Int,NumF)
+        NumF = 0
+        for iN in iP
+          for iF in Nodes[iN].F
+            NumF += 1  
+            iPF[NumF] = iF
+          end  
+        end  
+        CellToProc[iPF] .= region_n
+        region_n += 1
+      end
+    end
+    NumNodeA = NumNodeECol + 1
+    NumNodeE =  NumNodeECol + LocalNumNodesF[end]
+    iP = zeros(Int,NumNodeE-NumNodeA+1)
+    @. iP = round(Int,p[NumNodeA:NumNodeE,3])
+    NumF = 0
+    for iN in iP
+      NumF += length(Nodes[iN].F)
+    end  
+    iPF = zeros(Int,NumF)
+    NumF = 0
+    for iN in iP
+      for iF in Nodes[iN].F
+        NumF += 1  
+        iPF[NumF] = iF
+      end  
+    end  
+    CellToProc[iPF] .= NumProc
+  end   
+  return CellToProc
+end
+
+function DecomposeKiteEqualArea(Grid,NumProc)
+
+  NumFaces = Grid.NumFaces
+  NumNodes = Grid.NumNodes
+  Nodes = Grid.Nodes
+  Faces = Grid.Faces
+
+  NumNodesN = 0
+  @inbounds for iN = 1 : NumNodes
+    if Nodes[iN].Type == 'N'
+      NumNodesN += 1
+    end
+  end  
+  LocalNumNodesN = zeros(Int,NumProc)
+  LocalNumNodesN .= floor(NumNodesN / NumProc)
+  Rest = mod(NumNodesN, NumProc)
+  @inbounds for iP = 1 : Rest
+    LocalNumNodesN[iP] += 1
+  end
+
+
+  (n_regions,s_cap) = Parallels.eq_caps(NumProc)
+  n_collars = size(n_regions,1) - 2
+  CellToProc = zeros(Int,NumFaces)
+  coord = zeros(Float64,NumNodesN,3)
+  iNF = 1
+  @inbounds for iN = 1 : NumNodes
+    if Nodes[iN].Type == 'N'
+      P = Nodes[iN].P  
+      coord[iNF,3] = iN
+      (coord[iNF,1],coord[iNF,2],r) = cart2sphere(P.x,P.y,P.z)  
+      iNF += 1
+    end  
+  end  
+
+  p = sortslices(coord, dims=1, lt=Parallels.compare_NS_WE)
+
+  NumNodeA = 1
+  NumNodeE = LocalNumNodesN[1]
+  iP = zeros(Int,NumNodeE-NumNodeA+1)
+  @. iP = round(Int,p[NumNodeA:NumNodeE,3])
+  NumF = 0
+  for iN in iP
+    NumF += length(Nodes[iN].F)
+  end  
+  iPF = zeros(Int,NumF)
+  NumF = 0
+  for iN in iP
+    for iF in Nodes[iN].F
+      NumF += 1  
+      iPF[NumF] = iF
+    end  
+  end  
+      
+  CellToProc[iPF] .= 1
+
+  if NumProc > 1
+    region_n = 2
+    NumNodeECol = NumNodeE   
+    @inbounds for collar_n = 1 : n_collars
+      NumNodeACol = NumNodeECol + 1
+      region_nCol = region_n
+      @inbounds for region_ew = 1 : n_regions[collar_n + 1]
+        NumNodeECol += LocalNumNodesN[region_nCol]  
+        region_nCol += 1
+      end
+      pCol = sortslices(p[NumNodeACol:NumNodeECol,:], dims=1, lt=Parallels.compare_WE_NS)
+      NumNodeE = 0
+      @inbounds for region_ew = 1 : n_regions[collar_n + 1]
+        NumNodeA = NumNodeE + 1  
+        NumNodeE +=  LocalNumNodesN[region_n] 
+        iP = zeros(Int,NumNodeE-NumNodeA+1)
+        @. iP = round(Int,pCol[NumNodeA:NumNodeE,3])
+        NumF = 0
+        for iN in iP
+          NumF += length(Nodes[iN].F)
+        end  
+        iPF = zeros(Int,NumF)
+        NumF = 0
+        for iN in iP
+          for iF in Nodes[iN].F
+            NumF += 1  
+            iPF[NumF] = iF
+          end  
+        end  
+        CellToProc[iPF] .= region_n
+        region_n += 1
+      end
+    end
+    NumNodeA = NumNodeECol + 1
+    NumNodeE =  NumNodeECol + LocalNumNodesN[end]
+    iP = zeros(Int,NumNodeE-NumNodeA+1)
+    @. iP = round(Int,p[NumNodeA:NumNodeE,3])
+    NumF = 0
+    for iN in iP
+      NumF += length(Nodes[iN].F)
+    end  
+    iPF = zeros(Int,NumF)
+    NumF = 0
+    for iN in iP
+      for iF in Nodes[iN].F
+        NumF += 1  
+        iPF[NumF] = iF
+      end  
+    end  
+    CellToProc[iPF] .= NumProc
   end   
   return CellToProc
 end
@@ -296,8 +516,6 @@ function ConstructSubGridGhost(GlobalGrid,Proc,ProcNumber;order=true)
   for iE = 1 : length(Edges)
     PosEdgeInFace!(Edges[iE],Edges,Faces)
   end
-  @show NumNodes,NumNodesB,NumNodesG
-  @views EdgesInNodes!(Nodes[1:NumNodes],Edges,Faces)
  
 
   H = GlobalGrid.H

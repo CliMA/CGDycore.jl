@@ -2,6 +2,7 @@ module DGSEM
 
 import ..DG
 import ..Parallels
+import ..Examples
 import ..Models
 import ..Surfaces
 import ..Grids
@@ -20,6 +21,7 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll
 
 
+
 include("LocalFlux.jl")
 include("Rotation.jl")
 include("RiemannNonLin.jl")
@@ -32,5 +34,6 @@ include("Jac.jl")
 include("MIS.jl")
 include("MISMethod.jl")
 include("FcnLin.jl")
+include("Orography.jl")
 
 end

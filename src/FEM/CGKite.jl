@@ -295,6 +295,8 @@ mutable struct CGKitePrimalStruct{FT<:AbstractFloat,
   Order::Int                      
   Glob::IT2
   DoF::Int
+  DoFE::Int
+  DoFN::Int
   Comp::Int
   phi::Array{Polynomial,2}
   rotphi::Array{Polynomial,2}
@@ -303,15 +305,21 @@ mutable struct CGKitePrimalStruct{FT<:AbstractFloat,
   NumI::Int
   Type::Grids.ElementType
   points::Array{Float64,2}
+  NumNodesP::Int
+  NodesP::Array{Int,1}
+  EdgesP::Array{Int,1}
   M::AbstractSparseMatrix
-  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
+  LUM
+# LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Glob = KernelAbstractions.zeros(backend,Int,0,0)
   Type = Grids.QuadPrimal()
-  Type = Grids.Quad()
   DoF = (k + 1) * (k + 1)
+  DoFF = k * k
+  DoFE = k
+  DoFN = 1
   points = KernelAbstractions.zeros(backend,Float64,DoF,2)
   Comp = 1
   @polyvar x[1:2]
@@ -327,14 +335,31 @@ function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractF
     L2[i] = Lagrange(x[2],xP,i)
   end
   iDoF = 1
-  @inbounds for j = 1 : k + 1
-    @inbounds for i = 1 : k + 1
+  phi[iDoF,1] = L1[1] * L2[1]
+  points[iDoF,1] = xP[1]
+  points[iDoF,2] = xP[1]
+  iDoF += 1
+  for i = 2 : k + 1
+    phi[iDoF,1] = L1[i] * L2[1]
+    points[iDoF,1] = xP[i]
+    points[iDoF,2] = xP[1]
+    iDoF += 1
+  end  
+  for j = 2 : k + 1
+    phi[iDoF,1] = L1[1] * L2[j]
+    points[iDoF,1] = xP[1]
+    points[iDoF,2] = xP[j]
+    iDoF += 1
+  end  
+  for j = 2 : k + 1
+    for i = 2 : k + 1
       phi[iDoF,1] = L1[i] * L2[j]
       points[iDoF,1] = xP[i]
       points[iDoF,2] = xP[j]
       iDoF += 1
     end
-  end
+  end  
+      
   for iDoF = 1 : DoF
     Gradphi[iDoF,1,1] = differentiate(phi[iDoF,1],x[1])
     Gradphi[iDoF,1,2] = differentiate(phi[iDoF,1],x[2])
@@ -359,15 +384,12 @@ function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractF
     end
   end
 
-  NumEdgesD = 0
   NumEdgesP = 0
   EdgesP = zeros(Int,NumEdges)
   for iE = 1 : NumEdges
     if Edges[iE].Type == "EM" 
       NumEdgesP += 1
       EdgesP[iE] = NumEdgesP
-    else
-      NumEdgesD += 1
     end
   end
 
@@ -379,23 +401,25 @@ function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractF
     GlobCPU[ii,iF] = iN
     ii += 1
     iE = EdgesP[Faces[iF].E[3]]
-    for i = 2 : k + 1
-      GlobCPU[ii,iF] = NumNodesP + k * iE - (k + 1 - i)
+    for i = 1 : k 
+      GlobCPU[ii,iF] = NumNodesP + (iE -1) * DoFE + i
       ii += 1
     end  
     iE = EdgesP[Faces[iF].E[2]]
-    jj = k * k
-    for j = 2 : k + 1
-      GlobCPU[ii,iF] = NumNodesP + k * iE - (k + 1 - j)
+    for i = 1 : k 
+      GlobCPU[ii,iF] = NumNodesP + (iE -1) * DoFE + i
       ii += 1
-      for i = 2 : k + 1
-        jj -= 1  
-        GlobCPU[ii,iF] = NumNodesP + k * NumEdgesP + k * k * iF - jj
+    end  
+    jj = 1
+    for j = 1 : k 
+      for j = 1 : k 
+        GlobCPU[ii,iF] = NumNodesP + NumEdgesP * DoFE + (iF-1) * DoFF + jj
         ii += 1
-      end    
+        jj += 1
+      end  
     end  
   end
-  NumG = NumNodesP + k * NumEdgesP + k * k * NumFaces
+  NumG = NumNodesP + DoFE * NumEdgesP + DoFF * NumFaces
   NumI = NumG
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
@@ -405,6 +429,8 @@ function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractF
     k,              
     Glob,
     DoF,
+    DoFE,
+    DoFN,
     Comp,
     phi,                      
     rotphi,                      
@@ -413,6 +439,9 @@ function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractF
     NumI,
     Type,
     points,
+    NumNodesP,
+    NodesP,
+    EdgesP[1:Grid.NumEdgesB],
     M,
     LUM,
       )
@@ -627,14 +656,11 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   Nodes = Grid.Nodes
 
   NumEdgesD = 0
-  NumEdgesP = 0
   EdgesD = zeros(Int,NumEdges)
   for iE = 1 : NumEdges
     if Edges[iE].Type == "E1" || Edges[iE].Type == "E2"
       NumEdgesD += 1
       EdgesD[iE] = NumEdgesD
-    else
-      NumEdgesP += 1
     end
   end
 
@@ -653,10 +679,10 @@ function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     GlobCPU[8,iF] = 2 * NumEdgesD + 4 * iF
   end
 
-
-
   NumG = 2 * NumEdgesD + 4 * NumFaces
   NumI = NumG
+# Add Boundary
+
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
   LUM = lu(M)

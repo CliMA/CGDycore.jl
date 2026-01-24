@@ -35,6 +35,9 @@ struct QuadDual <: ElementType end
 struct Line <: ElementType end
 struct Polygonal <: ElementType end
 
+abstract type GridForm end
+struct CartesianGrid <: GridForm end
+struct SphericalGrid <: GridForm end
 
 include("point.jl")
 include("Node.jl")
@@ -81,5 +84,6 @@ include("TestGrid.jl")
 include("OrientTriangle.jl")
 include("RefinePoints.jl")
 include("Trans.jl")
+include("Rotation.jl")
 
 end
