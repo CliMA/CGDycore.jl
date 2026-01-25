@@ -304,8 +304,9 @@ end
     dXdxI[3,3,K,ID,Iz,IF] = dXdx[1,1] * dXdx[2,2] - dXdx[1,2] * dXdx[2,1]
 
     lon,lat,_ = cart2sphere(XT1,XT2,XT3)
-     
-    Rotate[:,:,K,ID,Iz,IF] =  MCart2Sphere(lon,lat) 
+
+    MR = MCart2Sphere(lon,lat)
+    @. Rotate[:,:,K,ID,Iz,IF] =  MR
 
   end
 end  
@@ -488,7 +489,8 @@ end
 #   Rotate[1,3,K,ID,Iz,IF] = 0.0
 #   Rotate[2,3,K,ID,Iz,IF] = cos(lat)  
 #   Rotate[3,3,K,ID,Iz,IF] = sin(lat)  
-    Rotate[:,:,K,ID,Iz,IF] =  MCart2Sphere(lon,lat) 
+    MR = MCart2Sphere(lon,lat)
+    @. Rotate[:,:,K,ID,Iz,IF] =  MR
 
   end
 end  

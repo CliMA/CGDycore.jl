@@ -35,12 +35,13 @@ function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Quad)
     Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType,Grid.Form)
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
-  NzG = min(div(NumberThreadGPU,DoF),nz)
-  group = (DoF,NzG,1)
-  ndrange = (DoF,nz,NF)
-  KGridSizeDGKernel! = GridSizeDGKernel!(backend,group)
+# NzG = min(div(NumberThreadGPU,DoF),nz)
+# group = (DoF,NzG,1)
+# ndrange = (DoF,nz,NF)
+# KGridSizeDGKernel! = GridSizeDGKernel!(backend,group)
+# KGridSizeDGKernel!(Metric.dz,Metric.X,DG.Glob,Rad,Grid.Form,ndrange=ndrange)
   Rad = Global.Grid.Rad
-  KGridSizeDGKernel!(Metric.dz,Metric.X,DG.Glob,Rad,Grid.Form,ndrange=ndrange)
+  GridSizeDGKernel!(DG,Metric,Rad,NumberThreadGPU,Grid.Form)
 
   NFG = min(div(NumberThreadGPU,DoF),NF)
   group = (DoF, NFG)
@@ -307,7 +308,19 @@ end
   end
 end
 
-@kernel inbounds = true function GridSizeDGKernel!(dz,@Const(X),@Const(Glob),Rad,::Grids.CartesianGrid)
+function GridSizeDGKernel!(DG,Metric,Rad,NumberThreadGPU,::Grids.CartesianGrid)
+  backend = get_backend(Metric.dz)
+  nz = size(Metric.dz,1) 
+  DoF = size(Metric.X,1)
+  NF = size(Metric.X,5)
+  NzG = min(div(NumberThreadGPU,DoF),nz)
+  group = (DoF,NzG,1)
+  ndrange = (DoF,nz,NF)
+  KGridSizeDGKernel! = GridSizeCartDGKernel!(backend,group)
+  KGridSizeDGKernel!(Metric.dz,Metric.X,DG.Glob,ndrange=ndrange)
+end
+
+@kernel inbounds = true function GridSizeCartDGKernel!(dz,@Const(X),@Const(Glob))
 
   ID,Iz,IF = @index(Global, NTuple)
 
@@ -320,7 +333,19 @@ end
   end
 end
 
-@kernel inbounds = true function GridSizeDGKernel!(dz,@Const(X),@Const(Glob),Rad,::Grids.SphericalGrid)
+function GridSizeDGKernel!(DG,Metric,Rad,NumberThreadGPU,::Grids.SphericalGrid)
+  backend = get_backend(Metric.dz)
+  nz = size(Metric.dz,1) 
+  DoF = size(Metric.X,1)
+  NF = size(Metric.X,5)
+  NzG = min(div(NumberThreadGPU,DoF),nz)
+  group = (DoF,NzG,1)
+  ndrange = (DoF,nz,NF)
+  KGridSizeDGKernel! = GridSizeSphereDGKernel!(backend,group)
+  KGridSizeDGKernel!(Metric.dz,Metric.X,DG.Glob,Rad,ndrange=ndrange)
+end
+
+@kernel inbounds = true function GridSizeSphereDGKernel!(dz,@Const(X),@Const(Glob),Rad)
 
   ID,Iz,IF = @index(Global, NTuple)
 

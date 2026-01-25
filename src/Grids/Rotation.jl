@@ -68,7 +68,7 @@ end
   rot12 = coslon
   rot22 = -sinlat * sinlon
   rot32 = coslat * sinlon
-  rot13 = 0.0
+  rot13 = eltype(lon)(0)
   rot23 = coslat
   rot33 = sinlat
   return  @SMatrix [rot11 rot12 rot13; rot21 rot22 rot23; rot31 rot32 rot33]

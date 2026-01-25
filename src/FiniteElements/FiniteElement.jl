@@ -197,7 +197,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     Stencil::IT2
     NumG::Int
     NumI::Int
-    ksi::AT2
+    ksi::Array{FT, 2}
     w::AT1
     wF::AT1
     xw::AT1
@@ -345,7 +345,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   InterOutputH = KernelAbstractions.zeros(backend,FT,size(InterOutputHCPU))
   copyto!(InterOutputH,InterOutputHCPU)
 
-  InterOutputVCPU = zeros(Float64,OrdPrintZ+1,OrdPolyZ+1)
+  InterOutputVCPU = zeros(FT,OrdPrintZ+1,OrdPolyZ+1)
   dd = 2 / (OrdPrintZ + 1)
   zeta0 = -1.0
   for kRef = 1 : OrdPrintZ + 1
@@ -367,14 +367,12 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     PosDoFECPU[i,3] = i + (DoFE - 1) *  DoFE
     PosDoFECPU[i,4] = 1 + (i - 1) * DoFE
   end  
-  PosDoFE = KernelAbstractions.zeros(backend,FT,size(PosDoFECPU))
+  PosDoFE = KernelAbstractions.zeros(backend,Int,size(PosDoFECPU))
   copyto!(PosDoFE,PosDoFECPU)
-
-
 
   return DGQuad{FT,
                  typeof(w),
-                 typeof(ksi),
+                 typeof(DW),
                  typeof(MasterSlave),
                  typeof(PosDoFE),
                  typeof(GlobE)}(
