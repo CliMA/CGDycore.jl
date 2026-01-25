@@ -9,7 +9,7 @@
   rot12 = coslon
   rot22 = -sinlat * sinlon
   rot32 = coslat * sinlon
-  rot13 = 0.0
+  rot13 = eltype(lon)(0)
   rot23 = coslat
   rot33 = sinlat
 # VelCa = rot'*VelSp
@@ -30,7 +30,7 @@ end
   rot12 = coslon
   rot22 = -sinlat * sinlon
   rot32 = coslat * sinlon
-  rot13 = 0.0
+  rot13 = eltype(lon)(0)
   rot23 = coslat
   rot33 = sinlat
 # VelSp = rot*VelCa
@@ -51,7 +51,7 @@ end
   rot12 = coslon
   rot22 = -sinlat * sinlon
   rot32 = coslat * sinlon
-  rot13 = 0.0
+  rot13 = eltype(lon)(0)
   rot23 = coslat
   rot33 = sinlat
   return  @SMatrix [rot11 rot21 rot31; rot12 rot22 rot32; rot13 rot23 rot33]

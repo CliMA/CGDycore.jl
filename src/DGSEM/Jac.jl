@@ -617,8 +617,8 @@ end
       B1m_34[2,iz,ID] = -dpdRhoThM * invcS / (wB * dz[iz,ID])
     end
     @unroll for i = 1 : M
-      B1_23[i,1,iz,ID] = 2.0 * DW[i,1] / dz[iz,ID]
-      B1_23[i,2,iz,ID] = 2.0 * DW[i,M] / dz[iz,ID]
+      B1_23[i,1,iz,ID] = eltype(U)(2) * DW[i,1] / dz[iz,ID]
+      B1_23[i,2,iz,ID] = eltype(U)(2) * DW[i,M] / dz[iz,ID]
     end  
 
     if iz == 1
@@ -717,7 +717,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
   DoFG = 10
   group = (nz, DoFG)
   ndrange = (nz, DoF) 
-  @. JacVert.SchurBand = 0.0
+  @. JacVert.SchurBand = FTB(0)
   @views @. JacVert.SchurBand[4,:,:] = fac
   KFillJacDGVertKernel! = FillJacDGVertKernel!(backend,group)
   KFillJacDGVertKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
@@ -759,7 +759,7 @@ function Solve!(JacVert,b)
   nz = JacVert.nz
   DoF = size(JacVert.SchurBand,3)
 
-  invfac = 1.0 / JacVert.fac
+  invfac = FTB(1) / JacVert.fac
   FacGrav = JacVert.FacGrav
 
   DoFG = 10
@@ -970,12 +970,12 @@ function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
   JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
   for ID = 1 : DG.NumI
     @views zCol = z[:,ID]
-    diagz = spdiagm(2.0 ./ reshape(vec(oneM*zCol'),N))
+    diagz = spdiagm(FTB(2) ./ reshape(vec(oneM*zCol'),N))
     Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
     dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
-      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
+      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (FTB(1) - Phys.kappa)),N)
     Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
-           sparse((1.0 * Phys.Grav)*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
+           sparse(Phys.Grav*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
            spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
     JacLU[ID] = lu(Jac)           
   end
@@ -983,7 +983,7 @@ function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
 end
 
 function JacGPU!(Jac,fac,U,DG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
-  Invfac = 1.0 / fac
+  Invfac = eltype(U)(1) / fac
   dz = Metric.dz
   FillJacDGVert!(Jac,U,DG,dz,fac,Phys,Param)
   SchurBoundary!(Jac)
