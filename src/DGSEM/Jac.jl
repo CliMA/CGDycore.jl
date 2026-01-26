@@ -52,15 +52,17 @@ end
   end  
 end
 
-@inline function ldivFull2!(A,b)
+@inline function ldivFull2!(nA,b)
 
 # Forward loop
-  n = size(A,1)
+# n = size(A,1)
   @inbounds for k = 1 : n - 1
     @inbounds for i = k + 1 : n
-      @views @.  b[i,:] -= A[i,k] * b[k,:]
+      b[i,1] -= A[i,k] * b[k,1]
+      b[i,2] -= A[i,k] * b[k,2]
     end
   end
+#=
 #  Backward loop
   @inbounds for k = n : -1 : 1
     @views @.  b[k,:] /= A[k,k]
@@ -68,6 +70,7 @@ end
       @views @.  b[i,:] -= A[i,k] * b[k,:]
     end
   end
+=#  
 end
 
 @inline function ldivFull!(A,b)
@@ -76,14 +79,14 @@ end
   n = size(A,1)
   @inbounds for k = 1 : n - 1
     @inbounds for i = k + 1 : n
-      @views b[i] -= A[i,k] * b[k]
+      b[i] -= A[i,k] * b[k]
     end
   end
 #  Backward loop
   @inbounds for k = n : -1 : 1
-    @views b[k] /= A[k,k]
+    b[k] /= A[k,k]
     @inbounds for i = 1 : k - 1
-      @views b[i] -= A[i,k] * b[k]
+      b[i] -= A[i,k] * b[k]
     end
   end
 end
@@ -398,7 +401,6 @@ end
   s = @private FT (4,2,)
   invfac = FT(1) / fac
 
-
   if ID <= DoF
     sh = (iz - 1) * 4
 #   Column 1 and 4
@@ -407,7 +409,22 @@ end
       r3[i,2] = B3_14[i,2,iz,ID]
     end  
 
-    @views ldivFull2!(SA[:,:,iz,ID],r3)
+#   @views ldivFull2!(M - 2,SA[:,:,iz,ID],r3)
+    for k = 1 : M - 3
+      for i = k + 1 : M - 2
+       r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
+       r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
+      end
+    end
+#   Backward loop
+    for k = M - 2 : -1 : 1
+      r3[k,1] /= SA[k,k,iz,ID]
+      r3[k,2] /= SA[k,k,iz,ID]
+      for i = 1 : k - 1
+        r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
+        r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
+      end
+    end
 
     r11[1] = -B1_1[iz,ID]
     r11[2] = FT(0)
@@ -481,7 +498,22 @@ end
       r3[i,2] *= -invfac
     end
 
-    @views ldivFull2!(SA[:,:,iz,ID],r3)
+#   @views ldivFull2!(SA[:,:,iz,ID],r3)
+    for k = 1 : M - 3
+      for i = k + 1 : M - 2
+       r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
+       r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
+      end
+    end
+#   Backward loop
+    for k = M - 2 : -1 : 1
+      r3[k,1] /= SA[k,k,iz,ID]
+      r3[k,2] /= SA[k,k,iz,ID]
+      for i = 1 : k - 1
+        r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
+        r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
+      end
+    end
 
     #r11 = invfac * (r1[1:1,:] - A13[1:1,:,iz,ID] * r3[:,:])
     #r1M = invfac * (r1[M:M,:] - A13[M:M,:,iz,ID] * r3[:,:])
@@ -736,7 +768,7 @@ function SchurBoundary!(JacVert)
   nz = JacVert.nz
   DoF = size(JacVert.SchurBand,3)
 
-  DoFG = 10
+  DoFG = 1
   group = (nz, DoFG)
   ndrange = (nz, DoF)
   KSchurBoundaryKernel! = SchurBoundaryKernel!(backend,group)

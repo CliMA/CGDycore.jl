@@ -25,24 +25,26 @@ function RiemannNonLinV(RiemannSolver,NonConservativeFlux,F,U,Aux,DG,Metric,Grid
   ndrange = (Nz+1,DoF,NF)
   KRiemannNonLinV3Kernel! = RiemannNonLinV3Kernel!(backend,group)
   KRiemannNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
-    Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange)
+    Metric.VolSurfV,DG.wZ,Val(NV),Val(NAUX);ndrange=ndrange)
 end  
 
-@kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
-  @Const(NV),@Const(VolSurfV),
-  @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
+@kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),
+ @Const(Aux),@Const(Glob), @Const(NV),@Const(VolSurfV),
+  @Const(w), ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
-  Iz,iD,_  = @index(Local, NTuple)
+  iz,iD,_  = @index(Local, NTuple)
   Iz,ID,IF = @index(Global, NTuple)
 
 
+  TilesDim = @uniform @groupsize()[2]
+  nz = @uniform @groupsize()[1]
   Nz = @uniform @ndrange()[1]
   NQ = @uniform @ndrange()[2]
 
-  VLL = @private eltype(F) (NUMV,)
-  VRR = @private eltype(F) (NUMV,)
-  AuxL = @private eltype(F) (NAUX,)
-  AuxR = @private eltype(F) (NAUX,)
+  VLL = @localmem eltype(F) (nz,TilesDim,NUMV)
+  VRR = @localmem eltype(F) (nz,TilesDim,NUMV)
+  AuxL = @localmem eltype(F) (nz,TilesDim,NAUX)
+  AuxR = @localmem eltype(F) (nz,TilesDim,NAUX)
   FLoc = @private eltype(F) (NUMV,)
 
   RhoPos = @uniform 1
@@ -55,43 +57,43 @@ end
     ind = Glob[ID,IF]
     if Iz > 1    
       @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[M,Iz-1,ind,iAux]
+        AuxL[iz,iD,iAux] = Aux[end,Iz-1,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[M,Iz-1,ind,iv]
+        VLL[iz,iD,iv] = U[end,Iz-1,ind,iv]
       end  
     else
       @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[1,Iz,ind,iAux]
+        AuxL[iz,iD,iAux] = Aux[1,Iz,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[1,Iz,ind,iv]
+        VLL[iz,iD,iv] = U[1,Iz,ind,iv]
       end  
-      VLL[uPos] = -VLL[uPos]
-      VLL[vPos] = -VLL[vPos]
-      VLL[wPos] = -VLL[wPos]
+      VLL[iz,iD,uPos] = -VLL[iz,iD,uPos]
+      VLL[iz,iD,vPos] = -VLL[iz,iD,vPos]
+      VLL[iz,iD,wPos] = -VLL[iz,iD,wPos]
     end  
     if Iz < Nz
       @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[1,Iz,ind,iAux]
+        AuxR[iz,iD,iAux] = Aux[1,Iz,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[1,Iz,ind,iv]
+        VRR[iz,iD,iv] = U[1,Iz,ind,iv]
       end  
     else  
       @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[M,Iz-1,ind,iAux]
+        AuxR[iz,iD,iAux] = Aux[end,Iz-1,ind,iAux]
       end  
       @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[M,Iz-1,ind,iv]
+        VRR[iz,iD,iv] = U[end,Iz-1,ind,iv]
       end  
-      VRR[uPos] = -VRR[uPos]
-      VRR[vPos] = -VRR[vPos]
-      VRR[wPos] = -VRR[wPos]
+      VRR[iz,iD,uPos] = -VRR[iz,iD,uPos]
+      VRR[iz,iD,vPos] = -VRR[iz,iD,vPos]
+      VRR[iz,iD,wPos] = -VRR[iz,iD,wPos]
     end
 
-    @views RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,NV[:,ID,Iz,IF])
-
+    RiemannSolver!(FLoc,view(VLL,iz,iD,1:NUMV),view(VRR,iz,iD,1:NUMV),
+      view(AuxL,iz,iD,1:NAUX),view(AuxR,iz,iD,1:NAUX),view(NV,1:3,ID,Iz,IF))
     Surf = VolSurfV[ID,Iz,IF] / w[1]  
     FLoc[RhoPos] *= Surf
     FLoc[uPos] *= Surf
@@ -99,11 +101,11 @@ end
     FLoc[wPos] *= Surf
     FLoc[ThPos] *= Surf
     if Iz > 1 
-      @atomic :monotonic F[M,Iz-1,ind,RhoPos] -= FLoc[RhoPos]
-      @atomic :monotonic F[M,Iz-1,ind,uPos] -= FLoc[uPos] 
-      @atomic :monotonic F[M,Iz-1,ind,vPos] -= FLoc[vPos]
-      @atomic :monotonic F[M,Iz-1,ind,wPos] -= FLoc[wPos]
-      @atomic :monotonic F[M,Iz-1,ind,ThPos] -= FLoc[ThPos]
+      @atomic :monotonic F[end,Iz-1,ind,RhoPos] -= FLoc[RhoPos]
+      @atomic :monotonic F[end,Iz-1,ind,uPos] -= FLoc[uPos] 
+      @atomic :monotonic F[end,Iz-1,ind,vPos] -= FLoc[vPos]
+      @atomic :monotonic F[end,Iz-1,ind,wPos] -= FLoc[wPos]
+      @atomic :monotonic F[end,Iz-1,ind,ThPos] -= FLoc[ThPos]
     end  
     if Iz < Nz
       @atomic :monotonic F[1,Iz,ind,RhoPos] += FLoc[RhoPos]

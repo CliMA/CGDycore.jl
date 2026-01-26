@@ -481,7 +481,7 @@ if Proc == 1
 @show IterTime
 @show nPrint
 end
-
+dtau = FTB(dtau)
 if IntMethod == "Rosenbrock"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,

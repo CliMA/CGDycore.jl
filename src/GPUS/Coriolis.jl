@@ -149,8 +149,8 @@ function (GeoPotentialFun::GeoPotentialDeep)(Phys,::Grids.SphericalGrid)
   @inline function GeoPotential(x,y,z)
     FT = eltype(x)
     r = sqrt(x^2 + y^2 + z^2)
-#   return Phys.Grav * (Phys.RadEarth - Phys.RadEarth^2 / r)
-    return Phys.Grav * max(r- Phys.RadEarth,0.0)
+    return Phys.Grav * (Phys.RadEarth - Phys.RadEarth^2 / r)
+#   return Phys.Grav * max(r- Phys.RadEarth,FT(0))
   end
   return GeoPotential
 end
