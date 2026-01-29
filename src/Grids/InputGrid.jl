@@ -260,7 +260,7 @@ function InputGridICON(backend,FT,filename,OrientFace,Rad,nz;ChangeOrient=3)
         -1  1  0]           
   Dim = 3
   Type = Tri()
-  Form = "Sphere"
+  Form = SphericalGrid()
   NumNodes=size(vlon,1)
   NumNodesB=0
   NumNodesG=0

@@ -163,7 +163,7 @@ end
   end
 end
 
-function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grids.Tri)
+function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Tri)
 # Discretization
   Grid = Global.Grid
   OP = DG.DoFE
@@ -193,13 +193,15 @@ function DiscretizationDG(backend,FT,Jacobi,DG,Exchange,Global,zs,GridType::Grid
     F[3,3,iF] = Grid.Faces[iF].P[3].z
   end  
   copyto!(FGPU,F)
-  if Grid.Form == Grids.SphericalGrid()
-    Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
-  else
-    Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-      Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
-  end
+  Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+    Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType,Grid.Form)
+# if Grid.Form == Grids.SphericalGrid()
+#   Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+#     Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
+# else
+#   Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+#     Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
+# end
 
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)

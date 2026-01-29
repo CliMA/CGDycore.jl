@@ -13,7 +13,7 @@ julia --project Examples/DriverDG.jl \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Discretization="DG" \
-  --VelocityForm="Cartesian" \
+  --VelocityForm="Spherical" \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
   --Buoyancy=false \
@@ -54,7 +54,7 @@ julia --project Examples/DriverDG.jl \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
   --nz=6 \
-  --nPanel=8 \
+  --nPanel=20 \
   --H=30000.0 \
-  --OrdPoly=3 \
+  --OrdPoly=5 \
   --OrdPolyZ=5 

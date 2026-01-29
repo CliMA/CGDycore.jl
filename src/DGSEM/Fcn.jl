@@ -1,4 +1,5 @@
-function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType::Grids.Quad,VelForm)
+#function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType::Grids.Quad,VelForm)
+function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType,VelForm)
   backend = get_backend(F)
   Model = Global.Model
   Grid = Global.Grid
@@ -19,7 +20,6 @@ function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType::Grids.Q
   CacheU = Cache.U
   @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
 
-  @show "Fcn"
   @. F = 0
 
   @views p = Aux[:,:,1:DG.NumI,1]

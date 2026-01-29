@@ -5,7 +5,6 @@ function CubedGrid(backend,FT,n,OrientFace,Rad,nz;order=true)
   Type=Quad()
   Rad=Rad;
   Form=SphericalGrid()
-# Form="Sphere"
   dd=2.0e0/n;
 
   NumNodes=(6*(n-1)*(n-1)+12*(n-1)+8);
