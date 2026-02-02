@@ -63,7 +63,7 @@ function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,
     zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-  Metric = DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
+  Metric = DGSEM.DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
 
   # Output partition
   nzTemp = Global.Grid.nz
@@ -108,13 +108,13 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
   if Topography.TopoS == "EarthOrography"
     #zS, GradDx_zs, GradDy_zs = Grids.Orography4(backend,FT,CG,Exchange,Global)
 #   zS = Grids.Orography2(backend,FT,CG,Exchange,Global)
-    zS = Grids.Orography4(backend,FT,CG,Exchange,Global)
+    zS = Grids.Orography4(backend,FT,CG,Exchange,Global,ParallelCom)
   else
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
 
-  (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
+  (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
 
   # Output Orography
   Global.Output.dTol = 2*pi / 30
@@ -173,7 +173,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,T
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-  (CG,Metric) = DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
+  (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
 
   # Output Orography
   nzTemp = Global.Grid.nz

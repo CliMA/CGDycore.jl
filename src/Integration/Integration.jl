@@ -4,7 +4,7 @@ import ..Grids
 import ..Outputs
 import ..Parallels
 import ..Statistics
-import ..GPUS
+import ..CGSEM
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace

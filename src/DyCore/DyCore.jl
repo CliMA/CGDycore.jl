@@ -8,6 +8,7 @@ import ..Grids
 import ..Outputs
 import ..Integration
 import ..FiniteElements
+import ..CGSEM
 import ..DGSEM
 
 using MPI
@@ -28,11 +29,7 @@ export parse_commandline
 include("Average.jl")
 include("AverageFB.jl")
 include("Damping.jl")
-include("DiscretizationCG.jl")
-include("DiscretizationDG.jl")
 include("DiscretizationDG2.jl")
-include("Jac.jl")
-include("MassCG.jl")
 include("Project.jl")
 include("ProjectW.jl")
 include("ProjectVec.jl")

@@ -1,5 +1,6 @@
-module GPUS
+module CGSEM
 
+import ..Parameters as P
 import ..Parallels
 import ..Examples
 import ..Models
@@ -15,16 +16,17 @@ using KernelAbstractions.Extras
 using NVTX
 
 include("OperatorKernel.jl")
-include("FcnGPU.jl")
+include("Fcn.jl")
+include("Jac.jl")
+include("MassCG.jl")
 include("DiagnosticKernel.jl")
 include("InitialConditions.jl")
 include("InitialKernel.jl")
 include("HorLimiterKernel.jl")
-include("dampingGPU.jl")
 include("MomentumKernel.jl")
 include("ViscKernel.jl")
 include("GradKineticKernel.jl")
 include("GradPressureKernel.jl")
-include("Coriolis.jl")
+include("DiscretizationCG.jl")
 
 end

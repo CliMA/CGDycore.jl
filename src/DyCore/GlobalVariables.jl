@@ -117,6 +117,7 @@ function OutputStruct()
   )
 end  
 
+#=
 mutable struct MetricStruct{FT<:AbstractFloat,
                             AT2<:AbstractArray,
                             AT3<:AbstractArray,
@@ -184,6 +185,7 @@ function MetricStruct{FT}(backend,nQuad,OPZ,NF,nz,NumG) where FT<:AbstractFloat
         NV,
     )
 end
+=#
 
 struct PhysParameters{FT<:AbstractFloat}
   RadEarth::FT 

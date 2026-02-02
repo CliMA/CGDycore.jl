@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, GPUS, DyCore
+  Parameters as P, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore
 using MPI
 using Base
 using CUDA
@@ -173,6 +173,9 @@ else
   @show "False FloatTypeBackend"
   stop
 end
+
+P.SetParameters(FTB)
+
 Param = Examples.Parameters(FTB,Problem)
 
 KernelAbstractions.synchronize(backend)
@@ -265,8 +268,6 @@ if VelocityForm == "Spherical"
 elseif VelocityForm == "Cartesian"  
    VelForm = Examples.VelocityC()
 end   
-@show VelForm
-@show typeof(VelForm)
 
 # Equation
 if Equation == "CompressibleShallow"
@@ -342,7 +343,7 @@ end
 @show "InitialProfile!"
 @show VelForm
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
-U = GPUS.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
+U = CGSEM.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 pAuxPos = 1
 GPAuxPos = 2
@@ -392,7 +393,7 @@ elseif FluxDG == "LinearBoussinesqFlux"
 end  
 
 if ModelType == "Boussinesq"
-  Model.BuoyancyFun = GPUS.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
+  Model.BuoyancyFun = CGSEM.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
 end  
     
 
@@ -406,11 +407,21 @@ elseif State  == "ShallowWater"
   Model.Pressure = Models.ShallowWaterStateDG()(Phys)
 end
 
+#Coriolis
+if Coriolis
+  CoriolisFun = Sources.CoriolisDeepDG()(Model.uPos,Model.vPos,Model.wPos)
+  Model.CoriolisFun = CoriolisFun
+else
+  CoriolisFun = Sources.CoriolisNo()()
+  Model.CoriolisFun = CoriolisFun
+end
+
 if Damping
-  Damp = GPUS.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
+  Damp = Sources.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),
+    Model.uPos,Model.vPos,Model.wPos,VelForm,Grid.Form)
   Model.Damp = Damp
 end
-Model.GeoPotential = GPUS.GeoPotentialDeep()(Phys,Grid.Form)
+Model.GeoPotential = Sources.GeoPotentialDeep()(Phys,Grid.Form)
     
 
 
@@ -424,6 +435,7 @@ if ModelType == "Conservative"
     "Rhov",
     "Rhow",
     "RhoTh",
+    "Pres",
 #   "w",
 #   "Th",
 #   "Vort",

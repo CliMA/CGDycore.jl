@@ -9,7 +9,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::FiniteElements.CGQuad,Exchange,G
   NumG = CG.NumG
 
   nQuad = OP * OP
-  Metric = MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
+  Metric = Grids.MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
   F = zeros(4,3,NF)
   FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
   for iF = 1 : NF
@@ -27,7 +27,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::FiniteElements.CGQuad,Exchange,G
     F[4,3,iF] = Grid.Faces[iF].P[4].z  
   end  
   copyto!(FGPU,F)
-  if Global.Grid.Form == "Sphere"
+  if Global.Grid.Form == Grids.SphericalGrid()
     Grids.JacobiSphere3GPU!(Global.Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,CG,FGPU,
       Grid.z,zs,Grid.Rad,Global.Model.Equation)
   else
@@ -37,7 +37,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::FiniteElements.CGQuad,Exchange,G
       Metric.Rotate,CG,FGPU,Grid.z,zs,Grid.Rad,Grid.Type)
   end  
 
-  MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)
+  CGSEM.MassCGGPU!(CG,Metric.J,CG.Glob,Exchange,Global)
 
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
@@ -45,7 +45,7 @@ function DiscretizationCG(backend,FT,Jacobi,CG::FiniteElements.CGQuad,Exchange,G
   NzG = min(div(NumberThreadGPU,DoF),nz)  
   group = (DoF,NzG,1)  
   ndrange = (DoF,nz,NF)
-  if Global.Grid.Form == "Sphere"
+  if Global.Grid.Form == Grids.SphericalGrid()
     KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
     Rad = Global.Grid.Rad
     KGridSizeSphereKernel!(Metric.zP,Metric.dz,Metric.X,CG.Glob,

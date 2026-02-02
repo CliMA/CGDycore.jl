@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  GPUS, DyCore
+  Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  CGSEM, DyCore
 using MPI
 using Base
 using CUDA
@@ -16,6 +16,7 @@ using MPI
 parsed_args = DyCore.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
+VelocityForm = parsed_args["VelocityForm"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
 PertTh = parsed_args["PertTh"]
@@ -257,6 +258,12 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
+if VelocityForm == "Spherical"
+   VelForm = Examples.VelocityS()
+elseif VelocityForm == "Cartesian"
+   VelForm = Examples.VelocityC()
+end
+
 # Equation
 if Equation == "CompressibleShallow"
   Model.Equation = Models.CompressibleShallow()
@@ -328,43 +335,43 @@ else
 end  
 
 # Initial values
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
-U = GPUS.InitialConditions(backend,FTB,CG,Metric,Exchange,Phys,Global,Model.InitialProfile,Param)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
+U = CGSEM.InitialConditions(backend,FTB,CG,Metric,Exchange,Phys,Global,Model.InitialProfile,Param)
 
 #Coriolis
 if Coriolis
   if CoriolisType == "Shallow"
-    CoriolisFun = GPUS.CoriolisShallow()(Phys)
+    CoriolisFun = Sources.CoriolisShallow()(Phys)
     Model.CoriolisFun = CoriolisFun
   elseif CoriolisType == "Deep"
-    CoriolisFun = GPUS.CoriolisDeep()(Phys)
+    CoriolisFun = Sources.CoriolisDeep()(Phys)
     Model.CoriolisFun = CoriolisFun
   elseif CoriolisType == "FPlane"
-    CoriolisFun = GPUS.FPlane()(Param,Phys)
+    CoriolisFun = Sources.FPlane()(Param,Phys)
     Model.CoriolisFun = CoriolisFun
   else
-    CoriolisFun = GPUS.CoriolisNo()()
+    CoriolisFun = Sources.CoriolisNo()()
     Model.CoriolisFun = CoriolisFun
   end
 else
-  CoriolisFun = GPUS.CoriolisNo()()
+  CoriolisFun = Sources.CoriolisNo()()
   Model.CoriolisFun = CoriolisFun
 end
 
 #Buoyancy
 if Buoyancy
   if Equation == "CompressibleShallow"
-    GravitationFun = GPUS.GravitationShallow()(Phys)
+    GravitationFun = Sources.GravitationShallow()(Phys)
     Model.GravitationFun = GravitationFun
   elseif Equation == "CompressibleDeep"
-    GravitationFun = GPUS.GravitationDeep()(Phys)
+    GravitationFun = Sources.GravitationDeep()(Phys)
     Model.GravitationFun = GravitationFun
   else
-    GravitationFun = GPUS.GravitationNo()()
+    GravitationFun = Sources.GravitationNo()()
     Model.GravitationFun = GravitationFun
   end
 else
-  GravitationFun = GPUS.GravitationNo()()
+  GravitationFun = Sources.GravitationNo()()
   Model.GravitationFun = GravitationFun
 end
 
@@ -489,9 +496,10 @@ if Model.Turbulence
 end
 # Damping
 if Damping
-  Damp = GPUS.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),Model.wPos)
+  Damp = Sources.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),
+    Model.uPos,Model.vPos,Model.wPos,VelForm,Grid.Form)
   Model.Damp = Damp
-end
+end  
 
 # Output
 Global.Output.vtk=0
@@ -596,6 +604,6 @@ if JuliaGPU == "Metal"
 end  
 nT = max(7 + NumTr, NumV + NumTr)
 Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
-Integration.TimeStepper!(U,GPUS.FcnGPU!,DyCore.JacGPU!,
+Integration.TimeStepper!(U,CGSEM.Fcn!,CGSEM.JacGPU!,
   Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
 

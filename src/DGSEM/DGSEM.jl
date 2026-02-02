@@ -6,6 +6,7 @@ import ..Examples
 import ..Models
 import ..Surfaces
 import ..Grids
+import ..Sources
 import ..Outputs
 import ..Integration
 import ..FiniteElements
@@ -29,6 +30,7 @@ include("FluxVolumeNonLin.jl")
 include("PresSh.jl")
 include("Source.jl")
 include("Fcn.jl")
+include("DiscretizationDG.jl")
 include("TimeStepper.jl")
 include("Jac.jl")
 include("MIS.jl")

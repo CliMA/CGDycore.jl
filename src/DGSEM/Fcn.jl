@@ -1,9 +1,9 @@
-#function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType::Grids.Quad,VelForm)
 function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType,VelForm)
   backend = get_backend(F)
   Model = Global.Model
   Grid = Global.Grid
   Damp = Model.Damp
+  Cor = Model.CoriolisFun
   GeoPotential = Model.GeoPotential
   FT = eltype(F)
   DoF = DG.DoF
@@ -50,20 +50,11 @@ function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType,VelForm)
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
 
   if Model.Coriolis
-    Coriolis!(F,U,DG,NumberThreadGPU,Phys)
+    Sources.Coriolis!(Cor,F,U,DG.Glob,Metric.X,NumberThreadGPU)
   end
 
   if Model.Damping
-    DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-    group = (Nz,M,DoFG,1)
-    ndrange = (Nz,M,DoF,NF)
-    if Grid.Form == "Sphere"
-      KDampKernel! = DampSphereKernel!(backend, group)
-      KDampKernel!(Damp,F,U,Metric.X,DG.Glob,Phys;ndrange=ndrange)
-    else
-      KDampKernel! = DampCartKernel!(backend, group)
-      KDampKernel!(Damp,F,U,Metric.X,DG.Glob;ndrange=ndrange)
-    end
+    Sources.Damping!(Damp,F,U,DG.Glob,Metric.X,NumberThreadGPU)  
   end
 
   if Model.Forcing

@@ -29,6 +29,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
   nz = size(U,2)
   Cache = CacheStructDG{FTB}(backend,DG.NumG,DG.NumI,M,nz,NumV,NumAux)
   CacheU = Cache.U
+  @views Aux = CacheU[:,:,:,NumV+1:NumV+NumAux]
   @views Un = CacheU[:,:,:,1:NumV]
   @views UI = U[:,:,1:DG.NumI,:]
   @views UnI = Un[:,:,1:DG.NumI,:]
@@ -37,7 +38,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
 
   dz = Metric.dz 
 
-  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
   Jac = JacDGVert{FTB}(backend,M,nz,DG.NumI)
   @time begin
     @inbounds for i = 1 : nIter
@@ -64,7 +65,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
           @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
         end
         if mod(i,nPrint) == 0
-          Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+          Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
         end
       end
       percent = i/nIter*100
@@ -72,7 +73,7 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-    Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+    Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
   end  
 end  
 
@@ -88,6 +89,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,P
   M = size(U,1)
   nz = size(U,2)
   CacheU = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumG,NumV+NumAux)
+  @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
   @views Un = CacheU[:,:,:,1:NumV]
   CacheS = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV)
   @views UI = U[:,:,1:DG.NumI,:]
@@ -102,7 +104,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,P
   dz = Metric.dz 
 
 
-  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Aux)
   kLoc = zeros(3*N)
   @inbounds for i = 1 : nIter
     if Proc == 1
@@ -150,7 +152,7 @@ function RosenbrockSparse(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,P
       if Proc == 1
         @show "Print",i
       end
-      Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber)
+      Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Aux)
     end
   end  
 end  

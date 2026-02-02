@@ -15,7 +15,7 @@ julia --project Examples/DriverDG.jl \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
-  --VelocityForm="Spherical" \
+  --VelocityForm="Cartesian" \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \

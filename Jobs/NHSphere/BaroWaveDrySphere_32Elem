@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/Driver.jl \
+julia --project Examples/DriverCG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
@@ -25,12 +25,12 @@ julia --project Examples/Driver.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=8 \
+  --SimDays=10 \
   --SimHours=0 \
   --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=6 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
@@ -39,7 +39,7 @@ julia --project Examples/Driver.jl \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  --TopoS="EarthOrography" \
+  --TopoS="" \
   --AdaptGridType="Sleve" \
   --Stretch=true \
   --StretchType="Exp" \

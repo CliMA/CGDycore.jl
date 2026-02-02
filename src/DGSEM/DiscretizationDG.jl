@@ -13,7 +13,7 @@ function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Quad)
 
 
   nQuad = DoF
-  Metric = MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
+  Metric = Grids.MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
   F = zeros(4,3,NF)
   FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
   for iF = 1 : NF
@@ -35,11 +35,7 @@ function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Quad)
     Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType,Grid.Form)
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
-# NzG = min(div(NumberThreadGPU,DoF),nz)
-# group = (DoF,NzG,1)
-# ndrange = (DoF,nz,NF)
-# KGridSizeDGKernel! = GridSizeDGKernel!(backend,group)
-# KGridSizeDGKernel!(Metric.dz,Metric.X,DG.Glob,Rad,Grid.Form,ndrange=ndrange)
+
   Rad = Global.Grid.Rad
   GridSizeDGKernel!(DG,Metric,Rad,NumberThreadGPU,Grid.Form)
 
@@ -178,7 +174,7 @@ function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Tri)
 
 
   nQuad = DoF
-  Metric = MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
+  Metric = Grids.MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
   F = zeros(3,3,NF)
   FGPU = KernelAbstractions.zeros(backend,FT,3,3,NF)
   for iF = 1 : NF
@@ -195,13 +191,6 @@ function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Tri)
   copyto!(FGPU,F)
   Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
     Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType,Grid.Form)
-# if Grid.Form == Grids.SphericalGrid()
-#   Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-#     Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
-# else
-#   Grids.JacobiCartDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-#     Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType)
-# end
 
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)

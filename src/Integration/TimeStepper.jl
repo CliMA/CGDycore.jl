@@ -101,13 +101,13 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
 
 
 # Print initial conditions
-  GPUS.FcnPrepareGPU!(U,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
-  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
+  CGSEM.FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+  Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache.Thermo)
   if IntMethod == "Rosenbrock"
     # For time measuring  
     Rosenbrock!(U,dtau,Fcn!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
     if mod(1,PrintInt) == 0 && time[1] >= PrintStartTime
-      Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
+      Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache.Thermo)
     end
     @time begin
       for i=2:nIter
@@ -115,7 +115,7 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
           Rosenbrock!(U,dtau,Fcn!,Jac!,CG,Metric,Phys,Cache,JCache,Exchange,Global,Param,DiscType);
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache.Thermo)
           end
           if time[1] >= StartAverageTime && StartAverageTime >= 0.0
             Statistics.AverageInTime!(UAver,U,iAv)
@@ -128,7 +128,7 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
         end  
       end
     end
-    Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
+    Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache.Thermo)
   elseif IntMethod == "RosenbrockAMD"
     @time begin
       for i=1:nIter
@@ -219,7 +219,7 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
           RungeKuttaExplicit!(U,dtau,Fcn!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
           time[1] += dtau
           if mod(i,PrintInt) == 0 && time[1] >= PrintStartTime
-            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache)
+            Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache.Thermo)
           end
         end
         percent = i/nIter*100

@@ -1,4 +1,4 @@
-function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Profile)
+function FcnAdvection!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Profile)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -136,9 +136,9 @@ function FcnAdvectionGPU!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Pr
   @views Parallels.ExchangeData3DRecvGPU!(F[:,:,1:1+NumV],Exchange)
 end
 
-function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
+function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
 
-  FcnPrepareGPU!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation)
+  FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -576,12 +576,13 @@ function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models
 
 
   if Global.Model.Damping
-    KDampKernel! = DampKernel!(backend, groupG)
-    KDampKernel!(Damp,F,U,zP,ndrange=ndrangeG)
+    Sources.Damping!(Damp,F,U,FE.Glob,X,NumberThreadGPU)  
+#   KDampKernel! = DampKernel!(backend, groupG)
+#   KDampKernel!(Damp,F,U,zP,ndrange=ndrangeG)
   end  
 end
 
-function FcnGPU!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleDeep)
+function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleDeep)
 
   backend = get_backend(F)
   FT = eltype(F)
