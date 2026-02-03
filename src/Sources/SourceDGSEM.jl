@@ -51,6 +51,7 @@ end
   end
 end
 
+#=
 @kernel inbounds = true function GeoPotentialKernel!(GPF,GP,@Const(X),@Const(Glob))
 
   _,_,iD,  = @index(Local, NTuple)
@@ -63,6 +64,7 @@ end
     GP[K,Iz,ind] = GPF(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF])
   end
 end
+=#
 
 @kernel inbounds = true function ForceKernel!(Force,F,U,p,xS)
   _,_,iD,  = @index(Local, NTuple)

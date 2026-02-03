@@ -2,7 +2,6 @@ module CGSEM
 
 import ..Parameters as P
 import ..Parallels
-import ..Examples
 import ..Models
 import ..Grids
 import ..FiniteElements
@@ -20,8 +19,6 @@ include("Fcn.jl")
 include("Jac.jl")
 include("MassCG.jl")
 include("DiagnosticKernel.jl")
-include("InitialConditions.jl")
-include("InitialKernel.jl")
 include("HorLimiterKernel.jl")
 include("MomentumKernel.jl")
 include("ViscKernel.jl")

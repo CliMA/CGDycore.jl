@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  CGSEM, DyCore
+  Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  CGSEM, DyCore
 using MPI
 using Base
 using CUDA
@@ -13,7 +13,7 @@ using MPI
 
 
 # Model
-parsed_args = DyCore.parse_commandline()
+parsed_args = Parameters.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
 VelocityForm = parsed_args["VelocityForm"]
@@ -171,6 +171,12 @@ else
   @show "False FloatTypeBackend"
   stop
 end
+
+Parameters.SetParameters(FTB)
+
+@show typeof(Parameters.Grav)
+
+
 Param = Examples.Parameters(FTB,Problem)
 
 KernelAbstractions.synchronize(backend)
@@ -336,7 +342,7 @@ end
 
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
-U = CGSEM.InitialConditions(backend,FTB,CG,Metric,Exchange,Phys,Global,Model.InitialProfile,Param)
+U = Examples.InitialConditions(backend,FTB,CG,Metric,Exchange,Phys,Global,Model.InitialProfile,Param)
 
 #Coriolis
 if Coriolis

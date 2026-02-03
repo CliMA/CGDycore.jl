@@ -63,8 +63,8 @@ Base.@kwdef struct CoriolisDeepDG <: CoriolisType end
 function (CoriolisFun::CoriolisDeepDG)(uPos,vPos,wPos)
   @inline function Coriolis(F,U,X)
     FT = eltype(X)
-    F[uPos] += -FT(2) * P.Omega * U[vPos]
-    F[vPos] += FT(2) * P.Omega * U[uPos]
+    F[uPos] += FT(2) * P.Omega * U[vPos]
+    F[vPos] += -FT(2) * P.Omega * U[uPos]
   end
   return Coriolis
 end

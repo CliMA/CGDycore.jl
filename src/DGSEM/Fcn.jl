@@ -4,7 +4,6 @@ function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType,VelForm)
   Grid = Global.Grid
   Damp = Model.Damp
   Cor = Model.CoriolisFun
-  GeoPotential = Model.GeoPotential
   FT = eltype(F)
   DoF = DG.DoF
   DoFE = DG.DoFE
@@ -25,12 +24,7 @@ function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType,VelForm)
   @views p = Aux[:,:,1:DG.NumI,1]
   @views @. p = Model.Pressure(U[:,:,1:DG.NumI,5])
   if NAUX > 1
-    @views GeoPot = Aux[:,:,1:DG.NumI,2]
-    DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-    group = (Nz,M,DoFG,1)
-    ndrange = (Nz,M,DoF,NF)
-    KGeoPotentialKernel! = GeoPotentialKernel!(backend,group)
-    KGeoPotentialKernel!(GeoPotential,GeoPot,Metric.X,DG.Glob;ndrange=ndrange)
+    @views Sources.GeoPotential!(Model.GeoPotential,Aux[:,:,1:DG.NumI,:],DG.Glob,Metric.X,NumberThreadGPU)
   end  
   if NAUX > 2
     @views Exp = Aux[:,:,1:DG.NumI,3]

@@ -47,12 +47,11 @@ end
 
 Base.@kwdef struct GeoPotentialDeep <: GeoPotentialType end
 
-function (GeoPotentialFun::GeoPotentialDeep)(Phys,::Grids.SphericalGrid)
-  @inline function GeoPotential(x,y,z)
-    FT = eltype(x)
-    r = sqrt(x^2 + y^2 + z^2)
-    return Phys.Grav * (Phys.RadEarth - Phys.RadEarth^2 / r)
-#   return Phys.Grav * max(r- Phys.RadEarth,FT(0))
+function (GeoPotentialFun::GeoPotentialDeep)(GeoPos,::Grids.SphericalGrid)
+  @inline function GeoPotential(Aux,X)
+    FT = eltype(X)
+    r = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
+    Aux[GeoPos] = P.Grav * (P.RadEarth - P.RadEarth^2 / r)
   end
   return GeoPotential
 end

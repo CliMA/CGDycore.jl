@@ -1,7 +1,9 @@
 module Parameters
 
+using ArgParse
 
 include("earthParameters.jl")
+include("parse_commandline.jl")
 # Earth parameters
   RadEarth = 0
   Grav = 0

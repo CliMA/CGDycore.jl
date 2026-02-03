@@ -26,15 +26,6 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 
 export parse_commandline 
 
-include("Average.jl")
-include("AverageFB.jl")
-include("Damping.jl")
-include("DiscretizationDG2.jl")
-include("Project.jl")
-include("ProjectW.jl")
-include("ProjectVec.jl")
-include("Source.jl")
-include("parse_commandline.jl")
 include("GlobalVariables.jl")
 include("InitDriver.jl")
 

@@ -2,6 +2,7 @@ module Examples
 
 import ..Grids
 import ..Thermodynamics
+import ..FiniteElements
 
 using NLsolve
 using StaticArrays
@@ -16,6 +17,8 @@ include("initial.jl")
 include("force.jl")
 include("topography.jl")
 include("InitProfileBryanFritsch.jl")
+include("InitialConditions.jl")
+include("InitialKernel.jl")
 
 function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
   # Initial values

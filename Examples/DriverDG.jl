@@ -11,7 +11,7 @@ using ArgParse
 
 
 # Model
-parsed_args = DyCore.parse_commandline()
+parsed_args = Examples.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
 VelocityForm = parsed_args["VelocityForm"]
@@ -343,7 +343,7 @@ end
 @show "InitialProfile!"
 @show VelForm
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
-U = CGSEM.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
+U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 pAuxPos = 1
 GPAuxPos = 2
@@ -421,7 +421,7 @@ if Damping
     Model.uPos,Model.vPos,Model.wPos,VelForm,Grid.Form)
   Model.Damp = Damp
 end
-Model.GeoPotential = Sources.GeoPotentialDeep()(Phys,Grid.Form)
+Model.GeoPotential = Sources.GeoPotentialDeep()(GPAuxPos,Grid.Form)
     
 
 
