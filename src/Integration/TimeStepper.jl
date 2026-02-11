@@ -58,12 +58,12 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
     NumV,NumTr,ND,NumThermo)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockAMD"
-    JCache = JStruct{FT}(backend,NumG,nz,NumTr,TkePos)
+    JCache = CGSEM.JStruct{FT}(backend,NumG,nz,NumTr,TkePos)
     Cache.k = KernelAbstractions.zeros(backend,FT,size(U[:,:,:,:])..., TimeStepper.ROS.nStage);
     Cache.fV = similar(U)
     Cache.Vn = similar(U)
   elseif IntMethod == "RosenbrockSSP"
-    Global.J = JStruct(NumG,nz,NumTr)
+    Global.J = CGSEM.JStruct(NumG,nz,NumTr)
     Cache.k=zeros(size(U[:,:,1:NumV])..., TimeStepper.ROS.nStage);
     Cache.fV=zeros(size(U))
     Cache.VS=zeros(size(U[:,:,NumV+1:end])..., TimeStepper.ROS.nStage+1);
@@ -71,7 +71,7 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
     Cache.fRhoS=zeros(size(U[:,:,1])..., TimeStepper.ROS.nStage);
     Cache.RhoS=zeros(size(U[:,:,1])..., TimeStepper.ROS.nStage+1);
   elseif IntMethod == "LinIMEX"
-    Global.J = JStruct(NumG,nz,NumTr)
+    Global.J = CGSEM.JStruct(NumG,nz,NumTr)
     Cache.Ymyn=zeros(size(U[:,:,1:NumV+NumTr])..., TimeStepper.LinIMEX.nStage-1);
     Cache.fV=zeros(size(U))
     Cache.f=zeros(size(U)..., TimeStepper.LinIMEX.nStage)
@@ -83,14 +83,14 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
   elseif IntMethod == "MIS"
     Cache.f=zeros(size(U)..., TimeStepper.MIS.nStage)
     Cache.VS=zeros(size(U)..., TimeStepper.MIS.nStage - 1)
-    Global.J = JStruct(NumG,nz,NumTr)
+    Global.J = CGSEM.JStruct(NumG,nz,NumTr)
     Cache.k=zeros(size(U[:,:,1:NumV+NumTr])..., TimeStepper.ROS.nStage);
     Cache.fV=zeros(size(U))
     Cache.Vn=zeros(size(U))
     Cache.R=zeros(size(U))
     Cache.dZ=zeros(size(U))  
   elseif IntMethod == "IMEX"
-    Global.J = JStruct(NumG,nz,NumTr)
+    Global.J = CGSEM.JStruct(NumG,nz,NumTr)
     Cache.fV=zeros(size(U))
     Cache.R=zeros(size(U))
     Cache.dZ=zeros(size(U))
@@ -101,7 +101,7 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
 
 
 # Print initial conditions
-  CGSEM.FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+  CGSEM.FcnPrepare!(U,CG,Metric,Phys,Cache,Exchange,Global)
   Outputs.unstructured_vtkSphere(U,Trans,CG,Metric,Phys,Global,Proc,ProcNumber;Cache.Thermo)
   if IntMethod == "Rosenbrock"
     # For time measuring  

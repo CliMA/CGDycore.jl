@@ -1,3 +1,28 @@
+function Forcing!(Force,F,U,Aux,Glob,X,NumberThreadGPU)
+  backend = get_backend(F)
+  M = size(U,1)
+  Nz = size(U,2)
+  DoF = size(Glob,1)
+  NF = size(Glob,2)
+  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
+  group = (Nz,M,DoFG,1)
+  ndrange = (Nz,M,DoF,NF)
+  KForceernel! = ForceKernel!(backend, group)
+  KForceernel!(Force,F,U,Aux,X,Glob;ndrange=ndrange)
+end
+
+@kernel inbounds = true function ForceKernel!(Force,F,@Const(U),@Const(Aux),@Const(X),@Const(Glob))
+  _,_,iD,  = @index(Local, NTuple)
+  Iz,K,ID,IF = @index(Global, NTuple)
+
+  ND = @uniform @ndrange()[3]
+
+  if ID <= ND
+    ind = Glob[ID,IF]
+    @views Force(F[K,Iz,ind,:],U[K,Iz,ind,:],Aux[K,Iz,ind,:],X[ID,K,:,Iz,IF])
+  end
+end 
+
 function Damping!(Damp,F,U,Glob,X,NumberThreadGPU)
   backend = get_backend(F)
   M = size(U,1)

@@ -8,7 +8,6 @@ import ..Surfaces
 import ..Grids
 import ..Sources
 import ..Outputs
-import ..Integration
 import ..FiniteElements
 
 using StaticArrays
@@ -29,7 +28,6 @@ include("RiemannNonLin.jl")
 include("FluxVolumeNonLin.jl")
 include("Fcn.jl")
 include("DiscretizationDG.jl")
-include("TimeStepper.jl")
 include("Jac.jl")
 include("MIS.jl")
 include("MISMethod.jl")

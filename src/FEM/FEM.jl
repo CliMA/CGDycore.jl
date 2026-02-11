@@ -5,7 +5,6 @@ import ..Parallels
 import ..Models
 import ..Grids
 import ..Outputs
-import ..Integration
 
 using MPI
 using LinearAlgebra

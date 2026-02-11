@@ -200,7 +200,7 @@ end
   end
 end
 
-function FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+function FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
   backend = get_backend(U)
   dXdxI = Metric.dXdxI
   X = Metric.X

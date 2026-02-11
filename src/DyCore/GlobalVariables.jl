@@ -315,6 +315,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   RhoEDMFPos::Int
   wEDMFPos::Int
   ThEDMFPos::Int
+  pAuxPos::Int
   NumV::Int
   NumAux::Int
   NumTr::Int
@@ -413,6 +414,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   RhoEDMFPos = 0
   wEDMFPos = 0
   ThEDMFPos = 0
+  pAuxPos = 0
   NumV = 0
   NumAux = 0
   NumTr = 0
@@ -509,6 +511,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    RhoEDMFPos,
    wEDMFPos,
    ThEDMFPos,
+   pAuxPos,
    NumV,
    NumAux,
    NumTr,

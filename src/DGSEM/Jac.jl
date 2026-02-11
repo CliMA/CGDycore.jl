@@ -2,6 +2,7 @@ mutable struct JacDGVert{FT<:AbstractFloat,
                          AT2<:AbstractArray,
                          AT3<:AbstractArray,
                          AT4<:AbstractArray}
+  CompTri::Bool                        
   M::Int
   nz::Int
   fac::FT
@@ -164,6 +165,7 @@ end
 end
 
 function JacDGVert{FT}(backend,M,nz,NumG) where FT<:AbstractFloat
+  CompTri = false
   M2 = M - 2
   fac = 0
   FacGrav = 0
@@ -188,6 +190,7 @@ function JacDGVert{FT}(backend,M,nz,NumG) where FT<:AbstractFloat
                    typeof(B1m_34),
                    typeof(A13)}(
 
+    CompTri,
     M,
     nz,
     fac,
@@ -732,7 +735,7 @@ end
   end  
 end
 
-function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
+function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -755,7 +758,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys,Param)
   KFillJacDGVertKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
   JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,JacVert.C23_2,
   JacVert.C14_3,JacVert.SA,JacVert.SchurBand,U,dz,DWZ,DG.wZ,fac,Phys.Grav,
-  Param.cS,Phys,Val(M);ndrange=ndrange) 
+  Phys.cS,Phys,Val(M);ndrange=ndrange) 
 
 end  
 
@@ -781,6 +784,17 @@ function SchurBoundary!(JacVert)
   KluBandKernel!(JacVert.SchurBand,ndrange=ndrange)
 
 end  
+
+function Solve!(k,v,Jac,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
+  
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  @. k = v
+  @views TendVCart2VSp!(k[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)
+  @views Solve!(Jac,k)
+  @views @. k[:,:,:,2:3] *= fac
+  @views TendVSp2VCart!(k[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)
+
+end
 
 function Solve!(JacVert,b)
 
@@ -1014,9 +1028,9 @@ function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
   return JacLU
 end
 
-function JacGPU!(Jac,fac,U,DG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
+function Jac!(U,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
   Invfac = eltype(U)(1) / fac
   dz = Metric.dz
-  FillJacDGVert!(Jac,U,DG,dz,fac,Phys,Param)
-  SchurBoundary!(Jac)
+  FillJacDGVert!(JCache,U,DG,dz,fac,Phys)
+  SchurBoundary!(JCache)
 end  

@@ -136,9 +136,9 @@ function FcnAdvection!(F,U,time,FE,Metric,Phys,Cache,Exchange,Global,Param,Profi
   @views Parallels.ExchangeData3DRecvGPU!(F[:,:,1:1+NumV],Exchange)
 end
 
-function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.CompressibleShallow)
+function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.CompressibleShallow)
 
-  FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation)
+  FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
 
   backend = get_backend(F)
   FT = eltype(F)
@@ -560,8 +560,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.Co
     KSurfaceFluxScalarsKernel!(SurfaceFluxRhs!,F,U,p,Global.SurfaceData.Data,dz,ndrange=ndrangeS)
   end
   if Global.Model.Forcing
-    KForceKernel! = ForceKernel!(backend, groupG)
-    KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
+    Sources.Forcing!(Force,F,U,Thermo,FE.Glob,X,NumberThreadGPU)  
+#   KForceKernel! = ForceKernel!(backend, groupG)
+#   KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
   end  
 
   if Global.Model.Microphysics
@@ -577,8 +578,6 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.Co
 
   if Global.Model.Damping
     Sources.Damping!(Damp,F,U,FE.Glob,X,NumberThreadGPU)  
-#   KDampKernel! = DampKernel!(backend, groupG)
-#   KDampKernel!(Damp,F,U,zP,ndrange=ndrangeG)
   end  
 end
 

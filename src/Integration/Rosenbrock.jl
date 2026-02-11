@@ -1,4 +1,4 @@
-NVTX.@annotate function Rosenbrock!(V,dt,Fcn!,Jac,CG,Metric,Phys,Cache,JCache,Exchange,
+NVTX.@annotate function Rosenbrock!(V,dt,Fcn,Jac,FE,Metric,Phys,Cache,JCache,Exchange,
   Global,Param,DiscType)
 
   ROS = Global.TimeStepper.ROS
@@ -15,15 +15,15 @@ NVTX.@annotate function Rosenbrock!(V,dt,Fcn!,Jac,CG,Metric,Phys,Cache,JCache,Ex
     @inbounds for jStage = 1 : iStage-1
       @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
     end
-    Fcn!(fV,V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+    Fcn(fV,V,FE,Metric,Phys,Cache,Exchange,Global,DiscType)
     if iStage == 1
-      Jac(JCache,V,CG,Metric,Phys,Cache,Global,Param,DiscType)
+      Jac(V,dt*ROS.gamma,FE,Metric,Phys,Cache,JCache,Global,DiscType)
     end  
     @inbounds for jStage = 1 : iStage - 1
       fac = ROS.c[iStage,jStage] / dt
       @views @. fV = fV + fac * k[:,:,:,:,jStage]
     end
-    @views Solve!(k[:,:,:,:,iStage],fV,JCache,dt*ROS.gamma,Cache,Global)
+    @views Solve!(k[:,:,:,:,iStage],fV,JCache,dt*ROS.gamma,FE,Metric,Global,DiscType)
   end
   @. V = Vn
   @inbounds for iStage = 1 : nStage

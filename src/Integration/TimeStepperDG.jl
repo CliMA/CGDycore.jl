@@ -1,24 +1,38 @@
 mutable struct CacheStructDG{FT<:AbstractFloat,
-                           AT4<:AbstractArray}
+                           AT3<:AbstractArray,
+                           AT4<:AbstractArray,
+                           AT5<:AbstractArray}
   U::AT4
+  Vn::AT4
   S::AT4
+  k::AT5
+  fV::AT3
 end
 
-function CacheStructDG{FT}(backend,NumG,NumI,M,nz,NumV,NumAux) where FT<:AbstractFloat
+function CacheStructDG{FT}(backend,NumG,NumI,M,nz,NumV,NumAux,NumStages) where FT<:AbstractFloat
   U = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV+NumAux)
+  fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   S = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
+  k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,NumStages)
+  @views UI = U[:,:,1:NumI,1:NumV]
   return CacheStructDG{FT,
-                     typeof(U)}(
-  # AT4
+                     typeof(fV),
+                     typeof(U),
+                     typeof(k)}(
     U,
+    UI,
     S,
+    k,
+    fV,
   )
 end
 
-function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,ElemType::Grids.ElementType,VelForm)
+function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,
+  Global,ElemType::Grids.ElementType,VelForm)
 
   backend = get_backend(U)
   FTB = eltype(U)
+  TimeStepper = Global.TimeStepper
   Proc = Global.ParallelCom.Proc
   ProcNumber = Global.ParallelCom.ProcNumber
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
@@ -27,43 +41,38 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
   NumAux = Model.NumAux
   M = size(U,1)
   nz = size(U,2)
-  Cache = CacheStructDG{FTB}(backend,DG.NumG,DG.NumI,M,nz,NumV,NumAux)
-  CacheU = Cache.U
-  @views Aux = CacheU[:,:,:,NumV+1:NumV+NumAux]
-  @views Un = CacheU[:,:,:,1:NumV]
-  @views UI = U[:,:,1:DG.NumI,:]
-  @views UnI = Un[:,:,1:DG.NumI,:]
-  nStage = ROS.nStage
-  k = KernelAbstractions.zeros(backend,FTB,size(U,1),size(U,2),DG.NumI,NumV,nStage)
+  IntMethod = TimeStepper.IntMethod
+  Table = TimeStepper.Table
+  @show IntMethod
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
+    TimeStepper.ROS = RosenbrockStruct{FTB}(Table)
+    Cache = CacheStructDG{FTB}(backend,DG.NumG,DG.NumI,M,nz,NumV,NumAux,TimeStepper.ROS.nStage)
+    CacheU = Cache.U
+    @views Aux = CacheU[:,:,:,NumV+1:NumV+NumAux]
+    @views Un = CacheU[:,:,:,1:NumV]
+    @views UI = U[:,:,1:DG.NumI,:]
+    @views UnI = Un[:,:,1:DG.NumI,:]
+  elseif IntMethod == "RungeKutta"
+    TimeStepper.RK=RungeKuttaMethod{FT}(Table)
+  elseif IntMethod == "IMEX"
+    TimeStepper.IMEX=IMEXMethod(Table)
+  elseif IntMethod == "MIS"
+    TimeStepper.MIS=MISMethod(Table)
+  elseif IntMethod == "LinIMEX"
+    TimeStepper.LinIMEX=LinIMEXMethod(Table)
+  end
 
-  dz = Metric.dz 
+  dz = Metric.dz
+
+  @show TimeStepper.ROS
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
-  Jac = JacDGVert{FTB}(backend,M,nz,DG.NumI)
+  JCache = DGSEM.JacDGVert{FTB}(backend,M,nz,DG.NumI)
   @time begin
     @inbounds for i = 1 : nIter
       Δt = @elapsed begin
-        fac = (1.0 / (dtau * ROS.gamma))
-        FillJacDGVert!(Jac,U,DG,dz,fac,Phys,Param)
-        SchurBoundary!(Jac)
-        @inbounds for iStage = 1 : nStage
-          @. UnI = UI
-          @inbounds for jStage = 1 : iStage-1
-            @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
-          end
-          @views Fcn(k[:,:,:,:,iStage],Un,DG,Metric,Phys,Cache,Exchange,Global,ElemType,VelForm)
-          @inbounds for jStage = 1 : iStage - 1
-            fac = ROS.c[iStage,jStage] / dtau
-            @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
-          end
-          @views TendVCart2VSp!(k[:,:,:,2:4,iStage],DG,Metric,NumberThreadGPU,VelForm)
-          @views Solve!(Jac,k[:,:,:,:,iStage])
-          @views @. k[:,:,:,2:3,iStage] *= (dtau * ROS.gamma)
-          @views TendVSp2VCart!(k[:,:,:,2:4,iStage],DG,Metric,NumberThreadGPU,VelForm)
-        end
-        @inbounds for iStage = 1 : nStage
-          @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
-        end
+        Rosenbrock!(U,dt,Fcn,Jac,DG,Metric,Phys,Cache,JCache,Exchange,
+          Global,Param,VelForm)
         if mod(i,nPrint) == 0
           Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
         end
@@ -73,8 +82,62 @@ function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Pa
         @info "Iteration: $i took $Δt, $percent% complete"
       end
     end
-    Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
   end  
+  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
+
+#=
+  if IntMethod == "Rosenbrock"
+    Ros = Integration.RosenbrockStruct{FTB}(Table)
+    DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+      Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
+  elseif IntMethod == "RosenbrockNonConservative"
+    Ros = Integration.RosenbrockStruct{FTB}(Table)
+    DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+      Trans,Phys,Param,Grid,Global,Grid.Type)
+  elseif IntMethod == "MIS"
+    Ros = Integration.RosenbrockStruct{FTB}(Table)
+    Mis = DGSEM.MISStruct{FTB}("MISRK4")
+  DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+  elseif IntMethod == "RungeKutta"
+    DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+      Trans,Phys,Grid,Global)
+  elseif IntMethod == "RungeKuttaNonConservative"
+    DGSEM.RK3(U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+      Trans,Phys,Grid,Global)
+  end
+=#
+
+end
+
+#=
+function Rosenbrock(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,
+  Global,ElemType::Grids.ElementType,VelForm)
+
+  ROS = Global.TimeStepper.ROS
+  nStage = ROS.nStage
+  k = Cache.k
+  fV = Cache.fV
+  Vn = Cache.Vn
+  Global.TimeStepper.dtauStage = dt
+
+  fac = dtau * ROS.gamma
+  Jac!(Jac,fac,U,DG,Metric,Phys,Cache,Global,Param)
+  @inbounds for iStage = 1 : nStage
+    @. UnI = UI
+    @inbounds for jStage = 1 : iStage-1
+      @views @. UnI = UnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+    end
+    @views Fcn(k[:,:,:,:,iStage],Un,DG,Metric,Phys,Cache,Exchange,Global,ElemType,VelForm)
+    @inbounds for jStage = 1 : iStage - 1
+      fac = ROS.c[iStage,jStage] / dtau
+      @views @. k[:,:,:,:,iStage] += fac * k[:,:,:,:,jStage]
+    end
+    fac = dtau * ROS.gamma
+    @views Solve!(k[:,:,:,:,iStage],k[:,:,:,:,iStage],Jac,fac,DG,Metric,Global,VelForm)
+  end
+  @inbounds for iStage = 1 : nStage
+    @views @. UI = UI + ROS.m[iStage] * k[:,:,:,:,iStage]
+  end
 end  
 
 function RosenbrockSparse(ROS,U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
@@ -292,3 +355,4 @@ function RK1(U,Fcn,dtau,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Grid,Global)
     end
   end
 end
+=#

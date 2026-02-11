@@ -1,10 +1,13 @@
 module Integration
 
 import ..Grids
+import ..FiniteElements
 import ..Outputs
 import ..Parallels
 import ..Statistics
+import ..Models
 import ..CGSEM
+import ..DGSEM
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
@@ -21,10 +24,10 @@ include("RosenbrockMethod.jl")
 include("RungeKuttaMethod.jl")
 include("Rosenbrock.jl")
 include("RungeKuttaExplicit.jl")
-include("Solve.jl")
 include("SSPRungeKutta.jl")
 include("TimeStepper.jl")
+include("TimeStepperDG.jl")
 include("cache.jl")
-include("JacCache.jl")
+include("Solve.jl")
 
 end

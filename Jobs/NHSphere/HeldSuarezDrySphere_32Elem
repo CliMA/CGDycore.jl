@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/Driver.jl \
+julia --project Examples/DriverCG.jl \
   --Problem="HeldSuarezDrySphere" \
   --FloatTypeBackend="Float32" \
   --NumberThreadGPU=512 \
@@ -24,6 +24,8 @@ julia --project Examples/Driver.jl \
   --PrintMinutes=1500 \
   --PrintHours=0 \
   --PrintDays=0 \
+  --vtkFileName="output/VTK/HeldSauarezDrySphere/CG32Quad" \
+  --OrdPrint=3 \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=150 \

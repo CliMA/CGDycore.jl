@@ -1,9 +1,11 @@
-function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType,VelForm)
+function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,VelForm)
   backend = get_backend(F)
   Model = Global.Model
   Grid = Global.Grid
+  GridType = Grid.Type
   Damp = Model.Damp
   Cor = Model.CoriolisFun
+  Force = Model.Force
   FT = eltype(F)
   DoF = DG.DoF
   DoFE = DG.DoFE
@@ -52,11 +54,7 @@ function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,GridType,VelForm)
   end
 
   if Model.Forcing
-    NDG = min(div(NumberThreadGPU,Nz*M),DG.NumI)
-    group = (Nz,M,NDG)
-    ndrange = (Nz,M,DG.NumI)
-    KForceKernel! = ForceKernel!(backend, group)
-    KForceKernel!(Model.Force,F,U,p,Metric.xS,ndrange=ndrange)
+    Sources.Forcing!(Force,F,U,Aux,DG.Glob,Metric.X,NumberThreadGPU)  
   end
 
   @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  

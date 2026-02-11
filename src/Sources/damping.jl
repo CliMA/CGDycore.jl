@@ -6,7 +6,7 @@ function (::DampingW)(H,StrideDamp,Relax,uPos,vPos,wPos,::Examples.VelocityS,::G
   @inline function Damping(X,U)
     FT = eltype(X)
     Rad = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
-    z = Rad - P.RadEarth
+    z = Rad - FT(P.RadEarth)
     if z>=H-StrideDamp
       Damp = Relax *
         sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2

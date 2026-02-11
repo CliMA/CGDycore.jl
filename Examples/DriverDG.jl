@@ -1,5 +1,5 @@
 import CGDycore:
-  Parameters as P, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore
+  Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore
 using MPI
 using Base
 using CUDA
@@ -11,7 +11,7 @@ using ArgParse
 
 
 # Model
-parsed_args = Examples.parse_commandline()
+parsed_args = Parameters.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
 VelocityForm = parsed_args["VelocityForm"]
@@ -174,8 +174,6 @@ else
   stop
 end
 
-P.SetParameters(FTB)
-
 Param = Examples.Parameters(FTB,Problem)
 
 KernelAbstractions.synchronize(backend)
@@ -229,6 +227,7 @@ Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
 Model.TkePos  = TkePos
+Model.pAuxPos  = 1
 Model.ModelType = ModelType
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
@@ -468,6 +467,17 @@ Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
 
+# TimeStepper
+time=[0.0]
+Global.TimeStepper.IntMethod = IntMethod
+Global.TimeStepper.Table = Table
+Global.TimeStepper.dtau = dtau
+Global.TimeStepper.SimDays = SimDays
+Global.TimeStepper.SimHours = SimHours
+Global.TimeStepper.SimMinutes = SimMinutes
+Global.TimeStepper.SimSeconds = SimSeconds
+Global.TimeStepper.SimTime = SimTime
+
 Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV+NumAux+1,Exchange)
 
 
@@ -494,6 +504,10 @@ if Proc == 1
 @show nPrint
 end
 dtau = FTB(dtau)
+Integration.TimeStepperDG(U,DGSEM.FcnGPUSplit!,DGSEM.Jac!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
+
+#=
 if IntMethod == "Rosenbrock"
   Ros = Integration.RosenbrockStruct{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
@@ -513,4 +527,5 @@ elseif IntMethod == "RungeKuttaNonConservative"
   DGSEM.RK3(U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Grid,Global)
 end  
+=#
 MPI.Finalize()

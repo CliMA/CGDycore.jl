@@ -1,10 +1,11 @@
 abstract type DGElement end
+abstract type CGElement end
 mutable struct CGQuad{FT<:AbstractFloat,
                         AT1<:AbstractArray,
                         AT2<:AbstractArray,
                         AT3<:AbstractArray,
                         IT1<:AbstractArray,
-                        IT2<:AbstractArray}
+                        IT2<:AbstractArray} <: CGElement
     DoFN::Int                    
     DoFE::Int                    
     DoF::Int

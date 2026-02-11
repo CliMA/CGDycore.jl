@@ -1,4 +1,4 @@
-function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.EquationType)
+function JacGPU!(U,fac,CG,Metric,Phys,Cache,JCache,Global,Equation::Models.EquationType)
 
   backend = get_backend(U)
   FT = eltype(U)
@@ -20,20 +20,21 @@ function JacGPU!(J,U,CG,Metric,Phys,Cache,Global,Param,Equation::Models.Equation
   end  
 
   KJacAcousticKernel! = JacAcousticKernel!(backend,group)
-  KJacAcousticKernel!(dPresdRhoTh,dPresdRho,J.JRhoW,J.JWRho,J.JWRhoTh,J.JRhoThW,U,p,Metric.dz,Phys,Param,ndrange=ndrange)
+  KJacAcousticKernel!(dPresdRhoTh,dPresdRho,JCache.JRhoW,JCache.JWRho,JCache.JWRhoTh,JCache.JRhoThW,U,
+    p,Metric.dz,Phys,ndrange=ndrange)
 
   if Global.Model.VerticalDiffusion
     group = (Nz-1, NG)
     ndrange = (Nz-1, NumG)  
-    @. J.JDiff = FT(0)  
+    @. JCache.JDiff = FT(0)  
     KJacTransportKernel! = JacTransportKernel!(backend,group)
-    @views KJacTransportKernel!(J.JDiff,U[:,:,:,1],Cache.KV,Metric.dz,ndrange=ndrange)
+    @views KJacTransportKernel!(JCache.JDiff,U[:,:,:,1],Cache.KV,Metric.dz,ndrange=ndrange)
   end  
 
 end
 
 
-@kernel inbounds = true function JacAcousticKernel!(dPresdRhoTh,dPresdRho,JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(p),@Const(dz),Phys,Param)
+@kernel inbounds = true function JacAcousticKernel!(dPresdRhoTh,dPresdRho,JRhoW,JWRho,JWRhoTh,JRhoThW,@Const(U),@Const(p),@Const(dz),Phys)
   iz, iC   = @index(Local, NTuple)
   Iz,IC = @index(Global, NTuple)
 
@@ -108,7 +109,7 @@ end
 end  
 
 
-function JacSchur!(J,U,CG,Phys,Global,Param,::Val{:Conservative})
+function JacSchur!(J,U,CG,Phys,Global,::Val{:Conservative})
   (  RhoPos,
       uPos,
       vPos,

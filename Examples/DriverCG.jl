@@ -172,10 +172,6 @@ else
   stop
 end
 
-Parameters.SetParameters(FTB)
-
-@show typeof(Parameters.Grav)
-
 
 Param = Examples.Parameters(FTB,Problem)
 
@@ -230,6 +226,7 @@ Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
 Model.TkePos  = TkePos
+Model.pAuxPos  = 1
 Model.ModelType = ModelType
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind

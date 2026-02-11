@@ -2,6 +2,7 @@ module CGSEM
 
 import ..Parameters as P
 import ..Parallels
+import ..Sources
 import ..Models
 import ..Grids
 import ..FiniteElements
@@ -17,6 +18,8 @@ using NVTX
 include("OperatorKernel.jl")
 include("Fcn.jl")
 include("Jac.jl")
+include("JacCache.jl")
+include("Solve.jl")
 include("MassCG.jl")
 include("DiagnosticKernel.jl")
 include("HorLimiterKernel.jl")
