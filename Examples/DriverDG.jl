@@ -325,9 +325,6 @@ Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 DGMethod = "Kubatko2LGL"
 
 if GridForm == "Cartesian"
-  if ParallelCom.Proc == 1
-    @show "InitCart"
-  end
   (DG, Metric, Exchange, Global) = DyCore.InitCartDG(backend,FTB,OrdPoly,OrdPolyZ,DGMethod,
     OrdPrint,OrdPrintZ,H,Topography,Model,
     Phys,TopoProfile,CellToProc,Grid,ParallelCom)
@@ -339,8 +336,6 @@ end
 
 
 # Initial values
-@show "InitialProfile!"
-@show VelForm
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 

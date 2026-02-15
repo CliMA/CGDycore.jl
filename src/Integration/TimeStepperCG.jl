@@ -1,13 +1,5 @@
-mutable struct CacheStructDG{FT<:AbstractFloat,
-                           AT4<:AbstractArray,
-                           AT5<:AbstractArray}
-  Vn::AT4
-  k::AT5
-  fV::AT4
-end
-
-
-mutable struct CacheStructCG{FT<:AbstractFloat,
+mutable struct CacheStruct{FT<:AbstractFloat,
+                           FE<:FiniteElements.CGElement,
                            AT3<:AbstractArray,
                            AT4<:AbstractArray,
                            AT5<:AbstractArray}
@@ -36,7 +28,7 @@ mutable struct CacheStructCG{FT<:AbstractFloat,
   Z::Array{FT, 4}
 end
 
-function CacheStruct(backend,FT,CG::FiniteElements.CGElement)
+function CacheStruct{FT,FE}(backend) where {FT<:AbstractFloat, FE<:FiniteElements.CGElement}
   #AT3
   KV = KernelAbstractions.zeros(backend,FT,0,0,0)
   KE = KernelAbstractions.zeros(backend,FT,0,0,0)
@@ -68,7 +60,8 @@ function CacheStruct(backend,FT,CG::FiniteElements.CGElement)
   Y=zeros(FT,0,0,0,0)
   Z=zeros(FT,0,0,0,0)
 
-  return CacheStructCG{FT,
+  return CacheStruct{FT,
+                   FE,
                    typeof(KV),
                    typeof(Thermo),
                    typeof(k)}(
@@ -106,7 +99,8 @@ function CacheStruct(backend,FT,CG::FiniteElements.CGElement)
   )
 end
 
-function CacheStruct(backend,FT,CG::FiniteElements.CGElement,NF,NGF,M,nz,NumV,NumTr,ND,NumThermo)
+function CacheStruct{FT}(backend,CG::FiniteElements.CGElement,NF,NGF,M,nz,NumV,NumTr,ND,NumThermo) where 
+  FT<:AbstractFloat
   #AT3
   DoF = CG.DoF
   NumG = CG.NumG
@@ -148,7 +142,8 @@ function CacheStruct(backend,FT,CG::FiniteElements.CGElement,NF,NGF,M,nz,NumV,Nu
   Y=zeros(FT,0,0,0,0)
   Z=zeros(FT,0,0,0,0)
 
-  return CacheStructCG{FT,
+  return CacheStruct{FT,
+                   typeof(CG), 
                    typeof(KV),
                    typeof(Thermo),
                    typeof(k)}(
@@ -183,117 +178,6 @@ function CacheStruct(backend,FT,CG::FiniteElements.CGElement,NF,NGF,M,nz,NumV,Nu
     Y,
     Z,
   )
-end
-
-function CacheStruct(backend,FT,DG::FiniteElements.DGElement,M,nz,NumV,NumAux,NumStages)
-  NumG = DG.NumG
-  NumI = DG.NumI
-  Vn = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV+NumAux)
-  fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
-  k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,NumStages)
-  return CacheStructDG{FT,
-                     typeof(Vn),
-                     typeof(k)}(
-    Vn,
-    k,
-    fV,
-  )
-end
-
-function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,
-  Global,ElemType::Grids.ElementType,VelForm)
-
-  backend = get_backend(U)
-  FT = eltype(U)
-  TimeStepper = Global.TimeStepper
-  Output = Global.Output
-  Proc = Global.ParallelCom.Proc
-  ProcNumber = Global.ParallelCom.ProcNumber
-  IntMethod = TimeStepper.IntMethod
-  Table = TimeStepper.Table
-
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
-    TimeStepper.ROS=RosenbrockStruct{FT}(Table)
-  elseif IntMethod == "RungeKutta"
-    TimeStepper.RK=RungeKuttaMethod{FT}(Table)
-  elseif IntMethod == "IMEX"
-    TimeStepper.IMEX=IMEXMethod(Table)
-  elseif IntMethod == "MIS"
-    TimeStepper.MIS=MISMethod(Table)
-  elseif IntMethod == "LinIMEX"
-    TimeStepper.LinIMEX=LinIMEXMethod(Table)
-  end
-
-  # Simulation period
-  time=[0.0]
-  dtau = FT(TimeStepper.dtau)
-  SimDays = TimeStepper.SimDays
-  SimHours = TimeStepper.SimHours
-  SimMinutes = TimeStepper.SimMinutes
-  SimSeconds = TimeStepper.SimSeconds
-  SimTime = TimeStepper.SimTime
-  PrintDays = Output.PrintDays
-  PrintHours = Output.PrintHours
-  PrintMinutes = Output.PrintMinutes
-  PrintSeconds = Output.PrintSeconds
-  PrintTime = Output.PrintTime
-  PrintStartTime = Output.PrintStartTime
-  StartAverageDays = Output.StartAverageDays
-  SimTime = 24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime
-  nIter=ceil(SimTime/dtau)
-  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+60*PrintMinutes+PrintSeconds+PrintTime)/dtau)
-  StartAverageTime = StartAverageDays * 3600 * 24
-  if StartAverageTime >= 0 && StartAverageTime < SimTime
-    UAver = KernelAbstractions.zeros(backend,FT,size(U))
-    @. UAver = 0
-    iAv = 1
-  end
-  PrintStartInt=0
-
-  NumV = Global.Model.NumV
-  NumTr = Global.Model.NumTr
-  NumAux = Global.Model.NumAux
-  ND = Global.Model.NDEDMF
-  nz = Global.Grid.nz
-  M = DG.OrdPolyZ + 1
-
-
-  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
-    Cache = CacheStruct(backend,FT,DG,M,nz,NumV,NumAux,TimeStepper.ROS.nStage)
-    CacheU = Cache.Vn
-    @views Aux = CacheU[:,:,:,NumV+1:NumV+NumAux]
-  elseif IntMethod == "RungeKutta"
-    TimeStepper.RK=RungeKuttaMethod{FT}(Table)
-  elseif IntMethod == "IMEX"
-    TimeStepper.IMEX=IMEXMethod(Table)
-  elseif IntMethod == "MIS"
-    TimeStepper.MIS=MISMethod(Table)
-  elseif IntMethod == "LinIMEX"
-    TimeStepper.LinIMEX=LinIMEXMethod(Table)
-  end
-
-  dz = Metric.dz
-
-
-  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
-  JCache = DGSEM.JacDGVert{FT}(backend,M,nz,DG.NumI)
-  @time begin
-    @inbounds for i = 1 : nIter
-      Δt = @elapsed begin
-        Rosenbrock!(U,dt,Fcn,Jac,DG,Metric,Phys,Cache,JCache,Exchange,
-          Global,Param,VelForm)
-        if mod(i,nPrint) == 0
-          Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
-        end
-      end
-      percent = i/nIter*100
-      if Proc == 1
-        @info "Iteration: $i took $Δt, $percent% complete"
-      end
-    end
-  end  
-  Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
-
 end
 
 function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,DiscType)  
@@ -352,7 +236,8 @@ function TimeStepper!(U,Fcn!,Jac!,Trans,CG,Metric,Phys,Exchange,Global,Param,Dis
   M = CG.OrdPolyZ 
   NumG = CG.NumG
   TkePos = Global.Model.TkePos
-  Cache=CacheStruct(backend,FT,CG,Global.Grid.NumFaces,Global.Grid.NumFacesG,M,nz,
+  @show typeof(CG)
+  Cache=CacheStruct{FT}(backend,CG,Global.Grid.NumFaces,Global.Grid.NumFacesG,M,nz,
     NumV,NumTr,ND,NumThermo)
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockD" || IntMethod == "RosenbrockAMD"

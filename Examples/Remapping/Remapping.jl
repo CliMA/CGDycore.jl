@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration, GPU, DyCore
+  Examples, Parallels, Models, Grids, Outputs, Integration, CGSEM, DyCore
 using MPI
 using Base
 using CUDA
@@ -41,11 +41,12 @@ FTB = Float64
 backend = CPU()
 
 Problem = "AdvectionSphereSlottedCylinder"
-Problem = "AdvectionSphereSpherical"
+#Problem = "AdvectionSphereSpherical"
 Param = Examples.Parameters(FTB,Problem)
+Profile = Examples.DivergentSphereExample()(Param,Phys)
+#Profile = Examples.AdvectionSphereSpherical()(Param,Phys)
+
 Phys=DyCore.PhysParameters{FTB}()
-#Profile = Examples.DivergentSphereExample()(Param,Phys)
-Profile = Examples.AdvectionSphereSpherical()(Param,Phys)
 
 nz = 1
 nPanel = 30
@@ -69,3 +70,11 @@ LatB = (1.0 - 0.8) * pi / 2
 SrcGrid = Grids.CubedGrid(backend,FTB,nPanelSrc,Grids.OrientFaceSphere,RadEarth,nz)
 DestGrid = Grids.SphericalGrid(backend,FTB,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz)
 Interpolate(SrcGrid,DestGrid,Profile,"CubeSphere")
+
+nPanelSrc = 40
+nLon = 200
+nLat = 100
+LatB = (1.0 - 0.8) * pi / 2
+SrcGrid = Grids.CubedGrid(backend,FTB,nPanelSrc,Grids.OrientFaceSphere,RadEarth,nz)
+DestGrid = Grids.TriPolarGrid(backend,FTB,nLon,nLat,RadEarth,nz)
+Interpolate(SrcGrid,DestGrid,Profile,"CubeTriPolar")

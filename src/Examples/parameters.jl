@@ -402,16 +402,17 @@ Base.@kwdef struct ParamAdvectionSphereGaussian
   FacVel = 10.0
   StreamFun = true
 end  
-Base.@kwdef struct ParamAdvectionSphereSlottedCylinder
+Base.@kwdef struct ParamAdvectionSphereSlottedCylinder{FT}
+  uMax::FT = 1.0
   TimeDependent::Bool = true
-  hMax::Float64 = 0.95
-  b::Float64 = 5.0
-  lon1::Float64 = 5.0e0 / 6.0e0 * pi
-  lat1::Float64 = 0.0e0
-  lon2::Float64 = 7.0e0 / 6.0e0 * pi
-  lat2::Float64 = 0.0e0
-  EndTime::Float64 = 5.0
-  FacVel::Float64 = 10.0
+  hMax::FT = 0.95
+  b::FT = 5.0
+  lon1::FT = 5.0e0 / 6.0e0 * pi
+  lat1::FT = pi/4 #0.0e0
+  lon2::FT = 7.0e0 / 6.0e0 * pi
+  lat2::FT = pi/4 #0.0e0
+  EndTime::FT = 5.0
+  FacVel::FT = 10.0
   StreamFun::Bool = false
 end  
 Base.@kwdef struct ParamAdvectionSphereDCMIP{FT}
@@ -575,7 +576,7 @@ function Parameters(FT,Problem::String)
     Param = ParamAdvectionSphereGaussian()
   elseif Problem == "AdvectionSphereSlottedCylinder"
     @show Problem
-    Param = ParamAdvectionSphereSlottedCylinder()
+    Param = ParamAdvectionSphereSlottedCylinder{FT}()
   elseif Problem == "AdvectionCart"
     @show Problem
     Param = ParamAdvectionCart()

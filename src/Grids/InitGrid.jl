@@ -9,6 +9,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
   # Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
     Grid = Grids.HealpixGrid(backend,FT,ns,RadEarth,nz)
+  elseif occursin("TriPolar",GridType)
+    Grid = Grids.TriPolarGrid(backend,FT,nLon,nLat,RadEarth,nz)
   elseif occursin("SQuadGen",GridType)
     Grid = Grids.InputGrid(backend,FT,"Grid/baroclinic_wave_2deg_x4.g",Grids.OrientFaceSphere,RadEarth,nz)
   elseif occursin("Msh",GridType)

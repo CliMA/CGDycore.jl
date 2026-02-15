@@ -1,4 +1,4 @@
-function InitialConditions(backend,FTB,CG::FiniteElements.CGQuad,Metric,Exchange,Phys,Global,Profile,Param)
+function InitialConditions(backend,FTB,CG::FiniteElements.CGElement,Metric,Exchange,Phys,Global,Profile,Param)
   Model = Global.Model
   Nz = Global.Grid.nz
   NF = Global.Grid.NumFaces
@@ -113,7 +113,7 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGElement,Metric,Phys,
     lengthU += ND*(1 + 1 + 1 + NumTr)
   end    
 
-  U = KernelAbstractions.zeros(backend,FTB,M,Nz,DG.NumG,lengthU)
+  U = KernelAbstractions.zeros(backend,FTB,M,Nz,DG.NumI,lengthU)
   @views Rho = U[:,:,:,Model.RhoPos]
   @views u = U[:,:,:,Model.uPos]
   @views v = U[:,:,:,Model.vPos]

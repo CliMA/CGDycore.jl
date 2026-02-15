@@ -27,9 +27,9 @@ julia --project Examples/DriverDG.jl \
   --SimHours=0 \
   --SimSeconds=0 \
   --PrintSeconds=0 \
-  --PrintMinutes=0 \
+  --PrintMinutes=10 \
   --PrintHours=0 \
-  --PrintDays=1 \
+  --PrintDays=0 \
   --vtkFileName="output/VTK/HeldSuarezDrySphere/DGQuad" \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
@@ -41,7 +41,9 @@ julia --project Examples/DriverDG.jl \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \
-  --GridType="CubedSphere" \
+  --GridType="TriPolar" \
+  --nLon=20 \
+  --nLat=20 \
   --nz=13 \
   --nPanel=20 \
   --H=50000.0 \

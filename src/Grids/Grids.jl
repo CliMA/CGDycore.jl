@@ -21,6 +21,7 @@ using Interpolations
 using MPI
 using FastGaussQuadrature
 using DynamicPolynomials
+using Oceananigans
 
 EPS::Float64 = eps(Float64)
 EPS2 = EPS * EPS
@@ -81,6 +82,7 @@ include("Grid2KiteGrid.jl")
 include("GridLength.jl")
 include("QuadGrid.jl")
 include("HealpixGrid.jl")
+include("TriPolarGrid.jl")
 include("TestGrid.jl")
 include("OrientTriangle.jl")
 include("RefinePoints.jl")

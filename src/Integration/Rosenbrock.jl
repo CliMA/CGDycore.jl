@@ -6,16 +6,16 @@ NVTX.@annotate function Rosenbrock!(V,dt,Fcn,Jac,FE,Metric,Phys,Cache,JCache,Exc
   k = Cache.k
   fV = Cache.fV
   Vn = Cache.Vn
-  Global.TimeStepper.dtauStage = dt  # Oswald
+  @views VnI = Vn[:,:,1:size(fV,3),1:size(fV,4)]
+  Global.TimeStepper.dtauStage = dt  
 
   JCache.CompTri = true
-  @. Vn = V
   @inbounds for iStage = 1 : nStage
-    @. V = Vn
+    @. VnI = V
     @inbounds for jStage = 1 : iStage-1
-      @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+      @views @. VnI = VnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
     end
-    Fcn(fV,V,FE,Metric,Phys,Cache,Exchange,Global,DiscType)
+    Fcn(fV,Vn,FE,Metric,Phys,Cache,Exchange,Global,DiscType)
     if iStage == 1
       Jac(V,dt*ROS.gamma,FE,Metric,Phys,Cache,JCache,Global,DiscType)
     end  
@@ -25,7 +25,6 @@ NVTX.@annotate function Rosenbrock!(V,dt,Fcn,Jac,FE,Metric,Phys,Cache,JCache,Exc
     end
     @views Solve!(k[:,:,:,:,iStage],fV,JCache,dt*ROS.gamma,FE,Metric,Global,DiscType)
   end
-  @. V = Vn
   @inbounds for iStage = 1 : nStage
     @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
   end

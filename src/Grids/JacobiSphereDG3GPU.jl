@@ -194,7 +194,6 @@ function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad,::G
   group = (N, N, M, NzG, 1)
   ndrange = (N, N, M, Nz, NF)
 
-  @show "JacobiSphereDG3QuadKernel"
   KJacobiSphereDG3Kernel! = JacobiSphereDG3QuadKernel!(backend,group)
 
   KJacobiSphereDG3Kernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)

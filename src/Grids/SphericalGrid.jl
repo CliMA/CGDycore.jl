@@ -1,11 +1,11 @@
 function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
 
   nBar=[ 0  1   0   1
-        -1  0  -1   0];
-  Dim=3;
-  Type=Quad()
-  Rad=Rad;
-  Form="Sphere";
+        -1  0  -1   0]
+  Dim = 3
+  Type = Quad()
+  Rad = Rad
+  Form = SphericalGrid()
   
   NumNodes = nLon * (nLat + 1)
   NumNodesB = nLon * 2

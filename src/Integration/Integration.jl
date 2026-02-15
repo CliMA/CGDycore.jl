@@ -25,9 +25,7 @@ include("RungeKuttaMethod.jl")
 include("Rosenbrock.jl")
 include("RungeKuttaExplicit.jl")
 include("SSPRungeKutta.jl")
-include("TimeStepper.jl")
-include("TimeStepperDG.jl")
-include("cache.jl")
 include("Solve.jl")
+include("TimeStepper.jl")
 
 end

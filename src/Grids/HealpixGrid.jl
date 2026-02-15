@@ -11,7 +11,7 @@ function HealpixGrid(backend,FT,ns,Rad,nz;order=true)
   Dim=3
   Type=Quad()
   Rad=Rad
-  Form="Sphere"
+  Form=SphericalGrid()
 
 
   npix = 12 * ns * ns

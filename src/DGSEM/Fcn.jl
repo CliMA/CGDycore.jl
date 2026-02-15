@@ -18,8 +18,8 @@ function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,VelForm)
   NV = Model.NumV
   NAUX = Model.NumAux
   @views UI = U[:,:,1:DG.NumI,:]
-  CacheU = Cache.U
-  @views Aux = CacheU[:,:,:,NV+1:NV+NAUX]
+  @views Aux = U[:,:,:,NV+1:NV+NAUX]
+
 
   @. F = 0
 
@@ -34,11 +34,11 @@ function FcnGPUSplit!(F,U,DG,Metric,Phys,Cache,Exchange,Global,VelForm)
   end  
 
   @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
-  @views Parallels.ExchangeData3DSendGPU(CacheU[:,:,:,1:NV+NAUX],Exchange)
+  @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV+NAUX],Exchange)
 
   FluxSplitVolumeNonLinH(Model.FluxAverage,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
   FluxSplitVolumeNonLinV(Model.FluxAverage,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
-  @views Parallels.ExchangeData3DRecvSetGPU!(CacheU[:,:,:,1:NV+NAUX],Exchange)
+  @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV+NAUX],Exchange)
 
   RiemannNonLinH(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
   RiemannNonLinV(Model.RiemannSolver,NonConservativeFlux,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)

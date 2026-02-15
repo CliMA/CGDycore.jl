@@ -1,4 +1,5 @@
-mutable struct CacheStructDG{FT<:AbstractFloat,
+mutable struct CacheStruct{FT<:AbstractFloat,
+                           FE<:FiniteElements.DGElement,
                            AT3<:AbstractArray,
                            AT4<:AbstractArray,
                            AT5<:AbstractArray}
@@ -9,13 +10,17 @@ mutable struct CacheStructDG{FT<:AbstractFloat,
   fV::AT3
 end
 
-function CacheStructDG{FT}(backend,NumG,NumI,M,nz,NumV,NumAux,NumStages) where FT<:AbstractFloat
+function CacheStruct{FT}(backend,DG::FiniteElements.DGElement,M,nz,NumV,NumAux,NumStages) where 
+  {FT<:AbstractFloat, FE<:FiniteElements.DGElement}
+  NumG = DG.NumG
+  NumI = DG.NumI
   U = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV+NumAux)
   fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   S = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,NumStages)
   @views UI = U[:,:,1:NumI,1:NumV]
-  return CacheStructDG{FT,
+  return CacheStruct{FT,
+                     typeof(DG),
                      typeof(fV),
                      typeof(U),
                      typeof(k)}(
@@ -31,22 +36,62 @@ function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,P
   Global,ElemType::Grids.ElementType,VelForm)
 
   backend = get_backend(U)
-  FTB = eltype(U)
+  FT = eltype(U)
   TimeStepper = Global.TimeStepper
+  Output = Global.Output
   Proc = Global.ParallelCom.Proc
   ProcNumber = Global.ParallelCom.ProcNumber
-  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  Model = Global.Model
-  NumV = Model.NumV
-  NumAux = Model.NumAux
-  M = size(U,1)
-  nz = size(U,2)
   IntMethod = TimeStepper.IntMethod
   Table = TimeStepper.Table
-  @show IntMethod
+
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
-    TimeStepper.ROS = RosenbrockStruct{FTB}(Table)
-    Cache = CacheStructDG{FTB}(backend,DG.NumG,DG.NumI,M,nz,NumV,NumAux,TimeStepper.ROS.nStage)
+    TimeStepper.ROS=RosenbrockStruct{FT}(Table)
+  elseif IntMethod == "RungeKutta"
+    TimeStepper.RK=RungeKuttaMethod{FT}(Table)
+  elseif IntMethod == "IMEX"
+    TimeStepper.IMEX=IMEXMethod(Table)
+  elseif IntMethod == "MIS"
+    TimeStepper.MIS=MISMethod(Table)
+  elseif IntMethod == "LinIMEX"
+    TimeStepper.LinIMEX=LinIMEXMethod(Table)
+  end
+
+  # Simulation period
+  time=[0.0]
+  dtau = FT(TimeStepper.dtau)
+  SimDays = TimeStepper.SimDays
+  SimHours = TimeStepper.SimHours
+  SimMinutes = TimeStepper.SimMinutes
+  SimSeconds = TimeStepper.SimSeconds
+  SimTime = TimeStepper.SimTime
+  PrintDays = Output.PrintDays
+  PrintHours = Output.PrintHours
+  PrintMinutes = Output.PrintMinutes
+  PrintSeconds = Output.PrintSeconds
+  PrintTime = Output.PrintTime
+  PrintStartTime = Output.PrintStartTime
+  StartAverageDays = Output.StartAverageDays
+  SimTime = 24*3600*SimDays+3600*SimHours+60*SimMinutes+SimSeconds+SimTime
+  nIter=ceil(SimTime/dtau)
+  PrintInt=ceil((24*3600*PrintDays+3600*PrintHours+60*PrintMinutes+PrintSeconds+PrintTime)/dtau)
+  StartAverageTime = StartAverageDays * 3600 * 24
+  if StartAverageTime >= 0 && StartAverageTime < SimTime
+    UAver = KernelAbstractions.zeros(backend,FT,size(U))
+    @. UAver = 0
+    iAv = 1
+  end
+  PrintStartInt=0
+
+  NumV = Global.Model.NumV
+  NumTr = Global.Model.NumTr
+  NumAux = Global.Model.NumAux
+  ND = Global.Model.NDEDMF
+  nz = Global.Grid.nz
+  M = DG.OrdPolyZ + 1
+
+
+  if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
+    Cache = CacheStruct{FT}(backend,DG,M,nz,NumV,NumAux,TimeStepper.ROS.nStage)
     CacheU = Cache.U
     @views Aux = CacheU[:,:,:,NumV+1:NumV+NumAux]
     @views Un = CacheU[:,:,:,1:NumV]
@@ -67,7 +112,7 @@ function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,P
   @show TimeStepper.ROS
 
   Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
-  JCache = DGSEM.JacDGVert{FTB}(backend,M,nz,DG.NumI)
+  JCache = DGSEM.JacDGVert{FT}(backend,M,nz,DG.NumI)
   @time begin
     @inbounds for i = 1 : nIter
       Δt = @elapsed begin
