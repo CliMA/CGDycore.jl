@@ -1,5 +1,6 @@
 import CGDycore:
-  Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  CGSEM, DyCore
+  Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  
+    CGSEM, DyCore, IMEXRosenbrock
 using MPI
 using Base
 using CUDA
@@ -613,8 +614,13 @@ end
 nT = max(7 + NumTr, NumV + NumTr)
 Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
 
-Integration.TimeStepper(U,CGSEM.Fcn!,CGSEM.JacGPU!,CG,Exchange,Metric,
+O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
+Fcn = (CGSEM.Fcn!,)
+Integration.TimeStepper(MethodInt,dtau,U,Fcn,CGSEM.JacGPU!,CG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,Model.Equation)
+
+#TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,Grid,
+#  Global,ElemType::Grids.ElementType,VelForm)
 
 #Integration.TimeStepper(U,CGSEM.Fcn!,CGSEM.JacGPU!,
 #  Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
