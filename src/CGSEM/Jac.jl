@@ -12,11 +12,11 @@ function JacGPU!(U,fac,CG,Metric,Phys,Cache,JCache,Global,Equation::Models.Equat
   dPresdRhoTh = Global.Model.dPresdRhoTh
   dPresdRho = Global.Model.dPresdRho
   if Global.Model.State == "Dry" || Global.Model.State == "Moist" || Global.Model.State == "ShallowWater"
-    @views p = Cache.Thermo[:,:,:,4]
+    @views p = Cache.Aux[:,:,:,4]
   elseif  Global.Model.State == "DryInternalEnergy" || Global.Model.State == "MoistInternalEnergy"  
-    @views p = Cache.Thermo[:,:,:,4]
+    @views p = Cache.Aux[:,:,:,4]
   elseif Global.Model.State == "DryTotalEnergy" || Global.Model.State == "MoistTotalEnergy"  
-    @views p = Cache.Thermo[:,:,:,1]
+    @views p = Cache.Aux[:,:,:,1]
   end  
 
   KJacAcousticKernel! = JacAcousticKernel!(backend,group)
@@ -83,7 +83,6 @@ end
     # Second row lower diagonal
     JRhoThW[1,Iz,IC] = -RhoThF / dzL
     JRhoThW[2,Iz,IC] = RhoThF / dzR
-
   end
 end
 
@@ -129,7 +128,7 @@ function JacSchur!(J,U,CG,Phys,Global,::Val{:Conservative})
   K = J.CacheCol1
 
   for iC=1:nCol
-    @views Pres = Global.Cache.Thermo[:,iC,1]
+    @views Pres = Global.Cache.Aux[:,iC,1]
     @views Rho = U[:,iC,RhoPos]
     @views Th = U[:,iC,ThPos]
     @views Tr = U[:,iC,NumV+1:end]
@@ -160,9 +159,9 @@ function JacSchur!(J,U,CG,Phys,Global,::Val{:Conservative})
       (dz[1:nz-1] + dz[2:nz])
     @views @. J.JThW[1,:,iC] = D / dz
     @views @. J.JThW[2,1:nz-1,iC] = -D[1:nz-1] / dz[2:nz]
-    if Global.Model.Thermo == "TotalEnergy" 
+    if Global.Model.Aux == "TotalEnergy" 
       @views @. D[1:nz-1] -= 1/2*(Pres[1:nz-1] + Pres[2:nz]) 
-    elseif Global.Model.Thermo == "InternalEnergy"
+    elseif Global.Model.Aux == "InternalEnergy"
       @views @. D = Pres / dz
       @views @. J.JThW[1,:,iC] = J.JThW[1,:,iC] - D
       @views @. J.JThW[2,1:nz-1,iC] = J.JThW[2,1:nz-1,iC] + D[2:nz]
@@ -180,7 +179,7 @@ function JacSchur!(J,U,CG,Phys,Global,::Val{:Conservative})
     end
     if Global.Model.VerticalDiffusion
       @views JDiff = J.JDiff[:,:,iC]
-      @views KV = Global.Cache.Thermo[:,iC,2]
+      @views KV = Global.Cache.Aux[:,iC,2]
       # The Rho factor is already included in KV
       @views @. DF = - (KV[1:nz-1] + KV[2:nz]) / (dz[1:nz-1] + dz[2:nz])
       # J tridiagonal matrix

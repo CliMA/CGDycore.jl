@@ -106,36 +106,37 @@ function ConvertVelocity!(backend,FTB,VelCa,Vel,Fe::HDivElement,Grid,Jacobi,::Gr
   end  
 end
 
-function ConvertVelocity!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi,::Grids.SphericalGrid)
-  if Grid.Type == Grids.Tri()
-    ksi1 = -1/3
-    ksi2 = -1/3
-  elseif Grid.Type == Grids.Quad()
-    ksi1 = 0
-    ksi2 = 0
-  end
-
-  fRef = zeros(Fe.Comp,Fe.DoF)
-  @inbounds for iComp = 1 : Fe.Comp
-    @inbounds for iD = 1 : Fe.DoF
-      fRef[iComp,iD] = Fe.phi[iD,iComp](ksi1,ksi2)
+function ConvertVelocity!(backend,FTB,VelSp,Vel,Fe::HDivElement,Grid,Jacobi,ksi,::Grids.SphericalGrid)
+  Numksi = size(ksi,1)
+  fRef = zeros(Numksi,Fe.Comp,Fe.DoF)
+  @inbounds for iksi = 1 : Numksi
+    @inbounds for iComp = 1 : Fe.Comp
+      @inbounds for iD = 1 : Fe.DoF
+        fRef[iksi,iComp,iD] = Fe.phi[iD,iComp](ksi[iksi,1],ksi[iksi,2])
+      end
     end
   end
 
-  VelLoc = zeros(Fe.DoF)
+  iS = 0
+  VelCa = zeros(3)
+  VelSpLoc = zeros(3)
+
   DF = zeros(3,2)
   detDF = zeros(1)
   pinvDF = zeros(3,2)
   X = zeros(3)
   VelCa = zeros(3)
   @inbounds for iF = 1 : Grid.NumFaces
-    Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi1,ksi2,Grid.Faces[iF],Grid)
-    detDFLoc = detDF[1]
-    @views VelCa  .= (Grid.Faces[iF].Orientation / detDFLoc) * DF * (fRef[:, :] * Vel[Fe.Glob[:,iF]])
-    lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
-    VelSpLoc = Grids.VelCart2Sphere(VelCa,lon,lat)
-    VelSp[iF,1] = VelSpLoc[1]
-    VelSp[iF,2] = VelSpLoc[2]
+    @inbounds for iksi = 1 : Numksi
+      iS += 1
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,ksi[iksi,1],ksi[iksi,2],Grid.Faces[iF],Grid)
+      detDFLoc = detDF[1]
+      @views VelCa  .= (Grid.Faces[iF].Orientation / detDFLoc) * DF * (fRef[iksi,:, :] * Vel[Fe.Glob[:,iF]])
+      lon,lat,_ = Grids.cart2sphere(X[1],X[2],X[3])
+      VelSpLoc = Grids.VelCart2Sphere(VelCa,lon,lat)
+      VelSp[iS,1] = VelSpLoc[1]
+      VelSp[iS,2] = VelSpLoc[2]
+    end
   end
 end
 

@@ -1031,6 +1031,6 @@ end
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
   Invfac = eltype(U)(1) / fac
   dz = Metric.dz
-  FillJacDGVert!(JCache,U,DG,dz,fac,Phys)
+  FillJacDGVert!(JCache,U,DG,dz,Invfac,Phys)
   SchurBoundary!(JCache)
 end  

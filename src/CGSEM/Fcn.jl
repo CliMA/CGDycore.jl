@@ -205,7 +205,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Compress
   uPos = Global.Model.uPos
   vPos = Global.Model.vPos
   wPos = Global.Model.wPos
-  ThPos = Global.Model.ThPos
+  ThPos = Global.Model.RhoThPos
   TkePos = Global.Model.TkePos
 # State vector
   @views Rho = U[:,:,:,RhoPos]
@@ -246,12 +246,12 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Compress
 # Cache
 # Need clearer cache distribution for different setups
 #   1...4 Horizontal momentum   
-#       5 Thermodynamic variable
+#       5 Auxdynamic variable
 #      +1 Vertical momentum   
 #      +1 Turbulent kinetic energy
 #  +NumTr Tracer
 #  +ND*(
-#       +1 Thermodynamic variable
+#       +1 Auxdynamic variable
 #       +1 Vertical velocity
 #       +NumTr Tracer)
   LenTemp1 = 5
@@ -277,8 +277,8 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Compress
   end  
       
   @views CacheF = Temp1[:,:,:,1:5]
-  Thermo = Cache.Thermo
-  @views p = Cache.Thermo[:,:,:,1]
+  Aux = Cache.Aux
+  @views p = Cache.Aux[:,:,:,1]
 
 # Ranges
   NzG = min(div(NumberThreadGPU,N*N),Nz)
@@ -560,19 +560,19 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Compress
     KSurfaceFluxScalarsKernel!(SurfaceFluxRhs!,F,U,p,Global.SurfaceData.Data,dz,ndrange=ndrangeS)
   end
   if Global.Model.Forcing
-    Sources.Forcing!(Force,F,U,Thermo,FE.Glob,X,NumberThreadGPU)  
+    Sources.Forcing!(Force,F,U,Aux,FE.Glob,X,NumberThreadGPU)  
 #   KForceKernel! = ForceKernel!(backend, groupG)
 #   KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
   end  
 
   if Global.Model.Microphysics
     KMicrophysicsKernel! = MicrophysicsKernel!(backend, groupG)
-    KMicrophysicsKernel!(MicrophysicsSource,F,U,Thermo,ndrange=ndrangeG)
+    KMicrophysicsKernel!(MicrophysicsSource,F,U,Aux,ndrange=ndrangeG)
   end
 
   if Global.Model.Sedimentation
     KSedimentationKernel! = SedimentationKernel!(backend, groupC)
-    KSedimentationKernel!(SedimentationSource,F,U,Thermo,dz,ndrange=ndrangeC)
+    KSedimentationKernel!(SedimentationSource,F,U,Aux,dz,ndrange=ndrangeC)
   end
 
 
@@ -638,7 +638,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.Co
   @views CacheF = Temp1[:,:,1:5]
   @views CacheFF = Temp1[:,:,1:6+NumTr+1]
   @views Cachew = Temp1[:,:,6 + 1 + NumTr]  
-  @views p = Cache.Thermo[:,:,1]
+  @views p = Cache.Aux[:,:,1]
   KV = Cache.KV
   TSurf = Cache.TSurf
   RhoVSurf = Cache.RhoVSurf
@@ -813,7 +813,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Param,Equation::Models.Co
 
   if Global.Model.Microphysics
     KMicrophysicsKernel! = MicrophysicsKernel!(backend, groupG)
-    KMicrophysicsKernel!(MicrophysicsSource,F,U,Thermo,ndrange=ndrangeG)
+    KMicrophysicsKernel!(MicrophysicsSource,F,U,Aux,ndrange=ndrangeG)
     KernelAbstractions.synchronize(backend)
   end
 

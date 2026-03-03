@@ -12,6 +12,20 @@ function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadG
     Val(NV),Val(NAUX);ndrange=ndrange)
 end  
 
+function FluxVolumeNonLinH(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  DoFE = DG.DoFE
+  N = DG.OrdPoly + 1
+  M = DG.OrdPolyZ + 1
+  NzG = min(div(NumberThreadGPU,DoF),M*Nz)
+  group = (N,N,NzG,1)
+  ndrange = (N,N,M*Nz,NF)
+  KFluxVolumeNonLinHKernel! = FluxVolumeNonLinHQuadKernel!(backend,group)
+  KFluxVolumeNonLinHKernel!(Flux,F,U,Aux,dXdxI,DG.DW,DG.Glob,
+    Val(NV),Val(NAUX);ndrange=ndrange)
+end
+
 function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Tri)
   backend = get_backend(F)
   DoF = DG.DoF
@@ -36,6 +50,19 @@ function FluxSplitVolumeNonLinV(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadG
   KFluxSplitVolumeNonLinV3Kernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVZT,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 end  
+
+function FluxVolumeNonLinV(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  DoFE = DG.DoFE
+  M = DG.OrdPolyZ + 1
+  NDG = min(div(NumberThreadGPU,M*Nz),DoF)
+  group = (M,Nz,NDG,1)
+  ndrange = (M,Nz,DoF,NF)
+  KFluxVolumeNonLinV3Kernel! = FluxVolumeNonLinV3Kernel!(backend,group)
+  KFluxVolumeNonLinV3Kernel!(Flux,F,U,Aux,dXdxI,DG.DWZ,DG.Glob,
+    Val(NV),Val(NAUX);ndrange=ndrange)
+end
 
 @kernel inbounds = true function FluxSplitVolumeNonLinV3Kernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
   @Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
@@ -62,7 +89,7 @@ end
     VLoc[K,Iz,iD,1] = V[K,Iz,ind,1]  
     FLoc[K,Iz,iD,1] = 0.0
     @unroll for iv = 2 : NV
-      VLoc[K,Iz,iD,iv] = V[K,Iz,ind,iv] / VLoc[K,Iz,iD,1]  
+      VLoc[K,Iz,iD,iv] = V[K,Iz,ind,iv] 
       FLoc[K,Iz,iD,iv] = 0.0
     end
 
@@ -119,7 +146,7 @@ end
     VLoc[I,J,iz,1] = V[K,Iz,ind,1]  
     FLoc[I,J,iz,1] = 0.0
     @unroll for iv = 2 : NV
-      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv] / VLoc[I,J,iz,1]  
+      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv]
       FLoc[I,J,iz,iv] = 0.0
     end
     @unroll for j = 1 : 3
@@ -182,7 +209,7 @@ end
     VLoc[ID,iz,1] = V[K,Iz,ind,1]  
     FLoc[ID,iz,1] = 0.0
     @unroll for iv = 2 : NV
-      VLoc[ID,iz,iv] = V[K,Iz,ind,iv] / VLoc[ID,iz,1] 
+      VLoc[ID,iz,iv] = V[K,Iz,ind,iv]
       FLoc[ID,iz,iv] = 0.0
     end
     @unroll for j = 1 : 3
@@ -232,9 +259,11 @@ end
   if ID <= ND
     ind = Glob[ID,IF]
     @views Flux(FLoc,V[K,Iz,ind,:],Aux[K,Iz,ind,:])
-    @. Con[K,Iz,iD,:] = dXdxI[3,1,K,ID,Iz,IF] * FLoc[1,:] +
-      dXdxI[3,2,K,ID,Iz,IF] * FLoc[2,:] +
-      dXdxI[3,3,K,ID,Iz,IF] * FLoc[3,:]
+    @unroll for iv = 1 : NV
+      Con[K,Iz,iD,iv] = dXdxI[3,1,K,ID,Iz,IF] * FLoc[1,iv] +
+        dXdxI[3,2,K,ID,Iz,IF] * FLoc[2,iv] +
+        dXdxI[3,3,K,ID,Iz,IF] * FLoc[3,iv]
+    end  
   end
   @synchronize
   if ID <= ND
@@ -250,7 +279,7 @@ end
 end  
 
 
-@kernel inbounds = true function FluxVolumeNonLinH3Kernel!(Flux,F,@Const(V),@Const(Aux),@Const(dXdxI),
+@kernel inbounds = true function FluxVolumeNonLinHQuadKernel!(Flux,F,@Const(V),@Const(Aux),@Const(dXdxI),
   @Const(DW),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
 
   I, J, iz,   = @index(Local, NTuple)
@@ -272,12 +301,14 @@ end
     ID = I + (J - 1) * N
     ind = Glob[ID,IF]
     @views Flux(FLoc,V[K,Iz,ind,:],Aux[K,Iz,ind,:])
-    @. ConX[I,J,iz,:] = dXdxI[1,1,K,ID,Iz,IF] * FLoc[1,:] +
-      dXdxI[1,2,K,ID,Iz,IF] * FLoc[2,:] +
-      dXdxI[1,3,K,ID,Iz,IF] * FLoc[3,:]
-    @. ConY[I,J,iz,:] = dXdxI[2,1,K,ID,Iz,IF] * FLoc[1,:] +
-      dXdxI[2,2,K,ID,Iz,IF] * FLoc[2,:] +
-      dXdxI[2,3,K,ID,Iz,IF] * FLoc[3,:]
+    for iv = 1 : NV
+      ConX[I,J,iz,iv] = dXdxI[1,1,K,ID,Iz,IF] * FLoc[1,iv] +
+        dXdxI[1,2,K,ID,Iz,IF] * FLoc[2,iv] +
+        dXdxI[1,3,K,ID,Iz,IF] * FLoc[3,iv]
+      ConY[I,J,iz,iv] = dXdxI[2,1,K,ID,Iz,IF] * FLoc[1,iv] +
+        dXdxI[2,2,K,ID,Iz,IF] * FLoc[2,iv] +
+        dXdxI[2,3,K,ID,Iz,IF] * FLoc[3,iv]
+    end  
   end
   @synchronize
 

@@ -1,5 +1,5 @@
 import CGDycore:
-  Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore
+  Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore, IMEXRosenbrock
 using MPI
 using Base
 using CUDA
@@ -29,6 +29,8 @@ RhoCPos = parsed_args["RhoCPos"]
 RhoIPos = parsed_args["RhoIPos"]
 RhoRPos = parsed_args["RhoRPos"]
 TkePos = parsed_args["TkePos"]
+pAuxPos = parsed_args["pAuxPos"]
+GPAuxPos = parsed_args["GPAuxPos"]
 NumV = parsed_args["NumV"]
 NumAux = parsed_args["NumAux"]
 NumTr = parsed_args["NumTr"]
@@ -220,14 +222,15 @@ Model.RhoPos=1
 Model.uPos=2
 Model.vPos=3
 Model.wPos=4
-Model.ThPos=5
+Model.RhoThPos=5
 Model.RhoTPos  = RhoTPos
 Model.RhoVPos  = RhoVPos
 Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
 Model.TkePos  = TkePos
-Model.pAuxPos  = 1
+Model.pAuxPos  = pAuxPos
+Model.GPAuxPos  = GPAuxPos
 Model.ModelType = ModelType
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
@@ -339,26 +342,38 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
-pAuxPos = 1
-GPAuxPos = 2
-
 if InterfaceFluxDG == "RiemannLMARS"
-  RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolver = RiemannSolver
+  RiemannSolverSlow = DGSEM.RiemannLMARSSlow()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
+  Model.RiemannSolverSlow = RiemannSolverSlow
+  if IntMethod == "MIS"
+    RiemannSolverFast = DGSEM.RiemannLMARSFast()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,1)
+    Model.RiemannSolverFast = RiemannSolverFast
+  elseif IntMethod == "MISSemi" 
+    RiemannSolverFast = DGSEM.RiemannLMARSFast()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,3,4)
+    Model.RiemannSolverFast = RiemannSolverFast
+  elseif IntMethod == "MISLin"
+    RiemannSolverFast = DGSEM.RiemannLMARSLinFast()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,3,4)
+    Model.RiemannSolverFast = RiemannSolverFast
+  end  
 elseif InterfaceFluxDG == "RiemannExLMARS"
-  RiemannSolver = DGSEM.RiemannExLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  RiemannSolver = DGSEM.RiemannExLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "RiemannExnerLMARS"
-  RiemannSolver = DGSEM.RiemannExnerLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  RiemannSolver = DGSEM.RiemannExnerLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "ArtianoEnergyStable"
-  RiemannSolver = DGSEM.ArtianoEnergyStable()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  RiemannSolver = DGSEM.ArtianoEnergyStable()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "RiemannExPLMARS"
-  RiemannSolver = DGSEM.RiemannExPLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  RiemannSolver = DGSEM.RiemannExPLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolver = RiemannSolver
 elseif InterfaceFluxDG == "RiemannBoussinesqLMARS"  
-  RiemannSolver = DGSEM.RiemannBoussinesqLMARS()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
+  RiemannSolver = DGSEM.RiemannBoussinesqLMARS()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos)
   Model.RiemannSolver = RiemannSolver
 end  
 
@@ -366,28 +381,43 @@ NonConservativeFlux = DGSEM.BuoyancyFlux()(Model.RhoPos,GPAuxPos)
 Model.NonConservativeFlux = NonConservativeFlux
 
 if FluxDG == "KennedyGruber"
-  Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos,1)
+  Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-    Model.ThPos,pAuxPos,GPAuxPos)
+    Model.RhoThPos,pAuxPos,GPAuxPos)
+  Model.FluxAverageSlow = DGSEM.KennedyGruberGravSlow()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.RhoThPos,pAuxPos,GPAuxPos)
+  if IntMethod == "MIS"
+    Model.FluxAverageFast = DGSEM.KennedyGruberGravFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+      Model.RhoThPos,pAuxPos,GPAuxPos)
+  elseif IntMethod == "MISSemi" 
+    Model.FluxAverageFast = DGSEM.KennedyGruberGravFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+      Model.RhoThPos,3,4,GPAuxPos)
+  elseif IntMethod == "MISLin" 
+#   Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
+#     Model.wPos,Model.RhoThPos,3,4)
+    Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+      Model.RhoThPos,3,4,GPAuxPos)
+    Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
+  end  
 elseif FluxDG == "ArtianoExner"  
   Model.FluxAverage = DGSEM.ArtianoExner()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-    Model.ThPos,pAuxPos,GPAuxPos,Phys)
+    Model.RhoThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "KennedyGruberExPGrav"  
   Model.FluxAverage = DGSEM.KennedyGruberExPGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-    Model.ThPos,pAuxPos,GPAuxPos,Phys)
+    Model.RhoThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "ArtianoGrav"  
   Model.FluxAverage = DGSEM.ArtianoGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-  Model.ThPos,pAuxPos,GPAuxPos,Phys)
+  Model.RhoThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "ArtianoExGrav"  
   Model.FluxAverage = DGSEM.ArtianoExGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-  Model.ThPos,pAuxPos,GPAuxPos,Phys)
+  Model.RhoThPos,pAuxPos,GPAuxPos,Phys)
 elseif FluxDG == "LinearBoussinesqFlux"
-  Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.ThPos)
+  Model.Flux = DGSEM.LinearBoussinesqFlux()(Param,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos)
 end  
 
 if ModelType == "Boussinesq"
-  Model.BuoyancyFun = CGSEM.BuoyancyBoussinesq()(Param,Model.wPos,Model.ThPos)
+  Model.BuoyancyFun = CGSEM.BuoyancyBoussinesq()(Param,Model.wPos,Model.RhoThPos)
 end  
     
 
@@ -499,24 +529,62 @@ if Proc == 1
 @show nPrint
 end
 dtau = FTB(dtau)
-Integration.TimeStepperDG(U,DGSEM.FcnGPUSplit!,DGSEM.Jac!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+
+if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
+  MethodInt = Integration.RosenbrockMethod{FTB}(Table)
+  O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
+  IMEXBo = IMEXRosenbrock.IMEXDirkMethod{FTB}("Boscarino")
+  MethodInt = IMEXRosenbrock.IMEXDirkToRosenbrock(IMEXBo)
+  Fcn = (DGSEM.FcnSplit!,)
+  dt = (dtau,)
+elseif IntMethod == "MIS"
+  MethodInt = Integration.MISMethod{FTB}(Table)
+  MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")
+  Fcn = (DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!)
+  dt = (dtau,dtauSmall)
+elseif IntMethod == "MISSemi"
+  MethodInt = Integration.MISSemiMethod{FTB}(Table)
+  MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")
+  Fcn = (DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFastSemi!)
+  dt = (dtau,dtauSmall)
+elseif IntMethod == "MISLin"
+  MethodInt = Integration.MISLinMethod{FTB}(Table)
+  MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")
+  Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!)
+# Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
+  dt = (dtau,dtauSmall)
+end
+  Integration.TimeStepper(MethodInt,dt,U,Fcn,DGSEM.Jac!,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
 
 #=
 if IntMethod == "Rosenbrock"
-  Ros = Integration.RosenbrockStruct{FTB}(Table)
-  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+  Integration.TimeStepper(U,DGSEM.FcnSplit!,DGSEM.Jac!,DG,Exchange,Metric,
+    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
+elseif IntMethod == "MIS"
+  Ros = Integration.RosenbrockMethod{FTB}(Table)
+  Mis = DGSEM.MISStruct{FTB}("RKJeb")
+  @show dtauSmall,dtau  
+  Integration.TimeStepperMIS(Ros,Mis,U,DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!,DGSEM.Jac!,
+    dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,VelForm)
+end  
+=#
+
+#=
+if IntMethod == "Rosenbrock"
+  Ros = Integration.RosenbrockMethod{FTB}(Table)
+  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
 elseif IntMethod == "RosenbrockNonConservative"
-  Ros = Integration.RosenbrockStruct{FTB}(Table)
+  Ros = Integration.RosenbrockMethod{FTB}(Table)
   DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type)
 elseif IntMethod == "MIS"
-  Ros = Integration.RosenbrockStruct{FTB}(Table)
+  Ros = Integration.RosenbrockMethod{FTB}(Table)
   Mis = DGSEM.MISStruct{FTB}("MISRK4")
-DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
+DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
 elseif IntMethod == "RungeKutta"    
-  DGSEM.RK3(U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
+  DGSEM.RK3(U,DGSEM.FcnSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
     Trans,Phys,Grid,Global)
 elseif IntMethod == "RungeKuttaNonConservative"    
   DGSEM.RK3(U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,

@@ -42,8 +42,10 @@ NVTX = "5da4648a-3479-48b8-97b9-01cb529c0a1f"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 PairedLinkedLists = "7a42b37b-ed3b-477a-9848-3661f53bb718"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PolynomialBases = "c74db56a-226d-5e98-8bb0-a6049094aeea"
 Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
@@ -66,6 +68,8 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [compat]
 Oceananigans = "0.104.5"
+Optim = "1.13.3"
+PolynomialBases = "0.4.25"
 
 [extras]
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"

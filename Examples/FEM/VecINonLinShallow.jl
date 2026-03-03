@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
+  Parameters, Examples, Parallels, Models, Grids, Outputs, Integration,  CGSEM, DyCore, FEM, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -11,7 +11,8 @@ using ArgParse
 using LinearAlgebra
 
 # Model
-parsed_args = DyCore.parse_commandline()
+parsed_args = Parameters.parse_commandline()
+VelocityForm = parsed_args["VelocityForm"]
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -179,6 +180,12 @@ RadEarth = Phys.RadEarth
 # Parameters
 Param = Examples.Parameters(FTB,Problem)
 
+if VelocityForm == "Spherical"
+   VelForm = Examples.VelocityS()
+elseif VelocityForm == "Cartesian"
+   VelForm = Examples.VelocityC()
+end
+
 if GridForm == "Spherical"
   # Grid construction
   Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
@@ -231,7 +238,7 @@ else
   @show nPrint
 end
 
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 
 # Output
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
@@ -251,9 +258,17 @@ end
 DG = FEM.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 RT = FEM.RTStruct{FTB}(backend,k,Grid.Type,Grid)
+BDM = FEM.BDMStruct{FTB}(backend,2,Grid.Type,Grid)
+BDM0 = FEM.BDMHDiv1Struct{FTB}(Grid.Type,backend,Grid)
+for i = 1 : size(BDM.phi,1)
+  @show BDM.phi[i,:]
+  @show BDM0.phi[i,:]
+  @show "-----------------"
+end  
+stop
 ND = FEM.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
-ModelFEM = FEM.ModelFEMVecI(backend,FTB,ND,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+ModelFEM = FEM.ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
 
 pPosS = ModelFEM.pPosS
 pPosE = ModelFEM.pPosE
@@ -265,7 +280,7 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
-FEM.InterpolateRT!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
+FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
 # Time integration
 FEM.TimeStepperVecI(backend,FTB,U,dtau,FEM.FcnVecINonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,

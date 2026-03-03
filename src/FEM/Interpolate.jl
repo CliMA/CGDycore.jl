@@ -53,7 +53,7 @@ function InterpolateDG!(u,FE,Jacobi,Grid,ElemType,F)
   end    
 end
 
-function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
+function Interpolate!(u,FE::RTStruct,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
   NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order
@@ -137,7 +137,91 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   end  
 end
 
-function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
+function Interpolate!(u,FE::BDMStruct,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
+  NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
+  k = FE.Order
+  DoF = FE.DoF
+  s = @polyvar x[1:2]
+
+  if k > 0
+    P_km1 = DG.Polynomial_k(k-1,s)
+    lP_km1 = length(P_km1)
+  else
+    lP_km1 = 0
+  end  
+  ValP_km1=zeros(NumQuadT,lP_km1)
+  @inbounds for iQ = 1 : NumQuadT
+    @inbounds for i = 1 : lP_km1
+      ValP_km1[iQ,i] = P_km1[i](PointsT[iQ,1],PointsT[iQ,2])  
+    end
+  end  
+  @polyvar t
+  phiL = DG.CGLine(k,t)
+  l_phiL = length(phiL)
+  ValphiL=zeros(NumQuadL,l_phiL)
+  @inbounds for iQ = 1 : NumQuadL
+    @inbounds for i = 1 : l_phiL
+      ValphiL[iQ,i] = phiL[i](PointsL[iQ])  
+    end
+  end  
+  uLoc = zeros(DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  uP = zeros(2)
+  VelSp = zeros(3)
+  @inbounds for iF = 1 : Grid.NumFaces
+    iDoF = 1
+    # Compute functional over edges
+    # Edge 1 (-1,-1) -> (1,-1)
+    @. uLoc = 0
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],-1,Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += 0.5 * Grid.Faces[iF].Orientation * uP[2] * ValphiL[iQ,i+1] * WeightsL[iQ]
+      end
+    end
+    iDoF += k + 1
+    # Edge 2 (1,-1) -> (-1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,-PointsL[iQ,1],PointsL[iQ,1],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * (uP[1] + uP[2]) * ValphiL[iQ,i+1] * WeightsL[iQ] 
+      end
+    end
+    iDoF += k + 1
+    # Edge 3 (-1,-1) -> (-1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,-1,PointsL[iQ,1],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += -0.5 * Grid.Faces[iF].Orientation * uP[1] * ValphiL[iQ,i+1] * WeightsL[iQ]
+      end
+    end
+    iDoF += k 
+# Interior  
+    @inbounds for iQ = 1 : NumQuadT
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsT[iQ,1],PointsT[iQ,2],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 1 : lP_km1
+        phiLoc =  ValP_km1[iQ,i]
+        uLoc[iDoF+2*i-1] += + 0.5 * Grid.Faces[iF].Orientation * uP[1] * phiLoc * WeightsT[iQ]
+        uLoc[iDoF+2*i] += + 0.5 * Grid.Faces[iF].Orientation * uP[2] * phiLoc * WeightsT[iQ] 
+      end
+    end
+    @. u[FE.Glob[:,iF]] = uLoc
+  end  
+end
+
+function Interpolateh!(u,FE::RTStruct,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
   NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order
@@ -221,7 +305,7 @@ function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Tri,QuadOrd,F)
   end  
 end
 
-function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
+function Interpolate!(u,FE::RTStruct,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
   NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order
@@ -336,11 +420,11 @@ function InterpolateRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
 end
 
 function FCart(X,F,Form)
-  if Form == "Sphere"
+  if Form == Grids.SphericalGrid()
     h,VelSp1,VelSp2,VelSp3, = F(X,0.0)
     VelSp = SVector{3}(VelSp1,VelSp2,VelSp3)
     lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
-    VelCa = VelSphere2Cart(VelSp,lon,lat) 
+    VelCa = Grids.VelSphere2Cart(VelSp,lon,lat) 
   else  
     h,VelCa1,VelCa2,VelCa3, = F(X,0.0)
     VelCa = SVector{3}(VelCa1,VelCa2,VelCa3)
@@ -348,7 +432,7 @@ function FCart(X,F,Form)
   return h,VelCa
 end  
 
-function InterpolatehRT!(u,FE,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
+function Interpolateh!(u,FE::RTStruct,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
   NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
   k = FE.Order

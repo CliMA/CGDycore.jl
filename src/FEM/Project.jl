@@ -1026,7 +1026,8 @@ function KineticEnergy!(backend,FTB,Kin,FeT::ScalarElement,u,uFeF::HDivElement,
       uLoc3 = 1 / detDFLoc * (DF[3,1] * u1 + DF[3,2] * u2)
       temp = 0.5 * (uLoc1 * uLoc1 + uLoc2 * uLoc2 + uLoc3 * uLoc3)
       @inbounds for iDoF = 1 : FeT.DoF
-        KinLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[iQ] * KinTRef[1,iDoF,iQ] * temp * detDFLoc
+        KinLoc[iDoF] += Weights[iQ] * KinTRef[1,iDoF,iQ] * temp * detDFLoc
+#       KinLoc[iDoF] += Grid.Faces[iF].Orientation * Weights[iQ] * KinTRef[1,iDoF,iQ] * temp * detDFLoc
       end  
     end
     @inbounds for iDoF = 1 : FeT.DoF

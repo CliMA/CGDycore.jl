@@ -1,12 +1,11 @@
 #!/bin/bash
 julia --project Examples/DriverDG.jl \
-  --Problem="HeldSuarezDrySphere" \
+  --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
   --NumV=5 \
   --NumTr=0 \
   --NumAux=2 \
-  --Forcing=true \
   --Equation="CompressibleShallow" \
   --ModelType="Conservative" \
   --State="Dry" \
@@ -16,7 +15,7 @@ julia --project Examples/DriverDG.jl \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \
-  --Forcing=true \
+  --Forcing=false \
   --StrideDamp=20000 \
   --Relax=1.0e-3 \
   --VerticalDiffusion=false \
@@ -35,13 +34,13 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=60 \
+  --dtau=360 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \
-  --GridType="TriPolar" \
+  --GridType="CubedSphere" \
   --nLon=20 \
   --nLat=20 \
   --nz=13 \

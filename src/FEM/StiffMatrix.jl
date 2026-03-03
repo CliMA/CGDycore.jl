@@ -636,7 +636,7 @@ The gravitational constant is hardcoded as `Grav = 9.80616`.
 # Returns
 Nothing. The function updates `Rhs` in-place.
 """
-function GradKinHeight1!(backend,FTB,Rhs,FeT::HDivConfElement,h,hFeF::ScalarElement,u,uFeF::HDivConfElement,
+function GradKinHeight!(backend,FTB,Rhs,FeT::HDivConfElement,h,hFeF::ScalarElement,u,uFeF::HDivConfElement,
   Grid,ElemType::Grids.ElementType,QuadOrd,Jacobi)
 
   Grav =  9.80616
@@ -931,7 +931,7 @@ Compute the local Coriolis parameter and unit vector for a given position.
 If `Form` is `"Sphere"`, computes the Coriolis parameter based on the latitude derived from the position vector `X` on a sphere (assuming Earth-like rotation). Otherwise, returns a constant Coriolis parameter and a vertical unit vector for planar geometry.
 """
 function Coriolis(X,Form)
-  if Form == "Sphere"
+  if Form == Grids.SphericalGrid()
     Omega = 2 * pi / 24.0 / 3600.0
     Rad = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
     k1 = X[1] / Rad
@@ -1453,6 +1453,7 @@ function CurlVel!(q,FeT,u,uFe::HDivElement,QuadOrd,ElemType,Grid,Jacobi)
 # int q*v dx = int Curl u * v dx = - int u * rot v dx 
 #
 #
+
   @. q = 0
 
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)  

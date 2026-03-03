@@ -29,8 +29,11 @@ RhoCPos = parsed_args["RhoCPos"]
 RhoIPos = parsed_args["RhoIPos"]
 RhoRPos = parsed_args["RhoRPos"]
 TkePos = parsed_args["TkePos"]
+pAuxPos = parsed_args["pAuxPos"]
+GPAuxPos = parsed_args["GPAuxPos"]
 NumV = parsed_args["NumV"]
 NumTr = parsed_args["NumTr"]
+NumAux = parsed_args["NumAux"]
 HorLimit = parsed_args["HorLimit"]
 Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
@@ -190,6 +193,7 @@ Model = DyCore.ModelStruct{FTB}()
 Model.NumV=NumV
 Model.NumTr=NumTr
 Model.NumThermo = 4
+Model.NumAux = NumAux
 if State == "MoistInternalEnergy" || State == "MoistTotalEnergy"
   Model.NumThermo +=2
 elseif State == "IceInternalEnergy"
@@ -219,14 +223,15 @@ Model.RhoPos=1
 Model.uPos=2
 Model.vPos=3
 Model.wPos=4
-Model.ThPos=5
+Model.RhoThPos=5
 Model.RhoTPos  = RhoTPos
 Model.RhoVPos  = RhoVPos
 Model.RhoCPos  = RhoCPos
 Model.RhoIPos  = RhoIPos
 Model.RhoRPos  = RhoRPos
 Model.TkePos  = TkePos
-Model.pAuxPos  = 1
+Model.pAuxPos  = pAuxPos
+Model.GPAuxPos  = GPAuxPos
 Model.ModelType = ModelType
 Model.HorLimit = HorLimit
 Model.Upwind = Upwind
@@ -395,30 +400,30 @@ elseif State == "DryTotalEnergy"
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State == "Moist"
-  Pressure, dPresdRhoTh, dPresdRho = Models.Moist()(Phys,Model.RhoPos,Model.ThPos,
+  Pressure, dPresdRhoTh, dPresdRho = Models.Moist()(Phys,Model.RhoPos,Model.RhoThPos,
     Model.RhoVPos,Model.RhoCPos)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State == "MoistInternalEnergy"
   if Model.RhoTPos > 0
-    Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+    Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.RhoThPos,
       Model.RhoTPos)
   elseif Model.RhoVPos > 0  
-    Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+    Pressure, dPresdRhoTh, dPresdRho = Models.MoistInternalEnergy()(Phys,Model.RhoPos,Model.RhoThPos,
       Model.RhoVPos,Model.RhoCPos)
   end  
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State == "MoistTotalEnergy"
-  Pressure, dPresdRhoTh, dPresdRho = Models.MoistTotalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+  Pressure, dPresdRhoTh, dPresdRho = Models.MoistTotalEnergy()(Phys,Model.RhoPos,Model.RhoThPos,
     Model.RhoTPos)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State == "IceInternalEnergy"
-  Pressure, dPresdRhoTh = Models.IceInternalEnergy()(Phys,Model.RhoPos,Model.ThPos,
+  Pressure, dPresdRhoTh = Models.IceInternalEnergy()(Phys,Model.RhoPos,Model.RhoThPos,
     Model.RhoTPos)
   Model.Pressure = Pressure
   Model.dPresdRhoTh = dPresdRhoTh
@@ -430,11 +435,11 @@ end
 #Microphysics
 if Microphysics
   if TypeMicrophysics == "SimpleMicrophysicsPot"
-    MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.ThPos,
+    MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.RhoThPos,
       Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
   elseif TypeMicrophysics == "SimpleMicrophysicsIE"
-    MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.ThPos,
+    MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.RhoThPos,
       Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
     Model.MicrophysicsSource = MicrophysicsSource
   elseif TypeMicrophysics == "OneMomentMicrophysicsMoistEquil"
@@ -442,7 +447,7 @@ if Microphysics
     T_RhoVPos = 5
     T_RhoCPos = 6
     MicrophysicsSource, SedimentationSource = Models.OneMomentMicrophysicsMoistEquil()(Phys,
-      Model.RhoPos,Model.ThPos,Model.RhoTPos,Model.RhoRPos,T_TPos,T_RhoVPos,T_RhoCPos,Grid.nz)
+      Model.RhoPos,Model.RhoThPos,Model.RhoTPos,Model.RhoRPos,T_TPos,T_RhoVPos,T_RhoCPos,Grid.nz)
     Model.MicrophysicsSource = MicrophysicsSource
     Model.SedimentationSource = SedimentationSource
   else
@@ -471,15 +476,15 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   elseif SurfaceScheme == "MOST"
     @show "SurfaceScheme MOST"
     SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
-      Model.vPos,Model.wPos,Model.ThPos,Global.LandUseData.z0M,Global.LandUseData.z0H)
+      Model.vPos,Model.wPos,Model.RhoThPos,Global.LandUseData.z0M,Global.LandUseData.z0H)
     Model.SurfaceFluxValues = SurfaceFluxValues
   end
 end
 if Model.SurfaceFlux
   if RhoVPos > 0  
-    Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos,Model.RhoVPos)
+    Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.RhoThPos,Model.RhoPos,Model.RhoVPos)
   else  
-    Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.ThPos,Model.RhoPos)
+    Model.SurfaceFluxRhs = Surfaces.SurfaceFlux(Phys,Param,Model.RhoThPos,Model.RhoPos)
   end  
 end
 
@@ -495,7 +500,7 @@ end
 #Turbulence
 if Model.Turbulence
   Model.TurbulenceSource = Models.TKEModel()(Param,Phys,Model.RhoPos,Model.uPos,
-    Model.vPos,Model.ThPos,Model.TkePos)
+    Model.vPos,Model.RhoThPos,Model.TkePos)
 end
 # Damping
 if Damping
@@ -607,6 +612,11 @@ if JuliaGPU == "Metal"
 end  
 nT = max(7 + NumTr, NumV + NumTr)
 Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
-Integration.TimeStepper!(U,CGSEM.Fcn!,CGSEM.JacGPU!,
-  Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
+
+Integration.TimeStepper(U,CGSEM.Fcn!,CGSEM.JacGPU!,CG,Exchange,Metric,
+    Trans,Phys,Param,Grid,Global,Grid.Type,Model.Equation)
+
+#Integration.TimeStepper(U,CGSEM.Fcn!,CGSEM.JacGPU!,
+#  Trans,CG,Metric,Phys,Exchange,Global,Param,Model.Equation)
+
 

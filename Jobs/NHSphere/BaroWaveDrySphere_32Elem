@@ -6,8 +6,10 @@ julia --project Examples/DriverCG.jl \
   --NumberThreadTriGPU=32 \
   --NumV=5 \
   --NumTr=0 \
+  --NumAux=5 \
   --RhoVPos=0 \
   --RhoCPos=0 \
+  --pAuxPos=1 \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Buoyancy=true \
@@ -33,7 +35,7 @@ julia --project Examples/DriverCG.jl \
   --PrintHours=6 \
   --PrintDays=0 \
   --StartAverageDays=100 \
-  --Flat=false \
+  --Flat=true \
   --OrdPrint=1 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/CG32Quad" \
   --dtau=150 \
@@ -43,10 +45,8 @@ julia --project Examples/DriverCG.jl \
   --AdaptGridType="Sleve" \
   --Stretch=false \
   --StretchType="Exp" \
-  --GridType="TriPolar" \
-  --nLon=40 \
-  --nLat=40 \
-  --nz=1 \
+  --GridType="CubedSphere" \
+  --nz=64 \
   --nPanel=32 \
   --H=30000.0 \
   --OrdPoly=3 \

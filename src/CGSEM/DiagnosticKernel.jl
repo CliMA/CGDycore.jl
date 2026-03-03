@@ -93,7 +93,7 @@ end
   end
 end
 
-@kernel inbounds = true function PressureKernel!(Pressure!,Thermo,@Const(U),@Const(nS),@Const(zP))
+@kernel inbounds = true function PressureKernel!(Pressure!,Aux,@Const(U),@Const(nS),@Const(zP))
   Iz,IC = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[1]
@@ -110,7 +110,7 @@ end
     else
       wR = U[1,Iz+1,IC,4] 
     end  
-    Pressure!(view(Thermo,1,Iz,IC,:),view(U,1,Iz,IC,:),wL,wR,zP[Iz,IC];T=Thermo[1,Iz,IC,2])
+    Pressure!(view(Aux,1,Iz,IC,:),view(U,1,Iz,IC,:),wL,wR,zP[Iz,IC];T=Aux[1,Iz,IC,2])
   end
 end
 
@@ -222,11 +222,11 @@ function FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
   NDoFG = min(div(NumberThreadGPU,Nz),NumG)
   groupG = (Nz, NDoFG)
   ndrangeG = (Nz, NumG)
-  Thermo = Cache.Thermo
-  @views p = Cache.Thermo[:,:,:,1]
-  @views T = Cache.Thermo[:,:,:,2]
-  @views PotT = Cache.Thermo[:,:,:,3]
-  @views RhoP = Cache.Thermo[:,:,:,5:end]
+  Aux = Cache.Aux
+  @views p = Aux[:,:,:,1]
+  @views T = Aux[:,:,:,2]
+  @views PotT = Aux[:,:,:,3]
+  @views RhoP = Aux[:,:,:,5:end]
   @views KV = Cache.KV
   @views Rho = U[:,:,:,1]
   dz = Metric.dz
@@ -238,7 +238,7 @@ function FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
   Pressure = Global.Model.Pressure
 
   KPressureKernel! = PressureKernel!(backend,group)
-  KPressureKernel!(Pressure,Thermo,U,nSS,zP,ndrange=ndrange)
+  KPressureKernel!(Pressure,Aux,U,nSS,zP,ndrange=ndrange)
 
   if Global.Model.SurfaceFlux || Global.Model.SurfaceFluxMom
     Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  

@@ -1,128 +1,106 @@
-function MultirateMIS!(V,dt,FcnE,FcnI,CG,Global,Param)
-  MIS=Param.MIS
-  OrdPoly=Param.OrdPolyX
-  fVSlow=zeros([size(V) MIS.nStage])
-  Th=zeros(OrdPoly+1,OrdPoly+1,Param.Grid.NumFaces,MIS.nStage)
-  Dp=zeros(OrdPoly+1,OrdPoly+1,Param.Grid.NumFaces,MIS.nStage)
-  pD=zeros(OrdPoly+1,OrdPoly+1,Param.Grid.NumFaces,MIS.nStage)
-  ThE=zeros(OrdPoly+1,Param.Grid.NumEdges,MIS.nStage)
-  vn=V
-  VSlow=zeros([size(V) MIS.nStage+1])
-  VSlow(:,:,:,:,1)=vn
-  for iStage=1:MIS.nStage
-    VSlow(:,:,:,:,iStage+1)=vn
-    [fVSlow(:,:,:,:,iStage),Th(:,:,:,iStage),ThE(:,:,iStage),Dp(:,:,:,iStage),pD(:,:,:,iStage)]...
-      =FcnSlowNonLin(VSlow(:,:,:,:,iStage),Param)
-    fSlow=MIS.A(iStage+1,1)*fVSlow(:,:,:,:,iStage)
-    Param.ThSlow=MIS.A(iStage+1,1)*Th(:,:,:,iStage)
-    Param.DpSlow=MIS.A(iStage+1,1)*Dp(:,:,:,iStage)
-    Param.pDSlow=MIS.A(iStage+1,1)*pD(:,:,:,iStage)
-    Param.ThSlowE=MIS.A(iStage+1,1)*ThE(:,:,iStage)
-    for jStage=2:iStage
-      fSlow=fSlow+MIS.A(iStage+1,jStage)*fVSlow(:,:,:,:,jStage)
-      fSlow=fSlow+MIS.G(iStage+1,jStage)*(VSlow(:,:,:,:,jStage)-vn)/dt
-      Param.ThSlow=Param.ThSlow+MIS.A(iStage+1,jStage)*Th(:,:,:,jStage)
-      Param.DpSlow=Param.DpSlow+MIS.A(iStage+1,jStage)*Dp(:,:,:,jStage)
-      Param.pDSlow=Param.pDSlow+MIS.A(iStage+1,jStage)*pD(:,:,:,jStage)
-      Param.ThSlowE=Param.ThSlowE+MIS.A(iStage+1,jStage)*ThE(:,:,jStage)
-      VSlow(:,:,:,:,iStage+1)=VSlow(:,:,:,:,iStage+1)...
-        +MIS.D(iStage+1,jStage)*(VSlow(:,:,:,:,jStage)-vn)
-    end
-    nSmall=ceil(MIS.d(iStage+1)*dt/Param.dtFast)
-    dtau=MIS.d(iStage+1)*dt/nSmall
-    for iSmall=1:nSmall
-      switch  Param.MISFastType
-        case 'RungeKuttaEx'
-          VSlow(:,:,:,:,iStage+1)=RungeKutta(VSlow(:,:,:,:,iStage+1),...
-             dtau,fSlow,Param)
-        case 'RungeKuttaMIS'
-          VSlow(:,:,:,:,iStage+1)=RungeKuttaMIS(VSlow(:,:,:,:,iStage+1),...
-            dtau,fSlow,Param)  
-        case 'RungeKuttaIMEX1'
-          J=JacFcnFast1(Param)
-          [L,U,p,q]=lu(speye(Param.NN*Param.nV)-dtImp*RK.gRKI*J,'vector')
-          VSlow(:,:,:,:,iStage+1)=RungeKuttaImexV1(VSlow(:,:,:,:,iStage+1),...
-            hSlow,hSlowE,dtau,fSlow,Param)
-        case 'RungeKuttaIMEX2'
-          VSlow(:,:,:,:,iStage+1)=RungeKuttaImexV2(VSlow(:,:,:,:,iStage+1),...
-            hSlow,hSlowE,dtau,fSlow,Param)
-      end
-    end
-  end
-  V=VSlow(:,:,:,:,MIS.nStage+1)
+mutable struct CacheMISStruct{FT<:AbstractFloat,
+                           AT4<:AbstractArray,
+                           AT5<:AbstractArray}
+  Vn::AT4
+  dZn::AT4
+  fV::AT4
+  Sdu::AT5
+  Yn::AT5
+# ROS
+  k::AT5
 end
 
-function V=RungeKutta(V,dt,fSlow,Param)
-  Vn=V
-  RK=Param.RKFast
-  fV=zeros([size(V) RK.nStage])
-  for iStage=1:RK.nStage
-    V=Vn
-    for jStage=1:iStage-1
-      V=V+dt*RK.ARKE(iStage,jStage)*fV(:,:,:,:,jStage)
-    end
-    fV(:,:,:,:,iStage)=FcnFastNonLin(V,Param)+fSlow
-  end
-  V=Vn
-  for iStage=1:RK.nStage
-    V=V+dt*RK.bRKE(iStage)*fV(:,:,:,:,iStage)
-  end
+function Cache(backend,FT,IntMethod::MISMethod,FE,M,nz,NumV) 
+  NumG = FE.NumG
+  NumI = FE.NumI
+  nStage = IntMethod.nStage
+  Vn = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV)
+
+  dZn = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
+  fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
+  Sdu = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage)
+  Yn = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage+1)
+
+  k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,IntMethod.FastMethod.nStage)
+  return CacheMISStruct{FT,
+                     typeof(Vn),
+                     typeof(k)}(
+    Vn,
+    dZn,
+    fV,
+    Sdu,
+    Yn,
+    k,
+  )
 end
 
-function V=RungeKuttaImexV1(V,hSlow,hSlowE,dt,fSlow,Param)
-  Vn=V
-  RK=Param.RK
-  NN=Param.NN
-  nV=Param.nV
-  fVE=zeros([size(V) RK.nStage])
-  fVI=zeros([size(V) RK.nStage])
-  for iStage=1:RK.nStage
-    V=Vn
-    if iStage>1
-      for jStage=1:iStage-1
-        V=V+dt*RK.ARKE(iStage,jStage)*fVE(:,:,:,:,jStage)+...
-            dt*RK.ARKI(iStage,jStage)*fVI(:,:,:,:,jStage)
-      end
-      v=reshape(V,NN*nV,1)
-      v(q)=U\(L\v(p))
-      V=reshape(v,size(Vn))
-    end
-    fVE(:,:,:,:,iStage)=FcnFastNonLin1(V,hSlow,hSlowE,Param)+fSlow
-    fVI(:,:,:,:,iStage)=FcnFastNonLin2(V,hSlow,hSlowE,Param)
+function TimeIntegration!(MIS::MISMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cache,JCache,Exchange,
+  Global,Param,Type)
+
+  FcnSlow,FcnFast = Fcn
+  dtSlow,dtFast = dt
+  Fast = MIS.FastMethod
+
+  nStage = MIS.nStage
+  k = Cache.k
+  Vn = Cache.Vn
+  Sdu = Cache.Sdu
+  dZn = Cache.dZn
+  Yn = Cache.Yn
+  @views VnI = Vn[:,:,1:size(V,3),1:size(V,4)]
+  Global.TimeStepper.dtauStage = dtSlow
+
+  @views @. Yn[:,:,:,:,1] = V
+  @inbounds for iStage = 1 : nStage
+    @. VnI = Yn[:,:,:,:,iStage]
+    @views FcnSlow(Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
+    @views @.  Yn[:,:,:,:,iStage+1] = V
+    @views InitialConditionMIS!(Yn[:,:,:,:,iStage+1], Yn, V, MIS.alpha, iStage)
+    @views SlowTendency!(dZn, Yn, Sdu, V, MIS.d, MIS.gamma, MIS.beta, dtSlow, iStage)
+    @views TimeStepperFast!(Fast,dtFast,MIS.d[iStage+1]*dtSlow,Yn[:,:,:,:,iStage+1],dZn,FcnFast,Jac,FE,
+       Exchange,Metric,Phys,Param,Global,Cache,JCache,Aux,Vn,k,Type)
   end
-  V=Vn
-  for iStage=1:RK.nStage
-      V=V+dt*RK.bRKE(iStage)*fVE(:,:,:,:,iStage)+...
-          dt*RK.bRKI(iStage)*fVI(:,:,:,:,iStage)
-  end
-end
-function V=RungeKuttaImex2(V,hSlow,hSlowE,dt,fSlow,Param)
-  Vn=V
-  RK=Param.RK
-  NN=Param.NN
-  nV=Param.nV
-  fVE=zeros([size(V) RK.nStage])
-  fVI=zeros([size(V) RK.nStage])
-  for iStage=1:RK.nStage
-    V=Vn
-    if iStage>1
-      for jStage=1:iStage-1
-        V=V+dt*RK.ARKE(iStage,jStage)*fVE(:,:,:,:,jStage)+...
-            dt*RK.ARKI(iStage,jStage)*fVI(:,:,:,:,jStage)
-      end
-      v=reshape(V,NN*nV,1)
-      v(q)=U\(L\v(p))
-      V=reshape(v,size(Vn))
-    end
-    fVE(:,:,:,:,iStage)=FcnFastNonLin2(V,hSlow,hSlowE,Param)+fSlow
-    fVI(:,:,:,:,iStage)=FcnFastNonLin1(V,hSlow,hSlowE,Param)
-  end
-  V=Vn
-  for iStage=1:RK.nStage
-    V=V+dt*RK.bRKE(iStage)*fVE(:,:,:,:,iStage)+...
-        dt*RK.bRKI(iStage)*fVI(:,:,:,:,iStage)
+  @views @. V = Yn[:,:,:,:,end]
+end  
+
+function SlowTendency!(dZn, Yn, Sdu, u, d, gamma, beta, dtL, stage)
+  @views @. dZn = (beta[stage+1,1] / d[stage+1]) * Sdu[:,:,:,:,1]
+  @inbounds for j in 2 : stage
+    @views @. dZn += (gamma[stage+1,j] / (dtL * d[stage+1])) * (Yn[:,:,:,:,j] - u) +
+      (beta[stage+1,j] / d[stage+1]) * Sdu[:,:,:,:,j]
   end
 end
 
+function InitialConditionMIS!(Zn0, Yn, u, alpha, stage)
+  @inbounds for j in 2 : stage
+    @views @. Zn0 += alpha[stage+1, j] * (Yn[:,:,:,:,j] - u)
+  end
+end
 
+function TimeStepperFast!(IntMethod,dt,tEnd,U,FSlow,Fcn,Jac,FE,Exchange,Metric,Phys,Param,Global,
+  Cache,JCache,CacheAux,Un,k,VelForm)
+  numit = ceil(Int,tEnd/dt)
+  FTB = eltype(U)
+  dtau = tEnd/numit
+  fac = dtau * IntMethod.gammaD
+  Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+  @inbounds for i = 1 : numit
+    TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
+      Global,Param,VelForm)
+  end
+end
 
+function TimeStepperFast!(IntMethod,dt,tEnd,U,D,FSlow,Fcn,Jac,FE,Exchange,Metric,Phys,Param,Global,
+  Cache,JCache,CacheAux,Un,k,VelForm)
+  numit = ceil(Int,tEnd/dt)
+  FTB = eltype(U)
+  dtau = tEnd/numit
+  fac = dtau * IntMethod.gammaD
+  Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+  @. U -= D
+  @inbounds for i = 1 : numit
+    TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
+      Global,Param,VelForm)
+  end
+  @. U += D
+end

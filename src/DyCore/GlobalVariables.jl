@@ -8,10 +8,10 @@ mutable struct TimeStepperStruct{FT<:AbstractFloat}
   SimMinutes::Int
   SimSeconds::Int
   SimTime::Float64
-  ROS::Integration.RosenbrockStruct{FT}
+  ROS::Integration.RosenbrockMethod{FT}
   LinIMEX::Integration.LinIMEXStruct
   IMEX::Integration.IMEXStruct
-  MIS::Integration.MISStruct
+  MIS::Integration.MISMethod{FT}
   RK::Integration.RungeKuttaMethod
   SSP::Integration.SSPRungeKuttaStruct
 end
@@ -25,10 +25,10 @@ function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
   SimMinutes = 0
   SimSeconds = 0
   SimTime = 0.0
-  ROS=Integration.RosenbrockStruct{FT}()
+  ROS=Integration.RosenbrockMethod{FT}()
   LinIMEX=Integration.LinIMEXMethod()
   IMEX=Integration.IMEXMethod()
-  MIS=Integration.MISMethod()
+  MIS = Integration.MISMethod{FT}()
   RK=Integration.RungeKuttaMethod{FT}()
   SSP=Integration.SSPRungeKuttaMethod()
   return TimeStepperStruct(
@@ -303,7 +303,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   uPos::Int
   vPos::Int
   wPos::Int
-  ThPos::Int
+  RhoThPos::Int
   RhoTPos::Int
   RhoVPos::Int
   RhoCPos::Int
@@ -316,6 +316,8 @@ Base.@kwdef mutable struct ModelStruct{FT}
   wEDMFPos::Int
   ThEDMFPos::Int
   pAuxPos::Int
+  GPAuxPos::Int
+  ThAuxPos::Int
   NumV::Int
   NumAux::Int
   NumTr::Int
@@ -367,10 +369,14 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Pressure::Any
   GeoPotential::Any
   RiemannSolver::Any
+  RiemannSolverFast::Any
+  RiemannSolverSlow::Any
   RiemannSolverLin::Any
   NonConservativeFlux::Any
   Flux::Any
   FluxAverage::Any
+  FluxAverageFast::Any
+  FluxAverageSlow::Any
   FluxLin::Any
   BuoyancyFun::Any
   dPresdRhoTh::Any
@@ -402,7 +408,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   uPos = 0
   vPos = 0
   wPos = 0
-  ThPos = 0
+  RhoThPos = 0
   RhoTPos = 0
   RhoVPos = 0
   RhoCPos = 0
@@ -415,6 +421,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   wEDMFPos = 0
   ThEDMFPos = 0
   pAuxPos = 0
+  GPAuxPos = 0
+  ThAuxPos = 0
   NumV = 0
   NumAux = 0
   NumTr = 0
@@ -466,10 +474,14 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Pressure = ""
   GeoPotential = ""
   RiemannSolver = ""
+  RiemannSolverFast = ""
+  RiemannSolverSlow = ""
   RiemannSolverLin = ""
   NonConservativeFlux = ""
   Flux = ""
   FluxAverage = ""
+  FluxAverageFast = ""
+  FluxAverageSlow = ""
   FluxLin = ""
   BuoyancyFun = ""
   dPresdRhoTh = ""
@@ -499,7 +511,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    uPos,
    vPos,
    wPos,
-   ThPos,
+   RhoThPos,
    RhoTPos,
    RhoVPos,
    RhoCPos,
@@ -512,6 +524,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    wEDMFPos,
    ThEDMFPos,
    pAuxPos,
+   GPAuxPos,
+   ThAuxPos,
    NumV,
    NumAux,
    NumTr,
@@ -563,9 +577,13 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Pressure,
    GeoPotential,
    RiemannSolver,
+   RiemannSolverFast,
+   RiemannSolverSlow,
    RiemannSolverLin,
    NonConservativeFlux,
    FluxAverage,
+   FluxAverageFast,
+   FluxAverageSlow,
    FluxLin,
    BuoyancyFun,
    Flux,

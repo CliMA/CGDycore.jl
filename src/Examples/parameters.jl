@@ -408,9 +408,9 @@ Base.@kwdef struct ParamAdvectionSphereSlottedCylinder{FT}
   hMax::FT = 0.95
   b::FT = 5.0
   lon1::FT = 5.0e0 / 6.0e0 * pi
-  lat1::FT = pi/4 #0.0e0
+  lat1::FT = 0.0e0
   lon2::FT = 7.0e0 / 6.0e0 * pi
-  lat2::FT = pi/4 #0.0e0
+  lat2::FT = 0.0e0
   EndTime::FT = 5.0
   FacVel::FT = 10.0
   StreamFun::Bool = false

@@ -117,7 +117,7 @@ function DGStruct{FT}(backend,k,Type::Grids.Tri,Grid) where FT<:AbstractFloat
     end
   else
     Comp = 1  
-    DoF, DoFE, DoFF, phi, Gradphi, points = FEM.ConstructCG(k,Type)  
+    DoF, DoFN, DoFE, DoFF, phi, Gradphi, points = FEM.ConstructCG(k,Type)  
     NumG = DoF * Grid.NumFaces 
     NumI = NumG
     GlobCPU = zeros(Int,DoF,Grid.NumFaces)
@@ -143,7 +143,9 @@ function DGStruct{FT}(backend,k,Type::Grids.Tri,Grid) where FT<:AbstractFloat
     NumI,
     Type,
     points,
+    k,
     M,
     LUM,
       )
 end
+

@@ -176,8 +176,8 @@ function BDMHDiv0Struct{FT}(type::Grids.Tri,backend,Grid) where FT<:AbstractFloa
 
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = 2*Grid.NumEdgesI + 2*Grid.NumEdgesB
-  NumI = Grid.NumEdgesI
+  NumG = 2*Grid.NumEdges + 2*Grid.NumEdgesB
+  NumI = Grid.NumEdges
   for iF = 1 : Grid.NumFaces
       iE1 = Grid.Faces[iF].E[1]
       GlobCPU[1,iF] = 2*Grid.Edges[iE1].E - 1

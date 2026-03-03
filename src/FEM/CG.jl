@@ -218,7 +218,7 @@ function ConstructCG(k,ElemType::Grids.Tri)
     Gradphi[iDoF,1,1] = differentiate(phiB[iDoF,1],x[1])
     Gradphi[iDoF,1,2] = differentiate(phiB[iDoF,1],x[2])
   end  
-  return DoF, DoFE, DoFF, phiB, Gradphi, points
+  return DoF, DoFN, DoFE, DoFF, phiB, Gradphi, points
 end
 
 #CG Tri
@@ -235,7 +235,7 @@ end
 
 function CGStruct{FT}(backend,k::Int,Type::Grids.Tri,Grid) where FT<:AbstractFloat
   @polyvar x[1:2]
-  DoF, DoFE, DoFF, phi, Gradphi, points = FEM.ConstructCG(k,Type)
+  DoF, DoFN, DoFE, DoFF, phi, Gradphi, points = FEM.ConstructCG(k,Type)
   Comp = 1
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
   NumG = DoFF * Grid.NumFaces + DoFE * Grid.NumEdges + Grid.NumNodes
@@ -269,6 +269,8 @@ function CGStruct{FT}(backend,k::Int,Type::Grids.Tri,Grid) where FT<:AbstractFlo
                   typeof(Glob)}( 
     Glob,
     DoF,
+    DoFE,
+    DoFN,
     Comp,
     phi,
     Gradphi,
@@ -276,96 +278,10 @@ function CGStruct{FT}(backend,k::Int,Type::Grids.Tri,Grid) where FT<:AbstractFlo
     NumI,
     Type,
     points,
+    k,
     M,
     LUM,
       )
 end
 
 
-
-#= OLD VERSION
-function CGStruct{FT}(backend,k,Type::Grids.Tri,Grid) where FT<:AbstractFloat
-  Glob = KernelAbstractions.zeros(backend,Int,0,0)
-  if k == 0
-    DoF = 1
-    Comp = 1
-    @polyvar x1 x2
-    phi = Array{Polynomial,2}(undef,DoF,Comp)
-    Gradphi = Array{Polynomial,3}(undef,DoF,Comp,2)
-    phi[1,1] = 1.0 + 0.0*x1 + 0.0*x2
-    @inbounds for i = 1 : DoF
-      @inbounds for j = 1 : Comp
-        Gradphi[i,j,1] = differentiate(phi[i,j],x1)
-        Gradphi[i,j,2] = differentiate(phi[i,j],x2)
-      end
-    end 
-    points = KernelAbstractions.zeros(backend,Float64,DoF,2)
-    points = [-1/3 -1/3]     
-    Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
-    GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-    NumG = Grid.NumFaces
-    NumI = Grid.NumFaces
-    @inbounds for iF = 1 : Grid.NumFaces
-      GlobCPU[1,iF] = Grid.Faces[iF].F
-    end
-    copyto!(Glob,GlobCPU)
-    M = sparse([1],[1],[1.0])
-    LUM = lu(M)
-  elseif k == 1
-    DoF = 3
-    Comp = 1
-    nu = Array{Polynomial,2}(undef,DoF,Comp)
-    phi = Array{Polynomial,2}(undef,DoF,Comp)
-    Gradphi = Array{Polynomial,3}(undef,DoF,Comp,2)
-    @polyvar x1 x2 ksi1 ksi2
-    nu[1,1] = -1.0*ksi1 + -1.0*ksi2 + 1.0
-    nu[2,1] = 1.0*ksi1 + 0.0*ksi2 + 0.0
-    nu[3,1] = 0.0*ksi1 + 1.0*ksi2 + 0.0
-  
-    @inbounds for s = 1 : DoF
-      @inbounds for t = 1 : 1
-        phi[s,t] = subs(nu[s,t], ksi1 => (x1+1)/2, ksi2 => (x2+1)/2)
-      end
-    end
-    @inbounds for i = 1 : DoF
-        @inbounds for j = 1 : Comp
-            Gradphi[i,j,1] = differentiate(phi[i,j],x1)
-            Gradphi[i,j,2] = differentiate(phi[i,j],x2)
-        end
-    end
-    points = KernelAbstractions.zeros(backend,Float64,DoF,2)
-    points[1,:] = [-1.0 -1.0]
-    points[2,:] = [1.0 -1.0]
-    points[3,:] = [-1.0 1.0]
-
-    Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
-    GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-    NumG = 3 * Grid.NumFaces
-    NumI = 3 * Grid.NumFaces
-    @inbounds for iF = 1 : Grid.NumFaces
-      GlobCPU[1,iF] = 3 * Grid.Faces[iF].F - 2
-      GlobCPU[2,iF] = 3 * Grid.Faces[iF].F - 1
-      GlobCPU[3,iF] = 3 * Grid.Faces[iF].F
-    end
-    copyto!(Glob,GlobCPU)
-    M = sparse([1],[1],[1.0])
-    LUM = lu(M)
-  else println("Not implemented")
-  end
-
-  return CGStruct{FT,
-                  typeof(Glob)}( 
-    Glob,
-    DoF,
-    Comp,
-    phi,
-    Gradphi,
-    NumG,
-    NumI,
-    Type,
-    points,
-    M,
-    LUM,
-      )
-end
-=#

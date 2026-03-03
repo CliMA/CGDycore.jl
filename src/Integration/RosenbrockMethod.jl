@@ -1,27 +1,57 @@
-mutable struct RosenbrockStruct{FT<:AbstractFloat}
-  nStage::Int
-  a::Array{FT, 2}
-  c::Array{FT, 2}
-  gamma::FT
-  m::Array{FT, 1}
-end
-
-function RosenbrockStruct{FT}() where FT<:AbstractFloat
+function RosenbrockMethod{FT}() where FT<:AbstractFloat
   nStage = 0
+  alpha = zeros(FT,0,0)
+  gamma = zeros(FT,0,0)
+  b = zeros(FT,0)
+  gammaD = FT(0)
   a = zeros(FT,0,0)
   c = zeros(FT,0,0)
-  gamma = FT(0)
   m = zeros(FT,0)
-  return RosenbrockStruct{FT}(
+  name = ""
+  return RosenbrockMethod{FT}(
+    name,
     nStage,
+    alpha,
+    gamma,
+    b,
     a,
     c,
-    gamma,
+    gammaD,
     m,
   )
 end
 
-function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
+function RosenbrockMethod{FT}(RK::RungeKuttaMethod,gammaD,gammaV) where FT<:AbstractFloat
+  nStage = RK.nStage
+  alpha = RK.a
+  b = RK.b
+  iV = 1
+  gamma = zeros(nStage,nStage)
+  for iStage = 1 : nStage
+    gamma[iStage,iStage] = gammaD
+    for jStage = 1 : iStage - 1
+       gamma[iStage,jStage] = gammaV[iV]
+       iV += 1
+    end
+  end
+  a = alpha / gamma
+  c = -inv(gamma)
+  m = gamma'\b
+  return RosenbrockMethod{FT}(
+    "ROS"*RK.name,
+    nStage,
+    alpha,
+    gamma,
+    b,
+    a,
+    c,
+    gammaD,
+    m,
+  )
+end
+
+
+function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
   str = Method
   if str == "SSP-Knoth"
     nStage = 3
@@ -40,12 +70,29 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
     Gamma[3,2] = -3/4
     Gamma[3,3] = 1
     gamma = FT(1)        
-    aCPU = alpha / Gamma
-    cCPU = -inv(Gamma)
-    mCPU = Gamma'\b
-    aCPU=[aCPU
-       mCPU']
-
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
+    a=[a
+       m']
+  elseif str == "ROS2W"
+    @show "ROS2W"
+    nStage = 2
+    gamma = 1 + 1 / sqrt(2)
+    alpha = zeros(FT,nStage,nStage)
+    b = zeros(FT,nStage)
+    b[2] = 0.5
+    b[1] = 1 - b[2]
+    alpha[2,1] = 1 / (2 * b[2])
+    Gamma = zeros(FT,nStage,nStage)
+    Gamma[1,1] = gamma
+    Gamma[2,1] = -b[2] / gamma
+    Gamma[2,2] = gamma
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
+    a=[a
+       m']
   elseif str == "RosEul"
     nStage = 1
     alpha = zeros(FT,nStage,nStage)
@@ -54,11 +101,11 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
     Gamma = zeros(FT,nStage,nStage)
     Gamma[1,1] = 1
     gamma = FT(1)        
-    aCPU = alpha / Gamma
-    cCPU = -inv(Gamma)
-    mCPU = Gamma'\b
-    aCPU=[aCPU
-       mCPU']
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
+    a=[a
+       m']
   elseif str == "ROSRK3"
     nStage = 3
     alpha = zeros(FT,nStage,nStage)
@@ -74,11 +121,11 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
     Gamma[3,1] = -1/4+2*gamma
     Gamma[3,2] = 1/4-3*gamma
     Gamma[3,3] = gamma
-    aCPU = alpha / Gamma
-    cCPU = -inv(Gamma)
-    mCPU = Gamma'\b
-    aCPU=[aCPU
-       mCPU']
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
+    a=[a
+       m']
   elseif str == "ARS343"
     nStage = 3
     gamma = 0.4358665215084590
@@ -111,9 +158,9 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
 
     Gamma = alpha \ Gamma * alpha
     alpha = AHat[1:end,1:end-1]
-    aCPU = alpha / Gamma
-    cCPU = -inv(Gamma)
-    mCPU = aCPU[end,:]
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = a[end,:]
   elseif str == "M1HOMME"
     nStage = 5
     AHat = [  0   0   0   0   0   0
@@ -165,17 +212,21 @@ function RosenbrockStruct{FT}(Method) where FT<:AbstractFloat
     Gamma[4,3] = -3/4
     Gamma[4,4] = 1
     gamma = FT(1)        
-    aCPU = alpha / Gamma
-    cCPU = -inv(Gamma)
-    mCPU = Gamma'\b
-    aCPU=[aCPU
-       mCPU']
-end
-  return RosenbrockStruct{FT}(
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
+    a=[a
+       m']
+  end
+  return RosenbrockMethod{FT}(
+    str,
     nStage,
-    aCPU,
-    cCPU,
+    alpha,
+    Gamma,
+    b,
+    a,
+    c,
     gamma,
-    mCPU,
+    m,
   )
 end

@@ -13,19 +13,28 @@ using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using NVTX
 
+abstract type IntegrationMethod end
+mutable struct NoMethod <: IntegrationMethod end
+
+include("IntegrationMethods.jl")
 include("LinIMEXMethod.jl")
 include("LinIMEXSchur.jl")
 include("IMEXMethod.jl")
 include("IMEXSchur.jl")
-include("MISMethod.jl")
 include("MISSchur.jl")
 include("SSPRungeKuttaMethod.jl")
+include("MISMethod.jl")
 include("RosenbrockMethod.jl")
 include("RungeKuttaMethod.jl")
+include("RungeKuttaIMEXMethod.jl")
+include("MIS.jl")
+include("MISSemi.jl")
+include("MISLin.jl")
 include("Rosenbrock.jl")
 include("RungeKuttaExplicit.jl")
 include("SSPRungeKutta.jl")
 include("Solve.jl")
 include("TimeStepper.jl")
+include("cache.jl")
 
 end

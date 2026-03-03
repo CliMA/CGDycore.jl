@@ -10,11 +10,16 @@ mutable struct CacheStruct{FT<:AbstractFloat,
   fV::AT3
 end
 
-function CacheStruct{FT}(backend,DG::FiniteElements.DGElement,M,nz,NumV,NumAux,NumStages) where 
+mutable struct CacheAuxStruct{FT<:AbstractFloat,
+                              AT4<:AbstractArray}
+  Aux::AT4
+end
+
+function CacheStruct{FT}(backend,DG::FiniteElements.DGElement,M,nz,NumV,NumStages) where 
   {FT<:AbstractFloat, FE<:FiniteElements.DGElement}
   NumG = DG.NumG
   NumI = DG.NumI
-  U = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV+NumAux)
+  U = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV)
   fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   S = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,NumStages)
@@ -32,6 +37,16 @@ function CacheStruct{FT}(backend,DG::FiniteElements.DGElement,M,nz,NumV,NumAux,N
   )
 end
 
+function CacheAuxStruct{FT}(backend,DG::FiniteElements.DGElement,M,nz,NumAux) 
+  NumG = DG.NumG
+  NumI = DG.NumI
+  Aux = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumAUx)
+  return CacheAuxStruct{FT,
+                        typeof(Aux)}(
+    Aux,
+  )
+end
+
 function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,
   Global,ElemType::Grids.ElementType,VelForm)
 
@@ -45,7 +60,7 @@ function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,P
   Table = TimeStepper.Table
 
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
-    TimeStepper.ROS=RosenbrockStruct{FT}(Table)
+    TimeStepper.ROS=RosenbrockMethod{FT}(Table)
   elseif IntMethod == "RungeKutta"
     TimeStepper.RK=RungeKuttaMethod{FT}(Table)
   elseif IntMethod == "IMEX"
@@ -90,10 +105,10 @@ function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,P
   M = DG.OrdPolyZ + 1
 
 
+  CacheAux = CacheAuxStruct{FT}(backend,DG,M,nz,NumAux)
   if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
-    Cache = CacheStruct{FT}(backend,DG,M,nz,NumV,NumAux,TimeStepper.ROS.nStage)
+    Cache = CacheStruct{FT}(backend,DG,M,nz,NumV,TimeStepper.ROS.nStage)
     CacheU = Cache.U
-    @views Aux = CacheU[:,:,:,NumV+1:NumV+NumAux]
     @views Un = CacheU[:,:,:,1:NumV]
     @views UI = U[:,:,1:DG.NumI,:]
     @views UnI = Un[:,:,1:DG.NumI,:]
@@ -116,7 +131,7 @@ function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,P
   @time begin
     @inbounds for i = 1 : nIter
       Δt = @elapsed begin
-        Rosenbrock!(U,dt,Fcn,Jac,DG,Metric,Phys,Cache,JCache,Exchange,
+        Rosenbrock!(U,dt,Fcn,Aux,Jac,DG,Metric,Phys,Cache,JCache,Exchange,
           Global,Param,VelForm)
         if mod(i,nPrint) == 0
           Outputs.unstructured_vtkSphere(U,Trans,DG,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
@@ -132,15 +147,15 @@ function TimeStepperDG(U,Fcn,Jac,dt,nIter,nPrint,DG,Exchange,Metric,Trans,Phys,P
 
 #=
   if IntMethod == "Rosenbrock"
-    Ros = Integration.RosenbrockStruct{FTB}(Table)
+    Ros = Integration.RosenbrockMethod{FTB}(Table)
     DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
       Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
   elseif IntMethod == "RosenbrockNonConservative"
-    Ros = Integration.RosenbrockStruct{FTB}(Table)
+    Ros = Integration.RosenbrockMethod{FTB}(Table)
     DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
       Trans,Phys,Param,Grid,Global,Grid.Type)
   elseif IntMethod == "MIS"
-    Ros = Integration.RosenbrockStruct{FTB}(Table)
+    Ros = Integration.RosenbrockMethod{FTB}(Table)
     Mis = DGSEM.MISStruct{FTB}("MISRK4")
   DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnGPUSplitSlow!,DGSEM.FcnGPUSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
   elseif IntMethod == "RungeKutta"

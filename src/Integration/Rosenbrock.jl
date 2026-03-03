@@ -1,13 +1,39 @@
-NVTX.@annotate function Rosenbrock!(V,dt,Fcn,Jac,FE,Metric,Phys,Cache,JCache,Exchange,
+mutable struct CacheROSStruct{FT<:AbstractFloat,
+                           AT4<:AbstractArray,
+                           AT5<:AbstractArray}
+  Vn::AT4
+  k::AT5
+  fV::AT4
+end
+
+function Cache(backend,FT,IntMethod::RosenbrockMethod,FE,M,nz,NumV) 
+  NumG = FE.NumG
+  NumI = FE.NumI
+  nStage = IntMethod.nStage
+  Vn = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV)
+  fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
+  k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage)
+  return CacheROSStruct{FT,
+                     typeof(Vn),
+                     typeof(k)}(
+    Vn,
+    k,
+    fV,
+  )
+end
+
+
+NVTX.@annotate function TimeIntegration!(ROS::RosenbrockMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cache,JCache,Exchange,
   Global,Param,DiscType)
 
-  ROS = Global.TimeStepper.ROS
   nStage = ROS.nStage
   k = Cache.k
   fV = Cache.fV
   Vn = Cache.Vn
   @views VnI = Vn[:,:,1:size(fV,3),1:size(fV,4)]
-  Global.TimeStepper.dtauStage = dt  
+  dtau, = dt
+  FcnFull, = Fcn
+  Global.TimeStepper.dtauStage = dtau  
 
   JCache.CompTri = true
   @inbounds for iStage = 1 : nStage
@@ -15,187 +41,47 @@ NVTX.@annotate function Rosenbrock!(V,dt,Fcn,Jac,FE,Metric,Phys,Cache,JCache,Exc
     @inbounds for jStage = 1 : iStage-1
       @views @. VnI = VnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
     end
-    Fcn(fV,Vn,FE,Metric,Phys,Cache,Exchange,Global,DiscType)
+    FcnFull(fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     if iStage == 1
-      Jac(V,dt*ROS.gamma,FE,Metric,Phys,Cache,JCache,Global,DiscType)
+      Jac(V,dtau*ROS.gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
     end  
     @inbounds for jStage = 1 : iStage - 1
-      fac = ROS.c[iStage,jStage] / dt
+      fac = ROS.c[iStage,jStage] / dtau
       @views @. fV = fV + fac * k[:,:,:,:,jStage]
     end
-    @views Solve!(k[:,:,:,:,iStage],fV,JCache,dt*ROS.gamma,FE,Metric,Global,DiscType)
+    @views Solve!(k[:,:,:,:,iStage],fV,JCache,dtau*ROS.gammaD,FE,Metric,Global,DiscType)
   end
   @inbounds for iStage = 1 : nStage
     @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
   end
 end
 
-function RosenbrockDG!(V,dt,Fcn!,Jac,CG,Metric,Phys,Cache,JCache,Exchange,
+NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlow,Aux,FE,Metric,Phys,Cache,JCache,Exchange,
   Global,Param,DiscType)
 
-  ROS = Global.TimeStepper.ROS
   nStage = ROS.nStage
   k = Cache.k
   fV = Cache.fV
   Vn = Cache.Vn
-  Global.TimeStepper.dtauStage = dt  # Oswald
+  @views VnI = Vn[:,:,1:size(fV,3),1:size(fV,4)]
+  Global.TimeStepper.dtauStage = dt
 
   JCache.CompTri = true
-  @. Vn = V
   @inbounds for iStage = 1 : nStage
-    @. V = Vn
+    @. VnI = V
     @inbounds for jStage = 1 : iStage-1
-      @views @. V = V + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+      @views @. VnI = VnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
     end
-    FcnPrepare!(V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
-    Fcn!(fV,V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
-    if iStage == 1
-      Jac(JCache,V,CG,Metric,Phys,Cache,Global,Param,DiscType)
-    end  
+    Fcn(fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    @. fV += FSlow
     @inbounds for jStage = 1 : iStage - 1
       fac = ROS.c[iStage,jStage] / dt
       @views @. fV = fV + fac * k[:,:,:,:,jStage]
     end
-    @views Solve!(k[:,:,:,iStage],fV,JCache,dt*ROS.gamma,Cache,Global)
+    @views Solve!(k[:,:,:,:,iStage],fV,JCache,dt*ROS.gammaD,FE,Metric,Global,DiscType)
   end
-  @. V = Vn
   @inbounds for iStage = 1 : nStage
     @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
-  end
-end
-
-function RosenbrockSchurMIS!(V,dt,Fcn,R,Jac,CG,Global,Param)
-  ROS=Global.TimeStepper.ROS
-  nV1=size(V,1)
-  nV2=size(V,2)
-  nV3=size(V,3)
-  nJ=nV1*nV2*nV3
-  nStage=ROS.nStage
-  k=Cache.k
-  fV=Cache.fV
-  Vn=Cache.Vn
-  NumV=Global.Model.NumV
-  NumTr=Global.Model.NumTr
-
-  J = Global.J
-  J.CompTri=true
-  @. Vn = V
-  @inbounds for iStage=1:nStage
-    @. V = Vn
-    @inbounds for jStage=1:iStage-1
-      @views @. V = V + ROS.a[iStage,jStage]*k[:,:,:,jStage]
-    end
-    Fcn(fV,V,CG,Global,Param)
-    @. fV = fV + R
-    if iStage == 1
-      Jac(J,V,CG,Global,Param)
-    end
-    @inbounds for jStage=1:iStage-1
-        @views @. fV = fV + (ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage]
-    end
-    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.Gamma[iStage,iStage],Global)
-  end
-  @. V = Vn
-  @inbounds for iStage=1:nStage
-    @views @. V = V + ROS.m[iStage] * k[:,:,:,iStage]
-  end
-
-end
-
-function RosenbrockDSchur!(V,dt,Fcn,Jac,CG,Global)
-  ROS=Global.TimeStepper.ROS
-  nV1=size(V,1)
-  nV2=size(V,2)
-  nV3=size(V,3)
-  nJ=nV1*nV2*nV3
-  nStage=ROS.nStage
-  k=Cache.k
-  fV=Cache.fV
-  Vn=Cache.Vn
-  NumV=Global.Model.NumV
-  NumTr=Global.Model.NumTr
-
-  J = Global.J
-  Jac(J,V,CG,Global)
-  @. Vn = V
-  @inbounds for iStage=1:nStage
-    @. V = Vn
-    @inbounds for jStage=1:iStage-1
-      @views @. V = V + ROS.a[iStage,jStage]*k[:,:,:,jStage]
-    end
-    Fcn(fV,V,CG,Global)
-    @inbounds for jStage=1:iStage-1
-        @views @. fV = fV + (ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage]
-    end
-    J.CompTri=true
-    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.Gamma[iStage,iStage],Global)
-  end
-  @. V = Vn
-  @inbounds for iStage=1:nStage
-    @views @. V[:,:,1:NumV+NumTr] = V[:,:,1:NumV+NumTr] + ROS.m[iStage] * k[:,:,:,iStage]
-  end
-end
-
-
-function RosenbrockSSP!(V,dt,Fcn,Jac,CG,Global)
-  ROS=Global.TimeStepper.ROS
-  SSP=Global.TimeStepper.ROS.SSP
-  nV1=size(V,1)
-  nV2=size(V,2)
-  nV3=size(V,3)
-  nJ=nV1*nV2*nV3
-  nStage=ROS.nStage
-  k=Cache.k
-  fV=Cache.fV
-  fS=Cache.fS
-  fRhoS=Cache.fRhoS
-  VS=Cache.VS
-  RhoS=Cache.RhoS
-  Vn=Cache.Vn
-  NumV=Global.Model.NumV
-  NumTr=Global.Model.NumTr
-  RhoPos=Global.Model.RhoPos
-
-  J = Global.J
-  J.CompTri=true
-  @. Vn = V
-  if NumTr>0
-    @views @. VS[:,:,:,1] = V[:,:,NumV+1:end]
-  end  
-  @inbounds for iStage = 1:nStage
-    Fcn(fV,V,CG,Global)
-    if iStage == 1
-      Jac(J,V,CG,Global)
-    end  
-    if NumTr > 0
-      @views @. fS[:,:,:,iStage] = fV[:,:,NumV+1:end]
-    end  
-    @inbounds for jStage = 1:iStage-1
-      @views @. fV[:,:,1:NumV] = fV[:,:,1:NumV] + (ROS.c[iStage,jStage]/dt)*k[:,:,:,jStage]
-    end
-    @views SchurSolve!(k[:,:,:,iStage],fV,J,dt*ROS.Gamma[iStage,iStage],Global)
-    @views @. V[:,:,1:NumV] = Vn[:,:,1:NumV]
-    @inbounds for jStage = 1:iStage
-      @views @. V[:,:,1:NumV] = V[:,:,1:NumV] + ROS.a[iStage+1,jStage]*k[:,:,:,jStage]
-    end
-    if NumTr>0
-      @views @. VS[:,:,:,iStage+1] = 0.0 
-      @inbounds for jStage = 1:iStage
-        if SSP.beta[iStage,jStage] > 0
-          if Global.Model.HorLimit  
-            Fac = SSP.beta[iStage,jStage]/SSP.alpha[iStage,jStage]
-            @views HorLimiter!(VS[:,:,:,iStage+1],SSP.alpha[iStage,jStage],VS[:,:,:,jStage],Fac*dt,
-              fS[:,:,:,jStage],V[:,:,RhoPos],CG,Global)            
-          else 
-            @views @. VS[:,:,:,iStage+1] += (SSP.alpha[iStage,jStage] * VS[:,:,:,jStage] +
-              dt * SSP.beta[iStage,jStage] * fS[:,:,:,jStage])
-          end  
-        else
-          @views @. VS[:,:,:,iStage+1] += SSP.alpha[iStage,jStage] * VS[:,:,:,jStage]
-        end    
-      end
-      @views @. V[:,:,NumV+1:end] = VS[:,:,:,iStage+1]
-    end  
   end
 end
 

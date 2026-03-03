@@ -71,37 +71,51 @@ function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jaco
   Parallels.ExchangeData3DSendGPU(FhE,ExchangeDG)
   Parallels.ExchangeData3DRecvGPU!(FhE,ExchangeDG)
   ldiv!(DG.LUM,Fh)
-
-
-#=
-  views Uh = U[Model.pPosS:Model.pPosE]
-  @views Uu = U[Model.uPosS:Model.uPosE]
-  @views UCachep = UCache[Model.pPosS:Model.pPosE]
-  @views k = UCache[Model.pPosS:Model.pPosE]
-  @views UCacheu = UCache[Model.uPosS:Model.uPosE]
-  @views Fh = F[Model.pPosS:Model.pPosE]
-  @views Fu = F[Model.uPosS:Model.uPosE]
-  @views UCacheq = UCache[Model.uPosE+1:end]
-
-  CurlVel!(UCacheq,CG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
-  CrossRhs!(backend,FTB,Fu,UCacheq,CG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
-  GradKinHeight!(backend,FTB,Fu,Uh,DG,Uu,RT,RT,Grid,RT.Type,QuadOrdS,Jacobi)
-  ldiv!(RT.LUM,Fu)
-  ProjecthScalaruHDivHDiv!(backend,FTB,UCacheu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
-  DivRhs!(backend,FTB,Fh,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
-  ldiv!(DG.LUM,Fh)
-=#  
 end
 
-function FcnVecINonLinShallowRT!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
+function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
 
   @. F = 0
   DG = Model.DG
   CG = Model.CG
   RT = Model.RT
-  ND = Model.ND
-  Div = Model.Div
-  Grad = Model.Grad
+  Grav =  9.80616
+
+  @views Uh = U[Model.pPosS:Model.pPosE]
+  @views Uu = U[Model.uPosS:Model.uPosE]
+  @views UCachep = UCache[Model.pPosS:Model.pPosE]
+  @views k = UCache[Model.pPosS:Model.pPosE]
+  kE = reshape(k,1,1,length(k),1)
+  @views q = UCache[Model.uPosE+1:end]
+  qE = reshape(q,1,1,length(q),1)
+  @views hUu = UCache[Model.uPosS:Model.uPosE]
+  @views hUuE = reshape(hUu,1,1,length(hUu),1)
+  @views Fh = F[Model.pPosS:Model.pPosE]
+  FhE = reshape(Fh,1,1,length(Fh),1)
+  @views Fu = F[Model.uPosS:Model.uPosE]
+
+
+  CurlVel!(q,CG,Uu,RT,QuadOrdS,Grid.Type,Grid,Jacobi)
+  CrossRhs!(backend,FTB,Fu,RT,q,CG,Uu,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+  KineticEnergy!(backend,FTB,k,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
+  @. k += Grav * Uh
+  GradRhs!(backend,FTB,Fu,RT,k,DG,Grid,RT.Type,QuadOrdS,Jacobi)
+
+  #GradKinHeight!(backend,FTB,Fu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdS,Jacobi)
+  ldiv!(RT.LUM,Fu)
+ 
+  ProjecthScalaruHDivHDiv!(backend,FTB,hUu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
+  DivRhs!(backend,FTB,Fh,DG,hUu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
+  ldiv!(DG.LUM,Fh)
+end
+
+#=
+function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
+
+  @. F = 0
+  DG = Model.DG
+  CG = Model.CG
+  RT = Model.RT
 
   @views Uh = U[Model.pPosS:Model.pPosE]
   @views Uu = U[Model.uPosS:Model.uPosE]
@@ -120,6 +134,7 @@ function FcnVecINonLinShallowRT!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Ja
   DivRhs!(backend,FTB,Fh,DG,UCacheu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
   ldiv!(DG.LUM,Fh)
 end
+=#
 
 function FcnConsNonLinShallow!(backend,FTB,F,U,Model,Grid,nQuad,Jacobi;UCache=nothing)
   @. F = 0
@@ -141,7 +156,7 @@ function FcnConsNonLinShallow!(backend,FTB,F,U,Model,Grid,nQuad,Jacobi;UCache=no
   # Tendency hu
   InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,Uh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
   DivMomentumVector!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-  if Grid.Form == "Sphere"
+  if Grid.Form == Grids.SphericalGrid()
     CrossRhs!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
   end
   GradHeightSquared!(backend,FTB,Fhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)

@@ -38,7 +38,7 @@ function ModelFEMLin(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS::Int,Jacobi)
   )
 end
 
-mutable struct ModelFEMVecI
+mutable struct ModelFEMVecIStruct
   RT
   CG
   DG
@@ -75,7 +75,37 @@ function ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,
   Parallels.ExchangeData3DSendGPU(DE,ExchangeCG)
   Parallels.ExchangeData3DRecvGPU!(DE,ExchangeCG)
 # CG.LUM = lu(CG.M)
-  return ModelFEMVecI(
+  return ModelFEMVecIStruct(
+    RT,
+    CG,
+    DG,
+    pPosS,
+    pPosE,
+    uPosS,
+    uPosE,
+    Div,
+    Grad,
+  )  
+end
+
+function ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+  pPosS = 1
+  pPosE = DG.NumG
+  uPosS = pPosE + 1
+  uPosE = pPosE + RT.NumG
+  DG.M = FEM.MassMatrix(backend,FTB,DG,Grid,nQuadM,Jacobi)
+  DG.LUM = lu(DG.M)
+
+  RT.M = FEM.MassMatrix(backend,FTB,RT,Grid,nQuadM,Jacobi)
+  RT.LUM = lu(RT.M)
+
+  Div = FEM.DivMatrix(backend,FTB,RT,DG,Grid,nQuadS,Jacobi)
+  Grad = -Div'
+
+  CG.M = FEM.MassMatrix(backend,FTB,CG,Grid,nQuadM,Jacobi)
+  CG.LUM = lu(CG.M)
+
+  return ModelFEMVecIStruct(
     RT,
     CG,
     DG,

@@ -33,7 +33,7 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGElement,Metric,Excha
   @views u = U[:,:,:,Model.uPos]
   @views v = U[:,:,:,Model.vPos]
   @views w = U[:,:,:,Model.wPos]
-  @views RhoTh = U[:,:,:,Model.ThPos]
+  @views RhoTh = U[:,:,:,Model.RhoThPos]
   KRhoFunCKernel! = RhoFunCKernel!(backend, group)
   KuvwFunCKernel! = uvwFunCKernel!(backend, group)
 
@@ -118,7 +118,7 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGElement,Metric,Phys,
   @views u = U[:,:,:,Model.uPos]
   @views v = U[:,:,:,Model.vPos]
   @views w = U[:,:,:,Model.wPos]
-  @views RhoTh = U[:,:,:,Model.ThPos]
+  @views RhoTh = U[:,:,:,Model.RhoThPos]
   KRhoFunCKernel! = RhoFunCDGKernel!(backend, group)
   KuvwFunCKernel! = uvwFunCDGKernel!(backend, group)
 

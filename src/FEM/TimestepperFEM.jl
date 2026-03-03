@@ -144,6 +144,82 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,ExchangeDG,ExchangeCG,Grid
     FileNumber,cName)
 end
 
+function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,
+  nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
+
+  pPosS = Model.pPosS
+  pPosE = Model.pPosE
+  uPosS = Model.uPosS
+  uPosE = Model.uPosE
+  @views Up = U[pPosS:pPosE]
+  @views Uu = U[uPosS:uPosE]
+  UCache = zeros(Model.DG.NumG+Model.RT.NumG+Model.CG.NumG)
+
+  vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
+  
+  # Output of the initial values
+  FileNumber = 0
+  NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
+  if Grid.Form == Grids.SphericalGrid()
+    VelOut = zeros(Grid.NumFaces*NumRefine,2)
+    hout = zeros(Grid.NumFaces*NumRefine)
+    Vort = zeros(Grid.NumFaces*NumRefine)
+    cName = ["h";"Vort";"uS";"vS"]
+  else  
+    VelOut = zeros(Grid.NumFaces*NumRefine,3)
+    hout = zeros(Grid.NumFaces*NumRefine)
+    Vort = zeros(Grid.NumFaces*NumRefine)
+    cName = ["h";"Vort";"uC";"vC";"wC"]
+  end  
+ 
+  ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  @show typeof(Model.RT),Grid.Form
+  ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+    Grid.Form)
+  Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
+    FileNumber,cName)
+
+  time = 0.0
+  UNew = similar(U)
+  F = zeros(FTB,Model.DG.NumG+Model.RT.NumG)
+  time = 0.0
+  for i = 1 : nAdveVel
+    if Proc == 1  
+      @show i,(i-1)*dtau/3600   
+    end  
+    Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
+    @. UNew = U + 1/3 * dtau * F
+    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
+    @. UNew = U + 1/2 * dtau * F
+    Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
+    @. U = U + dtau * F
+
+    # Output
+    if mod(i,nPrint) == 0
+      if Proc == 1  
+        @show "Druck",i
+      end  
+      ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+      ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+        Grid.Form)
+      Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+      FileNumber += 1
+      Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
+        FileNumber,cName)
+      MPI.Barrier(MPI.COMM_WORLD)
+    end  
+    time += dtau
+  end
+  ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
+    Grid.Form)
+  Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  FileNumber += 1
+  Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
+    FileNumber,cName)
+end
+
 #TimeStepper for Conservative Nonlinear Shallow Water Equations
 function TimeStepperCons(backend,FTB,U,dtau,Fcn,Model,Grid,nQuad,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 time = 0.0

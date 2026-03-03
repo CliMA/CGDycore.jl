@@ -1,4 +1,4 @@
-function RiemannNonLinH(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
+function RiemannNonLinH(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
   backend = get_backend(F)
   DoF = DG.DoF
   DoFE = DG.DoFE
@@ -10,11 +10,11 @@ function RiemannNonLinH(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,
   ndrange = (DoFE,M,Nz,NE)
   KRiemannNonLinH3Kernel! = RiemannNonLinH3Kernel!(backend,group)
   KRiemannNonLinH3Kernel!(RiemannSolver,F,U,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
-    Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NV),Val(NAUX);ndrange=ndrange)
+    Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NUMV),Val(NAUX);ndrange=ndrange)
 end
 
 
-function RiemannNonLinV(RiemannSolver,NonConservativeFlux,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
+function RiemannNonLinV(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
   backend = get_backend(F)
   DoF = DG.DoF
   M = DG.OrdPolyZ + 1
@@ -24,12 +24,12 @@ function RiemannNonLinV(RiemannSolver,NonConservativeFlux,F,U,Aux,DG,Metric,Grid
   group = (Nz+1,DoFG,1)
   ndrange = (Nz+1,DoF,NF)
   KRiemannNonLinV3Kernel! = RiemannNonLinV3Kernel!(backend,group)
-  KRiemannNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
-    Metric.VolSurfV,DG.wZ,Val(NV),Val(NAUX);ndrange=ndrange)
+  KRiemannNonLinV3Kernel!(RiemannSolver,F,U,Aux,DG.Glob,Metric.NV,
+    Metric.VolSurfV,DG.wZ,Val(NUMV),Val(NAUX);ndrange=ndrange)
 end  
 
-@kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),
- @Const(Aux),@Const(Glob), @Const(NV),@Const(VolSurfV),
+@kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,F,@Const(U),
+  @Const(Aux),@Const(Glob), @Const(NV),@Const(VolSurfV),
   @Const(w), ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
   iz,iD,_  = @index(Local, NTuple)

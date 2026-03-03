@@ -132,6 +132,16 @@ function parse_commandline()
     arg_type = Int
     default = 0
 
+    "--pAuxPos"
+    help = "Position of pressure in the thermo list"
+    arg_type = Int
+    default = 0
+
+    "--GPAuxPos"
+    help = "Position of GeoPotential in the thermo list"
+    arg_type = Int
+    default = 0
+
     "--HorLimit"
     help = "Horizontal limiter"
     arg_type = Bool

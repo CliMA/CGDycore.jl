@@ -11,6 +11,7 @@ mutable struct CGQuad{FT<:AbstractFloat,
     DoF::Int
     OrdPoly::Int
     OrdPolyZ::Int
+    Mz::Int
     Glob::IT2
     Stencil::IT2
     NumG::Int
@@ -42,6 +43,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
 # Discretization
   OP=OrdPoly+1
   OPZ=OrdPolyZ+1
+  Mz = OrdPolyZ
   nz = Grid.nz
 
 # CG = CGStruct{FT}(backend)
@@ -152,6 +154,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
     DoF,
     OrdPoly,
     OrdPolyZ,
+    Mz,
     Glob,
     Stencil,
     NumG,
@@ -193,6 +196,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     PosDoFECPU::Array{Int, 2}
     OrdPoly::Int
     OrdPolyZ::Int
+    Mz::Int
     Glob::IT2
     GlobE::IT3
     Stencil::IT2
@@ -230,6 +234,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
 # Discretization
   OP=OrdPoly+1
   OPZ=OrdPolyZ+1
+  Mz = OPZ
   nz = Grid.nz
 
   DoF = OP * OP
@@ -384,6 +389,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     PosDoFECPU,
     OrdPoly,
     OrdPolyZ,
+    Mz,
     Glob,
     GlobE,
     Stencil,
@@ -428,6 +434,7 @@ mutable struct DGTri{FT<:AbstractFloat,
     DoFE::Int                   
     DoF::Int
     OrdPolyZ::Int
+    Mz::Int
     NumG::Int
     NumI::Int
     ksiCPU::Array{FT, 2}
@@ -458,6 +465,7 @@ end
 
 function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where FT<:AbstractFloat
 
+  Mz = OrdPolyZ + 1
   N1 = [0.0 -1.0]
   N2 = [1.0 1.0]
   N3 = [-1.0 0.0]
@@ -933,6 +941,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     DoFE,
     DoF,
     OrdPolyZ,
+    Mz,
     NumG,
     NumI,
     ksi,

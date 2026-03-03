@@ -524,7 +524,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["v", VTKCellData()] = cCellCPU
     elseif  str == "Thermo" 
-      ThPos = Global.Model.ThPos
+      ThPos = Global.Model.RhoThPos
       @views InterpolateGPU!(cCell,UR[:,:,:,ThPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["Thermo", VTKCellData()] = cCellCPU
@@ -563,7 +563,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["w", VTKCellData()] = cCellCPU
     elseif  str == "BDG" 
-      BPos = Global.Model.ThPos
+      BPos = Global.Model.RhoThPos
       @views InterpolateGPU!(cCell,UR[:,:,:,BPos],vtkInter,FE.Glob)
       @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
       vtk["BDG", VTKCellData()] = cCellCPU
@@ -573,7 +573,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["Th", VTKCellData()] = cCellCPU
     elseif str == "RhoTh"  
-      ThPos = Global.Model.ThPos
+      ThPos = Global.Model.RhoThPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,ThPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
@@ -583,7 +583,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
       else
         RhoPos = Global.Model.RhoPos
-        ThPos = Global.Model.ThPos
+        ThPos = Global.Model.RhoThPos
         RhoTPos = Global.Model.RhoTPos
         RhoVPos = Global.Model.RhoVPos
         RhoCPos = Global.Model.RhoCPos
@@ -606,7 +606,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
         vtk["Th", VTKCellData()] = ThCell 
       else
         RhoPos = Global.Model.RhoPos
-        ThPos = Global.Model.ThPos
+        ThPos = Global.Model.RhoThPos
         ThCellBGrd = KernelAbstractions.zeros(backend,FTB,OrdPrintH,(OrdPrintZ + 1),nz,NF)
         if length(size(U)) == 3
           ThBGrdR = reshape(Global.ThetaBGrd,size(U,1),1,size(U,2))  

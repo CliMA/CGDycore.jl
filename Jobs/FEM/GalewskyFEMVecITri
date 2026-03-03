@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/FEM/VecINonLinShallow.jl \
+julia --project --check-bounds=yes Examples/FEM/VecINonLinShallow.jl \
   --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
   --GridForm="Spherical" \
