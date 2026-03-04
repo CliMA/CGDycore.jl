@@ -34,6 +34,10 @@ ROSR = IR.IMEXDirkToRosenbrock(IMEX)
 IMEXBo = IR.IMEXDirkMethod{FT}("Boscarino") 
 ROSBo = IR.IMEXDirkToRosenbrock(IMEXBo)
 OrderROSBo = IR.OrderConditionsRosenbrockW(ROSBo,3)
+IMEXBHR = IR.IMEXDirkMethod{FT}("BHR(5,5,3)")
+ROSBHR = IR.IMEXDirkToRosenbrock(IMEXBHR)
+OrderROSBHR = IR.OrderConditionsRosenbrockW(ROSBHR,3)
+@show OrderROSBHR
 
 IMEXARS222 = IR.IMEXDirkMethod{FT}("ARS222") 
 ROSARS222 = IR.IMEXDirkToRosenbrock(IMEXARS222)
@@ -43,6 +47,10 @@ O, ROSOptim = IR.FindRosenbrockMethod()
 
 RKBo = INT.RungeKuttaMethod{FT}(ROSBo)
 IR.StabilityRegion(RKBo)
+
+RKBHR = INT.RungeKuttaMethod{FT}(ROSBHR)
+IR.StabilityRegion(RKBHR)
+
 RKROSOptim = INT.RungeKuttaMethod{FT}(ROSOptim)
 IR.StabilityRegion(RKROSOptim)
 

@@ -614,9 +614,13 @@ end
 nT = max(7 + NumTr, NumV + NumTr)
 Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
 
-O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
-Fcn = (CGSEM.Fcn!,)
-Integration.TimeStepper(MethodInt,dtau,U,Fcn,CGSEM.JacGPU!,CG,Exchange,Metric,
+if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
+  O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
+  MethodInt = Integration.RosenbrockMethod{FTB}(Table)
+  Fcn = (CGSEM.Fcn!,)
+  dt = (dtau,)
+end  
+Integration.TimeStepper(MethodInt,dt,U,Fcn,CGSEM.JacGPU!,CG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,Model.Equation)
 
 #TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,Grid,
