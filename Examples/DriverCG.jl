@@ -615,8 +615,8 @@ nT = max(7 + NumTr, NumV + NumTr)
 Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
 
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
-  O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
+  O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
   Fcn = (CGSEM.Fcn!,)
   dt = (dtau,)
 end  

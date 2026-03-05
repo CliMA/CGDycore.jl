@@ -38,22 +38,25 @@ NVTX.@annotate function TimeIntegration!(ROS::RosenbrockMethod,V,dt,Fcn,Aux,Jac,
   JCache.CompTri = true
   @inbounds for iStage = 1 : nStage
     @. VnI = V
-    @inbounds for jStage = 1 : iStage-1
-      @views @. VnI = VnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
-    end
+    @views AXPY!(VnI,k[:,:,:,:,1:iStage-1],ROS.a[iStage,1:iStage-1],Global)
+#   @inbounds for jStage = 1 : iStage-1
+#     @views @. VnI = VnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
+#   end
     FcnFull(fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     if iStage == 1
       Jac(V,dtau*ROS.gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
     end  
-    @inbounds for jStage = 1 : iStage - 1
-      fac = ROS.c[iStage,jStage] / dtau
-      @views @. fV = fV + fac * k[:,:,:,:,jStage]
-    end
+    @views AXPY!(fV,k[:,:,:,:,1:iStage-1],1/dtau,ROS.c[iStage,1:iStage-1],Global)
+#   @inbounds for jStage = 1 : iStage - 1
+#     fac = ROS.c[iStage,jStage] / dtau
+#     @views @. fV = fV + fac * k[:,:,:,:,jStage]
+#   end
     @views Solve!(k[:,:,:,:,iStage],fV,JCache,dtau*ROS.gammaD,FE,Metric,Global,DiscType)
   end
-  @inbounds for iStage = 1 : nStage
-    @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
-  end
+# @inbounds for iStage = 1 : nStage
+#   @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
+# end
+  AXPY!(V,k,ROS.m,Global)
 end
 
 NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlow,Aux,FE,Metric,Phys,Cache,JCache,Exchange,

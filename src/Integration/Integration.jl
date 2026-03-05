@@ -11,6 +11,8 @@ import ..DGSEM
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using KernelAbstractions.Extras: @unroll
+using StaticArrays
 using NVTX
 
 abstract type IntegrationMethod end
@@ -36,5 +38,6 @@ include("SSPRungeKutta.jl")
 include("Solve.jl")
 include("TimeStepper.jl")
 include("cache.jl")
+include("FastLinAlg.jl")
 
 end
