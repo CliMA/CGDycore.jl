@@ -43,8 +43,8 @@ end
   NV = @uniform @ndrange()[4]
     
   if ID <= ND && IV <= NV
-    sum_val = a[1] * x[K,IZ,ID,IV,1]
-    @unroll for i in 2:n
+    sum_val = eltype(y)(0)
+    @unroll for i in 1:n
       sum_val += a[i] * x[K,IZ,ID,IV,i]
     end
     y[K,IZ,ID,IV] += sum_val
