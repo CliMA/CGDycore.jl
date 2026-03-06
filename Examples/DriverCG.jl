@@ -622,6 +622,7 @@ if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "Ro
 end  
 Integration.TimeStepper(MethodInt,dt,U,Fcn,CGSEM.JacGPU!,CG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,Model.Equation)
+@show sum(abs.(U))
 
 #TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,Grid,
 #  Global,ElemType::Grids.ElementType,VelForm)
