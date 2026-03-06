@@ -56,9 +56,9 @@ function (GeoPotentialFun::GeoPotentialDeep)(GeoPos,::Grids.SphericalGrid)
   return GeoPotential
 end
 
-function (GeoPotentialFun::GeoPotentialDeep)(Phys,::Grids.CartesianGrid)
-  @inline function GeoPotential(x,y,z)
-    return Phys.Grav * z 
+function (GeoPotentialFun::GeoPotentialDeep)(GeoPos,::Grids.CartesianGrid)
+  @inline function GeoPotential(Aux,X)
+    Aux[GeoPos] =  P.Grav * X[3] 
   end
   return GeoPotential
 end

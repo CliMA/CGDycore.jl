@@ -553,6 +553,10 @@ elseif IntMethod == "MISLin"
   Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!)
 # Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
   dt = (dtau,dtauSmall)
+elseif IntMethod == "RungeKuttaEx"
+  MethodInt = Integration.RungeKuttaExMethod{FTB}(Table)
+  Fcn = (DGSEM.FcnSplit!,)
+  dt = (dtau,)
 end
   Integration.TimeStepper(MethodInt,dt,U,Fcn,DGSEM.Jac!,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)

@@ -1,4 +1,4 @@
-function StabilityRegion(RK::INT.RungeKuttaMethod;rangeR=-5.0:0.1:2.0,rangeC=-5.0:0.1:5.0)
+function StabilityRegion(RK::INT.RungeKuttaExMethod;rangeR=-5.0:0.1:2.0,rangeC=-5.0:0.1:5.0)
 
   Y = zeros(ComplexF64,RK.nStage)
   fY = zeros(ComplexF64,RK.nStage)

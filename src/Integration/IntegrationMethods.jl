@@ -8,11 +8,13 @@ mutable struct RosenbrockMethod{FT<:AbstractFloat} <: IntegrationMethod
   c::Array{FT, 2}
   gammaD::FT
   m::Array{FT, 1}
+  JacComp::Bool
 end
 
-mutable struct RungeKuttaMethod{FT<:AbstractFloat}
+mutable struct RungeKuttaExMethod{FT<:AbstractFloat} <: IntegrationMethod
   name::String
   nStage::Int
-  a::Array{FT, 2}
+  A::Array{FT, 2}
   b::Array{FT, 1}
+  JacComp::Bool
 end

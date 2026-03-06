@@ -8,6 +8,7 @@ function RosenbrockMethod{FT}() where FT<:AbstractFloat
   c = zeros(FT,0,0)
   m = zeros(FT,0)
   name = ""
+  JacComp = true
   return RosenbrockMethod{FT}(
     name,
     nStage,
@@ -18,12 +19,13 @@ function RosenbrockMethod{FT}() where FT<:AbstractFloat
     c,
     gammaD,
     m,
+    JacComp,
   )
 end
 
-function RosenbrockMethod{FT}(RK::RungeKuttaMethod,gammaD,gammaV) where FT<:AbstractFloat
+function RosenbrockMethod{FT}(RK::RungeKuttaExMethod,gammaD,gammaV) where FT<:AbstractFloat
   nStage = RK.nStage
-  alpha = RK.a
+  alpha = RK.A
   b = RK.b
   iV = 1
   gamma = zeros(nStage,nStage)
@@ -37,6 +39,7 @@ function RosenbrockMethod{FT}(RK::RungeKuttaMethod,gammaD,gammaV) where FT<:Abst
   a = alpha / gamma
   c = -inv(gamma)
   m = gamma'\b
+  JacComp = true
   return RosenbrockMethod{FT}(
     "ROS"*RK.name,
     nStage,
@@ -47,12 +50,14 @@ function RosenbrockMethod{FT}(RK::RungeKuttaMethod,gammaD,gammaV) where FT<:Abst
     c,
     gammaD,
     m,
+    JacComp,
   )
 end
 
 
 function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
   str = Method
+  JacComp = true
   if str == "SSP-Knoth"
     nStage = 3
     alpha = zeros(FT,nStage,nStage)
@@ -228,5 +233,6 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     c,
     gamma,
     m,
+    JacComp,
   )
 end

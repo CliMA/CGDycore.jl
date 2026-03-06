@@ -1,19 +1,42 @@
-function RungeKuttaExplicit!(V,dt,Fcn!,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
-  RK=Global.TimeStepper.RK
+mutable struct CacheRKEStruct{FT<:AbstractFloat,
+                           AT4<:AbstractArray,
+                           AT5<:AbstractArray}
+  Vn::AT4
+  f::AT5
+end
+
+function Cache(backend,FT,IntMethod::RungeKuttaExMethod,FE,M,nz,NumV)
+  NumG = FE.NumG
+  NumI = FE.NumI
+  nStage = IntMethod.nStage
+  Vn = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV)
+  f = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage)
+  return CacheRKEStruct{FT,
+                     typeof(Vn),
+                     typeof(f)}(
+    Vn,
+    f,
+  )
+end
+
+function TimeIntegration!(RK::RungeKuttaExMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cache,JCache,
+  Exchange,Global,Param,DiscType)
+
   f=Cache.f
   Vn=Cache.Vn
+  @views VnI = Vn[:,:,1:size(f,3),1:size(f,4)]
+  dtau, = dt
+  FcnFull, = Fcn
 
-  @. Vn = V
   @inbounds for iStage=1:RK.nStage
-    @. V = Vn
+    @. VnI = V
     @inbounds for jStage=1:iStage-1
-      @views @. V = V + dt * RK.ARKE[iStage,jStage] * f[:,:,:,:,jStage]
+      @views @. VnI = VnI + dt * RK.A[iStage,jStage] * f[:,:,:,:,jStage]
     end
-    @views Fcn!(f[:,:,:,:,iStage],V,CG,Metric,Phys,Cache,Exchange,Global,Param,DiscType)
+    @views FcnFull(f[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   end
-  @. V = Vn
   @inbounds for iStage=1:RK.nStage
-    @views @. V = V + dt * RK.bRKE[iStage] * f[:,:,:,:,iStage]
+    @views @. V = V + dt * RK.b[iStage] * f[:,:,:,:,iStage]
   end
 end
 

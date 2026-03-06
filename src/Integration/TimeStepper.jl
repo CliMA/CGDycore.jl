@@ -16,7 +16,11 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
 
   CacheInt = Cache(backend,FT,IntMethod,FE,M,nz,NumV)
   CacheAux = CacheAuxStruct(backend,FT,FE,M,nz,Global.Model,Grid)
-  JCache = CacheJac(backend,FT,M,nz,Global.Model,FE)
+  if IntMethod.JacComp
+    JCache = CacheJac(backend,FT,M,nz,Global.Model,FE)
+  else
+    JCache = nothing  
+  end  
   Aux = CacheAux.Aux
   if Global.Model.GPAuxPos > 0
     DGSEM.GeoPot(Aux,FE,Metric,Exchange,Global)

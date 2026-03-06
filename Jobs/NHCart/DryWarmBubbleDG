@@ -4,7 +4,9 @@ julia --project Examples/DriverDG.jl \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
-  --NumAux=3 \
+  --NumAux=4 \
+  --pAuxPos=1 \
+  --GPAuxPos=2 \
   --NumTr=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
@@ -12,6 +14,7 @@ julia --project Examples/DriverDG.jl \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
+  --VelocityForm="Cartesian" \
   --Buoyancy=false \
   --Damping=false \
   --Upwind=true \
@@ -19,13 +22,13 @@ julia --project Examples/DriverDG.jl \
   --BoundarySN="Period" \
   --BoundaryBT="" \
   --SimTime=1000 \
-  --PrintTime=10 \
+  --PrintTime=20 \
   --vtkFileName="output/VTK/WarmBubble/DGPQuad" \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --Curl=false \
   --dtau=.10 \
-  --IntMethod="RungeKutta" \
+  --IntMethod="RungeKuttaEx" \
   --Table="RK4" \
   `#Grid       `        \
   --GridForm="Cartesian" \

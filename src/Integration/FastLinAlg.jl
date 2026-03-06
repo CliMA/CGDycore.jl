@@ -4,17 +4,15 @@ function AXPY!(y,x,a,Global)
     return
   end    
   backend = get_backend(y)
-  M = size(y,1)
-  Nz = size(y,2)
-  ND = size(y,3)
-  NV = size(y,4)
+  ly = length(y)
   aS = SVector{length(a)}(a)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  NDG = min(div(NumberThreadGPU,M*Nz),ND)
-  group = (M,Nz,NDG,1)
-  ndrange = (M,Nz,ND,NV)
+  yV = reshape(y,length(y))
+  xV = reshape(x,length(y),n)
+  group = (NumberThreadGPU)
+  ndrange = (ly)
   KAXPYKernel! = AXPYKernel!(backend,group)
-  KAXPYKernel!(y,x,aS,Val(n),ndrange=ndrange)
+  KAXPYKernel!(yV,xV,aS,Val(n),ndrange=ndrange)
 end
 
 function AXPY!(y,x,dt,a,Global)
@@ -23,31 +21,28 @@ function AXPY!(y,x,dt,a,Global)
     return
   end    
   backend = get_backend(y)
-  M = size(y,1)
-  Nz = size(y,2)
-  ND = size(y,3)
-  NV = size(y,4)
+  ly = length(y)
   aS = SVector{length(a)}(dt*a)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  NDG = min(div(NumberThreadGPU,M*Nz),ND)
-  group = (M,Nz,NDG,1)
-  ndrange = (M,Nz,ND,NV)
+  yV = reshape(y,length(y))
+  xV = reshape(x,length(y),n)
+  group = (NumberThreadGPU)
+  ndrange = (ly)
   KAXPYKernel! = AXPYKernel!(backend,group)
-  KAXPYKernel!(y,x,aS,Val(n),ndrange=ndrange)
+  KAXPYKernel!(yV,xV,aS,Val(n),ndrange=ndrange)
 end
 
 @kernel inbounds = true function AXPYKernel!(y, @Const(x), @Const(a), ::Val{n}) where n
-  K, IZ, ID, IV = @index(Global, NTuple)
+  I, = @index(Global, NTuple)
 
-  ND = @uniform @ndrange()[3]
-  NV = @uniform @ndrange()[4]
+  N = @uniform @ndrange()[1]
     
-  if ID <= ND && IV <= NV
+  if I <= N
     sum_val = eltype(y)(0)
     @unroll for i in 1:n
-      sum_val += a[i] * x[K,IZ,ID,IV,i]
+      sum_val += a[i] * x[I,i]
     end
-    y[K,IZ,ID,IV] += sum_val
+    y[I] += sum_val
   end
 end
 

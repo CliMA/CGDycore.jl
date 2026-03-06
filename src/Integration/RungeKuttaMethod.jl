@@ -1,28 +1,32 @@
-function RungeKuttaMethod{FT}() where FT<:AbstractFloat
+function RungeKuttaExMethod{FT}() where FT<:AbstractFloat
   nStage = 0
+  JacComp = false
   a = zeros(FT,0,0)
   b = zeros(FT,0)
   name = ""
-  return RungeKuttaMethod{FT}(
+  return RungeKuttaExMethod{FT}(
     name,
     nStage,
     a,
     b,
+    JacComp
   )
 end
 
-function RungeKuttaMethod{FT}(Ros::RosenbrockMethod) where FT<:AbstractFloat
-  return RungeKuttaMethod{FT}(
+function RungeKuttaExMethod{FT}(Ros::RosenbrockMethod) where FT<:AbstractFloat
+  return RungeKuttaExMethod{FT}(
     "RK"*Ros.name,
     Ros.nStage,
     Ros.alpha,
     Ros.b,
+    false
   )
 end
 
 
-function RungeKuttaMethod{FT}(Method) where FT<:AbstractFloat
+function RungeKuttaExMethod{FT}(Method) where FT<:AbstractFloat
   str = Method
+  JacComp = false
   if str == "SSP(4,3)"
     nStage = 4
     a = [0 0 0 0
@@ -38,12 +42,20 @@ function RungeKuttaMethod{FT}(Method) where FT<:AbstractFloat
         0.16352294089771 0.16352294089771 0.16352294089771 0 0
         0.14904059394856 0.14831273384724 0.14831273384724 0.34217696850008 0]
      b = [0.19707596384481; 0.11780316509765; 0.11709725193772; 0.27015874934251; 0.29786487010104]
+  elseif str == "RK4"
+    nStage = 4
+    a = zeros(FT,nStage,nStage)
+    a[2,1] = 1/2
+    a[3,2] = 1/2
+    a[4,3] = 1
+    b = [1/6,1/3,1/3,1/6]
   end  
 
-  return RungeKuttaMethod{FT}(
+  return RungeKuttaExMethod{FT}(
     str,
     nStage,
     a,
     b,
+    JacComp,
   )
 end

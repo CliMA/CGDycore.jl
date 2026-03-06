@@ -1,0 +1,35 @@
+DG Float64
+
+[ Info: Iteration: 2331.0 took 0.029702408, 20.234375% complete
+"Rosenbrock" = "Rosenbrock"
+  0.004684 seconds (941 allocations: 46.625 KiB)
+  0.005630 seconds (510 allocations: 15.688 KiB)
+  0.002363 seconds (607 allocations: 18.250 KiB)
+  0.005051 seconds (941 allocations: 46.625 KiB)
+  0.002438 seconds (607 allocations: 18.250 KiB)
+  0.005116 seconds (941 allocations: 46.625 KiB)
+  0.002513 seconds (607 allocations: 18.250 KiB)
+
+
+Float32
+[ Info: Iteration: 11518.0 took 0.021283468, 99.98263888888889% complete
+"Rosenbrock" = "Rosenbrock"
+  0.003007 seconds (941 allocations: 42.609 KiB)
+  0.004146 seconds (510 allocations: 14.906 KiB)
+  0.001919 seconds (607 allocations: 18.156 KiB)
+  0.003389 seconds (941 allocations: 42.609 KiB)
+  0.001957 seconds (607 allocations: 18.156 KiB)
+  0.003426 seconds (941 allocations: 42.609 KiB)
+  0.001991 seconds (607 allocations: 18.156 KiB)  
+
+
+CG
+[ Info: Iteration: 435.0 took 0.020565346, 11.328125% complete
+"Rosenbrock" = "Rosenbrock"
+  0.002792 seconds (1.24 k allocations: 48.594 KiB)
+  0.000250 seconds (144 allocations: 8.438 KiB)
+  0.003535 seconds (293 allocations: 8.984 KiB)
+  0.002996 seconds (1.24 k allocations: 48.594 KiB)
+  0.002767 seconds (211 allocations: 6.734 KiB)
+  0.003019 seconds (1.24 k allocations: 48.594 KiB)
+  0.002770 seconds (211 allocations: 6.734 KiB)

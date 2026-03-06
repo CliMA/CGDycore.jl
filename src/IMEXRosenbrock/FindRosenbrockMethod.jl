@@ -1,6 +1,6 @@
 function FindRosenbrockMethod()
   FT = Float64
-  RK = INT.RungeKuttaMethod{FT}("SSP(5,3)")
+  RK = INT.RungeKuttaExMethod{FT}("SSP(5,3)")
   Order = 3
   gammaD = 1.0
   Residual = RKRosenbrock()(RK,Order,gammaD)

@@ -233,7 +233,7 @@ function InitCartDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,To
     zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-  Metric = DiscretizationDG(backend,FT,Grids.JacobiCartDG3GPU!,DG,Exchange,Global,zS,Grid.Type)
+  Metric = DGSEM.DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
 
   # Output Orography
 # nzTemp = Global.Grid.nz

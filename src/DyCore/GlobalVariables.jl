@@ -12,7 +12,7 @@ mutable struct TimeStepperStruct{FT<:AbstractFloat}
   LinIMEX::Integration.LinIMEXStruct
   IMEX::Integration.IMEXStruct
   MIS::Integration.MISMethod{FT}
-  RK::Integration.RungeKuttaMethod
+  RK::Integration.RungeKuttaExMethod
   SSP::Integration.SSPRungeKuttaStruct
 end
 function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
@@ -29,7 +29,7 @@ function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
   LinIMEX=Integration.LinIMEXMethod()
   IMEX=Integration.IMEXMethod()
   MIS = Integration.MISMethod{FT}()
-  RK=Integration.RungeKuttaMethod{FT}()
+  RK=Integration.RungeKuttaExMethod{FT}()
   SSP=Integration.SSPRungeKuttaMethod()
   return TimeStepperStruct(
     IntMethod,

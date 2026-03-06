@@ -4,9 +4,9 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   nBar3=[ 0  1   0   1
              -1  0  -1   0
              0   0  0    0]
-  Dim=3
+  Dim = 3
   Type = Quad()
-  Form="Planar"
+  Form = CartesianGrid()
   Pert=0.0
   PertX=0.2
   PertY=0.2
