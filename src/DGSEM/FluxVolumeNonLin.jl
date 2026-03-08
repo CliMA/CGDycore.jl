@@ -12,6 +12,41 @@ function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadG
     Val(NV),Val(NAUX);ndrange=ndrange)
 end  
 
+function FluxSplitVolumeNonLinH1(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  DoFE = DG.DoFE
+  N = DG.OrdPoly + 1
+  IndexListI=zeros(Int32,(N-1)*N*N,2)
+  IndexListJ=zeros(Int32,(N-1)*N*N,2)
+  iI = 0
+  for j = 1 : N
+    for i = 1 : N
+      for k = i + 1 : N
+        iI += 1
+        IndexListI[iI,1] = i
+        IndexListI[iI,2] = k
+        IndexListJ[iI,1] = j
+        IndexListJ[iI,2] = j
+      end
+      for k = j + 1 : N
+        iI += 1
+        IndexListI[iI,1] = i
+        IndexListI[iI,2] = i
+        IndexListJ[iI,1] = j
+        IndexListJ[iI,2] = k
+      end
+    end
+  end
+  M = DG.OrdPolyZ + 1
+  NzG = min(div(NumberThreadGPU,DoF),M*Nz)
+  group = (N,N,NzG,1)
+  ndrange = (N,N,M*Nz,NF)
+  KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinH1QuadKernel!(backend,group)
+  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.Glob,IndexListI,IndexListJ,
+    Val(NV),Val(NAUX);ndrange=ndrange)
+end
+
 function FluxVolumeNonLinH(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
   backend = get_backend(F)
   DoF = DG.DoF
@@ -170,6 +205,92 @@ end
         FLoc[I,J,iz,iv] += -DVT[l,I] * fTilde[iv] - DVT[l,J] * gTilde[iv]
       end  
     end  
+    K = mod(IZ-1,M)+1  
+    Iz = div(IZ-1,M) + 1
+    ID = I + (J - 1) * N  
+    ind = Glob[ID,IF]  
+    @unroll for iv = 1 : NV
+      F[K,Iz,ind,iv] += FLoc[I,J,iz,iv] 
+    end
+  end
+end  
+
+@kernel inbounds = true function FluxSplitVolumeNonLinH1QuadKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
+  @Const(DVT),@Const(Glob),@Const(IndexI),@Const(IndexJ), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
+
+  I, J, iz,   = @index(Local, NTuple)
+  _,_,IZ,IF = @index(Global, NTuple)
+
+  TilesDim = @uniform @groupsize()[3]
+  N = @uniform @groupsize()[1]
+  NZ = @uniform @ndrange()[3]
+  M = @uniform size(dXdxI,3)
+  nz = @uniform size(dXdxI,5)
+
+  VLoc = @localmem eltype(F) (N,N,TilesDim,NV)
+  AuxLoc = @localmem eltype(F) (N,N,TilesDim,NAUX)
+  FLoc = @localmem eltype(F) (N,N,TilesDim,NV)
+  dXdxILoc = @localmem eltype(F) (2,3,N,N,TilesDim)
+  fTilde = @private eltype(F) (NV,)
+  gTilde = @private eltype(F) (NV,)
+
+  if IZ <= NZ
+    K = mod(IZ-1,M)+1  
+    Iz = div(IZ-1,M) + 1
+    ID = I + (J - 1) * N  
+    ind = Glob[ID,IF]  
+    @unroll for iaux = 1 : NAUX
+      AuxLoc[I,J,iz,iaux] = Aux[K,Iz,ind,iaux]  
+    end
+    VLoc[I,J,iz,1] = V[K,Iz,ind,1]  
+    FLoc[I,J,iz,1] = 0.0
+    @unroll for iv = 2 : NV
+      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv]
+      FLoc[I,J,iz,iv] = 0.0
+    end
+    @unroll for j = 1 : 3
+      @unroll for i = 1 : 2
+        dXdxILoc[i,j,I,J,iz] = dXdxI[i,j,K,ID,Iz,IF]
+      end   
+    end  
+  end
+
+  @synchronize
+
+  if IZ <= NZ
+    ID = (I + (J - 1) * N - 1) * (N - 1)  
+    @unroll for l = 1 : N - 1
+      ID += 1
+      I1 = IndexI[ID,1]     
+      I2 = IndexI[ID,2]     
+      J1 = IndexJ[ID,1]     
+      J2 = IndexJ[ID,2]     
+      ID1 = I1 + (J1 - 1) * N  
+      ID2 = I2 + (J2 - 1) * N  
+      if J1 == J2
+        @views FluxAver!(fTilde,VLoc[I1,J1,iz,:],VLoc[I2,J1,iz,:],
+          AuxLoc[I1,J1,iz,:],AuxLoc[I2,J1,iz,:],
+          dXdxILoc[1,:,I1,J1,iz],dXdxILoc[1,:,I2,J1,iz])    
+
+        @unroll for iv = 1 : NV
+          @atomic FLoc[I1,J1,iz,iv] += -DVT[I2,I1] * fTilde[iv] 
+          @atomic FLoc[I2,J1,iz,iv] += -DVT[I1,I2] * fTilde[iv] 
+        end  
+      else  
+        @views FluxAver!(gTilde,VLoc[I1,J1,iz,:],VLoc[I1,J2,iz,:],
+          AuxLoc[I1,J1,iz,:],AuxLoc[I1,J2,iz,:],
+          dXdxILoc[2,:,I1,J1,iz],dXdxILoc[2,:,I1,J2,iz])    
+        @unroll for iv = 1 : NV
+          @atomic FLoc[I1,J1,iz,iv] += -DVT[J2,J1] * gTilde[iv]
+          @atomic FLoc[I1,J2,iz,iv] += -DVT[J1,J2] * gTilde[iv]
+        end  
+      end  
+    end  
+  end
+
+  @synchronize
+
+  if IZ <= NZ
     K = mod(IZ-1,M)+1  
     Iz = div(IZ-1,M) + 1
     ID = I + (J - 1) * N  
