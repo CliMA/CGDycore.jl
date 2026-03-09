@@ -19,6 +19,8 @@ function FluxSplitVolumeNonLinH1(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThread
   N = DG.OrdPoly + 1
   IndexListI=zeros(Int32,(N-1)*N*N,2)
   IndexListJ=zeros(Int32,(N-1)*N*N,2)
+  IndexListIGPU=KernelAbstractions.zeros(backend,Int32,(N-1)*N*N,2)
+  IndexListJGPU=KernelAbstractions.zeros(backend,Int32,(N-1)*N*N,2)
   iI = 0
   for j = 1 : N
     for i = 1 : N
@@ -38,12 +40,14 @@ function FluxSplitVolumeNonLinH1(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThread
       end
     end
   end
+  copyto!(IndexListIGPU,IndexListI)
+  copyto!(IndexListJGPU,IndexListJ)
   M = DG.OrdPolyZ + 1
   NzG = min(div(NumberThreadGPU,DoF),M*Nz)
   group = (N,N,NzG,1)
   ndrange = (N,N,M*Nz,NF)
   KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinH1QuadKernel!(backend,group)
-  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.Glob,IndexListI,IndexListJ,
+  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.Glob,IndexListIGPU,IndexListJGPU,
     Val(NV),Val(NAUX);ndrange=ndrange)
 end
 

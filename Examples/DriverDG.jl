@@ -532,9 +532,7 @@ dtau = FTB(dtau)
 
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
-  O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
-  IMEXBo = IMEXRosenbrock.IMEXDirkMethod{FTB}("Boscarino")
-  MethodInt = IMEXRosenbrock.IMEXDirkToRosenbrock(IMEXBo)
+# O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
   Fcn = (DGSEM.FcnSplit!,)
   dt = (dtau,)
 elseif IntMethod == "MIS"
@@ -561,38 +559,4 @@ end
   Integration.TimeStepper(MethodInt,dt,U,Fcn,DGSEM.Jac!,DG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
 
-#=
-if IntMethod == "Rosenbrock"
-  Integration.TimeStepper(U,DGSEM.FcnSplit!,DGSEM.Jac!,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
-elseif IntMethod == "MIS"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  Mis = DGSEM.MISStruct{FTB}("RKJeb")
-  @show dtauSmall,dtau  
-  Integration.TimeStepperMIS(Ros,Mis,U,DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!,DGSEM.Jac!,
-    dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,VelForm)
-end  
-=#
-
-#=
-if IntMethod == "Rosenbrock"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
-elseif IntMethod == "RosenbrockNonConservative"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type)
-elseif IntMethod == "MIS"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  Mis = DGSEM.MISStruct{FTB}("MISRK4")
-DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
-elseif IntMethod == "RungeKutta"    
-  DGSEM.RK3(U,DGSEM.FcnSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Grid,Global)
-elseif IntMethod == "RungeKuttaNonConservative"    
-  DGSEM.RK3(U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Grid,Global)
-end  
-=#
 MPI.Finalize()
