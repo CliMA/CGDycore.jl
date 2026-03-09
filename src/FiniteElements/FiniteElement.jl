@@ -228,6 +228,8 @@ mutable struct DGQuad{FT<:AbstractFloat,
     MasterSlave::IT1
     InterOutputH::AT2
     InterOutputV::AT2
+    IndeListI::IT2
+    IndeListJ::IT2
 end
 
 function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where FT<:AbstractFloat
@@ -238,6 +240,32 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   nz = Grid.nz
 
   DoF = OP * OP
+
+  IndexListI=zeros(Int32,(OP-1)*OP*OP,2)
+  IndexListJ=zeros(Int32,(OP-1)*OP*OP,2)
+  IndexListIGPU=KernelAbstractions.zeros(backend,Int32,(OP-1)*OP*OP,2)
+  IndexListJGPU=KernelAbstractions.zeros(backend,Int32,(OP-1)*OP*OP,2)
+  iI = 0
+  for j = 1 : OP
+    for i = 1 : OP
+      for k = i + 1 : OP
+        iI += 1
+        IndexListI[iI,1] = i
+        IndexListI[iI,2] = k
+        IndexListJ[iI,1] = j
+        IndexListJ[iI,2] = j
+      end
+      for k = j + 1 : OP
+        iI += 1
+        IndexListI[iI,1] = i
+        IndexListI[iI,2] = i
+        IndexListJ[iI,1] = j
+        IndexListJ[iI,2] = k
+      end
+    end
+  end
+  copyto!(IndexListIGPU,IndexListI)
+  copyto!(IndexListJGPU,IndexListJ)
 
   xwCPU, wCPU = gausslobatto(OrdPoly+1)
   w = KernelAbstractions.zeros(backend,FT,size(wCPU))
@@ -421,6 +449,8 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     MasterSlave,
     InterOutputH,
     InterOutputV,
+    IndexListIGPU,
+    IndexListJGPU,
  )
 end
 

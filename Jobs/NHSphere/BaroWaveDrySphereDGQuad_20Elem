@@ -39,7 +39,7 @@ julia --project Examples/DriverDG.jl \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DG20Quad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=2 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --PrintTime=0 \
   --OrdPrint=4 \
@@ -49,7 +49,7 @@ julia --project Examples/DriverDG.jl \
   --dtau=100.0 \
   --dtauSmall=60.0 \
   --IntMethod="Rosenbrock" \
-  --Table="ARS343" \
+  --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="" \

@@ -3,8 +3,8 @@ import CGDycore:
 using MPI
 using Base
 using CUDA
-using AMDGPU
-using Metal
+#using AMDGPU
+#using Metal
 using KernelAbstractions
 #using StaticArrays
 using ArgParse
@@ -157,12 +157,12 @@ elseif JuliaDevice == "GPU"
     else
       CUDA.device!(Proc-1)
     end
-  elseif JuliaGPU == "AMD"
-    backend = ROCBackend()
-    AMDGPUS.allowscalar(false)
-  elseif JuliaGPU == "Metal"
-    backend = MetalBackend()
-    Metal.allowscalar(true)
+#  elseif JuliaGPU == "AMD"
+#    backend = ROCBackend()
+#    AMDGPUS.allowscalar(false)
+#  elseif JuliaGPU == "Metal"
+#    backend = MetalBackend()
+#    Metal.allowscalar(true)
   end
 else
   backend = CPU()
@@ -533,7 +533,7 @@ dtau = FTB(dtau)
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
 # O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
-  Fcn = (DGSEM.FcnSplit!,)
+  Fcn = (DGSEM.FcnSplit1!,)
   dt = (dtau,)
 elseif IntMethod == "MIS"
   MethodInt = Integration.MISMethod{FTB}(Table)
