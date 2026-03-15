@@ -32,6 +32,7 @@ abstract type VectorKiteElement <: FiniteElement end
 abstract type HDivElement <: VectorElement end
 abstract type HDivKiteDElement <: HDivElement end
 abstract type HDivConfElement <: HDivElement end
+abstract type RTElement <: HDivElement end
 abstract type HCurlElement <: VectorElement end
 abstract type HCurlKiteDElement <: HCurlElement end
 abstract type HCurlConfElement <: HCurlElement end

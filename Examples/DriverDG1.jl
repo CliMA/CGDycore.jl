@@ -347,7 +347,7 @@ if InterfaceFluxDG == "RiemannLMARS"
   Model.RiemannSolver = RiemannSolver
   RiemannSolverSlow = DGSEM.RiemannLMARSSlow()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolverSlow = RiemannSolverSlow
-  if IntMethod == "MIS"
+  if IntMethod == "MIS" 
     RiemannSolverFast = DGSEM.RiemannLMARSFast()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
       Model.wPos,Model.RhoThPos,1)
     Model.RiemannSolverFast = RiemannSolverFast
@@ -387,7 +387,7 @@ elseif FluxDG == "KennedyGruberGrav"
     Model.RhoThPos,pAuxPos,GPAuxPos)
   Model.FluxAverageSlow = DGSEM.KennedyGruberGravSlow()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.RhoThPos,pAuxPos,GPAuxPos)
-  if IntMethod == "MIS"
+  if IntMethod == "MIS" 
     Model.FluxAverageFast = DGSEM.KennedyGruberGravFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
       Model.RhoThPos,pAuxPos,GPAuxPos)
   elseif IntMethod == "MISSemi" 
@@ -533,9 +533,15 @@ dtau = FTB(dtau)
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
   O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
-  IMEXBo = IMEXRosenbrock.IMEXDirkMethod{FTB}("Boscarino")
-  MethodInt = IMEXRosenbrock.IMEXDirkToRosenbrock(IMEXBo)
   Fcn = (DGSEM.FcnSplit1!,)
+  dt = (dtau,)
+elseif IntMethod == "LinIMEX" 
+  MethodInt = Integration.LinIMEXMethod{FTB}(Table)
+  Fcn = (DGSEM.FcnSplit!,)
+  dt = (dtau,)
+elseif IntMethod == "IMEXDirk"
+  MethodInt = Integration.IMEXDirkMethod{FTB}(Table)
+  Fcn = (DGSEM.FcnSplitEx!,DGSEM.FcnSplitIm!)
   dt = (dtau,)
 elseif IntMethod == "MIS"
   MethodInt = Integration.MISMethod{FTB}(Table)
@@ -558,41 +564,6 @@ elseif IntMethod == "RungeKuttaEx"
   Fcn = (DGSEM.FcnSplit1!,)
   dt = (dtau,)
 end
-  Integration.TimeStepper(MethodInt,dt,U,Fcn,DGSEM.Jac!,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
-
-#=
-if IntMethod == "Rosenbrock"
-  Integration.TimeStepper(U,DGSEM.FcnSplit!,DGSEM.Jac!,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
-elseif IntMethod == "MIS"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  Mis = DGSEM.MISStruct{FTB}("RKJeb")
-  @show dtauSmall,dtau  
-  Integration.TimeStepperMIS(Ros,Mis,U,DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!,DGSEM.Jac!,
-    dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global,VelForm)
-end  
-=#
-
-#=
-if IntMethod == "Rosenbrock"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
-elseif IntMethod == "RosenbrockNonConservative"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  DGSEM.Rosenbrock(Ros,U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type)
-elseif IntMethod == "MIS"
-  Ros = Integration.RosenbrockMethod{FTB}(Table)
-  Mis = DGSEM.MISStruct{FTB}("MISRK4")
-DGSEM.MIS_Method(Ros,Mis,U,DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!,dtauSmall,dtau,IterTime,nPrint,DG,Exchange,Metric,Trans,Phys,Param,Grid,Global)
-elseif IntMethod == "RungeKutta"    
-  DGSEM.RK3(U,DGSEM.FcnSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Grid,Global)
-elseif IntMethod == "RungeKuttaNonConservative"    
-  DGSEM.RK3(U,DGSEM.FcnGPUNonConservativeSplit!,dtau,IterTime,nPrint,DG,Exchange,Metric,
-    Trans,Phys,Grid,Global)
-end  
-=#
+Integration.TimeStepper(MethodInt,dt,U,Fcn,DGSEM.Jac!,DG,Exchange,Metric,
+  Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
 MPI.Finalize()

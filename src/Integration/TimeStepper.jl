@@ -56,10 +56,10 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
 
 
   Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
-  TimeIntegration!(IntMethod,U,dt,Fcn,CacheAux,Jac,FE,Metric,Phys,CacheInt,JCache,Exchange,
-    Global,Param,VelForm)
+# TimeIntegration!(IntMethod,U,dt,Fcn,CacheAux,Jac,FE,Metric,Phys,CacheInt,JCache,Exchange,
+#   Global,Param,VelForm)
   @time begin
-    @inbounds for i = 2 : nIter
+    @inbounds for i = 1 : nIter
       Δt = @elapsed begin
         TimeIntegration!(IntMethod,U,dt,Fcn,CacheAux,Jac,FE,Metric,Phys,CacheInt,JCache,Exchange,
           Global,Param,VelForm)

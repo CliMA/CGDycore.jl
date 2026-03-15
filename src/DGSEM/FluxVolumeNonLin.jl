@@ -244,8 +244,6 @@ end
       I2 = IndexI[ID,2]     
       J1 = IndexJ[ID,1]     
       J2 = IndexJ[ID,2]     
-      ID1 = I1 + (J1 - 1) * N  
-      ID2 = I2 + (J2 - 1) * N  
       if J1 == J2
         @views FluxAver!(fTilde,VLoc[I1,J1,iz,:],VLoc[I2,J1,iz,:],
           AuxLoc[I1,J1,iz,:],AuxLoc[I2,J1,iz,:],

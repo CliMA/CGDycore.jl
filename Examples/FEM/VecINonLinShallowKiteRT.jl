@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
+  Parameters, Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -11,7 +11,7 @@ using ArgParse
 using LinearAlgebra
 
 # Model
-parsed_args = DyCore.parse_commandline()
+parsed_args = Parameters.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -233,7 +233,8 @@ else
   @show nPrint
 end
 
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
+VelForm = Examples.VelocityS()
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 
 # Output
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)

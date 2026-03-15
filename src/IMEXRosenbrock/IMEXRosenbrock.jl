@@ -16,4 +16,5 @@ include("residual.jl")
 include("FindRosenbrockMethod.jl")
 include("RosenbrockToIMEXDirk.jl")
 include("IMEXDirkToRosenbrock.jl")
+include("IMEXDirkNewtonFormulation.jl")
 end

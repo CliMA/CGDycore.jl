@@ -418,6 +418,119 @@ function Interpolate!(u,FE::RTStruct,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     @. u[FE.Glob[:,iF]] = uLoc
   end  
 end
+function Interpolate!(u,FE::RTKiteDualHDiv,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
+  NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
+  k = FE.Order
+  DoF = FE.DoF
+  s = @polyvar x[1:2]
+  P_kp1x1 = DG.Polynomial_1D(k+1,s,1)
+  P_kx1 = DG.Polynomial_1D(k,s,1)
+  P_kp1x2 = DG.Polynomial_1D(k+1,s,2)
+  P_kx2 = DG.Polynomial_1D(k,s,2)
+  if k > 0
+    P_km1x1 = DG.Polynomial_1D(k-1,s,1)
+    P_km1x2 = DG.Polynomial_1D(k-1,s,2)
+  end
+  
+  DoF = 2 * (k+2) * (k+1)
+
+  phi = Array{Polynomial,2}(undef,DoF,2)
+  phiB = Array{Polynomial,2}(undef,DoF,2)
+  rounded_poly = Array{Polynomial,2}(undef,DoF,2)
+  Divphi = Array{Polynomial,2}(undef,DoF,1)
+  rounded_Divphi = Array{Polynomial,2}(undef,DoF,1)
+  iDoF = 1 
+  @inbounds for i = 1 : k+2
+    @inbounds for j = 1 : k+1
+      phi[iDoF,1] = P_kp1x1[i] * P_kx2[j] 
+      phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+      iDoF += 1
+      phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
+      phi[iDoF,2] = P_kp1x2[i] * P_kx1[j] 
+      iDoF += 1
+    end
+  end
+  @polyvar t
+  phiL = DG.CGLine(k,t)
+  QuadOrd = 3
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
+  I = zeros(DoF,DoF)
+  rDoF = 1
+
+  phiL = DG.CGLine(k,t)
+  uLoc = zeros(DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  uP = zeros(2)
+  VelSp = zeros(3)
+  @inbounds for iF = 1 : Grid.NumFaces
+    iDoF = 1
+    rDoF = 1
+    # Compute functional over edges
+    # Edge 1 (-1,-1) -> (1,-1)
+    @. uLoc = 0
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],-1,Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form) 
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += +0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+    iDoF += k + 1
+    # Edge 2 (1,-1) -> (1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,1,PointsL[iQ,1],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form) 
+      uP .= detDF[1] * pinvDF' * VelCa 
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += -0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ] 
+      end
+    end
+    iDoF += k + 1
+    # Edge 3 (-1,1) -> (1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],1,Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += 0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+    iDoF += k + 1
+    # Edge 4 (-1,-1) -> (-1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,-1,PointsL[iQ,1],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += -0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+    iDoF += k + 1
+# Interior  
+    @inbounds for iQ = 1 : NumQuadT
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsT[iQ,1],PointsT[iQ,2],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      iiDoF = iDoF
+      @inbounds for i = 1 : k+1
+        @inbounds for j = 1 : k
+          uLoc[iiDoF] += 0.25 * uP[1] * P_km1x1[j](PointsT[iQ,1],PointsT[iQ,2]) * 
+            P_kx2[i](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]  
+          iiDoF += 1  
+          uLoc[iiDoF] += 0.25 * uP[2] * P_kx1[i](PointsT[iQ,1],PointsT[iQ,2]) * 
+            P_km1x2[j](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+          iiDoF += 1  
+        end
+      end
+    end
+    @. u[FE.Glob[:,iF]] = uLoc
+  end  
+end
 
 function FCart(X,F,Form)
   if Form == Grids.SphericalGrid()

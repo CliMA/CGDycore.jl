@@ -228,8 +228,8 @@ mutable struct DGQuad{FT<:AbstractFloat,
     MasterSlave::IT1
     InterOutputH::AT2
     InterOutputV::AT2
-    IndeListI::IT2
-    IndeListJ::IT2
+    IndexListI::IT2
+    IndexListJ::IT2
 end
 
 function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where FT<:AbstractFloat

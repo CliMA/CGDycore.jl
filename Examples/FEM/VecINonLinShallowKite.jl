@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
+  Parameters, Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -11,7 +11,7 @@ using ArgParse
 using LinearAlgebra
 
 # Model
-parsed_args = DyCore.parse_commandline()
+parsed_args = Parameters.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -295,7 +295,7 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
-FEM.InterpolateRT!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
+FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 #FEM.Project!(backend,FTB,Uu,RT,Grid,nQuadS,Jacobi,Model.InitialProfile)
 
 

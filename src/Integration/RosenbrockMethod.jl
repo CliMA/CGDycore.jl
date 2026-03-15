@@ -23,6 +23,19 @@ function RosenbrockMethod{FT}() where FT<:AbstractFloat
   )
 end
 
+#=
+function RosenbrockMethod{FT}(IMEX::IMEXDirkMethod) where FT<:AbstractFloat
+ROS.nStage=IMEX.nStage-1;
+ROS.alpha=IMEX.A(1:ROS.nStage,1:ROS.nStage);
+ROS.b=IMEX.A(ROS.nStage+1,1:ROS.nStage);
+AIU=IMEX.Ahat(2:ROS.nStage+1,2:ROS.nStage+1)-IMEX.A(2:ROS.nStage+1,2:ROS.nStage+1);
+AROS=[ROS.alpha zeros(ROS.nStage,1)
+   ROS.b 0];
+AL=AROS(2:end,1:end-1);
+ROS.Gamma=AL\AIU*AL;
+end
+=#
+
 function RosenbrockMethod{FT}(RK::RungeKuttaExMethod,gammaD,gammaV) where FT<:AbstractFloat
   nStage = RK.nStage
   alpha = RK.A

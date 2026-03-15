@@ -9,8 +9,8 @@ mutable struct TimeStepperStruct{FT<:AbstractFloat}
   SimSeconds::Int
   SimTime::Float64
   ROS::Integration.RosenbrockMethod{FT}
-  LinIMEX::Integration.LinIMEXStruct
-  IMEX::Integration.IMEXStruct
+  LinIMEX::Integration.LinIMEXMethod{FT}
+  IMEX::Integration.IMEXDirkMethod{FT}
   MIS::Integration.MISMethod{FT}
   RK::Integration.RungeKuttaExMethod
   SSP::Integration.SSPRungeKuttaStruct
@@ -26,8 +26,8 @@ function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
   SimSeconds = 0
   SimTime = 0.0
   ROS=Integration.RosenbrockMethod{FT}()
-  LinIMEX=Integration.LinIMEXMethod()
-  IMEX=Integration.IMEXMethod()
+  LinIMEX=Integration.LinIMEXMethod{FT}()
+  IMEX=Integration.IMEXDirkMethod{FT}()
   MIS = Integration.MISMethod{FT}()
   RK=Integration.RungeKuttaExMethod{FT}()
   SSP=Integration.SSPRungeKuttaMethod()

@@ -1,25 +1,17 @@
-mutable struct IMEXStruct
-  nStage::Int
-  AE::Array{Float64, 2}
-  bE::Array{Float64, 1}
-  AI::Array{Float64, 2}
-  bI::Array{Float64, 1}
-  D::Array{Float64, 2}
-  E::Array{Float64, 2}
-  d::Array{Float64, 1}
-  e::Array{Float64, 1}
-end
-function IMEXMethod()
-  nStage=0
-  AE=zeros(0,0)
-  bE=zeros(0)
-  AI=zeros(0,0)
-  bI=zeros(0)
-  D=zeros(0,0)
-  E=zeros(0,0)
-  d=zeros(0)
-  e=zeros(0)
-  return IMEXStruct(
+function IMEXDirkMethod{FT}() where FT<:AbstractFloat
+  name = ""
+  nStage = 0
+  AE = zeros(FT,0,0)
+  bE = zeros(FT,0)
+  AI = zeros(FT,0,0)
+  bI = zeros(FT,0)
+  D = zeros(FT,0,0)
+  E = zeros(FT,0,0)
+  d = zeros(FT,0)
+  e = zeros(FT,0)
+  JacComp = false
+  return IMEXDirkMethod{FT}(
+    name,
     nStage,
     AE,
     bE,
@@ -29,11 +21,12 @@ function IMEXMethod()
     E,
     d,
     e,
+    JacComp,
   )
 end
 
-function IMEXMethod(Method)
-str = Method
+function IMEXDirkMethod{FT}(Method) where FT<:AbstractFloat
+  str = Method
    
   if str == "ExImpEul"
     nStage = 2
@@ -109,7 +102,27 @@ str = Method
        1/(2*s2) 1/(2*s2) 1-1/s2]
     bI = [1/(2*s2) 1/(2*s2) 1-1/s2]        
   end
-  return IMEXStruct(
+  AAE = [AE
+        bE']
+  AAI = [AI
+        bI']
+
+  AAAE = zeros(size(AAE))
+  AAAI = zeros(size(AAI))
+
+  AAAE[2,:] = AAE[2,:]
+
+  for k = 2 : nStage
+    AAAE[k+1:k+1,1:k] = AAE[k+1:k+1,1:k] - AAI[k+1:k+1,2:k] * inv(AAI[2:k,2:k]) * AAE[2:k,1:k]
+    AAAI[k+1:k+1,2:k] = AAI[k+1:k+1,2:k] * inv(AAI[2:k,2:k])
+  end
+  D = AAAE[1:end-1,:]
+  d = AAAE[end,:]
+  E = AAAI[1:end-1,:]
+  e = AAAI[end,:]
+  JacComp = true
+  return IMEXDirkMethod{FT}(
+    str,
     nStage,
     AE,
     bE,
@@ -119,5 +132,6 @@ str = Method
     E,
     d,
     e,
+    JacComp,
   )
 end
