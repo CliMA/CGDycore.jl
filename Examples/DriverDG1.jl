@@ -531,12 +531,17 @@ end
 dtau = FTB(dtau)
 
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
-  MethodInt = Integration.RosenbrockMethod{FTB}(Table)
   O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
-  Fcn = (DGSEM.FcnSplit1!,)
+  MethodInt = Integration.RosenbrockMethod{FTB}(Table)
+  Fcn = (DGSEM.FcnSplit!,)
   dt = (dtau,)
-elseif IntMethod == "LinIMEX" 
-  MethodInt = Integration.LinIMEXMethod{FTB}(Table)
+elseif IntMethod == "LinIMEX" || IntMethod == "LinIMEXfromROS"
+  if IntMethod == "LinIMEXfromROS"
+    ROS = Integration.RosenbrockMethod{FTB}(Table)
+    MethodInt = Integration.LinIMEXMethod{FTB}(ROS)
+  else
+    MethodInt = Integration.LinIMEXMethod{FTB}(Table)  
+  end  
   Fcn = (DGSEM.FcnSplit!,)
   dt = (dtau,)
 elseif IntMethod == "IMEXDirk"

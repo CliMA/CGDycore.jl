@@ -33,6 +33,59 @@ function LinIMEXMethod{FT}() where FT<:AbstractFloat
   )
 end
 
+function LinIMEXMethod{FT}(ROS::RosenbrockMethod) where FT<:AbstractFloat
+
+  str = ROS.name
+  nStage = ROS.nStage + 1
+  alphaR = [ROS.alpha[2:end,1:end]
+            ROS.b']
+  AE = [zeros(FT,1,nStage)
+        alphaR zeros(FT,nStage-1)]
+  bE = AE[end,:]
+
+  AI = [zeros(FT,1,nStage)
+        zeros(FT,nStage-1) alphaR * ROS.gamma * inv(alphaR)]
+  AI[:,1:end] .+= AE[:,1:end]
+  bI = AI[end,:]
+
+  AAE = [AE
+        bE']
+  AAI = [(AI-AE)
+        (bI-bE)']
+
+  AAAE = zeros(size(AAE))
+  AAAI = zeros(size(AAI))
+
+  AAAE[2,:] = AAE[2,:]
+
+  for k = 2 : nStage
+    AAAE[k+1:k+1,1:k] = AAE[k+1:k+1,1:k] - AAI[k+1:k+1,2:k] * inv(AAI[2:k,2:k]) * AAE[2:k,1:k]
+    AAAI[k+1:k+1,2:k] = AAI[k+1:k+1,2:k] * inv(AAI[2:k,2:k])
+  end
+  D = AAAE[1:end-1,:]
+  d = AAAE[end,:]
+  E = AAAI[1:end-1,:]
+  e = AAAI[end,:]
+  JacComp = true
+  return LinIMEXMethod{FT}(
+    str,
+    nStage,
+    AE,
+    bE,
+    AI,
+    bI,
+    D,
+    E,
+    d,
+    e,
+#   AHat,
+#   BHat,
+#   A,
+#   B,
+    JacComp,
+  )
+end
+
 function LinIMEXMethod{FT}(IMEX::IMEXDirkMethod) where FT<:AbstractFloat
   str = IMEX.name
   nStage = IMEX.nStage

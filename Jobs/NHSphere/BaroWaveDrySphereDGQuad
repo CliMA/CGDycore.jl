@@ -37,10 +37,10 @@ julia --project Examples/DriverDG1.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=50 \
+  --dtau=60 \
   --dtauSmall=70 \
   --IntMethod="LinIMEX" \
-  --Table="ARS222" \
+  --Table="ARS343" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \

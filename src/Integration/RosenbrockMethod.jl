@@ -36,6 +36,38 @@ ROS.Gamma=AL\AIU*AL;
 end
 =#
 
+function RosenbrockMethod{FT}(IMEX::LinIMEXMethod) where FT<:AbstractFloat
+
+  str = IMEX.name
+  nStage = IMEX.nStage - 1
+
+  @views alphaR = IMEX.AE[2:end,1:end-1]
+  @views d = IMEX.AI[2:end,2:end] - IMEX.AE[2:end,2:end]
+  @views b = IMEX.bE[1:end-1]
+
+  gamma = inv(alphaR) * d * alphaR
+  alpha = IMEX.AE[1:end-1,1:end-1]
+  gammaD = gamma[2,2]
+
+
+  a = alpha / gamma
+  c = -inv(gamma)
+  m = gamma'\b
+  JacComp = true
+  return RosenbrockMethod{FT}(
+    "ROS"*IMEX.name,
+    nStage,
+    alpha,
+    gamma,
+    b,
+    a,
+    c,
+    gammaD,
+    m,
+    JacComp,
+  )
+end
+
 function RosenbrockMethod{FT}(RK::RungeKuttaExMethod,gammaD,gammaV) where FT<:AbstractFloat
   nStage = RK.nStage
   alpha = RK.A
@@ -91,8 +123,6 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
-    a=[a
-       m']
   elseif str == "ROS2W"
     @show "ROS2W"
     nStage = 2
@@ -109,8 +139,6 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
-    a=[a
-       m']
   elseif str == "RosEul"
     nStage = 1
     alpha = zeros(FT,nStage,nStage)
@@ -122,8 +150,6 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
-    a=[a
-       m']
   elseif str == "ROSRK3"
     nStage = 3
     alpha = zeros(FT,nStage,nStage)
@@ -142,8 +168,6 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
-    a=[a
-       m']
   elseif str == "ARS343"
     nStage = 3
     gamma = 0.4358665215084590

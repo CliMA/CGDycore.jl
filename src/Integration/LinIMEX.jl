@@ -44,8 +44,7 @@ function TimeIntegration!(LinIMEX::LinIMEXMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys
 
   @. Ymyn[:,:,:,:,1] = 0
   @inbounds for iStage = 2 : nStage
-    @views FcnFull(f[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
-
+    @views FcnFull(f[:,:,:,:,iStage-1],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @views @. fV = LinIMEX.D[iStage,1] * f[:,:,:,:,1]
     @inbounds for jStage = 2 : iStage - 1
       @views @. fV += LinIMEX.D[iStage,jStage] * f[:,:,:,:,jStage] +

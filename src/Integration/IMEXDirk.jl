@@ -46,7 +46,6 @@ function TimeIntegration!(IMEX::IMEXDirkMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,C
   dtau, = dt
   FcnE, FcnI = Fcn
 
-# @views FcnE(fEY[:,:,:,1],V,CG,Global,Param)
   @. VnI = V
   @views FcnE(fEY[:,:,:,:,1],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   Jac(V,dtau*gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
