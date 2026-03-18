@@ -125,7 +125,7 @@ function InitialConditions(backend,FTB,DG::FiniteElements.DGElement,Metric,Phys,
   KRhoFunCKernel!(Profile,Rho,time,Glob,X,Param,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
   KuvwFunCKernel!(Profile,u,v,w,time,Glob,X,Param,Phys,ndrange=ndrange)
-  if Model.ModelType == "Conservative"
+  if occursin("Conservative",Model.ModelType)
     @. u *= Rho
     @. v *= Rho
     @. w *= Rho

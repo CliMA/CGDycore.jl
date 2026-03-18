@@ -127,6 +127,32 @@ function LinIMEXMethod{FT}(Method) where FT<:AbstractFloat
     a = [0 0
          0.0 1.0]
     b = [0.0 1.0]        
+  elseif "ARK3(2)4L[2]SA"
+#   Koeffizienten (Boscarino / GSA-FSAL)
+#   Ordnung: 3, Stufen: 4, Typ: ESDIRK (implizit) / Explicit (explizit)
+
+    gamma = 0.435866521508459  # Parameter für L-Stabilität
+
+#   Knoten (c-Vektor) - identisch für beide Teile
+    c = [0.0, 0.70710678, 0.23165734, 1.0]
+
+#   Explizites Tableau (A-Matrix)
+    aHat = [
+      0.0         0.0         0.0         0.0
+      0.70710678  0.0         0.0         0.0
+      0.55358288 -0.32192554  0.0         0.0
+      0.13517290  0.61034569  0.25448141  0.0
+    ]
+    bHat = aHat[end,:]
+
+#   Implizites Tableau (A-Matrix) - ESDIRK Struktur
+    a = [
+      0.0         0.0         0.0         0.0
+      0.35355339  gamma       0.0         0.0
+      0.05881342 -0.26252260  gamma       0.0
+      0.13517290  0.61034569  0.25448141  gamma
+    ] 
+    b = a[end,:]  
   elseif str == "ARS343"
     nStage = 4
     gamma = 0.4358665215084590

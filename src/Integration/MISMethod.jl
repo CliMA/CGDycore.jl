@@ -1,27 +1,21 @@
-mutable struct MISMethod{FT<:AbstractFloat} <: IntegrationMethod
-  nStage::Int
-  beta::Array{FT, 2}
-  alpha::Array{FT, 2}
-  gamma::Array{FT, 2}
-  d::Array{FT, 1}
-  FastMethod::IntegrationMethod
-end
-
-
 function MISMethod{FT}() where FT<:AbstractFloat
   nStage = 0
+  name = ""
   beta = zeros(FT,0,0)
   alpha = zeros(FT,0,0)
   gamma = zeros(FT,0,0)
   d = zeros(FT, 0)
   FastMethod = NoMethod()
+  JacComp = false
   return MISMethod{FT}(
+    name,
     nStage,
     beta,
     alpha,
     gamma,
     d,
     FastMethod,
+    JacComp
   )
 end
 
@@ -100,14 +94,17 @@ function MISMethod{FT}(Method) where FT<:AbstractFloat
     d[2] = beta[2, 1]
     d[3] = beta[3, 1] + beta[3, 2]
     d[4] = beta[4, 1] + beta[4, 2] + beta[4, 3]
-   end
+  end
+  JacComp = false 
   return MISMethod{FT}(
+    str,
     nStage,
     beta,
     alpha,
     gamma,
     d,
     FastMethod,
+    JacComp,
     )
 end
 

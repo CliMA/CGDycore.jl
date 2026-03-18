@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverDG1.jl \
+julia --project Examples/DriverDG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
@@ -14,7 +14,7 @@ julia --project Examples/DriverDG1.jl \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
-  --VelocityForm="Spherical" \
+  --VelocityForm="Cartesian" \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=false \
@@ -30,7 +30,7 @@ julia --project Examples/DriverDG1.jl \
   --SimSeconds=0 \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --OrdPrint=4 \
@@ -38,9 +38,10 @@ julia --project Examples/DriverDG1.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=60 \
-  --dtauSmall=70 \
-  --IntMethod="LinIMEX" \
-  --Table="ARS343" \
+  --dtauSmall=5 \
+  --IntMethod="Rosenbrock" \
+  --IntMethodFast="LSRungeKutta" \
+  --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \

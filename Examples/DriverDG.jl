@@ -72,6 +72,7 @@ SimTime = parsed_args["SimTime"]
 dtau = parsed_args["dtau"]
 dtauSmall = parsed_args["dtauSmall"]
 IntMethod = parsed_args["IntMethod"]
+IntMethodFast = parsed_args["IntMethodFast"]
 Table = parsed_args["Table"]
 GridForm = parsed_args["GridForm"]
 GridType = parsed_args["GridType"]
@@ -423,8 +424,13 @@ end
 
 # Pressure
 if State == "Dry"
-  Pressure, dPresdRhoTh, dPresdRho = Models.DryDG()(Phys)
-  Model.Pressure = Pressure
+  Pressure, dPresdRhoTh, dPresdRho, ExnerPressure = Models.DryDG()(Phys)
+  if occursin("Exner",ModelType)
+    Model.Pressure = ExnerPressure
+  else
+    Model.Pressure = Pressure
+  end  
+
   Model.dPresdRhoTh = dPresdRhoTh
   Model.dPresdRho = dPresdRho
 elseif State  == "ShallowWater"  
@@ -533,12 +539,20 @@ dtau = FTB(dtau)
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
 # O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
-  Fcn = (DGSEM.FcnSplit1!,)
+  Fcn = (DGSEM.FcnSplit!,)
   dt = (dtau,)
 elseif IntMethod == "MIS"
   MethodInt = Integration.MISMethod{FTB}(Table)
-  MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")
-  Fcn = (DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!)
+  @show IntMethodFast
+  if IntMethodFast == "Rosenbrock"
+    MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")
+    MethodInt.JacComp = MethodInt.FastMethod.JacComp
+    Fcn = (DGSEM.FcnSplitSlow!,DGSEM.FcnSplitFast!)
+  elseif IntMethodFast == "LSRungeKutta"
+    MethodInt.FastMethod = Integration.LSRungeKuttaMethod{FTB}("niegemannrk4-14")
+    MethodInt.JacComp = MethodInt.FastMethod.JacComp
+    Fcn = (DGSEM.FcnSplitEx!,DGSEM.FcnSplitIm!)
+  end  
   dt = (dtau,dtauSmall)
 elseif IntMethod == "MISSemi"
   MethodInt = Integration.MISSemiMethod{FTB}(Table)

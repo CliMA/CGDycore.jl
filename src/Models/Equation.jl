@@ -54,7 +54,12 @@ function (::DryDG)(Phys)
     dpdRho = eltype(Phys.Rd)(0)
     return dpdRho
   end
-  return Pressure,dPresdRhoTh,dPresdRho
+  @inline function ExnerPressure(RhoTh)
+    FT = eltype(RhoTh)
+    p = Phys.p0 * fast_powGPU(Phys.Rd * RhoTh / Phys.p0, Phys.Rd / Phys.Cvd)
+    return p
+  end
+  return Pressure,dPresdRhoTh,dPresdRho,ExnerPressure
 end
 
 function (::Dry)(Phys)

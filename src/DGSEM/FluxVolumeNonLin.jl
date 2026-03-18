@@ -12,20 +12,6 @@ function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadG
     Val(NV),Val(NAUX);ndrange=ndrange)
 end  
 
-function FluxSplitVolumeNonLinH1(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
-  backend = get_backend(F)
-  DoF = DG.DoF
-  DoFE = DG.DoFE
-  N = DG.OrdPoly + 1
-  M = DG.OrdPolyZ + 1
-  NzG = min(div(NumberThreadGPU,DoF),M*Nz)
-  group = (N,N,NzG,1)
-  ndrange = (N,N,M*Nz,NF)
-  KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinH1QuadKernel!(backend,group)
-  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.Glob,DG.IndexListI,DG.IndexListJ,
-    Val(NV),Val(NAUX);ndrange=ndrange)
-end
-
 function FluxVolumeNonLinH(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
   backend = get_backend(F)
   DoF = DG.DoF

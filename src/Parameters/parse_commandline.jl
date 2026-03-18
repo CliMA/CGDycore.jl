@@ -355,6 +355,11 @@ function parse_commandline()
     arg_type = String
     default = "Rosenbrock"
 
+    "--IntMethodFast"
+    help = "Integration  method for the fast scale"
+    arg_type = String
+    default = "Rosenbrock"
+
     "--Table"
     help = "Butcher tableaux"
     arg_type = String

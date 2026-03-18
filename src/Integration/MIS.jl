@@ -1,3 +1,4 @@
+#=
 mutable struct CacheMISStruct{FT<:AbstractFloat,
                            AT4<:AbstractArray,
                            AT5<:AbstractArray}
@@ -6,8 +7,7 @@ mutable struct CacheMISStruct{FT<:AbstractFloat,
   fV::AT4
   Sdu::AT5
   Yn::AT5
-# ROS
-  k::AT5
+  CacheFast
 end
 
 function Cache(backend,FT,IntMethod::MISMethod,FE,M,nz,NumV) 
@@ -21,7 +21,8 @@ function Cache(backend,FT,IntMethod::MISMethod,FE,M,nz,NumV)
   Sdu = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage)
   Yn = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage+1)
 
-  k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,IntMethod.FastMethod.nStage)
+  CacheFast = Cache(backend,IntMethod.IntMethodFast,FE,M,nz,NumV)
+
   return CacheMISStruct{FT,
                      typeof(Vn),
                      typeof(k)}(
@@ -30,9 +31,10 @@ function Cache(backend,FT,IntMethod::MISMethod,FE,M,nz,NumV)
     fV,
     Sdu,
     Yn,
-    k,
+    CacheFast,
   )
 end
+=#
 
 function TimeIntegration!(MIS::MISMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cache,JCache,Exchange,
   Global,Param,Type)
@@ -42,7 +44,6 @@ function TimeIntegration!(MIS::MISMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cache,J
   Fast = MIS.FastMethod
 
   nStage = MIS.nStage
-  k = Cache.k
   Vn = Cache.Vn
   Sdu = Cache.Sdu
   dZn = Cache.dZn
@@ -53,12 +54,12 @@ function TimeIntegration!(MIS::MISMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cache,J
   @views @. Yn[:,:,:,:,1] = V
   @inbounds for iStage = 1 : nStage
     @. VnI = Yn[:,:,:,:,iStage]
-    @views FcnSlow(Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
+    @time @views FcnSlow(Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
     @views @.  Yn[:,:,:,:,iStage+1] = V
     @views InitialConditionMIS!(Yn[:,:,:,:,iStage+1], Yn, V, MIS.alpha, iStage)
-    @views SlowTendency!(dZn, Yn, Sdu, V, MIS.d, MIS.gamma, MIS.beta, dtSlow, iStage)
+    SlowTendency!(dZn, Yn, Sdu, V, MIS.d, MIS.gamma, MIS.beta, dtSlow, iStage)
     @views TimeStepperFast!(Fast,dtFast,MIS.d[iStage+1]*dtSlow,Yn[:,:,:,:,iStage+1],dZn,FcnFast,Jac,FE,
-       Exchange,Metric,Phys,Param,Global,Cache,JCache,Aux,Vn,k,Type)
+      Exchange,Metric,Phys,Param,Global,Cache.CacheFast,JCache,Aux,Type)
   end
   @views @. V = Yn[:,:,:,:,end]
 end  
@@ -78,14 +79,18 @@ function InitialConditionMIS!(Zn0, Yn, u, alpha, stage)
 end
 
 function TimeStepperFast!(IntMethod,dt,tEnd,U,FSlow,Fcn,Jac,FE,Exchange,Metric,Phys,Param,Global,
-  Cache,JCache,CacheAux,Un,k,VelForm)
+  Cache,JCache,CacheAux,VelForm)
   numit = ceil(Int,tEnd/dt)
   FTB = eltype(U)
   dtau = tEnd/numit
-  fac = dtau * IntMethod.gammaD
-  Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+  @show IntMethod.JacComp
+  if IntMethod.JacComp
+    fac = dtau * IntMethod.gammaD
+    Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+  end  
+  @show numit,dtau
   @inbounds for i = 1 : numit
-    TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
+    @time TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
       Global,Param,VelForm)
   end
 end
