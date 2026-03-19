@@ -6,6 +6,8 @@ julia --project Examples/DriverDG.jl \
   --NumV=5 \
   --NumTr=0 \
   --NumAux=2 \
+  --pAuxPos=1 \
+  --GPAuxPos=2 \
   --Equation="CompressibleShallow" \
   --ModelType="Conservative" \
   --State="Dry" \
@@ -34,13 +36,14 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=360 \
+  --dtau=60 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
+  --TopoS="EarthOrography" \
   --nLon=20 \
   --nLat=20 \
   --nz=13 \

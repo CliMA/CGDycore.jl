@@ -805,7 +805,7 @@ function Orography4(backend,FT,CG,Exchange,Grid,ParallelCom)
   # smooth_degree = Int(parsed_args["smoothing_order"])
 # esmth = gaussian_smooth(zlevels)
   esmth = deepcopy(zlevels)
-  earth_spline = linear_interpolation((lon, lat), esmth, extrapolation_bc = (Periodic(), Flat()),)
+  earth_spline = linear_interpolation((lon, lat), esmth, extrapolation_bc = (Interpolations.Periodic(), Interpolations.Flat()),)
   PS = Point()
   xw = CG.xwCPU
   HeightCG = zeros(FT,OP,OP,NF)
@@ -825,8 +825,6 @@ function Orography4(backend,FT,CG,Exchange,Grid,ParallelCom)
 
   copyto!(HeightGPU,Height)
   nz = Grid.nz
-# GradDxH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
-# GradDyH = KernelAbstractions.zeros(backend,FT,nz+1,CG.NumG)
   TopographySmoothing!(HeightGPU,CG,Exchange,Grid,ParallelCom)
   copyto!(Height,HeightGPU)
   HeightCG = zeros(FT,OP*OP,NF)

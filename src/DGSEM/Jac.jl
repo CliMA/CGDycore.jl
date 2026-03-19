@@ -842,7 +842,7 @@ function Permutation(M,nz)
         p[ii] = k + (iz - 1) * M + (iv - 1) * N
       end
     end
-    @inbounds for iv = [3 2] 
+    @inbounds for iv = [2 3] 
       @inbounds for k = 2 : M - 1
         ii += 1
         p[ii] = k + (iz - 1) * M + (iv - 1) * N
@@ -853,13 +853,13 @@ function Permutation(M,nz)
   ivTh = 3
   @inbounds for iz = 1 : nz
     ii += 1
-    p[ii] = 1 + (iz-1) * M  + (ivTh - 1) * N
-    ii += 1
     p[ii] = 1 + (iz-1) * M  + (ivw - 1) * N
     ii += 1
-    p[ii] = M + (iz - 1) * M + (ivw - 1) * N
+    p[ii] = 1 + (iz-1) * M  + (ivTh - 1) * N
     ii += 1
     p[ii] = M + (iz - 1) * M + (ivTh - 1) * N
+    ii += 1
+    p[ii] = M + (iz - 1) * M + (ivw - 1) * N
   end
   return p
 end  
@@ -1012,7 +1012,7 @@ function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
   nz = size(U,2)
   M = size(U,1)
   oneM = ones(M)
-  NF = size(z,3)
+  JacB = Array{SparseMatrixCSC}(undef,size(U,3))
   JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
   for ID = 1 : DG.NumI
     @views zCol = z[:,ID]
@@ -1020,12 +1020,17 @@ function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
     Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
     dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
       (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (FTB(1) - Phys.kappa)),N)
-    Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
-           sparse(Phys.Grav*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
-           spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
+#   Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
+#          sparse(Phys.Grav*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
+#          spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
+     Jac = [sparse(fac*I,N,N) (-diagz* dSdS * diagm(dpdRhoTh)) (-diagz * dSdM)
+            spzeros(N,N)  (sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)) -diagz * dSdM * diagm(Th)
+            sparse(Phys.Grav*I,N,N) (-diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)) (sparse(fac*I,N,N)-diagz * dMdM)]
+
+    JacB[ID] = Jac       
     JacLU[ID] = lu(Jac)           
   end
-  return JacLU
+  return JacB,JacLU
 end
 
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
