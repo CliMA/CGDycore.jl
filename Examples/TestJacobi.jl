@@ -203,7 +203,7 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
-nPanel = 2
+nPanel = 20
 #GridType = "HealPix"
 ns = 57
 OrdPoly = 3
@@ -218,6 +218,14 @@ Model = DyCore.ModelStruct{FTB}()
 Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
     GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization,ChangeOrient=2)
 
+z = zeros(nz+1)
+z[1] = 0.0
+for i = 1 : nz
+  z[i+1] = z[i] + 300.0
+end  
+
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,"Sleve",FTB(z[end]))
+
 OrdPrint = 1
 OrdPrintZ = 1
 TimeStepper = DyCore.TimeStepperStruct{FTB}(backend)
@@ -230,35 +238,20 @@ Global = DyCore.GlobalStruct{FTB}(backend,Grid,Model,TimeStepper,ParallelCom,Out
     NumV,NumTr)
 DG = FiniteElements.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Global.Grid,ParallelCom.Proc)
 
-dSdS,dSdM,dMdS,dMdM = DGSEM.InitJacDG(DG,nz,Param)
+NF = Grid.NumFaces
+F = zeros(4,3,NF)
+for iF = 1 : NF
+  for i = 1 : 4
+    iN = Grid.Faces[iF].N[i]  
+    F[i,1,iF] = Grid.Nodes[iN].P.x
+    F[i,2,iF] = Grid.Nodes[iN].P.y
+    F[i,3,iF] = Grid.Nodes[iN].P.z
+  end
+end  
 
-U = ones(OrdPolyZ+1,nz,DG.NumI,NumV)
-fac = 1.0
-Invfac = 1.0 / fac
-dz = ones(nz,DG.NumI)
 
-# Sparse matrices
-# Jac sparse Jacobian
-# JacLU decomposition of Jac
-Jac,JacLU = DGSEM.JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
+Metric = Grids.MetricStruct{FTB}(backend,DG.DoF,DG.OrdPolyZ+1,Grid.NumFaces,nz,DG.NumG)
 
-# First column
-J = Jac[1]
-# Reordering 
-# permutation vector 
-# M number of nodal elements
-# \rho_1 \theta_I1 \w_I1 i\rho_1 \theta_I1 \w_I1 ... \theta_11 w_11 \w_M1 \theta_M1 \theta_12 w_12 \w_M2 \theta_M2 
-p = DGSEM.Permutation(OrdPolyZ+1,nz)
-JP = J[p,p]
-nb = OrdPolyZ + 1 + 2 * (OrdPolyZ - 1)
-
-# 2x2 blocks inner versus boundary
-A = JP[1:nz*nb,1:nz*nb]
-B = JP[1:nz*nb,nz*nb+1:end]
-C = JP[nz*nb+1:end,1:nz*nb]
-D = JP[nz*nb+1:end,nz*nb+1:end]
-
-# Compressed storage
-JCache = DGSEM.JacDGVert{FTB}(backend,OrdPolyZ+1,nz,DG.NumI)
-# Filling the compressed storage
-DGSEM.FillJacDGVert!(JCache,U,DG,dz,Invfac,Phys)
+zS = zeros(DG.DoF,NF)
+Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,F,z,zS)
+stop

@@ -17,6 +17,25 @@ function JacobiCartDG3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs)
   KJacobiDG3Kernel!(XCartDG3Loc!,AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,ndrange=ndrange)
 end
 
+function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs)
+
+  backend = get_backend(X)
+  FT = eltype(X)
+
+  NF = size(X,5)
+  N = size(FE.xw,1)
+  M = FE.OrdPolyZ + 1
+  Nz = size(X,4)
+
+  NzG = min(div(512,N*N*M),Nz)
+  group = (N, N, M, NzG, 1)
+  ndrange = (N, N, M, Nz, NF)
+
+  KJacobiDG3Kernel! = JacobiDG3Kernel!(backend,group)
+
+  KJacobiDG3Kernel!(XSphereDG3Loc!,AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,ndrange=ndrange)
+end
+
 @kernel inbounds = true function JacobiDG3Kernel!(XDG3Loc!,AdaptGrid,X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
   @Const(DZ),@Const(F),@Const(z),@Const(zs))
 
@@ -40,7 +59,7 @@ end
     z1 = z[Iz]
     z2 = z[Iz+1]
     @views XDG3Loc!(AdaptGrid,XLoc[I,J,K,:,iz],
-      ksi[I],eta[J],zeta[K],F[:,:,IF],z1,z2,H,zs[I,J,IF])
+      ksi[I],eta[J],zeta[K],F[:,:,IF],z1,z2,H,zs[ID,IF])
     X[ID,K,1,Iz,IF] = XLoc[I,J,K,1,iz]
     X[ID,K,2,Iz,IF] = XLoc[I,J,K,2,iz]
     X[ID,K,3,Iz,IF] = XLoc[I,J,K,3,iz]
@@ -134,7 +153,7 @@ end
    F[3,3] * (one+ksi1)*(one+ksi2) +
    F[4,3] * (one-ksi1)*(one+ksi2))
   zLoc = half * ((one-ksi3) * z1 + (one+ksi3) * z2)
-  hR = AdaptGrid(zLoc,zs)
+  hR, = AdaptGrid(zLoc,zs)
   r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
   f = Rad / r
   X[1] = X1 / r * (Rad + hR)

@@ -1,5 +1,24 @@
 abstract type DGElement end
 abstract type CGElement end
+mutable struct CGTri{FT<:AbstractFloat,
+                        AT2<:AbstractArray} <: CGElement
+  DoF::Int                        
+  Dx1::Array{FT, 2}
+  Dx2::Array{FT, 2}
+end                        
+
+function CGTri{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFloat
+  DoF = 0
+  Dx1 = zeros(FT,0,0)
+  Dx2 = zeros(FT,0,0)
+  return CGTri{FT,
+                 typeof(Dx1)}(
+    DoF,
+    Dx1,
+    Dx2
+  )
+end
+
 mutable struct CGQuad{FT<:AbstractFloat,
                         AT1<:AbstractArray,
                         AT2<:AbstractArray,

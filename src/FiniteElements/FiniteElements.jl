@@ -8,6 +8,7 @@ using FastGaussQuadrature
 using KernelAbstractions
 using DynamicPolynomials
 
+include("ConstructDG.jl")
 include("FiniteElement.jl")	
 include("NumberingFem.jl")
 include("NumberingFemDG.jl")
