@@ -249,6 +249,7 @@ J = Jac[1]
 # M number of nodal elements
 # \rho_1 \theta_I1 \w_I1 i\rho_1 \theta_I1 \w_I1 ... \theta_11 w_11 \w_M1 \theta_M1 \theta_12 w_12 \w_M2 \theta_M2 
 p = DGSEM.Permutation(OrdPolyZ+1,nz)
+# 1 2 3 4 5 6 7 8 34 35 36 37 38 39 66 67 ⋮ 65 72 40 41 73 80 48 49 81 88 56 57 89 96 64
 JP = J[p,p]
 nb = OrdPolyZ + 1 + 2 * (OrdPolyZ - 1)
 
@@ -258,7 +259,63 @@ B = JP[1:nz*nb,nz*nb+1:end]
 C = JP[nz*nb+1:end,1:nz*nb]
 D = JP[nz*nb+1:end,nz*nb+1:end]
 
+# After reordering
+# [ A  B
+#   C  D ]
+
 # Compressed storage
 JCache = DGSEM.JacDGVert{FTB}(backend,OrdPolyZ+1,nz,DG.NumI)
 # Filling the compressed storage
 DGSEM.FillJacDGVert!(JCache,U,DG,dz,Invfac,Phys)
+
+# A Block
+#⎡⠑⢄⠀⠀⠀⠀⠀⣝⢿⣿⎤
+#⎢⠀⠀⠑⢄⠀⠀⠀⣿⣷⣝⎥
+#⎢⠀⠀⠀⠀⠑⢄⠀⣮⡻⣿⎥
+#⎢⠠⡀⠀⠀⡠⣤⣵⢟⠛⠊⎥
+#⎣⠀⠈⠢⡀⣿⣮⡻⠀⠑⢄⎦
+# The A block of one element in the vertical is stored in 3 small matrices
+# first indices row block, second indices column
+# JCache.A13 
+# JCache.A23
+# JCache.A32
+#
+# B Block
+#⎡⢹⡇⎤
+#⎢⢸⣇⎥
+#⎢⢸⡇⎥
+#⎢⡜⢣⎥
+#⎣⡇⢸⎦
+# Extended B block
+#⎡⠉⢹⡇⠀⎤
+#⎢⠀⢸⣇⣀⎥
+#⎢⠀⢸⡇⠀⎥
+#⎢⠀⡜⢣⠀⎥
+#⎣⠀⡇⢸⠀⎦
+# The B block of one element in the vertical is stored in 7 small matrices
+# first indices row block, second indices column
+# JCache.B1_23
+# JCache.B1_1
+# JCache.B1_4
+# JCache.B2_23
+# JCache.B3_14
+# Connection to neighboured Elements
+# JCache.B1m_34
+# JCache.B1p_12
+#
+# C Block
+#⎡⠄⠀⠀⠀⠤⠤⠤⠉⠉⠉⎤
+#⎣⠀⠀⠀⠐⠒⠒⠒⣀⣀⣀⎦
+# The C block of one element in the vertical is stored in 2 small matrices
+# first indices row block, second indices column
+# JCache.C23_2
+# JCache.C14_3
+# The entries of the first block comimg from the buoyancy term -g
+#
+# D Block of all elements in a vertical column
+#⎡⢟⣵⣤⠀⠀⠀⠀⠀⎤
+#⎢⠀⠛⢟⣵⣤⠀⠀⠀⎥
+#⎢⠀⠀⠀⠛⢟⣵⣤⠀⎥
+#⎣⠀⠀⠀⠀⠀⠛⢟⣵⎦
+# The D block is stored
+# JCache.SchurBand
