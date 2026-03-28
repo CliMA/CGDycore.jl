@@ -94,6 +94,8 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
       iDoF += 1
     end
   end
+  ksiGPU = zeros(backend,FT,size(ksi))
+  copyto!(ksiGPU,ksi)
 
   IntXE2F = zeros(OrdPoly+1,OrdPoly+1)
   for j = 1 : OrdPoly + 1
@@ -178,7 +180,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
     Stencil,
     NumG,
     NumI,
-    ksi,
+    ksiGPU,
     w,
     xw,
     xwCPU,
@@ -980,10 +982,8 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   PosDoFEGPU = KernelAbstractions.zeros(backend,FT,size(PosDoFE))
   copyto!(PosDoFEGPU,PosDoFE)
   if k+1 == DoFE
-    @show "Case 1"
     ConstructDG(k,ksi,Grids.Tri())
   else
-    @show "Case 2"
     Gradphi = ConstructDG(k+1,ksi,Grids.Tri())
     for iDoF = 1 : DoF
       for jDoF = 1 : DoF
