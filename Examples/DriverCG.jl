@@ -262,10 +262,18 @@ Model.Stretch = Stretch
 Model.StretchType = StretchType
 Model.State = State
 Model.ModelType = ModelType
-Model.HyperVisc = HyperVisc
-Model.HyperDCurl = HyperDCurl # =7.e15
-Model.HyperDGrad = HyperDGrad # =7.e15
-Model.HyperDDiv = HyperDDiv # =7.e15
+if HyperVisc == 0
+  Model.HyperVisc = CGSEM.HyperViscosity(nPanel)  
+end  
+if HyperDCurl == 0
+  Model.HyperDCurl = CGSEM.HyperViscosity(nPanel)
+end
+if HyperDGrad == 0
+  Model.HyperDGrad = CGSEM.HyperViscosity(nPanel)
+end
+if Model.HyperDDiv == 0
+  Model.HyperDDiv = CGSEM.HyperViscosity(nPanel)
+end
 
 if VelocityForm == "Spherical"
    VelForm = Examples.VelocityS()

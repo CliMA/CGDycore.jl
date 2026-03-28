@@ -29,5 +29,6 @@ include("GradKineticKernel.jl")
 include("GradPressureKernel.jl")
 include("DiscretizationCG.jl")
 include("Cache.jl")
+include("HyperViscosity.jl")
 
 end

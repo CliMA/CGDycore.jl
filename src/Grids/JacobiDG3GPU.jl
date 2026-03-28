@@ -17,8 +17,9 @@ function JacobiCartDG3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs)
   KJacobiDG3Kernel!(XCartDG3Loc!,AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,ndrange=ndrange)
 end
 
-function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs)
+function JacobiDG3GPU1!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad,::Grids.SphericalGrid)
 
+  @show "Hallo"
   backend = get_backend(X)
   FT = eltype(X)
 
@@ -33,10 +34,10 @@ function JacobiSphereDG3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs)
 
   KJacobiDG3Kernel! = JacobiDG3Kernel!(backend,group)
 
-  KJacobiDG3Kernel!(XSphereDG3Loc!,AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,ndrange=ndrange)
+  KJacobiDG3Kernel!(XSphereDG3Loc!,AdaptGrid,X,dXdxI,J,Rotate,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,ndrange=ndrange)
 end
 
-@kernel inbounds = true function JacobiDG3Kernel!(XDG3Loc!,AdaptGrid,X,dXdxI,JJ,@Const(ksi),@Const(zeta),@Const(D),
+@kernel inbounds = true function JacobiDG3Kernel!(XDG3Loc!,AdaptGrid,X,dXdxI,JJ,Rotate,@Const(ksi),@Const(zeta),@Const(D),
   @Const(DZ),@Const(F),@Const(z),@Const(zs))
 
   gi, gj, gk, gz, gF = @index(Group, NTuple)
@@ -111,6 +112,9 @@ end
       dXdx[I,J,K,1,3,iz] * dXdx[I,J,K,2,1,iz])
     dXdxI[3,3,K,ID,Iz,IF] = dXdx[I,J,K,1,1,iz] * dXdx[I,J,K,2,2,iz] -
       dXdx[I,J,K,1,2,iz] * dXdx[I,J,K,2,1,iz]
+    lon,lat,_ = cart2sphere(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF])
+    MR = MCart2Sphere(lon,lat)
+    @. Rotate[:,:,K,ID,Iz,IF] =  MR  
   end
 end  
 

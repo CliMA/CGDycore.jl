@@ -193,7 +193,7 @@ Parallel = true
 Phys = DyCore.PhysParameters{FTB}()
 
 RefineLevel = 6
-nz = 17
+nz = 4
 nQuad = 3
 nQuadM = 3 #2
 nQuadS = 3 #3
@@ -275,8 +275,18 @@ J = Jac[1]
 # M number of nodal elements
 # \rho_1 \theta_I1 \w_I1 i\rho_1 \theta_I1 \w_I1 ... \theta_11 w_11 \w_M1 \theta_M1 \theta_12 w_12 \w_M2 \theta_M2 
 p = DGSEM.Permutation(OrdPolyZ+1,nz)
-# 1 2 3 4 5 6 7 8 34 35 36 37 38 39 66 67 ⋮ 65 72 40 41 73 80 48 49 81 88 56 57 89 96 64
 JP = J[p,p]
+p = DGSEM.PermutationA(OrdPolyZ+1,nz)
+JA = J[p,p]
+stop
+
+p = DGSEM.permutation_jacobian_andres(OrdPolyZ+1,nz)
+JP = J[p,p]
+p1 =DGSEM.perm_to_condensed(OrdPolyZ+1, nz)
+JP1 = JP[p1,p1]
+p2 = DGSEM.permutate_variables_locally(OrdPolyZ+1, nz)
+JP2 = JP1[p2,p2]
+stop
 #96×96 SparseArrays.SparseMatrixCSC{Float64, Int64} with 866 stored entries:
 #⎡⠑⢄⠀⠀⠀⠀⠀⣝⢿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⎤
 #⎢⠀⠀⠑⢄⠀⠀⠀⣿⣷⣝⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣇⣀⠀⠀⠀⠀⠀⎥
@@ -303,6 +313,7 @@ JP = J[p,p]
 #⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠂⠀⠀⠠⠶⠶⠶⣉⣉⣉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⢟⣵⣤⠀⎥
 #⎣⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠂⠀⠀⠠⠶⠶⠶⣉⣉⣉⠀⠀⠀⠀⠀⠛⢟⣵⎦
 #
+stop
 nb = OrdPolyZ + 1 + 2 * (OrdPolyZ - 1)
 
 # 2x2 blocks inner versus boundary

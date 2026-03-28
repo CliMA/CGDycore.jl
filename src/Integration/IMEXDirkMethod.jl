@@ -69,25 +69,6 @@ function IMEXDirkMethod{FT}(Method) where FT<:AbstractFloat
     E=zeros(nStage,nStage)
     d=zeros(nStage)
     e=zeros(nStage)
-    D[2,1] = AE[2,1] 
-
-    D[3,1] = AE[3,1] - D[2,1] * AI[3,2] / AI[2,2]
-    D[3,2] = AE[3,2] 
-    E[3,2] = AI[3,2] / AI[2,2]
-
-    D[4,1] = AE[4,1] - D[2,1] * AI[4,2] / AI[2,2] - D[3,1] * AI[4,3] / AI[3,3]
-    D[4,2] = AE[4,2]                              - D[3,2] * AI[4,3] / AI[3,3]
-    D[4,3] = AE[4,3] 
-    E[4,2] = AI[4,2] / AI[2,2] - E[3,2] * AI[4,3] / AI[3,3]
-    E[4,3] = AI[4,3] / AI[3,3]
-
-    d[1] = bE[1] - D[2,1] * bI[2] / AI[2,2] - D[3,1] * bI[3] / AI[3,3] - D[4,1] * bI[4] / AI[4,4]
-    d[2] = bE[2]                            - D[3,2] * bI[3] / AI[3,3] - D[4,2] * bI[4] / AI[4,4]
-    d[3] = bE[3]                                                       - D[4,3] * bI[4] / AI[4,4]
-    d[4] = bE[4] 
-    e[2] = bI[2] / AI[2,2] - bI[3] * E[3,2] / AI[3,3]  - bI[4] * E[4,2] / AI[4,4]
-    e[3] = bI[3] / AI[3,3]                            - bI[4] * E[4,3] / AI[4,4]
-    e[4] = bI[4] / AI[4,4]
   elseif str == "AR2"
     nStage = 3
     s2 = sqrt(2)

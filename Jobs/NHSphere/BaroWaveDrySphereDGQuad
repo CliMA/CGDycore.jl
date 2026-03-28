@@ -14,7 +14,7 @@ julia --project Examples/DriverDG.jl \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
-  --VelocityForm="Cartesian" \
+  --VelocityForm="Spherical" \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=false \
@@ -28,11 +28,11 @@ julia --project Examples/DriverDG.jl \
   --SimDays=10 \
   --SimHours=0 \
   --SimSeconds=0 \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=1 \
   --PrintDays=0 \
-  --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \

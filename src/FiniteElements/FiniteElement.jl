@@ -979,6 +979,21 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   copyto!(PL2GPU,PL2)
   PosDoFEGPU = KernelAbstractions.zeros(backend,FT,size(PosDoFE))
   copyto!(PosDoFEGPU,PosDoFE)
+  if k+1 == DoFE
+    @show "Case 1"
+    ConstructDG(k,ksi,Grids.Tri())
+  else
+    @show "Case 2"
+    Gradphi = ConstructDG(k+1,ksi,Grids.Tri())
+    for iDoF = 1 : DoF
+      for jDoF = 1 : DoF
+        Dx1CPU[iDoF,jDoF] = Gradphi[jDoF,1](ksi[1,iDoF],ksi[2,iDoF])
+        Dx2CPU[iDoF,jDoF] = Gradphi[jDoF,2](ksi[1,iDoF],ksi[2,iDoF])
+      end
+    end
+  end
+  copyto!(Dx1,Dx1CPU)
+  copyto!(Dx2,Dx2CPU)
 
   return DGTri{FT,
                typeof(wGPU),

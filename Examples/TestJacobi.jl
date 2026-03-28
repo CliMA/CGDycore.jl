@@ -203,11 +203,13 @@ LatB = 0.0
 
 #Quad
 GridType = "CubedSphere"
+#GridType = "TriangularSphere"
+RefineLevel = 3
 nPanel = 20
 #GridType = "HealPix"
 ns = 57
-OrdPoly = 3
-OrdPolyZ = 7
+OrdPoly = 4
+OrdPolyZ = 4
 
 #Grid construction
 RadEarth = Phys.RadEarth
@@ -223,6 +225,8 @@ z[1] = 0.0
 for i = 1 : nz
   z[i+1] = z[i] + 300.0
 end  
+@. Grid.z = z
+Grid.nz = nz
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,"Sleve",FTB(z[end]))
 
@@ -236,22 +240,89 @@ NumV = 5
 NumTr = 0
 Global = DyCore.GlobalStruct{FTB}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
     NumV,NumTr)
-DG = FiniteElements.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Global.Grid,ParallelCom.Proc)
+DGMethod = "Kubatko2LGL"
+if Grid.Type == Grids.Quad()
+  DG = FiniteElements.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,ParallelCom.Proc)
+else
+  DGMethod = "Kubatko2LGL"
+  DG = FiniteElements.DGTri{FTB}(backend,DGMethod,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,ParallelCom.Proc)  
+end  
+
+if Grid.Type == Grids.Tri()
+  if DG.k+1 == DG.DoFE
+    @show "Case 1"  
+    FiniteElements.ConstructDG(FE.k,DG.ksiCPU,Grid.Type)
+  else
+    @show "Case 2"  
+    Gradphi = FiniteElements.ConstructDG(DG.k+1,DG.ksiCPU,Grid.Type)
+    Dx1 = zeros(DG.DoF,DG.DoF)
+    Dx2 = zeros(DG.DoF,DG.DoF)
+    for iDoF = 1 : DG.DoF
+      for jDoF = 1 : DG.DoF
+        Dx1[iDoF,jDoF] = Gradphi[jDoF,1](DG.ksiCPU[1,iDoF],DG.ksiCPU[2,iDoF])
+        Dx2[iDoF,jDoF] = Gradphi[jDoF,2](DG.ksiCPU[1,iDoF],DG.ksiCPU[2,iDoF])
+      end
+    end
+  end
+end
+@show size(Dx1)
 
 NF = Grid.NumFaces
-F = zeros(4,3,NF)
+@show Grid.Type
+if Grid.Type == Grids.Tri()
+  nP = 3
+elseif Grid.Type == Grids.Quad()
+  nP = 4
+end  
+F = zeros(nP,3,NF)
 for iF = 1 : NF
-  for i = 1 : 4
+  for i = 1 : nP
     iN = Grid.Faces[iF].N[i]  
     F[i,1,iF] = Grid.Nodes[iN].P.x
     F[i,2,iF] = Grid.Nodes[iN].P.y
     F[i,3,iF] = Grid.Nodes[iN].P.z
   end
 end  
+@show F[1,:,1]
+@show F[2,:,1]
+@show F[3,:,1]
+@show size(F)
 
 
 Metric = Grids.MetricStruct{FTB}(backend,DG.DoF,DG.OrdPolyZ+1,Grid.NumFaces,nz,DG.NumG)
 
 zS = zeros(DG.DoF,NF)
-Grids.JacobiSphereDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,DG,F,z,zS)
+Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,Metric.Rotate,DG,F,z,zS,Grid.Rad,Grid.Type,Grid.Form)
+@show F[1,:,1]
+@show F[2,:,1]
+@show F[3,:,1]
+@show size(F)
+NumberThreadGPU = 256
+MetricNeu = FiniteElements.Metric!(backend,FTB,DG,Grid,NumberThreadGPU,zS,Grid.Type)
+@show Metric.dXdxI[1,:,1,1,1,1]
+@show MetricNeu.dXdxI[1,:,1,1,1,1]
+@show Metric.dXdxI[2,:,1,1,1,1]
+@show MetricNeu.dXdxI[2,:,1,1,1,1]
+@show Metric.dXdxI[3,:,1,1,1,1]
+@show MetricNeu.dXdxI[3,:,1,1,1,1]
+@show "-----------------------"
+
+@show Metric.dXdxI[1, :, 5, 1, 4, 1811]
+@show MetricNeu.dXdxI[1, :, 5, 1, 4, 1811]
+@show Metric.dXdxI[2, :, 5, 1, 4, 1811]
+@show MetricNeu.dXdxI[2, :, 5, 1, 4, 1811]
+@show Metric.dXdxI[3, :, 5, 1, 4, 1811]
+@show MetricNeu.dXdxI[3, :, 5, 1, 4, 1811]
+@show Metric.X[1,1,:,1,1]
+@show MetricNeu.X[1,1,:,1,1]
+@show sum(abs.(MetricNeu.X-Metric.X))
+@show sum(abs.(MetricNeu.dXdxI-Metric.dXdxI))
+@show findmax(abs.(MetricNeu.dXdxI-Metric.dXdxI))
+@show findmin(abs.(MetricNeu.dXdxI-Metric.dXdxI))
+@show sum(abs.(MetricNeu.J-Metric.J))
+@show findmax(abs.(MetricNeu.J-Metric.J))
+@show Metric.J[25, 5, 4, 1790],MetricNeu.J[25, 5, 4, 1790]
+@show sum(abs.(MetricNeu.Rotate-Metric.Rotate))
+@show sum(abs.(MetricNeu.Rotate))
+@show sum(abs.(Metric.Rotate))
 stop

@@ -490,7 +490,6 @@ end
 #   Rotate[3,3,K,ID,Iz,IF] = sin(lat)  
     MR = MCart2Sphere(lon,lat)
     @. Rotate[:,:,K,ID,Iz,IF] =  MR
-
   end
 end  
 

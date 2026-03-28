@@ -1,4 +1,4 @@
-function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Quad)
+function DiscretizationDG(backend,FT,DG,Exchange,Global,zS,GridType::Grids.Quad)
 # Discretization
   Grid = Global.Grid
   OP = DG.DoFE
@@ -13,6 +13,7 @@ function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Quad)
 
 
   nQuad = DoF
+#=
   Metric = Grids.MetricStruct{FT}(backend,DoF,OPZ,Global.Grid.NumFaces,nz,NumG)
   F = zeros(4,3,NF)
   FGPU = KernelAbstractions.zeros(backend,FT,4,3,NF)
@@ -31,8 +32,15 @@ function DiscretizationDG(backend,FT,DG,Exchange,Global,zs,GridType::Grids.Quad)
     F[4,3,iF] = Grid.Faces[iF].P[4].z
   end
   copyto!(FGPU,F)
-  Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
-    Metric.Rotate,DG,FGPU,Grid.z,zs,Grid.Rad,GridType,Grid.Form)
+  Grids.JacobiDG3GPU1!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,
+    Metric.Rotate,DG,FGPU,Grid.z,zS,Grid.Rad,GridType,Grid.Form)
+=#  
+  Metric = FiniteElements.Metric!(backend,FT,DG,Grid,NumberThreadGPU,zS,GridType)
+# @show sum(abs.(Metric.X-MetricNeu.X))
+# @show sum(abs.(Metric.J-MetricNeu.J))
+# @show sum(abs.(Metric.dXdxI-MetricNeu.dXdxI))
+# @show sum(abs.(Metric.Rotate-MetricNeu.Rotate))
+# stop
   Metric.zP = KernelAbstractions.zeros(backend,FT,nz,NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,nz,NumG)
 

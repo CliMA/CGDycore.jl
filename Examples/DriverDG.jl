@@ -266,11 +266,16 @@ Model.HyperDCurl = HyperDCurl # =7.e15
 Model.HyperDGrad = HyperDGrad # =7.e15
 Model.HyperDDiv = HyperDDiv # =7.e15
 
+@show VelocityForm
 if VelocityForm == "Spherical"  
+  @show "I",VelocityForm
    VelForm = Examples.VelocityS()
 elseif VelocityForm == "Cartesian"  
    VelForm = Examples.VelocityC()
+else
+   VelForm = Examples.VelocityC()
 end   
+@show VelForm
 
 # Equation
 if Equation == "CompressibleShallow"
