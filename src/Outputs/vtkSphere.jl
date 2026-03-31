@@ -319,7 +319,7 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
             end
           else
             @inbounds for i=1:2*NumPoint
-              pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
+              @. pts[:,ipts] = [x[i,1],x[i,2],x[i,3]]
               ipts = ipts + 1
             end
           end

@@ -1,8 +1,10 @@
 function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   backend = get_backend(F)
+  FT = eltype(F)
   Model = Global.Model
   Grid = Global.Grid
   GridType = Grid.Type
+  Buo = Model.BuoyancyFun
   Damp = Model.Damp
   Cor = Model.CoriolisFun
   Force = Model.Force
@@ -30,6 +32,7 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   FluxSplitVolumeNonLinH(Model.FluxAverage,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
   FluxSplitVolumeNonLinV(Model.FluxAverage,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+
   @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV],Exchange)
   @views @. Aux[:,:,DG.NumI+1:DG.NumG,1] = Model.Pressure(U[:,:,DG.NumI+1:DG.NumG,5])
 
@@ -42,6 +45,10 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
     Sources.Coriolis!(Cor,F,U,DG.Glob,Metric.X,NumberThreadGPU)
   end
 
+  if Model.Buoyancy
+    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
+  end  
+
   if Model.Damping
     Sources.Damping!(Damp,F,U,DG.Glob,Metric.X,NumberThreadGPU)  
   end
@@ -49,6 +56,10 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   if Model.Forcing
     Sources.Forcing!(Force,F,U,Aux,DG.Glob,Metric.X,NumberThreadGPU)  
   end
+  TwoDim = true
+  if TwoDim
+    @. FF[:,:,:,3] = 0   
+  end  
 
   @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
 
@@ -190,6 +201,10 @@ function Fcn!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   if Model.Coriolis
     Sources.Coriolis!(Cor,F,U,DG.Glob,Metric.X,NumberThreadGPU)
   end
+
+  if Model.Buoyancy
+    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
+  end  
 
   if Model.Damping
     Sources.Damping!(Damp,F,U,DG.Glob,Metric.X,NumberThreadGPU)  

@@ -49,6 +49,10 @@ function RungeKuttaExMethod{FT}(Method) where FT<:AbstractFloat
     a[3,2] = 1/2
     a[4,3] = 1
     b = [1/6,1/3,1/3,1/6]
+  elseif str == "RK1"
+    nStage = 1
+    a = zeros(FT,nStage,nStage)
+    b = [1]
   end  
 
   return RungeKuttaExMethod{FT}(

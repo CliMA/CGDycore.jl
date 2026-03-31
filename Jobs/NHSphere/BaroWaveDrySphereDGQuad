@@ -31,8 +31,8 @@ julia --project Examples/DriverDG.jl \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DGQuad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
-  --PrintDays=1 \
+  --PrintHours=1 \
+  --PrintDays=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
@@ -48,7 +48,7 @@ julia --project Examples/DriverDG.jl \
   --GridType="CubedSphere" \
   --nLon=20 \
   --nLat=20 \
-  --nz=17 \
+  --nz=13 \
   --nPanel=20 \
   --H=30000.0 \
   --OrdPoly=4 \

@@ -78,7 +78,7 @@ end
   VLoc = @localmem eltype(F) (M,Nz,TilesDim,NV)
   AuxLoc = @localmem eltype(F) (M,Nz,TilesDim,NAUX)
   FLoc = @localmem eltype(F) (M,Nz,TilesDim,NV)
-  dXdxILoc = @localmem eltype(F) (3,M,Nz,TilesDim)
+  dXdxILoc = @localmem eltype(dXdxI) (3,M,Nz,TilesDim)
   hTilde = @private eltype(F) (NV,)
 
   if ID <= ND
@@ -131,7 +131,7 @@ end
   VLoc = @localmem eltype(F) (N,N,TilesDim,NV)
   AuxLoc = @localmem eltype(F) (N,N,TilesDim,NAUX)
   FLoc = @localmem eltype(F) (N,N,TilesDim,NV)
-  dXdxILoc = @localmem eltype(F) (2,3,N,N,TilesDim)
+  dXdxILoc = @localmem eltype(dXdxI) (2,3,N,N,TilesDim)
   fTilde = @private eltype(F) (NV,)
   gTilde = @private eltype(F) (NV,)
 
@@ -195,7 +195,7 @@ end
   VLoc = @localmem eltype(F) (N,N,TilesDim,NV)
   AuxLoc = @localmem eltype(F) (N,N,TilesDim,NAUX)
   FLoc = @localmem eltype(F) (N,N,TilesDim,NV)
-  dXdxILoc = @localmem eltype(F) (2,3,N,N,TilesDim)
+  dXdxILoc = @localmem eltype(dXdxI) (2,3,N,N,TilesDim)
   fTilde = @private eltype(F) (NV,)
   gTilde = @private eltype(F) (NV,)
 
@@ -279,7 +279,7 @@ end
   VLoc = @localmem eltype(F) (N,TilesDim,NV)
   AuxLoc = @localmem eltype(F) (N,TilesDim,NAUX)
   FLoc = @localmem eltype(F) (N,TilesDim,NV)
-  dXdxILoc = @localmem eltype(F) (2,3,N,TilesDim)
+  dXdxILoc = @localmem eltype(dXdxI) (2,3,N,TilesDim)
   fTilde = @private eltype(F) (NV,)
   gTilde = @private eltype(F) (NV,)
 

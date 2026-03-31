@@ -200,6 +200,33 @@ Decomp = "EqualArea"
 nLat = 0
 nLon = 0
 LatB = 0.0
+H=10000.0
+Lx=20000.0
+Ly=2000.0
+x0=0.0
+y0=0.0
+nz=16
+nx=32
+ny=2
+BoundaryWE="Period" 
+BoundarySN="Period" 
+BoundaryBT="" 
+TopoS = ""
+P1 = 0.0
+P2 = 0.0
+P3 = 0.0
+P4 = 0.0
+  Boundary = Grids.Boundary()
+  Boundary.WE = BoundaryWE
+  Boundary.SN = BoundarySN
+  Boundary.BT = BoundaryBT
+  Topography=(TopoS=TopoS,
+              H=H,
+              P1=P1,
+              P2=P2,
+              P3=P3,
+              P4=P4,
+              )
 
 #Quad
 GridType = "CubedSphere"
@@ -217,8 +244,12 @@ Discretization = "DiscretizationDG"
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
 
-Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
-    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization,ChangeOrient=2)
+#Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,
+#    GridType,Decomp,RadEarth,Model,ParallelCom;Discretization=Discretization,ChangeOrient=2)
+
+Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;
+  order=true,GridType="Quad",Discretization="CG",ChangeOrient=3)
+
 
 z = zeros(nz+1)
 z[1] = 0.0
@@ -248,24 +279,6 @@ else
   DG = FiniteElements.DGTri{FTB}(backend,DGMethod,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,ParallelCom.Proc)  
 end  
 
-if Grid.Type == Grids.Tri()
-  if DG.k+1 == DG.DoFE
-    @show "Case 1"  
-    FiniteElements.ConstructDG(FE.k,DG.ksiCPU,Grid.Type)
-  else
-    @show "Case 2"  
-    Gradphi = FiniteElements.ConstructDG(DG.k+1,DG.ksiCPU,Grid.Type)
-    Dx1 = zeros(DG.DoF,DG.DoF)
-    Dx2 = zeros(DG.DoF,DG.DoF)
-    for iDoF = 1 : DG.DoF
-      for jDoF = 1 : DG.DoF
-        Dx1[iDoF,jDoF] = Gradphi[jDoF,1](DG.ksiCPU[1,iDoF],DG.ksiCPU[2,iDoF])
-        Dx2[iDoF,jDoF] = Gradphi[jDoF,2](DG.ksiCPU[1,iDoF],DG.ksiCPU[2,iDoF])
-      end
-    end
-  end
-end
-@show size(Dx1)
 
 NF = Grid.NumFaces
 @show Grid.Type
@@ -307,21 +320,21 @@ MetricNeu = FiniteElements.Metric!(backend,FTB,DG,Grid,NumberThreadGPU,zS,Grid.T
 @show MetricNeu.dXdxI[3,:,1,1,1,1]
 @show "-----------------------"
 
-@show Metric.dXdxI[1, :, 5, 1, 4, 1811]
-@show MetricNeu.dXdxI[1, :, 5, 1, 4, 1811]
-@show Metric.dXdxI[2, :, 5, 1, 4, 1811]
-@show MetricNeu.dXdxI[2, :, 5, 1, 4, 1811]
-@show Metric.dXdxI[3, :, 5, 1, 4, 1811]
-@show MetricNeu.dXdxI[3, :, 5, 1, 4, 1811]
-@show Metric.X[1,1,:,1,1]
-@show MetricNeu.X[1,1,:,1,1]
+#@show Metric.dXdxI[1, :, 5, 1, 4, 1811]
+#@show MetricNeu.dXdxI[1, :, 5, 1, 4, 1811]
+#@show Metric.dXdxI[2, :, 5, 1, 4, 1811]
+#@show MetricNeu.dXdxI[2, :, 5, 1, 4, 1811]
+#@show Metric.dXdxI[3, :, 5, 1, 4, 1811]
+#@show MetricNeu.dXdxI[3, :, 5, 1, 4, 1811]
+#@show Metric.X[1,1,:,1,1]
+#@show MetricNeu.X[1,1,:,1,1]
 @show sum(abs.(MetricNeu.X-Metric.X))
 @show sum(abs.(MetricNeu.dXdxI-Metric.dXdxI))
 @show findmax(abs.(MetricNeu.dXdxI-Metric.dXdxI))
 @show findmin(abs.(MetricNeu.dXdxI-Metric.dXdxI))
 @show sum(abs.(MetricNeu.J-Metric.J))
 @show findmax(abs.(MetricNeu.J-Metric.J))
-@show Metric.J[25, 5, 4, 1790],MetricNeu.J[25, 5, 4, 1790]
+@show Metric.J[17, 4, 15, 32],MetricNeu.J[17, 4, 15, 32]
 @show sum(abs.(MetricNeu.Rotate-Metric.Rotate))
 @show sum(abs.(MetricNeu.Rotate))
 @show sum(abs.(Metric.Rotate))

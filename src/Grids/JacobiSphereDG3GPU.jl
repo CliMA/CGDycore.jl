@@ -182,6 +182,8 @@ end
 
 function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad,::Grids.SphericalGrid)
 
+  @show "Hallo Exact"
+
   backend = get_backend(X)
   FT = eltype(X)
 
