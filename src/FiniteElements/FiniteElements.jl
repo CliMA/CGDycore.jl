@@ -2,6 +2,8 @@ module FiniteElements
 
 import ..DG
 import ..Grids
+import ..Parallels
+import ..Models
 
 using LinearAlgebra
 using FastGaussQuadrature

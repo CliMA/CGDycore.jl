@@ -64,6 +64,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
         TimeIntegration!(IntMethod,U,dt,Fcn,CacheAux,Jac,FE,Metric,Phys,CacheInt,JCache,Exchange,
           Global,Param,VelForm)
         if mod(i,PrintInt) == 0
+          @. @views U[:,:,FE.BoundaryDoF,3] = FT(0)  
           Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
         end
       end
@@ -73,6 +74,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
       end
     end
   end  
+  @. @views U[:,:,FE.BoundaryDoF,3] = FT(0)  
   Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
 
 end

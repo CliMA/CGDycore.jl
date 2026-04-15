@@ -22,7 +22,6 @@ end
 mutable struct CGQuad{FT<:AbstractFloat,
                         AT1<:AbstractArray,
                         AT2<:AbstractArray,
-                        AT3<:AbstractArray,
                         IT1<:AbstractArray,
                         IT2<:AbstractArray} <: CGElement
     DoFN::Int                    
@@ -45,13 +44,10 @@ mutable struct CGQuad{FT<:AbstractFloat,
     xwZCPU::Array{FT, 1}
     IntZE2F::Array{FT, 2}
     DW::AT2
-    DWT::Array{FT, 2}
     DS::AT2
     DST::Array{FT, 2}
     DSZ::AT2
     S::Array{FT, 2}
-    M::AT3
-    MMass::AT2
     BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
     InterOutputH::AT2
@@ -94,7 +90,7 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
       iDoF += 1
     end
   end
-  ksiGPU = zeros(backend,FT,size(ksi))
+  ksiGPU = KernelAbstractions.zeros(backend,FT,size(ksi))
   copyto!(ksiGPU,ksi)
 
   IntXE2F = zeros(OrdPoly+1,OrdPoly+1)
@@ -117,7 +113,6 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
   DW = KernelAbstractions.zeros(backend,FT,size(DWCPU))
   copyto!(DW,DWCPU)
   DST=DS'
-  DWT=DW'
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
@@ -135,8 +130,6 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
   BoundaryDoF = KernelAbstractions.zeros(backend,Int,size(BoundaryDoFCPU))
   copyto!(BoundaryDoF,BoundaryDoFCPU)
   copyto!(Glob,GlobCPU)
-  M = KernelAbstractions.zeros(backend,FT,nz,NumG,2)
-  MMass = KernelAbstractions.zeros(backend,FT,nz,NumG)
   DoFPrint = (OrdPrint + 1) * (OrdPrint + 1)
   InterOutputHCPU = zeros(Float64,DoFPrint,DoF)
   dd = 2 / (OrdPrint + 1)
@@ -167,7 +160,6 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
   return CGQuad{FT,
                  typeof(w),
                  typeof(DW),
-                 typeof(M),
                  typeof(MasterSlave),
                  typeof(Stencil)}(
     DoFN,
@@ -190,13 +182,10 @@ function CGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,Grid) where FT<:AbstractFl
     xwZCPU,
     IntZE2F,
     DW,
-    DWT,
     DS,
     DST,
     DSZ,
     S,
-    M,
-    MMass,
     BoundaryDoF,
     MasterSlave,
     InterOutputH,
@@ -235,7 +224,6 @@ mutable struct DGQuad{FT<:AbstractFloat,
     xwZCPU::Array{FT, 1}
     IntZE2F::Array{FT, 2}
     DW::AT2
-    DWT::Array{FT, 2}
     DS::AT2
     DST::Array{FT, 2}
     DSZ::AT2
@@ -344,7 +332,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   DW = KernelAbstractions.zeros(backend,FT,size(DWCPU))
   copyto!(DW,DWCPU)
   DST=DS'
-  DWT=DW'
   DV = KernelAbstractions.zeros(backend,FT,size(DVCPU))
   copyto!(DV,DVCPU)
   DVT=DV'
@@ -456,7 +443,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     xwZCPU,
     IntZE2F,
     DW,
-    DWT,
     DS,
     DST,
     DSZ,

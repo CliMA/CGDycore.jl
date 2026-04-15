@@ -31,7 +31,7 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
     Grid=Grids.InputGridMPAS2Triangular(backend,FT,"Grid/x1.2562.grid.nc", 
       Grids.OrientFaceSphere,RadEarth,nz;ChangeOrient)
   elseif occursin("SphericalGrid",GridType)
-    Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz;ChangeOrient)
+    Grid = SphericalGrid(backend,FT,nLon,nLat,LatB,Grids.OrientFaceSphere,RadEarth,nz;order=order)
   elseif occursin("ICON",GridType)
     Grid=Grids.InputGridICON(backend,FT,"Grid/icon_grid_0009_R02B03_R.nc", Grids.OrientFaceSphere,
       RadEarth,nz;ChangeOrient)

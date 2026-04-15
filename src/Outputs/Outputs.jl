@@ -10,11 +10,13 @@ using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using LinearAlgebra
 using WriteVTK
+using HDF5
 
 
 include("vtkCG.jl")	
 include("vtkCGGrid.jl")	
 include("vtkSphere.jl")
 include("vtkOutputKernel.jl")
+include("HDF5vtk.jl")
 
 end

@@ -53,6 +53,7 @@ end
 mutable struct OutputStruct
   vtk::Int
   vtkFileName::String
+  hdf5FileName::String
   Flat::Bool
   cNames::Array{String, 1}
   nPanel::Int
@@ -75,6 +76,7 @@ end
 function OutputStruct()
   vtk=0
   vtkFileName=""
+  hdf5FileName=""
   Flat=false
   cNames=[]
   nPanel=1
@@ -96,6 +98,7 @@ function OutputStruct()
   return OutputStruct(
   vtk,
   vtkFileName,
+  hdf5FileName,
   Flat,
   cNames,
   nPanel,
@@ -289,6 +292,7 @@ end
 Base.@kwdef mutable struct ModelStruct{FT}
   Problem::String
   Discretization::String
+  Dimension::Int
   Profile::Bool
   ProfRho::String
   ProfTheta::String
@@ -394,6 +398,7 @@ end
 function ModelStruct{FT}() where FT <:AbstractFloat
   Problem = ""
   Discretization = "CG"
+  Dimension = 3
   Profile = false
   ProfRho = ""
   ProfTheta = ""
@@ -497,6 +502,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   return ModelStruct{FT}(
    Problem,
    Discretization,
+   Dimension,
    Profile,
    ProfRho,
    ProfTheta,

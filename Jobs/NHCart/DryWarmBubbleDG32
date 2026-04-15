@@ -12,6 +12,7 @@ julia --project Examples/DriverDG.jl \
   --Equation="CompressibleShallow" \
   --State="Dry" \
   --Discretization="DG" \
+  --Dimension=2 \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
   --VelocityForm="Cartesian" \

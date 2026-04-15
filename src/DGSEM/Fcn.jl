@@ -56,12 +56,13 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   if Model.Forcing
     Sources.Forcing!(Force,F,U,Aux,DG.Glob,Metric.X,NumberThreadGPU)  
   end
-  TwoDim = true
-  if TwoDim
-    @. FF[:,:,:,3] = 0   
+
+  if Model.Dimension == 2
+    @. F[:,:,:,3] = 0   
   end  
 
   @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+
 
 end
 

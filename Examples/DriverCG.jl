@@ -200,6 +200,7 @@ if State == "MoistInternalEnergy" || State == "MoistTotalEnergy"
 elseif State == "IceInternalEnergy"
   Model.NumThermo +=3
 end  
+Model.NumAux = Model.NumThermo
 Model.Problem=Problem
 if ProfRho == ""
   Model.ProfRho = Problem
@@ -267,12 +268,18 @@ if HyperVisc == 0
 end  
 if HyperDCurl == 0
   Model.HyperDCurl = CGSEM.HyperViscosity(nPanel)
+else
+  Model.HyperDCurl = HyperDCurl  
 end
 if HyperDGrad == 0
   Model.HyperDGrad = CGSEM.HyperViscosity(nPanel)
+else
+  Model.HyperDGrad = HyperDGrad   
 end
 if Model.HyperDDiv == 0
   Model.HyperDDiv = CGSEM.HyperViscosity(nPanel)
+else
+  Model.HyperDDiv = HyperDDiv  
 end
 
 if VelocityForm == "Spherical"
@@ -624,7 +631,7 @@ Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
 
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
-  O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
+# O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
   Fcn = (CGSEM.Fcn!,)
   dt = (dtau,)
 end  

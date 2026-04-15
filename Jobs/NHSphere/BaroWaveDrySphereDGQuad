@@ -1,7 +1,7 @@
 #!/bin/bash
 julia --project Examples/DriverDG.jl \
   --Problem="BaroWaveDrySphere" \
-  --FloatTypeBackend="Float32" \
+  --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
   --NumV=5 \
   --NumTr=0 \
@@ -45,7 +45,8 @@ julia --project Examples/DriverDG.jl \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \
-  --GridType="CubedSphere" \
+  --GridType="SphericalGrid" \
+  --RefineLevel=4 \
   --nLon=20 \
   --nLat=20 \
   --nz=13 \

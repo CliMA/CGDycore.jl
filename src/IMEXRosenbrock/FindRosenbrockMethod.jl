@@ -14,7 +14,6 @@ function FindRosenbrockMethod()
 
   Ros = INT.RosenbrockMethod{FT}(RK,gammaD,gamma)
   O = OrderConditionsRosenbrockW(Ros,Order)
-  @show O
   return O,Ros
 end  
 

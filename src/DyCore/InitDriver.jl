@@ -1,28 +1,3 @@
-function InitSphereDG2(backend,FT,OrdPoly,OrdPolyZ,H,Topography,Model,Phys,TopoProfile,Exchange,Grid,ParallelCom)    
-  nz = Grid.nz 
-  Proc = ParallelCom.Proc
-  ProcNumber = ParallelCom.ProcNumber
-
-  TimeStepper = TimeStepperStruct{FT}(backend)
-
-  Output = OutputStruct()
-  DoF = (OrdPoly + 1) * (OrdPoly + 1)
-  Global = GlobalStruct{FT}(backend,Grid,Model,TimeStepper,ParallelCom,Output,DoF,nz,
-    Model.NumV,Model.NumTr)
-  DG = FiniteElements.DGQuad{FT}(backend,OrdPoly,OrdPolyZ,Global.Grid,ParallelCom.Proc)
-
-  (DG,Metric) = DiscretizationDG2(backend,FT,Grids.JacobiSphereDG2GPU!,DG,Exchange,Global)
-
-  # Output partition
-  nzTemp = Global.Grid.nz
-  Global.Grid.nz = 1
-  vtkCachePart = Outputs.vtkStruct{FT}(backend,1,Grids.TransSphereX!,DG,Metric,Global)
-  Outputs.unstructured_vtkPartition(vtkCachePart,Global.Grid.NumFaces,Proc,ProcNumber)
-  Global.Grid.nz = nzTemp
-
-  return DG, Metric, Global
-end  
-
 function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,Topography,Model,
   Phys,TopoProfile,CellToProc,Grid,ParallelCom)
   nz = Grid.nz
@@ -63,7 +38,8 @@ function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,
     zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-  Metric = DGSEM.DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  Metric = FiniteElements.MetricCompute(backend,FT,DG,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output partition
   nzTemp = Global.Grid.nz
@@ -80,6 +56,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
   nz = Grid.nz 
   Proc = ParallelCom.Proc
   ProcNumber = ParallelCom.ProcNumber
+  NumberThreadGPU = ParallelCom.NumberThreadGPU
 
   TimeStepper = TimeStepperStruct{FT}(backend)
 
@@ -114,7 +91,8 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
   end
 
 
-  (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
+# (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
+  Metric = FiniteElements.MetricCompute(backend,FT,CG,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output Orography
   Global.Output.dTol = 2*pi / 30
@@ -233,7 +211,9 @@ function InitCartDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,To
     zS = Grids.Orography(backend,FT,DG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-  Metric = DGSEM.DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
+# Metric = DGSEM.DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  Metric = FiniteElements.Metric!(backend,FT,DG,Grid,NumberThreadGPU,zS)
 
   # Output Orography
 # nzTemp = Global.Grid.nz

@@ -14,6 +14,7 @@ using ArgParse
 parsed_args = Parameters.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
+Dimension = parsed_args["Dimension"]
 VelocityForm = parsed_args["VelocityForm"]
 FluxDG = parsed_args["FluxDG"]
 InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
@@ -126,6 +127,7 @@ PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
 vtkFileName = parsed_args["vtkFileName"]
+hdf5FileName = parsed_args["hdf5FileName"]
 Flat = parsed_args["Flat"]
 # Device
 Device = parsed_args["Device"]
@@ -188,6 +190,9 @@ Phys = DyCore.PhysParameters{FTB}()
 
 #ModelParameters
 Model = DyCore.ModelStruct{FTB}()
+
+#Dimension
+Model.Dimension = Dimension
 
 # Initial conditions
 Model.NumV = NumV
@@ -502,6 +507,7 @@ end
 Global.Output.nPanel = nPanel
 Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
+Global.Output.hdf5FileName = hdf5FileName
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
 
 # TimeStepper

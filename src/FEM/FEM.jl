@@ -23,6 +23,7 @@ using SparseArrays
 import SparseArrays.ldiv!
 
 export parse_commandline 
+export Outputs
 
 abstract type FiniteElement end
 abstract type ScalarElement <: FiniteElement end
@@ -59,7 +60,6 @@ include("ModelFEM.jl")
 include("Fcn.jl")
 include("TimestepperFEM.jl")
 include("Interpolate.jl")
-
 
 
 end

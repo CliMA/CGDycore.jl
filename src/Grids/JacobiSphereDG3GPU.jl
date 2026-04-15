@@ -180,7 +180,7 @@ end
 end  
 
 
-function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad,::Grids.SphericalGrid)
+function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,FE,F,z,zs,Rad,::Grids.Quad,::Grids.SphericalGrid)
 
   @show "Hallo Exact"
 
@@ -198,10 +198,10 @@ function JacobiDG3GPU!(AdaptGrid,X,dXdxI,J,Rotate,FE,F,z,zs,Rad,::Grids.Quad,::G
 
   KJacobiSphereDG3Kernel! = JacobiSphereDG3QuadKernel!(backend,group)
 
-  KJacobiSphereDG3Kernel!(AdaptGrid,X,dXdxI,J,Rotate,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
+  KJacobiSphereDG3Kernel!(AdaptGrid,X,dXdxI,J,FE.xw,FE.xwZ,FE.DS,FE.DSZ,F,z,zs,Rad,ndrange=ndrange)
 end
 
-@kernel inbounds = true function JacobiSphereDG3QuadKernel!(AdaptGrid,X,dXdxI,JJ,Rotate,@Const(ksi),
+@kernel inbounds = true function JacobiSphereDG3QuadKernel!(AdaptGrid,X,dXdxI,JJ,@Const(ksi),
   @Const(zeta),@Const(D),@Const(DZ),@Const(F),@Const(z),@Const(zs),Rad)
 
   gi, gj, gk, gz, gF = @index(Group, NTuple)
@@ -307,7 +307,8 @@ end
     lon,lat,_ = cart2sphere(XT1,XT2,XT3)
 
     MR = MCart2Sphere(lon,lat)
-    @. Rotate[:,:,K,ID,Iz,IF] =  MR
+    dXdxI[:,:,K,ID,Iz,IF] = dXdxI[:,:,K,ID,Iz,IF] * MR'
+#   @. Rotate[:,:,K,ID,Iz,IF] =  MR
 
   end
 end  

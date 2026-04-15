@@ -12,6 +12,11 @@ function parse_commandline()
     arg_type = String
     default = "CG"
 
+    "--Dimension"
+    help = "Dimension standard 3"
+    arg_type = Int
+    default = 3
+
     "--VelocityForm"
     help = "Spherical or Cartesian velocity components"
     arg_type = String
@@ -553,6 +558,11 @@ function parse_commandline()
      help = "File mame of vtk output"
      arg_type = String
      default = "Output"
+
+    "--hdf5FileName"
+     help = "File name of hdf5 output"
+     arg_type = String
+     default = "OutputHDF5"
 
     "--OrdPrint"
      help = "Subcell printing"

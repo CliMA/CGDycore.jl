@@ -1,4 +1,4 @@
-function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
+function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz;order=true)
 
   nBar=[ 0  1   0   1
         -1  0  -1   0]
@@ -107,14 +107,14 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
   @inbounds for iLat=1:nLat
     @inbounds for iLon=1:nLon
       if iLon == nLon 
-        (Faces[FaceNumber],Edges)=Face([E1,1+(iLat-1)*nLon,E3,E4],Nodes,Edges,FaceNumber,TypeF,OrientFace,
-          P=[P[:,iLon,iLat] P[:,iLon+1,iLat] P[:,iLon+1,iLat+1] P[:,iLon,iLat+1]])
+        (Faces[FaceNumber],Edges)=Face([E1,1+(iLat-1)*nLon,E3,E4],Nodes,Edges,FaceNumber,TypeF,OrientFace;
+          Form=Form,Rad=Rad,P=[P[:,iLon,iLat] P[:,iLon+1,iLat] P[:,iLon+1,iLat+1] P[:,iLon,iLat+1]])
         FaceNumber=FaceNumber+1
         E1=E1+1
         E3=E3+1
       else  
-        (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,TypeF,OrientFace,
-          P=[P[:,iLon,iLat] P[:,iLon+1,iLat] P[:,iLon+1,iLat+1] P[:,iLon,iLat+1]])
+        (Faces[FaceNumber],Edges)=Face([E1,E2,E3,E4],Nodes,Edges,FaceNumber,TypeF,OrientFace;
+          Form=Form,Rad=Rad,P=[P[:,iLon,iLat] P[:,iLon+1,iLat] P[:,iLon+1,iLat+1] P[:,iLon,iLat+1]])
         FaceNumber=FaceNumber+1
         E1=E1+1
         E2=E2+1
@@ -126,8 +126,10 @@ function SphericalGrid(backend,FT,nLon,nLat,LatB,OrientFace,Rad,nz)
     E4=E4+1
   end
 
-  Orientation!(Edges,Faces);
-  Renumbering!(Edges,Faces);
+  if order
+    Orientation!(Edges,Faces);
+    Renumbering!(Edges,Faces);
+  end
   FacesInNodes!(Nodes,Faces)
 
   zP=zeros(nz)
