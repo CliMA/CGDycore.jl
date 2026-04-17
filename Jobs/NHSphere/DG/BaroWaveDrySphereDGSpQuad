@@ -31,14 +31,14 @@ julia --project Examples/DriverDG.jl \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DGSpQuad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
   --MetricType="DGMetric" \
-  --dtau=10 \
+  --dtau=27 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -47,8 +47,8 @@ julia --project Examples/DriverDG.jl \
   --Stretch=false \
   --StretchType="Exp" \
   --GridType="SphericalGrid" \
-  --nLon=40 \
-  --nLat=18 \
+  --nLon=80 \
+  --nLat=36 \
   --LatB=1.3962634015954636 \
   --nz=13 \
   --H=30000.0 \
