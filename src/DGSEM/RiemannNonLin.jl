@@ -131,6 +131,10 @@ end
   Nz = @uniform @ndrange()[3]
 
   FLoc = @private eltype(F) (NUMV,)
+  UL = @private eltype(F) (NUMV,)
+  UR = @private eltype(F) (NUMV,)
+  AuxL = @private eltype(F) (NAUX,)
+  AuxR = @private eltype(F) (NAUX,)
 
   RhoPos = @uniform 1
   uPos = @uniform 2
@@ -144,23 +148,63 @@ end
     iFR = EF[2,IE]
     indL = GlobE[1,I,IE]
     indR = GlobE[2,I,IE]
-    RiemannSolver!(FLoc,view(U,K,Iz,indL,1:NUMV),view(U,K,Iz,indR,1:NUMV),
-      view(Aux,K,Iz,indL,1:NAUX),view(Aux,K,Iz,indR,1:NAUX),
-      view(NH,1:3,K,I,Iz,IE))
+    if iFL > 0
+      @unroll for iAux = 1 : NAUX  
+        AuxL[iAux] = Aux[K,Iz,indL,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        UL[iv] = U[K,Iz,indL,iv]
+      end  
+    else  
+      @unroll for iAux = 1 : NAUX  
+        AuxL[iAux] = Aux[K,Iz,indR,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        UL[iv] = U[K,Iz,indR,iv]
+      end  
+      t = eltype(F)(2) * (NH[1,K,I,Iz,IE] * UL[uPos] +
+        NH[2,K,I,Iz,IE] * UL[vPos] +
+        NH[3,K,I,Iz,IE] * UL[wPos]) 
+      UL[uPos] -= NH[1,K,I,Iz,IE] * t  
+      UL[vPos] -= NH[2,K,I,Iz,IE] * t  
+      UL[wPos] -= NH[3,K,I,Iz,IE] * t  
+    end  
+    if iFR > 0
+      @unroll for iAux = 1 : NAUX  
+        AuxR[iAux] = Aux[K,Iz,indR,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        UR[iv] = U[K,Iz,indR,iv]
+      end  
+    else  
+      @unroll for iAux = 1 : NAUX  
+        AuxR[iAux] = Aux[K,Iz,indL,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        UR[iv] = U[K,Iz,indL,iv]
+      end  
+      t = eltype(F)(2) * (NH[1,K,I,Iz,IE] * UR[uPos] +
+        NH[2,K,I,Iz,IE] * UR[vPos] +
+        NH[3,K,I,Iz,IE] * UR[wPos]) 
+      UR[uPos] -= NH[1,K,I,Iz,IE] * t  
+      UR[vPos] -= NH[2,K,I,Iz,IE] * t  
+      UR[wPos] -= NH[3,K,I,Iz,IE] * t  
+    end  
+    @views RiemannSolver!(FLoc,UL,UR,AuxL,AuxR,NH[1:3,K,I,Iz,IE])
     Surf = VolSurfH[K,I,Iz,IE] / w[I]  
     FLoc[RhoPos] = FLoc[RhoPos] * Surf
     FLoc[uPos] = FLoc[uPos] * Surf
     FLoc[vPos] = FLoc[vPos] * Surf
     FLoc[wPos] = FLoc[wPos] * Surf
     FLoc[ThPos] = FLoc[ThPos] * Surf
-    if iFL <= NF
+    if 0 < iFL <= NF
       @atomic :monotonic F[K,Iz,indL,RhoPos] += -FLoc[RhoPos]
       @atomic :monotonic F[K,Iz,indL,uPos] += -FLoc[uPos]
       @atomic :monotonic F[K,Iz,indL,vPos] += -FLoc[vPos]
       @atomic :monotonic F[K,Iz,indL,wPos] += -FLoc[wPos]
       @atomic :monotonic F[K,Iz,indL,ThPos] += -FLoc[ThPos]
     end  
-    if iFR <= NF
+    if 0 < iFR <= NF
       @atomic :monotonic F[K,Iz,indR,RhoPos] += FLoc[RhoPos]
       @atomic :monotonic F[K,Iz,indR,uPos] += FLoc[uPos]
       @atomic :monotonic F[K,Iz,indR,vPos] += FLoc[vPos]
@@ -211,9 +255,12 @@ end
       @unroll for iv = 1 : NUMV  
         VLL[iv] = U[1,Iz,ind,iv]
       end  
-      VLL[uPos] = -VLL[uPos]
-      VLL[vPos] = -VLL[vPos]
-      VLL[wPos] = -VLL[wPos]
+      t = eltype(F)(2) * (NV[1,ID,Iz,IF] * VLL[uPos] +
+        NV[2,ID,Iz,IF] * VLL[vPos] +
+        NV[3,ID,Iz,IF] * VLL[wPos]) 
+      VLL[uPos] -= NV[1,ID,Iz,IF] * t  
+      VLL[vPos] -= NV[1,ID,Iz,IF] * t  
+      VLL[wPos] -= NV[1,ID,Iz,IF] * t  
     end  
     if Iz < Nz
       @unroll for iAux = 1 : NAUX  
@@ -229,9 +276,12 @@ end
       @unroll for iv = 1 : NUMV  
         VRR[iv] = U[M,Iz-1,ind,iv]
       end  
-      VRR[uPos] = -VRR[uPos]
-      VRR[vPos] = -VRR[vPos]
-      VRR[wPos] = -VRR[wPos]
+      t = eltype(F)(2) * (NV[1,ID,Iz,IF] * VRR[uPos] +
+        NV[2,ID,Iz,IF] * VRR[vPos] +
+        NV[3,ID,Iz,IF] * VRR[wPos]) 
+      VRR[uPos] -= NV[1,ID,Iz,IF] * t  
+      VRR[vPos] -= NV[1,ID,Iz,IF] * t  
+      VRR[wPos] -= NV[1,ID,Iz,IF] * t  
     end
 
     @views RiemannSolver!(FLocL,FLocR,VLL,VRR,AuxL,AuxR,NV[:,ID,Iz,IF])

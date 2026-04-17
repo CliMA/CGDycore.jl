@@ -113,7 +113,7 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::CGElement)
     )
 end
 
-function MetricCompute(backend,FT,FE::DGElement,Exchange,Grid,NumberThreadGPU,zS)
+function MetricCompute(backend,FT,FE::DGElement,Model,Exchange,Grid,NumberThreadGPU,zS)
   DoF = FE.DoF
   DoFE = FE.DoFE
   M = FE.OrdPolyZ + 1
@@ -128,7 +128,7 @@ function MetricCompute(backend,FT,FE::DGElement,Exchange,Grid,NumberThreadGPU,zS
   F = PointsFromGrid(backend,FT,Grid)
   FillX!(backend,Metric,FE,F,Grid,zS)
   FillRotate!(backend,Metric,FE,Grid)
-  FillContravariant!(backend,Metric,FE,Grid,Grid.Type)
+  FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
   FillDet!(backend,Metric,FE,Grid)
   GridSizeDGKernel!(FE,Metric,Grid.Rad,NumberThreadGPU,Grid.Form)
   MetricLowerBoundary!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Form)
@@ -138,7 +138,7 @@ function MetricCompute(backend,FT,FE::DGElement,Exchange,Grid,NumberThreadGPU,zS
   return Metric
 end
 
-function MetricCompute(backend,FT,FE::CGElement,Exchange,Grid,NumberThreadGPU,zS)
+function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThreadGPU,zS)
   DoF = FE.DoF
   DoFE = FE.DoFE
   M = FE.OrdPolyZ + 1
@@ -152,13 +152,18 @@ function MetricCompute(backend,FT,FE::CGElement,Exchange,Grid,NumberThreadGPU,zS
   Metric.zP = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   F = PointsFromGrid(backend,FT,Grid)
-  FillX!(backend,Metric,FE,F,Grid,zS)
-  FillContravariant!(backend,Metric,FE,Grid,Grid.Type)
-  FillDet!(backend,Metric,FE,Grid)
-  Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
-    Grid.Rad,Grid.Type,Grid.Form)
-  Grids.JacobiSphere3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
-  Grid.Rad,Models.CompressibleShallow())
+
+  if occursin("DGMetric",Model.MetricType)
+    FillX!(backend,Metric,FE,F,Grid,zS)
+    FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Metric.Type)
+    FillDet!(backend,Metric,FE,Grid)
+  else  
+    Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
+      Grid.Rad,Grid.Type,Grid.Form)
+    Grids.JacobiSphere3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
+    Grid.Rad,Models.CompressibleShallow())
+  end  
+
   MassMatrix!(backend,FT,Metric,FE,Exchange,NumberThreadGPU)
 
   NzG = min(div(NumberThreadGPU,DoF),Nz)
@@ -200,7 +205,7 @@ function MetricCompute(backend,FT,FE::CGElement,Exchange,Grid,NumberThreadGPU,zS
   return Metric
 end
 
-function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad)
+function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad,MetricType)
   FT = eltype(Metric.X)
   DoF = FE.DoF
   DoFE = FE.DoFE
@@ -217,7 +222,7 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad)
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
   DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
   copyto!(DSZGPU,DSZ)
-  if CurlMetric
+  if occursin("Curl",MetricType) 
     KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
     KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DS,FE.DSZ,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
@@ -230,7 +235,7 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad)
   end
 end
 
-function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad)
+function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,MetricType)
   FT = eltype(Metric.X)
   DoF = FE.DoF
   DoFE = FE.DoFE
@@ -240,15 +245,13 @@ function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad)
   Nz = Grid.nz
   group = (N,N,M,1,1)
   ndrange = (N,N,M,Nz,NF)
-  CurlMetric = false
-  DGMetric = false
   _,DS,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPoly)
   DSGPU = KernelAbstractions.zeros(backend,FT,size(DS))
   copyto!(DSGPU,DS)
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
   DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
   copyto!(DSZGPU,DSZ)
-  if CurlMetric
+  if occursin("Curl",MetricType) 
     KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
     KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DS,FE.DSZ,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
@@ -395,9 +398,6 @@ end
 
     ID = I + (J - 1) * N
 
-    t11 = DH[J,1] * (XLoc[I,1,K,2] * DZdz[I,1,K] - XLoc[I,1,K,3] * DYdz[I,1,K])
-    t21 = DH[J,1] * (XLoc[I,1,K,3] * DXdz[I,1,K] - XLoc[I,1,K,1] * DZdz[I,1,K])
-    t31 = DH[J,1] * (XLoc[I,1,K,1] * DYdz[I,1,K] - XLoc[I,1,K,2] * DXdz[I,1,K])
     dXdxI[1,1,K,ID,IZ,IF] = DYdy * DZdz - DZdy * DYdz
     dXdxI[1,2,K,ID,IZ,IF] = DZdy * DXdz - DXdy * DZdz
     dXdxI[1,3,K,ID,IZ,IF] = DXdy * DYdz - DYdy * DXdz 
@@ -997,11 +997,21 @@ end
     IF1 = EF[1,IE]
     IF2 = EF[2,IE]
     if IF1 < IF2
-      IF = IF1  
-      IS = FE[1,IE]  
+      if IF1 > 0  
+        IF = IF1  
+        IS = FE[1,IE]  
+      else  
+        IF = IF2
+        IS = FE[2,IE]  
+      end  
     else
-      IF = IF2
-      IS = FE[2,IE]  
+      if IF2 > 0  
+        IF = IF2
+        IS = FE[2,IE]  
+      else
+        IF = IF1  
+        IS = FE[1,IE]  
+      end  
     end  
     if IS == 1
       ID = I  

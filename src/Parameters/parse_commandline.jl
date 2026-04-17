@@ -422,6 +422,11 @@ function parse_commandline()
     arg_type = String
     default = "Sleve"
 
+    "--MetricType"
+    help = "Type of metric computation"
+    arg_type = String
+    default = "DGMetric"
+
     "--nx"
     help = "Number of horizontal grid cell in x-direction"
     arg_type = Int

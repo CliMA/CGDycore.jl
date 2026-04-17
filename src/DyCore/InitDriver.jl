@@ -39,7 +39,7 @@ function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,
   end
 
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  Metric = FiniteElements.MetricCompute(backend,FT,DG,Exchange,Grid,NumberThreadGPU,zS)
+  Metric = FiniteElements.MetricCompute(backend,FT,DG,Model,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output partition
   nzTemp = Global.Grid.nz
@@ -92,7 +92,7 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
 
 
 # (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
-  Metric = FiniteElements.MetricCompute(backend,FT,CG,Exchange,Grid,NumberThreadGPU,zS)
+  Metric = FiniteElements.MetricCompute(backend,FT,CG,Model,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output Orography
   Global.Output.dTol = 2*pi / 30

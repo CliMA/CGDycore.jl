@@ -393,6 +393,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   SurfaceFluxRhs::Any
   SurfaceValues::Any
   SurfaceFluxValues::Any
+  MetricType::String
 end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
@@ -499,6 +500,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   SurfaceFluxRhs = ""
   SurfaceValues = ""
   SurfaceFluxValues = ""
+  MetricType = ""
   return ModelStruct{FT}(
    Problem,
    Discretization,
@@ -603,6 +605,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    SurfaceFluxRhs,
    SurfaceValues,
    SurfaceFluxValues,
+   MetricType,
    )
 end  
 

@@ -105,9 +105,10 @@ StretchType = parsed_args["StretchType"]
 Lx = parsed_args["Lx"]
 Ly = parsed_args["Ly"]
 x0 = parsed_args["x0"]
-# CG Method
+# FE Method
 y0 = parsed_args["y0"]
 OrdPoly = parsed_args["OrdPoly"]
+MetricType = parsed_args["MetricType"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -263,6 +264,7 @@ Model.Stretch = Stretch
 Model.StretchType = StretchType
 Model.State = State
 Model.ModelType = ModelType
+Model.MetricType = MetricType
 if HyperVisc == 0
   Model.HyperVisc = CGSEM.HyperViscosity(nPanel)  
 end  
