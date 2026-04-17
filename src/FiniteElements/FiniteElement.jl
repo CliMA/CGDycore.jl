@@ -212,7 +212,7 @@ mutable struct DGQuad{FT<:AbstractFloat,
     Stencil::IT2
     NumG::Int
     NumI::Int
-    ksi::Array{FT, 2}
+    ksi::AT2
     w::AT1
     wF::AT1
     xw::AT1
