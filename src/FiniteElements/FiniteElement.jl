@@ -305,6 +305,8 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
       iDoF += 1
     end
   end
+  ksiGPU = KernelAbstractions.zeros(backend,FT,size(ksi))
+  copyto!(ksiGPU,ksi)
   xe = zeros(OrdPoly+1)
   xe[1] = -1.0
   for i = 2 : OrdPoly
@@ -431,7 +433,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     Stencil,
     NumG,
     NumI,
-    ksi,
+    ksiGPU,
     w,
     wF,
     xw,
