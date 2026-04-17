@@ -224,14 +224,14 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad,Metri
   copyto!(DSZGPU,DSZ)
   if occursin("Curl",MetricType) 
     KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
-    KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DS,FE.DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
-    KFillContraKernel2!(Metric.dXdxI,Metric.X,FE.DS,FE.DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel2!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
-    KFillContraKernel3!(Metric.dXdxI,Metric.X,FE.DS,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel3!(Metric.dXdxI,Metric.X,FE.DSGPU,Val(N),Val(M);ndrange=ndrange)
   else
     KFillContraKernel! = MetricQuadKernel!(backend,group)
-    KFillContraKernel!(Metric.dXdxI,Metric.X,DS,DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
   end
 end
 
@@ -253,14 +253,14 @@ function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,Metri
   copyto!(DSZGPU,DSZ)
   if occursin("Curl",MetricType) 
     KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
-    KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DS,FE.DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
-    KFillContraKernel2!(Metric.dXdxI,Metric.X,FE.DS,FE.DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel2!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
-    KFillContraKernel3!(Metric.dXdxI,Metric.X,FE.DS,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel3!(Metric.dXdxI,Metric.X,FE.DSGPU,Val(N),Val(M);ndrange=ndrange)
   else
     KFillContraKernel! = MetricQuadKernel!(backend,group)
-    KFillContraKernel!(Metric.dXdxI,Metric.X,DS,DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
   end  
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
