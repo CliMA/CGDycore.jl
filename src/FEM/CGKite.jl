@@ -97,10 +97,10 @@ function CG1KitePrimalStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFl
   phi[2,1] = lx1 * ly0
   phi[3,1] = lx0 * ly1
   phi[4,1] = lx1 * ly1
-  Gradphi = Array{Polynomial,3}(undef,DoF,1,2)
+  Gradphi = Array{Polynomial,2}(undef,DoF,2)
   for i = 1 : DoF
-    Gradphi[i,1,1] = differentiate(phi[i,1],x)
-    Gradphi[i,1,2] = differentiate(phi[i,1],y)
+    Gradphi[i,1] = differentiate(phi[i,1],x)
+    Gradphi[i,2] = differentiate(phi[i,1],y)
     rotphi[i,1] = differentiate(phi[i,1],y)
     rotphi[i,2] = -differentiate(phi[i,1],x)
   end  
@@ -228,6 +228,7 @@ function CG1KiteDualStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloa
     end
   end
   
+#=
   NumFaces = Grid.NumFaces
   NumEdges = Grid.NumEdges
   NumNodes = Grid.NumNodes
@@ -269,6 +270,56 @@ function CG1KiteDualStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloa
     GlobCPU[4,iF] = NumNodesD + NumEdgesD + iF
   end
   NumG = NumNodesD + NumEdgesD + NumFaces
+
+  NumI = NumG
+  copyto!(Glob,GlobCPU)
+  M = sparse([1],[1],[1.0])
+  LUM = lu(M)
+=#
+
+  NumNodes = Grid.NumNodes
+  NumEdges = Grid.NumEdges
+  NumFaces = Grid.NumFaces
+  Nodes = Grid.Nodes
+  Edges = Grid.Edges
+  Faces = Grid.Faces
+
+
+  NumNodesD = 0
+  NumNodesP = 0
+  NodesP = zeros(Int,NumNodes)
+  for iN = 1 : NumNodes
+    if Nodes[iN].Type == 'N'
+      NumNodesP += 1  
+      NodesP[iN] = NumNodesP
+    end
+  end  
+
+  NumEdgesD = 0 
+  NumEdgesP = 0 
+  EdgesP = zeros(Int,NumEdges)
+  for iE = 1 : NumEdges
+    if Edges[iE].Type == "EM" 
+      NumEdgesD += 1  
+    else  
+      NumEdgesP += 1  
+      EdgesP[iE] = NumEdgesP
+    end
+  end  
+        
+  NumG = 0
+  Glob = KernelAbstractions.zeros(backend,Int,DoF,NumFaces)
+  GlobCPU = zeros(Int,DoF,NumFaces)
+  for iF = 1 : NumFaces
+    iN = NodesP[Faces[iF].N[1]]  
+    GlobCPU[1,iF] = iN  
+    iE = EdgesP[Faces[iF].E[1]]
+    GlobCPU[2,iF] = NumNodesP + iE
+    iE = EdgesP[Faces[iF].E[4]]
+    GlobCPU[3,iF] = NumNodesP + iE
+    GlobCPU[4,iF] = NumNodesP + NumEdgesP + iF
+  end    
+  NumG = NumNodesP + NumEdgesP + NumFaces
   NumI = NumG
   copyto!(Glob,GlobCPU)
   M = sparse([1],[1],[1.0])
@@ -300,7 +351,7 @@ mutable struct CGKitePrimalStruct{FT<:AbstractFloat,
   Comp::Int
   phi::Array{Polynomial,2}
   rotphi::Array{Polynomial,2}
-  Gradphi::Array{Polynomial,3}
+  Gradphi::Array{Polynomial,2}
   NumG::Int
   NumI::Int
   Type::Grids.ElementType
@@ -324,7 +375,7 @@ function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractF
   Comp = 1
   @polyvar x[1:2]
   phi = Array{Polynomial,2}(undef,DoF,Comp)
-  Gradphi = Array{Polynomial,3}(undef,DoF,1,2)
+  Gradphi = Array{Polynomial,2}(undef,DoF,2)
   rotphi = Array{Polynomial,2}(undef,DoF,2)
   xP, w = gaussradau(k+1)
   xP .= -xP
@@ -361,8 +412,8 @@ function CGKitePrimalStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractF
   end  
       
   for iDoF = 1 : DoF
-    Gradphi[iDoF,1,1] = differentiate(phi[iDoF,1],x[1])
-    Gradphi[iDoF,1,2] = differentiate(phi[iDoF,1],x[2])
+    Gradphi[iDoF,1] = differentiate(phi[iDoF,1],x[1])
+    Gradphi[iDoF,2] = differentiate(phi[iDoF,1],x[2])
     rotphi[iDoF,1] = differentiate(phi[iDoF,1],x[1])
     rotphi[iDoF,2] = -differentiate(phi[iDoF,1],x[2])
   end  
@@ -452,6 +503,8 @@ mutable struct CGKiteDualStruct{FT<:AbstractFloat,
   Order::Int                      
   Glob::IT2
   DoF::Int
+  DoFE::Int
+  DoFN::Int
   Comp::Int
   phi::Array{Polynomial,2}
   rotphi::Array{Polynomial,2}
@@ -461,7 +514,8 @@ mutable struct CGKiteDualStruct{FT<:AbstractFloat,
   Type::Grids.ElementType
   points::Array{Float64,2}
   M::AbstractSparseMatrix
-  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
+  LUM
+# LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
 end
 
 function CGKiteDualStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractFloat
@@ -469,6 +523,8 @@ function CGKiteDualStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractFlo
   Type = Grids.QuadPrimal()
   Type = Grids.Quad()
   DoF = (k + 1) * (k + 1)
+  DoFE = k
+  DoFN = 1
   points = KernelAbstractions.zeros(backend,Float64,DoF,2)
   Comp = 1
   @polyvar x[1:2]
@@ -561,6 +617,8 @@ function CGKiteDualStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractFlo
     k,
     Glob,
     DoF,
+    DoFE,
+    DoFN,
     Comp,
     phi,                      
     rotphi,                      

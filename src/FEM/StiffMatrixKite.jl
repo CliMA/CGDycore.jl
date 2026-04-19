@@ -1087,8 +1087,8 @@ function CurlVel!(q,FeT::CGKitePrimalStruct,u,uFe::HDivKiteDElement,QuadOrd,Elem
       uFRef[2,iDoF,iQ] = uFe.phi[iDoF,2](Points[iQ,1],Points[iQ,2])
     end  
     @inbounds for iDoF = 1 : FeT.DoF
-      RotqRef[1,iDoF,iQ] = -FeT.Gradphi[iDoF,1,2](Points[iQ,1],Points[iQ,2])
-      RotqRef[2,iDoF,iQ] = FeT.Gradphi[iDoF,1,1](Points[iQ,1],Points[iQ,2])
+      RotqRef[1,iDoF,iQ] = -FeT.Gradphi[iDoF,2](Points[iQ,1],Points[iQ,2])
+      RotqRef[2,iDoF,iQ] = FeT.Gradphi[iDoF,1](Points[iQ,1],Points[iQ,2])
     end  
   end  
   NumQuadL, WeightsL, PointsL = QuadRule(Grids.Line(),QuadOrd)
@@ -1184,6 +1184,7 @@ function CurlVel!(q,FeT::CGKiteDualStruct,u,uFe::HDivKiteDElement,QuadOrd,ElemTy
 #
 #
 
+  @show "CurlVel CGKiteDualStruct"
   @. q = 0
 
   NumQuad, Weights, Points = QuadRule(ElemType,QuadOrd)  
@@ -1212,8 +1213,8 @@ function CurlVel!(q,FeT::CGKiteDualStruct,u,uFe::HDivKiteDElement,QuadOrd,ElemTy
     @inbounds for iComp = 1 : FeT.Comp
       @inbounds for iD = 1 : FeT.DoF
         fTRefXM[iComp,iD,iQ] = FeT.phi[iD,iComp](-1.0,PointsL[iQ])
-        fTRefXM[iComp,iD,iQ] = FeT.phi[iD,iComp](-1.0,PointsL[iQ])
-        fTRefYP[iComp,iD,iQ] = FeT.phi[iD,iComp](PointsL[iQ],1.0)
+        fTRefYP[iComp,iD,iQ] = FeT.phi[iD,iComp](1.0,PointsL[iQ])
+        fTRefYM[iComp,iD,iQ] = FeT.phi[iD,iComp](PointsL[iQ],-1.0)
         fTRefYP[iComp,iD,iQ] = FeT.phi[iD,iComp](PointsL[iQ],1.0)
       end
     end
@@ -1236,7 +1237,7 @@ function CurlVel!(q,FeT::CGKiteDualStruct,u,uFe::HDivKiteDElement,QuadOrd,ElemTy
   uFLoc = zeros(2)
   uuFLoc = zeros(3)
   qLoc = zeros(FeT.DoF)
-
+  
   @inbounds for iF = 1 : Grid.NumFaces
     @inbounds for iDoF = 1 : uFe.DoF
       ind = uFe.Glob[iDoF,iF]  
@@ -1309,7 +1310,7 @@ function CurlVel!(q,FeT::CGKiteDualStruct,u,uFe::HDivKiteDElement,QuadOrd,ElemTy
       uLocY = DF[1,1] * uuFLoc[1] + DF[2,1] * uuFLoc[2] + DF[3,1] * uuFLoc[3]
       @inbounds for iDoF = 1 : FeT.DoF
 #       qLoc[iDoF] += WeightsL[iQ] * (-Grid.Faces[iF].OrientE[4]*fTRefXM[1,iDoF,iQ] * uLocX +
-#        Grid.Faces[iF].OrientE[1]*fTRefYM[1,iDoF,iQ] * uLocY)
+#         Grid.Faces[iF].OrientE[1]*fTRefYM[1,iDoF,iQ] * uLocY)
       end
     end
     @inbounds for iDoF = 1 : FeT.DoF

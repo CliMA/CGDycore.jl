@@ -20,13 +20,14 @@ end
 function QuadRule(type::Grids.QuadDual,n)
   NumQuad =  n * n  
   x, w = gaussradau(n)
-  x .= -x
+# x .= -x
   Weights = zeros(NumQuad)
   Points = zeros(NumQuad,2)
   ii = 1
   for j = 1 : n
     for i = 1 : n
-      Weights[ii] = w[n+1-i] * w[n+1-j]
+      Weights[ii] = w[i] * w[j]
+#     Weights[ii] = w[n+1-i] * w[n+1-j]
       Points[ii,1] = x[i]
       Points[ii,2] = x[j]
       ii += 1

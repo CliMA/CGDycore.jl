@@ -283,7 +283,6 @@ FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 #FEM.Project!(backend,FTB,Uu,RT,Grid,nQuadS,Jacobi,Model.InitialProfile)
 
 # Time integration
-nAdveVel = 100
 FEM.TimeStepperVecI(backend,FTB,U,dtau,FEM.FcnVecINonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,
   nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 

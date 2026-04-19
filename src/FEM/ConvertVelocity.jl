@@ -22,9 +22,19 @@ end
 
 function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,u,uFE::HDivElement,
   Grid,ElemType,QuadOrd,Jacobi,ksi)
-  UCachep = zeros(VortFE.NumG)
+  q = zeros(VortFE.NumG)
+  CurlVel!(q,VortFE,u,uFE,QuadOrd,ElemType,Grid,Jacobi)
+  ConvertScalar!(backend,FTB,Vort,q,VortFE,Grid,Jacobi,ksi)
+end
+
+function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,u,uFE::HDivElement,
+  Grid,ElemType,QuadOrd,Jacobi,ksi,Exchange)
+  q = zeros(VortFE.NumG)
   CurlVel!(UCachep,VortFE,u,uFE,QuadOrd,ElemType,Grid,Jacobi)
-  ConvertScalar!(backend,FTB,Vort,UCachep,VortFE,Grid,Jacobi,ksi)
+  qE = reshape(q,1,1,length(q),1)
+  Parallels.ExchangeData3DSendGPU(qE,ExchangeCG)
+  Parallels.ExchangeData3DRecvGPU!(qE,ExchangeCG)
+  ConvertScalar!(backend,FTB,Vort,q,VortFE,Grid,Jacobi,ksi)
 end
 
 function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,u,uFE::HDivElement,

@@ -75,6 +75,7 @@ function ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,
   Parallels.ExchangeData3DSendGPU(DE,ExchangeCG)
   Parallels.ExchangeData3DRecvGPU!(DE,ExchangeCG)
 # CG.LUM = lu(CG.M)
+
   return ModelFEMVecIStruct(
     RT,
     CG,

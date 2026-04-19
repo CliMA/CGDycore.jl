@@ -100,7 +100,8 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,ExchangeDG,ExchangeCG,Grid
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
     Grid.Form)
-  Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,
+    vtkSkeletonMesh.RefineMidPoints,ExchangeCG)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
     FileNumber,cName)
 
@@ -127,7 +128,8 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,ExchangeDG,ExchangeCG,Grid
       ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
       ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
         Grid.Form)
-      Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+      Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,
+        vtkSkeletonMesh.RefineMidPoints,ExchangeCG)
       FileNumber += 1
       Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
         FileNumber,cName)
@@ -138,7 +140,8 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,ExchangeDG,ExchangeCG,Grid
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
     Grid.Form)
-  Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+  Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,
+    vtkSkeletonMesh.RefineMidPoints,ExchangeCG)
   FileNumber += 1
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
     FileNumber,cName)

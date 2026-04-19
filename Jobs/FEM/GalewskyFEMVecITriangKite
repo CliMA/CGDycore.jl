@@ -3,9 +3,9 @@ julia --project Examples/FEM/VecINonLinShallowKite.jl \
   --Problem="GalewskySphere" \
   --FloatTypeBackend="Float64" \
   --GridForm="Spherical" \
-  --GridType="CubedSphereKite" \
+  --GridType="TriangularSphereKite" \
   --RefineLevel=6 \
-  --nPanel=90 \
+  --nPanel=50 \
   --Flat=false \
   --OrderFEM=1 \
   --SimTime=0 \
@@ -16,6 +16,6 @@ julia --project Examples/FEM/VecINonLinShallowKite.jl \
   --PrintHours=6 \
   --PrintMinutes=0 \
   --PrintSeconds=0 \
-  --vtkFileName="Galewsky/VecICubedKite" \
+  --vtkFileName="Galewsky/VecITriaKite" \
   --RefineOutput=1 \
   --PrintTime=0 \

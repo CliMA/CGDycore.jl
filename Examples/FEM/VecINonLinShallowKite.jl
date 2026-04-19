@@ -192,7 +192,6 @@ if GridForm == "Spherical"
   Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=2)
 
-# Grid = Grids.Grid2KiteGrid(backend,FTB,Grid1,Grids.OrientFaceSphere)
 
   # Jacobi
   Jacobi = FEM.Jacobi!
@@ -200,7 +199,7 @@ if GridForm == "Spherical"
   # Settings
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = Param.cS
-  dtau = GridLengthMin / cS / sqrt(2) * .4 / (k + 1)
+  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
@@ -265,15 +264,17 @@ end
 RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
 #RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
 DG = FEM.CGKitePrimalStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
-#CG = FEM.CGKitePrimalStruct{FTB}(1,Grids.Quad(),backend,Grid)
-CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
+#CG = FEM.CGKitePrimalStruct{FTB}(k+2,Grids.Quad(),backend,Grid)
+CG = FEM.CGKiteDualStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
+#CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 #ND = FEM.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,Grid)
 #ND = RT
 
 ExchangeDG = Parallels.ExchangeStruct{FTB}(backend,Grid,DG,CellToProc,Proc,ProcNumber,
   Model.HorLimit;Discretization="Kite")
-ExchangeCG = Parallels.ExchangeStruct{FTB}(backend,Grid,CG,CellToProc,Proc,ProcNumber,
-  Model.HorLimit;Discretization="CG")
+#ExchangeCG = Parallels.ExchangeStruct{FTB}(backend,Grid,CG,CellToProc,Proc,ProcNumber,
+#  Model.HorLimit;Discretization="CG")
+ExchangeCG = nothing
 
 
 OrdPolyZ = 0
@@ -281,7 +282,7 @@ nz = 1
 NumV = 1
 
 Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeDG)
-Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeCG)
+#Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeCG)
 
 ModelFEM = FEM.ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG)
 
