@@ -199,7 +199,7 @@ if GridForm == "Spherical"
   # Settings
   GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
   cS = Param.cS
-  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
+  dtau = GridLengthMin / cS / sqrt(2) * .4 / (k + 1)
   EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
   nAdveVel::Int = round(EndTime / dtau)
   dtau = EndTime / nAdveVel
