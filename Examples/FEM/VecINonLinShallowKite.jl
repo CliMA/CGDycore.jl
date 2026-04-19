@@ -262,19 +262,13 @@ end
 # Finite elements
 @show k
 RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
-#RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
 DG = FEM.CGKitePrimalStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
-#CG = FEM.CGKitePrimalStruct{FTB}(k+2,Grids.Quad(),backend,Grid)
-CG = FEM.CGKiteDualStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
-#CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
-#ND = FEM.CG1KiteDualHCurl{FTB}(Grids.Quad(),backend,Grid)
-#ND = RT
+CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 
 ExchangeDG = Parallels.ExchangeStruct{FTB}(backend,Grid,DG,CellToProc,Proc,ProcNumber,
   Model.HorLimit;Discretization="Kite")
-#ExchangeCG = Parallels.ExchangeStruct{FTB}(backend,Grid,CG,CellToProc,Proc,ProcNumber,
-#  Model.HorLimit;Discretization="CG")
-ExchangeCG = nothing
+ExchangeCG = Parallels.ExchangeStruct{FTB}(backend,Grid,CG,CellToProc,Proc,ProcNumber,
+  Model.HorLimit;Discretization="CG")
 
 
 OrdPolyZ = 0
@@ -282,7 +276,7 @@ nz = 1
 NumV = 1
 
 Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeDG)
-#Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeCG)
+Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeCG)
 
 ModelFEM = FEM.ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG)
 
@@ -297,8 +291,6 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
-#FEM.Project!(backend,FTB,Uu,RT,Grid,nQuadS,Jacobi,Model.InitialProfile)
-
 
 
 # Time integration
