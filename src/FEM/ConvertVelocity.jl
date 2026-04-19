@@ -32,8 +32,8 @@ function Vorticity!(backend,FTB,Vort,VortFE::ScalarElement,u,uFE::HDivElement,
   q = zeros(VortFE.NumG)
   CurlVel!(q,VortFE,u,uFE,QuadOrd,ElemType,Grid,Jacobi)
   qE = reshape(q,1,1,length(q),1)
-  Parallels.ExchangeData3DSendGPU(qE,ExchangeCG)
-  Parallels.ExchangeData3DRecvGPU!(qE,ExchangeCG)
+  Parallels.ExchangeData3DSendGPU(qE,Exchange)
+  Parallels.ExchangeData3DRecvGPU!(qE,Exchange)
   ConvertScalar!(backend,FTB,Vort,q,VortFE,Grid,Jacobi,ksi)
 end
 
