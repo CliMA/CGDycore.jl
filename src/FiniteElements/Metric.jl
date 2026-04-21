@@ -155,11 +155,11 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
 
   if occursin("DGMetric",Model.MetricType)
     FillX!(backend,Metric,FE,F,Grid,zS)
-    FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Metric.Type)
+    FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
     FillDet!(backend,Metric,FE,Grid)
   else  
-    Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
-      Grid.Rad,Grid.Type,Grid.Form)
+#   Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
+#     Grid.Rad,Grid.Type,Grid.Form)
     Grids.JacobiSphere3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
     Grid.Rad,Models.CompressibleShallow())
   end  
