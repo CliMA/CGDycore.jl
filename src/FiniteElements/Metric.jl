@@ -768,7 +768,24 @@ end
   if Iz <= Nz && IF <= NF
     lon,lat,_ = Grids.cart2sphere(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF])
     MR = Grids.MCart2Sphere(lon,lat)
-    dXdxI[:,:,K,ID,Iz,IF] = dXdxI[:,:,K,ID,Iz,IF] * MR'
+    dXdxILoc11 = dXdxI[1,1,K,ID,Iz,IF]
+    dXdxILoc21 = dXdxI[2,1,K,ID,Iz,IF]
+    dXdxILoc31 = dXdxI[3,1,K,ID,Iz,IF]
+    dXdxILoc12 = dXdxI[1,2,K,ID,Iz,IF]
+    dXdxILoc22 = dXdxI[2,2,K,ID,Iz,IF]
+    dXdxILoc32 = dXdxI[3,2,K,ID,Iz,IF]
+    dXdxILoc13 = dXdxI[1,3,K,ID,Iz,IF]
+    dXdxILoc23 = dXdxI[2,3,K,ID,Iz,IF]
+    dXdxILoc33 = dXdxI[3,3,K,ID,Iz,IF]
+    dXdxI[1,1,K,ID,Iz,IF] = dXdxILoc11 * MR[1,1] + dXdxILoc12 * MR[1,2] + dXdxILoc13 * MR[1,3]
+    dXdxI[1,2,K,ID,Iz,IF] = dXdxILoc11 * MR[2,1] + dXdxILoc12 * MR[2,2] + dXdxILoc13 * MR[2,3]
+    dXdxI[1,3,K,ID,Iz,IF] = dXdxILoc11 * MR[3,1] + dXdxILoc12 * MR[3,2] + dXdxILoc13 * MR[3,3]
+    dXdxI[2,1,K,ID,Iz,IF] = dXdxILoc21 * MR[1,1] + dXdxILoc22 * MR[1,2] + dXdxILoc23 * MR[1,3]
+    dXdxI[2,2,K,ID,Iz,IF] = dXdxILoc21 * MR[2,1] + dXdxILoc22 * MR[2,2] + dXdxILoc23 * MR[2,3]
+    dXdxI[2,3,K,ID,Iz,IF] = dXdxILoc21 * MR[3,1] + dXdxILoc22 * MR[3,2] + dXdxILoc23 * MR[3,3]
+    dXdxI[3,1,K,ID,Iz,IF] = dXdxILoc31 * MR[1,1] + dXdxILoc32 * MR[1,2] + dXdxILoc33 * MR[1,3]
+    dXdxI[3,2,K,ID,Iz,IF] = dXdxILoc31 * MR[2,1] + dXdxILoc32 * MR[2,2] + dXdxILoc33 * MR[2,3]
+    dXdxI[3,3,K,ID,Iz,IF] = dXdxILoc31 * MR[3,1] + dXdxILoc32 * MR[3,2] + dXdxILoc33 * MR[3,3]
   end
 end  
 
