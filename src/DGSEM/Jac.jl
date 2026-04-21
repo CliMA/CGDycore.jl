@@ -89,7 +89,7 @@ end
   end
 end
 
-@inline function luBand!(A,l,u)
+@inline function luBand!(ID,A,l,u,::Val{n}) where {n}
 #1  *   *   *  a14  ...    
 #2  *   *  a13 a24  ... 
 #3  *  a12 a23 a34  ... 
@@ -123,17 +123,16 @@ end
 # a12 => (3,2)
 # a13 => (2,3) 
 # a14 => (1,4)
-  n = size(A,2)
   up1 = u + 1
   up2 = u + 2
   uplp1 = u + l + 1
   @inbounds for k = 1 : n -1 
     @inbounds for i = up2 : uplp1 
-      A[i,k] /= A[up1,k]  
+      A[i,k,ID] /= A[up1,k,ID]  
     end  
     @inbounds for i = up2 : uplp1 
       @inbounds for j = k + 1 : min(k+u,n)
-        A[i+k-j,j] -= A[i,k] * A[k + up1 - j,j]
+        A[i+k-j,j,ID] -= A[i,k,ID] * A[k + up1 - j,j,ID]
       end
     end  
   end    
@@ -261,13 +260,12 @@ end
   end
 end
 
-@kernel inbounds = true function ldivVerticalSKernel!(A,rs)
+@kernel inbounds = true function ldivVerticalSKernel!(A,rs,::Val{n}) where {n}
 
   ID, = @index(Global, NTuple)
 
   DoF = @uniform @ndrange()[1]
 
-  n = size(A,2)
   if ID <= DoF
     ldivBand!(ID,A,rs,3,3,Val(n))
   end  
@@ -351,13 +349,13 @@ end
 end  
 
 
-@kernel inbounds = true function luBandKernel!(A)
+@kernel inbounds = true function luBandKernel!(A,::Val{n}) where {n}
   ID, = @index(Global, NTuple)
 
   DoF = @uniform @ndrange()[1]
 
   if ID <= DoF
-    @views luBand!(A[:,:,ID],3,3)
+    luBand!(ID,A,3,3,Val(n))
   end  
 end  
 
@@ -388,17 +386,17 @@ end
       r3[i,2] = B3_14[i,2,iz,ID]
     end  
 
-    for k = 1 : M - 3
-      for i = k + 1 : M - 2
+    @unroll for k = 1 : M - 3
+      @unroll for i = k + 1 : M - 2
        r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
        r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
       end
     end
 #   Backward loop
-    for k = M - 2 : -1 : 1
+    @unroll for k = M - 2 : -1 : 1
       r3[k,1] /= SA[k,k,iz,ID]
       r3[k,2] /= SA[k,k,iz,ID]
-      for i = 1 : k - 1
+      @unroll for i = 1 : k - 1
         r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
         r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
       end
@@ -476,17 +474,17 @@ end
       r3[i,2] *= -invfac
     end
 
-    for k = 1 : M - 3
-      for i = k + 1 : M - 2
+    @unroll for k = 1 : M - 3
+      @unroll for i = k + 1 : M - 2
        r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
        r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
       end
     end
 #   Backward loop
-    for k = M - 2 : -1 : 1
+    @unroll for k = M - 2 : -1 : 1
       r3[k,1] /= SA[k,k,iz,ID]
       r3[k,2] /= SA[k,k,iz,ID]
-      for i = 1 : k - 1
+      @unroll for i = 1 : k - 1
         r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
         r3[i,2] -= SA[i,k,iz,ID] * r3[k,2]
       end
@@ -579,14 +577,17 @@ end
   end
   @synchronize 
 
+  kappa   = Phys.kappa
+  kexp    = kappa / (eltype(U)(1) - kappa)
+  kfac    = eltype(U)(1) / (eltype(U)(1) - kappa) * Phys.Rd
+
   if ID <= DoF
     sh = (iz - 1) * 4 + 1
     inv2dz = eltype(U)(2) / dz[iz,ID]
     invdz = eltype(U)(1) / dz[iz,ID]
     @unroll for i = 1 : M
       Th[i] = U[i,iz,ID,ThPos] / U[i,iz,ID,RhoPos]
-      dpdRhoTh[i] = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
-          (Phys.Rd * U[i,iz,ID,ThPos] / Phys.p0)^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
+      dpdRhoTh[i] = kfac * (Phys.Rd * U[i,iz,ID,ThPos] / Phys.p0)^kexp
     end      
     @unroll for i = 1 : M 
       @unroll for j = 1 : M - 2
@@ -620,8 +621,7 @@ end
     if iz > 1
       B1m_34[1,iz,ID] = -eltype(U)(1) / (wB * dz[iz,ID])
 
-      dpdRhoThM = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
-        (Phys.Rd * U[M,iz-1,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
+      dpdRhoThM   = kfac * (Phys.Rd * U[M,iz-1,ID,ThPos] / Phys.p0)^kexp
       B1m_34[2,iz,ID] = -dpdRhoThM * invcS / (wB * dz[iz,ID])
     end
     @unroll for i = 1 : M
@@ -642,8 +642,7 @@ end
       B1_4[iz,ID] = dpdRhoTh[M] * invcS * invdz / wB 
     end
     if iz < nz
-      dpdRhoThP = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
-        (Phys.Rd * U[1,iz+1,ID,ThPos] / Phys.p0)^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
+      dpdRhoThP   = kfac * (Phys.Rd * U[1,iz+1,ID,ThPos] / Phys.p0)^kexp
       B1p_12[1,iz,ID] = -dpdRhoThP * invcS / (wB * dz[iz,ID])
       B1p_12[2,iz,ID] = eltype(U)(1) / (wB * dz[iz,ID])
     end
@@ -754,7 +753,7 @@ function SchurBoundary!(JacVert)
   group = (DoFG)
   ndrange = (DoF)
   KluBandKernel! = luBandKernel!(backend,group)
-  KluBandKernel!(JacVert.SchurBand,ndrange=ndrange)
+  KluBandKernel!(JacVert.SchurBand,Val(4*nz),ndrange=ndrange)
 
 end  
 
@@ -792,7 +791,7 @@ function Solve!(JacVert,b)
   group = (DoFG)
   ndrange = (DoF)
   KldivVerticalSKernel! = ldivVerticalSKernel!(backend,group)
-  KldivVerticalSKernel!(JacVert.SchurBand,JacVert.rs;ndrange=ndrange)
+  KldivVerticalSKernel!(JacVert.SchurBand,JacVert.rs,Val(4*nz);ndrange=ndrange)
 
   group = (nz, DoFG)
   ndrange = (nz, DoF)
