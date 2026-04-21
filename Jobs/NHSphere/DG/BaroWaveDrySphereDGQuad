@@ -45,7 +45,7 @@ julia --project Examples/DriverDG.jl \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \
-  --GridType="SphericalGrid" \
+  --GridType="CubedSphere" \
   --RefineLevel=4 \
   --nLon=20 \
   --nLat=20 \

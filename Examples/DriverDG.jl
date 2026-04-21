@@ -394,7 +394,7 @@ if FluxDG == "KennedyGruber"
   Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverage = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-    Model.RhoThPos,pAuxPos,GPAuxPos)
+    Model.RhoThPos,pAuxPos,GPAuxPos,Grid.Type)
   Model.FluxAverageSlow = DGSEM.KennedyGruberGravSlow()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.RhoThPos,pAuxPos,GPAuxPos)
   if IntMethod == "MIS"

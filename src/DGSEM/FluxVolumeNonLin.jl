@@ -64,267 +64,207 @@ function FluxVolumeNonLinV(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
     Val(NV),Val(NAUX);ndrange=ndrange)
 end
 
-@kernel inbounds = true function FluxSplitVolumeNonLinV3Kernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
-  @Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
+@kernel inbounds = true function FluxSplitVolumeNonLinV3Kernel!(FluxAver!,
+    F, @Const(V), @Const(Aux), @Const(dXdxI),
+    @Const(DVT), @Const(Glob),
+    ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
-  K, Iz, iD,    = @index(Local, NTuple)
-  _,_,ID,IF = @index(Global, NTuple)
+  K, Iz, iD     = @index(Local, NTuple)
+  _, _, ID, IF  = @index(Global, NTuple)
 
   TilesDim = @uniform @groupsize()[3]
-  M = @uniform @groupsize()[1]
-  Nz = @uniform @groupsize()[2]
-  ND = @uniform @ndrange()[3]
+  M        = @uniform @groupsize()[1]
+  Nz       = @uniform @groupsize()[2]
+  ND       = @uniform @ndrange()[3]
 
-  VLoc = @localmem eltype(F) (M,Nz,TilesDim,NV)
-  AuxLoc = @localmem eltype(F) (M,Nz,TilesDim,NAUX)
-  FLoc = @localmem eltype(F) (M,Nz,TilesDim,NV)
-  dXdxILoc = @localmem eltype(dXdxI) (3,M,Nz,TilesDim)
+  VLoc     = @localmem eltype(F)      (M, Nz, TilesDim, NV)
+  AuxLoc   = @localmem eltype(F)      (M, Nz, TilesDim, NAUX)
+  FLoc     = @localmem eltype(F)      (M, Nz, TilesDim, NV)
+  # Store only the 3 metric coefficients needed for the vertical direction.
+  # Layout: (3, M, Nz, TilesDim)  — direction index first for coalescing.
+  dXdxILoc = @localmem eltype(dXdxI)  (1, 3, M, Nz, TilesDim)
+
   hTilde = @private eltype(F) (NV,)
 
+  # ---- load phase ----
   if ID <= ND
-    ind = Glob[ID,IF]  
-    @unroll for iaux = 1 : NAUX
-      AuxLoc[K,Iz,iD,iaux] = Aux[K,Iz,ind,iaux]  
+    ind = Glob[ID, IF]
+    @unroll for iaux = 1:NAUX
+      AuxLoc[K, Iz, iD, iaux] = Aux[K, Iz, ind, iaux]
     end
-    VLoc[K,Iz,iD,1] = V[K,Iz,ind,1]  
-    FLoc[K,Iz,iD,1] = 0.0
-    @unroll for iv = 2 : NV
-      VLoc[K,Iz,iD,iv] = V[K,Iz,ind,iv] 
-      FLoc[K,Iz,iD,iv] = 0.0
+    @unroll for iv = 1:NV
+      VLoc[K, Iz, iD, iv] = V[K, Iz, ind, iv]
+      FLoc[K, Iz, iD, iv] = 0
     end
-
-    @unroll for j = 1 : 3
-      dXdxILoc[j,K,Iz,iD] = dXdxI[3,j,K,ID,Iz,IF]
-    end  
+    @unroll for j = 1:3
+      dXdxILoc[1, j, K, Iz, iD] = dXdxI[3, j, K, ID, Iz, IF]
+    end
   end
 
   @synchronize
 
+  # ---- compute phase — NO @views, NO slices ----
   if ID <= ND
-    ind = Glob[ID,IF]  
-    @unroll for l = 1 : M
-      @views FluxAver!(hTilde,VLoc[K,Iz,iD,:],VLoc[l,Iz,iD,:],
-        AuxLoc[K,Iz,iD,:],AuxLoc[l,Iz,iD,:],
-        dXdxILoc[:,K,Iz,iD],dXdxILoc[:,l,Iz,iD])    
-      @unroll for iv = 1 : NV
-        FLoc[K,Iz,iD,iv] += -DVT[l,K] * hTilde[iv] 
-      end  
-    end  
-    @unroll for iv = 1 : NV
-      F[K,Iz,ind,iv] += FLoc[K,Iz,iD,iv] 
+    ind = Glob[ID, IF]
+    @unroll for l = 1:M
+      # Pass parent arrays + left/right indices directly.
+      # FluxAver! reads VLoc[K,Iz,iD,iv] and VLoc[l,Iz,iD,iv] internally.
+      FluxAver!(hTilde,
+        VLoc, AuxLoc, dXdxILoc,
+        K, Iz, iD,    # left  state: vary K
+        l, Iz, iD,    # right state: vary l
+        Val(1))
+      @unroll for iv = 1:NV
+        FLoc[K, Iz, iD, iv] += -DVT[l, K] * hTilde[iv]
+      end
+    end
+    @unroll for iv = 1:NV
+      F[K, Iz, ind, iv] += FLoc[K, Iz, iD, iv]
     end
   end
-end  
+end
 
-@kernel inbounds = true function FluxSplitVolumeNonLinHQuadKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
-  @Const(DVT),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
+@kernel inbounds = true function FluxSplitVolumeNonLinHQuadKernel!(FluxAver!,
+    F, @Const(V), @Const(Aux), @Const(dXdxI),
+    @Const(DVT), @Const(Glob),
+    ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
-  I, J, iz,   = @index(Local, NTuple)
-  _,_,IZ,IF = @index(Global, NTuple)
+  I, J, iz      = @index(Local, NTuple)
+  _, _, IZ, IF  = @index(Global, NTuple)
 
   TilesDim = @uniform @groupsize()[3]
-  N = @uniform @groupsize()[1]
-  NZ = @uniform @ndrange()[3]
-  M = @uniform size(dXdxI,3)
-  nz = @uniform size(dXdxI,5)
+  N        = @uniform @groupsize()[1]
+  NZ       = @uniform @ndrange()[3]
+  M        = @uniform size(dXdxI, 3)
 
-  VLoc = @localmem eltype(F) (N,N,TilesDim,NV)
-  AuxLoc = @localmem eltype(F) (N,N,TilesDim,NAUX)
-  FLoc = @localmem eltype(F) (N,N,TilesDim,NV)
-  dXdxILoc = @localmem eltype(dXdxI) (2,3,N,N,TilesDim)
+  VLoc     = @localmem eltype(F)      (N, N, TilesDim, NV)
+  AuxLoc   = @localmem eltype(F)      (N, N, TilesDim, NAUX)
+  FLoc     = @localmem eltype(F)      (N, N, TilesDim, NV)
+  # 2 directions × 3 components
+  dXdxILoc = @localmem eltype(dXdxI)  (2, 3, N, N, TilesDim)
+
   fTilde = @private eltype(F) (NV,)
   gTilde = @private eltype(F) (NV,)
 
+  # ---- load phase ----
   if IZ <= NZ
-    K = mod(IZ-1,M)+1  
-    Iz = div(IZ-1,M) + 1
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]  
-    @unroll for iaux = 1 : NAUX
-      AuxLoc[I,J,iz,iaux] = Aux[K,Iz,ind,iaux]  
+    K  = mod(IZ - 1, M) + 1
+    Iz = div(IZ - 1, M) + 1
+    ID = I + (J - 1) * N
+    ind = Glob[ID, IF]
+    @unroll for iaux = 1:NAUX
+      AuxLoc[I, J, iz, iaux] = Aux[K, Iz, ind, iaux]
     end
-    VLoc[I,J,iz,1] = V[K,Iz,ind,1]  
-    FLoc[I,J,iz,1] = 0.0
-    @unroll for iv = 2 : NV
-      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv]
-      FLoc[I,J,iz,iv] = 0.0
+    @unroll for iv = 1:NV
+      VLoc[I, J, iz, iv] = V[K, Iz, ind, iv]
+      FLoc[I, J, iz, iv] = 0
     end
-    @unroll for j = 1 : 3
-      @unroll for i = 1 : 2
-        dXdxILoc[i,j,I,J,iz] = dXdxI[i,j,K,ID,Iz,IF]
-      end   
-    end  
+    @unroll for j = 1:3
+      @unroll for i = 1:2
+        dXdxILoc[i, j, I, J, iz] = dXdxI[i, j, K, ID, Iz, IF]
+      end
+    end
   end
 
   @synchronize
 
+  # ---- compute phase ----
   if IZ <= NZ
-    @unroll for l = 1 : N
-      @views FluxAver!(fTilde,VLoc[I,J,iz,:],VLoc[l,J,iz,:],
-        AuxLoc[I,J,iz,:],AuxLoc[l,J,iz,:],
-        dXdxILoc[1,:,I,J,iz],dXdxILoc[1,:,l,J,iz])    
-      @views FluxAver!(gTilde,VLoc[I,J,iz,:],VLoc[I,l,iz,:],
-        AuxLoc[I,J,iz,:],AuxLoc[I,l,iz,:],
-        dXdxILoc[2,:,I,J,iz],dXdxILoc[2,:,I,l,iz])    
-      @unroll for iv = 1 : NV
-        FLoc[I,J,iz,iv] += -DVT[l,I] * fTilde[iv] - DVT[l,J] * gTilde[iv]
-      end  
-    end  
-    K = mod(IZ-1,M)+1  
-    Iz = div(IZ-1,M) + 1
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]  
-    @unroll for iv = 1 : NV
-      F[K,Iz,ind,iv] += FLoc[I,J,iz,iv] 
+    @unroll for l = 1:N
+      # x-direction: left=(I,J,iz), right=(l,J,iz)
+      FluxAver!(fTilde,
+        VLoc, AuxLoc, dXdxILoc,
+        I, J, iz,
+        l, J, iz,
+        Val(1))
+      # y-direction: left=(I,J,iz), right=(I,l,iz)
+      FluxAver!(gTilde,
+        VLoc, AuxLoc, dXdxILoc,
+        I, J, iz,
+        I, l, iz,
+        Val(2))
+      @unroll for iv = 1:NV
+        FLoc[I, J, iz, iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
+      end
+    end
+    K   = mod(IZ - 1, M) + 1
+    Iz  = div(IZ - 1, M) + 1
+    ID  = I + (J - 1) * N
+    ind = Glob[ID, IF]
+    @unroll for iv = 1:NV
+      F[K, Iz, ind, iv] += FLoc[I, J, iz, iv]
     end
   end
-end  
+end
 
-@kernel inbounds = true function FluxSplitVolumeNonLinH1QuadKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
-  @Const(DVT),@Const(Glob),@Const(IndexI),@Const(IndexJ), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
+@kernel inbounds = true function FluxSplitVolumeNonLinHTriKernel!(FluxAver!,
+    F, @Const(V), @Const(Aux), @Const(dXdxI),
+    @Const(Dx1), @Const(Dx2), @Const(Glob),
+    ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
 
-  I, J, iz,   = @index(Local, NTuple)
-  _,_,IZ,IF = @index(Global, NTuple)
-
-  TilesDim = @uniform @groupsize()[3]
-  N = @uniform @groupsize()[1]
-  NZ = @uniform @ndrange()[3]
-  M = @uniform size(dXdxI,3)
-  nz = @uniform size(dXdxI,5)
-
-  VLoc = @localmem eltype(F) (N,N,TilesDim,NV)
-  AuxLoc = @localmem eltype(F) (N,N,TilesDim,NAUX)
-  FLoc = @localmem eltype(F) (N,N,TilesDim,NV)
-  dXdxILoc = @localmem eltype(dXdxI) (2,3,N,N,TilesDim)
-  fTilde = @private eltype(F) (NV,)
-  gTilde = @private eltype(F) (NV,)
-
-  if IZ <= NZ
-    K = mod(IZ-1,M)+1  
-    Iz = div(IZ-1,M) + 1
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]  
-    @unroll for iaux = 1 : NAUX
-      AuxLoc[I,J,iz,iaux] = Aux[K,Iz,ind,iaux]  
-    end
-    VLoc[I,J,iz,1] = V[K,Iz,ind,1]  
-    FLoc[I,J,iz,1] = 0.0
-    @unroll for iv = 2 : NV
-      VLoc[I,J,iz,iv] = V[K,Iz,ind,iv]
-      FLoc[I,J,iz,iv] = 0.0
-    end
-    @unroll for j = 1 : 3
-      @unroll for i = 1 : 2
-        dXdxILoc[i,j,I,J,iz] = dXdxI[i,j,K,ID,Iz,IF]
-      end   
-    end  
-  end
-
-  @synchronize
-
-  if IZ <= NZ
-    ID = (I + (J - 1) * N - 1) * (N - 1)  
-    @unroll for l = 1 : N - 1
-      ID += 1
-      I1 = IndexI[ID,1]     
-      I2 = IndexI[ID,2]     
-      J1 = IndexJ[ID,1]     
-      J2 = IndexJ[ID,2]     
-      if J1 == J2
-        @views FluxAver!(fTilde,VLoc[I1,J1,iz,:],VLoc[I2,J1,iz,:],
-          AuxLoc[I1,J1,iz,:],AuxLoc[I2,J1,iz,:],
-          dXdxILoc[1,:,I1,J1,iz],dXdxILoc[1,:,I2,J1,iz])    
-
-        @unroll for iv = 1 : NV
-          @atomic FLoc[I1,J1,iz,iv] += -DVT[I2,I1] * fTilde[iv] 
-          @atomic FLoc[I2,J1,iz,iv] += -DVT[I1,I2] * fTilde[iv] 
-        end  
-      else  
-        @views FluxAver!(gTilde,VLoc[I1,J1,iz,:],VLoc[I1,J2,iz,:],
-          AuxLoc[I1,J1,iz,:],AuxLoc[I1,J2,iz,:],
-          dXdxILoc[2,:,I1,J1,iz],dXdxILoc[2,:,I1,J2,iz])    
-        @unroll for iv = 1 : NV
-          @atomic FLoc[I1,J1,iz,iv] += -DVT[J2,J1] * gTilde[iv]
-          @atomic FLoc[I1,J2,iz,iv] += -DVT[J1,J2] * gTilde[iv]
-        end  
-      end  
-    end  
-  end
-
-  @synchronize
-
-  if IZ <= NZ
-    K = mod(IZ-1,M)+1  
-    Iz = div(IZ-1,M) + 1
-    ID = I + (J - 1) * N  
-    ind = Glob[ID,IF]  
-    @unroll for iv = 1 : NV
-      F[K,Iz,ind,iv] += FLoc[I,J,iz,iv] 
-    end
-  end
-end  
-
-@kernel inbounds = true function FluxSplitVolumeNonLinHTriKernel!(FluxAver!,F,@Const(V),@Const(Aux),@Const(dXdxI),
-  @Const(Dx1),@Const(Dx2),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
-
-  ID, iz,   = @index(Local, NTuple)
-  _,IZ,IF = @index(Global, NTuple)
+  ID, iz        = @index(Local, NTuple)
+  _, IZ, IF     = @index(Global, NTuple)
 
   TilesDim = @uniform @groupsize()[2]
-  N = @uniform @groupsize()[1]
-  NZ = @uniform @ndrange()[2]
-  M = @uniform size(dXdxI,3)
-  nz = @uniform size(dXdxI,5)
+  N        = @uniform @groupsize()[1]
+  NZ       = @uniform @ndrange()[2]
+  M        = @uniform size(dXdxI, 3)
 
-  VLoc = @localmem eltype(F) (N,TilesDim,NV)
-  AuxLoc = @localmem eltype(F) (N,TilesDim,NAUX)
-  FLoc = @localmem eltype(F) (N,TilesDim,NV)
-  dXdxILoc = @localmem eltype(dXdxI) (2,3,N,TilesDim)
+  VLoc     = @localmem eltype(F)      (N, TilesDim, NV)
+  AuxLoc   = @localmem eltype(F)      (N, TilesDim, NAUX)
+  FLoc     = @localmem eltype(F)      (N, TilesDim, NV)
+  # 2 horizontal directions × 3 metric components
+  dXdxILoc = @localmem eltype(dXdxI)  (2, 3, N, TilesDim)
+
   fTilde = @private eltype(F) (NV,)
   gTilde = @private eltype(F) (NV,)
 
+  # ---- load phase ----
   if IZ <= NZ
-    K = mod(IZ-1,M)+1  
-    Iz = div(IZ-1,M) + 1
-    ind = Glob[ID,IF]  
-    @unroll for iaux = 1 : NAUX
-      AuxLoc[ID,iz,iaux] = Aux[K,Iz,ind,iaux]  
+    K   = mod(IZ - 1, M) + 1
+    Iz  = div(IZ - 1, M) + 1
+    ind = Glob[ID, IF]
+    @unroll for iaux = 1:NAUX
+      AuxLoc[ID, iz, iaux] = Aux[K, Iz, ind, iaux]
     end
-    VLoc[ID,iz,1] = V[K,Iz,ind,1]  
-    FLoc[ID,iz,1] = 0.0
-    @unroll for iv = 2 : NV
-      VLoc[ID,iz,iv] = V[K,Iz,ind,iv]
-      FLoc[ID,iz,iv] = 0.0
+    @unroll for iv = 1:NV
+      VLoc[ID, iz, iv] = V[K, Iz, ind, iv]
+      FLoc[ID, iz, iv] = 0
     end
-    @unroll for j = 1 : 3
-      @unroll for i = 1 : 2
-        dXdxILoc[i,j,ID,iz] = dXdxI[i,j,K,ID,Iz,IF]
-      end   
-    end  
+    @unroll for j = 1:3
+      @unroll for i = 1:2
+        dXdxILoc[i, j, ID, iz] = dXdxI[i, j, K, ID, Iz, IF]
+      end
+    end
   end
 
   @synchronize
 
+  # ---- compute phase — no @views, no slices, no Val{NV} in FluxAver! ----
   if IZ <= NZ
-    @unroll for l = 1 : N
-      @views FluxAver!(fTilde,VLoc[ID,iz,:],VLoc[l,iz,:],
-        AuxLoc[ID,iz,:],AuxLoc[l,iz,:],
-        dXdxILoc[1,:,ID,iz],dXdxILoc[1,:,l,iz])    
-      @views FluxAver!(gTilde,VLoc[ID,iz,:],VLoc[l,iz,:],
-        AuxLoc[ID,iz,:],AuxLoc[l,iz,:],
-        dXdxILoc[2,:,ID,iz],dXdxILoc[2,:,l,iz])    
-      @unroll for iv = 1 : NV
-        FLoc[ID,iz,iv] += -Dx1[ID,l] * fTilde[iv] - Dx2[ID,l] * gTilde[iv]
-      end  
-    end  
-    K = mod(IZ-1,M)+1  
-    Iz = div(IZ-1,M) + 1
-    ind = Glob[ID,IF]  
-    @unroll for iv = 1 : NV
-      F[K,Iz,ind,iv] += FLoc[ID,iz,iv] 
+    @unroll for l = 1:N
+      # x1-direction: left=(ID,iz), right=(l,iz)
+      FluxAver!(fTilde,
+        VLoc, AuxLoc, dXdxILoc,
+        ID, iz,
+        l,  iz)
+      # x2-direction: same pair, different metric row
+      FluxAver!(gTilde,
+        VLoc, AuxLoc, dXdxILoc,
+        ID, iz,
+        l,  iz)
+      @unroll for iv = 1:NV
+        FLoc[ID, iz, iv] += -Dx1[ID, l] * fTilde[iv] - Dx2[ID, l] * gTilde[iv]
+      end
+    end
+    K   = mod(IZ - 1, M) + 1
+    Iz  = div(IZ - 1, M) + 1
+    ind = Glob[ID, IF]
+    @unroll for iv = 1:NV
+      F[K, Iz, ind, iv] += FLoc[ID, iz, iv]
     end
   end
-end  
+end
 
 @kernel inbounds = true function FluxVolumeNonLinV3Kernel!(Flux,F,@Const(V),@Const(Aux),@Const(dXdxI),
   @Const(DW),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}

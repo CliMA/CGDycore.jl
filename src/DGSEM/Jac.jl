@@ -40,76 +40,51 @@ function LowOrder(DG)
   DW = inv(diagm(DG.wZ)) * D
 end
 
-@inline function LUFull!(A)
+@inline function LUFull!(iz,ID,A,::Val{n}) where {n}
 
-  n = size(A,1)
   @inbounds for j = 1 : n - 1
     @inbounds for i = j + 1 : n 
-      A[i,j] /= A[j,j]  
+      A[i,j,iz,ID] /= A[j,j,iz,ID]  
       @inbounds for k = j + 1 : n
-        A[i,k] -= A[i,j] * A[j,k]
+        A[i,k,iz,ID] -= A[i,j,iz,ID] * A[j,k,iz,ID]
       end  
     end  
   end  
 end
 
-@inline function ldivFull2!(nA,b)
+@inline function ldivFull!(iz,ID,A,b,::Val{n}) where {n}
 
 # Forward loop
-# n = size(A,1)
   @inbounds for k = 1 : n - 1
     @inbounds for i = k + 1 : n
-      b[i,1] -= A[i,k] * b[k,1]
-      b[i,2] -= A[i,k] * b[k,2]
-    end
-  end
-#=
-#  Backward loop
-  @inbounds for k = n : -1 : 1
-    @views @.  b[k,:] /= A[k,k]
-    @inbounds for i = 1 : k - 1
-      @views @.  b[i,:] -= A[i,k] * b[k,:]
-    end
-  end
-=#  
-end
-
-@inline function ldivFull!(A,b)
-
-# Forward loop
-  n = size(A,1)
-  @inbounds for k = 1 : n - 1
-    @inbounds for i = k + 1 : n
-      b[i] -= A[i,k] * b[k]
+      b[i] -= A[i,k,iz,ID] * b[k]
     end
   end
 #  Backward loop
   @inbounds for k = n : -1 : 1
-    b[k] /= A[k,k]
+    b[k] /= A[k,k,iz,ID]
     @inbounds for i = 1 : k - 1
-      b[i] -= A[i,k] * b[k]
+      b[i] -= A[i,k,iz,ID] * b[k]
     end
   end
 end
 
-@inline function ldivBand!(A,b,l,u)
+@inline function ldivBand!(ID,A,b,l,u,::Val{n}) where {n}
 
 # Ly = b
-  A = A
-  n = size(A,2)
   up1 = u + 1 
   uplp1 = up1 + l
 
   @inbounds for k = 1 : n - 1
     @inbounds for i = k + 1 : min(k+l,n)
-      b[i] -= A[i - k + up1,k] * b[k]  
+      b[i,ID] -= A[i - k + up1,k,ID] * b[k,ID]  
     end    
   end
 # Ux = y
   @inbounds for k = n : -1 : 1
-    b[k] /= A[up1,k]
+    b[k,ID] /= A[up1,k,ID]
     @inbounds for i = max(k - u, 1) : k - 1
-      b[i] -= A[up1 + i - k,k] * b[k]  
+      b[i,ID] -= A[up1 + i - k,k,ID] * b[k,ID]  
     end    
   end
 end
@@ -254,7 +229,7 @@ end
       end
     end  
 
-    @views ldivFull!(SA[:,:,iz,ID],r3)
+    ldivFull!(iz,ID,SA,r3,Val(M - 2))
 
     r11 = r1[1]
     r1M = r1[M]
@@ -292,8 +267,9 @@ end
 
   DoF = @uniform @ndrange()[1]
 
+  n = size(A,2)
   if ID <= DoF
-    @views ldivBand!(A[:,:,ID],rs[:,ID],3,3)
+    ldivBand!(ID,A,rs,3,3,Val(n))
   end  
 end  
 
@@ -351,7 +327,7 @@ end
         r3[i] += -invfac * A32[i,j,iz,ID] * r2[j]
       end
     end
-    @views ldivFull!(SA[:,:,iz,ID],r3)
+    ldivFull!(iz,ID,SA,r3,Val(M - 2))
     @unroll for i = 1 : M
       @unroll for j = 1 : M - 2
         r1[i] += -A13[i,j,iz,ID] * r3[j]
@@ -412,7 +388,6 @@ end
       r3[i,2] = B3_14[i,2,iz,ID]
     end  
 
-#   @views ldivFull2!(M - 2,SA[:,:,iz,ID],r3)
     for k = 1 : M - 3
       for i = k + 1 : M - 2
        r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
@@ -501,7 +476,6 @@ end
       r3[i,2] *= -invfac
     end
 
-#   @views ldivFull2!(SA[:,:,iz,ID],r3)
     for k = 1 : M - 3
       for i = k + 1 : M - 2
        r3[i,1] -= SA[i,k,iz,ID] * r3[k,1]
@@ -535,7 +509,6 @@ end
     r1M[1]*= invfac
     r1M[2]*= invfac
 
-    #@views r2 = invfac * (r2 - A23[:,:,iz,ID] * r3)
     @unroll for i = 1 : M - 2
       @unroll for j = 1 : M - 2
         r2[i,1] += -A23[i,j,iz,ID] * r3[j,1]
@@ -642,7 +615,7 @@ end
         end
       end
     end
-    @views LUFull!(SA[:,:,iz,ID])
+    LUFull!(iz,ID,SA,Val(M - 2))
 
     if iz > 1
       B1m_34[1,iz,ID] = -eltype(U)(1) / (wB * dz[iz,ID])
@@ -1003,35 +976,6 @@ function InitJacDG(DG,nz,Param)
   dMdS,dMdM = DMomDScalarAc(nz,DG,Param.cS)
   return dSdS,dSdM,dMdS,dMdM
 end  
-
-function JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
-  FTB = eltype(U)
-  N = size(dSdM,1)
-  RhoPos = 1
-  ThPos = 5
-  nz = size(U,2)
-  M = size(U,1)
-  oneM = ones(M)
-  JacB = Array{SparseMatrixCSC}(undef,size(U,3))
-  JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
-  for ID = 1 : DG.NumI
-    @views zCol = z[:,ID]
-    diagz = spdiagm(FTB(2) ./ reshape(vec(oneM*zCol'),N))
-    Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
-    dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
-      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (FTB(1) - Phys.kappa)),N)
-#   Jac = [sparse(fac*I,N,N) -diagz * dSdM              -diagz* dSdS * diagm(dpdRhoTh)
-#          sparse(Phys.Grav*I,N,N) sparse(fac*I,N,N) - diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)
-#          spzeros(N,N) -diagz * dSdM * diagm(Th)  sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)]
-     Jac = [sparse(fac*I,N,N) (-diagz* dSdS * diagm(dpdRhoTh)) (-diagz * dSdM)
-            spzeros(N,N)  (sparse(fac*I,N,N) - diagz * diagm(Th) * dSdS * diagm(dpdRhoTh)) -diagz * dSdM * diagm(Th)
-            sparse(Phys.Grav*I,N,N) (-diagz * dMdM -diagz* dMdS * diagm(dpdRhoTh)) (sparse(fac*I,N,N)-diagz * dMdM)]
-
-    JacB[ID] = Jac       
-    JacLU[ID] = lu(Jac)           
-  end
-  return JacB,JacLU
-end
 
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
   Invfac = eltype(U)(1) / fac

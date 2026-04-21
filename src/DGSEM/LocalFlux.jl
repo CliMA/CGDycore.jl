@@ -277,26 +277,119 @@ end
 
 Base.@kwdef struct KennedyGruberGrav <: AverageFlux end
 
-function (::KennedyGruberGrav)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos)
-  @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
+
+function (::KennedyGruberGrav)(RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos, ::Grids.Quad)
+
+  @inline function FluxNonLinAver!(flux,
+      VLoc, AuxLoc, dXdxILoc,
+      K1, Iz1, iD1,   # left state indices  (localidx into @localmem)
+      K2, Iz2, iD2,   # right state indices
+      ::Val{dir}) where {dir}
+
     FT = eltype(flux)
-    RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
-    pAv = FT(0.5) * ((AuxL[pPos] + AuxR[pPos]) + RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
-    uAv = FT(0.5) * (VL[uPos] / VL[RhoPos] + VR[uPos] / VR[RhoPos])
-    vAv = FT(0.5) * (VL[vPos] / VL[RhoPos] + VR[vPos] / VR[RhoPos])
-    wAv = FT(0.5) * (VL[wPos] / VL[RhoPos] + VR[wPos] / VR[RhoPos])
-    ThAv = FT(0.5) * (VL[ThPos] / VL[RhoPos] + VR[ThPos] / VR[RhoPos])
-    mAv1 = FT(0.5) * (m_L[1] + m_R[1])
-    mAv2 = FT(0.5) * (m_L[2] + m_R[2])
-    mAv3 = FT(0.5) * (m_L[3] + m_R[3])
-    qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
+
+    # ------ read left state directly from shared memory ------
+    RhoL  = VLoc[K1, Iz1, iD1, RhoPos]
+    uL    = VLoc[K1, Iz1, iD1, uPos]
+    vL    = VLoc[K1, Iz1, iD1, vPos]
+    wL    = VLoc[K1, Iz1, iD1, wPos]
+    ThL   = VLoc[K1, Iz1, iD1, ThPos]
+    pL    = AuxLoc[K1, Iz1, iD1, pPos]
+    GPL   = AuxLoc[K1, Iz1, iD1, GPPos]
+
+    # ------ read right state directly from shared memory -----
+    RhoR  = VLoc[K2, Iz2, iD2, RhoPos]
+    uR    = VLoc[K2, Iz2, iD2, uPos]
+    vR    = VLoc[K2, Iz2, iD2, vPos]
+    wR    = VLoc[K2, Iz2, iD2, wPos]
+    ThR   = VLoc[K2, Iz2, iD2, ThPos]
+    pR    = AuxLoc[K2, Iz2, iD2, pPos]
+    GPR   = AuxLoc[K2, Iz2, iD2, GPPos]
+
+    # ------ read metric (dXdxI row) from shared memory -------
+    # dXdxILoc layout: (dir, j, K, Iz, iD)  — pass dir as Val for unrolling
+    m_L1  = dXdxILoc[dir, 1, K1, Iz1, iD1]
+    m_L2  = dXdxILoc[dir, 2, K1, Iz1, iD1]
+    m_L3  = dXdxILoc[dir, 3, K1, Iz1, iD1]
+    m_R1  = dXdxILoc[dir, 1, K2, Iz2, iD2]
+    m_R2  = dXdxILoc[dir, 2, K2, Iz2, iD2]
+    m_R3  = dXdxILoc[dir, 3, K2, Iz2, iD2]
+
+    # ------ Kennedy-Gruber averages --------------------------
+    RhoAv = FT(0.5) * (RhoL + RhoR)
+    pAv   = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
+    uAv   = FT(0.5) * (uL / RhoL + uR / RhoR)
+    vAv   = FT(0.5) * (vL / RhoL + vR / RhoR)
+    wAv   = FT(0.5) * (wL / RhoL + wR / RhoR)
+    ThAv  = FT(0.5) * (ThL / RhoL + ThR / RhoR)
+    mAv1  = FT(0.5) * (m_L1 + m_R1)
+    mAv2  = FT(0.5) * (m_L2 + m_R2)
+    mAv3  = FT(0.5) * (m_L3 + m_R3)
+
+    qHat  = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
+
     flux[1] = RhoAv * qHat
     flux[2] = flux[1] * uAv + mAv1 * pAv
     flux[3] = flux[1] * vAv + mAv2 * pAv
     flux[4] = flux[1] * wAv + mAv3 * pAv
     flux[5] = flux[1] * ThAv
-
   end
+
+  return FluxNonLinAver!
+end
+
+ 
+function (::KennedyGruberGrav)(RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos, ::Grids.Tri)
+
+  @inline function FluxNonLinAver!(flux,
+      VLoc, AuxLoc, dXdxILoc,
+      ID1, iz1,
+      ID2, iz2,
+      ::Val{dir}) where {dir}   # dir = 1 for fTilde, 2 for gTilde
+
+    FT = eltype(flux)
+
+    RhoL = VLoc[ID1, iz1, RhoPos]
+    uL   = VLoc[ID1, iz1, uPos]
+    vL   = VLoc[ID1, iz1, vPos]
+    wL   = VLoc[ID1, iz1, wPos]
+    ThL  = VLoc[ID1, iz1, ThPos]
+    pL   = AuxLoc[ID1, iz1, pPos]
+    GPL  = AuxLoc[ID1, iz1, GPPos]
+
+    RhoR = VLoc[ID2, iz2, RhoPos]
+    uR   = VLoc[ID2, iz2, uPos]
+    vR   = VLoc[ID2, iz2, vPos]
+    wR   = VLoc[ID2, iz2, wPos]
+    ThR  = VLoc[ID2, iz2, ThPos]
+    pR   = AuxLoc[ID2, iz2, pPos]
+    GPR  = AuxLoc[ID2, iz2, GPPos]
+
+    m_L1 = dXdxILoc[dir, 1, ID1, iz1]
+    m_L2 = dXdxILoc[dir, 2, ID1, iz1]
+    m_L3 = dXdxILoc[dir, 3, ID1, iz1]
+    m_R1 = dXdxILoc[dir, 1, ID2, iz2]
+    m_R2 = dXdxILoc[dir, 2, ID2, iz2]
+    m_R3 = dXdxILoc[dir, 3, ID2, iz2]
+
+    RhoAv = FT(0.5) * (RhoL + RhoR)
+    pAv   = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
+    uAv   = FT(0.5) * (uL / RhoL + uR / RhoR)
+    vAv   = FT(0.5) * (vL / RhoL + vR / RhoR)
+    wAv   = FT(0.5) * (wL / RhoL + wR / RhoR)
+    ThAv  = FT(0.5) * (ThL / RhoL + ThR / RhoR)
+    mAv1  = FT(0.5) * (m_L1 + m_R1)
+    mAv2  = FT(0.5) * (m_L2 + m_R2)
+    mAv3  = FT(0.5) * (m_L3 + m_R3)
+    qHat  = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
+
+    flux[1] = RhoAv * qHat
+    flux[2] = flux[1] * uAv + mAv1 * pAv
+    flux[3] = flux[1] * vAv + mAv2 * pAv
+    flux[4] = flux[1] * wAv + mAv3 * pAv
+    flux[5] = flux[1] * ThAv
+  end
+
   return FluxNonLinAver!
 end
 
@@ -471,27 +564,27 @@ function (::RiemannLMARS)(Param,Phys,hPos,uPos,vPos,wPos,pPos)
 end
 
 function (::RiemannLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
-  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
     FT = eltype(F)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
-      F[uPos] = vM * VLL[uPos] + Normal[1] * pM
-      F[vPos] = vM * VLL[vPos] + Normal[2] * pM
-      F[wPos] = vM * VLL[wPos] + Normal[3] * pM
+      F[uPos] = vM * VLL[uPos] + n1 * pM
+      F[vPos] = vM * VLL[vPos] + n2 * pM
+      F[wPos] = vM * VLL[wPos] + n3 * pM
       F[ThPos] = vM * VLL[ThPos]
     else
       F[RhoPos] = vM * VRR[RhoPos]
-      F[uPos] = vM * VRR[uPos] + Normal[1] * pM
-      F[vPos] = vM * VRR[vPos] + Normal[2] * pM
-      F[wPos] = vM * VRR[wPos] + Normal[3] * pM
+      F[uPos] = vM * VRR[uPos] + n1 * pM
+      F[vPos] = vM * VRR[vPos] + n2 * pM
+      F[wPos] = vM * VRR[wPos] + n3 * pM
       F[ThPos] = vM * VRR[ThPos]
     end
   end
@@ -499,14 +592,14 @@ function (::RiemannLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
 end
 
 function (::RiemannLMARSSlow)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
-  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
     FT = eltype(F)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
       F[RhoPos] = FT(0)
@@ -526,7 +619,7 @@ function (::RiemannLMARSSlow)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
 end
 
 function (::ArtianoEnergyStable)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
-  @inline function RiemannByLMARSNonLin!(FL,FR,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSNonLin!(FL,FR,VLL,VRR,AuxL,AuxR,n1,n2,n3)
     FT = eltype(FL)
     cS = Param.cS
     pLL = AuxL[pPos]
@@ -538,9 +631,9 @@ function (::ArtianoEnergyStable)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
 
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     ThM = FT(0.5) * (VLL[ThPos]/VLL[RhoPos] + VRR[ThPos]/VRR[RhoPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
-    norm_ = sqrt(Normal[1]^2 + Normal[2]^2 + Normal[3]^2) 
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
+    norm_ = sqrt(n1^2 + n2^2 + n3^2) 
     vM = FT(0.5) * (vRR + vLL)
     pM = -FT(0.5) * Phys.Cpd * RhoM * ThM * (AuxR[3] - AuxL[3])
     diss = FT(0.5) * cS * RhoM * (vRR - vLL)/norm_ 
@@ -552,20 +645,20 @@ function (::ArtianoEnergyStable)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     Cad = FT(0.5) * abs((vRR + vLL))	
 
     FL[RhoPos] = RhoM * vM 
-    FL[uPos] = FL[RhoPos] * uAv - diss * Normal[1] - FT(0.5) * RhoM * Cad * (VRR[uPos]/VRR[RhoPos] - VLL[uPos]/VLL[RhoPos])
-    FL[vPos] = FL[RhoPos] * vAv - diss * Normal[2] - FT(0.5) * RhoM * Cad * (VRR[vPos]/VRR[RhoPos] - VLL[vPos]/VLL[RhoPos])
-    FL[wPos] = FL[RhoPos] * wAv - diss * Normal[3] - FT(0.5) * RhoM * Cad * (VRR[wPos]/VRR[RhoPos] - VLL[wPos]/VLL[RhoPos])
+    FL[uPos] = FL[RhoPos] * uAv - diss * n1 - FT(0.5) * RhoM * Cad * (VRR[uPos]/VRR[RhoPos] - VLL[uPos]/VLL[RhoPos])
+    FL[vPos] = FL[RhoPos] * vAv - diss * n2 - FT(0.5) * RhoM * Cad * (VRR[vPos]/VRR[RhoPos] - VLL[vPos]/VLL[RhoPos])
+    FL[wPos] = FL[RhoPos] * wAv - diss * n3 - FT(0.5) * RhoM * Cad * (VRR[wPos]/VRR[RhoPos] - VLL[wPos]/VLL[RhoPos])
     FL[ThPos] = FL[RhoPos] * ThUpwind
        
     FR[RhoPos] = FL[RhoPos]
-    FR[uPos] = FL[uPos] - pM * Normal[1]
-    FR[vPos] = FL[vPos] - pM * Normal[2]
-    FR[wPos] = FL[wPos] - pM * Normal[3]
+    FR[uPos] = FL[uPos] - pM * n1
+    FR[vPos] = FL[vPos] - pM * n2
+    FR[wPos] = FL[wPos] - pM * n3
     FR[ThPos] = FL[ThPos]
     FL[RhoPos] = FL[RhoPos]
-    FL[uPos] = FL[uPos] + pM * Normal[1]
-    FL[vPos] = FL[vPos] + pM * Normal[2]
-    FL[wPos] = FL[wPos] + pM * Normal[3]
+    FL[uPos] = FL[uPos] + pM * n1
+    FL[vPos] = FL[vPos] + pM * n2
+    FL[wPos] = FL[wPos] + pM * n3
     FL[ThPos] = FL[ThPos]
 
   end
@@ -574,42 +667,42 @@ end
 
 
 function (::RiemannExnerLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
-  @inline function RiemannByLMARSNonLin!(FL,FR,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSNonLin!(FL,FR,VLL,VRR,AuxL,AuxR,n1,n2,n3)
     FT = eltype(FL)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     ThM = FT(0.5) * (VLL[ThPos]/VLL[RhoPos] + VRR[ThPos]/VRR[RhoPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
     dp = -FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     pM = -FT(0.5) * Phys.Cpd * RhoM * ThM * (AuxR[3] - AuxL[3])
     if vM > FT(0)
       FL[RhoPos] = vM * VLL[RhoPos]
-      FL[uPos] = vM * VLL[uPos] + Normal[1] * dp
-      FL[vPos] = vM * VLL[vPos] + Normal[2] * dp
-      FL[wPos] = vM * VLL[wPos] + Normal[3] * dp
+      FL[uPos] = vM * VLL[uPos] + n1 * dp
+      FL[vPos] = vM * VLL[vPos] + n2 * dp
+      FL[wPos] = vM * VLL[wPos] + n3 * dp
       FL[ThPos] = vM * VLL[ThPos]
     else
       FL[RhoPos] = vM * VRR[RhoPos]
-      FL[uPos] = vM * VRR[uPos] + Normal[1] * dp
-      FL[vPos] = vM * VRR[vPos] + Normal[2] * dp
-      FL[wPos] = vM * VRR[wPos] + Normal[3] * dp
+      FL[uPos] = vM * VRR[uPos] + n1 * dp
+      FL[vPos] = vM * VRR[vPos] + n2 * dp
+      FL[wPos] = vM * VRR[wPos] + n3 * dp
       FL[ThPos] = vM * VRR[ThPos]
     end
 
     FR[RhoPos] = FL[RhoPos]
-    FR[uPos] = FL[uPos] - pM * Normal[1]
-    FR[vPos] = FL[vPos] - pM * Normal[2]
-    FR[wPos] = FL[wPos] - pM * Normal[3]
+    FR[uPos] = FL[uPos] - pM * n1
+    FR[vPos] = FL[vPos] - pM * n2
+    FR[wPos] = FL[wPos] - pM * n3
     FR[ThPos] = FL[ThPos]
 
     #FL[RhoPos] = FL[RhoPos]
-    FL[uPos] = FL[uPos] + pM * Normal[1]
-    FL[vPos] = FL[vPos] + pM * Normal[2]
-    FL[wPos] = FL[wPos] + pM * Normal[3]
+    FL[uPos] = FL[uPos] + pM * n1
+    FL[vPos] = FL[vPos] + pM * n2
+    FL[wPos] = FL[wPos] + pM * n3
     #FL[ThPos] = FL[ThPos]
 
   end
@@ -617,7 +710,7 @@ function (::RiemannExnerLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
 end
 
 function (::RiemannExLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
-  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
 
     FT = eltype(F)
     cS = Param.cS
@@ -627,23 +720,23 @@ function (::RiemannExLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     ExpRR = AuxR[3]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     RhoThM = FT(0.5) * (VLL[ThPos] + VRR[ThPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
 #   pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     pM = -FT(0.5) * cS * RhoM * (vRR - vLL)
     pM += 0.5 * Phys.Cpd * RhoThM * (ExpRR - ExpLL)  
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
-      F[uPos] = vM * VLL[uPos] + Normal[1] * pM
-      F[vPos] = vM * VLL[vPos] + Normal[2] * pM
-      F[wPos] = vM * VLL[wPos] + Normal[3] * pM
+      F[uPos] = vM * VLL[uPos] + n1 * pM
+      F[vPos] = vM * VLL[vPos] + n2 * pM
+      F[wPos] = vM * VLL[wPos] + n3 * pM
       F[ThPos] = vM * VLL[ThPos]
     else
       F[RhoPos] = vM * VRR[RhoPos]
-      F[uPos] = vM * VRR[uPos] + Normal[1] * pM
-      F[vPos] = vM * VRR[vPos] + Normal[2] * pM
-      F[wPos] = vM * VRR[wPos] + Normal[3] * pM
+      F[uPos] = vM * VRR[uPos] + n1 * pM
+      F[vPos] = vM * VRR[vPos] + n2 * pM
+      F[wPos] = vM * VRR[wPos] + n3 * pM
       F[ThPos] = vM * VRR[ThPos]
     end
   end
@@ -651,7 +744,7 @@ function (::RiemannExLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
 end
 
 function (::RiemannExPLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
-  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
 
     FT = eltype(F)
     cS = Param.cS
@@ -661,21 +754,21 @@ function (::RiemannExPLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
     ExpRR = AuxR[3]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
     RhoThM = FT(0.5) * (VLL[ThPos] + VRR[ThPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
     pM = FT(0.5) * Phys.Cpd * (VLL[ThPos] * ExpLL + VRR[ThPos]* ExpRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
-      F[uPos] = vM * VLL[uPos] + Normal[1] * pM
-      F[vPos] = vM * VLL[vPos] + Normal[2] * pM
-      F[wPos] = vM * VLL[wPos] + Normal[3] * pM
+      F[uPos] = vM * VLL[uPos] + n1 * pM
+      F[vPos] = vM * VLL[vPos] + n2 * pM
+      F[wPos] = vM * VLL[wPos] + n3 * pM
       F[ThPos] = vM * VLL[ThPos]
     else
       F[RhoPos] = vM * VRR[RhoPos]
-      F[uPos] = vM * VRR[uPos] + Normal[1] * pM
-      F[vPos] = vM * VRR[vPos] + Normal[2] * pM
-      F[wPos] = vM * VRR[wPos] + Normal[3] * pM
+      F[uPos] = vM * VRR[uPos] + n1 * pM
+      F[vPos] = vM * VRR[vPos] + n2 * pM
+      F[wPos] = vM * VRR[wPos] + n3 * pM
       F[ThPos] = vM * VRR[ThPos]
     end
   end
@@ -684,20 +777,20 @@ end
 
 
 function (::RiemannLMARSFast)(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,dpdRhoThPos,ThPos)
-  @inline function RiemannByLMARSSemi!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSSemi!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
 
     FT = eltype(F)
     cS = Param.cS
     pLL = AuxL[dpdRhoThPos] * VLL[RhoThPos]
     pRR = AuxR[dpdRhoThPos] * VRR[RhoThPos]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
-    F[uPos] = Normal[1] * pM
-    F[vPos] = Normal[2] * pM
-    F[wPos] = Normal[3] * pM
+    F[uPos] = n1 * pM
+    F[vPos] = n2 * pM
+    F[wPos] = n3 * pM
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
       F[RhoThPos] = F[RhoPos] * AuxL[ThPos]
@@ -710,19 +803,19 @@ function (::RiemannLMARSFast)(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,dpdRhoTh
 end
 
 function (::RiemannLMARSLinFast)(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,dpdRhoThPos,ThPos)
-  @inline function RiemannByLMARSSemi!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSSemi!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
 
     FT = eltype(F)
     cS = Param.cS
     pLL = AuxL[dpdRhoThPos] * VLL[RhoThPos]
     pRR = AuxR[dpdRhoThPos] * VRR[RhoThPos]
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) 
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) 
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) 
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) 
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) 
-    F[uPos] = Normal[1] * pM
-    F[vPos] = Normal[2] * pM
-    F[wPos] = Normal[3] * pM
+    F[uPos] = n1 * pM
+    F[vPos] = n2 * pM
+    F[wPos] = n3 * pM
     F[RhoPos] = vM 
     F[RhoThPos] = FT(0.5) * F[RhoPos] * (AuxL[ThPos] + AuxR[ThPos])
   end
@@ -731,28 +824,28 @@ end
 
 
 function (::RiemannLMARSFast)(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,pPos)
-  @inline function RiemannByLMARSLin!(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARSLin!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
 
     FT = eltype(F)
     cS = Param.cS
     pLL = AuxL[pPos]
     pRR = AuxR[pPos]
     RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
-    vLL = (VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3]) / VLL[RhoPos]
-    vRR = (VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]) / VRR[RhoPos]
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
     if vM > FT(0)
       F[RhoPos] = vM * VLL[RhoPos]
-      F[uPos] = Normal[1] * pM
-      F[vPos] = Normal[2] * pM
-      F[wPos] = Normal[3] * pM
+      F[uPos] = n1 * pM
+      F[vPos] = n2 * pM
+      F[wPos] = n3 * pM
       F[RhoThPos] = vM * VLL[RhoThPos]
     else
       F[RhoPos] = vM * VRR[RhoPos]
-      F[uPos] = Normal[1] * pM
-      F[vPos] = Normal[2] * pM
-      F[wPos] = Normal[3] * pM
+      F[uPos] = n1 * pM
+      F[vPos] = n2 * pM
+      F[wPos] = n3 * pM
       F[RhoThPos] = vM * VRR[RhoThPos]
     end
   end
@@ -762,28 +855,28 @@ end
 Base.@kwdef struct RiemannBoussinesqLMARS <: RiemannSolver end
 
 function (::RiemannBoussinesqLMARS)(Param,pPos,uPos,vPos,wPos,bPos)
-  @inline function RiemannByLMARS(F,VLL,VRR,AuxL,AuxR,Normal)
+  @inline function RiemannByLMARS(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
 
     FT = eltype(F)
     cS = Param.cS
     pLL = VLL[pPos]
     pRR = VRR[pPos]
-    U = Normal[1] * Param.U
-    vLL = VLL[uPos] * Normal[1] + VLL[vPos] * Normal[2] + VLL[wPos] * Normal[3] 
-    vRR = VRR[uPos] * Normal[1] + VRR[vPos] * Normal[2] + VRR[wPos] * Normal[3]
+    U = n1 * Param.U
+    vLL = VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3 
+    vRR = VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3
     pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * (vRR - vLL)
     vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) 
     if Param.U > 0
       F[pPos] = U * VLL[pPos] + Param.cS^2*vM 
-      F[uPos] = U * VLL[uPos] + Normal[1] * pM
-      F[vPos] = U * VLL[vPos] + Normal[2] * pM
-      F[wPos] = U * VLL[wPos] + Normal[3] * pM
+      F[uPos] = U * VLL[uPos] + n1 * pM
+      F[vPos] = U * VLL[vPos] + n2 * pM
+      F[wPos] = U * VLL[wPos] + n3 * pM
       F[bPos] = U * VLL[bPos]
     else
       F[pPos] = U * VRR[pPos] + Param.cS^2*vM 
-      F[uPos] = U * VRR[uPos] + Normal[1] * pM 
-      F[vPos] = U * VRR[vPos] + Normal[2] * pM
-      F[wPos] = U * VRR[wPos] + Normal[3] * pM
+      F[uPos] = U * VRR[uPos] + n1 * pM 
+      F[vPos] = U * VRR[vPos] + n2 * pM
+      F[wPos] = U * VRR[wPos] + n3 * pM
       F[bPos] = U * VRR[bPos]
     end
   end
