@@ -762,7 +762,7 @@ function ExchangeData3DSendGPU(U,Exchange)
   rreq = Exchange.rreq
   sreq = Exchange.sreq
 
-  group = (M,Nz,5,1)
+  group = (M,Nz,1,1)
   KExchangeData3DSendKernel! = ExchangeData3DSendKernel!(backend,group)
   @inbounds for iP in NeiProc
     ndrange = (M,Nz,length(IndSendBuffer[iP]),nT)
@@ -858,7 +858,7 @@ function ExchangeData3DRecvGPU!(U,Exchange)
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
 
-  group = (M,Nz,5,1)
+  group = (M,Nz,1,1)
   KExchangeData3DRecvKernel! = ExchangeData3DRecvKernel!(backend,group)
 
   #Receive
@@ -896,7 +896,7 @@ function ExchangeData3DRecvSetGPU!(U,Exchange)
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
 
-  group = (M,Nz,5,1)
+  group = (M,Nz,1,1)
   KExchangeData3DRecvSetKernel! = ExchangeData3DRecvSetKernel!(backend,group)
 
   #Receive
