@@ -571,7 +571,7 @@ function ExchangeDataFSendGPU(cF,Exchange)
     sreq = Exchange.sreq
   end
 
-  roup = (M,nz,1,1)
+  group = (M,nz,1,1)
   KExchangeDataFSendKernel! = ExchangeDataFSendKernel!(backend,group)
   for iP in SendProcF
     ndrange = (M,nz,length(IndSendBufferF[iP]),nT)
