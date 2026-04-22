@@ -182,13 +182,8 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
             iEP = FE.EdgesP[iE]  
             push!(LocTemp,FE.NumNodesP + k + (iEP - 1) * OrdEdge)
           elseif Discretization == "DG"
-            if SubGrid.Edges[iE].F[1] < SubGrid.Edges[iE].F[2]
-              k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + k 
-              push!(LocTemp,k1)
-            else
-              k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + k 
-              push!(LocTemp,k1)
-            end    
+            k1 = (iE - 1) * OrdEdge + SubGrid.NumFaces * FE.DoF + k 
+            push!(LocTemp,k1)
           end
         end
       end
