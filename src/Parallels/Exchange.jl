@@ -70,8 +70,8 @@ function ExchangeStruct{FT}(backend) where FT<:AbstractFloat
     RecvBuffer,
     RecvBuffer3,
     RecvBufferF,
-    rreq,
     sreq,
+    rreq,
    )
 end  
 
@@ -166,7 +166,6 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
 
-  MPI.Barrier(MPI.COMM_WORLD)
   RecvBufferE = Dict()
   for iP in eachindex(NeiProcE)
     GlobInd = GlobRecvBuffer[NeiProcE[iP]]  
@@ -184,7 +183,6 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
             push!(LocTemp,FE.NumNodesP + k + (iEP - 1) * OrdEdge)
           elseif Discretization == "DG"
             if SubGrid.Edges[iE].F[1] < SubGrid.Edges[iE].F[2]
-              k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + OrdEdge - k + 1
               k1 = (iE - 1)*OrdEdge + SubGrid.NumFaces*FE.DoF + k 
               push!(LocTemp,k1)
             else
@@ -270,8 +268,6 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
 
     stats = MPI.Waitall(rreq)
     stats = MPI.Waitall(sreq)
-
-    MPI.Barrier(MPI.COMM_WORLD)
 
     RecvBufferN = Dict()
     for iP in eachindex(NeiProcN)
@@ -447,8 +443,8 @@ function ExchangeStruct{FT}(backend,SubGrid,FE,CellToProc,Proc,ProcNumber,
     RecvBuffer,
     RecvBuffer3,
     RecvBufferF,
-    rreq,
     sreq,
+    rreq,
    )   
 end
 
@@ -482,7 +478,6 @@ function ExchangeData!(U::Array{Float64,3},Exchange)
   stats = MPI.Waitall!(rreq)
   stats = MPI.Waitall!(sreq)
 
-  MPI.Barrier(MPI.COMM_WORLD)
   #Receive
   for iP in eachindex(NeiProc)
     @views @. U[:,IndRecvBuffer[NeiProc[iP]],:] += RecvBuffer[NeiProc[iP]]
@@ -538,7 +533,6 @@ function ExchangeData3D!(U,Exchange)
   stats = MPI.Waitall!(rreq)
   stats = MPI.Waitall!(sreq)
 
-  MPI.Barrier(MPI.COMM_WORLD)
   #Receive
   for iP in NeiProc
     @views @. U[:,IndRecvBuffer[iP],:] += RecvBuffer[iP]
@@ -577,7 +571,7 @@ function ExchangeDataFSendGPU(cF,Exchange)
     sreq = Exchange.sreq
   end
 
-  group = (M,nz,5,1)
+  roup = (M,nz,1,1)
   KExchangeDataFSendKernel! = ExchangeDataFSendKernel!(backend,group)
   for iP in SendProcF
     ndrange = (M,nz,length(IndSendBufferF[iP]),nT)
@@ -614,6 +608,7 @@ function ExchangeDataFRecvGPU!(cF,Exchange)
   backend = get_backend(cF)
   FT = eltype(cF)
 
+  IndSendBufferF = Exchange.IndSendBufferF
   IndRecvBufferF = Exchange.IndRecvBufferF
   GetProcF = Exchange.GetProcF
   SendProcF = Exchange.SendProcF
@@ -647,8 +642,7 @@ function ExchangeDataFRecvGPU!(cF,Exchange)
 
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
-  MPI.Barrier(MPI.COMM_WORLD)
-  group = (M,nz,5,1)
+  group = (M,nz,1,1)
   KExchangeDataFRecvKernel! = ExchangeDataFRecvKernel!(backend,group)
 
   #Receive
@@ -813,7 +807,6 @@ function ExchangeData3DRecv!(U,p,Exchange)
 
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
-  MPI.Barrier(MPI.COMM_WORLD)
   #Receive
   @inbounds for iP in NeiProc
     i = 0
@@ -838,7 +831,6 @@ function ExchangeData3DRecv!(U,Exchange)
 
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
-  MPI.Barrier(MPI.COMM_WORLD)
   #Receive
   @inbounds for iP in NeiProc
     i = 0
@@ -865,7 +857,6 @@ function ExchangeData3DRecvGPU!(U,Exchange)
 
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
-  MPI.Barrier(MPI.COMM_WORLD)
 
   group = (M,Nz,5,1)
   KExchangeData3DRecvKernel! = ExchangeData3DRecvKernel!(backend,group)
@@ -904,7 +895,6 @@ function ExchangeData3DRecvSetGPU!(U,Exchange)
 
   stats = MPI.Waitall(rreq)
   stats = MPI.Waitall(sreq)
-  MPI.Barrier(MPI.COMM_WORLD)
 
   group = (M,Nz,5,1)
   KExchangeData3DRecvSetKernel! = ExchangeData3DRecvSetKernel!(backend,group)
@@ -958,7 +948,6 @@ function ExchangeData!(U::AbstractArray{FT,2},Exchange) where FT<:AbstractFloat
   stats = MPI.Waitall!(rreq)
   stats = MPI.Waitall!(sreq)
 
-  MPI.Barrier(MPI.COMM_WORLD)
   #Receive
   for iP in eachindex(NeiProc)
     U[:,IndRecvBuffer[NeiProc[iP]]] .+= RecvBuffer[NeiProc[iP]]
@@ -983,18 +972,17 @@ function ExchangeData!(U::AbstractArray{FT,1},Exchange) where FT<:AbstractFloat
   for iP in eachindex(NeiProc)
     RecvBuffer[NeiProc[iP]] = KernelAbstractions.zeros(backend,FT,length(IndRecvBuffer[NeiProc[iP]]))
     tag = Proc + ProcNumber*NeiProc[iP]
-    rreq[iP] = MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
+    MPI.Irecv!(RecvBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD, rreq[iP])
   end  
   sreq = MPI.Request[MPI.REQUEST_NULL for _ in (NeiProc .- 1)]
   for iP in eachindex(NeiProc)
     tag = NeiProc[iP] + ProcNumber*Proc
-    sreq[iP] = MPI.Isend(SendBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD)
+    MPI.Isend(SendBuffer[NeiProc[iP]], NeiProc[iP] - 1, tag, MPI.COMM_WORLD, sreq[iP])
   end
 
   stats = MPI.Waitall!(rreq)
   stats = MPI.Waitall!(sreq)
 
-  MPI.Barrier(MPI.COMM_WORLD)
   #Receive
   for iP in eachindex(NeiProc)
     U[IndRecvBuffer[NeiProc[iP]]] .+= RecvBuffer[NeiProc[iP]]
