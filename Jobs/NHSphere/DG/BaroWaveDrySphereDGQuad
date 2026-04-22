@@ -37,7 +37,7 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=60 \
+  --dtau=80 \
   --dtauSmall=5 \
   --IntMethod="Rosenbrock" \
   --IntMethodFast="LSRungeKutta" \
