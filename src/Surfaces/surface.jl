@@ -133,6 +133,8 @@ function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos,z0MData,z0HData)
     SD[CTPos] = CT
     SD[CHPos] = CT
     SD[zetaPos] = zeta
+#   @show "MOST",LandClass,SeaClass
+#   @show "MOST",uStar,CM,CT,zeta
   end  
   return SurfaceFluxValues
 end  
@@ -146,7 +148,7 @@ end
 
   if IC <= NumG
     SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
-      view(U,1,IC,:),p[1,IC], view(nSS,:,IC),
+      view(U,1,1,IC,:),p[1,1,IC], view(nSS,:,IC),
       LandClass[IC])
   end
 end
@@ -172,7 +174,7 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    SurfaceValues!(view(SurfaceData,:,IC),view(xS,:,IC),view(U,1,IC,:),p[1,IC])
+    SurfaceValues!(view(SurfaceData,:,IC),view(xS,:,IC),view(U,1,1,IC,:),p[1,1,IC])
   end
 end
 

@@ -1346,7 +1346,7 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    SurfaceFluxRhs!(view(F,1,IC,:),view(U,1,IC,:),p[1,IC],dz[1,IC],
+    SurfaceFluxRhs!(view(F,1,1,IC,:),view(U,1,1,IC,:),p[1,1,IC],dz[1,IC],
       view(SurfaceData,:,IC))
   end  
 end

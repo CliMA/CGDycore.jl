@@ -322,7 +322,6 @@ end
 
   FLocL = @private eltype(F) (NUMV,)
   FLocR = @private eltype(F) (NUMV,)
-# FLoc = @localmem eltype(F) (N,M,TilesDim,NUMV)
 
   RhoPos = @uniform 1
   uPos = @uniform 2

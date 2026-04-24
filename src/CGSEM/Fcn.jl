@@ -560,7 +560,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     KSurfaceFluxScalarsKernel!(SurfaceFluxRhs!,F,U,p,Global.SurfaceData.Data,dz,ndrange=ndrangeS)
   end
   if Global.Model.Forcing
-    Sources.Forcing!(Force,F,U,Aux,FE.Glob,X,NumberThreadGPU)  
+    Sources.Forcing!(Force,F,U,Aux,FE,Metric,NumberThreadGPU)  
 #   KForceKernel! = ForceKernel!(backend, groupG)
 #   KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
   end  
@@ -577,7 +577,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
 
 
   if Global.Model.Damping
-    Sources.Damping!(Damp,F,U,FE.Glob,X,NumberThreadGPU)  
+    Sources.Damping!(Damp,F,U,FE,Metric,NumberThreadGPU)  
   end  
 end
 

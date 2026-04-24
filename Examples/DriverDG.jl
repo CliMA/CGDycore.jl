@@ -519,7 +519,7 @@ Global.TimeStepper.SimMinutes = SimMinutes
 Global.TimeStepper.SimSeconds = SimSeconds
 Global.TimeStepper.SimTime = SimTime
 
-Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV+NumAux+1,Exchange)
+Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,Exchange)
 
 
 # Simulation time

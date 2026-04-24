@@ -245,7 +245,7 @@ Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
   lapse_rate::FT  = -0.008
   Deep::Bool = false
   pert::FT = 0.1
-  uMax::FT = 1.0
+  uMax::FT = 0.0
   vMax::FT = 0.0
 
   sigma_b::FT = 7/10

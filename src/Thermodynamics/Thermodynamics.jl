@@ -47,8 +47,11 @@ end
   # ClaudiusClapperon
   # Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
   #   exp((Phys.L0V / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
+  e_s0 = FT(661.2)
+  a = FT(17.368)
+  b = FT(238.88)
   T_C = T - Phys.T0
-  FT(611.2) * exp(FT(17.62) * T_C / (FT(243.12) + T_C))
+  e_s0 * exp(a * T_C / (b + T_C))
 end
 
 
@@ -57,9 +60,12 @@ end
   # ClaudiusClapperon
   # Phys.p0 * (T / Phys.T0)^((Phys.Cpv - Phys.Cpl) / Phys.Rv) *
   #   exp((Phys.L0V / Phys.Rv) *(1.0 / Phys.T0 - 1.0 / T))
+  e_s0 = FT(661.2)
+  a = FT(17.368)
+  b = FT(238.88)
   T_C = T - Phys.T0
-  fpws = FT(611.2) * exp(FT(17.62) * T_C / (FT(243.12) + T_C))
-  fpws * FT(17.62) * ((FT(243.12) + T_C) - T_C) / (FT(243.12) + T_C) / (FT(243.12) + T_C)
+  fwps = e_s0 * exp(a * T_C / (b + T_C))
+  fpws * a * ((b + T_C) - T_C) / (b + T_C) / (b + T_C)
 end
 
 @inline function fpis(T,Phys)

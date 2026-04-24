@@ -1,60 +1,54 @@
 #!/bin/bash
 julia --project Examples/DriverCG.jl \
-  --Problem="BaroWaveDrySphere" \
+  --Problem="BaroWaveMoistSphere" \
   --NumberThreadGPU=512 \
-  --FloatTypeBackend="Float64" \
-  `#Model `    \
+  --FloatTypeBackend="Float32" \
   --NumV=5 \
-  --NumTr=0 \
-  --RhoTPos=0 \
-  --RhoRPos=0 \
-  --Equation="CompressibleShallow" \
-  --State="Dry" \
+  --NumTr=2 \
+  --TkePos=0 \
+  --RhoVPos=6 \
+  --RhoCPos=7 \
   --ModelType="VectorInvariant" \
-  --SurfaceScheme="" \
+  --SurfaceScheme="MOST" \
+  --SurfaceFlux=true \
+  --SurfaceFluxMom=true \
   --Coriolis=true \
   --Upwind=true \
   --HorLimit=false \
-  --Microphysics=false \
-  --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
+  --Equation="CompressibleShallow" \
+  --State="Moist" \
+  --Microphysics=true \
+  --TypeMicrophysics="SimpleMicrophysicsPot" \
   --Sedimentation=false \
+  --Rain=0.0 \
   --Buoyancy=true \
-  --Damping=false \
+  --Damping=true \
   --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
   --SimDays=10 \
-  `#Output `        \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=12 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
   --OrdPrint=2 \
-  --OrdPrintZ=0 \
-  --vtkFileName="output/VTK/BaroWaveDrySphere/CGE32Quad" \
+  --vtkFileName="output/VTK/BaroWaveMoistSphere/CG32Quad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
-  `#Grid `        \
-  --GridForm="Spherical" \
+  --TopoS="" \
   --Stretch=true \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
-  --nLon=128 \
-  --nLat=57 \
-  --LatB=1.3962634015954636 \
   --nz=64 \
   --nPanel=32 \
-  --H=30000.0 \
-  `#Topography `     \
-  --TopoS="" \
-  `#Discretization `     \
+  --H=45000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=5.e14 \
   --HyperDGrad=5.e14 \
   --HyperDDiv=5.e14 \
-  --HyperDDivW=0.e14
+  --HyperDDivW=0.e15

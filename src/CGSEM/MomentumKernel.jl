@@ -350,14 +350,14 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    uCol = U[1,IC,2]
-    vCol = U[1,IC,3]
+    uCol = U[1,1,IC,2]
+    vCol = U[1,1,IC,3]
     WS = -(nS[1,IC]* uCol + nS[2,IC] * vCol) / nS[3,IC]
-    ww = 0.5 * (WS + U[1,IC,4])
+    ww = 0.5 * (WS + U[1,1,IC,4])
     nU = nS[1,IC] * uCol + nS[2,IC] * vCol + nS[3,IC] * ww
     uStar = sqrt((uCol - nS[1,IC] * nU)^2 + (vCol - nS[2,IC] * nU)^2 + (ww - nS[3,IC] * nU)^2)
     facDiv = -eltype(dz)(2) / dz[1,IC] * CM[IC] * uStar
-    @atomic :monotonic F[1,IC,2] += facDiv * (uCol - nU * nS[1,IC])
-    @atomic :monotonic F[1,IC,3] += facDiv * (vCol - nU * nS[2,IC])
+    @atomic :monotonic F[1,1,IC,2] += facDiv * (uCol - nU * nS[1,IC])
+    @atomic :monotonic F[1,1,IC,3] += facDiv * (vCol - nU * nS[2,IC])
   end
 end  

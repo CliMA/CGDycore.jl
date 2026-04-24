@@ -14,7 +14,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
   nz = Global.Grid.nz
   M = FE.Mz
 
-  CacheInt = Cache(backend,FT,IntMethod,FE,M,nz,NumV)
+  CacheInt = Cache(backend,FT,IntMethod,FE,M,nz,NumV+NumTr)
   CacheAux = CacheAuxStruct(backend,FT,FE,M,nz,Global.Model,Grid)
   if IntMethod.JacComp
     JCache = CacheJac(backend,FT,M,nz,Global.Model,FE)

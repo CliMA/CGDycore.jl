@@ -519,7 +519,8 @@ function (profile::StratifiedSphereExample)(Param,Phys)
     u = Param.uMax
     v = Param.vMax
     w = FT(0)
-    NBr = Param.NBr
+
+    N2 = Param.NBr^2
     Grav = Phys.Grav
     p0 = Phys.p0
     Cpd = Phys.Cpd
@@ -527,11 +528,12 @@ function (profile::StratifiedSphereExample)(Param,Phys)
     Rd = Phys.Rd
     kappa = Phys.kappa
     Th0 = Param.Th0
-    S = NBr * NBr / Grav
+    S = N2 / Grav
     Th = Th0 * exp(z *  S)
-    pLoc = p0 * (FT(1) - Grav / (Cpd * Th0 * S) * (FT(1) - exp(-S * z))).^(Cpd / Rd)
-    Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
-    T = pLoc / (Rd * Rho)
+    pi_ex = FT(1) - (Grav^2 / (Cpd * Th0 * N2)) * (1 - exp.(-S * z))
+    T = Th * pi_ex
+    pLoc = p0 * pi_ex^(Cpd / Rd)
+    Rho = pLoc / (Rd * T)
     E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
     IE = Cvd * T 
     qv = FT(0)
@@ -1148,22 +1150,24 @@ function (::HeldSuarezMoistExample)(Param,Phys)
 
     return (Rho,uS,vS,w,Th,E,IE,qV,qC)
   end
-  @inline function Force(F,U,p,lat)
+  @inline function Force(F,U,Aux,x)
     FT = eltype(U)
+    p = Aux[1]
     Sigma = p / Phys.p0
     SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
+    lat = x[2]
     coslat = cos(lat)
     sinlat = sin(lat)
-    F[2] += -(Param.k_f * height_factor) * U[2]
-    F[3] += -(Param.k_f * height_factor) * U[3]
+    F[2] = -(Param.k_f * height_factor) * U[2]
+    F[3] = -(Param.k_f * height_factor) * U[3]
     kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
     Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
       Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
     T = p / (U[1] * Phys.Rd)
     DeltaT =  kT * (T - Teq)
-    F[5]  += - U[5] / T * DeltaT 
+    F[5]  = - U[5] / T * DeltaT 
   end
   return profile, Force
 end
