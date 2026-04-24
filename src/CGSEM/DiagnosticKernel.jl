@@ -94,23 +94,23 @@ end
 end
 
 @kernel inbounds = true function PressureKernel!(Pressure!,Aux,@Const(U),@Const(nS),@Const(zP))
-  Iz,IC = @index(Global, NTuple)
+  K,Iz,IC = @index(Global, NTuple)
 
-  Nz = @uniform @ndrange()[1]
-  NumG = @uniform @ndrange()[2]
+  Nz = @uniform @ndrange()[2]
+  NumG = @uniform @ndrange()[3]
 
   if IC <= NumG
     if Iz == 1
-      wL = wCol = -(nS[1,Iz] * U[1,Iz,IC,2] + nS[1,Iz] * U[1,Iz,IC,3]) / nS[3,Iz]
+      wL = wCol = -(nS[1,Iz] * U[K,Iz,IC,2] + nS[1,Iz] * U[K,Iz,IC,3]) / nS[3,Iz]
     else
-      wL = U[1,Iz,IC,4]
+      wL = U[K,Iz,IC,4]
     end
     if Iz == Nz
       wR = eltype(U)(0)
     else
-      wR = U[1,Iz+1,IC,4] 
+      wR = U[K,Iz+1,IC,4] 
     end  
-    Pressure!(view(Aux,1,Iz,IC,:),view(U,1,Iz,IC,:),wL,wR,zP[Iz,IC];T=Aux[1,Iz,IC,2])
+    Pressure!(view(Aux,K,Iz,IC,:),view(U,K,Iz,IC,:),wL,wR,zP[Iz,IC];T=Aux[K,Iz,IC,2])
   end
 end
 
@@ -148,16 +148,16 @@ end
   end
 end
 
-@kernel inbounds = true function EddyCoefficientKernel!(Eddy,K,@Const(U),@Const(Surf),@Const(p),
+@kernel inbounds = true function EddyCoefficientKernel!(Eddy,KV,@Const(U),@Const(Surf),@Const(p),
   @Const(dz),@Const(Glob))
-  Iz,IC = @index(Global, NTuple)
+  K,Iz,IC = @index(Global, NTuple)
 
-  Nz = @uniform @ndrange()[1]
-  NumG = @uniform @ndrange()[2]
+  Nz = @uniform @ndrange()[2]
+  NumG = @uniform @ndrange()[3]
 
   if IC <= NumG
     LenScale = 100.0  
-    @views K[Iz,IC] = Eddy(U[1,Iz,IC,:],Surf[:,IC],p[Iz,IC],dz[1,IC],LenScale) 
+    @views KV[K,Iz,IC] = Eddy(U[1,Iz,IC,:],Surf[:,IC],p[K,Iz,IC],dz[1,IC],LenScale) 
   end
 end
 
@@ -190,26 +190,25 @@ function FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
   nS = Metric.nS
   nSS = Metric.nSS
   FT = eltype(U)
-  N = size(FE.DS,1)
+  M = size(U,1)
   Nz = size(U,2)
   NumG = size(U,3)
   Glob = FE.Glob
   NumF = size(Glob,2)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
 
-  NG = min(div(NumberThreadGPU,Nz),NumG)
-  group = (Nz, NG)
-  ndrange = (Nz, NumG)
-  NF = min(div(NumberThreadGPU,N*N),NumF)
-  NDoFG = min(div(NumberThreadGPU,Nz),NumG)
-  groupG = (Nz, NDoFG)
-  ndrangeG = (Nz, NumG)
+  NG = min(div(NumberThreadGPU,M*Nz),NumG)
+  group = (M, Nz, NG)
+  ndrange = (M, Nz, NumG)
+  NDoFG = min(div(NumberThreadGPU,M*Nz),NumG)
+  groupG = (M, Nz, NDoFG)
+  ndrangeG = (M, Nz, NumG)
   Aux = Cache.Aux
   @views p = Aux[:,:,:,1]
   @views T = Aux[:,:,:,2]
   @views PotT = Aux[:,:,:,3]
   @views RhoP = Aux[:,:,:,5:end]
-  @views KV = Cache.KV
+  KV = Cache.KV
   @views Rho = U[:,:,:,1]
   dz = Metric.dz
   zP = Metric.zP
@@ -232,7 +231,6 @@ function FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
         KEddyCoefficientKernel!(Eddy,KV,U,SurfaceData.Data,p,dz,Glob,ndrange=ndrangeG)
       else    
-        NFG = min(div(NumberThreadGPU,N*N),NumF)
         Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  
         Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData.Data,LandUseData,Model,NumberThreadGPU)  
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)

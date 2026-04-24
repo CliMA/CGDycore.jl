@@ -22,6 +22,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
     JCache = nothing  
   end  
   Aux = CacheAux.Aux
+  KV = CacheAux.KV
   if Global.Model.GPAuxPos > 0
     DGSEM.GeoPot(Aux,FE,Metric,Exchange,Global)
   end  
@@ -55,7 +56,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
   PrintStartInt=0
 
 
-  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
+  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux,KV=KV)
   TimeIntegration!(IntMethod,U,dt,Fcn,CacheAux,Jac,FE,Metric,Phys,CacheInt,JCache,Exchange,
     Global,Param,VelForm)
   @time begin

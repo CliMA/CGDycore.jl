@@ -469,7 +469,7 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber, 
 end  
 
 function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts::Int;
-  Thermo=zeros(0,0,0,0))
+  Thermo=zeros(0,0,0,0),KV=zeros(0,0,0))
 
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
@@ -649,7 +649,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["qT", VTKCellData()] = cCellCPU
     elseif  str == "DiffKoeff" 
-      DiffKoeff = Cache.KV  
+      DiffKoeff = KV  
       RhoPos = Global.Model.RhoPos
       if length(size(U)) == 3
         DiffKoeffR = reshape(DiffKoeff,1,size(DiffKoeff,1),size(DiffKoeff,2))  

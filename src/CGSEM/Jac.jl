@@ -97,9 +97,9 @@ end
   if IC <= NumG
     dzT = dz[Iz+1,IC]
     dzB = dz[Iz,IC]
-    RhoT = Rho[Iz+1,IC]
-    RhoB = Rho[Iz+1,IC]
-    KF = eltype(JDiff)(2) * KV[Iz,IC] / (dzT + dzB)
+    RhoT = Rho[1,Iz+1,IC]
+    RhoB = Rho[1,Iz+1,IC]
+    KF = eltype(JDiff)(2) * KV[1,Iz,IC] / (dzT + dzB)
     JDiff[3,Iz+1,IC] = -KF / RhoT / dzB
     @atomic :monotonic JDiff[2,Iz,IC] += KF / RhoB/ dzB
     JDiff[1,Iz,IC] = -KF / RhoB / dzT

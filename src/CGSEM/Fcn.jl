@@ -551,7 +551,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
       KVerticalDiffusionScalarKernel!(FTke,Tke,Rho,KV,dz,ndrange=ndrangeG)
     end  
     for iT = 1 : NumTr
-      @views KVerticalDiffusionScalarKernel!(FTr[:,:,iT],UTr[:,:,iT],Rho,KV,dz,ndrange=ndrangeG)
+      @views KVerticalDiffusionScalarKernel!(FTr[:,:,:,iT],UTr[:,:,:,iT],Rho,KV,dz,ndrange=ndrangeG)
     end
   end
   if Global.Model.SurfaceFlux

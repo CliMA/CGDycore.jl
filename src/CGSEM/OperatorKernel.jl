@@ -1291,10 +1291,10 @@ end
   if Iz < Nz && IC <= NumG
     dzT = dz[Iz+1,IC]   
     dzB = dz[Iz,IC]   
-    grad = eltype(FTr)(2) * K[Iz,IC] * (Tr[Iz+1,IC] / Rho[Iz+1,IC] - 
-      Tr[Iz,IC] / Rho[Iz,IC]) / (dzT + dzB)
-    @atomic :monotonic FTr[Iz,IC] +=  grad / dzB
-    @atomic :monotonic FTr[Iz+1,IC] +=  -grad / dzT
+    grad = eltype(FTr)(2) * K[1,Iz,IC] * (Tr[1,Iz+1,IC] / Rho[1,Iz+1,IC] - 
+      Tr[1,Iz,IC] / Rho[1,Iz,IC]) / (dzT + dzB)
+    @atomic :monotonic FTr[1,Iz,IC] +=  grad / dzB
+    @atomic :monotonic FTr[1,Iz+1,IC] +=  -grad / dzT
   end  
 end  
 
