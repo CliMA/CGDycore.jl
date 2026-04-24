@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverCG.jl \
+julia --project --check-bounds=yes Examples/DriverCG.jl \
   --Problem="HeldSuarezMoistSphere" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \

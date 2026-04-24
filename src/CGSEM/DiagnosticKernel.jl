@@ -148,24 +148,6 @@ end
   end
 end
 
-@kernel inbounds = true function SurfaceKernel!(Surface,@Const(U),@Const(p),@Const(X),
-  @Const(dXdxI),@Const(nS),@Const(Glob),SurfaceValues,SurfaceData)
-
-  ID,IF = @index(Global, NTuple)
-
-  NumF = @uniform @ndrange()[2]
-
-  if IF <= NumF
-    ind = Glob[ID,IF]
-    xS = SVector{3}(X[ID,1,1,1,IF], X[ID,1,2,1,IF], X[ID,1,3,1,IF])
-    dz = sqrt(X[ID,2,1,1,IF]^2 + X[ID,2,2,1,IF]^2 + X[ID,2,3,1,IF]^2) -
-      sqrt(X[ID,1,1,1,IF]^2 + X[ID,1,2,1,IF]^2 + X[ID,1,3,1,IF]^2)
-    SurfaceValues(xS,view(U,1,ind,:),p[1,ind],Surface[ID,IF])
-    SurfaceData(dz,view(U,1,ind,:),p[1,ind],
-     view(dXdxI,3,:,1,ID,1,IF),view(nS,ID,:,IF),Surface[ID,IF])
-  end
-end
-
 @kernel inbounds = true function EddyCoefficientKernel!(Eddy,K,@Const(U),@Const(Surf),@Const(p),
   @Const(dz),@Const(Glob))
   Iz,IC = @index(Global, NTuple)

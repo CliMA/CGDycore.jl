@@ -158,7 +158,7 @@ function SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData,LandUseData,Model,Number
   z0H = LandUseData.z0H
   LandClass = LandUseData.LandClass
   backend = get_backend(U)
-  NumG = size(U,2)
+  NumG = size(U,3)
   groupS = (max(div(NumG,NumberThreadGPU),1))
   ndrangeS = (NumG)
   KSurfaceFluxDataKernel! = SurfaceFluxDataKernel!(backend,groupS)
@@ -180,7 +180,7 @@ end
 
 function SurfaceData!(U,p,xS,Glob,SurfaceData,Model,NumberThreadGPU)
   backend = get_backend(U)
-  NumG = size(U,2)
+  NumG = size(U,3)
   groupS = (max(div(NumG,NumberThreadGPU),1))
   ndrangeS = (NumG)
   KSurfaceDataKernel! = SurfaceDataKernel!(backend,groupS)
