@@ -247,12 +247,12 @@ end
       FluxAver!(fTilde,
         VLoc, AuxLoc, dXdxILoc,
         ID, iz,
-        l,  iz)
+        l,  iz, Val(1))
       # x2-direction: same pair, different metric row
       FluxAver!(gTilde,
         VLoc, AuxLoc, dXdxILoc,
         ID, iz,
-        l,  iz)
+        l,  iz, Val(2))
       @unroll for iv = 1:NV
         FLoc[ID, iz, iv] += -Dx1[ID, l] * fTilde[iv] - Dx2[ID, l] * gTilde[iv]
       end

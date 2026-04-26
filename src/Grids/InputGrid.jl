@@ -369,7 +369,7 @@ function InputGrid(backend,FT,filename,OrientFace,Rad,nz)
   Dim = 3
   Type = Quad()
   Rad = Rad
-  Form = "Sphere"
+  Form = SphericalGrid()
   NumNodes=size(coord,1)
   Nodes = map(1:NumNodes) do i
     Node()

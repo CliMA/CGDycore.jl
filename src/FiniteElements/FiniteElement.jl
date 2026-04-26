@@ -498,6 +498,7 @@ mutable struct DGTri{FT<:AbstractFloat,
     PL2::AT2
     PL2CPU::Array{FT, 2}
     phi
+    BoundaryDoF::Array{Int, 1}
     InterOutputH::AT2
     InterOutputV::AT2
 end    
@@ -926,11 +927,13 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
   copyto!(DVZ,DVZCPU)
   DVZT=DVZ'
 
-  GlobCPU,GlobECPU,NumG,NumI,Stencil,MasterSlave,BoundaryDoF = NumberingFemDGTri(Grid,n,DoFE,PosDoFE,Proc)
+  GlobCPU,GlobECPU,NumG,NumI,Stencil,MasterSlave,BoundaryDoFCPU = NumberingFemDGTri(Grid,n,DoFE,PosDoFE,Proc)
   Glob = KernelAbstractions.zeros(backend,Int,size(GlobCPU))
   GlobE = KernelAbstractions.zeros(backend,Int,size(GlobECPU))
   copyto!(Glob,GlobCPU)
   copyto!(GlobE,GlobECPU)
+  BoundaryDoF = KernelAbstractions.zeros(backend,Int,size(BoundaryDoFCPU))
+  copyto!(BoundaryDoF,BoundaryDoFCPU)
   _,RefineMidPoints = Grids.PrintPoints(OrdPrint,Grids.Tri())
 
   DoFPrint = size(RefineMidPoints,1)
@@ -1018,6 +1021,7 @@ function DGTri{FT}(backend,Method,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where F
     PL2GPU,
     PL2,
     phi,
+    BoundaryDoF,
     InterOutputH,
     InterOutputV,
   )

@@ -268,7 +268,7 @@ function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,Metri
   KApplyRotateKernel!(Metric.dXdxI,Metric.X,Grid.Form;ndrange=ndrange)
 end
 
-function FillContravariant!(backend,Metric,FE,Grid,::Grids.Tri)
+function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Tri,MetricType)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
   NF = Grid.NumFaces
@@ -276,14 +276,14 @@ function FillContravariant!(backend,Metric,FE,Grid,::Grids.Tri)
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
   CurlMetric = true
-  if CurlMetric
+# if occursin("Curl",MetricType) 
     KFillContraKernel1! = MetricTriKernel1!(backend,group)
     KFillContraKernel1!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx2,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
     KFillContraKernel2! = MetricTriKernel2!(backend,group)
     KFillContraKernel2!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
     KFillContraKernel3! = MetricTriKernel3!(backend,group)
     KFillContraKernel3!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.Dx2,Val(DoF),Val(M);ndrange=ndrange)
-  end
+# end
 end
 
 @kernel inbounds = true function FillContraCurlQuadKernel3!(dXdxI,@Const(X),@Const(DH), ::Val{N}, ::Val{M}) where {N,M}

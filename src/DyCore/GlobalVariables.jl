@@ -378,7 +378,8 @@ Base.@kwdef mutable struct ModelStruct{FT}
   RiemannSolverLin::Any
   NonConservativeFlux::Any
   Flux::Any
-  FluxAverage::Any
+  FluxAverageH::Any
+  FluxAverageV::Any
   FluxAverageFast::Any
   FluxAverageSlow::Any
   FluxLin::Any
@@ -485,7 +486,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   RiemannSolverLin = ""
   NonConservativeFlux = ""
   Flux = ""
-  FluxAverage = ""
+  FluxAverageH = ""
+  FluxAverageV = ""
   FluxAverageFast = ""
   FluxAverageSlow = ""
   FluxLin = ""
@@ -589,7 +591,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    RiemannSolverSlow,
    RiemannSolverLin,
    NonConservativeFlux,
-   FluxAverage,
+   FluxAverageH,
+   FluxAverageV,
    FluxAverageFast,
    FluxAverageSlow,
    FluxLin,
