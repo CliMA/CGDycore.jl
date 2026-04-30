@@ -113,6 +113,7 @@ y0 = parsed_args["y0"]
 OrdPoly = parsed_args["OrdPoly"]
 OrdPolyZ = parsed_args["OrdPolyZ"]
 MetricType = parsed_args["MetricType"]
+@show "nach Read",MetricType
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]

@@ -55,10 +55,10 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
   end
   PrintStartInt=0
 
-
-  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux,KV=KV)
+# For testing one time step for @time
   TimeIntegration!(IntMethod,U,dt,Fcn,CacheAux,Jac,FE,Metric,Phys,CacheInt,JCache,Exchange,
     Global,Param,VelForm)
+  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux,KV=KV)
   @time begin
     @inbounds for i = 1 : nIter
       Δt = @elapsed begin
@@ -71,6 +71,10 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
           @. @views U[:,:,FE.BoundaryDoF,3] = FT(0)  
           Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
         end
+        if time[1] >= StartAverageTime && StartAverageTime >= 0.0
+          Statistics.AverageInTime!(UAver,U,iAv)
+          iAv += 1
+        end
       end
       percent = i/nIter*100
       if Proc == 1
@@ -80,6 +84,8 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
   end  
   @. @views U[:,:,FE.BoundaryDoF,3] = FT(0)  
   Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
-
+  if StartAverageTime >= 0 && StartAverageTime < SimTime
+    Outputs.unstructured_vtkSphere(UAver,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
+  end  
 end
 

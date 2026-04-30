@@ -260,9 +260,11 @@ elseif Grid.Type == Grids.Tri()
 end
 
 # Finite elements
-@show k
+@show "Order RT",k
 RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
+@show "Order DG",k+1
 DG = FEM.CGKitePrimalStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
+@show "Order CG",k+1
 CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 
 ExchangeDG = Parallels.ExchangeStruct{FTB}(backend,Grid,DG,CellToProc,Proc,ProcNumber,

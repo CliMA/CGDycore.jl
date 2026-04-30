@@ -222,14 +222,17 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad,Metri
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
   DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
   copyto!(DSZGPU,DSZ)
+  @show MetricType
   if occursin("Curl",MetricType) 
+    @show "Case Curl"  
     KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
-    KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel1!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
-    KFillContraKernel2!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel2!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
-    KFillContraKernel3!(Metric.dXdxI,Metric.X,FE.DSGPU,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel3!(Metric.dXdxI,Metric.X,DSGPU,Val(N),Val(M);ndrange=ndrange)
   else
+    @show "No Curl"  
     KFillContraKernel! = MetricQuadKernel!(backend,group)
     KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
   end
@@ -276,14 +279,14 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Tri,Metric
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
   CurlMetric = true
-# if occursin("Curl",MetricType) 
+  if occursin("Curl",MetricType) 
     KFillContraKernel1! = MetricTriKernel1!(backend,group)
     KFillContraKernel1!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx2,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
     KFillContraKernel2! = MetricTriKernel2!(backend,group)
     KFillContraKernel2!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
     KFillContraKernel3! = MetricTriKernel3!(backend,group)
     KFillContraKernel3!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.Dx2,Val(DoF),Val(M);ndrange=ndrange)
-# end
+  end
 end
 
 @kernel inbounds = true function FillContraCurlQuadKernel3!(dXdxI,@Const(X),@Const(DH), ::Val{N}, ::Val{M}) where {N,M}
