@@ -366,7 +366,7 @@ if InterfaceFluxDG == "RiemannLMARS"
       Model.wPos,Model.RhoThPos,3,4)
     Model.RiemannSolverFast = RiemannSolverFast
   elseif IntMethod == "MISLin"
-    RiemannSolverFast = DGSEM.RiemannLMARSLinFast()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
+    RiemannSolverFast = DGSEM.RiemannLMARSFast()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
       Model.wPos,Model.RhoThPos,3,4)
     Model.RiemannSolverFast = RiemannSolverFast
   end  
@@ -407,10 +407,10 @@ elseif FluxDG == "KennedyGruberGrav"
     Model.FluxAverageFast = DGSEM.KennedyGruberGravFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
       Model.RhoThPos,3,4,GPAuxPos)
   elseif IntMethod == "MISLin" 
-#   Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
-#     Model.wPos,Model.RhoThPos,3,4)
-    Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-      Model.RhoThPos,3,4,GPAuxPos)
+    Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,3,4)
+#   Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+#     Model.RhoThPos,3,4,GPAuxPos)
     Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
   end  
 elseif FluxDG == "ArtianoExner"  
@@ -575,8 +575,9 @@ elseif IntMethod == "MISSemi"
 elseif IntMethod == "MISLin"
   MethodInt = Integration.MISLinMethod{FTB}(Table)
   MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")
-  Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!)
-# Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
+  MethodInt.JacComp = MethodInt.FastMethod.JacComp
+# Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!)
+  Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
   dt = (dtau,dtauSmall)
 elseif IntMethod == "RungeKuttaEx"
   MethodInt = Integration.RungeKuttaExMethod{FTB}(Table)

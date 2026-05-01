@@ -139,34 +139,30 @@ function MISSemiMethod{FT}(Method) where FT<:AbstractFloat
     )
 end  
 
-mutable struct MISLinMethod{FT<:AbstractFloat} <: IntegrationMethod
-  nStage::Int
-  beta::Array{FT, 2}
-  alpha::Array{FT, 2}
-  gamma::Array{FT, 2}
-  d::Array{FT, 1}
-  FastMethod::IntegrationMethod
-end
 function MISLinMethod{FT}() where FT<:AbstractFloat
   MIS = MISMethod{FT}()
   return MISLinMethod{FT}(
+    "",
     MIS.nStage,
     MIS.beta,
     MIS.alpha,
     MIS.gamma,
     MIS.d,
     MIS.FastMethod,
+    false,
     )
 end  
 function MISLinMethod{FT}(Method) where FT<:AbstractFloat
   MIS = MISMethod{FT}(Method)
   return MISLinMethod{FT}(
+    Method,
     MIS.nStage,
     MIS.beta,
     MIS.alpha,
     MIS.gamma,
     MIS.d,
     MIS.FastMethod,
+    false,
     )
 end  
 

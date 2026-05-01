@@ -22,7 +22,6 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   @views UI = U[:,:,1:DG.NumI,:]
   @views Aux = CacheAux.Aux
 
-
   @. F = 0
 
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
@@ -391,15 +390,19 @@ function FcnFastLin!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   FluxVolumeNonLinH(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
   FluxVolumeNonLinV(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
   @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV],Exchange)
+  @show "Lin1",sum(abs.(F))
 
   RiemannNonLinH(Model.RiemannSolverFast,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
+  @show "Lin21",sum(abs.(F))
   RiemannNonLinV(Model.RiemannSolverFast,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
+  @show "Lin22",sum(abs.(F))
 
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
 
-  if Model.Buoyancy
+  #if Model.Buoyancy
     Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
-  end
+  #end
+  @show "Lin3",sum(abs.(F))
 
   @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
 

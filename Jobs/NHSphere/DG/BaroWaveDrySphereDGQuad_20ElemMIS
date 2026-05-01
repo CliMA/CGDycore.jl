@@ -47,8 +47,8 @@ julia --project Examples/DriverDG.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --dtau=360.0 \
-  --dtauSmall=75.0 \
-  --IntMethod="MISSemi" \
+  --dtauSmall=30.0 \
+  --IntMethod="MISLin" \
   --Table="RKJeb" \
   --TopoS="" \
   --Stretch=false \

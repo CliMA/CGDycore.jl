@@ -109,4 +109,15 @@ function Cache(backend,FT,IntMethod::MISMethod,FE,M,nz,NumV)
   )
 end
 
+mutable struct MISLinMethod{FT<:AbstractFloat} <: IntegrationMethod
+  name::String
+  nStage::Int
+  beta::Array{FT, 2}
+  alpha::Array{FT, 2}
+  gamma::Array{FT, 2}
+  d::Array{FT, 1}
+  FastMethod::IntegrationMethod
+  JacComp::Bool
+end
+
 
