@@ -460,7 +460,7 @@ end
 
 if Damping
   Damp = Sources.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),
-    Model.uPos,Model.vPos,Model.wPos,VelForm,Grid.Form)
+    Model.uPos,Model.vPos,Model.wPos,Examples.VelocityC(),Grid.Form)
   Model.Damp = Damp
 end
 Model.GeoPotential = Sources.GeoPotentialDeep()(GPAuxPos,Grid.Form)

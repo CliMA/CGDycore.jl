@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/DriverDG.jl \
-  --Problem="BaroWaveDrySphere" \
+  --Problem="HeldSuarezDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
   --NumV=5 \
@@ -17,7 +17,7 @@ julia --project Examples/DriverDG.jl \
   --Buoyancy=false \
   --Coriolis=true \
   --Damping=true \
-  --Forcing=false \
+  --Forcing=true \
   --StrideDamp=20000 \
   --Relax=1.0e-3 \
   --VerticalDiffusion=false \
@@ -43,7 +43,7 @@ julia --project Examples/DriverDG.jl \
   --Stretch=false \
   --StretchType="Exp" \
   --GridType="CubedSphere" \
-  --TopoS="EarthOrography" \
+  --TopoS="" \
   --nLon=20 \
   --nLat=20 \
   --nz=13 \

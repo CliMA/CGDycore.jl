@@ -30,6 +30,7 @@ end
     xSLoc[2] = xS[2,ID]
     @unroll for iv = 1 : NUMV
       ULoc[iv] = U[K,Iz,ID,iv]
+      FLoc[iv] = eltype(F)(0)
     end  
     @unroll for iAux = 1 : NUMAUX
       AuxLoc[iAux] = Aux[K,Iz,ID,iAux]
@@ -78,7 +79,7 @@ function Damping!(Damp,F,U,FE::FiniteElements.DGElement,Metric,NumberThreadGPU)
   group = (M,Nz,DoFG,1)
   ndrange = (M,Nz,DoF,NF)
   KDampKernel! = DampDGKernel!(backend, group)
-  KDampKernel!(Damp,F,U,Metric.zP,;ndrange=ndrange)
+  KDampKernel!(Damp,F,U,Metric.X,FE.Glob;ndrange=ndrange)
 end
 
 @kernel inbounds = true function DampDGKernel!(Damp,F,@Const(U),@Const(X),@Const(Glob))

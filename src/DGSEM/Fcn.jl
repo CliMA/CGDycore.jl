@@ -49,7 +49,7 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   end  
 
   if Model.Damping
-    Sources.Damping!(Damp,F,U,DG.Glob,Metric.X,NumberThreadGPU)  
+    Sources.Damping!(Damp,F,U,DG,Metric,NumberThreadGPU)  
   end
 
   if Model.Forcing

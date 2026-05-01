@@ -836,6 +836,7 @@ function (profile::BaroWaveDryExample)(Param,Phys,::VelocityS)
       uSPert = FT(0.0)
     end
     uS = uS + uSPert
+    uS = FT(0)
     w = FT(0)
 
     qV = FT(0)
@@ -1071,23 +1072,24 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,ThPos,pPos)
     IE = FT(P.Cvd) * Temperature
     return (Rho,uS,vS,w,Th,E,IE)
   end
-  @inline function Force(F,U,Aux,X)
+  @inline function Force(F,U,Aux,xS)
     FT = eltype(U)
     p = Aux[pPos]
+    lat = xS[2]
     Sigma = p / FT(P.p0)
     SigmaPowKappa = fast_powGPU(Sigma,FT(P.kappa))
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
-    sinlat = X[3] / sqrt(X[1]^2 + X[2]^2 + X[3]^2)
-    coslat = sqrt(FT(1) - sinlat^2)
-    F[uPos] += -(Param.k_f * height_factor) * U[uPos]
-    F[vPos] += -(Param.k_f * height_factor) * U[vPos]
+    sinlat = sin(lat)
+    coslat = cos(lat)
+    F[uPos] = -(Param.k_f * height_factor) * U[uPos]
+    F[vPos] = -(Param.k_f * height_factor) * U[vPos]
     kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
     Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
       Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
     T = p / (U[RhoPos] * FT(P.Rd))
     DeltaT =  kT * (T - Teq)
-    F[ThPos]  += - U[ThPos] / T * DeltaT 
+    F[ThPos]  = - U[ThPos] / T * DeltaT 
   end
   return profile,Force
 end
