@@ -41,12 +41,12 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
 
   if Model.Coriolis
-    Sources.Coriolis!(Cor,F,U,DG,Metric,NumberThreadGPU)
+    Sources.Coriolis!(Cor,F,U,Aux,DG,Metric,NumberThreadGPU)
   end
 
-  if Model.Buoyancy
-    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
-  end  
+# if Model.Buoyancy
+#   Sources.Buoyancy!(Buo,F,U,Aux,DG.Glob,Metric.X,NumberThreadGPU)
+# end  
 
   if Model.Damping
     Sources.Damping!(Damp,F,U,DG,Metric,NumberThreadGPU)  

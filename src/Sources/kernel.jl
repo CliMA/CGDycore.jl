@@ -1,53 +1,8 @@
-function Forcing!(Force,F,U,Aux,FE,Metric,NumberThreadGPU)
-  backend = get_backend(F)
-  M = size(U,1)
-  Nz = size(U,2)
-  NumG = size(U,3)
-  NumV = size(U,4)
-  NumAux = size(Aux,4)
-  NumGG = min(div(NumberThreadGPU,Nz*M),NumG)
-  group = (M,Nz,NumGG)
-  ndrange = (M,Nz,NumG)
-  KForceKernel! = ForceKernel!(backend, group)
-  KForceKernel!(Force,F,U,Aux,Metric.xS,Val(NumV),Val(NumAux);ndrange=ndrange)
-end
-
-@kernel inbounds = true function ForceKernel!(Force,F,@Const(U),@Const(Aux),@Const(xS),
-  ::Val{NUMV}, ::Val{NUMAUX}) where {NUMV,NUMAUX}
-
-  _,_,iD  = @index(Local, NTuple)
-  K,Iz,ID = @index(Global, NTuple)
-
-  ND = @uniform @ndrange()[3]
-
-  FLoc = @private eltype(F) (NUMV,)
-  ULoc = @private eltype(F) (NUMV,)
-  AuxLoc = @private eltype(F) (NUMAUX,)
-  xSLoc = @private eltype(F) (2,)
-
-  if ID <= ND
-    xSLoc[1] = xS[1,ID]
-    xSLoc[2] = xS[2,ID]
-    @unroll for iv = 1 : NUMV
-      ULoc[iv] = U[K,Iz,ID,iv]
-      FLoc[iv] = eltype(F)(0)
-    end  
-    @unroll for iAux = 1 : NUMAUX
-      AuxLoc[iAux] = Aux[K,Iz,ID,iAux]
-    end  
-
-    @views Force(FLoc,ULoc,AuxLoc,xSLoc)
-    @unroll for iv = 1 : NUMV
-      F[K,Iz,ID,iv] += FLoc[iv]
-    end  
-  end
-end 
-
 function Damping!(Damp,F,U,FE::FiniteElements.CGElement,Metric,NumberThreadGPU)
   backend = get_backend(F)
-  M = size(U,1)
-  Nz = size(U,2)
-  NumG = size(U,3)
+  M = size(F,1)
+  Nz = size(F,2)
+  NumG = size(F,3)
   NumGG = min(div(NumberThreadGPU,Nz*M),NumG)
   group = (M,Nz,NumGG)
   ndrange = (M,Nz,NumG)
@@ -71,8 +26,8 @@ end
 
 function Damping!(Damp,F,U,FE::FiniteElements.DGElement,Metric,NumberThreadGPU)
   backend = get_backend(F)
-  M = size(U,1)
-  Nz = size(U,2)
+  M = size(F,1)
+  Nz = size(F,2)
   DoF = size(FE.Glob,1)
   NF = size(FE.Glob,2)
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
@@ -94,31 +49,6 @@ end
     F[K,Iz,ind,2] += Fu
     F[K,Iz,ind,3] += Fv
     F[K,Iz,ind,4] += Fw
-  end
-end
-
-function Coriolis!(Cor,F,U,FE::FiniteElements.DGElement,Metric,NumberThreadGPU)
-  backend = get_backend(F)
-  M = size(U,1)
-  Nz = size(U,2)
-  DoF = size(FE.Glob,1)
-  NF = size(FE.Glob,2)
-  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (M,Nz,DoFG,1)
-  ndrange = (M,Nz,DoF,NF)
-  KCoriolisKernel! = CoriolisKernel!(backend,group)
-  KCoriolisKernel!(Cor,F,U,Metric.X,FE.Glob,;ndrange=ndrange)
-end
-
-@kernel inbounds = true function CoriolisKernel!(Cor,F,@Const(U),@Const(X),@Const(Glob))
-  _,_,iD,  = @index(Local, NTuple)
-  K,Iz,ID,IF = @index(Global, NTuple)
-
-  ND = @uniform @ndrange()[3]
-
-  if ID <= ND
-    ind = Glob[ID,IF]
-    @views Cor(F[K,Iz,ind,:],U[K,Iz,ind,:],X[ID,K,:,Iz,IF])
   end
 end
 

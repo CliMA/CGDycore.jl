@@ -1,6 +1,6 @@
 #!/bin/bash
 julia --project Examples/DriverDG.jl \
-  --Problem="BaroWaveDrySphere" \
+  --Problem="HeldSuarezDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
   --NumberThreadTriGPU=32 \
@@ -25,22 +25,22 @@ julia --project Examples/DriverDG.jl \
   --VerticalDiffusion=false \
   --SurfaceFlux=false \
   --SurfaceScheme="" \
-  --Forcing=false \
+  --Forcing=true \
   --Microphysics=false \
   --TypeMicrophysics="SimpleMicrophysics" \
   --RelCloud=1.e-2 \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
+  --SimDays=365 \
   --SimHours=0 \
   --SimMinutes=0 \
   --SimSeconds=0 \
-  --vtkFileName="output/VTK/BaroWaveDrySphere/DG20Quad" \
+  --vtkFileName="output/VTK/HeldSuarezDrySphere/DG20Quad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
-  --PrintDays=0 \
+  --PrintHours=0 \
+  --PrintDays=365 \
   --PrintTime=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
@@ -57,7 +57,7 @@ julia --project Examples/DriverDG.jl \
   --GridType="CubedSphere" \
   --nz=15 \
   --nPanel=20 \
-  --H=30000.0 \
+  --H=45000.0 \
   --OrdPoly=4 \
   --OrdPolyZ=4 \
   --MetricType="DGMetricCurl" 

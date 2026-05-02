@@ -43,26 +43,23 @@ end
 
 Base.@kwdef struct CoriolisDeep <: CoriolisType end
 
-function (CoriolisFun::CoriolisDeep)(Phys)
-  @inline function Coriolis(x,y,z,u,v,w1,w2)
-    FT = eltype(x)
-    sinlat = z / sqrt(x^2 + y^2 + z^2)
-    coslat = sqrt(FT(1) - sinlat^2)
-    Ws = FT(2) * Phys.Omega * sinlat
-    Wc = FT(2) * Phys.Omega * coslat
-    Fu = v * Ws - FT(0.5) * Wc * (w1 + w2) 
-    Fv = -u * Ws
-    Fw = Wc * u
-    return Fu,Fv,Fw
+function (CoriolisFun::CoriolisDeep)(uPos,vPos,wPos,::Examples.VelocityS)
+  @inline function Coriolis(F,U,lon,lat)
+    FT = eltype(F)
+    sinlat = sin(lat)
+    coslat = cos(lat)
+    Ws = FT(2) * P.Omega * sinlat
+    Wc = FT(2) * P.Omega * coslat
+    F[uPos] += U[vPos] * Ws - FT(0.5) * Wc * U[wPos]
+    F[vPos] += -U[uPos] * Ws
+    F[wPos] += Wc * U[uPos]
   end
   return Coriolis
 end
 
-Base.@kwdef struct CoriolisDeepDG <: CoriolisType end
-
-function (CoriolisFun::CoriolisDeepDG)(uPos,vPos,wPos)
-  @inline function Coriolis(F,U,X)
-    FT = eltype(X)
+function (CoriolisFun::CoriolisDeep)(uPos,vPos,wPos,::Examples.VelocityC)
+  @inline function Coriolis(F,U,lon,lat)
+    FT = eltype(F)
     F[uPos] += FT(2) * P.Omega * U[vPos]
     F[vPos] += -FT(2) * P.Omega * U[uPos]
   end
@@ -79,5 +76,42 @@ function (CoriolisFun::CoriolisNo)()
   return Coriolis
 end  
 
+function Coriolis!(Cor,F,U,Aux,FE,Metric,NumberThreadGPU)
+  backend = get_backend(F)
+  M = size(F,1)
+  Nz = size(F,2)
+  NumG = size(F,3)
+  NumV = size(F,4)
+  NumGG = min(div(NumberThreadGPU,Nz*M),NumG)
+  group = (M,Nz,NumGG)
+  ndrange = (M,Nz,NumG)
+  KCoriolisKernel! = CoriolisKernel!(backend,group)
+  KCoriolisKernel!(Cor,F,U,Metric.xS,Val(NumV);ndrange=ndrange)
+end
 
+@kernel inbounds = true function CoriolisKernel!(Cor,F,@Const(U),@Const(xS),
+  ::Val{NUMV}) where {NUMV}
+
+  _,_,iD  = @index(Local, NTuple)
+  K,Iz,ID = @index(Global, NTuple)
+
+  ND = @uniform @ndrange()[3]
+
+  FLoc = @private eltype(F) (NUMV,)
+  ULoc = @private eltype(F) (NUMV,)
+  xSLoc = @private eltype(F) (2,)
+
+  if ID <= ND
+    xSLoc[1] = xS[1,ID]
+    xSLoc[2] = xS[2,ID]
+    @unroll for iv = 1 : NUMV
+      ULoc[iv] = U[K,Iz,ID,iv]
+      FLoc[iv] = eltype(F)(0)
+    end  
+    Cor(FLoc,ULoc,xSLoc[1],xSLoc[2])
+    @unroll for iv = 1 : NUMV
+      F[K,Iz,ID,iv] += FLoc[iv]
+    end  
+  end
+end
 

@@ -65,10 +65,9 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
     Model.InitialProfile = Profile
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" ||
     Problem == "FriersonSphere"
-    Profile, Force = Examples.HeldSuarezDryExample()(Param,Model.RhoPos,Model.uPos,Model.vPos,
-      Model.RhoThPos,Model.pAuxPos)
+    Profile, = Examples.HeldSuarezDryExample()(Param,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,Model.pAuxPos,VelForm)
     Model.InitialProfile = Profile
-    Model.Force = Force
   elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
     _, Force = Examples.HeldSuarezMoistExample()(Param,Phys)
 #   Model.InitialProfile = Profile

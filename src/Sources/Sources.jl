@@ -12,6 +12,7 @@ using KernelAbstractions.Extras
 include("damping.jl")
 include("coriolis.jl")
 include("gravitation.jl")
+include("forcing.jl")
 include("kernel.jl")
 
 end

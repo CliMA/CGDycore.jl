@@ -451,12 +451,16 @@ end
 
 #Coriolis
 if Coriolis
-  CoriolisFun = Sources.CoriolisDeepDG()(Model.uPos,Model.vPos,Model.wPos)
+  CoriolisFun = Sources.CoriolisDeep()(Model.uPos,Model.vPos,Model.wPos,Examples.VelocityC())
   Model.CoriolisFun = CoriolisFun
 else
   CoriolisFun = Sources.CoriolisNo()()
   Model.CoriolisFun = CoriolisFun
 end
+if Forcing
+  Model.Force = Sources.HeldSuarezDryForcing()(Param,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,Model.pAuxPos,Examples.VelocityC())  
+end  
 
 if Damping
   Damp = Sources.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),
