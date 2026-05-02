@@ -573,8 +573,6 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     KSedimentationKernel!(SedimentationSource,F,U,Aux,dz,ndrange=ndrangeC)
   end
 
-
-  @show Damp
   if Global.Model.Damping
     Sources.Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU)  
   end  
