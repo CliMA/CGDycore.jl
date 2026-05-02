@@ -19,7 +19,7 @@ julia --project Examples/DriverDG.jl \
   --InterfaceFluxDG="RiemannLMARS" \
   --Buoyancy=false \
   --Coriolis=true \
-  --Damping=false \
+  --Damping=true \
   --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --VerticalDiffusion=false \

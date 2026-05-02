@@ -1213,10 +1213,10 @@ function GridSizeDGKernel!(DG,Metric,Rad,NumberThreadGPU,::Grids.SphericalGrid)
   group = (DoF,NzG,1)
   ndrange = (DoF,nz,NF)
   KGridSizeDGKernel! = GridSizeSphereDGKernel!(backend,group)
-  KGridSizeDGKernel!(Metric.dz,Metric.X,DG.Glob,Rad,ndrange=ndrange)
+  KGridSizeDGKernel!(Metric.dz,Metric.zP,Metric.X,DG.Glob,Rad,ndrange=ndrange)
 end
 
-@kernel inbounds = true function GridSizeSphereDGKernel!(dz,@Const(X),@Const(Glob),Rad)
+@kernel inbounds = true function GridSizeSphereDGKernel!(dz,zP,@Const(X),@Const(Glob),Rad)
 
   ID,Iz,IF = @index(Global, NTuple)
 
@@ -1228,6 +1228,7 @@ end
     rS = sqrt(X[ID,1,1,Iz,IF]^2 + X[ID,1,2,Iz,IF]^2 + X[ID,1,3,Iz,IF]^2)
     rE = sqrt(X[ID,end,1,Iz,IF]^2 + X[ID,end,2,Iz,IF]^2 + X[ID,end,3,Iz,IF]^2)
     dz[Iz,ind] = rE - rS
+    zP[Iz,ind] = eltype(dz)(0.5) * (rE + rS)  - Rad
   end
 end
 

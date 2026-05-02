@@ -364,6 +364,11 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,CG,Metric,Exchange,Phys,Global,Model.InitialProfile,Param)
 
+if Forcing
+  Model.Force = Sources.HeldSuarezDryForcing()(Param,Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,Model.pAuxPos,Examples.VelocityS())
+end
+
 #Coriolis
 if Coriolis
   if CoriolisType == "Shallow"

@@ -561,8 +561,6 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end
   if Global.Model.Forcing
     Sources.Forcing!(Force,F,U,Aux,FE,Metric,NumberThreadGPU)  
-#   KForceKernel! = ForceKernel!(backend, groupG)
-#   KForceKernel!(Force,F,U,p,xS,ndrange=ndrangeG)  
   end  
 
   if Global.Model.Microphysics
@@ -576,8 +574,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end
 
 
+  @show Damp
   if Global.Model.Damping
-    Sources.Damping!(Damp,F,U,FE,Metric,NumberThreadGPU)  
+    Sources.Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU)  
   end  
 end
 

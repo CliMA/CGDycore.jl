@@ -108,7 +108,6 @@ end
     @unroll for iAux = 1 : NUMAUX
       AuxLoc[iAux] = Aux[K,Iz,ID,iAux]
     end  
-
     Force(FLoc,ULoc,AuxLoc,xSLoc)
     @unroll for iv = 1 : NUMV
       F[K,Iz,ID,iv] += FLoc[iv]
