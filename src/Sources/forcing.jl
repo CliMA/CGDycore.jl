@@ -1,3 +1,38 @@
+function held_suarez_physics(u::Real, v::Real, T::Real, p::Real, lat::Real)
+    # Constants
+    p0 = 100000.0
+    day_to_sec = 86400.0
+    sigma_b = 0.7
+
+    # 1. Coordinate setup
+    sigma = p / p0
+    cos_lat = cos(lat)
+    sin_lat = sin(lat)
+
+    # 2. Temperature Forcing (Newtonian Relaxation)
+    ka = 1.0 / (40.0 * day_to_sec)
+    ks = 1.0 / (4.0 * day_to_sec)
+
+    # Te profile calculation
+    term1 = 315.0 - 60.0 * sin_lat^2
+    term2 = 10.0 * log(sigma) * cos_lat^2
+    Te = max(200.0, (term1 - term2) * sigma^(2/7))
+
+    # Temperature relaxation rate
+    kT = ka + (ks - ka) * cos_lat^4 * max(0.0, (sigma - sigma_b) / (1.0 - sigma_b))
+    dT_dt = -kT * (T - Te)
+
+    # 3. Wind Forcing (Rayleigh Friction)
+    # Friction only acts near the surface (sigma > sigma_b)
+    kf = 1.0 / (1.0 * day_to_sec) # 1 day timescale at surface
+    kv = kf * max(0.0, (sigma - sigma_b) / (1.0 - sigma_b))
+
+    du_dt = -kv * u
+    dv_dt = -kv * v
+
+    return du_dt, dv_dt, dT_dt
+end
+
 abstract type ForcingType end
 
 Base.@kwdef struct HeldSuarezDryForcing <: ForcingType end
@@ -21,6 +56,52 @@ function (::HeldSuarezDryForcing)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Examp
     T = p / (U[RhoPos] * FT(P.Rd))
     DeltaT =  kT * (T - Teq)
     F[ThPos]  += - U[ThPos] / T * DeltaT
+
+#=
+    u = U[uPos]
+    v = U[vPos]
+    p0 = 100000.0
+    day_to_sec = 86400.0
+    sigma_b = 0.7
+
+    # 1. Coordinate setup
+    sigma = p / p0
+    cos_lat = cos(lat)
+    sin_lat = sin(lat)
+
+    # 2. Temperature Forcing (Newtonian Relaxation)
+    ka = 1.0 / (40.0 * day_to_sec)
+    ks = 1.0 / (4.0 * day_to_sec)
+
+    # Te profile calculation
+    term1 = 315.0 - 60.0 * sin_lat^2
+    term2 = 10.0 * log(sigma) * cos_lat^2
+    Te = max(200.0, (term1 - term2) * sigma^(2/7))
+
+    # Temperature relaxation rate
+    kT = ka + (ks - ka) * cos_lat^4 * max(0.0, (sigma - sigma_b) / (1.0 - sigma_b))
+    dT_dt = -kT * (T - Te)
+
+    # 3. Wind Forcing (Rayleigh Friction)
+    # Friction only acts near the surface (sigma > sigma_b)
+    kf = 1.0 / (1.0 * day_to_sec) # 1 day timescale at surface
+    kv = kf * max(0.0, (sigma - sigma_b) / (1.0 - sigma_b))
+
+    du_dt = -kv * u
+    dv_dt = -kv * v
+    if abs(du_dt-F[uPos])>0.001
+      @show du_dt,F[uPos]
+      stop
+    end  
+    if abs(dv_dt-F[vPos])>0.001
+      @show dv_dt,F[vPos]
+      stop
+    end  
+    if abs(dT_dt-DeltaT)>0.001
+      @show dv_dt,DeltaT
+      stop
+    end  
+    =#
   end
   return Force
 end

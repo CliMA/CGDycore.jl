@@ -30,7 +30,7 @@ julia --project Examples/DriverCG.jl \
   `#Output `        \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=1 \
+  --PrintHours=4 \
   --PrintDays=0 \
   --StartAverageDays=100 \
   --Flat=true \
@@ -50,7 +50,7 @@ julia --project Examples/DriverCG.jl \
   --LatB=1.3962634015954636 \
   --nz=64 \
   --nPanel=32 \
-  --H=45000.0 \
+  --H=30000.0 \
   `#Topography `     \
   --TopoS="" \
   `#Discretization `     \

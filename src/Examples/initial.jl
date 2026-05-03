@@ -1069,6 +1069,9 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
 
     E = FT(P.Cvd) * Temperature + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
     IE = FT(P.Cvd) * Temperature
+    if Z <= FT(2000.0)
+      Th = Th + rand()  
+    end  
     return (Rho,uS,vS,w,Th,E,IE)
   end
   @inline function Force(F,U,Aux,xS)
@@ -1144,6 +1147,9 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
 
     E = FT(P.Cvd) * Temperature + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
     IE = FT(P.Cvd) * Temperature
+    if Z <= FT(2000.0)
+      Th = Th + rand()  
+    end  
     return (Rho,uS,vS,w,Th,E,IE)
   end
   @inline function Force(F,U,Aux,xS)
