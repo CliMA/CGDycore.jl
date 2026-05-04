@@ -55,7 +55,7 @@ julia --project Examples/DriverDG.jl \
   --StretchType="" \
   --GridForm="Spherical" \
   --GridType="CubedSphere" \
-  --nz=15 \
+  --nz=13 \
   --nPanel=20 \
   --H=30000.0 \
   --OrdPoly=4 \

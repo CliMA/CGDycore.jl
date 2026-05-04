@@ -32,7 +32,7 @@ julia --project Examples/DriverCG.jl \
   --PrintMinutes=0 \
   --PrintHours=4 \
   --PrintDays=0 \
-  --StartAverageDays=100 \
+  --StartAverageDays=0 \
   --Flat=true \
   --OrdPrint=2 \
   --OrdPrintZ=0 \

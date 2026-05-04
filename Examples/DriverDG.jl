@@ -113,7 +113,6 @@ y0 = parsed_args["y0"]
 OrdPoly = parsed_args["OrdPoly"]
 OrdPolyZ = parsed_args["OrdPolyZ"]
 MetricType = parsed_args["MetricType"]
-@show "nach Read",MetricType
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -128,6 +127,7 @@ PrintMinutes = parsed_args["PrintMinutes"]
 PrintSeconds = parsed_args["PrintSeconds"]
 PrintTime = parsed_args["PrintTime"]
 PrintStartTime = parsed_args["PrintStartTime"]
+StartAverageDays = parsed_args["StartAverageDays"]
 vtkFileName = parsed_args["vtkFileName"]
 hdf5FileName = parsed_args["hdf5FileName"]
 Flat = parsed_args["Flat"]
@@ -270,16 +270,13 @@ Model.State = State
 Model.ModelType = ModelType
 Model.MetricType = MetricType
 
-@show VelocityForm
 if VelocityForm == "Spherical"  
-  @show "I",VelocityForm
    VelForm = Examples.VelocityS()
 elseif VelocityForm == "Cartesian"  
    VelForm = Examples.VelocityC()
 else
    VelForm = Examples.VelocityC()
 end   
-@show VelForm
 
 # Equation
 if Equation == "CompressibleShallow"
@@ -513,6 +510,7 @@ Global.Output.nPanel = nPanel
 Global.Output.dTol = pi/30
 Global.Output.vtkFileName = vtkFileName
 Global.Output.hdf5FileName = hdf5FileName
+Global.Output.StartAverageDays = StartAverageDays
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,DG,Metric,Global)
 
 # TimeStepper
