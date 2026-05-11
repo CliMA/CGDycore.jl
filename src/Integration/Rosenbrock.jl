@@ -61,19 +61,12 @@ NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlo
 
   @inbounds for iStage = 1 : nStage
     @. VnI = V
-    @inbounds for jStage = 1 : iStage-1
-      @views @. VnI = VnI + ROS.a[iStage,jStage] * k[:,:,:,:,jStage]
-    end
+    @views AXPY!(VnI,k[:,:,:,:,1:iStage-1],ROS.a[iStage,1:iStage-1],Global)
     Fcn(fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @. fV += FSlow
-    @inbounds for jStage = 1 : iStage - 1
-      fac = ROS.c[iStage,jStage] / dt
-      @views @. fV = fV + fac * k[:,:,:,:,jStage]
-    end
+    @views AXPY!(fV,k[:,:,:,:,1:iStage-1],1/dt,ROS.c[iStage,1:iStage-1],Global)
     @views Solve!(k[:,:,:,:,iStage],fV,JCache,dt*ROS.gammaD,FE,Metric,Global,DiscType)
   end
-  @inbounds for iStage = 1 : nStage
-    @views @. V = V + ROS.m[iStage] * k[:,:,:,:,iStage]
-  end
+  AXPY!(V,k,ROS.m,Global)
 end
 
