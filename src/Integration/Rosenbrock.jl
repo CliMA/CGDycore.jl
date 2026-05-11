@@ -49,17 +49,16 @@ NVTX.@annotate function TimeIntegration!(ROS::RosenbrockMethod,V,dt,Fcn,Aux,Jac,
   AXPY!(V,k,ROS.m,Global)
 end
 
-NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlow,Aux,FE,Metric,Phys,Cache,JCache,Exchange,
-  Global,Param,DiscType)
+NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlow,Aux,FE,Metric,
+  Phys,Cache,JCache,Exchange,Global,Param,DiscType)
 
   nStage = ROS.nStage
-  k = Cache.k
-  fV = Cache.fV
-  Vn = Cache.Vn
+  k = Cache.CacheFast.k
+  fV = Cache.CacheFast.fV
+  Vn = Cache.CacheFast.Vn
   @views VnI = Vn[:,:,1:size(fV,3),1:size(fV,4)]
   Global.TimeStepper.dtauStage = dt
 
-  JCache.CompTri = true
   @inbounds for iStage = 1 : nStage
     @. VnI = V
     @inbounds for jStage = 1 : iStage-1

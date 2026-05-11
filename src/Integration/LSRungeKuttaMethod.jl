@@ -5,7 +5,7 @@ function LSRungeKuttaMethod{FT}() where FT<:AbstractFloat
   b = zeros(FT,0)
   c = zeros(FT,0)
   name = ""
-  return RungeKuttaExMethod{FT}(
+  return LSRungeKuttaMethod{FT}(
     name,
     nStage,
     a,

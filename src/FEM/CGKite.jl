@@ -644,7 +644,7 @@ mutable struct CG1KiteDualHDiv{FT<:AbstractFloat,
   Type::Grids.ElementType
   points::Array{Float64,2}
   M::AbstractSparseMatrix
-  LUM::SparseArrays.UMFPACK.UmfpackLU{Float64, Int64}
+  LUM
 end
 
 function CG1KiteDualHDiv{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloat

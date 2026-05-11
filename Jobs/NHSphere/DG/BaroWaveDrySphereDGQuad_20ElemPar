@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverDG.jl \
+julia --project Examples/DriverDGPar.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
@@ -13,12 +13,11 @@ julia --project Examples/DriverDG.jl \
   --RhoCPos=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
-  --VelocityForm="Spherical" \
   --State="Dry" \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
-  --Buoyancy=false \
+  --Buoyancy=true \
   --Coriolis=true \
   --Damping=false \
   --StrideDamp=10000 \
@@ -37,20 +36,21 @@ julia --project Examples/DriverDG.jl \
   --SimHours=0 \
   --SimMinutes=0 \
   --SimSeconds=0 \
-  --vtkFileName="output/VTK/BaroWaveDrySphere/DG20Quad" \
-  --PrintSeconds=0 \
+  --vtkFileName="output/VTK/BaroWaveDrySphere/DG20QuadMIS" \
+  --PrintSeconds=400 \
   --PrintMinutes=0 \
-  --PrintHours=2 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --PrintTime=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=85.0 \
-  --dtauSmall=60.0 \
-  --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --dtau=400.0 \
+  --dtauSmall=80.0 \
+  --IntMethod="MISLin" \
+  --Table="RK3" \
+  --IntMethodFast="Rosenbrock" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="" \
@@ -60,5 +60,4 @@ julia --project Examples/DriverDG.jl \
   --nPanel=20 \
   --H=30000.0 \
   --OrdPoly=4 \
-  --OrdPolyZ=4 \
-  --MetricType="DGMetricCurl" 
+  --OrdPolyZ=4 

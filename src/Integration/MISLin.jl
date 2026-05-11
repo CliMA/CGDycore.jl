@@ -3,12 +3,10 @@ mutable struct CacheMISLinStruct{FT<:AbstractFloat,
                            AT5<:AbstractArray}
   Vn::AT4
   dZn::AT4
-  fV::AT4
   Sdu::AT5
   Yn::AT5
   Delta::AT4
-# ROS
-  k::AT5
+  CacheFast
 end
 
 function Cache(backend,FT,IntMethod::MISLinMethod,FE,M,nz,NumV) 
@@ -18,22 +16,19 @@ function Cache(backend,FT,IntMethod::MISLinMethod,FE,M,nz,NumV)
   Vn = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV)
 
   dZn = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
-  fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   Sdu = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage)
   Yn = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage+1)
   Delta = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
-
-  k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,IntMethod.FastMethod.nStage)
+  CacheFast = Cache(backend,FT,IntMethod.FastMethod,FE,M,nz,NumV)
   return CacheMISLinStruct{FT,
                      typeof(Vn),
-                     typeof(k)}(
+                     typeof(Yn)}(
     Vn,
     dZn,
-    fV,
     Sdu,
     Yn,
     Delta,
-    k,
+    CacheFast,
   )
 end
 
@@ -98,7 +93,6 @@ function TimeIntegration!(MIS::MISLinMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cach
   Fast = MIS.FastMethod
 
   nStage = MIS.nStage
-  k = Cache.k
   Vn = Cache.Vn
   Sdu = Cache.Sdu
   dZn = Cache.dZn
@@ -118,7 +112,7 @@ function TimeIntegration!(MIS::MISLinMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cach
     @views @.  Yn[:,:,:,:,iStage+1] = V
     @views InitialConditionMIS!(Yn[:,:,:,:,iStage+1], Yn, V, MIS.alpha, iStage)
     @views TimeStepperFast!(Fast,dtFast,MIS.d[iStage+1]*dtSlow,Yn[:,:,:,:,iStage+1],Delta,dZn,FcnFast,Jac,FE,
-       Exchange,Metric,Phys,Param,Global,Cache,JCache,Aux,Vn,k,Type)
+       Exchange,Metric,Phys,Param,Global,Cache,JCache,Aux,Type)
   end
   @views @. V = Yn[:,:,:,:,end]
 end  

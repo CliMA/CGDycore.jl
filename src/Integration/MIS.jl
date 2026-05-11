@@ -80,17 +80,15 @@ end
 
 function TimeStepperFast!(IntMethod,dt,tEnd,U,FSlow,Fcn,Jac,FE,Exchange,Metric,Phys,Param,Global,
   Cache,JCache,CacheAux,VelForm)
-  @show "TimeStepperFast 1"
+TimeStepperFast!(Fast,dtFast,MIS.d[iStage+1]*dtSlow,Yn[:,:,:,:,iStage+1],Delta,dZn,FcnFast,Jac,FE,
+       Exchange,Metric,Phys,Param,Global,Cache,JCache,Aux,Type)
   numit = ceil(Int,tEnd/dt)
   FTB = eltype(U)
   dtau = tEnd/numit
-  @show IntMethod.JacComp
   if IntMethod.JacComp
     fac = dtau * IntMethod.gammaD
-    @show sum(abs.(U))
     Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
   end  
-  @show numit,dtau
   @inbounds for i = 1 : numit
     @time TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
       Global,Param,VelForm)
@@ -98,20 +96,18 @@ function TimeStepperFast!(IntMethod,dt,tEnd,U,FSlow,Fcn,Jac,FE,Exchange,Metric,P
 end
 
 function TimeStepperFast!(IntMethod,dt,tEnd,U,D,FSlow,Fcn,Jac,FE,Exchange,Metric,Phys,Param,Global,
-  Cache,JCache,CacheAux,Un,k,VelForm)
-  @show "TimeStepperFast 2"
+  Cache,JCache,CacheAux,VelForm)
   numit = ceil(Int,tEnd/dt)
   FTB = eltype(U)
   dtau = tEnd/numit
-  fac = dtau * IntMethod.gammaD
-  @show "S",sum(abs.(U))
-  Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+  if IntMethod.JacComp
+    fac = dtau * IntMethod.gammaD
+    Jac(CacheAux.Aux,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+  end  
   @. U -= D
-  @show sum(abs.(U))
   @inbounds for i = 1 : numit
     TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
       Global,Param,VelForm)
   end
   @. U += D
-  @show "E",sum(abs.(U))
 end

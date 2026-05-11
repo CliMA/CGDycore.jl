@@ -261,11 +261,16 @@ end
 
 # Finite elements
 @show "Order RT",k
-RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
+#RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
+RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
+@show RT.DoF
 @show "Order DG",k+1
 DG = FEM.CGKitePrimalStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
+@show DG.DoF
 @show "Order CG",k+1
 CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
+@show CG.DoF
+@show "Order DG",k+1
 
 ExchangeDG = Parallels.ExchangeStruct{FTB}(backend,Grid,DG,CellToProc,Proc,ProcNumber,
   Model.HorLimit;Discretization="Kite")
@@ -292,6 +297,7 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
+@show RT
 FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
 

@@ -62,13 +62,38 @@ function MISMethod{FT}(Method) where FT<:AbstractFloat
     beta = zeros(FT, nStage+1, nStage)
     alpha = zeros(FT, nStage+1, nStage)
     gamma = zeros(FT, nStage+1, nStage)
-    d = zeros(FT, nStage+1, 1)
+    d = zeros(FT, nStage+1)
     beta[2, 1] = 1/3
     beta[3, 2] = 1/2
     beta[4, 3] = 1
     d[2] = 1/3
     d[3] = 1/2
     d[4] = 1
+  elseif str == "MIS2"
+    nStage = 3
+    beta = zeros(FT, nStage+1, nStage)
+    alpha = zeros(FT, nStage+1, nStage)
+    gamma = zeros(FT, nStage+1, nStage)
+    d = zeros(FT, nStage+1)
+    beta[2,1] =  0.12684849455255601
+    beta[3,1] = -0.78483827882640156
+    beta[3,2] =   1.3744267526826737
+    beta[4,1] = -4.56727081748555391e-002
+    beta[4,2] = -8.75082271190387971e-003
+    beta[4,3] =  0.52477578862897312
+
+    alpha[3,2] =  0.53694656671020691
+    alpha[4,2] =  0.48089296855085184
+    alpha[4,3] = 0.50056116356635882
+
+    gamma[3,2] =  0.65246512600423157
+    gamma[4,2] = -7.32769849456572780e-002
+    gamma[4,3] =  0.14490243042028150
+
+    d[2] = beta[2, 1]
+    d[3] = beta[3, 1] + beta[3, 2]
+    d[4] = beta[4, 1] + beta[4, 2] + beta[4, 3]
+
   elseif str == "RKJeb"
     nStage = 3
     beta = zeros(FT, nStage+1, nStage)
@@ -96,6 +121,7 @@ function MISMethod{FT}(Method) where FT<:AbstractFloat
     d[4] = beta[4, 1] + beta[4, 2] + beta[4, 3]
   end
   JacComp = false 
+  @show str
   return MISMethod{FT}(
     str,
     nStage,

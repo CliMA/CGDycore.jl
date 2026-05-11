@@ -7,7 +7,7 @@ julia --project Examples/FEM/VecINonLinShallowKite.jl \
   --RefineLevel=6 \
   --nPanel=90 \
   --Flat=false \
-  --OrderFEM=0 \
+  --OrderFEM=1 \
   --SimTime=0 \
   --SimDays=6 \
   --SimHours=0 \

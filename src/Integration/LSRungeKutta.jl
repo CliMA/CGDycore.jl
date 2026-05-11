@@ -38,16 +38,20 @@ end
 function TimeIntegrationFast!(LSRK::LSRungeKuttaMethod,V,dt,Fcn,FSlow,Aux,FE,Metric,Phys,Cache,JCache,Exchange,
   Global,Param,DiscType)
 
-  f = Cache.f
-  fTemp = Cache.fTemp
+  f = Cache.CacheFast.f
+  fTemp = Cache.CacheFast.fTemp
+  Vn = Cache.Vn
+  @views VnI = Vn[:,:,1:size(V,3),1:size(V,4)]
 
-  @time Fcn(f,V,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+  @. VnI = V
+  Fcn(f,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   @. fTemp = f + FSlow
-  @. V += (dt * LSRK.b[1]) * fTemp
-  @time @inbounds for iStage = 2 : LSRK.nStage
-    Fcn(f,V,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+  @. VnI += (dt * LSRK.b[1]) * fTemp
+  @inbounds for iStage = 2 : LSRK.nStage
+    Fcn(f,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @. fTemp = f + FSlow - LSRK.a[iStage] * fTemp
-    @. V += (dt * LSRK.b[iStage]) * fTemp
+    @. VnI += (dt * LSRK.b[iStage]) * fTemp
   end
+  @. V = VnI
 end
 

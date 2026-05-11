@@ -349,6 +349,20 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
+for iF = 1 : Grid.NumFaces
+  iFG = Grid.Faces[iF].FG  
+  for iDoF = 1 : DG.DoF
+    ind = DG.Glob[iDoF,iF]
+    @views @. U[:,:,ind,1] = Metric.X[iDoF,1,1,1,iF]
+    @views @. U[:,:,ind,2] = Metric.X[iDoF,1,2,1,iF]
+    @views @. U[:,:,ind,3] = Metric.X[iDoF,1,3,1,iF]
+  end
+end  
+
+UG = zeros(DG.OrdPolyZ+1,Grid.nz,DG.NumG,5)
+@views UGI = UG[:,:,1:DG.NumI,:]
+@. UGI = U
+
 if InterfaceFluxDG == "RiemannLMARS"
   RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolver = RiemannSolver
@@ -404,10 +418,10 @@ elseif FluxDG == "KennedyGruberGrav"
     Model.FluxAverageFast = DGSEM.KennedyGruberGravFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
       Model.RhoThPos,3,4,GPAuxPos)
   elseif IntMethod == "MISLin" 
-#   Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
-#     Model.wPos,Model.RhoThPos,3,4)
-    Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-      Model.RhoThPos,3,4,GPAuxPos,Grid.Type)
+    Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
+      Model.wPos,Model.RhoThPos,3,4)
+#   Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+#     Model.RhoThPos,3,4,GPAuxPos)
     Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
   end  
 elseif FluxDG == "ArtianoExner"  
@@ -525,6 +539,32 @@ Global.TimeStepper.SimSeconds = SimSeconds
 Global.TimeStepper.SimTime = SimTime
 
 Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,Exchange)
+@views Parallels.ExchangeData3DSendGPU(UG,Exchange)
+@views Parallels.ExchangeData3DRecvSetGPU!(UG,Exchange)
+for iE = 1 : Grid.NumEdges
+  iFL = Grid.EF[1,iE]
+  iFR = Grid.EF[2,iE]
+  if iFL > Grid.NumFaces || iFR > Grid.NumFaces  
+    for I = 1 : DG.DoFE
+      indL = DG.GlobE[1,I,iE]
+      indR = DG.GlobE[2,I,iE]  
+      UL1 = UG[1,5,indL,1]
+      UL2 = UG[1,5,indL,2]
+      UL3 = UG[1,5,indL,3]
+      UR1 = UG[1,5,indR,1]
+      UR2 = UG[1,5,indR,2]
+      UR3 = UG[1,5,indR,3]
+      @show Proc,I,iE,UL1,UR1,UL2,UR2,UL3,UR3  
+      if abs(UL1-UR1) > 1.e-15 || abs(UL2-UR2) > 1.e-15 || abs(UL3-UR3) > 1.e-15
+        @show Proc,I,iE,UL1,UR1,UL2,UR2,UL3,UR3  
+        stop
+      end 
+    end
+    stop
+  end  
+end    
+@show "Ende",sum(abs.(UG[:,:,:,2]))
+stop
 
 
 # Simulation time
@@ -579,15 +619,13 @@ elseif IntMethod == "MISSemi"
 elseif IntMethod == "MISLin"
   MethodInt = Integration.MISLinMethod{FTB}(Table)
   if IntMethodFast == "Rosenbrock"
-#   MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("SSP-Knoth")
-    MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")
+    MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("SSP-Knoth")
     MethodInt.JacComp = MethodInt.FastMethod.JacComp
   elseif IntMethodFast == "LSRungeKutta"
     MethodInt.FastMethod = Integration.LSRungeKuttaMethod{FTB}("niegemannrk4-14")
     MethodInt.JacComp = MethodInt.FastMethod.JacComp
   end
   Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
-  Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!) 
   Jac = DGSEM.JacFrozen!
   dt = (dtau,dtauSmall)
 elseif IntMethod == "RungeKuttaEx"

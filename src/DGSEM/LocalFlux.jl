@@ -477,8 +477,7 @@ end
 
 Base.@kwdef struct KennedyGruberGravLinFast <: AverageFlux end
 
-function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos)
-# @inline function FluxNonLinAverSemi!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
+function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::Grids.Tri)
   @inline function FluxNonLinAverSemi!(flux,
       VLoc, AuxLoc, dXdxILoc,
       ID1, iz1,
@@ -529,6 +528,56 @@ function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAu
   return FluxNonLinAverSemi!
 end
 
+function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::Grids.Quad)
+  @inline function FluxNonLinAverSemi!(flux,
+      VLoc, AuxLoc, dXdxILoc,
+      K1, Iz1, iD1,   # left state indices  (localidx into @localmem)
+      K2, Iz2, iD2,   # right state indices
+      ::Val{dir}) where {dir}
+    FT = eltype(flux)
+    RhoL  = VLoc[K1, Iz1, iD1, RhoPos]
+    uL    = VLoc[K1, Iz1, iD1, uPos]
+    vL    = VLoc[K1, Iz1, iD1, vPos]
+    wL    = VLoc[K1, Iz1, iD1, wPos]
+    ThL   = VLoc[K1, Iz1, iD1, ThPos]
+    pLTh   = AuxLoc[K1, Iz1, iD1, pRhoThPos]
+    GPL  = AuxLoc[K1, Iz1, iD1, GPPos]
+
+    RhoR  = VLoc[K2, Iz2, iD2, RhoPos]
+    uR    = VLoc[K2, Iz2, iD2, uPos]
+    vR    = VLoc[K2, Iz2, iD2, vPos]
+    wR    = VLoc[K2, Iz2, iD2, wPos]
+    ThR   = VLoc[K2, Iz2, iD2, ThPos]
+    pRTh   = AuxLoc[K2, Iz2, iD2, pRhoThPos]
+    GPR  = AuxLoc[K2, Iz2, iD2, GPPos]
+
+    m_L1  = dXdxILoc[dir, 1, K1, Iz1, iD1]
+    m_L2  = dXdxILoc[dir, 2, K1, Iz1, iD1]
+    m_L3  = dXdxILoc[dir, 3, K1, Iz1, iD1]
+    m_R1  = dXdxILoc[dir, 1, K2, Iz2, iD2]
+    m_R2  = dXdxILoc[dir, 2, K2, Iz2, iD2]
+    m_R3  = dXdxILoc[dir, 3, K2, Iz2, iD2]
+    RhoAv = FT(0.5) * (RhoL + RhoR)
+    pL = pLTh* ThL
+    pR = pRTh* ThR
+    pAv = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
+    uAv = FT(0.5) * (uL + uR)
+    vAv = FT(0.5) * (vL + vR)
+    wAv = FT(0.5) * (wL + wR)
+    ThAv = FT(0.5) * (AuxLoc[K1, Iz1, iD1, ThAuxPos] + AuxLoc[K2, Iz2, iD2, ThAuxPos])
+    mAv1 = FT(0.5) * (m_L1 + m_R1)
+    mAv2 = FT(0.5) * (m_L2 + m_R2)
+    mAv3 = FT(0.5) * (m_L3 + m_R3)
+    qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
+    flux[1] = qHat
+    flux[2] = mAv1 * pAv
+    flux[3] = mAv2 * pAv
+    flux[4] = mAv3 * pAv
+    flux[5] = flux[1] * ThAv
+
+  end
+  return FluxNonLinAverSemi!
+end
 
 Base.@kwdef struct KennedyGruberGravSlow <: AverageFlux end
 

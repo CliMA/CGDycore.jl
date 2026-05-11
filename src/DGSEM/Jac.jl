@@ -707,6 +707,157 @@ end
   end  
 end
 
+@kernel inbounds = true function FillJacFrozenDGVertKernel!(A13,A23,A32,B1m_34,B1_1,B1_23,B1_4,
+  B2_23,B3_14,B1p_12,C23_2,C14_3,SA,SchurBand,@Const(Aux),@Const(dz),@Const(DW),@Const(w),fac,
+  FacGrav,cS,Phys, ::Val{M}) where {M}
+
+  iz,ID = @index(Global, NTuple)
+
+  nz = @uniform @ndrange()[1]
+  DoF = @uniform @ndrange()[2]
+  Th = @private eltype(Aux) (M,)
+  dpdRhoTh = @private eltype(Aux) (M,)
+  DWS = @localmem eltype(Aux) (M,M)
+  SAL = @localmem eltype(Aux) (M,M)
+  @uniform dpdThPos = 3
+  @uniform ThPos = 4
+  @uniform invcS = eltype(Aux)(1) / cS
+  @uniform wB = w[1]
+
+  if iz == 1
+    @. DWS = DW   
+  end
+  @synchronize 
+
+  kappa   = Phys.kappa
+  kexp    = kappa / (eltype(Aux)(1) - kappa)
+  kfac    = eltype(Aux)(1) / (eltype(Aux)(1) - kappa) * Phys.Rd
+
+  if ID <= DoF
+    sh = (iz - 1) * 4 + 1
+    inv2dz = eltype(Aux)(2) / dz[iz,ID]
+    invdz = eltype(Aux)(1) / dz[iz,ID]
+    @unroll for i = 1 : M
+      Th[i] = Aux[i,iz,ID,ThPos] 
+      dpdRhoTh[i] = Aux[i,iz,ID,dpdThPos]
+    end      
+    @unroll for i = 1 : M 
+      @unroll for j = 1 : M - 2
+        A13[i,j,iz,ID] = inv2dz * DWS[i,j+1]
+      end
+    end  
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        A23[i,j,iz,ID] = inv2dz * DWS[i+1,j+1] * Th[j+1]  
+        A32[i,j,iz,ID] = inv2dz * DWS[i+1,j+1] * dpdRhoTh[j+1]  
+      end
+    end  
+
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        SAL[i,j] = eltype(Aux)(0)
+        @unroll for k = 1 : M - 2
+          SAL[i,j] += A32[i,k,iz,ID] * A23[k,j,iz,ID]
+        end
+        if i == j
+          SA[i,j,iz,ID] = fac - (FacGrav / fac) * A13[i+1,j,iz,ID] -
+            (eltype(Aux)(1) / fac) * SAL[i,j]
+        else
+          SA[i,j,iz,ID] = -(FacGrav / fac) * A13[i+1,j,iz,ID] -
+            (eltype(Aux)(1) / fac) * SAL[i,j]
+        end
+      end
+    end
+    LUFull!(iz,ID,SA,Val(M - 2))
+
+    if iz > 1
+      B1m_34[1,iz,ID] = -eltype(Aux)(1) / (wB * dz[iz,ID])
+
+      dpdRhoThM   = Aux[M,iz-1,ID,dpdThPos]
+      B1m_34[2,iz,ID] = -dpdRhoThM * invcS / (wB * dz[iz,ID])
+    end
+    @unroll for i = 1 : M
+      B1_23[i,1,iz,ID] = eltype(Aux)(2) * DW[i,1] / dz[iz,ID]
+      B1_23[i,2,iz,ID] = eltype(Aux)(2) * DW[i,M] / dz[iz,ID]
+    end  
+
+    if iz == 1
+      B1_1[iz,ID] = eltype(Aux)(0)
+    else
+      B1_23[1,1,iz,ID] = eltype(Aux)(0)
+      B1_1[iz,ID] = dpdRhoTh[1] * invcS * invdz / wB 
+    end
+    if iz == nz
+      B1_4[iz,ID] = eltype(Aux)(0)
+    else
+      B1_23[M,2,iz,ID] = eltype(Aux)(0)
+      B1_4[iz,ID] = dpdRhoTh[M] * invcS * invdz / wB 
+    end
+    if iz < nz
+      dpdRhoThP   = Aux[1,iz+1,ID,dpdThPos]
+      B1p_12[1,iz,ID] = -dpdRhoThP * invcS / (wB * dz[iz,ID])
+      B1p_12[2,iz,ID] = eltype(Aux)(1) / (wB * dz[iz,ID])
+    end
+
+    @unroll for i = 1 : M - 2
+      B2_23[i,1,iz,ID] = inv2dz * DWS[i+1,1] * Th[1]
+      B2_23[i,2,iz,ID] = inv2dz * DWS[i+1,M] * Th[M]
+      B3_14[i,1,iz,ID] = inv2dz * DWS[i+1,1] * dpdRhoTh[1]
+      B3_14[i,2,iz,ID] = inv2dz * DWS[i+1,M] * dpdRhoTh[M]
+      C23_2[1,i,iz,ID] = inv2dz * DWS[1,i+1] * dpdRhoTh[i+1]
+      C23_2[2,i,iz,ID] = inv2dz * DWS[M,i+1] * dpdRhoTh[i+1]
+      C14_3[1,i,iz,ID] = inv2dz * DWS[1,i+1] * Th[i+1]
+      C14_3[2,i,iz,ID] = inv2dz * DWS[M,i+1] * Th[i+1]
+    end
+
+    if iz > 1
+      ThM = Aux[M,iz-1,1,ThPos]
+      Th1 = Aux[1,iz-1,1,ThPos]
+      dpdRhoThM = Aux[M,iz-1,ID,dpdThPos]
+      # (sh-1,sh-1)  
+      @atomic :monotonic SchurBand[4,sh-1,ID] += ThM * dpdRhoThM * invcS / dz[iz-1,ID] / wB
+      # (sh,sh-1)
+      @atomic :monotonic SchurBand[5,sh-1,ID] += -Th[1] * dpdRhoThM * invcS * invdz / wB
+      # (sh-1,sh)
+      @atomic :monotonic SchurBand[3,sh,ID] += -ThM * dpdRhoTh[1] * invcS / dz[iz-1,ID] / wB
+      # (sh,sh)
+      @atomic :monotonic SchurBand[4,sh,ID] += Th[1] * dpdRhoTh[1] * invcS * invdz / wB
+      # (sh-2,sh-2)
+      @atomic :monotonic SchurBand[4,sh-2,ID] += cS / dz[iz-1,ID] / wB
+      # (sh+1,sh-2)
+      @atomic :monotonic SchurBand[7,sh-2,ID] += -cS * invdz / wB
+      # (sh-2,sh+1)
+      @atomic :monotonic SchurBand[1,sh+1,ID] += -cS / dz[iz-1,ID] / wB
+      # (sh+1,sh+1)
+      @atomic :monotonic SchurBand[4,sh+1,ID] += cS * invdz / wB
+      # (sh,sh-2)
+      @atomic :monotonic SchurBand[6,sh-2,ID] += -ThM * invdz / wB 
+      # (sh+1,sh-1)      
+      @atomic :monotonic SchurBand[6,sh-1,ID] += -dpdRhoThM * invdz / wB 
+      # (sh-1,sh+1)
+      @atomic :monotonic SchurBand[2,sh+1,ID] += Th[1] / wB / dz[iz-1,ID]
+      # (sh-2,sh)
+      @atomic :monotonic SchurBand[2,sh,ID] += dpdRhoTh[1] / wB / dz[iz-1,ID]
+    end
+
+
+    if iz == 1
+      @atomic :monotonic SchurBand[3,sh+1,ID] += inv2dz * DWS[1,1] * Th[1]
+      @atomic :monotonic SchurBand[5,sh,ID] += -inv2dz * DWS[1,1] * dpdRhoTh[1] 
+      @atomic :monotonic SchurBand[4,sh+1,ID] += inv2dz * cS / wB
+    end
+    @atomic :monotonic SchurBand[2,sh+2,ID] += inv2dz * DWS[1,M] * Th[M]
+    @atomic :monotonic SchurBand[2,sh+3,ID] += inv2dz * DWS[1,M] * dpdRhoTh[M]
+    @atomic :monotonic SchurBand[6,sh+1,ID] += inv2dz * DWS[M,1] * Th[1]
+    @atomic :monotonic SchurBand[6,sh,ID] += inv2dz * DWS[M,1] * dpdRhoTh[1]
+    if iz == nz
+      @atomic :monotonic SchurBand[5,sh+2,ID] += inv2dz * DWS[M,M] * Th[M]
+      @atomic :monotonic SchurBand[3,sh+3,ID] += -inv2dz * DWS[M,M] * dpdRhoTh[M]
+      @atomic :monotonic SchurBand[4,sh+2,ID] += inv2dz * cS / wB
+    end
+  end  
+end
+
 function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys)
 
   backend = get_backend(U)
@@ -734,6 +885,32 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys)
 
 end  
 
+function FillJacFrozenDGVert!(JacVert,Aux,DG,dz,fac,Phys)
+
+  backend = get_backend(Aux)
+  FTB = eltype(Aux)
+
+  M = JacVert.M
+  nz = JacVert.nz
+  DoF  = DG.NumI
+
+  JacVert.fac = fac
+  JacVert.FacGrav = Phys.Grav
+
+  DWZ = DG.DWZ
+
+  DoFG = 10
+  group = (nz, DoFG)
+  ndrange = (nz, DoF) 
+  @. JacVert.SchurBand = FTB(0)
+  @views @. JacVert.SchurBand[4,:,:] = fac
+  KFillJacDGVertKernel! = FillJacFrozenDGVertKernel!(backend,group)
+  KFillJacDGVertKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
+  JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,JacVert.C23_2,
+  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,Aux,dz,DWZ,DG.wZ,fac,Phys.Grav,
+  Phys.cS,Phys,Val(M);ndrange=ndrange) 
+
+end  
 function SchurBoundary!(JacVert)
 
   backend = get_backend(JacVert.SchurBand)
@@ -762,7 +939,7 @@ function Solve!(k,v,Jac,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   @. k = v
   @views TendVCart2VSp!(k[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)
-  @views Solve!(Jac,k)
+  Solve!(Jac,k)
   @views @. k[:,:,:,2:3] *= fac
   @views TendVSp2VCart!(k[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)
 
@@ -982,3 +1159,11 @@ function Jac!(U,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
   FillJacDGVert!(JCache,U,DG,dz,Invfac,Phys)
   SchurBoundary!(JCache)
 end  
+
+function JacFrozen!(Aux,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
+  Invfac = eltype(Aux)(1) / fac
+  dz = Metric.dz
+  FillJacFrozenDGVert!(JCache,Aux,DG,dz,Invfac,Phys)
+  SchurBoundary!(JCache)
+end  
+
