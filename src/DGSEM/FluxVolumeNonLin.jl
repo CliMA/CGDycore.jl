@@ -9,7 +9,7 @@ function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadG
   ndrange = (N,N,M*Nz,NF)
   KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHQuadKernel!(backend,group)
   KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.Glob,
-    Val(NV),Val(NAUX);ndrange=ndrange)
+    Val(N), Val(NV),Val(NAUX);ndrange=ndrange)
 end  
 
 function FluxVolumeNonLinH(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
@@ -127,13 +127,12 @@ end
 @kernel inbounds = true function FluxSplitVolumeNonLinHQuadKernel!(FluxAver!,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
     @Const(DVT), @Const(Glob),
-    ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+    ::Val{N}, ::Val{NV}, ::Val{NAUX}) where {N, NV, NAUX}
 
   I, J, iz      = @index(Local, NTuple)
   _, _, IZ, IF  = @index(Global, NTuple)
 
   TilesDim = @uniform @groupsize()[3]
-  N        = @uniform @groupsize()[1]
   NZ       = @uniform @ndrange()[3]
   M        = @uniform size(dXdxI, 3)
 
@@ -325,7 +324,7 @@ end
     ID = I + (J - 1) * N
     ind = Glob[ID,IF]
     @views Flux(FLoc,V[K,Iz,ind,:],Aux[K,Iz,ind,:])
-    for iv = 1 : NV
+    @unroll for iv = 1 : NV
       ConX[I,J,iz,iv] = dXdxI[1,1,K,ID,Iz,IF] * FLoc[1,iv] +
         dXdxI[1,2,K,ID,Iz,IF] * FLoc[2,iv] +
         dXdxI[1,3,K,ID,Iz,IF] * FLoc[3,iv]
@@ -341,7 +340,7 @@ end
     Iz = div(IZ-1,M) + 1
     ID = I + (J - 1) * N
     ind = Glob[ID,IF]
-    for iv = 1 : NV
+    @unroll for iv = 1 : NV
       FF = DW[I,1] * ConX[1,J,iz,iv] + DW[J,1] * ConY[I,1,iz,iv]
       for k = 2 : N
         FF = FF + DW[I,k] * ConX[k,J,iz,iv] + DW[J,k] * ConY[I,k,iz,iv]
