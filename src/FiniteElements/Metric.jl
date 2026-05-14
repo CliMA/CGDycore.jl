@@ -7,7 +7,7 @@ mutable struct MetricDGStruct{FT<:AbstractFloat,
   J::AT4
   X::AT5
   dXdxI::AT6
-  Rotate::AT6
+  Rotate::AT4
   dz::AT2
   zP::AT2
   xS::AT2
@@ -21,7 +21,7 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
     X      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,3,nz,NF)
     dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
-    Rotate  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
+    Rotate  = KernelAbstractions.zeros(backend,FT,3,3,nQuad,NF)
     dz = KernelAbstractions.zeros(backend,FT,0,0)
     zP = KernelAbstractions.zeros(backend,FT,0,0)
     xS    = KernelAbstractions.zeros(backend,FT,2,NumG)
@@ -797,8 +797,8 @@ function FillRotate!(backend,Metric,FE,Grid)
   M = FE.OrdPolyZ + 1
   NF = Grid.NumFaces
   Nz = Grid.nz
-  group = (DoF,M,1,1)
-  ndrange = (DoF,M,Nz,NF)
+  group = (DoF,1)
+  ndrange = (DoF,NF)
   KRotateKernel! = RotateKernel!(backend,group)
   KRotateKernel!(Metric.Rotate,Metric.X,Grid.Form;ndrange=ndrange)
 end  
@@ -806,31 +806,27 @@ end
 
 @kernel inbounds = true function RotateKernel!(Rotate,@Const(X),::Grids.SphericalGrid)
 
-  ID, K, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  ID,IF = @index(Global, NTuple)
 
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  NF = @uniform @ndrange()[2]
 
-  if Iz <= Nz
-    lon,lat,_ = Grids.cart2sphere(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF])
+  if IF <= NF
+    lon,lat,_ = Grids.cart2sphere(X[ID,1,1,1,IF],X[ID,1,2,1,IF],X[ID,1,3,1,IF])
     MR = Grids.MCart2Sphere(lon,lat)
-    @. Rotate[:,:,K,ID,Iz,IF] =  MR
+    @. Rotate[:,:,ID,IF] =  MR
   end
 end  
 
 @kernel inbounds = true function RotateKernel!(Rotate,@Const(X),::Grids.CartesianGrid)
 
-  ID, K, iz   = @index(Local, NTuple)
-  _,_,Iz,IF = @index(Global, NTuple)
+  ID,IF = @index(Global, NTuple)
 
-  Nz = @uniform @ndrange()[3]
-  NF = @uniform @ndrange()[4]
+  NF = @uniform @ndrange()[1]
 
-  if Iz <= Nz
-    Rotate[1,1,K,ID,Iz,IF] =  eltype(X)(1)
-    Rotate[2,2,K,ID,Iz,IF] =  eltype(X)(1)
-    Rotate[3,3,K,ID,Iz,IF] =  eltype(X)(1)
+  if IF <= NF
+    Rotate[1,1,ID,IF] =  eltype(X)(1)
+    Rotate[2,2,ID,IF] =  eltype(X)(1)
+    Rotate[3,3,ID,IF] =  eltype(X)(1)
   end
 end  
 

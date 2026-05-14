@@ -586,7 +586,7 @@ elseif IntMethod == "MISLin"
     MethodInt.FastMethod = Integration.LSRungeKuttaMethod{FTB}("niegemannrk4-14")
     MethodInt.JacComp = MethodInt.FastMethod.JacComp
   end
-  Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
+# Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
   Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!) 
   Jac = DGSEM.JacFrozen!
   dt = (dtau,dtauSmall)

@@ -1,12 +1,10 @@
 function TendVSp2VCart!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityC)
   backend = get_backend(V)
-  M = size(V,1)
-  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (Nz,M,DoFG,1)
-  ndrange = (Nz,M,DoF,NF)
+  NFG = min(div(NumberThreadGPU,DoF),NF)
+  group = (DoF,NFG)
+  ndrange = (DoF,NF)
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   KVSp2VCart3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
@@ -16,13 +14,11 @@ end
 
 function TendVCart2VSp!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityC)
   backend = get_backend(V)
-  M = size(V,1)
-  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (Nz,M,DoFG,1)
-  ndrange = (Nz,M,DoF,NF)
+  NFG = min(div(NumberThreadGPU,DoF),NF)
+  group = (DoF,NFG)
+  ndrange = (DoF,NF)
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   KVCart2VSp3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
@@ -32,13 +28,11 @@ end
 
 function StateVSp2VCart!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityS)
   backend = get_backend(V)
-  M = size(V,1)
-  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (Nz,M,DoFG,1)
-  ndrange = (Nz,M,DoF,NF)
+  NFG = min(div(NumberThreadGPU,DoF),NF)
+  group = (DoF,NFG)
+  ndrange = (DoF,NF)
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   KVSp2VCart3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
@@ -48,13 +42,11 @@ end
 
 function StateVCart2VSp!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityS)
   backend = get_backend(V)
-  M = size(V,1)
-  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (Nz,M,DoFG,1)
-  ndrange = (Nz,M,DoF,NF)
+  NFG = min(div(NumberThreadGPU,DoF),NF)
+  group = (DoF,NFG)
+  ndrange = (DoF,NF)
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   KVCart2VSp3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
@@ -105,60 +97,67 @@ end
 
 @kernel inbounds = true function VSp2VCart3Kernel!(V,@Const(Rotate),@Const(Glob))
 
-  _,_,iD,  = @index(Local, NTuple)
-  Iz,K,ID,IF = @index(Global, NTuple)
+  ID,IF = @index(Global, NTuple)
 
-  DoF = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[2]
+  M = @uniform size(V,1)
+  nz = @uniform size(V,2)
 
-  if ID <= DoF
+  if IF <= NF
+    r11 = Rotate[1,1,ID,IF]  
+    r12 = Rotate[1,2,ID,IF]  
+    r13 = Rotate[1,3,ID,IF]  
+    r21 = Rotate[2,1,ID,IF]  
+    r22 = Rotate[2,2,ID,IF]  
+    r23 = Rotate[2,3,ID,IF]  
+    r31 = Rotate[3,1,ID,IF]  
+    r32 = Rotate[3,2,ID,IF]  
+    r33 = Rotate[3,3,ID,IF]  
     ind = Glob[ID,IF]
-    v1 = V[K,Iz,ind,1]
-    v2 = V[K,Iz,ind,2]
-    v3 = V[K,Iz,ind,3]
-    V[K,Iz,ind,1] = Rotate[1,1,K,ID,Iz,IF] * v1 +
-      Rotate[2,1,K,ID,Iz,IF] * v2 +
-      Rotate[3,1,K,ID,Iz,IF] * v3
-    V[K,Iz,ind,2] = Rotate[1,2,1,ID,Iz,IF] * v1 +
-      Rotate[2,2,K,ID,Iz,IF] * v2 +
-      Rotate[3,2,K,ID,Iz,IF] * v3
-    V[K,Iz,ind,3] = Rotate[1,3,K,ID,Iz,IF] * v1 +
-      Rotate[2,3,K,ID,Iz,IF] * v2 +
-      Rotate[3,3,K,ID,Iz,IF] * v3
+    for Iz = 1 : nz
+      for K = 1 : M
+        v1 = V[K,Iz,ind,1]
+        v2 = V[K,Iz,ind,2]
+        v3 = V[K,Iz,ind,3]
+        V[K,Iz,ind,1] = r11 * v1 + r21 * v2 + r31 * v3
+        V[K,Iz,ind,2] = r12 * v1 + r22 * v2 + r32 * v3
+        V[K,Iz,ind,3] = r13 * v1 + r23 * v2 + r33 * v3
+      end
+    end  
   end  
 end
 
 
 @kernel inbounds = true function VCart2VSp3Kernel!(V,@Const(Rotate),@Const(Glob))
 
-  _,_,iD,  = @index(Local, NTuple)
-  Iz,K,ID,IF = @index(Global, NTuple)
+  ID,IF = @index(Global, NTuple)
 
-  DoF = @uniform @ndrange()[3]
-  M = @uniform @ndrange()[2]
-  Nz = @uniform @ndrange()[1]
+  NF = @uniform @ndrange()[2]
+  M = @uniform size(V,1)
+  nz = @uniform size(V,2)
 
-  if ID <= DoF
+  if IF <= NF
+    r11 = Rotate[1,1,ID,IF]
+    r12 = Rotate[1,2,ID,IF]
+    r13 = Rotate[1,3,ID,IF]
+    r21 = Rotate[2,1,ID,IF]
+    r22 = Rotate[2,2,ID,IF]
+    r23 = Rotate[2,3,ID,IF]
+    r31 = Rotate[3,1,ID,IF]
+    r32 = Rotate[3,2,ID,IF]
+    r33 = Rotate[3,3,ID,IF]
     ind = Glob[ID,IF]
-    v1 = V[K,Iz,ind,1]
-    v2 = V[K,Iz,ind,2]
-    v3 = V[K,Iz,ind,3]
-    V[K,Iz,ind,1] = Rotate[1,1,K,ID,Iz,IF] * v1 +
-      Rotate[1,2,K,ID,Iz,IF] * v2 +
-      Rotate[1,3,K,ID,Iz,IF] * v3
-    V[K,Iz,ind,2] = Rotate[2,1,K,ID,Iz,IF] * v1 +
-      Rotate[2,2,K,ID,Iz,IF] * v2 +
-      Rotate[2,3,K,ID,Iz,IF] * v3
-#   if Nz == 1 && M == 2
-#     V[K,Iz,ind,3] = eltype(V)(0)  
-#   else  
-      V[K,Iz,ind,3] = Rotate[3,1,K,ID,Iz,IF] * v1 +
-        Rotate[3,2,K,ID,Iz,IF] * v2 +
-        Rotate[3,3,K,ID,Iz,IF] * v3
-#   end  
-#   if Iz == Nz && K == M
-#     V[K,Iz,ind,3] = eltype(V)(0)  
-#   end  
-  end  
+    for Iz = 1 : nz
+      for K = 1 : M
+        v1 = V[K,Iz,ind,1]
+        v2 = V[K,Iz,ind,2]
+        v3 = V[K,Iz,ind,3]
+        V[K,Iz,ind,1] = r11 * v1 + r12 * v2 + r13 * v3
+        V[K,Iz,ind,2] = r21 * v1 + r22 * v2 + r23 * v3
+        V[K,Iz,ind,3] = r31 * v1 + r32 * v2 + r33 * v3
+      end
+    end
+  end
 end
 
 function ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
@@ -185,8 +184,9 @@ end
 
   if ID <= DoF
     ind = Glob[ID,IF]
+    JLoc = J[ID,K,Iz,IF]
     @unroll for iv = 1 : NUMV
-      F[K,Iz,ind,iv] /= J[ID,K,Iz,IF]
+      F[K,Iz,ind,iv] /= JLoc
     end  
   end
 end
