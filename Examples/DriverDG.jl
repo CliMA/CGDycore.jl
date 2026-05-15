@@ -404,10 +404,10 @@ elseif FluxDG == "KennedyGruberGrav"
     Model.FluxAverageFast = DGSEM.KennedyGruberGravFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
       Model.RhoThPos,3,4,GPAuxPos)
   elseif IntMethod == "MISLin" 
-    Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
-      Model.wPos,Model.RhoThPos,3,4)
-#   Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast1()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-#     Model.RhoThPos,3,4,GPAuxPos,Grid.Type)
+#   Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
+#     Model.wPos,Model.RhoThPos,3,4)
+    Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast1()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+      Model.RhoThPos,3,4,GPAuxPos,Grid.Type)
     Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
   end  
 elseif FluxDG == "ArtianoExner"  
@@ -586,8 +586,8 @@ elseif IntMethod == "MISLin"
     MethodInt.FastMethod = Integration.LSRungeKuttaMethod{FTB}("niegemannrk4-14")
     MethodInt.JacComp = MethodInt.FastMethod.JacComp
   end
-  Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
-# Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!) 
+# Fcn = (DGSEM.FcnSplit!,DGSEM.FcnFastLin!)
+  Fcn = (DGSEM.FcnSplit!,DGSEM.FcnSplitFastSemi!) 
   Jac = DGSEM.JacFrozen!
   dt = (dtau,dtauSmall)
 elseif IntMethod == "RungeKuttaEx"

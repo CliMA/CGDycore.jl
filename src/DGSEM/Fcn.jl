@@ -44,10 +44,6 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
     Sources.Coriolis!(Cor,F,U,Aux,DG,Metric,NumberThreadGPU)
   end
 
-# if Model.Buoyancy
-    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
-# end  
-
   if Model.Damping
     Sources.Damping!(Damp,F,U,Aux,DG,Metric,NumberThreadGPU)  
   end
@@ -343,18 +339,14 @@ function FcnSplitFastSemi!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
-  FluxSplitVolumeNonLinH(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
-  FluxSplitVolumeNonLinV(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+  FluxSplitVolumeNonLinHV(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
+  RiemannNonLinV(Model.RiemannSolverFast,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
   @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV],Exchange)
 
 
   RiemannNonLinH(Model.RiemannSolverFast,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
-  RiemannNonLinV(Model.RiemannSolverFast,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
-# if Model.Buoyancy
-    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
-# end  
 
   @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
 

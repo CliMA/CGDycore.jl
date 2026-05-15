@@ -585,45 +585,31 @@ Base.@kwdef struct KennedyGruberGravLinFast1 <: AverageFlux end
 function (::KennedyGruberGravLinFast1)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::Grids.Quad)
   @inline function FluxNonLinAverSemi!(flux,
       VLoc, AuxLoc, dXdxILoc,
-      K1, Iz1, iD1,   # left state indices  (localidx into @localmem)
-      K2, Iz2, iD2,   # right state indices
+      I1, J1, K1,   # left state indices  (localidx into @localmem)
+      I2, J2, K2,   # right state indices
       ::Val{dir}) where {dir}
+
     FT = eltype(flux)
-    RhoL  = VLoc[K1, Iz1, iD1, RhoPos]
-    uL    = VLoc[K1, Iz1, iD1, uPos]
-    vL    = VLoc[K1, Iz1, iD1, vPos]
-    wL    = VLoc[K1, Iz1, iD1, wPos]
-    RhoThL   = VLoc[K1, Iz1, iD1, ThPos]
-    pLTh   = AuxLoc[K1, Iz1, iD1, pRhoThPos]
-    GPL  = AuxLoc[K1, Iz1, iD1, GPPos]
-
-    RhoR  = VLoc[K2, Iz2, iD2, RhoPos]
-    uR    = VLoc[K2, Iz2, iD2, uPos]
-    vR    = VLoc[K2, Iz2, iD2, vPos]
-    wR    = VLoc[K2, Iz2, iD2, wPos]
-    RhoThR   = VLoc[K2, Iz2, iD2, ThPos]
-    pRTh   = AuxLoc[K2, Iz2, iD2, pRhoThPos]
-    GPR  = AuxLoc[K2, Iz2, iD2, GPPos]
-
-    m_L1  = dXdxILoc[dir, 1, K1, Iz1, iD1]
-    m_L2  = dXdxILoc[dir, 2, K1, Iz1, iD1]
-    m_L3  = dXdxILoc[dir, 3, K1, Iz1, iD1]
-    m_R1  = dXdxILoc[dir, 1, K2, Iz2, iD2]
-    m_R2  = dXdxILoc[dir, 2, K2, Iz2, iD2]
-    m_R3  = dXdxILoc[dir, 3, K2, Iz2, iD2]
-    pL = pLTh * RhoThL
-    pR = pRTh * RhoThR
-    pAvL = pL  + FT(0.5) * RhoL * (GPR - GPL)
-    pAvR = pR  + FT(0.5) * RhoR * (GPR - GPL)
-    ThL = AuxLoc[K1, Iz1, iD1, ThAuxPos]
-    ThR = AuxLoc[K2, Iz2, iD2, ThAuxPos]
-    qHatL = m_L1 * uL + m_L2 * vL + m_L3 * wL
-    qHatR = m_R1 * uR + m_R2 * vR + m_R3 * wR
+    m_L1  = dXdxILoc[dir, 1, I1, J1, K1]
+    m_L2  = dXdxILoc[dir, 2, I1, J1, K1]
+    m_L3  = dXdxILoc[dir, 3, I1, J1, K1]
+    m_R1  = dXdxILoc[dir, 1, I2, J2, K2]
+    m_R2  = dXdxILoc[dir, 2, I2, J2, K2]
+    m_R3  = dXdxILoc[dir, 3, I2, J2, K2]
+    diffGP = AuxLoc[I2, J2, K2, GPPos] - AuxLoc[I1, J1, K1, GPPos]
+    pAvL = AuxLoc[I1, J1, K1, pRhoThPos] * VLoc[I1, J1, K1, ThPos]  + 
+      FT(0.5) * VLoc[I1, J1, K1, RhoPos] * diffGP
+    pAvR = AuxLoc[I2, J2, K2, pRhoThPos] * VLoc[I2, J2, K2, ThPos]  + 
+      FT(0.5) * VLoc[I2, J2, K2, RhoPos] * diffGP
+    qHatL = m_L1 * VLoc[I1, J1, K1, uPos] + 
+      m_L2 * VLoc[I1, J1, K1, vPos] + m_L3 * VLoc[I1, J1, K1, wPos]
+    qHatR = m_R1 * VLoc[I2, J2, K2, uPos] + 
+      m_R2 * VLoc[I2, J2, K2, vPos] + m_R3 * VLoc[I2, J2, K2, wPos]
     flux[1] = FT(0.5) * (qHatL + qHatR)
     flux[2] = FT(0.5) * (m_L1 * pAvL + m_R1 * pAvR)
     flux[3] = FT(0.5) * (m_L2 * pAvL + m_R2 * pAvR)
     flux[4] = FT(0.5) * (m_L3 * pAvL + m_R3 * pAvR)
-    flux[5] = FT(0.5) * (qHatL * ThL + qHatR * ThR)
+    flux[5] = FT(0.5) * (qHatL * AuxLoc[I1, J1, K1, ThAuxPos] + qHatR * AuxLoc[I2, J2, K2, ThAuxPos])
 
   end
   return FluxNonLinAverSemi!

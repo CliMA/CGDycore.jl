@@ -4,11 +4,10 @@ function FluxSplitVolumeNonLinHV(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThread
   DoFE = DG.DoFE
   N = DG.OrdPoly + 1
   M = DG.OrdPolyZ + 1
-  NzG = min(div(NumberThreadGPU,DoF),M*Nz)
-  group = (N,N,NzG,1)
-  ndrange = (N,N,M*Nz,NF)
+  group = (N,N,M,1,1)
+  ndrange = (N,N,M,Nz,NF)
   KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHVQuadKernel!(backend,group)
-  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.DVTZ,DG.Glob,
+  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.DVZT,DG.Glob,
     Val(N), Val(M), Val(NV), Val(NAUX);ndrange=ndrange)
 end
 
@@ -210,10 +209,9 @@ end
   end
 end
 
-#=
 @kernel inbounds = true function FluxSplitVolumeNonLinHVQuadKernel!(FluxAver!,
-    F, @Const(V), @Const(Aux), @Const(dXdxI),
-    @Const(DVTZ), @Const(Glob),
+    F, @Const(V), @Const(Aux), @Const(dXdxI), @Const(DVT),
+    @Const(DVZT), @Const(Glob),
     ::Val{N}, ::Val{M}, ::Val{NV}, ::Val{NAUX}) where {N, M, NV, NAUX}
 
   I, J, K      = @index(Local, NTuple)
@@ -223,13 +221,13 @@ end
 
   VLoc     = @localmem eltype(F)      (N, N, M, NV)
   AuxLoc   = @localmem eltype(F)      (N, N, M, NAUX)
-  FLoc     = @localmem eltype(F)      (N, N, M, NV)
   # 2 directions × 3 components
-  dXdxILoc = @localmem eltype(dXdxI)  (3, 3, N, N, K)
+  dXdxILoc = @localmem eltype(dXdxI)  (3, 3, N, N, M)
 
   fTilde = @private eltype(F) (NV,)
   gTilde = @private eltype(F) (NV,)
   hTilde = @private eltype(F) (NV,)
+  FLoc = @private eltype(F) (NV,)
 
   # ---- load phase ----
   ID = I + (J - 1) * N
@@ -239,46 +237,51 @@ end
   end
   @unroll for iv = 1:NV
     VLoc[I, J, K, iv] = V[K, IZ, ind, iv]
-    FLoc[I, J, K, iv] = 0
+    FLoc[iv] = 0
   end
   @unroll for j = 1:3
     @unroll for i = 1:3
-        dXdxILoc[i, j, I, J, iz] = dXdxI[i, j, K, ID, Iz, IF]
-      end
+      dXdxILoc[i, j, I, J, K] = dXdxI[i, j, K, ID, IZ, IF]
     end
   end
 
   @synchronize
 
   # ---- compute phase ----
-  if IZ <= NZ
-    @unroll for l = 1:N
-      # x-direction: left=(I,J,iz), right=(l,J,iz)
-      FluxAver!(fTilde,
-        VLoc, AuxLoc, dXdxILoc,
-        I, J, iz,
-        l, J, iz,
-        Val(1))
-      # y-direction: left=(I,J,iz), right=(I,l,iz)
-      FluxAver!(gTilde,
-        VLoc, AuxLoc, dXdxILoc,
-        I, J, iz,
-        I, l, iz,
-        Val(2))
-      @unroll for iv = 1:NV
-        FLoc[I, J, iz, iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
-      end
-    end
-    K   = mod(IZ - 1, M) + 1
-    Iz  = div(IZ - 1, M) + 1
-    ID  = I + (J - 1) * N
-    ind = Glob[ID, IF]
+  @unroll for l = 1:N
+    # x-direction: left=(I,J,K), right=(l,J,K)
+    FluxAver!(fTilde,
+      VLoc, AuxLoc, dXdxILoc,
+      I, J, K,
+      l, J, K,
+      Val(1))
+    # y-direction: left=(I,J,K), right=(I,l,K)
+    FluxAver!(gTilde,
+      VLoc, AuxLoc, dXdxILoc,
+      I, J, K,
+      I, l, K,
+      Val(2))
     @unroll for iv = 1:NV
-      F[K, Iz, ind, iv] += FLoc[I, J, iz, iv]
+      FLoc[iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
     end
+  end  
+  @unroll for l = 1:M
+    # z-direction: left=(I,J,K), right=(I,J,l)
+    FluxAver!(hTilde,
+      VLoc, AuxLoc, dXdxILoc,
+      I, J, K,
+      I, J, l,
+      Val(3))
+    @unroll for iv = 1:NV
+      FLoc[iv] += -DVZT[l, K] * hTilde[iv]
+    end
+  end  
+  ID = I + (J - 1) * N
+  ind = Glob[ID, IF]
+  @unroll for iv = 1:NV
+    F[K, IZ, ind, iv] += FLoc[iv]
   end
 end
-=#
 
 @kernel inbounds = true function FluxSplitVolumeNonLinHTriKernel!(FluxAver!,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
