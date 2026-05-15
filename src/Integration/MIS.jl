@@ -104,7 +104,7 @@ function TimeStepperFast!(IntMethod,dt,tEnd,U,D,FSlow,Fcn,Jac,FE,Exchange,Metric
     fac = dtau * IntMethod.gammaD
     Jac(CacheAux.Aux,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
   end  
-  @. U -= D
+  @. U -= D 
   @inbounds for i = 1 : numit
     TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
       Global,Param,VelForm)

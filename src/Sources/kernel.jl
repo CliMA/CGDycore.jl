@@ -5,15 +5,15 @@ function Buoyancy!(Buo,F,U,Glob,X,NumberThreadGPU)
   DoF = size(Glob,1)
   NF = size(Glob,2)
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
-  group = (Nz,M,DoFG,1)
-  ndrange = (Nz,M,DoF,NF)
+  group = (M,Nz,DoFG,1)
+  ndrange = (M,Nz,DoF,NF)
   KBuoyancyKernel! = BuoyancyKernel!(backend,group)
   KBuoyancyKernel!(Buo,F,U,X,Glob,;ndrange=ndrange)
 end
 
 @kernel inbounds = true function BuoyancyKernel!(Buo,F,@Const(U),@Const(X),@Const(Glob))
   _,_,iD,  = @index(Local, NTuple)
-  Iz,K,ID,IF = @index(Global, NTuple)
+  K,Iz,ID,IF = @index(Global, NTuple)
 
   ND = @uniform @ndrange()[3]
 

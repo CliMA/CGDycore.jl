@@ -322,9 +322,7 @@ function FcnSplitFastSemi!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   Model = Global.Model
   Grid = Global.Grid
   GridType = Grid.Type
-  Damp = Model.Damp
-  Cor = Model.CoriolisFun
-  Force = Model.Force
+  Buo = Model.BuoyancyFun
   FT = eltype(F)
   DoF = DG.DoF
   DoFE = DG.DoFE

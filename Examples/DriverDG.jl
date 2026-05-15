@@ -406,7 +406,7 @@ elseif FluxDG == "KennedyGruberGrav"
   elseif IntMethod == "MISLin" 
 #   Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
 #     Model.wPos,Model.RhoThPos,3,4)
-    Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+    Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast1()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
       Model.RhoThPos,3,4,GPAuxPos,Grid.Type)
     Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
   end  
