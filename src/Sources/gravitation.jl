@@ -52,6 +52,7 @@ function (GeoPotentialFun::GeoPotentialDeep)(GeoPos,::Grids.SphericalGrid)
     FT = eltype(X)
     r = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
     Aux[GeoPos] = P.Grav * (P.RadEarth - P.RadEarth^2 / r)
+    Aux[GeoPos] = 0.0 # Oswald
   end
   return GeoPotential
 end

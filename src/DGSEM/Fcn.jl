@@ -45,7 +45,7 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   end
 
 # if Model.Buoyancy
-#   Sources.Buoyancy!(Buo,F,U,Aux,DG.Glob,Metric.X,NumberThreadGPU)
+    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
 # end  
 
   if Model.Damping
@@ -352,6 +352,9 @@ function FcnSplitFastSemi!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   RiemannNonLinV(Model.RiemannSolverFast,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
+# if Model.Buoyancy
+    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
+# end  
 
   @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
 
