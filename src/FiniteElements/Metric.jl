@@ -130,6 +130,7 @@ function MetricCompute(backend,FT,FE::DGElement,Model,Exchange,Grid,NumberThread
   FillRotate!(backend,Metric,FE,Grid)
   FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
   FillDet!(backend,Metric,FE,Grid)
+  @. Metric.J = FT(1) / Metric.J
   GridSizeDGKernel!(FE,Metric,Grid.Rad,NumberThreadGPU,Grid.Form)
   MetricLowerBoundary!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Form)
   NormalH!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Type)

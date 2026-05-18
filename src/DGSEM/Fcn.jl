@@ -31,12 +31,12 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   FluxSplitVolumeNonLinH(Model.FluxAverageH,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
   FluxSplitVolumeNonLinV(Model.FluxAverageV,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+  RiemannNonLinV(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV],Exchange)
   @views @. Aux[:,:,DG.NumI+1:DG.NumG,1] = Model.Pressure(U[:,:,DG.NumI+1:DG.NumG,5])
 
   RiemannNonLinH(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
-  RiemannNonLinV(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
 
@@ -56,7 +56,7 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
     @. F[:,:,:,3] = 0   
   end  
 
-  @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  @views StateVCart2VSp!(F,DG,Metric,NumberThreadGPU,VelForm)  
 
 end
 
@@ -346,9 +346,7 @@ function FcnSplitFastSemi!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   RiemannNonLinH(Model.RiemannSolverFast,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
-  ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
-
-  @views StateVCart2VSp!(F[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVCart2VSpScale!(F,DG,Metric,NumberThreadGPU,VelForm)
 
 end
 

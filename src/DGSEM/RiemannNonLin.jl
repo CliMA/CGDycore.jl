@@ -102,12 +102,12 @@ end
     end  
     if Iz > 1 
       @unroll for iv = 1 : NUMV  
-        @atomic :monotonic F[end,Iz-1,ind,iv] -= FLoc[iv]
+        F[end,Iz-1,ind,iv] -= FLoc[iv]
       end  
     end  
     if Iz < Nz
       @unroll for iv = 1 : NUMV  
-        @atomic :monotonic F[1,Iz,ind,iv] += FLoc[iv]
+        F[1,Iz,ind,iv] += FLoc[iv]
       end  
     end  
   end  
