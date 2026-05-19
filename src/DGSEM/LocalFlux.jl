@@ -507,21 +507,19 @@ function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAu
     m_R2 = dXdxILoc[dir, 2, ID2, iz2]
     m_R3 = dXdxILoc[dir, 3, ID2, iz2]
     RhoAv = FT(0.5) * (RhoL + RhoR)
-    pL = pLTh* ThL
-    pR = pRTh* ThR
-    pAv = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
-    uAv = FT(0.5) * (uL + uR)
-    vAv = FT(0.5) * (vL + vR)
-    wAv = FT(0.5) * (wL + wR)
+    pAv = ((pLTh * ThL + pRTh * ThR) + RhoAv * (GPR - GPL))
+    uAv = (uL + uR)
+    vAv = (vL + vR)
+    wAv = (wL + wR)
     ThAv = FT(0.5) * (AuxL[ID1, iz1, ThAuxPos] + AuxR[ID2, iz2, ThAuxPos])
-    mAv1 = FT(0.5) * (m_L1 + m_R1)
-    mAv2 = FT(0.5) * (m_L2 + m_R2)
-    mAv3 = FT(0.5) * (m_L3 + m_R3)
+    mAv1 = (m_L1 + m_R1)
+    mAv2 = (m_L2 + m_R2)
+    mAv3 = (m_L3 + m_R3)
     qHat = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-    flux[1] = qHat
-    flux[2] = mAv1 * pAv
-    flux[3] = mAv2 * pAv
-    flux[4] = mAv3 * pAv
+    flux[1] = FT(0.25) * qHat
+    flux[2] = FT(0.25) * mAv1 * pAv
+    flux[3] = FT(0.25) * mAv2 * pAv
+    flux[4] = FT(0.25) * mAv3 * pAv
     flux[5] = flux[1] * ThAv
 
   end
@@ -913,13 +911,12 @@ function (::RiemannLMARSLinFast)(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,dpdRh
   @inline function RiemannByLMARSSemi!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
 
     FT = eltype(F)
-    cS = Param.cS
     pLL = AuxL[dpdRhoThPos] * VLL[RhoThPos]
     pRR = AuxR[dpdRhoThPos] * VRR[RhoThPos]
     vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) 
     vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) 
-    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * (vRR - vLL)
-    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) 
+    pM = FT(0.5) * ((pLL + pRR) - Phys.cS * (vRR - vLL))
+    vM = FT(0.5) * ((vRR + vLL) - Phys.invcS * (pRR - pLL)) 
     F[uPos] = n1 * pM
     F[vPos] = n2 * pM
     F[wPos] = n3 * pM

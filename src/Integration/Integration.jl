@@ -14,6 +14,7 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll
 using StaticArrays
 using NVTX
+using Test
 
 abstract type IntegrationMethod end
 mutable struct NoMethod <: IntegrationMethod end

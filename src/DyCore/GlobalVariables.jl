@@ -215,6 +215,7 @@ struct PhysParameters{FT<:AbstractFloat}
   PrTke::FT # Prandtl number for Tke
   Karm::FT
   cS::FT
+  invcS::FT
 end
 function PhysParameters{FT}(;ScaleFactor=FT(1)) where FT<:AbstractFloat
   RadEarth::FT = 6.37122e+6
@@ -242,6 +243,7 @@ function PhysParameters{FT}(;ScaleFactor=FT(1)) where FT<:AbstractFloat
   PrTke::FT = 1.0
   Karm::FT = 0.4
   cS::FT = 360
+  invcS::FT = 1 / 360
  return PhysParameters{FT}(
   RadEarth,
   Grav,
@@ -267,6 +269,7 @@ function PhysParameters{FT}(;ScaleFactor=FT(1)) where FT<:AbstractFloat
   PrTke,
   Karm,
   cS,
+  invcS,
   )
 end 
 
