@@ -993,8 +993,8 @@ function NormalH!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU,::Grids.Quad
   ndrange = (M,N,Nz,NE)
   FT = eltype(Metric.dXdxI)
   KNormalHQuadKernel! = NormalHQuadKernel!(backend,group)
-  Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,M,N,Nz,NE)
-  Metric.NH = KernelAbstractions.zeros(backend,FT,3,M,N,Nz,NE)
+  Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE)
+  Metric.NH = KernelAbstractions.zeros(backend,FT,3,M,Nz,N,NE)
   KNormalHQuadKernel!(Metric.VolSurfH,Metric.NH,
     Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
 end  
@@ -1055,10 +1055,10 @@ end
     nSLoc1 = nSLoc1 / n1Norm
     nSLoc2 = nSLoc2 / n1Norm
     nSLoc3 = nSLoc3 / n1Norm
-    VolSurfH[K,I,Iz,IE] = n1Norm
-    NH[1,K,I,Iz,IE] = nSLoc1
-    NH[2,K,I,Iz,IE] = nSLoc2
-    NH[3,K,I,Iz,IE] = nSLoc3
+    VolSurfH[K,Iz,I,IE] = n1Norm
+    NH[1,K,Iz,I,IE] = nSLoc1
+    NH[2,K,Iz,I,IE] = nSLoc2
+    NH[3,K,Iz,I,IE] = nSLoc3
   end
 end
 
