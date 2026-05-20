@@ -2,6 +2,7 @@ function Polynomial_k(k,x)
   DoF::Int = (k + 1) *(k + 2) / 2
   phi = Array{Polynomial,1}(undef,DoF)
   iDoF = 1 
+  @show x
   for i = 0 : k
     for j = 0 : i
       phi[iDoF] = x[1][1]^(i-j) * x[1][2]^j + 0.0

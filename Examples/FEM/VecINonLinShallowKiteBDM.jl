@@ -1,5 +1,5 @@
 import CGDycore:
-  Parameters, Examples, Parallels, Models, Grids, Outputs, Integration,  CGSEM, DyCore, FEM, FiniteVolumes
+  Parameters, Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -10,9 +10,9 @@ using StaticArrays
 using ArgParse
 using LinearAlgebra
 
+#=
 # Model
 parsed_args = Parameters.parse_commandline()
-VelocityForm = parsed_args["VelocityForm"]
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -52,6 +52,8 @@ NumTr = parsed_args["NumTr"]
 Curl = parsed_args["Curl"]
 ModelType = parsed_args["ModelType"]
 Thermo = parsed_args["Thermo"]
+
+VelocityForm = parsed_args["VelocityForm"]
 
 # Parallel
 Decomp = parsed_args["Decomp"]
@@ -128,6 +130,22 @@ k = parsed_args["OrderFEM"]
 
 # Grid Output Refine
 ref = parsed_args["RefineOutput"]
+=#
+GridForm = "Spherical"
+VelocityForm = "Spherical"
+Problem = "GalewskySphere"
+GridType = "CubedSphereKite" 
+OrdPoly = 4
+nz = 1
+nPanel = 20
+RefineLevel = 5
+ns = 20
+nLat = 0
+nLon = 0
+LatB = 0
+Decomp = "EqualArea"
+k = 1
+Flat = true
 
 MPI.Init()
 Device = "CPU"
@@ -186,68 +204,25 @@ elseif VelocityForm == "Cartesian"
    VelForm = Examples.VelocityC()
 end
 
-if GridForm == "Spherical"
-  # Grid construction
+# Grid construction
   Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
-  nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=3)
+  nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=2)
+
 
   # Jacobi
   Jacobi = FEM.Jacobi!
 
-  # Settings
-  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-  cS = Param.cS
-  dtau = GridLengthMin / cS / sqrt(2) * .2 / (k + 1)
-  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-  nAdveVel::Int = round(EndTime / dtau)
-  dtau = EndTime / nAdveVel
-  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nPrint::Int = ceil(PrintT/dtau)
-  FileNameOutput = vtkFileName
-  @show GridLengthMin,GridLengthMax
-  @show nAdveVel
-  @show dtau
-  @show nPrint
-  
-else
-  # Grid construction
-  Boundary = Grids.Boundary()
-  Boundary.WE = BoundaryWE
-  Boundary.SN = BoundarySN
-  Boundary.BT = BoundaryBT
-  Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;GridType=GridType)
-  
-  # Jacobi
-  Jacobi = FEM.JacobiCart!
-
-  # Settings
-  GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
-  cS = Param.cS
-  dtau = 0.05 * 2π / sqrt(nx * ny) / (k + 1)
-  EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
-  nAdveVel = round(EndTime / dtau)
-  dtau = EndTime / nAdveVel
-  PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
-  nPrint = ceil(PrintT/dtau)
-  nAdveVel = 4000
-  nPrint = 400
-  FileNameOutput = vtkFileName
-  @show GridLengthMin,GridLengthMax
-  @show nAdveVel
-  @show dtau
-  @show nPrint
-end
-
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
-
 # Output
+ref = 0
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
+p = ones(Grid.NumFaces) * Proc
+Outputs.vtkSkeleton!(vtkSkeletonMesh,"Partition",Proc,ProcNumber,[p p],0,["C1";"C2"])
 
 # Quadrature rules
 if Grid.Type == Grids.Quad()
-  nQuad = 2
-  nQuadM = 2
-  nQuadS = 2
+  nQuad = 3
+  nQuadM = 3
+  nQuadS = 3
 elseif Grid.Type == Grids.Tri()
   nQuad = 4
   nQuadM = 4
@@ -255,19 +230,40 @@ elseif Grid.Type == Grids.Tri()
 end
 
 # Finite elements
-DG = FEM.DGStruct{FTB}(backend,k,Grid.Type,Grid)
-CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
-RT = FEM.RTStruct{FTB}(backend,k,Grid.Type,Grid)
-BDM = FEM.BDMStruct{FTB}(backend,k,Grid.Type,Grid)
-for i = 1 : size(BDM.phi,1)
-  @show BDM.phi[i,:]
-  @show BDM0.phi[i,:]
-  @show "-----------------"
+@show "Order RT",k
+RT = FEM.RTStruct{FTB}(backend,k,Grids.Quad(),Grid)
+for iDoF = 1 : size(RT.phi,1)
+  @show iDoF,RT.phi[iDoF,:]
+end  
+BDM = FEM.BDMStruct{FTB}(backend,k,Grids.Quad(),Grid)
+for iDoF = 1 : size(RT.phi,1)
+  @show iDoF,BDM.phi[iDoF,:]
 end  
 stop
-ND = FEM.NDStruct{FTB}(backend,k,Grid.Type,Grid)
+RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
+@show RT.DoF
+@show "Order DG",k+1
+DG = FEM.CGKitePrimalStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
+@show DG.DoF
+@show "Order CG",k+1
+CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
+@show CG.DoF
+@show "Order DG",k+1
 
-ModelFEM = FEM.ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+ExchangeDG = Parallels.ExchangeStruct{FTB}(backend,Grid,DG,CellToProc,Proc,ProcNumber,
+  Model.HorLimit;Discretization="Kite")
+ExchangeCG = Parallels.ExchangeStruct{FTB}(backend,Grid,CG,CellToProc,Proc,ProcNumber,
+  Model.HorLimit;Discretization="CG")
+
+
+OrdPolyZ = 0
+nz = 1
+NumV = 1
+
+Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeDG)
+Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,ExchangeCG)
+
+ModelFEM = FEM.ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG)
 
 pPosS = ModelFEM.pPosS
 pPosE = ModelFEM.pPosE
@@ -279,9 +275,11 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
+@show RT
 FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
+
 # Time integration
-FEM.TimeStepperVecI(backend,FTB,U,dtau,FEM.FcnVecINonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,
-  nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
+FEM.TimeStepperVecI(backend,FTB,U,dtau,FEM.FcnVecINonLinShallow!,ModelFEM,ExchangeDG,ExchangeCG,
+  Grid,nQuadM,nQuadS,Jacobi,nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 

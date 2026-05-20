@@ -418,6 +418,7 @@ function Interpolate!(u,FE::RTStruct,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
     @. u[FE.Glob[:,iF]] = uLoc
   end  
 end
+
 function Interpolate!(u,FE::RTKiteDualHDiv,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
   NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
   NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
@@ -528,6 +529,95 @@ function Interpolate!(u,FE::RTKiteDualHDiv,Jacobi,Grid,ElemType::Grids.Quad,Quad
         end
       end
     end
+    @. u[FE.Glob[:,iF]] = uLoc
+  end  
+end
+
+function Interpolate!(u,FE::BDMKiteDualHDiv,Jacobi,Grid,ElemType::Grids.Quad,QuadOrd,F)
+  NumQuadT, WeightsT, PointsT = QuadRule(ElemType,QuadOrd)
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
+  k = FE.Order
+  DoF = FE.DoF
+  s = @polyvar x[1:2]
+  @polyvar t
+  phiL = DG.CGLine(k,t)
+  QuadOrd = 3
+  NumQuadL, WeightsL, PointsL = FEM.QuadRule(Grids.Line(),QuadOrd)
+  I = zeros(DoF,DoF)
+  rDoF = 1
+
+  phiL = DG.CGLine(k,t)
+  uLoc = zeros(DoF)
+  DF = zeros(3,2)
+  detDF = zeros(1)
+  pinvDF = zeros(3,2)
+  X = zeros(3)
+  uP = zeros(2)
+  VelSp = zeros(3)
+  @inbounds for iF = 1 : Grid.NumFaces
+    iDoF = 1
+    rDoF = 1
+    # Compute functional over edges
+    # Edge 1 (-1,-1) -> (1,-1)
+    @. uLoc = 0
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],-1,Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form) 
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += +0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+    iDoF += k + 1
+    # Edge 2 (1,-1) -> (1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,1,PointsL[iQ,1],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form) 
+      uP .= detDF[1] * pinvDF' * VelCa 
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += -0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ] 
+      end
+    end
+    iDoF += k + 1
+    # Edge 3 (-1,1) -> (1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsL[iQ,1],1,Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += 0.5 * uP[2] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+    iDoF += k + 1
+    # Edge 4 (-1,-1) -> (-1,1)
+    @inbounds for iQ = 1 : NumQuadL
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,-1,PointsL[iQ,1],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      @inbounds for i = 0 : k
+        uLoc[iDoF+i] += -0.5 * uP[1] * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
+      end
+    end
+    iDoF += k + 1
+#=
+# Interior  
+    @inbounds for iQ = 1 : NumQuadT
+      Jacobi(DF,detDF,pinvDF,X,Grid.Type,PointsT[iQ,1],PointsT[iQ,2],Grid.Faces[iF], Grid)
+      h,VelCa = FCart(X,F,Grid.Form)
+      uP .= detDF[1] * pinvDF' * VelCa
+      iiDoF = iDoF
+      @inbounds for i = 1 : k+1
+        @inbounds for j = 1 : k
+          uLoc[iiDoF] += 0.25 * uP[1] * P_km1x1[j](PointsT[iQ,1],PointsT[iQ,2]) * 
+            P_kx2[i](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]  
+          iiDoF += 1  
+          uLoc[iiDoF] += 0.25 * uP[2] * P_kx1[i](PointsT[iQ,1],PointsT[iQ,2]) * 
+            P_km1x2[j](PointsT[iQ,1],PointsT[iQ,2]) * WeightsT[iQ]
+          iiDoF += 1  
+        end
+      end
+    end
+    =#
     @. u[FE.Glob[:,iF]] = uLoc
   end  
 end

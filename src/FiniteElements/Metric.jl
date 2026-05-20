@@ -994,7 +994,7 @@ function NormalH!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU,::Grids.Quad
   FT = eltype(Metric.dXdxI)
   KNormalHQuadKernel! = NormalHQuadKernel!(backend,group)
   Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE)
-  Metric.NH = KernelAbstractions.zeros(backend,FT,3,M,Nz,N,NE)
+  Metric.NH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE,3,)
   KNormalHQuadKernel!(Metric.VolSurfH,Metric.NH,
     Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
 end  
@@ -1056,9 +1056,9 @@ end
     nSLoc2 = nSLoc2 / n1Norm
     nSLoc3 = nSLoc3 / n1Norm
     VolSurfH[K,Iz,I,IE] = n1Norm
-    NH[1,K,Iz,I,IE] = nSLoc1
-    NH[2,K,Iz,I,IE] = nSLoc2
-    NH[3,K,Iz,I,IE] = nSLoc3
+    NH[K,Iz,I,IE,1] = nSLoc1
+    NH[K,Iz,I,IE,2] = nSLoc2
+    NH[K,Iz,I,IE,3] = nSLoc3
   end
 end
 
@@ -1138,12 +1138,12 @@ function NormalV!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU)
   NF = Grid.NumFaces
   Nz = Grid.nz
   FT = eltype(Metric.dXdxI)
-  NzG = min(div(NumberThreadGPU,DoF),Nz+1)
-  group = (DoF,NzG,1)
-  ndrange = (DoF,Nz+1,NF)
+  DoFG = min(div(NumberThreadGPU,Nz+1),DoF)
+  group = (Nz,DoFG)
+  ndrange = (Nz+1,DoF,NF)
   KNormalVKernel! = NormalVKernel!(backend,group)
-  Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,DoF,Nz+1,NF)
-  Metric.NV = KernelAbstractions.zeros(backend,FT,3,DoF,Nz+1,NF)
+  Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,Nz+1,DoF,NF)
+  Metric.NV = KernelAbstractions.zeros(backend,FT,Nz+1,DoF,NF,3,)
   KNormalVKernel!(Metric.VolSurfV,Metric.NV,M,Metric.dXdxI,ndrange=ndrange)
 end  
 
@@ -1151,11 +1151,12 @@ end
 
   # Normal NV(3,I,J,2,iz,IF)
 
-  ID,Iz,IF = @index(Global, NTuple)
+  Iz,ID,IF = @index(Global, NTuple)
+  NZ = @uniform @ndrange()[1]
+  ND = @uniform @ndrange()[2]
   NF = @uniform @ndrange()[3]
-  NZ = @uniform @ndrange()[2]
 
-  if IF <= NF && Iz <= NZ
+  if IF <= NF && ID <= ND
     if Iz < NZ  
       nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
       nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
@@ -1169,10 +1170,10 @@ end
     nSLoc1 = nSLoc1 / n1Norm
     nSLoc2 = nSLoc2 / n1Norm
     nSLoc3 = nSLoc3 / n1Norm
-    VolSurfV[ID,Iz,IF] = n1Norm
-    NV[1,ID,Iz,IF] = nSLoc1
-    NV[2,ID,Iz,IF] = nSLoc2
-    NV[3,ID,Iz,IF] = nSLoc3
+    VolSurfV[Iz,ID,IF] = n1Norm
+    NV[Iz,ID,IF,1] = nSLoc1
+    NV[Iz,ID,IF,2] = nSLoc2
+    NV[Iz,ID,IF,3] = nSLoc3
   end
 end
 

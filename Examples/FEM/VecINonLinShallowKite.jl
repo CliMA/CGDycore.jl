@@ -262,7 +262,8 @@ end
 # Finite elements
 @show "Order RT",k
 #RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
-RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
+RT = FEM.BDMKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
+#RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
 @show RT.DoF
 @show "Order DG",k+1
 DG = FEM.CGKitePrimalStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
@@ -297,7 +298,6 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
-@show RT
 FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 
 

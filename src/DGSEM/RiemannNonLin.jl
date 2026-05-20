@@ -54,9 +54,9 @@ end
   ThPos = @uniform 5
 
   if ID <= NQ
-    n1 = NV[1,ID,Iz,IF]
-    n2 = NV[2,ID,Iz,IF]
-    n3 = NV[3,ID,Iz,IF]
+    n1 = NV[Iz,ID,IF,1]
+    n2 = NV[Iz,ID,IF,2]
+    n3 = NV[Iz,ID,IF,3]
     ind = Glob[ID,IF]
     if Iz > 1    
       @unroll for iAux = 1 : NAUX  
@@ -96,7 +96,7 @@ end
     end
 
     RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-    Surf = VolSurfV[ID,Iz,IF] / w[1]  
+    Surf = VolSurfV[Iz,ID,IF] / w[1]  
     @unroll for iv = 1 : NUMV  
       FLoc[iv] *= Surf
     end  
@@ -144,9 +144,9 @@ end
     iFR = EF[2,IE]
     indL = GlobE[1,I,IE]
     indR = GlobE[2,I,IE]
-    n1 = NH[1,K,Iz,I,IE]
-    n2 = NH[2,K,Iz,I,IE]
-    n3 = NH[3,K,Iz,I,IE]
+    n1 = NH[K,Iz,I,IE,1]
+    n2 = NH[K,Iz,I,IE,2]
+    n3 = NH[K,Iz,I,IE,3]
     if iFL > 0
       @unroll for iAux = 1 : NAUX  
         AuxL[iAux] = Aux[K,Iz,indL,iAux]
@@ -251,8 +251,8 @@ end
         NV[2,ID,Iz,IF] * VLL[vPos] +
         NV[3,ID,Iz,IF] * VLL[wPos]) 
       VLL[uPos] -= NV[1,ID,Iz,IF] * t  
-      VLL[vPos] -= NV[1,ID,Iz,IF] * t  
-      VLL[wPos] -= NV[1,ID,Iz,IF] * t  
+      VLL[vPos] -= NV[2,ID,Iz,IF] * t  
+      VLL[wPos] -= NV[3,ID,Iz,IF] * t  
     end  
     if Iz < Nz
       @unroll for iAux = 1 : NAUX  
@@ -276,20 +276,13 @@ end
       VRR[wPos] -= NV[3,ID,Iz,IF] * t  
     end
 
-    @views RiemannSolver!(FLocL,FLocR,VLL,VRR,AuxL,AuxR,NV[:,ID,Iz,IF])
+    RiemannSolver!(FLocL,FLocR,VLL,VRR,AuxL,AuxR,@view(NV[:,ID,Iz,IF]))
 
     Surf = VolSurfV[ID,Iz,IF] / w[1]  
-    FLocL[RhoPos] *= Surf
-    FLocL[uPos] *= Surf
-    FLocL[vPos] *= Surf
-    FLocL[wPos] *= Surf
-    FLocL[ThPos] *= Surf
-    
-    FLocR[RhoPos] *= Surf
-    FLocR[uPos] *= Surf
-    FLocR[vPos] *= Surf
-    FLocR[wPos] *= Surf
-    FLocR[ThPos] *= Surf
+    @unroll for iv = 1 : NUMV
+      FLocL[iv] *= Surf
+      FLocR[iv] *= Surf
+    end
     if Iz > 1 
       @atomic :monotonic F[M,Iz-1,ind,RhoPos] -= FLocR[RhoPos]
       @atomic :monotonic F[M,Iz-1,ind,uPos] -= FLocR[uPos] 
@@ -306,63 +299,3 @@ end
     end  
   end  
 end
-
-@kernel inbounds = true function RiemannNonLinH3NonConservativeKernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
-  @Const(EF),@Const(FTE),@Const(NH),@Const(VolSurfH),
-  @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
-
-  _,_,iz, = @index(Local, NTuple)
-  I,K,Iz,IE = @index(Global, NTuple)
-
-  N = @uniform @groupsize()[1]
-  M = @uniform @groupsize()[2]
-  TilesDim = @uniform @groupsize()[3]
-
-  Nz = @uniform @ndrange()[3]
-
-  FLocL = @private eltype(F) (NUMV,)
-  FLocR = @private eltype(F) (NUMV,)
-
-  RhoPos = @uniform 1
-  uPos = @uniform 2
-  vPos = @uniform 3
-  wPos = @uniform 4
-  ThPos = @uniform 5
-
-
-  if Iz <= Nz
-    iFL = EF[1,IE]
-    iFR = EF[2,IE]
-    indL = GlobE[1,I,IE]
-    indR = GlobE[2,I,IE]
-    RiemannSolver!(FLocL,FLocR,view(U,K,Iz,indL,1:NUMV),view(U,K,Iz,indR,1:NUMV),
-      view(Aux,K,Iz,indL,1:NAUX),view(Aux,K,Iz,indR,1:NAUX),
-      view(NH,1:3,K,I,Iz,IE))
-    Surf = VolSurfH[K,I,Iz,IE] / w[I]  
-    FLocL[RhoPos] = FLocL[RhoPos] * Surf
-    FLocL[uPos] = FLocL[uPos] * Surf
-    FLocL[vPos] = FLocL[vPos] * Surf
-    FLocL[wPos] = FLocL[wPos] * Surf
-    FLocL[ThPos] = FLocL[ThPos] * Surf
-    FLocR[RhoPos] = FLocR[RhoPos] * Surf
-    FLocR[uPos] = FLocR[uPos] * Surf
-    FLocR[vPos] = FLocR[vPos] * Surf
-    FLocR[wPos] = FLocR[wPos] * Surf
-    FLocR[ThPos] = FLocR[ThPos] * Surf
-    if iFL <= NF
-      @atomic :monotonic F[K,Iz,indL,RhoPos] += -FLocR[RhoPos]
-      @atomic :monotonic F[K,Iz,indL,uPos] += -FLocR[uPos]
-      @atomic :monotonic F[K,Iz,indL,vPos] += -FLocR[vPos]
-      @atomic :monotonic F[K,Iz,indL,wPos] += -FLocR[wPos]
-      @atomic :monotonic F[K,Iz,indL,ThPos] += -FLocR[ThPos]
-    end  
-    if iFR <= NF
-      @atomic :monotonic F[K,Iz,indR,RhoPos] += FLocL[RhoPos]
-      @atomic :monotonic F[K,Iz,indR,uPos] += FLocL[uPos]
-      @atomic :monotonic F[K,Iz,indR,vPos] += FLocL[vPos]
-      @atomic :monotonic F[K,Iz,indR,wPos] += FLocL[wPos]
-      @atomic :monotonic F[K,Iz,indR,ThPos] += FLocL[ThPos]
-    end  
-  end  
-end
-

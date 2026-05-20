@@ -110,33 +110,45 @@ end
 function ConstructBDM(k,ElemType::Grids.Quad)
 
   s = @polyvar x[1:2]
-  P_kp1x1 = DG.Polynomial_1D(k+1,s,1)
-  P_kx1 = DG.Polynomial_1D(k,s,1)
-  P_kp1x2 = DG.Polynomial_1D(k+1,s,2)
-  P_kx2 = DG.Polynomial_1D(k,s,2)
-  if k > 0
-    P_km1x2 = DG.Polynomial_1D(k-1,s,2)
-    P_km1x1 = DG.Polynomial_1D(k-1,s,1)
-  end  
-  
-  DoF = 2 * (k+2) * (k+1)
+
+  DoF = 4 * (k+1) + k * (k - 1)
   DoFE = k + 1
   DoFF = DoF - 4 * DoFE
 
   phi = Array{Polynomial,2}(undef,DoF,2)
   phiB = Array{Polynomial,2}(undef,DoF,2)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
-  iDoF = 1 
-  @inbounds for i = 1 : k+2
-    @inbounds for j = 1 : k+1
-      phi[iDoF,1] = P_kp1x1[i] * P_kx2[j] 
-      phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
+    
+  # --- 1. Generate the (P_k)^2 space ---
+  # Loop through all polynomial terms where total degree (i + j) <= k
+  iDoF = 1
+  for i in 0:k
+    for j in 0:(k - i)
+      # Component 1 active, Component 2 zero
+      phi[iDoF,1] = 1.0 * x[1]^i * x[2]^j + 0.0
+      phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2] + 0.0
       iDoF += 1
-      phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2]
-      phi[iDoF,2] = P_kp1x2[i] * P_kx1[j] 
+      phi[iDoF,1] = 0.0 * x[1] + 0.0 * x[2] + 0.0
+      phi[iDoF,2] = 1.0 * x[1]^i * x[2]^j + 0.0
       iDoF += 1
     end
   end
+    
+  # --- 2. Add the 2 specific BDM quadrilateral correction terms ---
+  # Term 1: curl(x^(k+1) * y) = [x^(k+1), -(k+1) * x^k * y]
+  curl_11 = x[1]^(k+1) + 0.0 * x[2] + 0.0
+  curl_12 = -(k+1) * x[1]^k * x[2] + 0.0
+  phi[iDoF,1] = curl_11
+  phi[iDoF,2] = curl_12
+  iDoF += 1
+    
+  # Term 2: curl(x * y^(k+1)) = [(k+1) * x * y^k, -y^(k+1)]
+  curl_21 = (k+1) * x[1] * x[2]^k + 0.0
+  curl_22 = -x[2]^(k+1) + 0.0 * x[1] + 0.0
+  phi[iDoF,1] = curl_21
+  phi[iDoF,2] = curl_22
+  iDoF += 1
+
   @polyvar t
   phiL = DG.CGLine(k,t)
   QuadOrd = 3
@@ -146,7 +158,9 @@ function ConstructBDM(k,ElemType::Grids.Quad)
 # Compute functional over edges
   # Edge 1 (-1,-1) -> (1,-1)
   @inbounds for iDoF = 1 : DoF
+    @show 
     phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
+    @show iDoF,phiE2
     @inbounds for i = 0 : k
       @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += +0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]
@@ -184,6 +198,7 @@ function ConstructBDM(k,ElemType::Grids.Quad)
     end  
   end  
   rDoF += k + 1
+#=
   NumQuadT, WeightsT, PointsT = FEM.QuadRule(Grids.Quad(),QuadOrd)
 # Interior  
   @inbounds for i = 1 : k+1
@@ -203,6 +218,7 @@ function ConstructBDM(k,ElemType::Grids.Quad)
       rDoF += 2
     end
   end
+=#  
   @inbounds for iDoF = 1 : DoF  
     @inbounds for jDoF = 1 : DoF  
       if abs(I[iDoF,jDoF]) < 1.e-12
