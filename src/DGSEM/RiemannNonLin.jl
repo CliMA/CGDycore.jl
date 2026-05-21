@@ -15,118 +15,27 @@ end
 
 function RiemannNonLinV(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
   backend = get_backend(F)
-  DoF = DG.DoF
+  NumI = DG.NumI
   M = DG.OrdPolyZ + 1
   Nz = Grid.nz
   NF = Grid.NumFaces
-  DoFG = min(div(NumberThreadGPU,Nz+1),DoF)
-  group = (Nz+1,DoFG,1)
-  ndrange = (Nz+1,DoF,NF)
+  NumIG = min(div(NumberThreadGPU,Nz+1),NumI)
+  group = (Nz+1,NumIG)
+  ndrange = (Nz+1,NumI)
   KRiemannNonLinV3Kernel! = RiemannNonLinV3Kernel!(backend,group)
-  KRiemannNonLinV3Kernel!(RiemannSolver,F,U,Aux,DG.Glob,Metric.NV,
+  KRiemannNonLinV3Kernel!(RiemannSolver,F,U,Aux,Metric.NV,
     Metric.VolSurfV,DG.wZ,Val(NUMV),Val(NAUX);ndrange=ndrange)
 end  
 
-function RiemannNonLinV1(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
-  backend = get_backend(F)
-  DoF = DG.DoF
-  M = DG.OrdPolyZ + 1
-  Nz = Grid.nz
-  NF = Grid.NumFaces
-  DoFG = min(div(NumberThreadGPU,Nz+1),DoF)
-  group = (Nz+1,DoFG,1)
-  ndrange = (Nz+1,DoF,NF)
-  KRiemannNonLinV3Kernel! = RiemannNonLinV3Kernel1!(backend,group)
-  KRiemannNonLinV3Kernel!(RiemannSolver,F,U,Aux,DG.Glob,Metric.NV,
-    Metric.VolSurfV,DG.wZ,Val(NUMV),Val(NAUX);ndrange=ndrange)
-end
-
-@kernel inbounds = true function RiemannNonLinV3Kernel1!(RiemannSolver!,F,@Const(U),
-  @Const(Aux),@Const(Glob), @Const(NV),@Const(VolSurfV),
-  @Const(w), ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
-
-  iz,iD,_  = @index(Local, NTuple)
-  Iz,ID,IF = @index(Global, NTuple)
-
-
-  Nz = @uniform @ndrange()[1]
-  NQ = @uniform @ndrange()[2]
-
-  VLL = @private eltype(F) (NUMV,)
-  VRR = @private eltype(F) (NUMV,)
-  AuxL = @private eltype(F) (NAUX,)
-  AuxR = @private eltype(F) (NAUX,)
-  FLoc = @private eltype(F) (NUMV,)
-
-  if ID <= NQ
-    n1 = NV[Iz,ID,IF,1]
-    n2 = NV[Iz,ID,IF,2]
-    n3 = NV[Iz,ID,IF,3]
-    ind = Glob[ID,IF]
-    if Iz > 1    
-      @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[end,Iz-1,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[end,Iz-1,ind,iv]
-      end  
-    else
-      @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[1,Iz,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[1,Iz,ind,iv]
-      end  
-      VLL[2] *= -1
-      VLL[3] *= -1
-      VLL[4] *= -1
-    end  
-    if Iz < Nz
-      @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[1,Iz,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[1,Iz,ind,iv]
-      end  
-    else  
-      @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[end,Iz-1,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[end,Iz-1,ind,iv]
-      end  
-      VRR[2] *= -1
-      VRR[3] *= -1
-      VRR[4] *= -1
-    end
-
-    RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-    Surf = VolSurfV[Iz,ID,IF] / w[1]  
-    @unroll for iv = 1 : NUMV  
-      FLoc[iv] *= Surf
-    end  
-    if Iz > 1 
-      @unroll for iv = 1 : NUMV  
-        F[end,Iz-1,ind,iv] -= FLoc[iv]
-      end  
-    end  
-    if Iz < Nz
-      @unroll for iv = 1 : NUMV  
-        F[1,Iz,ind,iv] += FLoc[iv]
-      end  
-    end  
-  end  
-end
 @kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,F,@Const(U),
-  @Const(Aux),@Const(Glob), @Const(NV),@Const(VolSurfV),
+  @Const(Aux),@Const(NV),@Const(VolSurfV),
   @Const(w), ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
-  iz,iD,_  = @index(Local, NTuple)
-  Iz,ID,IF = @index(Global, NTuple)
+  Iz,ind = @index(Global, NTuple)
 
 
   Nz = @uniform @ndrange()[1]
-  NQ = @uniform @ndrange()[2]
+  NumI = @uniform @ndrange()[2]
 
   VLL = @private eltype(F) (NUMV,)
   VRR = @private eltype(F) (NUMV,)
@@ -134,11 +43,10 @@ end
   AuxR = @private eltype(F) (NAUX,)
   FLoc = @private eltype(F) (NUMV,)
 
-  if ID <= NQ
-    n1 = NV[Iz,ID,IF,1]
-    n2 = NV[Iz,ID,IF,2]
-    n3 = NV[Iz,ID,IF,3]
-    ind = Glob[ID,IF]
+  if ind <= NumI
+    n1 = NV[Iz,ind,1]
+    n2 = NV[Iz,ind,2]
+    n3 = NV[Iz,ind,3]
     if Iz == 1
       @unroll for iAux = 1 : NAUX
         AuxL[iAux] = Aux[1,Iz,ind,iAux]
@@ -155,7 +63,7 @@ end
       VLL[3] -= n2 * t
       VLL[4] -= n3 * t
       RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ID,IF] / w[1]  
+      Surf = VolSurfV[Iz,ind] / w[1]  
       @unroll for iv = 1 : NUMV  
         F[1,Iz,ind,iv] += FLoc[iv] * Surf
       end  
@@ -175,7 +83,7 @@ end
       VRR[3] -= n2 * t
       VRR[4] -= n3 * t
       RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ID,IF] / w[1]  
+      Surf = VolSurfV[Iz,ind] / w[1]  
       @unroll for iv = 1 : NUMV  
         F[end,Iz-1,ind,iv] -= FLoc[iv] * Surf
       end  
@@ -189,7 +97,7 @@ end
         VRR[iv] = U[1,Iz,ind,iv]
       end  
       RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ID,IF] / w[1]  
+      Surf = VolSurfV[Iz,ind] / w[1]  
       @unroll for iv = 1 : NUMV  
         FLoc[iv] *= Surf
         F[end,Iz-1,ind,iv] -= FLoc[iv]

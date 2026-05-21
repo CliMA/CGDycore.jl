@@ -39,7 +39,7 @@ julia --project Examples/DriverDG.jl \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DG20QuadMIS" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=6 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --PrintTime=0 \
   --OrdPrint=4 \

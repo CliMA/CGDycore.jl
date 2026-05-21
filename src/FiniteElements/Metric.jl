@@ -13,8 +13,8 @@ mutable struct MetricDGStruct{FT<:AbstractFloat,
   xS::AT2
   VolSurfH::AT4
   NH::AT5
-  VolSurfV::AT3
-  NV::AT4
+  VolSurfV::AT2
+  NV::AT3
 end
 
 function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
@@ -27,11 +27,11 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
     xS    = KernelAbstractions.zeros(backend,FT,2,NumG)
     VolSurfH = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     NH = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
-    VolSurfV = KernelAbstractions.zeros(backend,FT,0,0,0)
-    NV = KernelAbstractions.zeros(backend,FT,0,0,0,0)
+    VolSurfV = KernelAbstractions.zeros(backend,FT,0,0)
+    NV = KernelAbstractions.zeros(backend,FT,0,0,0)
     return MetricDGStruct{FT,
                         typeof(zP),
-                        typeof(VolSurfV),
+                        typeof(NV),
                         typeof(J),
                         typeof(X),
                         typeof(dXdxI)}(
@@ -84,10 +84,6 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::CGElement)
     JC     = KernelAbstractions.zeros(backend,FT,0,0,0)
     JCW    = KernelAbstractions.zeros(backend,FT,0,0,0)
     xS    = KernelAbstractions.zeros(backend,FT,2,NumG)
-    VolSurfH = KernelAbstractions.zeros(backend,FT,0,0,0,0)
-    NH = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
-    VolSurfV = KernelAbstractions.zeros(backend,FT,0,0,0)
-    NV = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     M = KernelAbstractions.zeros(backend,FT,0,0,0)
     MMass = KernelAbstractions.zeros(backend,FT,0,0)
     return MetricCGStruct{FT,
@@ -1134,6 +1130,7 @@ end
 
 function NormalV!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU)  
   DoF = FE.DoF
+  NumI = FE.NumI
   M = FE.OrdPolyZ + 1
   NF = Grid.NumFaces
   Nz = Grid.nz
@@ -1142,12 +1139,12 @@ function NormalV!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU)
   group = (Nz,DoFG)
   ndrange = (Nz+1,DoF,NF)
   KNormalVKernel! = NormalVKernel!(backend,group)
-  Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,Nz+1,DoF,NF)
-  Metric.NV = KernelAbstractions.zeros(backend,FT,Nz+1,DoF,NF,3,)
-  KNormalVKernel!(Metric.VolSurfV,Metric.NV,M,Metric.dXdxI,ndrange=ndrange)
+  Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI)
+  Metric.NV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI,3,)
+  KNormalVKernel!(Metric.VolSurfV,Metric.NV,M,Metric.dXdxI,FE.Glob,ndrange=ndrange)
 end  
 
-@kernel inbounds = true function NormalVKernel!(VolSurfV,NV,M,@Const(dXdxI))
+@kernel inbounds = true function NormalVKernel!(VolSurfV,NV,M,@Const(dXdxI),@Const(Glob))
 
   # Normal NV(3,I,J,2,iz,IF)
 
@@ -1157,6 +1154,7 @@ end
   NF = @uniform @ndrange()[3]
 
   if IF <= NF && ID <= ND
+    ind = Glob[ID,IF]  
     if Iz < NZ  
       nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
       nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
@@ -1170,10 +1168,10 @@ end
     nSLoc1 = nSLoc1 / n1Norm
     nSLoc2 = nSLoc2 / n1Norm
     nSLoc3 = nSLoc3 / n1Norm
-    VolSurfV[Iz,ID,IF] = n1Norm
-    NV[Iz,ID,IF,1] = nSLoc1
-    NV[Iz,ID,IF,2] = nSLoc2
-    NV[Iz,ID,IF,3] = nSLoc3
+    VolSurfV[Iz,ind] = n1Norm
+    NV[Iz,ind,1] = nSLoc1
+    NV[Iz,ind,2] = nSLoc2
+    NV[Iz,ind,3] = nSLoc3
   end
 end
 
