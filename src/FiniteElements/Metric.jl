@@ -994,7 +994,7 @@ function NormalH!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU,::Grids.Quad
   FT = eltype(Metric.dXdxI)
   KNormalHQuadKernel! = NormalHQuadKernel!(backend,group)
   Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE)
-  Metric.NH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE,3,)
+  Metric.NH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE,3)
   KNormalHQuadKernel!(Metric.VolSurfH,Metric.NH,
     Metric.dXdxI,Grid.EF,Grid.FE,ndrange=ndrange)
 end  
