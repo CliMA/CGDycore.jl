@@ -195,7 +195,7 @@ end
     v_rot = R * v
 
     # Write back to global memory
-    JLoc = J[K,ID,Iz,IF]  
+    JLoc = J[ID,K,Iz,IF]  
     V[K,Iz,ind,1] *= JLoc
     V[K,Iz,ind,2] = v_rot[1] * JLoc
     V[K,Iz,ind,3] = v_rot[2] * JLoc
@@ -228,7 +228,7 @@ end
 
   if ID <= DoF
     ind = Glob[ID,IF]
-    JLoc = J[K,ID,Iz,IF]
+    JLoc = J[ID,K,Iz,IF]
     @unroll for iv = 1 : NUMV
       F[K,Iz,ind,iv] *= JLoc
     end  
