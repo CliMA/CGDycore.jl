@@ -30,11 +30,13 @@ end
 
 function StateVSp2VCart!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityS)
   backend = get_backend(V)
+  M = size(V,1)
+  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  NFG = min(div(NumberThreadGPU,DoF),NF)
-  group = (DoF,NFG)
-  ndrange = (DoF,NF)
+  DoFG = min(div(NumberThreadGPU,M*Nz),DoF)
+  group = (M,Nz,DoFG,1)
+  ndrange = (M,Nz,DoF,NF)
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   KVSp2VCart3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
@@ -44,22 +46,26 @@ end
 
 function StateVCart2VSp!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityS)
   backend = get_backend(V)
+  M = size(V,1)
+  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  NFG = min(div(NumberThreadGPU,DoF),NF)
-  group = (DoF,NFG)
-  ndrange = (DoF,NF)
+  DoFG = min(div(NumberThreadGPU,M*Nz),DoF)
+  group = (M,Nz,DoFG,1)
+  ndrange = (M,Nz,DoF,NF)
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   KVCart2VSp3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
 
 function StateVCart2VSpScale!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityS)
   backend = get_backend(V)
+  M = size(V,1)
+  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  NFG = min(div(NumberThreadGPU,DoF),NF)
-  group = (DoF,NFG)
-  ndrange = (DoF,NF)
+  DoFG = min(div(NumberThreadGPU,M*Nz),DoF)
+  group = (M,Nz,DoFG,1)
+  ndrange = (M,Nz,DoF,NF)
   KVCart2VSp3ScaleKernel! = VCart2VSp3ScaleKernel!(backend,group)
   KVCart2VSp3ScaleKernel!(V,Metric.Rotate,Metric.J,DG.Glob;ndrange=ndrange)
 end
@@ -108,107 +114,95 @@ end
   end
 end
 
-@kernel inbounds = true function VSp2VCart3Kernel!(V,@Const(Rotate),@Const(Glob))
+@kernel inbounds = true function VSp2VCart3Kernel!(V, @Const(Rotate), @Const(Glob))
 
-  ID,IF = @index(Global, NTuple)
+  K,Iz,ID,IF = @index(Global, NTuple)
 
-  NF = @uniform @ndrange()[2]
-  M = @uniform size(V,1)
-  nz = @uniform size(V,2)
+  ND = @uniform @ndrange()[3]
 
-  if IF <= NF
-    r11 = Rotate[1,1,ID,IF]  
-    r12 = Rotate[1,2,ID,IF]  
-    r13 = Rotate[1,3,ID,IF]  
-    r21 = Rotate[2,1,ID,IF]  
-    r22 = Rotate[2,2,ID,IF]  
-    r23 = Rotate[2,3,ID,IF]  
-    r31 = Rotate[3,1,ID,IF]  
-    r32 = Rotate[3,2,ID,IF]  
-    r33 = Rotate[3,3,ID,IF]  
-    ind = Glob[ID,IF]
-    for Iz = 1 : nz
-      for K = 1 : M
-        v1 = V[K,Iz,ind,1]
-        v2 = V[K,Iz,ind,2]
-        v3 = V[K,Iz,ind,3]
-        V[K,Iz,ind,1] = r11 * v1 + r21 * v2 + r31 * v3
-        V[K,Iz,ind,2] = r12 * v1 + r22 * v2 + r32 * v3
-        V[K,Iz,ind,3] = r13 * v1 + r23 * v2 + r33 * v3
-      end
-    end  
-  end  
+  if ID <= ND
+    # Load the 3x3 slice directly into a static matrix (stored in registers)
+    R = SMatrix{3, 3}(
+      Rotate[1, 1, ID, IF], Rotate[1, 2, ID, IF], Rotate[1, 3, ID, IF],
+      Rotate[2, 1, ID, IF], Rotate[2, 2, ID, IF], Rotate[2, 3, ID, IF],
+      Rotate[3, 1, ID, IF], Rotate[3, 2, ID, IF], Rotate[3, 3, ID, IF]
+    )
+
+    ind = Glob[ID, IF]
+
+    # Load velocity component into a static vector
+    v = @inbounds SVector{3}(V[K, Iz, ind, 2], V[K, Iz, ind, 3], V[K, Iz, ind, 4])
+
+    # Matrix-vector multiplication (completely optimized in registers)
+    v_rot = R * v
+
+    # Write back to global memory
+    V[K, Iz, ind, 2] = v_rot[1]
+    V[K, Iz, ind, 3] = v_rot[2]
+    V[K, Iz, ind, 4] = v_rot[3]
+  end
 end
 
+@kernel inbounds = true function VCart2VSp3Kernel!(V, @Const(Rotate), @Const(Glob))
 
-@kernel inbounds = true function VCart2VSp3Kernel!(V,@Const(Rotate),@Const(Glob))
+  K,Iz,ID,IF = @index(Global, NTuple)
 
-  ID,IF = @index(Global, NTuple)
+  ND = @uniform @ndrange()[3]
 
-  NF = @uniform @ndrange()[2]
-  M = @uniform size(V,1)
-  Nz = @uniform size(V,2)
+  if ID <= ND
+    # Load the 3x3 slice directly into a static matrix (stored in registers)
+    R = SMatrix{3, 3}(
+      Rotate[1, 1, ID, IF], Rotate[2, 1, ID, IF], Rotate[3, 1, ID, IF],
+      Rotate[1, 2, ID, IF], Rotate[2, 2, ID, IF], Rotate[3, 2, ID, IF],
+      Rotate[1, 3, ID, IF], Rotate[2, 3, ID, IF], Rotate[3, 3, ID, IF]
+    )
 
-  if IF <= NF
-    r11 = Rotate[1,1,ID,IF]
-    r12 = Rotate[1,2,ID,IF]
-    r13 = Rotate[1,3,ID,IF]
-    r21 = Rotate[2,1,ID,IF]
-    r22 = Rotate[2,2,ID,IF]
-    r23 = Rotate[2,3,ID,IF]
-    r31 = Rotate[3,1,ID,IF]
-    r32 = Rotate[3,2,ID,IF]
-    r33 = Rotate[3,3,ID,IF]
-    ind = Glob[ID,IF]
-    for Iz = 1 : Nz
-      for K = 1 : M
-        v1 = V[K,Iz,ind,2]
-        v2 = V[K,Iz,ind,3]
-        v3 = V[K,Iz,ind,4]
-        V[K,Iz,ind,2] = r11 * v1 + r12 * v2 + r13 * v3
-        V[K,Iz,ind,3] = r21 * v1 + r22 * v2 + r23 * v3
-        V[K,Iz,ind,4] = r31 * v1 + r32 * v2 + r33 * v3
-      end
-    end
+    ind = Glob[ID, IF]
+
+    # Load velocity component into a static vector
+    v = SVector{3}(V[K, Iz, ind, 2], V[K, Iz, ind, 3], V[K, Iz, ind, 4])
+
+    # Matrix-vector multiplication (completely optimized in registers)
+    v_rot = R * v
+
+    # Write back to global memory
+    V[K, Iz, ind, 2] = v_rot[1]
+    V[K, Iz, ind, 3] = v_rot[2]
+    V[K, Iz, ind, 4] = v_rot[3]
   end
 end
 
 @kernel inbounds = true function VCart2VSp3ScaleKernel!(V,@Const(Rotate),@Const(J),@Const(Glob))
 
-  ID,IF = @index(Global, NTuple)
+  K,Iz,ID,IF = @index(Global, NTuple)
 
-  NF = @uniform @ndrange()[2]
-  M = @uniform size(V,1)
-  Nz = @uniform size(V,2)
+  ND = @uniform @ndrange()[3]
 
-  if IF <= NF
-    r11 = Rotate[1,1,ID,IF]
-    r12 = Rotate[1,2,ID,IF]
-    r13 = Rotate[1,3,ID,IF]
-    r21 = Rotate[2,1,ID,IF]
-    r22 = Rotate[2,2,ID,IF]
-    r23 = Rotate[2,3,ID,IF]
-    r31 = Rotate[3,1,ID,IF]
-    r32 = Rotate[3,2,ID,IF]
-    r33 = Rotate[3,3,ID,IF]
-    ind = Glob[ID,IF]
-    for Iz = 1 : Nz
-      for K = 1 : M
-        JLoc = J[ID,K,Iz,IF]  
-        V[K,Iz,ind,1] *= JLoc
-        v1 = V[K,Iz,ind,2] * JLoc
-        v2 = V[K,Iz,ind,3] * JLoc
-        v3 = V[K,Iz,ind,4] * JLoc
-        V[K,Iz,ind,2] = r11 * v1 + r12 * v2 + r13 * v3
-        V[K,Iz,ind,3] = r21 * v1 + r22 * v2 + r23 * v3
-        V[K,Iz,ind,4] = r31 * v1 + r32 * v2 + r33 * v3
-        V[K,Iz,ind,5] *= JLoc
-      end
-    end
+  if ID <= ND
+    # Load the 3x3 slice directly into a static matrix (stored in registers)
+    R = SMatrix{3, 3}(
+      Rotate[1, 1, ID, IF], Rotate[2, 1, ID, IF], Rotate[3, 1, ID, IF],
+      Rotate[1, 2, ID, IF], Rotate[2, 2, ID, IF], Rotate[3, 2, ID, IF],
+      Rotate[1, 3, ID, IF], Rotate[2, 3, ID, IF], Rotate[3, 3, ID, IF]
+    )
+
+    ind = Glob[ID, IF]
+
+    # Load velocity component into a static vector
+    v = SVector{3}(V[K, Iz, ind, 2], V[K, Iz, ind, 3], V[K, Iz, ind, 4])
+
+    # Matrix-vector multiplication (completely optimized in registers)
+    v_rot = R * v
+
+    # Write back to global memory
+    JLoc = J[K,ID,Iz,IF]  
+    V[K,Iz,ind,1] *= JLoc
+    V[K,Iz,ind,2] = v_rot[1] * JLoc
+    V[K,Iz,ind,3] = v_rot[2] * JLoc
+    V[K,Iz,ind,4] = v_rot[3] * JLoc
+    V[K,Iz,ind,5] *= JLoc
   end
 end
-
-
 
 function ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
 
@@ -234,7 +228,7 @@ end
 
   if ID <= DoF
     ind = Glob[ID,IF]
-    JLoc = J[ID,K,Iz,IF]
+    JLoc = J[K,ID,Iz,IF]
     @unroll for iv = 1 : NUMV
       F[K,Iz,ind,iv] *= JLoc
     end  

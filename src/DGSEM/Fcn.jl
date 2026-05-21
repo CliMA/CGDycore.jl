@@ -26,7 +26,7 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxSplitVolumeNonLinH(Model.FluxAverageH,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
@@ -87,7 +87,7 @@ function FcnSplitEx!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxSplitVolumeNonLinH(Model.FluxAverage,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
@@ -141,7 +141,7 @@ function FcnSplitIm!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
 
   FluxSplitVolumeNonLinV(Model.FluxAverage,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
 
@@ -180,7 +180,7 @@ function Fcn!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxVolumeNonLinH(Model.FluxAverage,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
@@ -239,7 +239,7 @@ function FcnSplitSlow!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxSplitVolumeNonLinH(Model.FluxAverageSlow,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
@@ -295,7 +295,7 @@ function FcnSplitFast!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxSplitVolumeNonLinH(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
@@ -336,7 +336,7 @@ function FcnSplitFastSemi!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @. F = 0
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxSplitVolumeNonLinHV(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
@@ -374,7 +374,7 @@ function FcnFastLin!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
 
   @. F = 0
 
-  @views StateVSp2VCart!(UI[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)  
+  StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxVolumeNonLinH(Model.FluxAverageFast,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)

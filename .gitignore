@@ -61,3 +61,4 @@ Project.toml
 AA.jl
 src/DGSEM/LinearAccoustic.jl
 src/DGSEM/FluxLin.jl
+notes
