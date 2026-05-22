@@ -1141,11 +1141,10 @@ function NormalV!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU)
   KNormalVKernel! = NormalVKernel!(backend,group)
   Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI)
   Metric.NV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI,3,)
-  @allowscalar invw = 1 / FE.wZ[1]
-  KNormalVKernel!(Metric.VolSurfV,Metric.NV,M,Metric.dXdxI,FE.Glob,invw,ndrange=ndrange)
+  KNormalVKernel!(Metric.VolSurfV,Metric.NV,M,Metric.dXdxI,FE.Glob,FE.wZ,ndrange=ndrange)
 end  
 
-@kernel inbounds = true function NormalVKernel!(VolSurfV,NV,M,@Const(dXdxI),@Const(Glob),invw)
+@kernel inbounds = true function NormalVKernel!(VolSurfV,NV,M,@Const(dXdxI),@Const(Glob),@Const(w))
 
   # Normal NV(3,I,J,2,iz,IF)
 
@@ -1156,6 +1155,7 @@ end
 
   if IF <= NF && ID <= ND
     ind = Glob[ID,IF]  
+    invw = eltype(VolSurfV)(1) / w[1]
     if Iz < NZ  
       nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
       nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
