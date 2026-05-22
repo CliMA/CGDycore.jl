@@ -17,7 +17,7 @@ julia --project Examples/DriverDG.jl \
   --VelocityForm="Spherical" \
   --Buoyancy=false \
   --Coriolis=true \
-  --Damping=false \
+  --Damping=true \
   --Forcing=false \
   --StrideDamp=20000 \
   --Relax=1.0e-3 \
@@ -38,10 +38,10 @@ julia --project Examples/DriverDG.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --MetricType="DGMetric" \
-  --dtau=135 \
-  --dtauSmall=15 \
+  --dtau=200 \
+  --dtauSmall=20 \
   --IntMethod="MISLin" \
-  --Table="RKJeb" \
+  --Table="MIS2" \
   --TopoS="" \
   `#Grid `        \
   --GridForm="Spherical" \
