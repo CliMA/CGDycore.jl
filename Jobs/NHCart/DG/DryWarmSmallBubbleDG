@@ -1,0 +1,52 @@
+#!/bin/bash
+julia --project Examples/DriverDG.jl \
+  --Problem="WarmBubble2DXCart" \
+  --NumberThreadGPU=512 \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
+  --NumAux=4 \
+  --pAuxPos=1 \
+  --GPAuxPos=2 \
+  --NumTr=0 \
+  --ModelType="Conservative" \
+  --Equation="CompressibleShallow" \
+  --State="Dry" \
+  --Discretization="DG" \
+  --FluxDG="KennedyGruberGrav" \
+  --InterfaceFluxDG="RiemannLMARS" \
+  --VelocityForm="Cartesian" \
+  --Buoyancy=false \
+  --Damping=false \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --SimTime=1 \
+  --PrintTime=0.07 \
+  --vtkFileName="output/VTK/WarmBubble/DGPQuad" \
+  --OrdPrint=4 \
+  --OrdPrintZ=4 \
+  --Curl=false \
+  --dtau=.07 \
+  --IntMethod="RungeKuttaEx" \
+  --Table="RK1" \
+  `#Grid       `        \
+  --GridForm="Cartesian" \
+  --GridType="Quad" \
+  --Flat=false \
+  --TopoS="" \
+  `#Topography `        \
+  --H=10000.0 \
+  --Lx=20000.0 \
+  --Ly=1000.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nz=20 \
+  --nx=40 \
+  --ny=2 \
+  --OrdPoly=4 \
+  --OrdPolyZ=4 \
+  --HyperVisc=true \
+  --HyperDCurl=1.e7 \
+  --HyperDGrad=1.e7 \
+  --HyperDDiv=1.e7

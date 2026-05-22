@@ -1141,7 +1141,7 @@ function NormalV!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU)
   KNormalVKernel! = NormalVKernel!(backend,group)
   Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI)
   Metric.NV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI,3,)
-  invw = 1 / FE.wZ[1]
+  @allowscalar invw = 1 / FE.wZ[1]
   KNormalVKernel!(Metric.VolSurfV,Metric.NV,M,Metric.dXdxI,FE.Glob,invw,ndrange=ndrange)
 end  
 
