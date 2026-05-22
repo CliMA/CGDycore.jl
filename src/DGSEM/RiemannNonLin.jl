@@ -24,12 +24,12 @@ function RiemannNonLinV(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUM
   ndrange = (Nz+1,NumI)
   KRiemannNonLinV3Kernel! = RiemannNonLinV3Kernel!(backend,group)
   KRiemannNonLinV3Kernel!(RiemannSolver,F,U,Aux,Metric.NV,
-    Metric.VolSurfV,DG.wZ,Val(NUMV),Val(NAUX);ndrange=ndrange)
+    Metric.VolSurfV,Val(NUMV),Val(NAUX);ndrange=ndrange)
 end  
 
 @kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,F,@Const(U),
   @Const(Aux),@Const(NV),@Const(VolSurfV),
-  @Const(w), ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
+  ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
   Iz,ind = @index(Global, NTuple)
 
@@ -63,7 +63,7 @@ end
       VLL[3] -= n2 * t
       VLL[4] -= n3 * t
       RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ind] / w[1]  
+      Surf = VolSurfV[Iz,ind]  
       @unroll for iv = 1 : NUMV  
         F[1,Iz,ind,iv] += FLoc[iv] * Surf
       end  
@@ -83,7 +83,7 @@ end
       VRR[3] -= n2 * t
       VRR[4] -= n3 * t
       RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ind] / w[1]  
+      Surf = VolSurfV[Iz,ind]   
       @unroll for iv = 1 : NUMV  
         F[end,Iz-1,ind,iv] -= FLoc[iv] * Surf
       end  
@@ -97,7 +97,7 @@ end
         VRR[iv] = U[1,Iz,ind,iv]
       end  
       RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ind] / w[1]  
+      Surf = VolSurfV[Iz,ind]  
       @unroll for iv = 1 : NUMV  
         FLoc[iv] *= Surf
         F[end,Iz-1,ind,iv] -= FLoc[iv]

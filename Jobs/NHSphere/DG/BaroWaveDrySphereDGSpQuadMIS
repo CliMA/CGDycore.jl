@@ -39,6 +39,7 @@ julia --project Examples/DriverDG.jl \
   --Flat=true \
   --MetricType="DGMetric" \
   --dtau=135 \
+  --dtauSmall=15 \
   --IntMethod="MISLin" \
   --Table="RKJeb" \
   --TopoS="" \
