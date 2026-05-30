@@ -1,3 +1,126 @@
+function Grad3D!(Metric,Grid)
+
+  PrimalMidPoints = Metric.PrimalMidPoints
+  PrimalSideMidPoints = Metric.PrimalSideMidPoints
+  PrimalTopMidPoints = Metric.PrimalTopMidPoints
+  PrimalSideNormals = Metric.PrimalSideNormals
+  PrimalTopNormals = Metric.PrimalTopNormals
+
+  nC = 8
+  nF = 12
+  I = zeros(4*nC,4*nC)
+  @show Grid.NumNodes
+  @show Grid.nz
+  for iN in 1 : Grid.NumNodes
+    nC = 2 * length(Grid.Nodes[iN].F)  
+    GradS = zeros(2*length(Grid.Nodes[iN].E),nC)
+    GradT = zeros(length(Grid.Nodes[iN].F),nC)
+    I = zeros(4*nC,4*nC)
+    Rhs = zeros(4*nC)
+    for iz = 2 : Grid.nz
+      # Add cell points
+      i = 0 
+      for iF in Grid.Nodes[iN].F
+        i += 1
+        @. @views I[i,1+(i-1)*4:i*4] = [1.0;PrimalMidPoints[:,iz-1,iF]] 
+      end  
+      for iF in Grid.Nodes[iN].F
+        i += 1
+        @. @views I[i,1+(i-1)*4:i*4] = [1.0;PrimalMidPoints[:,iz,iF]] 
+      end  
+      # Add side face mid  points
+      j = 0 
+      for iE in Grid.Nodes[iN].E
+        i += 1
+        j += 1
+        jp1 = j + 1
+        if jp1 > length(Grid.Nodes[iN].E)
+          jp1 = 1
+        end
+        @. @views I[i,1+(j-1)*4:j*4] = [1.0;PrimalSideMidPoints[:,iz-1,iE]]
+        @. @views I[i,1+(jp1-1)*4:jp1*4] = [-1.0;-PrimalSideMidPoints[:,iz-1,iE]]
+      end    
+      j =  length(Grid.Nodes[iN].E)
+      for iE in Grid.Nodes[iN].E
+        i += 1
+        j += 1
+        jp1 = j + 1
+        if jp1 > 2 * length(Grid.Nodes[iN].E)
+          jp1 = length(Grid.Nodes[iN].E) + 1
+        end
+        @. @views I[i,1+(j-1)*4:j*4] = [1.0;PrimalSideMidPoints[:,iz,iE]]
+        @. @views I[i,1+(jp1-1)*4:jp1*4] = [-1.0;-PrimalSideMidPoints[:,iz,iE]]
+      end    
+      j = 0
+      for iF in Grid.Nodes[iN].F
+        i += 1
+        j += 1
+        jp1 = j + length(Grid.Nodes[iN].E)
+        @. @views I[i,1+(j-1)*4:j*4] = [1.0;PrimalTopMidPoints[:,iz,iF]]
+        @. @views I[i,1+(jp1-1)*4:jp1*4] = [-1.0;-PrimalTopMidPoints[:,iz,iF]]
+      end  
+      # Add side face grad
+      j = 0 
+      for iE in Grid.Nodes[iN].E
+        i += 1
+        j += 1
+        jp1 = j + 1
+        if jp1 > length(Grid.Nodes[iN].E)
+          jp1 = 1
+        end
+        @. @views I[i,1+(j-1)*4:j*4] = [0.0;PrimalSideNormals[:,iz-1,iE]]
+        @. @views I[i,1+(jp1-1)*4:jp1*4] = [0.0;-PrimalSideNormals[:,iz-1,iE]]
+      end  
+      j =  length(Grid.Nodes[iN].E)
+      for iE in Grid.Nodes[iN].E
+        i += 1
+        j += 1
+        jp1 = j + 1
+        if jp1 > 2 * length(Grid.Nodes[iN].E)
+          jp1 = length(Grid.Nodes[iN].E) + 1
+        end
+        @. @views I[i,1+(j-1)*4:j*4] = [0.0;PrimalSideNormals[:,iz,iE]]
+        @. @views I[i,1+(jp1-1)*4:jp1*4] = [0.0;-PrimalSideNormals[:,iz,iE]]
+      end    
+      j = 0
+      for iF in Grid.Nodes[iN].F
+        i += 1
+        j += 1
+        jp1 = j + length(Grid.Nodes[iN].E)
+        @. @views I[i,1+(j-1)*4:j*4] = [0.0;PrimalTopNormals[:,iz,iF]]
+        @. @views I[i,1+(jp1-1)*4:jp1*4] = [0.0;-PrimalTopNormals[:,iz,iF]]
+      end  
+      for iC = 1 : nC
+        @. Rhs = 0
+        Rhs[iC] = 1
+        Rhs = I \ Rhs
+        i = 0
+        for iE in Grid.Nodes[iN].E
+          i += 1  
+          GradS[i,iC] = PrimalSideNormals[1,iz-1,iE] * Rhs[2+(i-1)*4] +  
+              PrimalSideNormals[2,iz-1,iE] * Rhs[3+(i-1)*4] +  
+              PrimalSideNormals[3,iz-1,iE] * Rhs[4+(i-1)*4]   
+          i += 1  
+          GradS[i,iC] = PrimalSideNormals[1,iz,iE] * Rhs[2+(i-1)*4] +  
+              PrimalSideNormals[2,iz,iE] * Rhs[3+(i-1)*4] +  
+              PrimalSideNormals[3,iz,iE] * Rhs[4+(i-1)*4]   
+        end
+        i = 0
+        for iF in Grid.Nodes[iN].F
+          i += 1  
+            GradT[i,iC] = PrimalTopNormals[1,iz,iF] * Rhs[2+(i-1)*4] +  
+              PrimalTopNormals[2,iz,iF] * Rhs[3+(i-1)*4] +  
+              PrimalTopNormals[3,iz,iF] * Rhs[4+(i-1)*4]   
+        end    
+      end
+      @show iN
+      @show GradS[1,:]
+      @show GradS * ones(nC)
+      @show GradT * ones(nC)
+      stop
+    end
+  end  
+end
 function DivMPFA(backend,FT,Metric,Grid)
   RowInd = Int64[]
   ColInd = Int64[]

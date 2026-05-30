@@ -1,0 +1,35 @@
+Grid
+
+Polynomial Order 4, Nodal point 5
+
+72 x 30 x 7
+dt 320
+dtSmall 
+
+sum(abs.(U)) = 5.363780586853452e7
+[ Info: Iteration: 2700.0 took 0.046211489, 100.0% complete
+136.374612 seconds (185.02 M allocations: 6.940 GiB, 1.08% gc time, 8 lock conflicts)
+136.318985 seconds (197.22 M allocations: 7.318 GiB, 1.17% gc time, 16 lock conflicts)
+136.349554 seconds (197.22 M allocations: 7.318 GiB, 1.16% gc time, 25 lock conflicts)
+136.370048 seconds (188.46 M allocations: 7.115 GiB, 1.15% gc time, 13 lock conflicts, 0.86% compilation time)
+
+
+Rosenbrock 
+
+dt = 30
+
+[ Info: Iteration: 28799.0 took 0.005349957, 99.99652777777777% complete
+sum(abs.(U)) = 5.3637456326981e7
+[ Info: Iteration: 28800.0 took 0.005349157, 100.0% complete
+165.345171 seconds (209.32 M allocations: 7.963 GiB, 0.71% gc time, 2 lock conflicts)
+165.395412 seconds (209.32 M allocations: 7.963 GiB, 0.72% gc time, 3 lock conflicts)
+165.423655 seconds (198.78 M allocations: 7.637 GiB, 0.95% gc time, 7 lock conflicts)
+165.417367 seconds (209.95 M allocations: 8.190 GiB, 0.78% gc time, 24 lock conflicts, 0.70% compilation time)
+
+dt = 45
+sum(abs.(U)) = 5.363745271971947e7
+[ Info: Iteration: 19200.0 took 0.005372387, 100.0% complete
+111.707288 seconds (139.55 M allocations: 5.308 GiB, 0.71% gc time, 1 lock conflict)
+111.750354 seconds (132.46 M allocations: 5.089 GiB, 1.09% gc time, 4 lock conflicts)
+111.681370 seconds (139.55 M allocations: 5.308 GiB, 0.71% gc time, 3 lock conflicts)
+111.699375 seconds (140.83 M allocations: 5.505 GiB, 1.15% gc time, 8 lock conflicts, 1.05% compilation time)

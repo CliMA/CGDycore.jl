@@ -38,7 +38,7 @@ julia --project Examples/DriverDG.jl \
   --StartAverageDays=100 \
   --Flat=true \
   --MetricType="DGMetric" \
-  --dtau=200 \
+  --dtau=220 \
   --dtauSmall=20 \
   --IntMethod="MISLin" \
   --Table="MIS2" \
@@ -48,9 +48,9 @@ julia --project Examples/DriverDG.jl \
   --Stretch=false \
   --StretchType="Exp" \
   --GridType="SphericalGrid" \
-  --nLon=80 \
-  --nLat=36 \
-  --LatB=1.3962634015954636 \
+  --nLon=72 \
+  --nLat=30 \
+  --LatB=1.3089969389957472 \
   --nz=13 \
   --H=30000.0 \
   --OrdPoly=4 \

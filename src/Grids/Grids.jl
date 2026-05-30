@@ -15,7 +15,6 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using StaticArrays    
 using NearestNeighbors
 using Distances
-using LinearAlgebra
 using SparseArrays
 using Interpolations
 using MPI

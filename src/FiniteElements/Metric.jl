@@ -303,7 +303,7 @@ end
 
 
   if IZ <= NZ && IF <= NF
-    ID = I + (J - 1) * M
+    ID = I + (J - 1) * N
     XLoc[I,J,K,1] = X[ID,K,1,IZ,IF]
     XLoc[I,J,K,2] = X[ID,K,2,IZ,IF]
     XLoc[I,J,K,3] = X[ID,K,3,IZ,IF]
@@ -329,7 +329,7 @@ end
   @synchronize
 
   if IZ <= NZ && IF <= NF
-    ID = I + (J - 1) * M
+    ID = I + (J - 1) * N
     t1 = DH[I,1] * (XLoc[1,J,K,2] * DZdy[1,J,K] - XLoc[1,J,K,3] * DYdy[1,J,K]) -
       DH[J,1] * (XLoc[I,1,K,2] * DZdx[I,1,K] - XLoc[I,1,K,3] * DYdx[I,1,K])
 

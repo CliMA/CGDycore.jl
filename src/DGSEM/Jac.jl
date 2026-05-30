@@ -1146,13 +1146,6 @@ function DMomDScalarAc(NZ,DG,cS)
   return dMdS,dMdM
 end
 
-function InitJacDG(DG,nz,Param)
-  N = (DG.OrdPolyZ + 1) * nz
-  dSdS,dSdM = DScalarDMomAc(nz,DG,Param.cS)
-  dMdS,dMdM = DMomDScalarAc(nz,DG,Param.cS)
-  return dSdS,dSdM,dMdS,dMdM
-end  
-
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
   Invfac = eltype(U)(1) / fac
   dz = Metric.dz

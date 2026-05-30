@@ -19,6 +19,40 @@ function vtkStruct{FT}(backend) where FT<:AbstractFloat
   )
 end
 
+function vtkFiniteVolume(backend,FT,Metric,Grid,NumFaces,NumNodes)
+  nz = Grid.nz
+  vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
+  cells = MeshCell[]
+  celltype = VTKCellTypes.VTK_HEXAHEDRON
+  XP = zeros(3)
+  for iF = 1 : NumFaces
+    N = Grid.Faces[iF].N  
+    for iz = 1 : nz  
+      push!(cells, MeshCell(celltype, [N .+ (iz - 1) * NumNodes ; N .+ iz * NumNodes]))
+    end
+  end  
+  pts = Array{Float64,2}(undef,3,(nz + 1) * NumNodes)
+  ipts = 0
+  for iz = 1 : nz + 1  
+    for iN = 1 : NumNodes
+      ipts += 1  
+      @. XP = Metric.PrimalPoints[:,iz,iN]
+      r = norm(XP)
+      z = max(r - Grid.Rad,0.0)
+      XP = XP * (1000.0 + z)
+      @. pts[:,ipts] = XP
+    end
+  end  
+  RefineMidPoints = zeros(0,0)
+  return vtkStruct{FT,
+                   typeof(vtkInter)}(
+  vtkInter,
+  cells,
+  pts,
+  RefineMidPoints,
+  )
+end
+
 function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFloat
 
   vtkInter = KernelAbstractions.zeros(backend,FT,0,0,0,0,0,0)
@@ -462,6 +496,7 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber, 
   vtk_filename_noext = pwd()*"/output/VTK/" * filename * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
   for iC = 1 : length(cName)
+    @show size(c[:,iC])  
     vtk[cName[iC], VTKCellData()] = c[:,iC]
   end
   outfiles = vtk_save(vtk)

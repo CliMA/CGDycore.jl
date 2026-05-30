@@ -1,9 +1,11 @@
 module FiniteVolumes
 
+import ..DG
 import ..Models
 import ..Grids
 import ..Outputs
 import ..Grids
+import ..FiniteElements
 import ..FEM
 
 using MPI
@@ -16,6 +18,20 @@ using DynamicPolynomials
 using FastGaussQuadrature
 using LinearAlgebra
 
+
+mutable struct MetricFiniteVolume3{FT<:AbstractFloat,
+                        AT2<:AbstractArray,
+                        AT3<:AbstractArray}
+  PrimalVolume::AT2
+  PrimalMidPoints::AT3
+  PrimalSideFaces::AT2
+  PrimalTopFaces::AT2
+  PrimalSideNormals::AT3
+  PrimalTopNormals::AT3
+  PrimalSideMidPoints::AT3
+  PrimalTopMidPoints::AT3
+  PrimalPoints::AT3
+end
 
 mutable struct MetricFiniteVolume{FT<:AbstractFloat,
                         AT1<:AbstractArray, 
@@ -46,11 +62,13 @@ include("Divergence.jl")
 include("Gradient.jl")
 include("Project.jl")
 include("MetricFV.jl")
+include("MetricFV3.jl")
 include("MPFA.jl")
 include("TangentialRec.jl")
 include("Curl.jl")
 include("Advection.jl")
 include("FcnFV.jl")
 include("AdvectionUpwind.jl")
+include("ComputeVolume.jl")
 
 end

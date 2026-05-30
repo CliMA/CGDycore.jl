@@ -58,6 +58,8 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
     else
       CellToProc = Grids.DecomposeEqualArea(Grid,ProcNumber)
     end
+  elseif Decomp == "Block"
+    CellToProc = Decompose(Grid,nlon,nlat,NumProc)
   else
     CellToProc = ones(Int,Grid.NumFaces)
     println(" False Decomp method ")

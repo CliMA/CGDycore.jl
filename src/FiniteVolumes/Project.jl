@@ -8,6 +8,18 @@ function ProjectFace!(backend,FTB,p,Grid,F)
   end
 end
 
+function ProjectCell3D!(backend,FTB,p,Metric,Grid,F)
+  x = zeros(3)
+  for iF = 1 : Grid.NumFaces
+    for iz = 1 : Grid.nz  
+      x[1] = Metric.PrimalMidPoints[1,iz,iF]
+      x[2] = Metric.PrimalMidPoints[2,iz,iF]
+      x[3] = Metric.PrimalMidPoints[3,iz,iF]
+      p[iz,iF], = F(x,0.0)
+    end
+  end
+end
+
 function ProjectFaceTr!(backend,FTB,p,Grid,F)
   x = zeros(3)
   for iF = 1 : Grid.NumFaces
@@ -43,6 +55,43 @@ function ProjectEdge!(backend,FTB,u,Grid,F)
     n[2] = Grid.Edges[iE].n.y
     n[3] = Grid.Edges[iE].n.z
     u[iE] = n[1] * VelCa[1] + n[2] * VelCa[2] + n[3] * VelCa[3]
+  end
+end
+
+function ProjectFace3D!(backend,FTB,u,Metric,Grid,F)
+  x = zeros(3)
+  n = zeros(3)
+  VelSp = zeros(3)
+  uS,uT = u
+  for iE = 1 : Grid.NumEdges
+    for iz = 1 : Grid.nz   
+      x[1] = Metric.PrimalSideMidPoints[1,iz,iE]  
+      x[2] = Metric.PrimalSideMidPoints[2,iz,iE]  
+      x[3] = Metric.PrimalSideMidPoints[3,iz,iE]  
+      _,VelSp[1],VelSp[2],VelSp[3], = F(x,0.0)
+      lon,lat,r = Grids.cart2sphere(x[1],x[2],x[3])
+      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      n[1] = Metric.PrimalSideNormals[1,iz,iE]
+      n[2] = Metric.PrimalSideNormals[2,iz,iE]
+      n[3] = Metric.PrimalSideNormals[3,iz,iE]
+      uS[iz,iE] = n[1] * VelCa[1] + n[2] * VelCa[2] + n[3] * VelCa[3]
+    end
+  end
+  for iF = 1 : Grid.NumFaces
+    @. @views uT[1,:] = 0.0  
+    @. @views uT[Grid.nz+1,:] = 0.0  
+    for iz = 2 : Grid.nz   
+      x[1] = Metric.PrimalTopMidPoints[1,iz,iF]  
+      x[2] = Metric.PrimalTopMidPoints[2,iz,iF]  
+      x[2] = Metric.PrimalTopMidPoints[3,iz,iF]  
+      _,VelSp[1],VelSp[2],VelSp[3], = F(x,0.0)
+      lon,lat,r = Grids.cart2sphere(x[1],x[2],x[3])
+      VelCa = VelSphere2Cart(VelSp,lon,lat)
+      n[1] = Metric.PrimalTopNormals[1,iz,iF]  
+      n[2] = Metric.PrimalTopNormals[2,iz,iF]  
+      n[3] = Metric.PrimalTopNormals[3,iz,iF]  
+      uT[iz,iF] = n[1] * VelCa[1] + n[2] * VelCa[2] + n[3] * VelCa[3]
+    end
   end
 end
 
@@ -129,6 +178,43 @@ function ConvertVelocitySp!(backend,FTB,VelSp,Vel,Grid)
     VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
     VelSp[iF,1] = VelSpLoc[1]
     VelSp[iF,2] = VelSpLoc[2]
+  end
+end
+
+function ConvertVelocity3DSp!(backend,FTB,VelSp,Vel,Metric,Grid)
+  N = zeros(6,3)
+  Rhs = zeros(6)
+  VelS,VelT = Vel
+  iSp = 0
+  for iF = 1 : Grid.NumFaces
+    for iz = 1 : Grid.nz  
+      iE1 = Grid.Faces[iF].E[1]   
+      @. @views N[1,:] = Metric.PrimalSideNormals[:,iz,iE1]
+      Rhs[1] = VelS[iz,iE1]
+      iE2 = Grid.Faces[iF].E[2]   
+      @. @views N[2,:] = Metric.PrimalSideNormals[:,iz,iE2]
+      Rhs[2] = VelS[iz,iE2]
+      iE3 = Grid.Faces[iF].E[3]   
+      @. @views N[3,:] = Metric.PrimalSideNormals[:,iz,iE3]
+      Rhs[3] = VelS[iz,iE3]
+      iE4 = Grid.Faces[iF].E[4]   
+      @. @views N[4,:] = Metric.PrimalSideNormals[:,iz,iE4]
+      Rhs[4] = VelS[iz,iE4]
+      @. @views N[5,:] = Metric.PrimalTopNormals[:,iz,iF]
+      Rhs[5] = VelT[iz,iF]
+      @. @views N[6,:] = Metric.PrimalTopNormals[:,iz+1,iF]
+      Rhs[6] = VelT[iz+1,iF]
+      VelCa = N \ Rhs
+      x1 = Metric.PrimalMidPoints[1,iz,iF]
+      x2 = Metric.PrimalMidPoints[2,iz,iF]
+      x3 = Metric.PrimalMidPoints[3,iz,iF]
+      lon,lat,_ = Grids.cart2sphere(x1,x2,x3)
+      VelSpLoc = VelCart2Sphere(VelCa,lon,lat)
+      iSp += 1
+      VelSp[iSp,1] = VelSpLoc[1]
+      VelSp[iSp,2] = VelSpLoc[2]
+      VelSp[iSp,3] = VelSpLoc[3]
+    end
   end
 end
 
