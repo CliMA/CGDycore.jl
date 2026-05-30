@@ -45,16 +45,16 @@ function FcnFVLin!(F,U,MetricFV,Grid,Cache,Phys)
   Tang = Cache.Tang
 
   mul!(ru,Grad,UpI)
-  mul!(TangUu,Tang,Uu)
-  @inbounds for iE = 1 : Grid.NumEdges
-    iN1 = Grid.Edges[iE].N[1]
-    iN2 = Grid.Edges[iE].N[2]
-    x = Grid.Edges[iE].Mid.x
-    y = Grid.Edges[iE].Mid.y
-    z = Grid.Edges[iE].Mid.z
-    sinlat = z / sqrt(x^2 + y^2 + z^2)
-    ru[iE] = -TangUu[iE] * (2 * Phys.Omega * sinlat) - ru[iE]
-  end
+# mul!(TangUu,Tang,Uu)
+# @inbounds for iE = 1 : Grid.NumEdges
+#   iN1 = Grid.Edges[iE].N[1]
+#   iN2 = Grid.Edges[iE].N[2]
+#   x = Grid.Edges[iE].Mid.x
+#   y = Grid.Edges[iE].Mid.y
+#   z = Grid.Edges[iE].Mid.z
+#   sinlat = z / sqrt(x^2 + y^2 + z^2)
+#   ru[iE] = -TangUu[iE] * (2 * Phys.Omega * sinlat) - ru[iE]
+# end
   mul!(rpI,Div,Uu)
   @. rpI *= -1.0
 end

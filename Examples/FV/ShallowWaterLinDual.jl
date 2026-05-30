@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPUS, DyCore, FEM, FiniteVolumes
+  Parameters, Examples, Parallels, Models, Grids, Outputs, Integration,  GPUS, DyCore, FEM, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -11,10 +11,11 @@ using ArgParse
 using LinearAlgebra
 
 # Model
-parsed_args = DyCore.parse_commandline()
+parsed_args = Parameters.parse_commandline()
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
+VelocityForm = parsed_args["VelocityForm"]
 PertTh = parsed_args["PertTh"]
 ProfVel = parsed_args["ProfVel"]
 ProfVelGeo = parsed_args["ProfVelGeo"]
@@ -161,8 +162,20 @@ PrintStp = 800
 Flat = false
 
 
+
+if VelocityForm == "Spherical"
+   VelForm = Examples.VelocityS()
+elseif VelocityForm == "Cartesian"
+   VelForm = Examples.VelocityC()
+end
+if VelocityForm == "Spherical"
+   VelForm = Examples.VelocityS()
+elseif VelocityForm == "Cartesian"
+   VelForm = Examples.VelocityC()
+end
+
 Param = Examples.Parameters(FTB,Problem)
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 
 RefineLevel = 6
 nz = 1
@@ -174,14 +187,7 @@ Decomp = "EqualArea"
 Model.HorLimit = true
 OrdPoly = 1
 
-#TRI
-#GridType = "TriangularSphere"
-#GridType = "DelaunaySphere"
-GridType = "CubedSphere"
-#GridType = "HealPix"
-#GridType = "MPAS"
 Grid, Exchange = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,LatB,GridType,Decomp,RadEarth,
-# Model,ParallelCom;order=false,ChangeOrient=2)
   Model,ParallelCom;order=false)
 
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat)
@@ -216,7 +222,6 @@ FiniteVolumes.ConvertVelocityTSp!(backend,FTB,VelSp,Uu,Grid)
 SpeciesList = ["h","uS","vS"]
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FVD", Proc, ProcNumber, [UpI VelSp], FileNumber, SpeciesList)
 FileNumber += 1
-stop
 
 time = 0.0
 
