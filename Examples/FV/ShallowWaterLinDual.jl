@@ -150,24 +150,10 @@ Model = DyCore.ModelStruct{FTB}()
 RadEarth = Phys.RadEarth
 dtau = 6
 nAdveVel = 16000
-#=
-nAdveVel = 5000
-Problem = "LinearBlob"
-Fac = 1.0
-RadEarth = 1.0 * Fac
-dtau = 0.0001 * Fac
-nAdveVel = 16000
-PrintStp = 800
-=#
 Flat = false
 
 
 
-if VelocityForm == "Spherical"
-   VelForm = Examples.VelocityS()
-elseif VelocityForm == "Cartesian"
-   VelForm = Examples.VelocityC()
-end
 if VelocityForm == "Spherical"
    VelForm = Examples.VelocityS()
 elseif VelocityForm == "Cartesian"
@@ -260,9 +246,3 @@ FiniteVolumes.ConvertVelocitySp!(backend,FTB,VelSp,Uu,Grid)
 Outputs.vtkSkeleton!(vtkSkeletonMesh, GridType*"FV", Proc, ProcNumber, [UpI VelCa VelSp], FileNumber,SpeciesList)
 
 
-#= ToDO
-Gleichungen testen mit @show
-mehr Quadraturregeln für Dreiecke höhere ordnungen
-RT1, DG1
-Wiki von github
-=#

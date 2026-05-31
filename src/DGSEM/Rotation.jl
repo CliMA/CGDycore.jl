@@ -1,9 +1,12 @@
 function TendVSp2VCart!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityC)
   backend = get_backend(V)
+  M = size(V,1)
+  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  NFG = min(div(NumberThreadGPU,DoF),NF)
-  group = (DoF,NFG)
+  DoFG = min(div(NumberThreadGPU,M*Nz),DoF)
+  group = (M,Nz,DoFG,1)
+  ndrange = (M,Nz,DoF,NF)
   ndrange = (DoF,NF)
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   KVSp2VCart3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
@@ -14,11 +17,13 @@ end
 
 function TendVCart2VSp!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityC)
   backend = get_backend(V)
+  M = size(V,1)
+  Nz = size(V,2)
   NF = size(DG.Glob,2)
   DoF = DG.DoF
-  NFG = min(div(NumberThreadGPU,DoF),NF)
-  group = (DoF,NFG)
-  ndrange = (DoF,NF)
+  DoFG = min(div(NumberThreadGPU,M*Nz),DoF)
+  group = (M,Nz,DoFG,1)
+  ndrange = (M,Nz,DoF,NF)
   KVCart2VSp3Kernel! = VCart2VSp3Kernel!(backend,group)
   KVCart2VSp3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
