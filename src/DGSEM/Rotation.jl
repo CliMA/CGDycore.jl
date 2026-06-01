@@ -7,7 +7,6 @@ function TendVSp2VCart!(V,DG,Metric,NumberThreadGPU,::Examples.VelocityC)
   DoFG = min(div(NumberThreadGPU,M*Nz),DoF)
   group = (M,Nz,DoFG,1)
   ndrange = (M,Nz,DoF,NF)
-  ndrange = (DoF,NF)
   KVSp2VCart3Kernel! = VSp2VCart3Kernel!(backend,group)
   KVSp2VCart3Kernel!(V,Metric.Rotate,DG.Glob;ndrange=ndrange)
 end  
