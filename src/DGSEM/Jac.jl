@@ -938,10 +938,10 @@ function Solve!(k,v,Jac,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
   
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   @. k = v
-  @views TendVCart2VSp!(k[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)
+  @views TendVCart2VSp!(k,DG,Metric,NumberThreadGPU,VelForm)
   Solve!(Jac,k)
   @views @. k[:,:,:,2:3] *= fac
-  @views TendVSp2VCart!(k[:,:,:,2:4],DG,Metric,NumberThreadGPU,VelForm)
+  @views TendVSp2VCart!(k,DG,Metric,NumberThreadGPU,VelForm)
 
 end
 

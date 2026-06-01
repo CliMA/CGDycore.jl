@@ -13,7 +13,7 @@ julia --project Examples/DriverDG.jl \
   --RhoCPos=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
-  --VelocityForm="Spherical" \
+  --VelocityForm="Cartesian" \
   --State="Dry" \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
