@@ -39,7 +39,6 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   RiemannNonLinH(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
-
   if Model.Coriolis
     Sources.Coriolis!(Cor,F,U,Aux,DG,Metric,NumberThreadGPU)
   end
@@ -57,6 +56,11 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   end  
 
   @views StateVCart2VSp!(F,DG,Metric,NumberThreadGPU,VelForm)  
+
+  if Model.Buoyancy
+    Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
+  end
+
 
 end
 

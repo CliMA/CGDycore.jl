@@ -17,7 +17,7 @@ julia --project Examples/DriverDG.jl \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
   --InterfaceFluxDG="RiemannLMARS" \
-  --Buoyancy=true \
+  --Buoyancy=false \
   --Coriolis=true \
   --Damping=false \
   --StrideDamp=10000 \
@@ -39,7 +39,7 @@ julia --project Examples/DriverDG.jl \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DG20QuadMIS" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=0 \
+  --PrintHours=2 \
   --PrintDays=0 \
   --PrintTime=0 \
   --OrdPrint=4 \

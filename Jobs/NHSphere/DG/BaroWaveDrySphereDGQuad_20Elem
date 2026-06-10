@@ -13,7 +13,7 @@ julia --project Examples/DriverDG.jl \
   --RhoCPos=0 \
   --ModelType="Conservative" \
   --Equation="CompressibleShallow" \
-  --VelocityForm="Cartesian" \
+  --VelocityForm="Spherical" \
   --State="Dry" \
   --Discretization="DG" \
   --FluxDG="KennedyGruberGrav" \
@@ -40,14 +40,14 @@ julia --project Examples/DriverDG.jl \
   --vtkFileName="output/VTK/BaroWaveDrySphere/DG20Quad" \
   --PrintSeconds=0 \
   --PrintMinutes=0 \
-  --PrintHours=2 \
+  --PrintHours=0 \
   --PrintDays=0 \
   --PrintTime=0 \
   --OrdPrint=4 \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=85.0 \
+  --dtau=175.0 \
   --dtauSmall=60.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

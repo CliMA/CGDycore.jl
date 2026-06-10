@@ -41,6 +41,8 @@ function AdaptGrid(FT,Type,H)
     AdaptGridFunction = Grids.GalChen()(H)
   elseif Type == "Sleve"
     AdaptGridFunction = Grids.Sleve{FT}()(H)
+  else  
+    AdaptGridFunction = Grids.Sleve{FT}()(H)
   end
   return AdaptGridFunction
 end

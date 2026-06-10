@@ -659,8 +659,7 @@ end
     end
 
     if iz > 1
-      ThM = U[M,iz-1,1,ThPos] / U[M,iz-1,1,RhoPos]
-      Th1 = U[1,iz-1,1,ThPos] / U[1,iz-1,1,RhoPos]
+      ThM = U[M,iz-1,ID,ThPos] / U[M,iz-1,ID,RhoPos]
       dpdRhoThM = eltype(U)(1) / (eltype(U)(1) - Phys.kappa) * Phys.Rd *
         (Phys.Rd * U[M,iz-1,ID,ThPos] / Phys.p0)^(Phys.kappa / (eltype(U)(1) - Phys.kappa))
       # (sh-1,sh-1)  
@@ -811,8 +810,7 @@ end
     end
 
     if iz > 1
-      ThM = Aux[M,iz-1,1,ThPos]
-      Th1 = Aux[1,iz-1,1,ThPos]
+      ThM = Aux[M,iz-1,ID,ThPos]
       dpdRhoThM = Aux[M,iz-1,ID,dpdThPos]
       # (sh-1,sh-1)  
       @atomic :monotonic SchurBand[4,sh-1,ID] += ThM * dpdRhoThM * invcS / dz[iz-1,ID] / wB
@@ -880,7 +878,7 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys)
   KFillJacDGVertKernel! = FillJacDGVertKernel!(backend,group)
   KFillJacDGVertKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
   JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,JacVert.C23_2,
-  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,U,dz,DWZ,DG.wZ,fac,Phys.Grav,
+  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,U,dz,DWZ,DG.wZ,fac,JacVert.FacGrav,
   Phys.cS,Phys,Val(M);ndrange=ndrange) 
 
 end  
@@ -907,7 +905,7 @@ function FillJacFrozenDGVert!(JacVert,Aux,DG,dz,fac,Phys)
   KFillJacDGVertKernel! = FillJacFrozenDGVertKernel!(backend,group)
   KFillJacDGVertKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
   JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,JacVert.C23_2,
-  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,Aux,dz,DWZ,DG.wZ,fac,Phys.Grav,
+  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,Aux,dz,DWZ,DG.wZ,fac,JacVert.FacGrav,
   Phys.cS,Phys,Val(M);ndrange=ndrange) 
 
 end  

@@ -39,6 +39,19 @@ function FluxVolumeNonLinH(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,:
     Val(NV),Val(NAUX);ndrange=ndrange)
 end
 
+function FluxVolumeNonLinHV(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  DoFE = DG.DoFE
+  N = DG.OrdPoly + 1
+  M = DG.OrdPolyZ + 1
+  group = (N,N,M,1,1)
+  ndrange = (N,N,M,Nz,NF)
+  KFluxVolumeNonLinHKernel! = FluxVolumeNonLinHVQuadKernel!(backend,group)
+  KFluxVolumeNonLinHKernel!(Flux,F,U,Aux,dXdxI,DG.DW,DG.DWZ,DG.Glob,
+    Val(NV),Val(NAUX);ndrange=ndrange)
+end
+
 function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Tri)
   backend = get_backend(F)
   DoF = DG.DoF
@@ -388,7 +401,6 @@ end
   end  
 end  
 
-
 @kernel inbounds = true function FluxVolumeNonLinHQuadKernel!(Flux,F,@Const(V),@Const(Aux),@Const(dXdxI),
   @Const(DW),@Const(Glob), ::Val{NV}, ::Val{NAUX}) where {NV,NAUX}
 
@@ -436,5 +448,56 @@ end
     end
   end
 end  
+
+@kernel inbounds = true function FluxVolumeNonLinHVQuadKernel!(Flux,F,@Const(V),@Const(Aux),@Const(dXdxI),
+  @Const(DW),@Const(DWZ),@Const(Glob), 
+    ::Val{N}, ::Val{M}, ::Val{NV}, ::Val{NAUX}) where {N, M, NV, NAUX}
+
+  I, J, K      = @index(Local, NTuple)
+  _, _, _, IZ, IF  = @index(Global, NTuple)
+
+  NZ       = @uniform @ndrange()[4]
+
+  ConX = @localmem eltype(F) (N,N,M,NV)
+  ConY = @localmem eltype(F) (N,N,M,NV)
+  ConZ = @localmem eltype(F) (N,N,M,NV)
+
+  FLoc = @private eltype(F) (NV,)
+
+  if IZ <= NZ
+    ID = I + (J - 1) * N
+    ind = Glob[ID,IF]
+    @views Flux(FLoc,V[K,Iz,ind,:],Aux[K,Iz,ind,:])
+    @unroll for iv = 1 : NV
+      ConX[I,J,K,iv] = dXdxI[1,1,K,ID,IZ,IF] * FLoc[1,iv] +
+        dXdxI[1,2,K,ID,IZ,IF] * FLoc[2,iv] +
+        dXdxI[1,3,K,ID,IZ,IF] * FLoc[3,iv]
+      ConY[I,J,K,iv] = dXdxI[2,1,K,ID,IZ,IF] * FLoc[1,iv] +
+        dXdxI[2,2,K,ID,IZ,IF] * FLoc[2,iv] +
+        dXdxI[2,3,K,ID,IZ,IF] * FLoc[3,iv]
+      ConZ[I,J,K,iv] = dXdxI[3,1,K,ID,IZ,IF] * FLoc[1,iv] +
+        dXdxI[3,2,K,ID,IZ,IF] * FLoc[2,iv] +
+        dXdxI[3,3,K,ID,IZ,IF] * FLoc[3,iv]
+    end  
+  end
+  @synchronize
+
+  if IZ <= NZ
+    ID = I + (J - 1) * N
+    ind = Glob[ID,IF]
+    @unroll for iv = 1 : NV
+      FF = DW[I,1] * ConX[1,J,K,iv] + DW[J,1] * ConY[I,1,K,iv] + DWZ[K,1] * ConZ[I,J,1,iv]
+      @unroll for l = 2 : N
+        FF += DW[I,l] * ConX[l,J,K,iv] + DW[J,l] * ConY[I,l,K,iv]
+      end
+      @unroll for l = 2 : M
+        FF += DWZ[K,l] * ConZ[I,J,l,iv] 
+      end
+      F[K,Iz,ind,iv] -= FF
+    end
+  end
+end  
+
+
 
 

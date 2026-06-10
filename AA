@@ -1,0 +1,79 @@
+@kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,F,@Const(U),
+  @Const(Aux),@Const(NV),@Const(VolSurfV),
+  ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
+
+  Iz,ind = @index(Global, NTuple)
+
+
+  Nz = @uniform @ndrange()[1]
+  NumI = @uniform @ndrange()[2]
+
+  VLL = @private eltype(F) (NUMV,)
+  VRR = @private eltype(F) (NUMV,)
+  AuxL = @private eltype(F) (NAUX,)
+  AuxR = @private eltype(F) (NAUX,)
+  FLoc = @private eltype(F) (NUMV,)
+
+  if ind <= NumI
+    n1 = NV[Iz,ind,1]
+    n2 = NV[Iz,ind,2]
+    n3 = NV[Iz,ind,3]
+    if Iz == 1
+      @unroll for iAux = 1 : NAUX
+        AuxL[iAux] = Aux[1,Iz,ind,iAux]
+        AuxR[iAux] = AuxL[iAux]
+      end
+      @unroll for iv = 1 : NUMV
+        VLL[iv] = U[1,Iz,ind,iv]
+        VRR[iv] = VLL[iv]
+      end
+      t = eltype(F)(2) * (n1 * VLL[2] +
+        n2 * VLL[3] +
+        n3 * VLL[4])
+      VLL[2] -= n1 * t
+      VLL[3] -= n2 * t
+      VLL[4] -= n3 * t
+      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+      Surf = VolSurfV[Iz,ind]  
+      @unroll for iv = 1 : NUMV  
+        F[1,Iz,ind,iv] += FLoc[iv] * Surf
+      end  
+    elseif Iz == Nz 
+      @unroll for iAux = 1 : NAUX  
+        AuxL[iAux] = Aux[end,Iz-1,ind,iAux]
+        AuxR[iAux] = AuxL[iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        VLL[iv] = U[end,Iz-1,ind,iv]
+        VRR[iv] = VLL[iv]
+      end  
+      t = eltype(F)(2) * (n1 * VRR[2] +
+        n2 * VRR[3] +
+        n3 * VRR[4])
+      VRR[2] -= n1 * t
+      VRR[3] -= n2 * t
+      VRR[4] -= n3 * t
+      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+      Surf = VolSurfV[Iz,ind]   
+      @unroll for iv = 1 : NUMV  
+        F[end,Iz-1,ind,iv] -= FLoc[iv] * Surf
+      end  
+    else
+      @unroll for iAux = 1 : NAUX  
+        AuxL[iAux] = Aux[end,Iz-1,ind,iAux]
+        AuxR[iAux] = Aux[1,Iz,ind,iAux]
+      end  
+      @unroll for iv = 1 : NUMV  
+        VLL[iv] = U[end,Iz-1,ind,iv]
+        VRR[iv] = U[1,Iz,ind,iv]
+      end  
+      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+      Surf = VolSurfV[Iz,ind]  
+      @unroll for iv = 1 : NUMV  
+        FLoc[iv] *= Surf
+        F[end,Iz-1,ind,iv] -= FLoc[iv]
+        F[1,Iz,ind,iv] += FLoc[iv]
+      end  
+    end    
+  end  
+end

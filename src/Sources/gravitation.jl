@@ -88,7 +88,7 @@ end
 
 Base.@kwdef struct BuoyancyDeep <: BuoyancyType end
 
-function (::BuoyancyDeep)(::Grids.SphericalGrid,RhoPos,uPos,vPos,wPos;RadEarth=P.RadEarth)
+function (::BuoyancyDeep)(::Grids.SphericalGrid,::Examples.VelocityC,RhoPos,uPos,vPos,wPos;RadEarth=P.RadEarth)
   @inline function Buoyancy(F,U,X)
 
     r = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
@@ -96,6 +96,16 @@ function (::BuoyancyDeep)(::Grids.SphericalGrid,RhoPos,uPos,vPos,wPos;RadEarth=P
     F[uPos] += fac * X[1]
     F[vPos] += fac * X[2]
     F[wPos] += fac * X[3]
+  end
+  return Buoyancy
+end
+
+function (::BuoyancyDeep)(::Grids.SphericalGrid,::Examples.VelocityS,RhoPos,uPos,vPos,wPos;RadEarth=P.RadEarth)
+  @inline function Buoyancy(F,U,X)
+
+    r = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
+    fac = -P.Grav * (RadEarth / r)^2 * U[RhoPos]
+    F[wPos] += fac 
   end
   return Buoyancy
 end

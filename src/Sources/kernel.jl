@@ -22,6 +22,7 @@ end
     @views Buo(F[K,Iz,ind,:],U[K,Iz,ind,:],X[ID,K,:,Iz,IF])
   end
 end
+
 function GeoPotential!(GPF,Aux,Glob,X,NumberThreadGPU)
   backend = get_backend(Aux)
   M = size(Aux,1)

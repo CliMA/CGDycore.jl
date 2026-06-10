@@ -388,8 +388,10 @@ NonConservativeFlux = DGSEM.BuoyancyFlux()(Model.RhoPos,GPAuxPos)
 Model.NonConservativeFlux = NonConservativeFlux
 
 if FluxDG == "KennedyGruber"
-  Model.FluxAverage = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
-  Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
+  Model.FluxAverageH = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+    Model.RhoThPos,pAuxPos,Grid.Type)
+  Model.FluxAverageV = Model.FluxAverageH
+  Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverageH = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.RhoThPos,pAuxPos,GPAuxPos,Grid.Type)
@@ -408,7 +410,7 @@ elseif FluxDG == "KennedyGruberGrav"
 #     Model.wPos,Model.RhoThPos,3,4)
     Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast1()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
       Model.RhoThPos,3,4,GPAuxPos,Grid.Type)
-    Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
+    Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
   end  
 elseif FluxDG == "ArtianoExner"  
   Model.FluxAverage = DGSEM.ArtianoExner()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
