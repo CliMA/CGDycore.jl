@@ -47,7 +47,7 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=175.0 \
+  --dtau=85.0 \
   --dtauSmall=60.0 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
