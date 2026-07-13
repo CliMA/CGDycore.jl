@@ -1,79 +1,38 @@
-@kernel inbounds = true function RiemannNonLinV3Kernel!(RiemannSolver!,F,@Const(U),
-  @Const(Aux),@Const(NV),@Const(VolSurfV),
-  ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
-
-  Iz,ind = @index(Global, NTuple)
-
-
-  Nz = @uniform @ndrange()[1]
-  NumI = @uniform @ndrange()[2]
-
-  VLL = @private eltype(F) (NUMV,)
-  VRR = @private eltype(F) (NUMV,)
-  AuxL = @private eltype(F) (NAUX,)
-  AuxR = @private eltype(F) (NAUX,)
-  FLoc = @private eltype(F) (NUMV,)
-
-  if ind <= NumI
-    n1 = NV[Iz,ind,1]
-    n2 = NV[Iz,ind,2]
-    n3 = NV[Iz,ind,3]
-    if Iz == 1
-      @unroll for iAux = 1 : NAUX
-        AuxL[iAux] = Aux[1,Iz,ind,iAux]
-        AuxR[iAux] = AuxL[iAux]
+function JacDGTNeu(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,z,Phys)
+  RowInd = Int[]
+  ColInd = Int[]
+  Val = Float64[]
+  D = DG.DWZ
+  FTB = eltype(U)
+  N = size(dSdM,1)
+  RhoPos = 1
+  ThPos = 5
+  nz = size(U,2)
+  M = size(U,1)
+  oneM = ones(M)
+  NF = size(z,3)
+  JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
+  for iz = 1 : nz
+    for i = 1 : M
+      for j = 1 : M
+        push!(RowInd,i+(iz-1)*M)
+        push!(ColInd,j+(iz-1)*M)
+        push!(Val,-D[i,j])
       end
-      @unroll for iv = 1 : NUMV
-        VLL[iv] = U[1,Iz,ind,iv]
-        VRR[iv] = VLL[iv]
-      end
-      t = eltype(F)(2) * (n1 * VLL[2] +
-        n2 * VLL[3] +
-        n3 * VLL[4])
-      VLL[2] -= n1 * t
-      VLL[3] -= n2 * t
-      VLL[4] -= n3 * t
-      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ind]  
-      @unroll for iv = 1 : NUMV  
-        F[1,Iz,ind,iv] += FLoc[iv] * Surf
-      end  
-    elseif Iz == Nz 
-      @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[end,Iz-1,ind,iAux]
-        AuxR[iAux] = AuxL[iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[end,Iz-1,ind,iv]
-        VRR[iv] = VLL[iv]
-      end  
-      t = eltype(F)(2) * (n1 * VRR[2] +
-        n2 * VRR[3] +
-        n3 * VRR[4])
-      VRR[2] -= n1 * t
-      VRR[3] -= n2 * t
-      VRR[4] -= n3 * t
-      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ind]   
-      @unroll for iv = 1 : NUMV  
-        F[end,Iz-1,ind,iv] -= FLoc[iv] * Surf
-      end  
-    else
-      @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[end,Iz-1,ind,iAux]
-        AuxR[iAux] = Aux[1,Iz,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[end,Iz-1,ind,iv]
-        VRR[iv] = U[1,Iz,ind,iv]
-      end  
-      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
-      Surf = VolSurfV[Iz,ind]  
-      @unroll for iv = 1 : NUMV  
-        FLoc[iv] *= Surf
-        F[end,Iz-1,ind,iv] -= FLoc[iv]
-        F[1,Iz,ind,iv] += FLoc[iv]
-      end  
-    end    
-  end  
+    end
+  end
+  DGeo = sparse(RowInd, ColInd, Val,N,N)
+  JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
+    ID = 1
+    @views zCol = z[:,ID]
+    diagz = spdiagm(2.0 ./ reshape(vec(oneM*zCol'),N))
+    Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
+    dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
+      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
+    Geo = reshape(Aux[:,:,ID,2],N)
+    Jac = [sparse(fac*I,N,N)  -diagz* dSdS * diagm(dpdRhoTh) -diagz * dSdM
+           spzeros(N,N) sparse(fac*I,N,N) - diagz*diagm(Th)*dSdS*diagm(dpdRhoTh)  -diagz*dSdM*diagm(Th)
+           -diagz * diagm(Geo) * DGeo -diagz*dMdS*diagm(dpdRhoTh) sparse(fac*I,N,N)-diagz*dMdM]
+    JacLU[ID] = lu(Jac)
+  return JacLU,Jac
 end

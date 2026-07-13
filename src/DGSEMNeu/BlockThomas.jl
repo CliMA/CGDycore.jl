@@ -14,11 +14,11 @@ function block_thomas_optimized!(X, A, B, C, D, C_prime, D_prime)
     
     # Erster Block (i = 1)
     # B[1] \ C[1] löst das System exakt via Cramerscher Regel/unrolled LU auf Registern
-    C_prime[1] = B[1] \ C[1]
-    D_prime[1] = B[1] \ D[1]
+    @time C_prime[1] = B[1] \ C[1]
+    @time D_prime[1] = B[1] \ D[1]
     
     # Folgende Blöcke (i = 2 bis n)
-    @inbounds for i in 2:n
+    @time @inbounds for i in 2:n
         # Keine Allokation: Operationen auf SMatrix/SVector erzeugen keinen Heap-Speicher
         Gamma = B[i] - A[i] * C_prime[i-1]
         
@@ -32,10 +32,10 @@ function block_thomas_optimized!(X, A, B, C, D, C_prime, D_prime)
     # --- 2. Rückwärtssubstitution ---
     
     # Letzter Block (i = n)
-    X[n] = D_prime[n]
+    @time X[n] = D_prime[n]
     
     # Von n-1 rückwärts bis 1
-    @inbounds for i in (n-1):-1:1
+    @time @inbounds for i in (n-1):-1:1
         X[i] = D_prime[i] - C_prime[i] * X[i+1]
     end
     
@@ -45,7 +45,7 @@ end
 # ==============================================================================
 # BENCHMARK & PERFORMANCE-TEST
 # ==============================================================================
-using BenchmarkTools
+#using BenchmarkTools
 
 n = 1000 # Anzahl der 3x3 Blöcke
 
@@ -66,4 +66,6 @@ D_tmp   = Vector{BlockVec}(undef, n)
 
 # Benchmark ausführen
 println("--- Performance-Ergebnis ---")
-@btime block_thomas_optimized!($X_res, $A, $B, $C, $D, $C_tmp, $D_tmp)
+#@btime block_thomas_optimized!($X_res, $A, $B, $C, $D, $C_tmp, $D_tmp)
+@time block_thomas_optimized!(X_res, A, B, C, D, C_tmp, D_tmp)
+@time block_thomas_optimized!(X_res, A, B, C, D, C_tmp, D_tmp)

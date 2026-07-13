@@ -621,7 +621,6 @@ function (profile::GalewskyExample)(Param,Phys,::VelocityC)
       uS=Param.uM/Param.eN*exp(FT(1.0)/((lat-Param.lat0G)*(lat-Param.lat1G)))
     end
     UC = Grids.VelSphere2Cart(SVector{3}(uS, FT(0), FT(0)),lon,lat)
-    @show UC
     return (Rho,UC[1],UC[2],UC[3],Th)
   end
   return local_profile
@@ -835,7 +834,9 @@ function (profile::BaroWaveDryExample)(Param,Phys,::VelocityS)
     else
       uSPert = FT(0.0)
     end
+    uSPert,vSPert = perturbation_stream_function(lon, lat, Z)
     uS = uS + uSPert
+    vS = vS + vSPert
     w = FT(0)
 
     qV = FT(0)
@@ -914,7 +915,9 @@ function (profile::BaroWaveDryExample)(Param,Phys,::VelocityC)
     else
       uSPert = FT(0.0)
     end
+    uSPert,vSPert = perturbation_stream_function(lon, lat, Z)
     uS = uS + uSPert
+    uS = vS + vSPert
     w = FT(0)
     UC = Grids.VelSphere2Cart(SVector{3}(uS, vS, w),lon,lat)
 
@@ -925,6 +928,47 @@ function (profile::BaroWaveDryExample)(Param,Phys,::VelocityC)
     return (Rho,UC[1],UC[2],UC[3],Th,E,IE,qV,qC)
   end
   return local_profile
+end
+
+# Perturbation as in Equations 25 and 26 of the paper (analytical derivative)
+function perturbation_stream_function(lon, lat, z)
+    # Parameters from Table 1 in the paper
+    # Corresponding names in the paper are commented
+    perturbation_radius = 1 / 6      # d₀ / a
+    perturbed_wind_amplitude = 1      # Vₚ
+    perturbation_lon = pi / 9     # Longitude of perturbation location
+    perturbation_lat = 2 * pi / 9 # Latitude of perturbation location
+    pertz = 15000    # Perturbation height cap
+
+    # Great circle distance (d in the paper) divided by a (radius of the Earth)
+    # because we never actually need d without dividing by a
+    great_circle_distance_by_a = acos(sin(perturbation_lat) * sin(lat) +
+                                      cos(perturbation_lat) * cos(lat) *
+                                      cos(lon - perturbation_lon))
+
+    # In the first case, the vertical taper function is per definition zero.
+    # In the second case, the stream function is per definition zero.
+    if z > pertz || great_circle_distance_by_a > perturbation_radius
+        return 0, 0
+    end
+
+    # Vertical tapering of stream function
+    perttaper = 1 - 3 * z^2 / pertz^2 + 2 * z^3 / pertz^3
+
+    # sin/cos(pi * d / (2 * d_0)) in the paper
+    sin_, cos_ = sincos(0.5f0 * pi * great_circle_distance_by_a / perturbation_radius)
+
+    # Common factor for both u and v
+    factor = 16 / (3 * sqrt(3)) * perturbed_wind_amplitude * perttaper * cos_^3 * sin_
+
+    u_perturbation = -factor * (-sin(perturbation_lat) * cos(lat) +
+                      cos(perturbation_lat) * sin(lat) * cos(lon - perturbation_lon)) /
+                     sin(great_circle_distance_by_a)
+
+    v_perturbation = factor * cos(perturbation_lat) * sin(lon - perturbation_lon) /
+                     sin(great_circle_distance_by_a)
+
+    return u_perturbation, v_perturbation
 end
 
 Base.@kwdef struct BaroWaveMoistExample <: Example end
@@ -1352,7 +1396,6 @@ end
   LapseRate = Param.LapseRate
   Grav = Phys.Grav
   Rd = Phys.Rd
-
   T0 * Grav / LapseRate * (1 - eta^(Rd * LapseRate / Grav))
 end  
 

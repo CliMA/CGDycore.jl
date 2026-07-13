@@ -123,6 +123,21 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
+  elseif str == "ROS4O3opt16c"  
+    nStage = 4
+    alpha = zeros(FT,nStage,nStage)
+    b = zeros(FT,nStage)
+    Gamma = zeros(FT,nStage,nStage)
+    a = [0.0 0.0 0.0 0.0
+         1.136113491829512 0.0 0.0 0.0
+         0.372581587838954 0.07833498882701449 0.0 0.0
+         0.5747427715178236 0.42923968650989686 0.36363414977970093 0.0]
+    c = [0.0 0.0 0.0 0.0
+         -0.6230411463733114 0.0 0.0 0.0
+         -0.789900661682271 -0.9237182128061149 0.0 0.0
+         -1.0437398269817402 -1.4957992214645832 -1.03254328946513 0.0]
+    m = [1.0113167425588894, 1.0323629351931771, 0.6900192046862016, 0.6563078475027212]
+    gamma = 1.0
   elseif str == "ROS2W"
     @show "ROS2W"
     nStage = 2

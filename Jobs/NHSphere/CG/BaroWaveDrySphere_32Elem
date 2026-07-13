@@ -35,9 +35,9 @@ julia --project Examples/DriverCG.jl \
   --OrdPrint=2 \
   --OrdPrintZ=0 \
   --vtkFileName="output/VTK/BaroWaveDrySphere/CGE32Quad" \
-  --dtau=150 \
+  --dtau=230 \
   --IntMethod="Rosenbrock" \
-  --Table="SSP-Knoth" \
+  --Table="ROS4O3opt16c" \
   `#Grid `        \
   --GridForm="Spherical" \
   --Stretch=true \

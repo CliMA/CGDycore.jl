@@ -1,5 +1,6 @@
-module DGSEM
+module DGSEMNeu
 
+import ..Parameters as P
 import ..DG
 import ..Parallels
 import ..Examples
@@ -28,8 +29,8 @@ include("Rotation.jl")
 include("RiemannNonLin.jl")
 include("FluxVolumeNonLin.jl")
 include("Fcn.jl")
-#include("Jac.jl")
-include("JacGPU.jl")
+include("Jac.jl")
+#include("JacMarco.jl")
 include("JacFluxVolumeSparse.jl")
 include("JacRiemannSparse.jl")
 include("JacGravitySparse.jl")

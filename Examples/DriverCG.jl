@@ -278,7 +278,7 @@ if HyperDGrad == 0
 else
   Model.HyperDGrad = HyperDGrad   
 end
-if Model.HyperDDiv == 0
+if HyperDDiv == 0
   Model.HyperDDiv = CGSEM.HyperViscosity(nPanel)
 else
   Model.HyperDDiv = HyperDDiv  
@@ -641,10 +641,13 @@ if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "Ro
 # O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
   Fcn = (CGSEM.Fcn!,)
   dt = (dtau,)
+elseif IntMethod == "RungeKuttaEx"
+  MethodInt = Integration.RungeKuttaExMethod{FTB}(Table)
+  Fcn = (CGSEM.Fcn!,)
+  dt = dtau
 end  
 Integration.TimeStepper(MethodInt,dt,U,Fcn,CGSEM.JacGPU!,CG,Exchange,Metric,
     Trans,Phys,Param,Grid,Global,Grid.Type,Model.Equation)
-@show sum(abs.(U))
 
 #TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,Grid,
 #  Global,ElemType::Grids.ElementType,VelForm)

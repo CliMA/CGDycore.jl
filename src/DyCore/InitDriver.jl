@@ -120,6 +120,7 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,T
   nz = Grid.nz
   Proc = ParallelCom.Proc
   ProcNumber = ParallelCom.ProcNumber
+  NumberThreadGPU = ParallelCom.NumberThreadGPU
 
   TimeStepper = TimeStepperStruct{FT}(backend)
 
@@ -151,7 +152,8 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,T
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-  (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
+# (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
+  Metric = FiniteElements.MetricCompute(backend,FT,CG,Model,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output Orography
   nzTemp = Global.Grid.nz
@@ -213,7 +215,7 @@ function InitCartDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,To
 
 # Metric = DGSEM.DiscretizationDG(backend,FT,DG,Exchange,Global,zS,Grid.Type)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  Metric = FiniteElements.Metric!(backend,FT,DG,Grid,NumberThreadGPU,zS)
+  Metric = FiniteElements.MetricCompute(backend,FT,DG,Model,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output Orography
 # nzTemp = Global.Grid.nz

@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/testNHCart.jl \
+julia --project Examples/DriverCG.jl \
   --Problem="BaroWaveDryCart" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
@@ -8,6 +8,7 @@ julia --project Examples/testNHCart.jl \
   --RefProfile=false \
   --Equation="CompressibleShallow" \
   --State="Dry" \
+  --VelocityForm="Cartesian" \
   --Buoyancy=true \
   --Coriolis=true \
   --CoriolisType="FPlane" \
@@ -39,6 +40,9 @@ julia --project Examples/testNHCart.jl \
   --P3=400.0\
   --Stretch=false \
   --StretchType="ICON" \
+  --GridForm="Cartesian" \
+  --OrdPrint=3 \
+  --vtkFileName="output/VTK/BaroWaveCart/CGCart" \
   --H=30000.0 \
   --Lx=40000000.0 \
   --Ly=6000000.0 \

@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGVertical, GPU, DyCore, DGSEM
+  Thermodynamics, Sources, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DyCore, DGSEMNeu
 using MPI
 using Base
 using CUDA
@@ -467,6 +467,105 @@ function Permutation(M,nz)
   end
   return p
 end  
+function PermutationAndres(M,nz)
+#Permutation
+  N = M * nz
+  p = zeros(Int,3*N)
+  ii = 0
+  ivRho = 1
+  ivw = 3
+  ivTh = 2
+  for iz = 1 : nz
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivRho - 1) * N
+    end
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivTh - 1) * N
+    end
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivw - 1) * N
+    end
+  end
+  for iz = 1 : nz
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivRho - 1) * N
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivw - 1) * N
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivTh - 1) * N
+  end
+  return p
+end
+
+function PermutationAndres1(M,nz)
+#Permutation
+  N = M * nz
+  p = zeros(Int,3*N)
+  ii = 0
+  ivRho = 1
+  ivw = 3
+  ivTh = 2
+  for iz = 1 : nz
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivRho - 1) * N
+    end
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivTh - 1) * N
+    end
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivw - 1) * N
+    end
+  end
+  for iz = 1 : nz
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivRho - 1) * N
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivTh - 1) * N
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivw - 1) * N
+  end
+  return p
+end
+
+function PermutationAndres2(M,nz)
+#Permutation
+  N = M * nz
+  p = zeros(Int,3*N)
+  ii = 0
+  ivRho = 1
+  ivw = 3
+  ivTh = 2
+  for iz = 1 : nz
+    for k = 1 : M 
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivRho - 1) * N
+    end
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivTh - 1) * N
+    end
+    for k = 1 : M - 1
+      ii += 1
+      p[ii] = k + (iz - 1) * M + (ivw - 1) * N
+    end
+  end
+  for iz = 1 : nz
+#     ii += 1
+#     p[ii] = M + (iz - 1) * M + (ivRho - 1) * N
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivTh - 1) * N
+      ii += 1
+      p[ii] = M + (iz - 1) * M + (ivw - 1) * N
+  end
+  return p
+end
+
 
 function Recover(JacS,M,nz,Physi,fac)
   M2 = M - 2
@@ -484,7 +583,7 @@ function Recover(JacS,M,nz,Physi,fac)
        A31 A32 fac*sparse(I,M2,M2)]
     A31F = collect(A31)   
     SA = I(M2)*fac - (1.0 / fac) * A31F * A13 - (1.0 / fac) *A32 * A23
-    DGSEM.LUFull!(SA)
+    DGSEMNeu.LUFull!(SA)
     @show sum(abs.(SA - JacS.SA[:,:,iz,1]))
     JacSP11 = [JacSP11 spzeros(m11*(iz-1),m11)
             spzeros(m11,m11*(iz-1)) AS11]
@@ -552,7 +651,7 @@ ParallelCom = DyCore.ParallelComStruct()
 ParallelCom.Proc = Proc
 ParallelCom.ProcNumber  = ProcNumber
 
-Problem = "HillAgnesiXCart"
+Problem = "WarmBubble2DXCart"
 Param = Examples.Parameters(FTB,Problem)
 # Physical parameters
 Phys = DyCore.PhysParameters{FTB}()
@@ -567,20 +666,30 @@ Boundary.SN = "Period"
 Boundary.BT = "FreeSlip"
 nx = 2
 ny = 2
-Lx = 1000.0
-Ly = 1000.0
+Lx = 20000.0
+Ly = 2000.0
+H = 10000.0
 x0 = 0.0
 y0 = 0.0
-nz = 5
+nz = 10
 OrdPoly = 4
-OrdPolyZ = 4
+OrdPolyZ = 6
 M = OrdPolyZ + 1
 N = M * nz
 Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
+Grid.AdaptGrid = Grids.AdaptGrid(FTB,"Sleve",FTB(H))
 
 OrdPrint = 4
 OrdPrintZ = 4
-DG = FiniteElements.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,ParallelCom.Proc)
+DGMethod = ""
+TopoS = ""
+Topography=(TopoS=TopoS,
+              )
+TopoProfile = Examples.Flat()()
+(DG, Metric, Exchange, Global) = DyCore.InitCartDG(backend,FTB,OrdPoly,OrdPolyZ,DGMethod,
+    OrdPrint,OrdPrintZ,H,Topography,Model,
+    Phys,TopoProfile,CellToProc,Grid,ParallelCom)
+#DG = FiniteElements.DGQuad{FTB}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,ParallelCom.Proc)
 
 
 fac = 0.5
@@ -590,8 +699,11 @@ Aux = rand(M,nz,DG.NumG,4)
 H = 10000.0
 dzLoc = H / nz
 dz = ones(nz,DG.NumG) * dzLoc
+Metric.dz = dz
 
-Profile = Examples.StratifiedExample()(Param,Phys)
+VelForm = Examples.VelocityC()
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
+Profile = Model.InitialProfile
 time = 0.0
 for iz = 1 : nz
   z0 = (iz - 1) * dzLoc  
@@ -605,17 +717,71 @@ for iz = 1 : nz
   end
 end
 
-dSdS,dSdM,dMdS,dMdM = DGSEM.InitJacDG(DG,nz,Param)
-JacS = DGSEM.JacDGVert(backend,FTB,M,nz,DG.NumI)
+Model.GPAuxPos = 2
+Model.GeoPotential = Sources.GeoPotentialDeep()(Model.GPAuxPos,Grid.Form)
+DGSEMNeu.GeoPot(Aux,DG,Metric,Exchange,Global)
+Geo = Aux[:,:,:,Model.GPAuxPos]
 
-fac = 2.0
-JacLU, Jac = DGSEM.JacDGTNeu(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
-DGSEM.FillJacDGVert!(JacS,U,DG,dz,fac,Phys,Param)
-DGSEM.SchurBoundary!(JacS)
+# Version Marco
+dt = 2.0
+JCacheA = DGSEMNeu.JacobianCacheMarcoSplitNS(backend,FTB,M,nz,DG)
+DGSEMNeu.precompute_gravity!(Geo,Metric.dz,JCacheA)
+DGSEMNeu.FillJacDGVertKernel!(JCacheA, U, Metric.dz, fac)
+DGSEMNeu.SchurBoundaryKernel!(JCacheA, Metric.dz, Phys)
+DGSEMNeu.luBandkernel!(JCacheA)
+b = rand(M,nz,DG.NumG,5)
+c = zeros(M,nz,DG.NumG,5)
+d = zeros(M,nz,DG.NumG,5)
+@. b = b + 5.0
+@. c = b
+@. d = b
 
-p = Permutation(M,nz)
+DGSEMNeu.solve_jacobian!(b, JCacheA, Metric)
+
+# Version Oswald
+dt = 2.0
+JCacheO = DGSEMNeu.JacDGVert(backend,FTB,M,nz,DG)
+DGSEMNeu.FillJacDGVert!(JCacheO, U, DG, Metric.dz, fac, Phys)
+DGSEMNeu.SchurBoundary!(JCacheO)
+DGSEMNeu.Solve!(JCacheO,c)
+
+
+Gblk, dGeo = DGSEMNeu.DerivativeGeo(Geo,DG,dz)
+dSdS,dSdM,dMdS,dMdM = DGSEMNeu.InitJacDG(DG,nz,Param)
+
+fac = 0.5
+JacLU, Jac = DGSEMNeu.JacDGTNeu(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dGeo,dz,Phys)
+
+
+dF = zeros(M*nz*3)
+idF = 0
+@inbounds for iv in [1,5,4]
+  @inbounds for iz = 1 : nz
+    @inbounds for i = 1 : M
+      global idF += 1
+      dF[idF] = d[i,iz,1,iv]
+    end
+  end
+end
+ldiv!(JacLU[1],dF)
+idF = 0
+@inbounds for iv in [1,5,4]
+  @inbounds for iz = 1 : nz
+    @inbounds for i = 1 : M
+      global idF += 1
+      d[i,iz,1,iv] = dF[idF] 
+    end
+  end
+end
+stop
+
+DGSEMNeu.FillJacDGVert!(JacS,U,DG,dz,fac,Phys)
+
+#DGSEMNeu.SchurBoundary!(JacS)
+
+p = PermutationAndres1(M,nz)
 JacP = Jac[p,p]
-n22 = 4*nz
+n22 = 3*nz
 n11 = 3*M*nz - n22
 JacP11 = JacP[1:n11,1:n11]
 JacP12 = JacP[1:n11,n11+1:end]
@@ -631,6 +797,7 @@ JacP22F = collect(JacP22)
 SchurJacPF = JacP22F - JacP21F * (JacP11F \ JacP12F)
 SchurJacP = sparse(SchurJacPF)
 SchurJacPB = BandedMatrix(SchurJacP)
+stop
 
 
 
@@ -650,10 +817,10 @@ ibF = 0
     end
   end
 end
-JacVLU, A = DGSEM.JacDG(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
-#JacVLU = DGSEM.JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
+JacVLU, A = DGSEMNeu.JacDG(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
+#JacVLU = DGSEMNeu.JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
 ldiv!(JacVLU[1],bF)
-DGSEM.ldivVertical!(JacS,b)
+DGSEMNeu.ldivVertical!(JacS,b)
 
 stop
 bR = zeros(M*nz*3)
@@ -662,7 +829,7 @@ b1R = reshape(b1,M*nz*3)
 @. bR = b1R
 bRP .= bR[p]
 ldiv!(JacLU[1],bR)
-DGSEM.ldivVertical!(JacS,b)
+DGSEMNeu.ldivVertical!(JacS,b)
 @views @. b1[:,:,1] = b[:,:,1,1]
 @views @. b1[:,:,2] = b[:,:,1,5]
 @views @. b1[:,:,3] = b[:,:,1,4]

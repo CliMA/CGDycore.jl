@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverMarcoDG.jl \
+julia --project --check-bounds=yes Examples/DriverMarcoMDG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
@@ -37,11 +37,11 @@ julia --project Examples/DriverMarcoDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=90 \
+  --dtau=170 \
   --dtauSmall=5 \
   --IntMethod="Rosenbrock" \
   --IntMethodFast="LSRungeKutta" \
-  --Table="SSP-Knoth" \
+  --Table="S4O2LA" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \
@@ -50,7 +50,7 @@ julia --project Examples/DriverMarcoDG.jl \
   --nLon=20 \
   --nLat=20 \
   --nz=13 \
-  --nPanel=20 \
+  --nPanel=10 \
   --H=30000.0 \
   --OrdPoly=4 \
   --OrdPolyZ=4 \

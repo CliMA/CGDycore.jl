@@ -28,4 +28,5 @@ include("parse_commandline.jl")
   const global kappa = Rd / Cpd
   const global T0 = 273.15
   const global T00 = 273.15 -35.0
+  const global cS = 360.0
 end 

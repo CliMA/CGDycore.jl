@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/Driver.jl \
+julia --project Examples/DriverCG.jl \
   --Problem="WarmBubble2DXCart" \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
@@ -16,7 +16,7 @@ julia --project Examples/Driver.jl \
   --Curl=false \
   --ModelType="VectorInvariant" \
   --dtau=.2 \
-  --IntMethod="RungeKutta" \
+  --IntMethod="RungeKuttaEx" \
   --Table="RK4" \
   --TopoS="" \
   --GridForm="Cartesian" \

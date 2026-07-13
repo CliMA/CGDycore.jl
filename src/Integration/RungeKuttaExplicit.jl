@@ -33,7 +33,19 @@ function TimeIntegration!(RK::RungeKuttaExMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys
     @inbounds for jStage=1:iStage-1
       @views @. VnI = VnI + dt * RK.A[iStage,jStage] * f[:,:,:,:,jStage]
     end
+    @show iStage,minimum(Vn[:,:,:,2]./Vn[:,:,:,1])
+    @show iStage,maximum(Vn[:,:,:,2]./Vn[:,:,:,1])
+    @show iStage,minimum(Vn[:,:,:,3]./Vn[:,:,:,1])
+    @show iStage,maximum(Vn[:,:,:,3]./Vn[:,:,:,1])
+    @show iStage,minimum(Vn[:,:,:,4]./Vn[:,:,:,1])
+    @show iStage,maximum(Vn[:,:,:,4]./Vn[:,:,:,1])
+    @show iStage,minimum(Vn[:,:,:,5]./Vn[:,:,:,1])
+    @show iStage,maximum(Vn[:,:,:,5]./Vn[:,:,:,1])
     @views FcnFull(f[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    @show minimum(f[:,:,:,5,iStage]./Vn[:,:,:,1])
+    @show maximum(f[:,:,:,5,iStage]./Vn[:,:,:,1])
+    @show minimum(f[:,:,:,4,iStage]./Vn[:,:,:,1])
+    @show maximum(f[:,:,:,4,iStage]./Vn[:,:,:,1])
   end
   @inbounds for iStage=1:RK.nStage
     @views @. V = V + dt * RK.b[iStage] * f[:,:,:,:,iStage]

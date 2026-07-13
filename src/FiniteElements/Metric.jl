@@ -757,6 +757,9 @@ end
   end
 end
 
+@kernel inbounds = true function ApplyRotateKernel!(dXdxI,@Const(X),::Grids.CartesianGrid)
+end
+
 @kernel inbounds = true function ApplyRotateKernel!(dXdxI,@Const(X),::Grids.SphericalGrid)
 
   ID, K, iz   = @index(Local, NTuple)
@@ -1345,6 +1348,23 @@ end
     z = X[ID,2,3,Iz,IF]
     r2 = sqrt(x * x + y * y + z * z)
     dz[Iz,ind] =  r2 - r1
+  end
+end
+
+@kernel inbounds = true function GridSizeCartKernel!(zP,dz,@Const(X),@Const(Glob))
+
+  ID,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[2]
+  NF = @uniform @ndrange()[3]
+
+
+  if Iz <= Nz && IF <= NF
+    ind = Glob[ID,IF]
+    z1 = X[ID,1,3,Iz,IF]
+    z2 = X[ID,2,3,Iz,IF]
+    zP[Iz,ind] = eltype(X)(0.5) * (z1 + z2)
+    dz[Iz,ind] =  z2 - z1
   end
 end
 
