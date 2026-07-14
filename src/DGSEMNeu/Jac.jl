@@ -1710,7 +1710,9 @@ end
     @inbounds for k in 1:(n - 1)
       @inbounds for i in (k + 1):n
         sa = SA[i, k, iz, ID]
-        r3[i, 1] -= sa * r3[k, 1];  r3[i, 2] -= sa * r3[k, 2];  r3[i, 3] -= sa * r3[k, 3]
+        r3[i, 1] += -sa * r3[k, 1]
+        r3[i, 2] += -sa * r3[k, 2]
+        r3[i, 3] += -sa * r3[k, 3]
       end
     end
     @inbounds for k in n:-1:1
@@ -1718,7 +1720,9 @@ end
       r3[k, 1] *= sak;  r3[k, 2] *= sak;  r3[k, 3] *= sak
       @inbounds for i in 1:(k - 1)
         sa = SA[i, k, iz, ID]
-        r3[i, 1] -= sa * r3[k, 1];  r3[i, 2] -= sa * r3[k, 2];  r3[i, 3] -= sa * r3[k, 3]
+        r3[i, 1] -= sa * r3[k, 1]
+        r3[i, 2] -= sa * r3[k, 2]
+        r3[i, 3] -= sa * r3[k, 3]
       end
     end
   end
@@ -1731,15 +1735,18 @@ end
     @inbounds for k in 1:(n - 1)
       @inbounds for i in (k + 1):n
         sa = SA[i, k, iz, ID]
-        r3[i, 1] -= sa * r3[k, 1];  r3[i, 2] -= sa * r3[k, 2]
+        r3[i, 1] -= sa * r3[k, 1]
+        r3[i, 2] -= sa * r3[k, 2]
       end
     end
     @inbounds for k in n:-1:1
       sak = inv(SA[k, k, iz, ID])
-      r3[k, 1] *= sak;  r3[k, 2] *= sak
+      r3[k, 1] *= sak
+      r3[k, 2] *= sak
       @inbounds for i in 1:(k - 1)
         sa = SA[i, k, iz, ID]
-        r3[i, 1] -= sa * r3[k, 1];  r3[i, 2] -= sa * r3[k, 2]
+        r3[i, 1] -= sa * r3[k, 1]
+        r3[i, 2] -= sa * r3[k, 2]
       end
     end
   end
@@ -1881,21 +1888,27 @@ function SchurBoundary!(cache::JacobianCacheMarcoSplitNS, dz, Phys)
   end
 end
 
-#=
 function SchurBoundary!(cache::JacobianCacheMarcoSplitNS, dz, NumberThreadGPU::Int64)
   (; M, nz, NumI, A12_11, A22_diag, DWS, Th_cache, dpdRhoTh_cache, Gblk,
      SA, SchurD, SchurL, SchurU, fac, invwB) = cache
   FT      = eltype(SA)
-  invfac  = inv(fac)
-  cS = P.cS
-  invcS   = inv(cS)
-  polydeg = M - 1
+  backend = get_backend(SA)
+
+  DoFG = 10
+  group = (nz,DoFG)
+  ndrange = (nz,NumI) 
+
+  KSchurBoundaryKernel! = SchurBoundaryKernel!(backend,group)
+  KSchurBoundaryKernel!(SchurD,SchurL,SchurU,A12_11,A22_diag,SA,DWS,Th_cache,dpdRhoTh_cache,Gblk,dz,fac,invwB, 
+    Val(M),ndrange=ndrange)
 end  
 
-@kernel inbounds=true function SchurBoundaryKernel!(cache::JacobianCacheMarcoSplitNS, dz, Phys)
-  (; M, nz, NumI, A12_11, A22_diag, DWS, Th_cache, dpdRhoTh_cache, Gblk,
-     SA, SchurD, SchurL, SchurU, fac, invwB) = cache
-  FT      = eltype(SA)
+@kernel inbounds=true function SchurBoundaryKernel!(SchurD,SchurL,SchurU,@Const(A12_11),@Const(A22_diag), 
+  @Const(SA),@Const(DWS),@Const(Th_cache),@Const(dpdRhoTh_cache),@Const(Gblk),@Const(dz),fac,invwB, ::Val{M}) where M
+
+
+  @uniform FT = eltype(SchurD)
+
   iz,ID = @index(Global, NTuple)
   NumI = @uniform @ndrange()[2]
 
@@ -1907,9 +1920,6 @@ end
   r1 = @private FT (M - 1, 3)
   r2 = @private FT (M - 1, 3)
   r3 = @private FT (M - 1, 3)
-  Th = @private FT (M - 1)
-  dpdRhoTh = @private FT (M - 1)
-  SAL = @private FT (M - 1, M -1)
 
   if ID <= NumI
     a12    = A12_11[iz, ID]
@@ -1963,9 +1973,9 @@ end
         p2 += c1j * dpdRhoTh_cache[j, iz, ID] * r2[j,col]
         pg += Gblk[M, j, iz, ID] * r1[j,col]
       end
-      SchurD[1, col, iz, ID] -= p1
-      SchurD[2, col, iz, ID] -= p2 + pg          # Cgrav (ϱw_M ← interior ϱ)
-      SchurD[3, col, iz, ID] -= p3
+      @atomic SchurD[1, col, iz, ID] -= p1
+      @atomic SchurD[2, col, iz, ID] -= p2 + pg          # Cgrav (ϱw_M ← interior ϱ)
+      @atomic SchurD[3, col, iz, ID] -= p3
       # C_p → SchurU[:,col,iz-1]  (node-1 response)
       if !is_iz1
         r2_1 = r2[1,col];  r3_1 = r3[1,col]
@@ -2005,9 +2015,9 @@ end
                           A22_diag, DWS, Th_cache, a12, inv2dz, invfac, is_iz1, polydeg)
         # C_p → SchurD[:,col,iz-1] self correction (node-1 response)
         r2_1 = r2[1,slot];  r3_1 = r3[1,slot]
-        SchurD[1, col, iz-1, ID] -= c2p1*r2_1 + c3p1*r3_1
-        SchurD[2, col, iz-1, ID] -= c2p2*r2_1 + c3p2*r3_1
-        SchurD[3, col, iz-1, ID] -= c2p3*r2_1 + c3p3*r3_1
+        @atomic SchurD[1, col, iz-1, ID] -= c2p1*r2_1 + c3p1*r3_1
+        @atomic SchurD[2, col, iz-1, ID] -= c2p2*r2_1 + c3p2*r3_1
+        @atomic SchurD[3, col, iz-1, ID] -= c2p3*r2_1 + c3p3*r3_1
         # C_self → SchurL[:,col,iz-1]  (full interior(iz) response + Cgrav)
         p1 = zero(FT);  p2 = zero(FT);  p3 = zero(FT);  pg = zero(FT)
         @unroll for j in 1:polydeg
@@ -2024,7 +2034,6 @@ end
     end
   end
 end
-=#
 
 # In-place 3×3 inverse (cofactors) written into Ainv[:,:,i,ID].
 @inline function invert_3x3!(Ainv, a11,a12,a13, a21,a22,a23, a31,a32,a33, i, ID)
@@ -2050,7 +2059,7 @@ end
 # Full 3×3 block-tridiagonal LU (Thomas).  Diagonal D, super-diag U, sub-diag L
 # are stored full 3×3 (rows = eqs ϱ_M,ϱw_M,ϱθ_M; cols = vars in the same order).
 # Lhat[i-1] = L[i-1]·Dinv[i-1];  D[i] -= Lhat[i-1]·U[i-1];  Dinv[i] = inv(D[i]).
-function block_lu!(F::JacobianCacheMarcoSplitNS)
+function luBand!(F::JacobianCacheMarcoSplitNS)
   D = F.SchurD;  U = F.SchurU;  L = F.SchurL;  Lh = F.SchurLhat;  Di = F.SchurDinv
   nz = F.nz
   NumI = F.NumI
@@ -2083,7 +2092,55 @@ function block_lu!(F::JacobianCacheMarcoSplitNS)
   return F
 end
 
-function solve!(F::JacobianCacheMarcoSplitNS, b::AbstractMatrix{T}) where T
+function luBand!(F::JacobianCacheMarcoSplitNS,NumberThreadGPU)
+  D = F.SchurD;  U = F.SchurU;  L = F.SchurL;  Lh = F.SchurLhat;  Di = F.SchurDinv
+  nz = F.nz
+  NumI = F.NumI
+
+  FT      = eltype(D)
+  backend = get_backend(D)
+
+  DoFG = 10
+  group = (DoFG)
+  ndrange = (NumI)
+
+  KluBandKernel! = luBandKernel!(backend,group)
+  KluBandKernel!(nz,D,Lh,Di,U,L,ndrange=ndrange)
+
+end  
+
+@kernel inbounds = true function luBandKernel!(nz,D,Lh,Di,@Const(U),@Const(L))
+
+  ID, = @index(Global, NTuple)
+  NumI = @uniform @ndrange()[1]
+  
+  if ID <= NumI
+    invert_3x3!(Di, D[1,1,1,ID],D[1,2,1,ID],D[1,3,1,ID],
+    D[2,1,1,ID],D[2,2,1,ID],D[2,3,1,ID],
+    D[3,1,1,ID],D[3,2,1,ID],D[3,3,1,ID], 1, ID)
+    for i in 2:nz
+      # Lhat = L[i-1] · Dinv[i-1]
+      @inbounds for c in 1:3
+        a1 = Di[1,c,i-1,ID];  a2 = Di[2,c,i-1,ID];  a3 = Di[3,c,i-1,ID]
+        Lh[1,c,i-1,ID] = L[1,1,i-1,ID]*a1 + L[1,2,i-1,ID]*a2 + L[1,3,i-1,ID]*a3
+        Lh[2,c,i-1,ID] = L[2,1,i-1,ID]*a1 + L[2,2,i-1,ID]*a2 + L[2,3,i-1,ID]*a3
+        Lh[3,c,i-1,ID] = L[3,1,i-1,ID]*a1 + L[3,2,i-1,ID]*a2 + L[3,3,i-1,ID]*a3
+      end
+      # D[i] -= Lhat · U[i-1]
+      @unroll for c in 1:3
+        u1 = U[1,c,i-1,ID];  u2 = U[2,c,i-1,ID];  u3 = U[3,c,i-1,ID]
+        D[1,c,i,ID] -= Lh[1,1,i-1,ID]*u1 + Lh[1,2,i-1,ID]*u2 + Lh[1,3,i-1,ID]*u3
+        D[2,c,i,ID] -= Lh[2,1,i-1,ID]*u1 + Lh[2,2,i-1,ID]*u2 + Lh[2,3,i-1,ID]*u3
+        D[3,c,i,ID] -= Lh[3,1,i-1,ID]*u1 + Lh[3,2,i-1,ID]*u2 + Lh[3,3,i-1,ID]*u3
+      end
+      invert_3x3!(Di, D[1,1,i,ID],D[1,2,i,ID],D[1,3,i,ID],
+        D[2,1,i,ID],D[2,2,i,ID],D[2,3,i,ID],
+        D[3,1,i,ID],D[3,2,i,ID],D[3,3,i,ID], i, ID)
+    end
+  end
+end
+
+function ldivVerticalS!(F::JacobianCacheMarcoSplitNS, b::AbstractMatrix{T}) where T
   nz = F.nz
   NumI = F.NumI
   U = F.SchurU;  Lh = F.SchurLhat;  Di = F.SchurDinv
@@ -2118,9 +2175,57 @@ function solve!(F::JacobianCacheMarcoSplitNS, b::AbstractMatrix{T}) where T
   return b
 end
 
-luBandkernel!(cache::JacobianCacheMarcoSplitNS) = block_lu!(cache)
+function ldivVerticalS!(F::JacobianCacheMarcoSplitNS, NumberThreadGPU) 
+  nz = F.nz
+  NumI = F.NumI
+  rs = F.rs; U = F.SchurU;  Lh = F.SchurLhat;  Di = F.SchurDinv
 
-function ldivVerticalFKernel!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz)
+
+  backend = get_backend(Di)
+
+  DoFG = 10
+  group = (DoFG)
+  ndrange = (NumI)
+
+  KldivVerticalSKernel! = ldivVerticalSKernel!(backend,group)
+  KldivVerticalSKernel!(rs,U,Lh,Di,nz,ndrange=ndrange)
+
+end  
+
+@kernel inbounds = true function ldivVerticalSKernel!(rs,@Const(U),@Const(Lh),@Const(Di),nz)
+
+  ID, = @index(Global, NTuple)
+  NumI = @uniform @ndrange()[1]
+
+  if ID <= NumI
+    # forward:  y[i] = rhs[i] - Lhat[i-1]·y[i-1]
+    for i in 2:nz
+      r = 3*(i-1);  rm = 3*(i-2)
+      y1 = rs[rm+1,ID];  y2 = rs[rm+2,ID];  y3 = rs[rm+3,ID]
+      rs[r+1,ID] -= Lh[1,1,i-1,ID]*y1 + Lh[1,2,i-1,ID]*y2 + Lh[1,3,i-1,ID]*y3
+      rs[r+2,ID] -= Lh[2,1,i-1,ID]*y1 + Lh[2,2,i-1,ID]*y2 + Lh[2,3,i-1,ID]*y3
+      rs[r+3,ID] -= Lh[3,1,i-1,ID]*y1 + Lh[3,2,i-1,ID]*y2 + Lh[3,3,i-1,ID]*y3
+    end
+    # back:  x[nz] = Dinv[nz]·y[nz]
+    r = 3*(nz-1)
+    y1 = rs[r+1,ID];  y2 = rs[r+2,ID];  y3 = rs[r+3,ID]
+    rs[r+1,ID] = Di[1,1,nz,ID]*y1 + Di[1,2,nz,ID]*y2 + Di[1,3,nz,ID]*y3
+    rs[r+2,ID] = Di[2,1,nz,ID]*y1 + Di[2,2,nz,ID]*y2 + Di[2,3,nz,ID]*y3
+    rs[r+3,ID] = Di[3,1,nz,ID]*y1 + Di[3,2,nz,ID]*y2 + Di[3,3,nz,ID]*y3
+    for i in nz-1:-1:1
+      r = 3*(i-1);  rp = 3*i
+      x1 = rs[rp+1,ID];  x2 = rs[rp+2,ID];  x3 = rs[rp+3,ID]
+      t1 = rs[r+1,ID] - (U[1,1,i,ID]*x1 + U[1,2,i,ID]*x2 + U[1,3,i,ID]*x3)
+      t2 = rs[r+2,ID] - (U[2,1,i,ID]*x1 + U[2,2,i,ID]*x2 + U[2,3,i,ID]*x3)
+      t3 = rs[r+3,ID] - (U[3,1,i,ID]*x1 + U[3,2,i,ID]*x2 + U[3,3,i,ID]*x3)
+      rs[r+1,ID] = Di[1,1,i,ID]*t1 + Di[1,2,i,ID]*t2 + Di[1,3,i,ID]*t3
+      rs[r+2,ID] = Di[2,1,i,ID]*t1 + Di[2,2,i,ID]*t2 + Di[2,3,i,ID]*t3
+      rs[r+3,ID] = Di[3,1,i,ID]*t1 + Di[3,2,i,ID]*t2 + Di[3,3,i,ID]*t3
+    end
+  end
+end
+
+function ldivVerticalF!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz)
   (; M, nz, NumI, A12_11, A22_diag, DWS, Th_cache, dpdRhoTh_cache, Gblk,
      rs, SA, invwB) = cache_jacobian
   FT      = eltype(SA)
@@ -2231,9 +2336,134 @@ function ldivVerticalFKernel!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz)
   end
 end
 
-ldivVerticalSKernel!(cache::JacobianCacheMarcoSplitNS) = solve!(cache, cache.rs)
+function ldivVerticalF!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz, NumberThreadGPU)
+  (; M, nz, NumI, A12_11, A22_diag, DWS, Th_cache, dpdRhoTh_cache, Gblk,
+     rs, SA, invwB, fac) = cache_jacobian
+  backend = get_backend(SA)
+  DoFG = 10
+  group = (nz,DoFG)
+  ndrange = (nz,NumI) 
 
-function ldivVerticalBKernel!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz)
+  KldivVerticalFKernel! = ldivVerticalFKernel!(backend,group)
+  KldivVerticalFKernel!(rs,b,A12_11,A22_diag,DWS,Th_cache,dpdRhoTh_cache,Gblk,SA,dz,fac,invwB, 
+    Val(M),ndrange=ndrange)
+end  
+
+@kernel inbounds = true function ldivVerticalFKernel!(rs,@Const(b),@Const(A12_11),@Const(A22_diag),@Const(DWS),
+ @Const(Th_cache),@Const(dpdRhoTh_cache),@Const(Gblk),@Const(SA),@Const(dz),fac,invwB, ::Val{M}) where M
+
+  iz,ID = @index(Global, NTuple)
+  nz = @uniform @ndrange()[1]
+  NumI = @uniform @ndrange()[2]
+
+  @uniform FT = eltype(rs)
+  invfac  = inv(fac)
+  cS = P.cS
+  invcS   = inv(cS)
+  polydeg = M - 1
+  RhoPos  = 1
+  wPos = 4
+  ThPos = 5
+  r2 = @private FT (M - 1,)
+  r3 = @private FT (M - 1,)
+  dpdRhoTh = @private FT (M,)
+
+  if ID <= NumI
+    sh     = (iz - 1) * 3
+    inv2dz = 2 / dz[iz, ID]
+    is_iz1 = (iz == 1)
+    rs[sh+1, ID] = b[M, iz, ID, RhoPos]
+    rs[sh+2, ID] = b[M, iz, ID, wPos]
+    rs[sh+3, ID] = b[M, iz, ID, ThPos]
+    @unroll for i in 1:polydeg
+      r2[i] = b[i, iz, ID, ThPos]
+      r3[i] = b[i, iz, ID, wPos]
+    end
+    # r3 -= invfac · G_II · b_ρ   (matvec; pointwise = -fgi·b_ρ)
+    @unroll for l in 1:polydeg
+      brl = b[l, iz, ID, RhoPos] * invfac
+      @unroll for i in 1:polydeg
+        r3[i] -= Gblk[i, l, iz, ID] * brl
+      end
+    end
+    @unroll for j in 1:polydeg
+      r2j_sc      = r2[j] * A22_diag[j, iz, ID]
+      dpdj_inv2dz = dpdRhoTh_cache[j, iz, ID] * inv2dz
+      @unroll for i in 1:polydeg
+        r3[i] -= DWS[i, j] * dpdj_inv2dz * r2j_sc
+      end
+    end
+    r3[1] += (is_iz1 ? 2 : 1) * DWS[1, 1] * dpdRhoTh_cache[1, iz, ID] * inv2dz *
+    r2[1] * A22_diag[1, iz, ID]
+    # A12 cross: r3[i] += invfac·A12_11·G_II[i,1]·A22⁻¹[1]·r2[1]  (column; pointwise row 1)
+    a12c = invfac * A12_11[iz, ID] * r2[1] * A22_diag[1, iz, ID]
+    @unroll for i in 1:polydeg
+      r3[i] += a12c * Gblk[i, 1, iz, ID]
+    end
+    ldivFull!(iz, ID, SA, r3, Val(M - 1))
+    @unroll for j in 1:polydeg
+      r3j        = r3[j]
+      thj_inv2dz = Th_cache[j, iz, ID] * inv2dz
+      @unroll for i in 1:polydeg
+        r2[i] -= DWS[i, j] * thj_inv2dz * r3j
+      end
+    end
+    if !is_iz1
+      r2[1] += DWS[1, 1] * Th_cache[1, iz, ID] * inv2dz * r3[1]
+    end
+    @unroll for i in 1:polydeg
+      r2[i] *= A22_diag[i, iz, ID]
+    end
+    rs1 = rs[sh+1, ID];  rs2 = rs[sh+2, ID];  rs3 = rs[sh+3, ID]
+    @unroll for j in 1:polydeg
+      c1j = inv2dz * DWS[M, j]
+      c3j = c1j * Th_cache[j, iz, ID]
+      c2j = c1j * dpdRhoTh_cache[j, iz, ID]
+      rs1 -= c1j * r3[j]
+      rs3 -= c3j * r3[j]
+      rs2 -= c2j * r2[j]
+    end
+    # Cgrav: rs[ρw_M] -= Σ_j G[M,j]·ρ_int[j]  (zero for pointwise)
+    cg = zero(FT)
+    @unroll for j in 1:polydeg
+      rhoj = b[j, iz, ID, RhoPos]
+      if j == 1
+        rhoj -= A12_11[iz, ID] * r2[1]
+      end
+      acc = zero(FT)
+      @unroll for l in 1:polydeg
+        acc += DWS[j, l] * r3[l]
+      end
+      rhoj -= inv2dz * acc
+      if !is_iz1 && j == 1
+        rhoj += inv2dz * DWS[1, 1] * r3[1]   # A13[1,1]=0
+      end
+      cg += Gblk[M, j, iz, ID] * (invfac * rhoj)
+    end
+    rs2 -= cg
+    rs[sh+1, ID] = rs1;  rs[sh+2, ID] = rs2;  rs[sh+3, ID] = rs3
+    if iz > 1
+      sh_prev = (iz - 2) * 3
+      x3_1 = r3[1];  x2_1 = r2[1]
+      invdzm1_invwB = invwB / dz[iz-1, ID]
+      dpd1     = dpdRhoTh_cache[1, iz, ID]
+      th1      = Th_cache[1, iz, ID]
+      thM_prev = Th_cache[M, iz-1, ID]
+      c2p1 = -dpd1 * invcS * invdzm1_invwB
+      c2p2 =  dpd1 * invdzm1_invwB
+      c2p3 = -thM_prev * dpd1 * invcS * invdzm1_invwB
+      c3p1 =  invdzm1_invwB
+      c3p2 = -cS * invdzm1_invwB
+      c3p3 =  th1 * invdzm1_invwB
+      rs[sh_prev+1, ID] -= c3p1*x3_1 + c2p1*x2_1
+      rs[sh_prev+2, ID] -= c3p2*x3_1 + c2p2*x2_1
+      rs[sh_prev+3, ID] -= c3p3*x3_1 + c2p3*x2_1
+    end
+  end
+end  
+
+
+function ldivVerticalB!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz)
     (; A12_11, A22_diag, DWS, Th_cache, dpdRhoTh_cache, Gblk,
        SA, rs, M, nz, NumI, invwB) = cache_jacobian
   FT      = eltype(SA)
@@ -2341,28 +2571,138 @@ function ldivVerticalBKernel!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz)
   end
 end
 
+function ldivVerticalB!(cache_jacobian::JacobianCacheMarcoSplitNS, b, dz, NumberThreadGPU)
+  (; M, nz, NumI, A12_11, A22_diag, DWS, Th_cache, dpdRhoTh_cache, Gblk,
+     rs, SA, invwB, fac) = cache_jacobian
+  backend = get_backend(SA)
+  DoFG = 10
+  group = (nz,DoFG)
+  ndrange = (nz,NumI) 
+
+  KldivVerticalBKernel! = ldivVerticalBKernel!(backend,group)
+  KldivVerticalBKernel!(b,rs,A12_11,A22_diag,DWS,Th_cache,dpdRhoTh_cache,Gblk,SA,dz,fac,invwB, 
+    Val(M),ndrange=ndrange)
+end  
+
+@kernel inbounds = true function ldivVerticalBKernel!(b,@Const(rs),@Const(A12_11),@Const(A22_diag),@Const(DWS),
+ @Const(Th_cache),@Const(dpdRhoTh_cache),@Const(Gblk),@Const(SA),@Const(dz),fac,invwB, ::Val{M}) where M
+
+  iz,ID = @index(Global, NTuple)
+  nz = @uniform @ndrange()[1]
+  NumI = @uniform @ndrange()[2]
+
+  @uniform FT = eltype(SA)
+  invfac  = inv(fac)
+  cS = P.cS
+  invcS   = 1 / cS
+  polydeg = M - 1
+  RhoPos  = 1
+  ThPos = 5
+  wPos = 4
+  r2 = @private FT (M - 1)
+  r3 = @private FT (M - 1)
+  if ID <= NumI
+    sh     = (iz - 1) * 3
+    fgi    = P.Grav * invfac
+    inv2dz = 2 / dz[iz, ID]
+    is_iz1 = (iz == 1)
+    b[M, iz, ID, RhoPos] = rs[sh+1, ID]
+    b[M, iz, ID, wPos]   = rs[sh+2, ID]
+    b[M, iz, ID, ThPos]  = rs[sh+3, ID]
+    ThM_self  = Th_cache[M, iz, ID]
+    dpdM_self = dpdRhoTh_cache[M, iz, ID]
+    rsh2 = rs[sh+2, ID];  rsh3 = rs[sh+3, ID]
+    @unroll for i in 1:polydeg
+      bdwsM                  = inv2dz * DWS[i, M]
+      r2[i]                  = b[i, iz, ID, ThPos] - bdwsM*ThM_self*rsh2
+      r3[i]                  = b[i, iz, ID, wPos]  - bdwsM*dpdM_self*rsh3
+      b[i, iz, ID, RhoPos] -= bdwsM*rsh2
+    end
+    if iz > 1
+      sh_prev = (iz - 2) * 3
+      rsp2 = rs[sh_prev+2, ID];  rsp3 = rs[sh_prev+3, ID]
+      invdz_cur = inv2dz / 2
+      dpdM_prev = dpdRhoTh_cache[M, iz-1, ID]
+      thM_prev  = Th_cache[M, iz-1, ID]
+      th1       = Th_cache[1, iz, ID]
+      b1m1 = -invwB * invdz_cur
+      b1m2 = -dpdM_prev * invcS * invwB * invdz_cur
+      b2m1 = -thM_prev * invdz_cur * invwB
+      b2m2 = -th1 * dpdM_prev * invcS * invdz_cur * invwB
+      b3m1 = -cS * invdz_cur * invwB
+      b3m2 = -dpdM_prev * invdz_cur * invwB
+      r2[1] -= b2m1*rsp2 + b2m2*rsp3
+      r3[1] -= b3m1*rsp2 + b3m2*rsp3
+      b[1, iz, ID, RhoPos] -= b1m1*rsp2 + b1m2*rsp3
+    end
+    # gravity rhs:  r3 -= invfac * G_II * b_rho_mod   (interior-interior block)
+    #  plus Bgrav:  r3 -= G[:,M] * rho_M              (boundary rho_M = rs[sh+1])
+    # both reduce to the pointwise  r3[i] -= fgi*b_rho[i]  when Gblk = g*I.
+    rhoM = rs[sh+1, ID]
+    @unroll for l in 1:polydeg
+      brl = b[l, iz, ID, RhoPos] * invfac
+      @unroll for i in 1:polydeg
+        r3[i] -= Gblk[i, l, iz, ID] * brl
+      end
+    end
+    @unroll for i in 1:polydeg
+      r3[i] -= Gblk[i, M, iz, ID] * rhoM
+    end
+    @unroll for j in 1:polydeg
+      r2j_sc      = r2[j] * A22_diag[j, iz, ID]
+      dpdj_inv2dz = dpdRhoTh_cache[j, iz, ID] * inv2dz
+      @inbounds for i in 1:polydeg
+        r3[i] -= DWS[i, j] * dpdj_inv2dz * r2j_sc
+      end
+    end
+    r3[1] += (is_iz1 ? 2 : 1) * DWS[1, 1] * dpdRhoTh_cache[1, iz, ID] * inv2dz *
+    r2[1] * A22_diag[1, iz, ID]
+    # A12 cross-term:  r3 += invfac*A12_11 * G[:,1] * (A22 r2)_1   (column over all rows)
+    a12c = invfac * A12_11[iz, ID] * r2[1] * A22_diag[1, iz, ID]
+    @unroll for i in 1:polydeg
+      r3[i] += a12c * Gblk[i, 1, iz, ID]
+    end
+    ldivFull!(iz, ID, SA, r3, Val(M - 1))
+    @unroll for j in 1:polydeg
+      r3j        = r3[j]
+      thj_inv2dz = Th_cache[j, iz, ID] * inv2dz
+      @unroll for i in 1:polydeg
+        r2[i] -= DWS[i, j] * thj_inv2dz * r3j
+      end
+    end
+    if !is_iz1
+      r2[1] += DWS[1, 1] * Th_cache[1, iz, ID] * inv2dz * r3[1]
+    end
+    @unroll for i in 1:polydeg
+      r2[i] *= A22_diag[i, iz, ID]
+    end
+    b[1, iz, ID, RhoPos] -= A12_11[iz, ID] * r2[1]
+    @unroll for j in 1:polydeg
+      r3j_inv2dz = r3[j] * inv2dz
+      @inbounds for i in 1:polydeg
+        b[i, iz, ID, RhoPos] -= DWS[i, j] * r3j_inv2dz
+      end
+    end
+    if !is_iz1
+      b[1, iz, ID, RhoPos] += DWS[1, 1] * inv2dz * r3[1]
+    end
+    @unroll for i in 1:polydeg
+      b[i, iz, ID, RhoPos] *= invfac
+      b[i, iz, ID, ThPos]   = r2[i]
+      b[i, iz, ID, wPos]    = r3[i]
+    end
+  end
+end
+
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacobianCacheMarcoSplitNS,Global,VelForm)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   @views Geo = Cache.Aux[:,:,:,2]
   precompute_gravity!(Geo,Metric.dz,JCache,NumberThreadGPU)
   Invfac = eltype(U)(1) / fac
   dz = Metric.dz
-  @show "Jac KA",Invfac
-# FillJacDGVert!(JCache, U, Metric.dz, Invfac,NumberThreadGPU)
-  FillJacDGVert!(JCache, U, Metric.dz, Invfac)
-  SchurBoundary!(JCache, Metric.dz, NumberThreadGPU::Int64)
-  luBandkernel!(JCache)
-end
-
-function JacM!(U,fac,DG,Metric,Phys,Cache,JCache::JacobianCacheMarcoSplitNS,Global,VelForm)
-  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  @views Geo = Cache.Aux[:,:,:,2]
-  precompute_gravity!(Geo,Metric.dz,JCache,NumberThreadGPU)
-  Invfac = eltype(U)(1) / fac
-  dz = Metric.dz
-  FillJacDGVert!(JCache, U, Metric.dz, Invfac)
-  SchurBoundary!(JCache, Metric.dz, Phys)
-  luBandkernel!(JCache)
+  FillJacDGVert!(JCache, U, Metric.dz, Invfac,NumberThreadGPU)
+  SchurBoundary!(JCache, Metric.dz, NumberThreadGPU)
+  luBand!(JCache, NumberThreadGPU)
 end
 
 function Solve!(k,v,Jac::JacDGVert,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
@@ -2381,16 +2721,16 @@ function Solve!(k,v,Jac::JacobianCacheMarcoSplitNS,fac,DG,Metric,Global,VelForm)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   @. k = v
   @views TendVCart2VSp!(k,DG,Metric,NumberThreadGPU,VelForm)
-  solve_jacobian!(k, Jac, Metric)
+  solve_jacobian!(k, Jac, Metric,NumberThreadGPU)
   @views @. k[:,:,:,2:3] *= fac
   @views TendVSp2VCart!(k,DG,Metric,NumberThreadGPU,VelForm)
 
 end
 
-function solve_jacobian!(b, cache_jacobian::JacobianCacheMarcoSplitNS, Metric)
-  ldivVerticalFKernel!(cache_jacobian, b, Metric.dz)
-  ldivVerticalSKernel!(cache_jacobian)
-  ldivVerticalBKernel!(cache_jacobian, b, Metric.dz)
+function solve_jacobian!(b, cache_jacobian::JacobianCacheMarcoSplitNS, Metric, NumberThreadGPU)
+  ldivVerticalF!(cache_jacobian, b, Metric.dz, NumberThreadGPU)
+  ldivVerticalS!(cache_jacobian, NumberThreadGPU)
+  ldivVerticalB!(cache_jacobian, b, Metric.dz, NumberThreadGPU)
 end
 
 function InitJacDG(DG,nz,Param)
