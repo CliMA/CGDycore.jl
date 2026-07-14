@@ -1,5 +1,6 @@
 #!/bin/bash
-julia --project Examples/DriverMarcoDG.jl \
+JULIA_CUDA_HARD_SANITY=yes
+julia --project --check-bounds=yes -g2 Examples/DriverMarcoDG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
@@ -37,11 +38,11 @@ julia --project Examples/DriverMarcoDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=230 \
+  --dtau=170 \
   --dtauSmall=5 \
   --IntMethod="Rosenbrock" \
   --IntMethodFast="LSRungeKutta" \
-  --Table="S5O2LA" \
+  --Table="S4O2LA" \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \

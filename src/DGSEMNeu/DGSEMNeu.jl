@@ -17,6 +17,7 @@ using LinearAlgebra
 using SparseArrays
 using BandedMatrices
 using FillArrays
+using GPUArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll

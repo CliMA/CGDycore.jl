@@ -1212,7 +1212,7 @@ function JacobianCacheMarcoSplitNS(backend,FT,M,nz,DG)
     NumI = DG.NumI
     fac = 1.0
     schur_dinv = inv(fac)
-    invwb = inv(DG.wZ[1])
+    @allowscalar invwb = inv(DG.wZ[1])
     A12_11 = KernelAbstractions.zeros(backend,FT, nz, NumI)
     A22_diag = KernelAbstractions.zeros(backend,FT, polydeg, nz, NumI)
     A33_diag = KernelAbstractions.zeros(backend,FT, polydeg, nz, NumI)
@@ -1234,9 +1234,8 @@ function JacobianCacheMarcoSplitNS(backend,FT,M,nz,DG)
     SchurLhat = KernelAbstractions.zeros(backend,FT, 3, 3, nz - 1, NumI)
     SchurDinv = KernelAbstractions.zeros(backend,FT, 3, 3, nz, NumI)
     SchurUhat = KernelAbstractions.zeros(backend,FT, 3, 3, nz - 1, NumI)
-    rs = zeros(FT, 3 * nz, NumI)
+    rs = KernelAbstractions.zeros(backend,FT, 3 * nz, NumI)
 
-    invwB = inv(DG.wZ[1])
 #   zCol = compute_vertical_step_size(NumI, polydeg, semi, nx, nz, typeof(semi.mesh))
 #   wPos, ThPos = compute_variable_position(equations)
 #   jacobian_aux = [JacobianAuxMarcoNS(M, FT) for _ in 1:Threads.nthreads()]
@@ -1351,12 +1350,17 @@ A12_11, A22_diag, A33_diag, SA, SchurD, SchurL, SchurU, Schurm,
   DWS = @private eltype(U) (M,M)
   SAL1 = @private eltype(U) (M-1,M-1)
   SAL2 = @private eltype(U) (M-1,M-1)
+
   @uniform RhoPos = 1
   @uniform ThPos = 5
   
 
   if ID <= NumI
-    @. DWS = DW
+    @unroll for i in 1:M
+      @unroll for j in 1:M
+        DWS[i,j] = DW[i,j]
+      end
+    end  
      
     FacGrav = P.Grav   
     kappa   = P.kappa
@@ -1366,8 +1370,10 @@ A12_11, A22_diag, A33_diag, SA, SchurD, SchurL, SchurU, Schurm,
     kfac    = eltype(U)(1) / (eltype(U)(1) - kappa) * P.Rd
     pre_fac = kfac * (P.Rd / P.p0)^kexp
     invfac  = inv(fac)
-    A22_diag[:,iz,ID] .= invfac
-    A33_diag[:,iz,ID] .= fac
+    @unroll for i in 1:M-1
+      A22_diag[i,iz,ID] = invfac
+      A33_diag[i,iz,ID] = fac
+    end  
     inv2dz = eltype(U)(2) / dz[iz, ID]
     invdz  = eltype(U)(1) / dz[iz, ID]
 

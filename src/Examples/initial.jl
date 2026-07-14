@@ -813,7 +813,7 @@ function (profile::BaroWaveDryExample)(Param,Phys,::VelocityS)
     #                 }
 
     uS = -OmegaRCoslat + sqrt(OmegaRCoslat * OmegaRCoslat + RCoslat * BigU)
-    vS = 0
+    vS = FT(0)
     # Exponential perturbation
     GreatCircleR = acos(sin(Param.PertLat) * sin(lat) +
       cos(Param.PertLat) * cos(lat) * cos(lon - Param.PertLon))
@@ -931,14 +931,15 @@ function (profile::BaroWaveDryExample)(Param,Phys,::VelocityC)
 end
 
 # Perturbation as in Equations 25 and 26 of the paper (analytical derivative)
-function perturbation_stream_function(lon, lat, z)
+@inline function perturbation_stream_function(lon, lat, z)
     # Parameters from Table 1 in the paper
     # Corresponding names in the paper are commented
-    perturbation_radius = 1 / 6      # d₀ / a
-    perturbed_wind_amplitude = 1      # Vₚ
-    perturbation_lon = pi / 9     # Longitude of perturbation location
-    perturbation_lat = 2 * pi / 9 # Latitude of perturbation location
-    pertz = 15000    # Perturbation height cap
+    FT = eltype(lon)
+    perturbation_radius = FT(1 / 6)      # d₀ / a
+    perturbed_wind_amplitude = FT(1)      # Vₚ
+    perturbation_lon = FT(pi / 9)     # Longitude of perturbation location
+    perturbation_lat = FT(2 * pi / 9) # Latitude of perturbation location
+    pertz = FT(15000)    # Perturbation height cap
 
     # Great circle distance (d in the paper) divided by a (radius of the Earth)
     # because we never actually need d without dividing by a
@@ -949,17 +950,17 @@ function perturbation_stream_function(lon, lat, z)
     # In the first case, the vertical taper function is per definition zero.
     # In the second case, the stream function is per definition zero.
     if z > pertz || great_circle_distance_by_a > perturbation_radius
-        return 0, 0
+        return FT(0), FT(0)
     end
 
     # Vertical tapering of stream function
-    perttaper = 1 - 3 * z^2 / pertz^2 + 2 * z^3 / pertz^3
+    perttaper = FT(1) - FT(3) * z^2 / pertz^2 + 2 * z^3 / pertz^3
 
-    # sin/cos(pi * d / (2 * d_0)) in the paper
-    sin_, cos_ = sincos(0.5f0 * pi * great_circle_distance_by_a / perturbation_radius)
+    # sin/cos(pi * d / (FT(2) * d_0)) in the paper
+    sin_, cos_ = sincos(FT(0.5) * pi * great_circle_distance_by_a / perturbation_radius)
 
     # Common factor for both u and v
-    factor = 16 / (3 * sqrt(3)) * perturbed_wind_amplitude * perttaper * cos_^3 * sin_
+    factor = FT(16) / (FT(3) * sqrt(FT(3))) * perturbed_wind_amplitude * perttaper * cos_^3 * sin_
 
     u_perturbation = -factor * (-sin(perturbation_lat) * cos(lat) +
                       cos(perturbation_lat) * sin(lat) * cos(lon - perturbation_lon)) /

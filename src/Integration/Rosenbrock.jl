@@ -45,8 +45,10 @@ NVTX.@annotate function TimeIntegration!(ROS::RosenbrockMethod,V,dt,Fcn,Aux,Jac,
     end  
     @views AXPY!(fV,k[:,:,:,:,1:iStage-1],1/dtau,ROS.c[iStage,1:iStage-1],Global)
     @views Solve!(k[:,:,:,:,iStage],fV,JCache,dtau*ROS.gammaD,FE,Metric,Global,DiscType)
+    @show sum(abs.(k[:,:,:,:,iStage]))
   end
   AXPY!(V,k,ROS.m,Global)
+  stop
 end
 
 NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlow,Aux,FE,Metric,
