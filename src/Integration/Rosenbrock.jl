@@ -40,6 +40,7 @@ NVTX.@annotate function TimeIntegration!(ROS::RosenbrockMethod,V,dt,Fcn,Aux,Jac,
     @. VnI = V
     @views AXPY!(VnI,k[:,:,:,:,1:iStage-1],ROS.a[iStage,1:iStage-1],Global)
     FcnFull(fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    @show sum(abs.(VnI)),sum(abs.(fV))
     if iStage == 1
       Jac(V,dtau*ROS.gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
     end  

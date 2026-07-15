@@ -24,7 +24,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
   Aux = CacheAux.Aux
   KV = CacheAux.KV
   if Global.Model.GPAuxPos > 0
-    DGSEMNeu.GeoPot(Aux,FE,Metric,Exchange,Global)
+    DGSEM.GeoPot(Aux,FE,Metric,Exchange,Global)
   end  
 
 

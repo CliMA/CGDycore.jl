@@ -7,8 +7,7 @@ import ..Parallels
 import ..Statistics
 import ..Models
 import ..CGSEM
-#import ..DGSEM
-import ..DGSEMNeu
+import ..DGSEM
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace

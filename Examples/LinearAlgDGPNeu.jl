@@ -1,5 +1,5 @@
 import CGDycore:
-  Thermodynamics, Sources, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DyCore, DGSEMNeu
+  Thermodynamics, Sources, Examples, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DyCore, DGSEM
 using MPI
 using Base
 using CUDA
@@ -583,7 +583,7 @@ function Recover(JacS,M,nz,Physi,fac)
        A31 A32 fac*sparse(I,M2,M2)]
     A31F = collect(A31)   
     SA = I(M2)*fac - (1.0 / fac) * A31F * A13 - (1.0 / fac) *A32 * A23
-    DGSEMNeu.LUFull!(SA)
+    DGSEM.LUFull!(SA)
     @show sum(abs.(SA - JacS.SA[:,:,iz,1]))
     JacSP11 = [JacSP11 spzeros(m11*(iz-1),m11)
             spzeros(m11,m11*(iz-1)) AS11]
@@ -719,16 +719,16 @@ end
 
 Model.GPAuxPos = 2
 Model.GeoPotential = Sources.GeoPotentialDeep()(Model.GPAuxPos,Grid.Form)
-DGSEMNeu.GeoPot(Aux,DG,Metric,Exchange,Global)
+DGSEM.GeoPot(Aux,DG,Metric,Exchange,Global)
 Geo = Aux[:,:,:,Model.GPAuxPos]
 
 # Version Marco
 dt = 2.0
-JCacheA = DGSEMNeu.JacobianCacheMarcoSplitNS(backend,FTB,M,nz,DG)
-DGSEMNeu.precompute_gravity!(Geo,Metric.dz,JCacheA)
-DGSEMNeu.FillJacDGVertKernel!(JCacheA, U, Metric.dz, fac)
-DGSEMNeu.SchurBoundaryKernel!(JCacheA, Metric.dz, Phys)
-DGSEMNeu.luBandkernel!(JCacheA)
+JCacheA = DGSEM.JacobianCacheMarcoSplitNS(backend,FTB,M,nz,DG)
+DGSEM.precompute_gravity!(Geo,Metric.dz,JCacheA)
+DGSEM.FillJacDGVertKernel!(JCacheA, U, Metric.dz, fac)
+DGSEM.SchurBoundaryKernel!(JCacheA, Metric.dz, Phys)
+DGSEM.luBandkernel!(JCacheA)
 b = rand(M,nz,DG.NumG,5)
 c = zeros(M,nz,DG.NumG,5)
 d = zeros(M,nz,DG.NumG,5)
@@ -736,21 +736,21 @@ d = zeros(M,nz,DG.NumG,5)
 @. c = b
 @. d = b
 
-DGSEMNeu.solve_jacobian!(b, JCacheA, Metric)
+DGSEM.solve_jacobian!(b, JCacheA, Metric)
 
 # Version Oswald
 dt = 2.0
-JCacheO = DGSEMNeu.JacDGVert(backend,FTB,M,nz,DG)
-DGSEMNeu.FillJacDGVert!(JCacheO, U, DG, Metric.dz, fac, Phys)
-DGSEMNeu.SchurBoundary!(JCacheO)
-DGSEMNeu.Solve!(JCacheO,c)
+JCacheO = DGSEM.JacDGVert(backend,FTB,M,nz,DG)
+DGSEM.FillJacDGVert!(JCacheO, U, DG, Metric.dz, fac, Phys)
+DGSEM.SchurBoundary!(JCacheO)
+DGSEM.Solve!(JCacheO,c)
 
 
-Gblk, dGeo = DGSEMNeu.DerivativeGeo(Geo,DG,dz)
-dSdS,dSdM,dMdS,dMdM = DGSEMNeu.InitJacDG(DG,nz,Param)
+Gblk, dGeo = DGSEM.DerivativeGeo(Geo,DG,dz)
+dSdS,dSdM,dMdS,dMdM = DGSEM.InitJacDG(DG,nz,Param)
 
 fac = 0.5
-JacLU, Jac = DGSEMNeu.JacDGTNeu(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dGeo,dz,Phys)
+JacLU, Jac = DGSEM.JacDGTNeu(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dGeo,dz,Phys)
 
 
 dF = zeros(M*nz*3)
@@ -775,9 +775,9 @@ idF = 0
 end
 stop
 
-DGSEMNeu.FillJacDGVert!(JacS,U,DG,dz,fac,Phys)
+DGSEM.FillJacDGVert!(JacS,U,DG,dz,fac,Phys)
 
-#DGSEMNeu.SchurBoundary!(JacS)
+#DGSEM.SchurBoundary!(JacS)
 
 p = PermutationAndres1(M,nz)
 JacP = Jac[p,p]
@@ -817,10 +817,10 @@ ibF = 0
     end
   end
 end
-JacVLU, A = DGSEMNeu.JacDG(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
-#JacVLU = DGSEMNeu.JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
+JacVLU, A = DGSEM.JacDG(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
+#JacVLU = DGSEM.JacDG(U,DG,fac,dSdS,dSdM,dMdS,dMdM,dz,Phys)
 ldiv!(JacVLU[1],bF)
-DGSEMNeu.ldivVertical!(JacS,b)
+DGSEM.ldivVertical!(JacS,b)
 
 stop
 bR = zeros(M*nz*3)
@@ -829,7 +829,7 @@ b1R = reshape(b1,M*nz*3)
 @. bR = b1R
 bRP .= bR[p]
 ldiv!(JacLU[1],bR)
-DGSEMNeu.ldivVertical!(JacS,b)
+DGSEM.ldivVertical!(JacS,b)
 @views @. b1[:,:,1] = b[:,:,1,1]
 @views @. b1[:,:,2] = b[:,:,1,5]
 @views @. b1[:,:,3] = b[:,:,1,4]

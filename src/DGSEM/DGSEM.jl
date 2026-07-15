@@ -1,5 +1,6 @@
 module DGSEM
 
+import ..Parameters as P
 import ..DG
 import ..Parallels
 import ..Examples
@@ -16,6 +17,7 @@ using LinearAlgebra
 using SparseArrays
 using BandedMatrices
 using FillArrays
+using GPUArrays
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll
@@ -29,6 +31,10 @@ include("RiemannNonLin.jl")
 include("FluxVolumeNonLin.jl")
 include("Fcn.jl")
 include("Jac.jl")
+#include("JacMarco.jl")
+include("JacFluxVolumeSparse.jl")
+include("JacRiemannSparse.jl")
+include("JacGravitySparse.jl")
 include("FcnLin.jl")
 include("Orography.jl")
 include("GeoPot.jl")
