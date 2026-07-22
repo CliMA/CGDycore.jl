@@ -253,7 +253,7 @@ end
   end    
 end     
 
-function InterpolateVortGPU!(Vort,U,Inter,FE,Metric)
+function InterpolateVortGPU!(Vort,U,Inter,FE::FiniteElements.CGElement,Metric,NumberThreadGPU,::Grids.Quad)
 
   backend = get_backend(U)
   FT = eltype(Vort)
@@ -281,6 +281,24 @@ function InterpolateVortGPU!(Vort,U,Inter,FE,Metric)
 
 end
 
+function InterpolateVortGPU!(cCell,U,FE::FiniteElements.DGElement,Metric,NumberThreadGPU,::Grids.Quad)
+  backend = get_backend(U)
+  FT = eltype(U)
+  Nz = size(U,2)
+  NF = size(FE.Glob,2)
+  NV = size(U,4)
+  DoF = FE.DoF
+  DoFE = FE.DoFE
+  N = FE.OrdPoly + 1 
+  M = FE.OrdPolyZ + 1 
+  group = (N,N,M,1,1)
+  ndrange = (N,N,M,Nz,NF)
+  KVorticityQuadKernel! = VorticityQuadKernel!(backend,group)
+  Rot = KernelAbstractions.zeros(backend,FT,M,Nz,FE.NumI)
+  KVorticityQuadKernel!(Rot,U,Metric.dXdxI,Metric.J,Metric.Rotate,FE.DS,FE.DSZ,FE.Glob,
+    Val(N),Val(M) ;ndrange=ndrange)
+  InterpolateGPU!(cCell,Rot,FE)
+end
 
 function InterpolateGPU!(cCell,c,FE::FiniteElements.DGElement)
 
@@ -407,4 +425,96 @@ function InterpolateThEGPU!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys)
   KInterpolateThEKernel! = InterpolateThEKernel!(backend,group)
   KInterpolateThEKernel!(cCell,RhoTh,Rho,RhoV,RhoC,Inter,Glob,Phys,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
+end  
+
+
+
+@kernel inbounds = true function VorticityQuadKernel!(
+    Rot, @Const(V), @Const(dXdxI), @Const(JJ), @Const(Rotate), @Const(D),
+    @Const(DZ), @Const(Glob),
+    ::Val{N}, ::Val{M}, ) where {N, M}
+
+  I, J, K      = @index(Local, NTuple)
+  _, _, _, Iz, IF  = @index(Global, NTuple)
+
+  NZ       = @uniform @ndrange()[4]
+  NF       = @uniform @ndrange()[5]
+
+  VLoc     = @localmem eltype(Rot) (N, N, M, 3, 3)
+  # 2 directions × 3 components
+  RotLoc = @localmem eltype(Rot) (N, N, M)
+
+
+  if Iz <= NZ && IF <= NF
+
+    # ---- load phase ----
+    ID = I + (J - 1) * N
+    ind = Glob[ID, IF]
+    rho = V[K, Iz, ind, 1]
+    vSp = @inbounds SVector{3}(V[K,Iz,ind,2] / rho, V[K,Iz,ind,3] / rho, V[K,Iz,ind,4] / rho)
+
+    R = SMatrix{3, 3}(
+        Rotate[1, 1, ID, IF], Rotate[1, 2, ID, IF], Rotate[1, 3, ID, IF],
+        Rotate[2, 1, ID, IF], Rotate[2, 2, ID, IF], Rotate[2, 3, ID, IF],
+        Rotate[3, 1, ID, IF], Rotate[3, 2, ID, IF], Rotate[3, 3, ID, IF]
+      )
+
+    vCa = R * vSp
+
+    m  = SVector{3}(dXdxI[1,1,K,ID,Iz,IF], dXdxI[1,2,K,ID,Iz,IF], dXdxI[1,3,K,ID,Iz,IF])
+    u = cross(m,vCa)
+    VLoc[I,J,K,1,1] = u[1]
+    VLoc[I,J,K,2,1] = u[2]
+    VLoc[I,J,K,3,1] = u[3]
+    m  = SVector{3}(dXdxI[2,1,K,ID,Iz,IF], dXdxI[2,2,K,ID,Iz,IF], dXdxI[2,3,K,ID,Iz,IF])
+    u = cross(m,vCa)
+    VLoc[I,J,K,1,2] = u[1]
+    VLoc[I,J,K,2,2] = u[2]
+    VLoc[I,J,K,3,2] = u[3]
+    m  = SVector{3}(dXdxI[3,1,K,ID,Iz,IF], dXdxI[3,2,K,ID,Iz,IF], dXdxI[3,3,K,ID,Iz,IF])
+    u = cross(m,vCa)
+    VLoc[I,J,K,1,3] = u[1]
+    VLoc[I,J,K,2,3] = u[2]
+    VLoc[I,J,K,3,3] = u[3]
+  end  
+
+  @synchronize
+
+  if Iz <= NZ && IF <= NF
+
+    ID = I + (J - 1) * N
+    ind = Glob[ID, IF]
+
+    dU = D[I,1] * VLoc[1,J,K,1,1] + D[J,1] * VLoc[I,1,K,1,2]
+    dV = D[I,1] * VLoc[1,J,K,2,1] + D[J,1] * VLoc[I,1,K,2,2] 
+    dW = D[I,1] * VLoc[1,J,K,3,1] + D[J,1] * VLoc[I,1,K,3,2]
+    @unroll for l = 2 : N
+      dU += D[I,l] * VLoc[l,J,K,1,1] + D[J,l] * VLoc[I,l,K,1,2]
+      dV += D[I,l] * VLoc[l,J,K,2,1] + D[J,l] * VLoc[I,l,K,2,2]
+      dW += D[I,l] * VLoc[l,J,K,3,1] + D[J,l] * VLoc[I,l,K,3,2]
+    end  
+    @unroll for l = 1 : M
+      dU += DZ[K,l] * VLoc[I,J,l,1,3]
+      dV += DZ[K,l] * VLoc[I,J,l,2,3]
+      dW += DZ[K,l] * VLoc[I,J,l,3,3]
+    end  
+    vCa = @inbounds SVector{3}(dU,dV,dW)
+
+    R = SMatrix{3, 3}(
+        Rotate[1, 1, ID, IF], Rotate[2, 1, ID, IF], Rotate[3, 1, ID, IF],
+        Rotate[1, 2, ID, IF], Rotate[2, 2, ID, IF], Rotate[3, 2, ID, IF],
+        Rotate[1, 3, ID, IF], Rotate[2, 3, ID, IF], Rotate[3, 3, ID, IF]
+      )
+
+    vSp = R * vCa
+    JLoc = JJ[ID,K,Iz,IF]
+    Rot[K, Iz, ind] = vSp[3] * JLoc
+end  
+
+@kernel inbounds = true function InterpolateKernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
+  ::Val{BANK}=Val(1)) where BANK
+  I, J, K, iz   = @index(Local,  NTuple)
+  _,_,_,Iz,IF = @index(Global,  NTuple)
+
+  end  
 end  

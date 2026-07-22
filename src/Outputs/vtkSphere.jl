@@ -520,6 +520,8 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   cells = Global.vtkCache.cells
   pts = Global.vtkCache.pts
   filename = Global.Output.vtkFileName
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  Grid = Global.Grid
 
   step = Global.Output.vtk
   stepS="$step"
@@ -710,13 +712,9 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
       copyto!(Tr2Cell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
       vtk["Tr2", VTKCellData()] = Tr2Cell
     elseif str == "Vort"
-      uPos = Global.Model.uPos
-      vPos = Global.Model.vPos
-      VortCell = zeros(OrdPrint*OrdPrint*nz*NF)
-#     @views InterpolateVort!(VortCell,U[:,:,uPos:vPos],vtkInter,OrdPrint,FE,Metric,Cache,Global)
-      InterpolateVortGPU!(cCell,U,vtkInter,FE,Metric)
-      copyto!(VortCell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
-      vtk["Vort", VTKCellData()] = VortCell
+      InterpolateVortGPU!(cCell,U,FE,Metric,NumberThreadGPU,Grid.Type)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      vtk["Vort", VTKCellData()] = cCellCPU
     end   
   end   
   outfiles=vtk_save(vtk)

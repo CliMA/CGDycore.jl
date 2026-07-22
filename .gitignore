@@ -62,3 +62,13 @@ AA.jl
 src/DGSEM/LinearAccoustic.jl
 src/DGSEM/FluxLin.jl
 notes
+src/DGSEM/BlockThomasV2.jl
+src/DGSEM/BlockThomasV3.jl
+src/Grids/HealpixPoints.jl
+src/Grids/HealpixPoints1.jl
+src/Grids/HealpixPoints2.jl
+src/Grids/HealpixPoints3.jl
+test
+test
+ttt
+test

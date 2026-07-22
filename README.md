@@ -11,7 +11,7 @@ GDycore is an experimental [Julia code](https://julialang.org/) for studying num
 * AbstractionKernels.jl is used to run the code solely on CPU's or also partly on GPU's of different vendors. 
 * For time integration, different explicit and partially implicit methods are available. Our favoured scheme is the  Rosenbrock-W method.
 
-## CGDycore.jl/FEMSei.jl
+## CGDycore.jl/FEM.jl
 
 In addition, you will find an experimental environment based on a finite element method for calculating test examples such as Galewsky, Haurwitz, Modon Collison on the sphere. The Bickley jet can also be computed on a planar grid by appropriately adjusting the manifold’s metric terms. An overview of all these options can be found in the table below. This Code is currently not parallelised for CPU or GPU. 
 
@@ -75,7 +75,7 @@ exit()
 #### ▶️ Usage
 To run a simulation, use one of the example scripts provided in the Jobs/ folder. For example:
 ```
-./Jobs/FEMSei/GalewskyFEMVecIQuad
+./Jobs/FEM/GalewskyFEMVecIQuad
 ```
 You can modify or create new configurations based on these examples.
 

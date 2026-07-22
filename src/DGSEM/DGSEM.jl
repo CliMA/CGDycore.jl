@@ -39,5 +39,6 @@ include("FcnLin.jl")
 include("Orography.jl")
 include("GeoPot.jl")
 include("Cache.jl")
+include("Vorticity.jl")
 
 end

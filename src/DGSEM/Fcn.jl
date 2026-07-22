@@ -27,25 +27,18 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
 
   StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
-  @show sum(abs.(UI))
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
   FluxSplitVolumeNonLinH(Model.FluxAverageH,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
-  @show "V1",sum(abs.(F))
   FluxSplitVolumeNonLinV(Model.FluxAverageV,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
-  @show "V2",sum(abs.(F))
   RiemannNonLinV(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
-  @show "V3",sum(abs.(F))
 
   @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV],Exchange)
   @views @. Aux[:,:,DG.NumI+1:DG.NumG,1] = Model.Pressure(U[:,:,DG.NumI+1:DG.NumG,5])
-  @show "V4",sum(abs.(F))
 
   RiemannNonLinH(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
-  @show "V5",sum(abs.(F))
 
   ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
-  @show "V6",sum(abs.(F))
   if Model.Coriolis
     Sources.Coriolis!(Cor,F,U,Aux,DG,Metric,NumberThreadGPU)
   end

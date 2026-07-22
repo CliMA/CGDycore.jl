@@ -483,7 +483,7 @@ if ModelType == "Conservative"
     "Pres",
 #   "w",
 #   "Th",
-#   "Vort",
+    "Vort",
     ]
 elseif ModelType == "Boussinesq"
   Global.Output.cNames = [
@@ -597,7 +597,10 @@ elseif IntMethod == "RungeKuttaEx"
   Fcn = (DGSEM.FcnSplit!,)
   dt = (dtau,)
 end
-  Integration.TimeStepper(MethodInt,dt,U,Fcn,Jac,DG,Exchange,Metric,
-    Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
+Vort = KernelAbstractions.zeros(backend,FTB,DG.OrdPolyZ+1,nz,DG.NumI,3)
+DGSEM.Vorticity(Vort,U,DG,Metric,NumberThreadGPU,Grid.Type)
+
+Integration.TimeStepper(MethodInt,dt,U,Fcn,Jac,DG,Exchange,Metric,
+  Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
 
 MPI.Finalize()

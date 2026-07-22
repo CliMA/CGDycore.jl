@@ -32,3 +32,40 @@ sum(abs.(UI)) = 1.1284942834301995e8
 ("bB", sum(abs.(b))) = ("bB", 7.670057933674862)
 
 
+backend = CUDABackend(false, false)
+
+
+++++++++++++++++++++
+GPU
+("b", sum(abs.(b)), sum(abs.(cache_jacobian.SA)), cache_jacobian.fac) = ("b", 750000.0, 136682.6639861106, 1.0)
+sum(abs.(cache_jacobian.rs)) = 249257.39441855377
+sum(abs.(cache_jacobian.rs)) = 334561.0211136968
+backend = CUDABackend(false, false)
+sum(abs.(b[:, :, :, 1])) = 149875.42489700194
+sum(abs.(b[:, :, :, 2])) = 150000.0
+sum(abs.(b[:, :, :, 3])) = 150000.0
+sum(abs.(b[:, :, :, 4])) = 335835.3171992933
+sum(abs.(b[:, :, :, 5])) = 208868.26529383482
+
+CPU
+("b", sum(abs.(b)), sum(abs.(cache_jacobian.SA)), cache_jacobian.fac) = ("b", 750000.0, 136682.66398611057, 1.0)
+sum(abs.(cache_jacobian.rs)) = 249257.39441855432
+sum(abs.(cache_jacobian.rs)) = 334561.02111369837
+backend = CPU(false)
+sum(abs.(b[:, :, :, 1])) = 149875.42489700194
+sum(abs.(b[:, :, :, 2])) = 150000.0
+sum(abs.(b[:, :, :, 3])) = 150000.0
+sum(abs.(b[:, :, :, 4])) = 335835.31719929434
+sum(abs.(b[:, :, :, 5])) = 208868.2652938353
+
++++++++++++++++++++
+CPU
+("b", sum(abs.(b)), sum(abs.(cache_jacobian.SA)), cache_jacobian.fac) = ("b", 750000.0, 136682.66398611057, 1.0)
+sum(abs.(cache_jacobian.rs)) = 249257.39441855432
+sum(abs.(cache_jacobian.rs)) = 334561.02111369837
+backend = CPU(false)
+sum(abs.(b[:, :, :, 1])) = 149794.14882090996
+sum(abs.(b[:, :, :, 2])) = 150000.0
+sum(abs.(b[:, :, :, 3])) = 150000.0
+sum(abs.(b[:, :, :, 4])) = 335835.31719929434
+sum(abs.(b[:, :, :, 5])) = 208868.2652938353

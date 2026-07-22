@@ -5,9 +5,6 @@ function InitGridSphere(backend,FT,OrdPoly,nz,nPanel,RefineLevel,ns,nLon,nLat,La
   Proc = ParallelCom.Proc
 
   if occursin("HealPix",GridType)
-  # Grid=CGDycore.InputGridH("Grid/mesh_H12_no_pp.nc",
-  # CGDycore.OrientFaceSphere,Phys.RadEarth,Grid)
-  # Grid=Grids.InputGridH(backend,FT,"Grid/mesh_H24_no_pp.nc", Grids.OrientFaceSphere,RadEarth,nz)
     Grid = Grids.HealpixGrid(backend,FT,ns,RadEarth,nz)
   elseif occursin("TriPolar",GridType)
     Grid = Grids.TriPolarGrid(backend,FT,nLon,nLat,RadEarth,nz)

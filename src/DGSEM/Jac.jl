@@ -2600,25 +2600,26 @@ end
   @uniform FT = eltype(SA)
   invfac  = inv(fac)
   cS = P.cS
-  invcS   = 1 / cS
+  invcS   = FT(1) / cS
   polydeg = M - 1
   RhoPos  = 1
   ThPos = 5
   wPos = 4
-  r2 = @private FT (M - 1)
-  r3 = @private FT (M - 1)
+  r2 = @private FT (M - 1,)
+  r3 = @private FT (M - 1,)
   if ID <= NumI
     for iz = 1 : nz  
       sh     = (iz - 1) * 3
       fgi    = P.Grav * invfac
-      inv2dz = 2 / dz[iz, ID]
+      inv2dz = FT(2) / dz[iz, ID]
       is_iz1 = (iz == 1)
       b[M, iz, ID, RhoPos] = rs[sh+1, ID]
       b[M, iz, ID, wPos]   = rs[sh+2, ID]
       b[M, iz, ID, ThPos]  = rs[sh+3, ID]
       ThM_self  = Th_cache[M, iz, ID]
       dpdM_self = dpdRhoTh_cache[M, iz, ID]
-      rsh2 = rs[sh+2, ID];  rsh3 = rs[sh+3, ID]
+      rsh2 = rs[sh+2, ID]
+      rsh3 = rs[sh+3, ID]
       @unroll for i in 1:polydeg
         bdwsM                  = inv2dz * DWS[i, M]
         r2[i]                  = b[i, iz, ID, ThPos] - bdwsM*ThM_self*rsh2
@@ -2627,8 +2628,9 @@ end
       end
       if iz > 1
         sh_prev = (iz - 2) * 3
-        rsp2 = rs[sh_prev+2, ID];  rsp3 = rs[sh_prev+3, ID]
-        invdz_cur = inv2dz / 2
+        rsp2 = rs[sh_prev+2, ID]
+        rsp3 = rs[sh_prev+3, ID]
+        invdz_cur = inv2dz / FT(2)
         dpdM_prev = dpdRhoTh_cache[M, iz-1, ID]
         thM_prev  = Th_cache[M, iz-1, ID]
         th1       = Th_cache[1, iz, ID]
@@ -2655,22 +2657,27 @@ end
       @unroll for i in 1:polydeg
         r3[i] -= Gblk[i, M, iz, ID] * rhoM
       end
-      @unroll for j in 1:polydeg
+      for j in 1:polydeg
         r2j_sc      = r2[j] * A22_diag[j, iz, ID]
         dpdj_inv2dz = dpdRhoTh_cache[j, iz, ID] * inv2dz
-        @inbounds for i in 1:polydeg
+        @unroll for i in 1:polydeg
           r3[i] -= DWS[i, j] * dpdj_inv2dz * r2j_sc
         end
       end
-      r3[1] += (is_iz1 ? 2 : 1) * DWS[1, 1] * dpdRhoTh_cache[1, iz, ID] * inv2dz *
-      r2[1] * A22_diag[1, iz, ID]
+      if is_iz1
+        r3[1] += FT(2) * DWS[1, 1] * dpdRhoTh_cache[1, iz, ID] * inv2dz *
+          r2[1] * A22_diag[1, iz, ID]
+      else    
+        r3[1] += DWS[1, 1] * dpdRhoTh_cache[1, iz, ID] * inv2dz *
+          r2[1] * A22_diag[1, iz, ID]
+      end    
       # A12 cross-term:  r3 += invfac*A12_11 * G[:,1] * (A22 r2)_1   (column over all rows)
       a12c = invfac * A12_11[iz, ID] * r2[1] * A22_diag[1, iz, ID]
       @unroll for i in 1:polydeg
         r3[i] += a12c * Gblk[i, 1, iz, ID]
       end
       ldivFull!(iz, ID, SA, r3, Val(M - 1))
-      @unroll for j in 1:polydeg
+      for j in 1:polydeg
         r3j        = r3[j]
         thj_inv2dz = Th_cache[j, iz, ID] * inv2dz
         @unroll for i in 1:polydeg
@@ -2684,9 +2691,9 @@ end
         r2[i] *= A22_diag[i, iz, ID]
       end
       b[1, iz, ID, RhoPos] -= A12_11[iz, ID] * r2[1]
-      @unroll for j in 1:polydeg
+      for j in 1:polydeg
         r3j_inv2dz = r3[j] * inv2dz
-        @inbounds for i in 1:polydeg
+        @unroll for i in 1:polydeg
           b[i, iz, ID, RhoPos] -= DWS[i, j] * r3j_inv2dz
         end
       end

@@ -1,5 +1,8 @@
-function Vorticity(Vort,U,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
-  backend = get_backend(F)
+function Vorticity(Vort,U,DG::FiniteElements.DGElement,Metric,NumberThreadGPU,::Grids.Quad)
+  backend = get_backend(Vort)
+  Nz = size(U,2)
+  NF = size(DG.Glob,2)
+  NV = size(U,4)
   DoF = DG.DoF
   DoFE = DG.DoFE
   N = DG.OrdPoly + 1 
@@ -7,130 +10,97 @@ function Vorticity(Vort,U,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
   group = (N,N,M,1,1)
   ndrange = (N,N,M,Nz,NF)
   KVorticityQuadKernel! = VorticityQuadKernel!(backend,group)
-  KVorticityQuadKernel!(Vort,U,dXdxI,DG.DW,DG.DWZ,DG.Glob,
-    Val(N), Val(M), Val(NV);ndrange=ndrange)
+  KVorticityQuadKernel!(Vort,U,Metric.dXdxI,Metric.J,Metric.Rotate,DG.DS,DG.DSZ,DG.Glob,
+    Val(N),Val(M) ;ndrange=ndrange)
 end
 
 
-@kernel inbounds = true function FluxSplitVolumeNonLinHVQuadKernel!(
-    F, @Const(V), @Const(dXdxI), @Const(DW),
-    @Const(DWZ), @Const(Glob),
-    ::Val{N}, ::Val{M}, ::Val{NV}) where {N, M, NV}
+@kernel inbounds = true function VorticityQuadKernel!(
+    Vort, @Const(V), @Const(dXdxI), @Const(JJ), @Const(Rotate), @Const(D),
+    @Const(DZ), @Const(Glob),
+    ::Val{N}, ::Val{M}, ) where {N, M}
 
   I, J, K      = @index(Local, NTuple)
-  _, _, _, IZ, IF  = @index(Global, NTuple)
+  _, _, _, Iz, IF  = @index(Global, NTuple)
 
   NZ       = @uniform @ndrange()[4]
+  NF       = @uniform @ndrange()[5]
 
-  VLoc     = @localmem eltype(F)      (N, N, M, 3)
+  VLoc     = @localmem eltype(Vort) (N, N, M, 3, 3)
   # 2 directions × 3 components
-  dXdxILoc = @localmem eltype(dXdxI)  (3, 3, N, N, M)
+  dXdxILoc = @localmem eltype(Vort) (3, 3, N, N, M)
+  DLoc = @private eltype(Vort) (N, N)
+  DZLoc = @private eltype(Vort) (M, M)
 
+  DLoc .= D
+  DZLoc .= DZ
 
-  # ---- load phase ----
-  ID = I + (J - 1) * N
-  ind = Glob[ID, IF]
-  VLoc[I, J, K, 1] = V[K, IZ, ind, 2]
-  VLoc[I, J, K, 2] = V[K, IZ, ind, 3]
-  VLoc[I, J, K, 3] = V[K, IZ, ind, 4]
-  @unroll for j = 1:3
-    @unroll for i = 1:3
-      dXdxILoc[i, j, I, J, K] = dXdxI[i, j, K, ID, IZ, IF]
-    end
-  end
+  if Iz <= NZ && IF <= NF
+
+    # ---- load phase ----
+    ID = I + (J - 1) * N
+    ind = Glob[ID, IF]
+    rho = V[K, Iz, ind, 2]
+    vSp = @inbounds SVector{3}(V[K, Iz, ind, 2] / rho, V[K, Iz, ind, 3] / rho, V[K, Iz, ind, 4] / rho)
+
+    R = SMatrix{3, 3}(
+        Rotate[1, 1, ID, IF], Rotate[1, 2, ID, IF], Rotate[1, 3, ID, IF],
+        Rotate[2, 1, ID, IF], Rotate[2, 2, ID, IF], Rotate[2, 3, ID, IF],
+        Rotate[3, 1, ID, IF], Rotate[3, 2, ID, IF], Rotate[3, 3, ID, IF]
+      )
+
+    vCa = R * vSp
+
+    m  = SVector{3}(dXdxI[1, 1, ID, Iz, IF], dXdxI[1, 2, ID, Iz, IF], dXdxI[1, 3, ID, Iz, IF])
+    u = cross(m,vCa)
+    VLoc[I,J,K,1,1] = u[1]
+    VLoc[I,J,K,2,1] = u[2]
+    VLoc[I,J,K,3,1] = u[3]
+    m  = SVector{3}(dXdxI[2, 1, ID, Iz, IF], dXdxI[2, 2, ID, Iz, IF], dXdxI[2, 3, ID, Iz, IF])
+    u = cross(m,vCa)
+    VLoc[I,J,K,1,2] = u[1]
+    VLoc[I,J,K,2,2] = u[2]
+    VLoc[I,J,K,3,2] = u[3]
+    m  = SVector{3}(dXdxI[3, 1, ID, Iz, IF], dXdxI[3, 2, ID, Iz, IF], dXdxI[3, 3, ID, Iz, IF])
+    u = cross(m,vCa)
+    VLoc[I,J,K,1,3] = u[1]
+    VLoc[I,J,K,2,3] = u[2]
+    VLoc[I,J,K,3,3] = u[3]
+  end  
 
   @synchronize
 
-  # ---- compute phase ----
-  @unroll for l = 1:N
-    # x-direction: left=(I,J,K), right=(l,J,K)
-    FluxAver!(fTilde,
-      VLoc, AuxLoc, dXdxILoc,
-      I, J, K,
-      l, J, K,
-      Val(1))
-    # y-direction: left=(I,J,K), right=(I,l,K)
-    FluxAver!(gTilde,
-      VLoc, AuxLoc, dXdxILoc,
-      I, J, K,
-      I, l, K,
-      Val(2))
-    @unroll for iv = 1:NV
-      FLoc[iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
-    end
+  if Iz <= NZ && IF <= NF
+
+    # ---- load phase ----
+    ID = I + (J - 1) * N
+    ind = Glob[ID, IF]
+
+    dU = DLoc[I,1] * VLoc[1,J,K,1,1] + DLoc[J,1] * VLoc[I,1,K,1,2]
+    dV = DLoc[I,1] * VLoc[1,J,K,2,1] + DLoc[J,1] * VLoc[I,1,K,2,2] 
+    dW = DLoc[I,1] * VLoc[1,J,K,3,1] + DLoc[J,1] * VLoc[I,1,K,3,2]
+    @unroll for l = 2 : N
+      dU += DLoc[I,l] * VLoc[l,J,K,1,1] + DLoc[J,l] * VLoc[I,l,K,1,2]
+      dV += DLoc[I,l] * VLoc[l,J,K,2,1] + DLoc[J,l] * VLoc[I,l,K,2,2]
+      dW += DLoc[I,l] * VLoc[l,J,K,3,1] + DLoc[J,l] * VLoc[I,l,K,3,2]
+    end  
+    @unroll for l = 1 : M
+      dU += DZLoc[I,l] * VLoc[I,J,l,1,3]
+      dV += DZLoc[I,l] * VLoc[I,J,l,2,3]
+      dW += DZLoc[I,l] * VLoc[I,J,l,3,3]
+    end  
+    vCa = @inbounds SVector{3}(dU,dV,dW)
+
+    R = SMatrix{3, 3}(
+        Rotate[1, 1, ID, IF], Rotate[2, 1, ID, IF], Rotate[3, 1, ID, IF],
+        Rotate[1, 2, ID, IF], Rotate[2, 2, ID, IF], Rotate[3, 2, ID, IF],
+        Rotate[1, 3, ID, IF], Rotate[2, 3, ID, IF], Rotate[3, 3, ID, IF]
+      )
+
+    vSp = R * vCa
+    JLoc = JJ[ID,1,Iz,IF]
+    Vort[K, Iz, ind, 1] = vSp[1] / JLoc
+    Vort[K, Iz, ind, 2] = vSp[2] / JLoc
+    Vort[K, Iz, ind, 3] = vSp[3] / JLoc
   end  
-  @unroll for l = 1:M
-    # z-direction: left=(I,J,K), right=(I,J,l)
-    FluxAver!(hTilde,
-      VLoc, AuxLoc, dXdxILoc,
-      I, J, K,
-      I, J, l,
-      Val(3))
-    @unroll for iv = 1:NV
-      FLoc[iv] += -DVZT[l, K] * hTilde[iv]
-    end
-  end  
-  ID = I + (J - 1) * N
-  ind = Glob[ID, IF]
-  @unroll for iv = 1:NV
-    F[K, IZ, ind, iv] += FLoc[iv]
-  end
-end
-
-
-@inline function Vorticity!(vort,
-      VLoc, dXdxILoc,
-      K, Iz, iD,   # state indices  (localidx into @localmem)
-      ::Val{dir}) where {dir}
-
-    FT = eltype(flux)
-
-    # ------ read left state directly from shared memory ------
-    RhoL  = VLoc[K1, Iz1, iD1, RhoPos]
-    uL    = VLoc[K1, Iz1, iD1, uPos]
-    vL    = VLoc[K1, Iz1, iD1, vPos]
-    wL    = VLoc[K1, Iz1, iD1, wPos]
-    ThL   = VLoc[K1, Iz1, iD1, ThPos]
-    pL    = AuxLoc[K1, Iz1, iD1, pPos]
-    GPL   = AuxLoc[K1, Iz1, iD1, GPPos]
-
-    # ------ read right state directly from shared memory -----
-    RhoR  = VLoc[K2, Iz2, iD2, RhoPos]
-    uR    = VLoc[K2, Iz2, iD2, uPos]
-    vR    = VLoc[K2, Iz2, iD2, vPos]
-    wR    = VLoc[K2, Iz2, iD2, wPos]
-    ThR   = VLoc[K2, Iz2, iD2, ThPos]
-    pR    = AuxLoc[K2, Iz2, iD2, pPos]
-    GPR   = AuxLoc[K2, Iz2, iD2, GPPos]
-
-    # ------ read metric (dXdxI row) from shared memory -------
-    # dXdxILoc layout: (dir, j, K, Iz, iD)  — pass dir as Val for unrolling
-    m_L1  = dXdxILoc[dir, 1, K1, Iz1, iD1]
-    m_L2  = dXdxILoc[dir, 2, K1, Iz1, iD1]
-    m_L3  = dXdxILoc[dir, 3, K1, Iz1, iD1]
-    m_R1  = dXdxILoc[dir, 1, K2, Iz2, iD2]
-    m_R2  = dXdxILoc[dir, 2, K2, Iz2, iD2]
-    m_R3  = dXdxILoc[dir, 3, K2, Iz2, iD2]
-
-    # ------ Kennedy-Gruber averages --------------------------
-    RhoAv = FT(0.5) * (RhoL + RhoR)
-    pAv   = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
-    uAv   = FT(0.5) * (uL / RhoL + uR / RhoR)
-    vAv   = FT(0.5) * (vL / RhoL + vR / RhoR)
-    wAv   = FT(0.5) * (wL / RhoL + wR / RhoR)
-    ThAv  = FT(0.5) * (ThL / RhoL + ThR / RhoR)
-    mAv1  = FT(0.5) * (m_L1 + m_R1)
-    mAv2  = FT(0.5) * (m_L2 + m_R2)
-    mAv3  = FT(0.5) * (m_L3 + m_R3)
-
-    qHat  = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-
-    flux[1] = RhoAv * qHat
-    flux[2] = flux[1] * uAv + mAv1 * pAv
-    flux[3] = flux[1] * vAv + mAv2 * pAv
-    flux[4] = flux[1] * wAv + mAv3 * pAv
-    flux[5] = flux[1] * ThAv
-  end
-
-  return FluxNonLinAver!
-end
+end  
