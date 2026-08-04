@@ -1,0 +1,26 @@
+#!/bin/bash
+julia --project Examples/FEM/VecINonLinShallow.jl \
+  --Problem="LinearBlobCart" \
+  --FloatTypeBackend="Float64" \
+  --GridForm="CartesianGrid" \
+  --GridType="Quad" \
+  --Flat=false \
+  --nx=40 \
+  --ny=40 \
+  --Lx=2000.0 \
+  --Ly=2000.0 \
+  --x0=-1000.0 \
+  --y0=-1000.0 \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --OrderFEM=1 \
+  --SimTime=0 \
+  --SimDays=6 \
+  --SimHours=0 \
+  --SimMinutes=0 \
+  --PrintHours=1 \
+  --PrintMinutes=0 \
+  --PrintSeconds=0 \
+  --RefineOutput=0 \
+  --vtkFileName="LinearBlob/VecIQuad" \

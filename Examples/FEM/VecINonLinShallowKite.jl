@@ -187,7 +187,7 @@ elseif VelocityForm == "Cartesian"
    VelForm = Examples.VelocityC()
 end
 
-if GridForm == "Spherical"
+if GridForm == "SphericalGrid"
   # Grid construction
   Grid, CellToProc = Grids.InitGridSphere(backend,FTB,OrdPoly,nz,nPanel,RefineLevel,ns,
   nLat,nLon,LatB,GridType,Decomp,RadEarth,Model,ParallelCom;ChangeOrient=2)
@@ -217,7 +217,8 @@ else
   Boundary.WE = BoundaryWE
   Boundary.SN = BoundarySN
   Boundary.BT = BoundaryBT
-  Grid, Exchange = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;GridType=GridType)
+  @show "Grids.InitGridCart"
+  Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom;GridType=GridType)
   
   # Jacobi
   Jacobi = FEM.JacobiCart!
@@ -231,7 +232,8 @@ else
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nPrint = ceil(PrintT/dtau)
-  nAdveVel = 4000
+  dtau = 0.001
+  nAdveVel = 80000
   nPrint = 400
   FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
@@ -260,18 +262,10 @@ elseif Grid.Type == Grids.Tri()
 end
 
 # Finite elements
-@show "Order RT",k
-#RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
-RT = FEM.BDMKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
-#RT = FEM.CG1KiteDualHDiv{FTB}(Grids.Quad(),backend,Grid)
-@show RT.DoF
-@show "Order DG",k+1
+RT = FEM.RTKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
+#RT = FEM.BDMKiteDualHDiv{FTB}(k,Grids.Quad(),backend,Grid)
 DG = FEM.CGKitePrimalStruct{FTB}(k+1,Grids.Quad(),backend,Grid)
-@show DG.DoF
-@show "Order CG",k+1
 CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
-@show CG.DoF
-@show "Order DG",k+1
 
 ExchangeDG = Parallels.ExchangeStruct{FTB}(backend,Grid,DG,CellToProc,Proc,ProcNumber,
   Model.HorLimit;Discretization="Kite")
@@ -295,7 +289,7 @@ uPosE = ModelFEM.uPosE
 U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 @views Up = U[pPosS:pPosE]
 @views Uu = U[uPosS:uPosE]
-
+@. Uu[RT.NumI+1:end] = 0.0
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)

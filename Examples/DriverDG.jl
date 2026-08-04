@@ -395,7 +395,7 @@ if FluxDG == "KennedyGruber"
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverageH = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.RhoThPos,pAuxPos,GPAuxPos,Grid.Type)
-  Model.FluxAverageV = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.FluxAverageV = DGSEM.KennedyGruberGrav2()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.RhoThPos,pAuxPos,GPAuxPos,Grids.Quad())
   Model.FluxAverageSlow = DGSEM.KennedyGruberGravSlow()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.RhoThPos,pAuxPos,GPAuxPos)
@@ -597,8 +597,6 @@ elseif IntMethod == "RungeKuttaEx"
   Fcn = (DGSEM.FcnSplit!,)
   dt = (dtau,)
 end
-Vort = KernelAbstractions.zeros(backend,FTB,DG.OrdPolyZ+1,nz,DG.NumI,3)
-DGSEM.Vorticity(Vort,U,DG,Metric,NumberThreadGPU,Grid.Type)
 
 Integration.TimeStepper(MethodInt,dt,U,Fcn,Jac,DG,Exchange,Metric,
   Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)

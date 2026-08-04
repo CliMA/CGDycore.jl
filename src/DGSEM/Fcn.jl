@@ -29,8 +29,9 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
   StateVSp2VCart!(UI,DG,Metric,NumberThreadGPU,VelForm)  
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
-  FluxSplitVolumeNonLinH(Model.FluxAverageH,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
-  FluxSplitVolumeNonLinV(Model.FluxAverageV,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+# FluxSplitVolumeNonLinH(Model.FluxAverageH,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
+# FluxSplitVolumeNonLinV(Model.FluxAverageV,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+  FluxSplitVolumeNonLinHV2(Model.FluxAverageV,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,GridType)
   RiemannNonLinV(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV],Exchange)

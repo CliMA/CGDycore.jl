@@ -230,7 +230,7 @@ else
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nPrint = ceil(PrintT/dtau)
   nAdveVel = 4000
-  nPrint = 400
+  nPrint = 40
   FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
@@ -258,14 +258,14 @@ end
 DG = FEM.DGStruct{FTB}(backend,k,Grid.Type,Grid)
 CG = FEM.CGStruct{FTB}(backend,k+1,Grid.Type,Grid)
 RT = FEM.RTStruct{FTB}(backend,k,Grid.Type,Grid)
-BDM = FEM.BDMStruct{FTB}(backend,k,Grid.Type,Grid)
-for i = 1 : size(BDM.phi,1)
-  @show BDM.phi[i,:]
-  @show BDM0.phi[i,:]
-  @show "-----------------"
-end  
-stop
-ND = FEM.NDStruct{FTB}(backend,k,Grid.Type,Grid)
+#BDM = FEM.BDMStruct{FTB}(backend,k,Grid.Type,Grid)
+#for i = 1 : size(BDM.phi,1)
+#  @show BDM.phi[i,:]
+#  @show BDM0.phi[i,:]
+#  @show "-----------------"
+#end  
+#stop
+#ND = FEM.NDStruct{FTB}(backend,k,Grid.Type,Grid)
 
 ModelFEM = FEM.ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
 
@@ -280,8 +280,10 @@ U = zeros(FTB,ModelFEM.DG.NumG+ModelFEM.RT.NumG)
 # Interpolation
 FEM.InterpolateDG!(Up,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 FEM.Interpolate!(Uu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
+@. Uu[RT.NumI+1:end] = 0.0
 
 # Time integration
+@show RT.NumI,RT.NumG
 FEM.TimeStepperVecI(backend,FTB,U,dtau,FEM.FcnVecINonLinShallow!,ModelFEM,Grid,nQuadM,nQuadS,Jacobi,
   nAdveVel,FileNameOutput,Proc,ProcNumber,nPrint,Flat,ref)
 

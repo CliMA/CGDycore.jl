@@ -210,7 +210,8 @@ function DecomposeKiteEqualArea(Grid,NumProc)
 
   NumNodesN = 0
   @inbounds for iN = 1 : NumNodes
-    if Nodes[iN].Type == 'N'
+#   if Nodes[iN].Type == 'N'
+    if Nodes[iN].Type == 'N' ||  Nodes[iN].Type == 'B'
       NumNodesN += 1
     end
   end  
@@ -228,7 +229,8 @@ function DecomposeKiteEqualArea(Grid,NumProc)
   coord = zeros(Float64,NumNodesN,3)
   iNF = 1
   @inbounds for iN = 1 : NumNodes
-    if Nodes[iN].Type == 'N'
+    #if Nodes[iN].Type == 'N'
+    if Nodes[iN].Type == 'N' ||  Nodes[iN].Type == 'B'
       P = Nodes[iN].P  
       coord[iNF,3] = iN
       (coord[iNF,1],coord[iNF,2],r) = cart2sphere(P.x,P.y,P.z)  

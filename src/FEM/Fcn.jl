@@ -73,6 +73,38 @@ function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jaco
   ldiv!(DG.LUM,Fh)
 end
 
+function FcnVecILinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi,ExchangeDG,ExchangeCG;UCache)
+
+  @. F = 0
+  DG = Model.DG
+  CG = Model.CG
+  RT = Model.RT
+  Grav =  9.80616
+
+  @views Uh = U[Model.pPosS:Model.pPosE]
+  @views Uu = U[Model.uPosS:Model.uPosE]
+  @views UCachep = UCache[Model.pPosS:Model.pPosE]
+  @views k = UCache[Model.pPosS:Model.pPosE]
+  @views hUu = UCache[Model.uPosS:Model.uPosE]
+  @views hUuE = reshape(hUu,1,1,length(hUu),1)
+  @views Fh = F[Model.pPosS:Model.pPosE]
+  FhE = reshape(Fh,1,1,length(Fh),1)
+  @views Fu = F[Model.uPosS:Model.uPosE]
+
+
+  @. k = Grav * Uh
+  GradRhs!(backend,FTB,Fu,RT,k,DG,Grid,Grids.Quad(),QuadOrdS,Jacobi)
+  ldiv!(RT.LUM,Fu)
+ 
+
+  @. hUu[DG.NumG+RT.NumI+1:end] = 0.0
+  Div1Rhs!(backend,FTB,Fh,DG,Uu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
+  Parallels.ExchangeData3DSendGPU(FhE,ExchangeDG)
+  Parallels.ExchangeData3DRecvGPU!(FhE,ExchangeDG)
+  ldiv!(DG.LUM,Fh)
+end
+
+
 function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jacobi;UCache)
 
   @. F = 0
@@ -102,7 +134,7 @@ function FcnVecINonLinShallow!(backend,FTB,F,U,Model,Grid,QuadOrdM,QuadOrdS,Jaco
   GradRhs!(backend,FTB,Fu,RT,k,DG,Grid,RT.Type,QuadOrdS,Jacobi)
 
   #GradKinHeight!(backend,FTB,Fu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdS,Jacobi)
-  ldiv!(RT.LUM,Fu)
+  @views ldiv!(RT.LUM,Fu[:1:RT.NumI])
  
   ProjecthScalaruHDivHDiv!(backend,FTB,hUu,RT,Uh,DG,Uu,RT,Grid,RT.Type,QuadOrdM,Jacobi)
   DivRhs!(backend,FTB,Fh,DG,hUu,RT,Grid,DG.Type,QuadOrdS,Jacobi)
@@ -156,8 +188,8 @@ function FcnConsNonLinShallow!(backend,FTB,F,U,Model,Grid,nQuad,Jacobi;UCache=no
   # Tendency hu
   InterpolateScalarHDivVecDG!(backend,FTB,uRec,Model.VecDG,Uh,Model.DG,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
   DivMomentumVector!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,uRec,Model.VecDG,Grid,Grid.Type,nQuad,Jacobi)
-  if Grid.Form == Grids.SphericalGrid()
-    CrossRhs!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
+  if Grid.Form == Grids.SphericalGrid() 
+#   CrossRhs!(backend,FTB,Fhu,Model.RT,Uhu,Model.RT,Grid,Grid.Type,nQuad,Jacobi)
   end
   GradHeightSquared!(backend,FTB,Fhu,Model.RT,Uh,Model.DG,Grid,Grid.Type,nQuad,Jacobi)
   ldiv!(Model.RT.LUM,Fhu)

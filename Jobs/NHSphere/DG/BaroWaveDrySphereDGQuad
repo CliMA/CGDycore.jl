@@ -38,7 +38,7 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=0 \
   --StartAverageDays=100 \
   --Flat=true \
-  --dtau=60 \
+  --dtau=80 \
   --dtauSmall=5 \
   --IntMethod="Rosenbrock" \
   --IntMethodFast="LSRungeKutta" \
@@ -46,7 +46,7 @@ julia --project Examples/DriverDG.jl \
   --TopoS="" \
   --Stretch=false \
   --StretchType="Exp" \
-  --GridType="HealPix" \
+  --GridType="CubedSphere" \
   --RefineLevel=4 \
   --nLon=20 \
   --nLat=20 \

@@ -1,0 +1,21 @@
+#!/bin/bash
+julia --project Examples/FEM/VecINonLinShallowKite.jl \
+  --Problem="LinearBlob" \
+  --FloatTypeBackend="Float64" \
+  --GridForm="Spherical" \
+  --GridType="MPASOKite" \
+  --RefineLevel=3 \
+  --nPanel=50 \
+  --Flat=false \
+  --OrderFEM=1 \
+  --SimTime=0 \
+  --SimDays=6 \
+  --SimHours=0 \
+  --SimMinutes=0 \
+  --SimSeconds=0 \
+  --PrintHours=1 \
+  --PrintMinutes=0 \
+  --PrintSeconds=0 \
+  --vtkFileName="Galewsky/MPASOKite" \
+  --RefineOutput=1 \
+  --PrintTime=0 \

@@ -124,6 +124,10 @@ function MassMatrix(backend,FTB,Fe::HDivElement,Grid,QuadOrd,Jacobi)
     end
     for j = 1 : size(MLoc,2)
       for i = 1 : size(MLoc,1)
+        if Fe.Glob[i,iF] <= 0 || Fe.Glob[j,iF] <= 0  
+          @show iF,i,j,Fe.Glob[i,iF],Fe.Glob[j,iF]  
+          stop
+        end  
         if abs(MLoc[i,j]) > 1.e-12 
           push!(RowInd,Fe.Glob[i,iF])
           push!(ColInd,Fe.Glob[j,iF])

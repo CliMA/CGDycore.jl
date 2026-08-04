@@ -90,6 +90,7 @@ function ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,
 end
 
 function ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
+  @show "ModelFEMVecI "
   pPosS = 1
   pPosE = DG.NumG
   uPosS = pPosE + 1
@@ -98,7 +99,7 @@ function ModelFEMVecI(backend,FTB,RT,CG,DG,Grid,nQuadM,nQuadS,Jacobi)
   DG.LUM = lu(DG.M)
 
   RT.M = FEM.MassMatrix(backend,FTB,RT,Grid,nQuadM,Jacobi)
-  RT.LUM = lu(RT.M)
+  RT.LUM = lu(RT.M[1:RT.NumI,1:RT.NumI])
 
   Div = FEM.DivMatrix(backend,FTB,RT,DG,Grid,nQuadS,Jacobi)
   Grad = -Div'

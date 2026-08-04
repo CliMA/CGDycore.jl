@@ -2,7 +2,6 @@
 function ConstructBDM(k,ElemType::Grids.Tri)
   s = @polyvar x[1:2]
 
-  @show k
   P_k = DG.Polynomial_k(k,s)
   lP_k = length(P_k)
   if k > 0
@@ -18,7 +17,6 @@ function ConstructBDM(k,ElemType::Grids.Tri)
   phiB = Array{Polynomial,2}(undef,DoF,2)
   Divphi = Array{Polynomial,2}(undef,DoF,1)
   iDoF = 1 
-  @show DoF, DoFE, DoFF
   @inbounds for i = 1 : lP_k
     phi[iDoF,1] = P_k[i]  
     phi[iDoF,2] = 0.0 * x[1] + 0.0 * x[2]
@@ -68,7 +66,6 @@ function ConstructBDM(k,ElemType::Grids.Tri)
   QuadOrd = 4
   NumQuadT, WeightsT, PointsT = FEM.QuadRule(Grids.Tri(),QuadOrd)
 # Interior  
-  @show rDof,DoF,DoFF
   @inbounds for iDoF = 1 : DoF
     @inbounds for i = 1 : DoFF
       @inbounds for iQ = 1 : NumQuadT
@@ -158,9 +155,7 @@ function ConstructBDM(k,ElemType::Grids.Quad)
 # Compute functional over edges
   # Edge 1 (-1,-1) -> (1,-1)
   @inbounds for iDoF = 1 : DoF
-    @show 
     phiE2 = subs(phi[iDoF,2], x[1] => t, x[2] => -1.0)
-    @show iDoF,phiE2
     @inbounds for i = 0 : k
       @inbounds for iQ = 1 : NumQuadL
         I[rDoF+i,iDoF] += +0.5 * phiE2(PointsL[iQ]) * phiL[i+1](PointsL[iQ]) * WeightsL[iQ]

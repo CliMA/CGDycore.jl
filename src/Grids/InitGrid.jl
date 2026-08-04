@@ -81,12 +81,19 @@ function InitGridCart(backend,FT,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,Par
   ProcNumber = ParallelCom.ProcNumber
   Proc = ParallelCom.Proc
 
-  if GridType == "Quad"
+  if occursin("Quad",GridType)
     Grid = Grids.CartGrid(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order)
-  elseif GridType == "Tri"  
+  elseif occursin("Tri",GridType)
     Grid = Grids.CartGridTri(backend,FT,nx,ny,Lx,Ly,x0,y0,Grids.OrientFaceCart,Boundary,nz;order,ChangeOrient=ChangeOrient)
+  elseif occursin("Hexagon",GridType)
+    Grid = Grids.generate_hex_grid(backend,FT,12,Grids.OrientFaceCart,nz)
   else  
     stop  
+  end  
+  if occursin("Kite",GridType)
+    @show "Grid2KiteGrid",Grid.NumFaces  
+    Grid = Grid2KiteGrid(backend,FT,Grid,OrientFaceCart)  
+    @show "Grid2KiteGrid N",Grid.NumFaces  
   end  
   CellToProc = Grids.Decompose(Grid,nx,ny,ProcNumber)
   SubGrid = Grids.ConstructSubGridGhost(Grid,CellToProc,Proc;order)

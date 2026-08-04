@@ -1,5 +1,5 @@
 import CGDycore:
-  Examples, Parallels, Models, Grids, Outputs, Integration,  GPU, DyCore, FEM, FiniteVolumes
+  Parameters, Examples, Parallels, Models, Grids, Outputs, Integration,  CGSEM, DyCore, FEM, FiniteVolumes
 using MPI
 using Base
 using CUDA
@@ -11,7 +11,8 @@ using ArgParse
 using LinearAlgebra
 
 # Model
-parsed_args = DyCore.parse_commandline()
+parsed_args = Parameters.parse_commandline()
+VelocityForm = parsed_args["VelocityForm"]
 Problem = parsed_args["Problem"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -269,6 +270,12 @@ RadEarth = Phys.RadEarth
 # Parameters
 Param = Examples.Parameters(FTB,Problem)
 
+if VelocityForm == "Spherical"
+   VelForm = Examples.VelocityS()
+elseif VelocityForm == "Cartesian"
+   VelForm = Examples.VelocityC()
+end
+
 # Model
 if GridForm == "Spherical"
   # Grid construction
@@ -313,8 +320,9 @@ else
   dtau = EndTime / nAdveVel
   PrintT = PrintTime + 3600*24*PrintDays + 3600 * PrintHours + 60 * PrintMinutes + PrintSeconds
   nPrint = ceil(PrintT/dtau)
-  nAdveVel = 4000
-  nPrint = 400
+  dtau = .01
+  nAdveVel = 10000
+  nPrint = 10
   FileNameOutput = vtkFileName
   @show GridLengthMin,GridLengthMax
   @show nAdveVel
@@ -322,7 +330,7 @@ else
   @show nPrint
 end
 
-Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys)
+Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 
 # Output
 vtkSkeletonMesh = Outputs.vtkStruct{Float64}(backend,Grid,Grid.NumFaces,Flat;Refine=ref)
@@ -362,7 +370,7 @@ uRec = zeros(FTB,uPosVec)
 @views Uhu = U[huPosS:huPosE]
 
 # Interpolation
-FEM.InterpolatehRT!(Uhu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
+FEM.Interpolateh!(Uhu,RT,Jacobi,Grid,Grid.Type,nQuad,Model.InitialProfile)
 FEM.InterpolateDG!(Uh,DG,Jacobi,Grid,Grid.Type,Model.InitialProfile)
 
 # Time integration

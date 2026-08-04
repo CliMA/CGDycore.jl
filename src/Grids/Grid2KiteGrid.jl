@@ -1,7 +1,7 @@
 function Grid2KiteGrid(backend,FT,Grid,OrientFace)
 
   Type=Quad()
-  Form = SphericalGrid()
+  Form = Grid.Form
 
   NumNodes = Grid.NumNodes + Grid.NumEdges + Grid.NumFaces
   Nodes = map(1:NumNodes) do i
@@ -36,14 +36,28 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
     Edge([1,2],Nodes,0,0,"",0);
   end
   EdgeNumber = 1
+  NumEdgesB = 0
+  NumEdgesI = 0
   for iE = 1 : Grid.NumEdges
     N1 = Grid.Edges[iE].N[1]  
     N2 = Grid.NumNodes + iE
-    Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"E1",EdgeNumber)
+    if occursin("B", Grid.Edges[iE].Type)  
+      Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"B1",EdgeNumber)
+      NumEdgesB += 1
+    else  
+      Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"E1",EdgeNumber)
+      NumEdgesI += 1
+    end  
     EdgeNumber += 1
     N1 = Grid.Edges[iE].N[2]  
     N2 = Grid.NumNodes + iE
-    Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"E2",EdgeNumber)
+    if occursin("B", Grid.Edges[iE].Type)  
+      Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"B2",EdgeNumber)
+      NumEdgesB += 1
+    else  
+      Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"E2",EdgeNumber)
+      NumEdgesI += 1
+    end  
     EdgeNumber += 1
   end  
   for iF = 1 : Grid.NumFaces
@@ -52,6 +66,7 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
       N2 = Grid.NumNodes + Grid.NumEdges + iF
       Edges[EdgeNumber] = Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"EM",EdgeNumber)
       EdgeNumber += 1
+      NumEdgesI += 1
     end
   end  
 
@@ -101,13 +116,10 @@ function Grid2KiteGrid(backend,FT,Grid,OrientFace)
 
   colors=[[]]
   NumGhostFaces = 0
-  NumEdgesI = NumEdges
-  NumEdgesB = 0
   NumBoundaryFaces = 0
   z = Grid.z
   NumNodesB = 0
   NumNodesG = 0
-  NumEdgesB = 0
   NumEdgesG = 0
   NumFacesB = 0
   NumFacesG = 0

@@ -77,7 +77,15 @@ Base.@kwdef struct ParamLinearBlob
   lat0 = 0.0
   lon0 = 0.0
   Width = 0.8
-  H = 1.0e2
+  H = 1.0e1
+  cS = 100.0
+end
+
+Base.@kwdef struct ParamLinearBlobCart
+  x0 = 0.0
+  y0 = 0.0
+  Width = 600.0
+  H = 1.0e1
   cS = 360.0
 end
 
@@ -544,6 +552,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "LinearBlob"
     @show Problem
     Param = ParamLinearBlob()
+  elseif Problem == "LinearBlobCart"
+    @show Problem
+    Param = ParamLinearBlobCart()
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" ||
     Problem == "FriersonSphere" 
     @show Problem

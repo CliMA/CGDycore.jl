@@ -289,7 +289,8 @@ function CG1KiteDualStruct{FT}(::Grids.Quad,backend,Grid) where FT<:AbstractFloa
   NumNodesP = 0
   NodesP = zeros(Int,NumNodes)
   for iN = 1 : NumNodes
-    if Nodes[iN].Type == 'N'
+#   if Nodes[iN].Type == 'N'
+    if Nodes[iN].Type == 'N' || Nodes[iN].Type == 'B'
       NumNodesP += 1  
       NodesP[iN] = NumNodesP
     end
@@ -565,7 +566,8 @@ function CGKiteDualStruct{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractFlo
   NumNodesP = 0
   NodesD = zeros(Int,NumNodes)
   for iN = 1 : NumNodes
-    if Nodes[iN].Type == 'N'
+#   if Nodes[iN].Type == 'N'
+    if Nodes[iN].Type == 'N' || Nodes[iN].Type == 'B'
       NumNodesD += 1
       NodesD[iN] = NumNodesD
     end

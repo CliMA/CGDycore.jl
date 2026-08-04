@@ -509,12 +509,6 @@ end
     vSp = R * vCa
     JLoc = JJ[ID,K,Iz,IF]
     Rot[K, Iz, ind] = vSp[3] * JLoc
-end  
-
-@kernel inbounds = true function InterpolateKernel!(cCell,@Const(c),@Const(Inter),@Const(Glob),
-  ::Val{BANK}=Val(1)) where BANK
-  I, J, K, iz   = @index(Local,  NTuple)
-  _,_,_,Iz,IF = @index(Global,  NTuple)
-
   end  
 end  
+

@@ -571,7 +571,8 @@ function ProjecthScalaruHDivHDiv!(backend,FTB,huDiv,Fe::HDivElement,
       huDiv[ind] += huDivLoc[iDoF]
     end  
   end
-  ldiv!(Fe.LUM,huDiv)
+  @views ldiv!(Fe.LUM,huDiv[1:Fe.NumI])
+  @. huDiv[Fe.NumI+1:end] = 0.0
 end
 
 #=

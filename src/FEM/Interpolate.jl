@@ -466,7 +466,7 @@ function Interpolate!(u,FE::RTKiteDualHDiv,Jacobi,Grid,ElemType::Grids.Quad,Quad
   pinvDF = zeros(3,2)
   X = zeros(3)
   uP = zeros(2)
-  VelSp = zeros(3)
+  VelCa = zeros(3)
   @inbounds for iF = 1 : Grid.NumFaces
     iDoF = 1
     rDoF = 1
@@ -629,7 +629,7 @@ function FCart(X,F,Form)
     lon,lat,r = Grids.cart2sphere(X[1],X[2],X[3])
     VelCa = Grids.VelSphere2Cart(VelSp,lon,lat) 
   else  
-    h,VelCa1,VelCa2,VelCa3, = F(X,0.0)
+    h,VelCa1,VelCa2,VelCa3,_ = F(X,0.0)
     VelCa = SVector{3}(VelCa1,VelCa2,VelCa3)
   end
   return h,VelCa

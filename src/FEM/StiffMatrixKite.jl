@@ -646,6 +646,7 @@ function GradRhs!(backend,FTB,Rhs,FeT::HDivKiteDElement,h,hFeF::ScalarElement,
   end
 end
 
+
 """
   DivRhs!(backend, FTB, Div, u, uFeF::HDivKiteDElement, h, hFeF::ScalarElement, FeT::ScalarElement, Grid,
       ElemType::Grids.ElementType, QuadOrd, Jacobi)

@@ -731,6 +731,28 @@ function (profile::LinearBlob)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct LinearBlobCart <: Example end
+
+function (profile::LinearBlobCart)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    x1 = 
+    (lon,lat,r)= Grids.cart2sphere(x[1],x[2],x[3])
+    d = sqrt((x[1] - Param.x0)^2 + (x[2] - Param.y0)^2) 
+    if abs(d) <= Param.Width
+      h = Param.H*cos(pi*d/Param.Width/2)^2 + 1.0
+    else
+      h = 0.0 + 1.0
+    end
+    u = FT(0)
+    v = FT(0)
+    w = FT(0)
+    Th = FT(1)
+    return (h,u,v,w,Th)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct BaroWaveDryCart <: Example end
 
 function (profile::BaroWaveDryCart)(Param,Phys)

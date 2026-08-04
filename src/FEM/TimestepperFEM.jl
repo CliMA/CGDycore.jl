@@ -104,21 +104,24 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,ExchangeDG,ExchangeCG,Grid
     vtkSkeletonMesh.RefineMidPoints,ExchangeCG)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],
     FileNumber,cName)
-
   time = 0.0
   UNew = similar(U)
+  @. UNew = 0.0
+  @views UI = U[1:Model.DG.NumG+Model.RT.NumI] 
+  @views UNewI = UNew[1:Model.DG.NumG+Model.RT.NumI] 
   F = zeros(FTB,Model.DG.NumG+Model.RT.NumG)
+  @views FI = F[1:Model.DG.NumG+Model.RT.NumI] 
   time = 0.0
   for i = 1 : nAdveVel
     if Proc == 1  
       @show i,(i-1)*dtau/3600   
     end  
     Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG;UCache)
-    @. UNew = U + 1/3 * dtau * F
+    @. UNewI = UI + 1/3 * dtau * FI
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG;UCache)
-    @. UNew = U + 1/2 * dtau * F
+    @. UNewI = UI + 1/2 * dtau * FI
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi,ExchangeDG,ExchangeCG;UCache)
-    @. U = U + dtau * F
+    @. UI = UI + dtau * FI
 
     # Output
     if mod(i,nPrint) == 0
@@ -163,6 +166,7 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,
   # Output of the initial values
   FileNumber = 0
   NumRefine = size(vtkSkeletonMesh.RefineMidPoints,1)
+  @show "TimeStepper"
   if Grid.Form == Grids.SphericalGrid()
     VelOut = zeros(Grid.NumFaces*NumRefine,2)
     hout = zeros(Grid.NumFaces*NumRefine)
@@ -176,7 +180,6 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,
   end  
  
   ConvertScalar!(backend,FTB,hout,Up,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
-  @show typeof(Model.RT),Grid.Form
   ConvertVelocity!(backend,FTB,VelOut,Uu,Model.RT,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints,
     Grid.Form)
   Vorticity!(backend,FTB,Vort,Model.CG,Uu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
@@ -185,18 +188,22 @@ function TimeStepperVecI(backend,FTB,U,dtau,Fcn,Model,Grid,
 
   time = 0.0
   UNew = similar(U)
+  @. UNew = 0.0
+  @views UI = U[1:Model.DG.NumG+Model.RT.NumI] 
+  @views UNewI = UNew[1:Model.DG.NumG+Model.RT.NumI] 
   F = zeros(FTB,Model.DG.NumG+Model.RT.NumG)
+  @views FI = F[1:Model.DG.NumG+Model.RT.NumI] 
   time = 0.0
   for i = 1 : nAdveVel
     if Proc == 1  
       @show i,(i-1)*dtau/3600   
     end  
     Fcn(backend,FTB,F,U,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
-    @. UNew = U + 1/3 * dtau * F
+    @. UNewI = UI + 1/3 * dtau * FI
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
-    @. UNew = U + 1/2 * dtau * F
+    @. UNewI = UI + 1/2 * dtau * FI
     Fcn(backend,FTB,F,UNew,Model,Grid,nQuadM,nQuadS,Jacobi;UCache)
-    @. U = U + dtau * F
+    @. UI = UI + dtau * FI
 
     # Output
     if mod(i,nPrint) == 0
@@ -264,9 +271,9 @@ time = 0.0
   ConvertScalar!(backend,FTB,hout,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   ConvertScalarVelocity!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,
     vtkSkeletonMesh.RefineMidPoints,Grid.Form)
-  ProjectHDivScalarHDiv(backend,FTB,UNewu,Model.RT,Uh,Model.DG,Uhu,Model.RT,
-  Grid,nQuadM,Jacobi)
-  Vorticity!(backend,FTB,Vort,Model.CG,UNewu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+# ProjectHDivScalarHDiv(backend,FTB,UNewu,Model.RT,Uh,Model.DG,Uhu,Model.RT,
+# Grid,nQuadM,Jacobi)
+# Vorticity!(backend,FTB,Vort,Model.CG,UNewu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
   Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],FileNumber,cName)
 
   for i = 1 : nAdveVel
@@ -290,9 +297,9 @@ time = 0.0
       ConvertScalar!(backend,FTB,hout,Uh,Model.DG,Grid,Jacobi,vtkSkeletonMesh.RefineMidPoints)
       ConvertScalarVelocity!(backend,FTB,VelOut,Uhu,Model.RT,Uh,Model.DG,Grid,Jacobi,
         vtkSkeletonMesh.RefineMidPoints,Grid.Form)
-      ProjectHDivScalarHDiv(backend,FTB,UNewu,Model.RT,Uh,Model.DG,Uhu,Model.RT,
-      Grid,nQuadM,Jacobi)
-      Vorticity!(backend,FTB,Vort,Model.CG,UNewu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
+#     ProjectHDivScalarHDiv(backend,FTB,UNewu,Model.RT,Uh,Model.DG,Uhu,Model.RT,
+#     Grid,nQuadM,Jacobi)
+#     Vorticity!(backend,FTB,Vort,Model.CG,UNewu,Model.RT,Grid,Grid.Type,nQuadM,Jacobi,vtkSkeletonMesh.RefineMidPoints)
       Outputs.vtkSkeleton!(vtkSkeletonMesh,FileNameOutput,Proc,ProcNumber,[hout Vort VelOut],FileNumber,cName)
     end
   end

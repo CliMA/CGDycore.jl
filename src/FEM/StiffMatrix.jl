@@ -1114,6 +1114,7 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
   fuDivHDiv = zeros(FeHDiv.DoF,NumQuad)
   fuGradVecDG = zeros(FeVecDG.DoF,FeVecDG.Comp,2,NumQuad)
 
+
   #computation of the ansatz functions in the quadrature points
   @inbounds for iQ = 1 : NumQuad
     @inbounds for iComp = 1 : FeTHDiv.Comp
@@ -1393,9 +1394,9 @@ function DivMomentumVector!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv::H
       #all together over edges
       @inbounds for iD = 1 : FeTHDiv.DoF
         indR = FeTHDiv.Glob[iD,iFR]
-        Rhs[indR] = 0.5 * (IRR[iD] - IRL[iD])
+        Rhs[indR] += 0.5 * (IRR[iD] - IRL[iD])
         indL = FeTHDiv.Glob[iD,iFL]
-        Rhs[indL] = 0.5 * (ILL[iD] - ILR[iD])
+        Rhs[indL] += 0.5 * (ILL[iD] - ILR[iD])
         
         if gammaLoc > 0.0
           indR = FeTHDiv.Glob[iD,iFR]
@@ -1893,6 +1894,7 @@ function DivMomentumVectorOld!(backend,FTB,Rhs,FeTHDiv::HDivElement,uHDiv,FeHDiv
       end
       gammaU = 0.5
       gammaLoc = uE > 0 ? gammaU : -gammaU
+      gammaLoc = 0.0
 
       @. MLoc11 = 0
       @. MLoc12 = 0

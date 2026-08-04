@@ -429,6 +429,37 @@ function JacobiCart!(J, detJ, pinvJ, X, ::Grids.Quad, ksi1, ksi2, F, Grid)
   pinvJ .= pinvJac(J)
   X .= XLoc
 end
+function JacobiCart!(J, X, ::Grids.Quad, ksi1, ksi2, F, Grid)
+  XT1 = 0.25 * (F.P[1].x * (1 - ksi1) * (1 - ksi2) +
+                F.P[2].x * (1 + ksi1) * (1 - ksi2) +
+                F.P[3].x * (1 + ksi1) * (1 + ksi2) +
+                F.P[4].x * (1 - ksi1) * (1 + ksi2))
+
+  XT2 = 0.25 * (F.P[1].y * (1 - ksi1) * (1 - ksi2) +
+                F.P[2].y * (1 + ksi1) * (1 - ksi2) +
+                F.P[3].y * (1 + ksi1) * (1 + ksi2) +
+                F.P[4].y * (1 - ksi1) * (1 + ksi2))
+
+  XT3 = 0.25 * (F.P[1].z * (1 - ksi1) * (1 - ksi2) +
+                F.P[2].z * (1 + ksi1) * (1 - ksi2) +
+                F.P[3].z * (1 + ksi1) * (1 + ksi2) +
+                F.P[4].z * (1 - ksi1) * (1 + ksi2))
+
+  XLoc = SVector{3}(XT1,XT2,XT3)
+
+  JP = @SArray[F.P[1].x F.P[2].x F.P[3].x F.P[4].x;
+                 F.P[1].y F.P[2].y F.P[3].y F.P[4].y;
+                 F.P[1].z F.P[2].z F.P[3].z F.P[4].z]
+
+  J3 = @SArray([-0.25 + 0.25 * ksi2  -0.25 + 0.25 * ksi1
+                 0.25 - 0.25 * ksi2  -0.25 - 0.25 * ksi1
+                 0.25 + 0.25 * ksi2   0.25 + 0.25 * ksi1
+                -0.25 - 0.25 * ksi2   0.25 - 0.25 * ksi1])
+
+  J .= JP * J3
+
+  X .= XLoc
+end
 
 @inline function det(a,b)
 

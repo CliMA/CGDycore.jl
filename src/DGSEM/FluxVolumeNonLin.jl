@@ -11,6 +11,19 @@ function FluxSplitVolumeNonLinHV(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThread
     Val(N), Val(M), Val(NV), Val(NAUX);ndrange=ndrange)
 end
 
+function FluxSplitVolumeNonLinHV2(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
+  backend = get_backend(F)
+  DoF = DG.DoF
+  DoFE = DG.DoFE
+  N = DG.OrdPoly + 1
+  M = DG.OrdPolyZ + 1
+  group = (N,N,M,1,1)
+  ndrange = (N,N,M,Nz,NF)
+  KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHV2QuadKernel!(backend,group)
+  KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.DVZT,DG.Glob,
+    Val(N), Val(M), Val(NV), Val(NAUX);ndrange=ndrange)
+end
+
 function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,::Grids.Quad)
   backend = get_backend(F)
   DoF = DG.DoF 
@@ -289,6 +302,116 @@ end
       FLoc[iv] += -DVZT[l, K] * hTilde[iv]
     end
   end  
+  ID = I + (J - 1) * N
+  ind = Glob[ID, IF]
+  @unroll for iv = 1:NV
+    F[K, IZ, ind, iv] += FLoc[iv]
+  end
+end
+
+@kernel inbounds = true function FluxSplitVolumeNonLinHV2QuadKernel!(FluxAver!,
+    F, @Const(V), @Const(Aux), @Const(dXdxI), @Const(DVT),
+    @Const(DVZT), @Const(Glob),
+    ::Val{N}, ::Val{M}, ::Val{NV}, ::Val{NAUX}) where {N, M, NV, NAUX}
+
+  I, J, K      = @index(Local, NTuple)
+  _, _, _, IZ, IF  = @index(Global, NTuple)
+
+  NZ       = @uniform @ndrange()[4]
+
+  VLoc  = @localmem eltype(F) (NV, N, N, M)
+  AuxLoc = @localmem eltype(F) (NAUX, N, N, M)
+  dXdxILoc = @localmem eltype(dXdxI)  (3, 3, N, N, M)
+
+  V_ijk = @private eltype(F) (NV,)
+  m_ijk = @private eltype(F) (3,)
+  m_n = @private eltype(F) (3,)
+  V_n = @private eltype(F) (NV,)
+  Aux_ijk = @private eltype(F) (NAUX,)
+  Aux_n = @private eltype(F) (NAUX,)
+  fTilde = @private eltype(F) (NV,)
+  FLoc = @private eltype(F) (NV,)
+
+  # ---- load phase ----
+  ID = I + (J - 1) * N
+  ind = Glob[ID, IF]
+  @unroll for iaux = 1:NAUX
+    AuxLoc[iaux, I, J, K] = Aux[K, IZ, ind, iaux]
+  end
+  @unroll for iv = 1:NV
+    VLoc[iv, I, J, K] = V[K, IZ, ind, iv]
+    FLoc[iv] = 0
+  end
+  @unroll for j = 1:3
+    @unroll for i = 1:3
+      dXdxILoc[i, j, I, J, K] = dXdxI[i, j, K, ID, IZ, IF]
+    end
+  end
+
+  @synchronize
+
+  # ---- compute phase ----
+  @unroll for iv = 1 : NV
+    V_ijk[iv] = VLoc[iv, I, J, K]
+  end  
+  @unroll for iaux = 1 : NAUX
+    Aux_ijk[iaux] = AuxLoc[iaux, I, J, K]
+  end  
+  m_ijk[1] = dXdxILoc[1, 1, I, J, K]
+  m_ijk[2] = dXdxILoc[1, 2, I, J, K]
+  m_ijk[3] = dXdxILoc[1, 3, I, J, K]
+  for l = 1:N
+    @unroll for iv = 1 : NV
+      V_n[iv] = VLoc[iv, l, J, K]
+    end  
+    @unroll for iaux = 1 : NAUX
+      Aux_n[iaux] = AuxLoc[iaux, l, J, K]
+    end  
+    m_n[1] = dXdxILoc[1, 1, l, J, K]
+    m_n[2] = dXdxILoc[1, 2, l, J, K]
+    m_n[3] = dXdxILoc[1, 3, l, J, K]
+    FluxAver!(fTilde,V_ijk,V_n,Aux_ijk,Aux_n,m_ijk,m_n)
+    @unroll for iv = 1:NV
+      FLoc[iv] += -DVT[l, I] * fTilde[iv] 
+    end
+  end  
+  m_ijk[1] = dXdxILoc[2, 1, I, J, K]
+  m_ijk[2] = dXdxILoc[2, 2, I, J, K]
+  m_ijk[3] = dXdxILoc[2, 3, I, J, K]
+  for l = 1:N
+    @unroll for iv = 1 : NV
+      V_n[iv] = VLoc[iv, I, l, K]
+    end
+    @unroll for iaux = 1 : NAUX
+      Aux_n[iaux] = AuxLoc[iaux, I, l, K]
+    end
+    m_n[1] = dXdxILoc[2, 1, I, l, K]
+    m_n[2] = dXdxILoc[2, 2, I, l, K]
+    m_n[3] = dXdxILoc[2, 3, I, l, K]
+    FluxAver!(fTilde,V_ijk,V_n,Aux_ijk,Aux_n,m_ijk,m_n)
+    @unroll for iv = 1:NV
+      FLoc[iv] += -DVT[l, J] * fTilde[iv]
+    end
+  end
+
+  m_ijk[1] = dXdxILoc[3, 1, I, J, K]
+  m_ijk[2] = dXdxILoc[3, 2, I, J, K]
+  m_ijk[3] = dXdxILoc[3, 3, I, J, K]
+  for l = 1:M
+    @unroll for iv = 1 : NV
+      V_n[iv] = VLoc[iv, I, J, l]
+    end
+    @unroll for iaux = 1 : NAUX
+      Aux_n[iaux] = AuxLoc[iaux, I, J, l]
+    end
+    m_n[1] = dXdxILoc[3, 1, I, J, l]
+    m_n[2] = dXdxILoc[3, 2, I, J, l]
+    m_n[3] = dXdxILoc[3, 3, I, J, l]
+    FluxAver!(fTilde,V_ijk,V_n,Aux_ijk,Aux_n,m_ijk,m_n)
+    @unroll for iv = 1:NV
+      FLoc[iv] += -DVZT[l, K] * fTilde[iv]
+    end
+  end
   ID = I + (J - 1) * N
   ind = Glob[ID, IF]
   @unroll for iv = 1:NV

@@ -39,10 +39,17 @@ function RTKiteDualHDiv{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractFloat
   EdgesD = zeros(Int,NumEdges)
 
   NumEdgesD = 0
+  NumEdgesB = 0
   @inbounds for iE = 1 : NumEdges
     if Edges[iE].Type == "E1" || Edges[iE].Type == "E2"
       NumEdgesD += 1
       EdgesD[iE] = NumEdgesD
+    end
+  end  
+  @inbounds for iE = 1 : NumEdges
+    if Edges[iE].Type == "B1" || Edges[iE].Type == "B2"
+      NumEdgesB += 1
+      EdgesD[iE] = NumEdgesB + NumEdgesD
     end
   end
 
@@ -51,33 +58,33 @@ function RTKiteDualHDiv{FT}(k,::Grids.Quad,backend,Grid) where FT<:AbstractFloat
     iGF = 1
     iE = EdgesD[Faces[iF].E[1]]
     @inbounds for i = 1 : DoFE
-      GlobCPU[iG,iF] = DoFE * (iE - 1) + i 
+      GlobCPU[iG,iF] = DoFE * (iE - 1) + i + (2 * DoFE + DoFF) * NumFaces
       iG += 1
     end
     @inbounds for i = 1 : DoFE
-      GlobCPU[iG,iF] = DoFE * NumEdgesD + (2 * DoFE + DoFF) * (iF - 1) + iGF
+      GlobCPU[iG,iF] = (2 * DoFE + DoFF) * (iF - 1) + iGF
       iG += 1
       iGF += 1
     end
     @inbounds for i = 1 : DoFE
-      GlobCPU[iG,iF] = DoFE * NumEdgesD + (2 * DoFE + DoFF) * (iF - 1) + iGF
+      GlobCPU[iG,iF] = (2 * DoFE + DoFF) * (iF - 1) + iGF
       iG += 1
       iGF += 1
     end
     iE = EdgesD[Faces[iF].E[4]]
     @inbounds for i = 1 : DoFE
-      GlobCPU[iG,iF] = DoFE * (iE - 1) + i 
+      GlobCPU[iG,iF] = DoFE * (iE - 1) + i + (2 * DoFE + DoFF) * NumFaces 
       iG += 1
     end
     @inbounds for i = 1 : DoFF
-      GlobCPU[iG,iF] = DoFE * NumEdgesD + (2 * DoFE + DoFF) * (iF - 1) + iGF
+      GlobCPU[iG,iF] =  (2 * DoFE + DoFF) * (iF - 1) + iGF
       iG += 1
       iGF += 1
     end
   end
 
-  NumG = DoFE * NumEdgesD + (2 * DoFE + DoFF) * NumFaces
-  NumI = NumG
+  NumG = DoFE * (NumEdgesD  + NumEdgesB) + (2 * DoFE + DoFF) * NumFaces
+  NumI = DoFE * NumEdgesD + (2 * DoFE + DoFF) * NumFaces
 
 
   copyto!(Glob,GlobCPU)

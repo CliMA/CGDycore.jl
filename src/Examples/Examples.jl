@@ -45,6 +45,9 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
   elseif Problem == "LinearBlob"
     Profile = Examples.LinearBlob()(Param,Phys)
     Model.InitialProfile = Profile
+  elseif Problem == "LinearBlobCart"
+    Profile = Examples.LinearBlobCart()(Param,Phys)
+    Model.InitialProfile = Profile
   elseif Problem == "Advection"
     Profile = Examples.Advec()(Param,Phys)
     Model.InitialProfile = Profile

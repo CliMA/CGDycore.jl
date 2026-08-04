@@ -152,7 +152,7 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
              -1  0  -1   0]
   Dim = 3
   Type = Polygonal()
-  Form = "Sphere"
+  Form = SphericalGrid()
   NumNodes=size(xVertex,1)
   NumNodesB=0
   NumNodesG=0
@@ -192,7 +192,7 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
 #  (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;
 #    P=zeros(Float64,0,0), MidFace = MidFace,Rad=Rad,Form="Sphere");
    (Faces[FaceNumber],Edges)=Face(e[1:nEdgesOnCell[i]],Nodes,Edges,FaceNumber,"",OrientFace;
-     P=zeros(Float64,0,0),Rad=Rad,Form="Sphere");
+     P=zeros(Float64,0,0),Rad=Rad,Form=SphericalGrid());
     FaceNumber += 1
   end
   NumEdges = size(Edges,1)
@@ -219,8 +219,11 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
   nBar3 = zeros(0,0)
   nBar = zeros(0,0)
   AdaptGrid = ""
+  EF=KernelAbstractions.zeros(backend,Int,0,0)
+  FE=KernelAbstractions.zeros(backend,Int,0,0)
 
   return GridStruct{FT,
+                    typeof(EF), 
                     typeof(z)}(
     nz,
     zP,
@@ -246,6 +249,8 @@ function InputGridMPASO(backend,FT,filename,OrientFace,Rad,nz)
     nBar3,
     nBar,
     AdaptGrid,
+    EF,
+    FE,
     )                 
 end
 

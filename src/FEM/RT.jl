@@ -256,23 +256,42 @@ function RTStruct{FT}(backend,k,ElemType::Grids.ElementType,Grid) where FT<:Abst
   Comp = 2
   Glob = KernelAbstractions.zeros(backend,Int,DoF,Grid.NumFaces)
   GlobCPU = zeros(Int,DoF,Grid.NumFaces)
-  NumG = Grid.NumEdges * DoFE + Grid.NumFaces * DoFF
-  NumI = NumG
+  NumEdges = Grid.NumEdges
+  Edges = Grid.Edges
+
+  EdgesD = zeros(Int,NumEdges)
+  NumEdgesD = 0
+  NumEdgesB = 0
+  @inbounds for iE = 1 : NumEdges
+    if Edges[iE].Type != "B" 
+      NumEdgesD += 1
+      EdgesD[iE] = NumEdgesD
+    end
+  end
+  @inbounds for iE = 1 : NumEdges
+    if Edges[iE].Type == "B" 
+      NumEdgesB += 1
+      EdgesD[iE] = NumEdgesB + NumEdgesD
+    end
+  end
+
   @inbounds for iF = 1 : Grid.NumFaces
     iGlob = 1
     @inbounds for i = 1 : length(Grid.Faces[iF].E)
-      iE = Grid.Faces[iF].E[i]
+      iE = EdgesD[Grid.Faces[iF].E[i]]
       @inbounds for j = 1 : DoFE
-        GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j
+        GlobCPU[iGlob,iF] = DoFE * (Grid.Edges[iE].E - 1) + j + DoFF * Grid.NumFaces
         iGlob += 1
       end  
     end  
     @inbounds for j = 1 : DoFF
-      GlobCPU[iGlob,iF] = DoFE * Grid.NumEdges + DoFF * (Grid.Faces[iF].F - 1) + j
+      GlobCPU[iGlob,iF] = DoFF * (Grid.Faces[iF].F - 1) + j
       iGlob += 1
     end
   end
   copyto!(Glob,GlobCPU)
+  NumG = Grid.NumEdges * DoFE + Grid.NumFaces * DoFF
+  NumI = NumEdgesD * DoFE + Grid.NumFaces * DoFF
   M = sparse([1],[1],[1.0])
   LUM = lu(M)
   Order = k

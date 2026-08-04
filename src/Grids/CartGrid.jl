@@ -42,16 +42,29 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   y=y0
   @inbounds for iy=1:ny+1
     x=x0
-    if iy==ny+1 && Boundary.SN == "Period"
+    if iy == ny+1 && Boundary.SN == "Period"
     else
-      if iy == 1 || iy == ny + 1  
-        TypeN = 'B'
-      else
-        TypeN = ' '  
+      if Boundary.SN == "Period"
+        TypeN = ' '
+      else  
+        if  iy == 1 || iy == ny + 1  
+          TypeN = 'B'
+        else
+          TypeN = ' '  
+        end  
       end  
       @inbounds for ix=1:nx+1
         if ix==nx+1 && Boundary.WE == "Period"
         else
+          if Boundary.WE == "Period" || (iy == 1 || iy == ny + 1)
+          else    
+            if ix == 1 || ix == nx+1    
+              TypeN = 'B'
+            else
+              TypeN = ' '  
+            end  
+          end  
+#         @show ix,iy,x,y
           Nodes[NodeNumber]=Node(Point([x,y,0.0]),NodeNumber,TypeN)
           NodeNumber=NodeNumber+1
         end
@@ -76,7 +89,8 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   end
 
   Edges= map(1:NumEdges) do i
-    Edge([1,2],Nodes,0,0,"",0)
+#   Edge([1,2],Nodes,0,0,"",0)
+    Edge()
   end
 
   EdgeNumber=1
@@ -101,13 +115,23 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
       if ix==nx+1 && Boundary.WE == "Period"
       else
         if iy==ny && Boundary.SN == "Period"
-          Edges[EdgeNumber]=Edge([N1,1+(ix-1)],Nodes,EdgeNumber,EdgeNumber,"Y",EdgeNumberY)
+          if Nodes[N1].Type == 'B' && Nodes[1+(ix-1)].Type == 'B'  
+            TypeE = "B"
+          else
+            TypeE = "Y"
+          end  
+          Edges[EdgeNumber]=Edge([N1,1+(ix-1)],Nodes,EdgeNumber,EdgeNumber,TypeE,EdgeNumberY)
           EdgeNumber=EdgeNumber+1
           EdgeNumberY=EdgeNumberY+1
           N1=N1+1
           N2=N2+1
         else
-          Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,"Y",EdgeNumberY)
+          if Nodes[N1].Type == 'B' && Nodes[N2].Type == 'B'  
+            TypeE = "B"
+          else
+            TypeE = "Y"
+          end  
+          Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,TypeE,EdgeNumberY)
           EdgeNumber=EdgeNumber+1
           EdgeNumberY=EdgeNumberY+1
           N1=N1+1
@@ -122,19 +146,24 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   @inbounds for iy=1:ny+1
     if iy==ny+1 && Boundary.SN == "Period"
     else
-      if iy==1 || iy==ny+1  
-        TypeE="B"
-      else
-        TypeE="X"  
-      end
       @inbounds for ix=1:nx
         if ix==nx && Boundary.WE == "Period"
+          if Nodes[N1].Type == 'B' && Nodes[1+(iy-1)*nx].Type == 'B'  
+            TypeE = "B"
+          else
+            TypeE = "X"
+          end  
           Edges[EdgeNumber]=Edge([N1,1+(iy-1)*nx],Nodes,EdgeNumber,EdgeNumber,TypeE,EdgeNumberX)
           EdgeNumber=EdgeNumber+1
           EdgeNumberX=EdgeNumberX+1
           N1=N1+1
           N2=N2+1
         else
+          if Nodes[N1].Type == 'B' && Nodes[N2].Type == 'B'  
+            TypeE = "B"
+          else
+            TypeE = "X"
+          end  
           Edges[EdgeNumber]=Edge([N1,N2],Nodes,EdgeNumber,EdgeNumber,TypeE,EdgeNumberX)
           EdgeNumber=EdgeNumber+1
           EdgeNumberX=EdgeNumberX+1
@@ -215,7 +244,6 @@ function CartGrid(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Float64
   z=KernelAbstractions.zeros(backend,FT,nz+1)
   dzeta=zeros(nz)
   H=0.0
-  colors=[[]]
   NumFacesB = 0
   NumFacesG = 0
   NumEdgesB = 0
