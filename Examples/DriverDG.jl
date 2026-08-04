@@ -395,7 +395,7 @@ if FluxDG == "KennedyGruber"
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverageH = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.RhoThPos,pAuxPos,GPAuxPos,Grid.Type)
-  Model.FluxAverageV = DGSEM.KennedyGruberGrav2()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+  Model.FluxAverageV = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
     Model.RhoThPos,pAuxPos,GPAuxPos,Grids.Quad())
   Model.FluxAverageSlow = DGSEM.KennedyGruberGravSlow()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.RhoThPos,pAuxPos,GPAuxPos)
