@@ -125,27 +125,20 @@ end
   ND = @uniform @ndrange()[3]
 
   if ID <= ND
-    # Load the 3x3 slice directly into a static matrix (stored in registers)
-    R = SMatrix{3, 3}(
-      Rotate[1, 1, ID, IF], Rotate[1, 2, ID, IF], Rotate[1, 3, ID, IF],
-      Rotate[2, 1, ID, IF], Rotate[2, 2, ID, IF], Rotate[2, 3, ID, IF],
-      Rotate[3, 1, ID, IF], Rotate[3, 2, ID, IF], Rotate[3, 3, ID, IF]
-    )
 
     ind = Glob[ID, IF]
 
-    # Load velocity component into a static vector
-    v = @inbounds SVector{3}(V[K, Iz, ind, 2], V[K, Iz, ind, 3], V[K, Iz, ind, 4])
+    v1 = V[K, Iz, ind, 2]
+    v2 = V[K, Iz, ind, 3]
+    v3 = V[K, Iz, ind, 4]
 
-    # Matrix-vector multiplication (completely optimized in registers)
-    v_rot = R * v
-
-    # Write back to global memory
-    V[K, Iz, ind, 2] = v_rot[1]
-    V[K, Iz, ind, 3] = v_rot[2]
-    V[K, Iz, ind, 4] = v_rot[3]
+    V[K, Iz, ind, 2] = Rotate[1, 1, ID, IF] * v1 + Rotate[2, 1, ID, IF] * v2 + Rotate[3, 1, ID, IF] * v3
+    V[K, Iz, ind, 3] = Rotate[1, 2, ID, IF] * v1 + Rotate[2, 2, ID, IF] * v2 + Rotate[3, 2, ID, IF] * v3
+    V[K, Iz, ind, 4] = Rotate[1, 3, ID, IF] * v1 + Rotate[2, 3, ID, IF] * v2 + Rotate[3, 3, ID, IF] * v3
   end
 end
+
+
 
 @kernel inbounds = true function VCart2VSp3Kernel!(V, @Const(Rotate), @Const(Glob))
 
@@ -154,25 +147,16 @@ end
   ND = @uniform @ndrange()[3]
 
   if ID <= ND
-    # Load the 3x3 slice directly into a static matrix (stored in registers)
-    R = SMatrix{3, 3}(
-      Rotate[1, 1, ID, IF], Rotate[2, 1, ID, IF], Rotate[3, 1, ID, IF],
-      Rotate[1, 2, ID, IF], Rotate[2, 2, ID, IF], Rotate[3, 2, ID, IF],
-      Rotate[1, 3, ID, IF], Rotate[2, 3, ID, IF], Rotate[3, 3, ID, IF]
-    )
 
     ind = Glob[ID, IF]
 
-    # Load velocity component into a static vector
-    v = SVector{3}(V[K, Iz, ind, 2], V[K, Iz, ind, 3], V[K, Iz, ind, 4])
+    v1 = V[K, Iz, ind, 2]
+    v2 = V[K, Iz, ind, 3]
+    v3 = V[K, Iz, ind, 4]
 
-    # Matrix-vector multiplication (completely optimized in registers)
-    v_rot = R * v
-
-    # Write back to global memory
-    V[K, Iz, ind, 2] = v_rot[1]
-    V[K, Iz, ind, 3] = v_rot[2]
-    V[K, Iz, ind, 4] = v_rot[3]
+    V[K, Iz, ind, 2] = Rotate[1, 1, ID, IF] * v1 + Rotate[1, 2, ID, IF] * v2 + Rotate[1, 3, ID, IF] * v3
+    V[K, Iz, ind, 3] = Rotate[2, 1, ID, IF] * v1 + Rotate[2, 2, ID, IF] * v2 + Rotate[2, 3, ID, IF] * v3
+    V[K, Iz, ind, 4] = Rotate[3, 1, ID, IF] * v1 + Rotate[3, 2, ID, IF] * v2 + Rotate[3, 3, ID, IF] * v3
   end
 end
 

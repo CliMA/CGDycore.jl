@@ -214,10 +214,10 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad,Metri
   ndrange = (N,N,M,Nz,NF)
   CurlMetric = false
   _,DS,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPoly)
-  DSGPU = KernelAbstractions.zeros(backend,FT,size(DS))
+  DSGPU = KernelAbstractions.zeros(backend,Float64,size(DS))
   copyto!(DSGPU,DS)
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
-  DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
+  DSZGPU = KernelAbstractions.zeros(backend,Float64,size(DSZ))
   copyto!(DSZGPU,DSZ)
   @show MetricType
   if occursin("Curl",MetricType) 
@@ -903,6 +903,10 @@ end
    F[4,3] * (one-ksi1)*(one+ksi2))
   zLoc = half * ((one-ksi3) * z1 + (one+ksi3) * z2)
   hR, = AdaptGrid(zLoc,zs)
+  XMax = max(abs(X1), abs(X2), abs(X3))
+  X1 = X1 / XMax
+  X2 = X2 / XMax
+  X3 = X3 / XMax
   r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
   X[1] = X1 / r * (Rad + hR)
   X[2] = X2 / r * (Rad + hR)

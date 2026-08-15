@@ -61,7 +61,6 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)
     Sources.Buoyancy!(Buo,F,U,DG.Glob,Metric.X,NumberThreadGPU)
   end
 
-
 end
 
 function FcnSplitEx!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global,VelForm)

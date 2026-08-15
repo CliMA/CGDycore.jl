@@ -344,7 +344,6 @@ else
     Phys,TopoProfile,CellToProc,Grid,ParallelCom)
 end
 
-
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
@@ -597,6 +596,7 @@ elseif IntMethod == "RungeKuttaEx"
   Fcn = (DGSEM.FcnSplit!,)
   dt = (dtau,)
 end
+
 
 Integration.TimeStepper(MethodInt,dt,U,Fcn,Jac,DG,Exchange,Metric,
   Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)

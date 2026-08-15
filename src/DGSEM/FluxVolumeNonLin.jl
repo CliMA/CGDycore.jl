@@ -360,7 +360,7 @@ end
   m_ijk[1] = dXdxILoc[1, 1, I, J, K]
   m_ijk[2] = dXdxILoc[1, 2, I, J, K]
   m_ijk[3] = dXdxILoc[1, 3, I, J, K]
-  for l = 1:N
+  @unroll for l = 1:N
     @unroll for iv = 1 : NV
       V_n[iv] = VLoc[iv, l, J, K]
     end  
@@ -378,7 +378,7 @@ end
   m_ijk[1] = dXdxILoc[2, 1, I, J, K]
   m_ijk[2] = dXdxILoc[2, 2, I, J, K]
   m_ijk[3] = dXdxILoc[2, 3, I, J, K]
-  for l = 1:N
+  @unroll for l = 1:N
     @unroll for iv = 1 : NV
       V_n[iv] = VLoc[iv, I, l, K]
     end
@@ -397,7 +397,7 @@ end
   m_ijk[1] = dXdxILoc[3, 1, I, J, K]
   m_ijk[2] = dXdxILoc[3, 2, I, J, K]
   m_ijk[3] = dXdxILoc[3, 3, I, J, K]
-  for l = 1:M
+  @unroll for l = 1:M
     @unroll for iv = 1 : NV
       V_n[iv] = VLoc[iv, I, J, l]
     end

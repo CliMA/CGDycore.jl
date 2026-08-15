@@ -7,48 +7,22 @@ mutable struct JacDGVert{FT<:AbstractFloat,
   nz::Int
   fac::FT
   FacGrav::FT
-  A12_11::AT2
-  A22_11::AT2
-  A33_11::AT2
   A13::AT4
   A23::AT4
-  A31::AT4
   A32::AT4
-  B1m_row1_23::AT3
-  B2m_row1_23::AT3
-  B3m_row1_23::AT3
-  B1_col2::AT3
-  B2_col2::AT3
-  B3_cols13::AT4
-  C1_row2::AT3
-  C2_row2::AT3
-  C3_rows13::AT4
-  C2p_col1::AT3
-  C3p_col1::AT3
-  Gblk::AT4
+  B1m_34::AT3
+  B1_1::AT2
+  B1_23::AT4
+  B1_4::AT2
+  B2_23::AT4
+  B3_14::AT4
+  B1p_12::AT3
+  C23_2::AT4
+  C14_3::AT4
   SA::AT4
-  SchurL::AT4
-  SchurD::AT4
-  SchurU::AT4
-# SchurBand::AT3
-# rs::AT2
+  SchurBand::AT3
+  rs::AT2
 end  
-
-function LowOrder(DG)
-
-  M = size(DG.xwZ,1)
-  D = zeros(M,M)
-  D[1,1] = 0.5
-  D[1,2] = 0.5
-  for i = 2 : M - 1
-    # cI = c  
-    D[i,i-1] = -0.5
-    D[i,i+1] = 0.5
-  end
-  D[M,M-1] = -0.5
-  D[M,M] = -0.5
-  DW = inv(diagm(DG.wZ)) * D
-end
 
 @inline function LUFull!(iz,ID,A,::Val{n}) where {n}
 
@@ -148,40 +122,31 @@ end
   end    
 end
 
-function ConstructJacDGVert(backend,FT,M,nz,NumG) 
+function JacDGVert(backend,FT,M,nz,DG) 
   CompTri = false
-  M1 = M - 1
+  M2 = M - 2
   fac = 0
   FacGrav = 0
-  A12_11 = KernelAbstractions.zeros(backend,FT,nz,NumG)
-  A22_11 = KernelAbstractions.zeros(backend,FT,nz,NumG)
-  A33_11 = KernelAbstractions.zeros(backend,FT,nz,NumG)
-  A13 = KernelAbstractions.zeros(backend,FT,M1,M1,nz,NumG)
-  A23 = KernelAbstractions.zeros(backend,FT,M1,M1,nz,NumG)
-  A31 = KernelAbstractions.zeros(backend,FT,M1,M1,nz,NumG)
-  A32 = KernelAbstractions.zeros(backend,FT,M1,M1,nz,NumG)
-  B1m_row1_23 = KernelAbstractions.zeros(backend,FT,2,nz,NumG)
-  B2m_row1_23 = KernelAbstractions.zeros(backend,FT,2,nz,NumG)
-  B3m_row1_23 = KernelAbstractions.zeros(backend,FT,2,nz,NumG)
-  B1_col2 = KernelAbstractions.zeros(backend,FT,M1,nz,NumG)
-  B2_col2 = KernelAbstractions.zeros(backend,FT,M1,nz,NumG)
-  B3_cols13 = KernelAbstractions.zeros(backend,FT,2,M1,nz,NumG)
-  C1_row2 = KernelAbstractions.zeros(backend,FT,M1,nz,NumG)
-  C2_row2 = KernelAbstractions.zeros(backend,FT,M1,nz,NumG)
-  C3_rows13 = KernelAbstractions.zeros(backend,FT,2,M1,nz,NumG)
-  C2p_col1 = KernelAbstractions.zeros(backend,FT,3,nz,NumG)
-  C3p_col1 = KernelAbstractions.zeros(backend,FT,3,nz,NumG)
-  Gblk = KernelAbstractions.zeros(backend,FT,M,M,nz,NumG)
-  SA = KernelAbstractions.zeros(backend,FT,M1,M1,nz,NumG)
-  SchurL = KernelAbstractions.zeros(backend,FT,3,3,nz,NumG)
-  SchurD = KernelAbstractions.zeros(backend,FT,3,3,nz,NumG)
-  SchurU = KernelAbstractions.zeros(backend,FT,3,3,nz,NumG)
-# SchurBand = KernelAbstractions.zeros(backend,FT,7,4*nz,NumG)
-# rs = KernelAbstractions.zeros(backend,FT,4*nz,NumG)
+  NumI = DG.NumI
+  A13 = KernelAbstractions.zeros(backend,FT,M,M2,nz,NumI)
+  A23 = KernelAbstractions.zeros(backend,FT,M2,M2,nz,NumI)
+  A32 = KernelAbstractions.zeros(backend,FT,M2,M2,nz,NumI)
+  B1m_34 = KernelAbstractions.zeros(backend,FT,2,nz,NumI)
+  B1_1 = KernelAbstractions.zeros(backend,FT,nz,NumI)
+  B1_23 = KernelAbstractions.zeros(backend,FT,M,2,nz,NumI)
+  B1_4 = KernelAbstractions.zeros(backend,FT,nz,NumI)
+  B2_23 = KernelAbstractions.zeros(backend,FT,M2,2,nz,NumI)
+  B3_14 = KernelAbstractions.zeros(backend,FT,M2,2,nz,NumI)
+  B1p_12 = KernelAbstractions.zeros(backend,FT,2,nz,NumI)
+  C23_2 = KernelAbstractions.zeros(backend,FT,2,M2,nz,NumI)
+  C14_3 = KernelAbstractions.zeros(backend,FT,2,M2,nz,NumI)
+  SA = KernelAbstractions.zeros(backend,FT,M2,M2,nz,NumI)
+  SchurBand = KernelAbstractions.zeros(backend,FT,7,4*nz,NumI)
+  rs = KernelAbstractions.zeros(backend,FT,4*nz,NumI)
 
   return JacDGVert{FT,
-                   typeof(A12_11),
-                   typeof(B1m_row1_23),
+                   typeof(B1_1),
+                   typeof(B1m_34),
                    typeof(A13)}(
 
     CompTri,
@@ -189,31 +154,21 @@ function ConstructJacDGVert(backend,FT,M,nz,NumG)
     nz,
     fac,
     FacGrav,
-    A12_11,
-    A22_11,
-    A33_11,
     A13,
     A23,
-    A31,
     A32,
-    B1m_row1_23,
-    B2m_row1_23,
-    B3m_row1_23,
-    B1_col2,
-    B2_col2,
-    B3_cols13,
-    C1_row2,
-    C2_row2,
-    C3_rows13,
-    C2p_col1,
-    C3p_col1,
-    Gblk,
+    B1m_34,
+    B1_1,
+    B1_23,
+    B1_4,
+    B2_23,
+    B3_14,
+    B1p_12,
+    C23_2,
+    C14_3,
     SA,
-    SchurL,
-    SchurD,
-    SchurU,
-#   SchurBand,
-#   rs
+    SchurBand,
+    rs
   )
 end  
 
@@ -283,6 +238,9 @@ end
     end
     rsS[2] += -FacGrav * r11
     rsS[3] += -FacGrav * r1M
+    if ID == 1
+      @show rsS
+    end  
     rs[sh + 1,ID] = rsS[1]
     rs[sh + 2,ID] = rsS[2]
     rs[sh + 3,ID] = rsS[3]
@@ -585,13 +543,8 @@ end
 end      
 
 
-#@kernel inbounds = true function FillJacDGVertKernel!(A13,A23,A32,B1m_34,B1_1,B1_23,B1_4,
-#  B2_23,B3_14,B1p_12,C23_2,C14_3,SA,SchurBand,@Const(U),@Const(dz),@Const(DW),@Const(w),fac,
-#  FacGrav,cS,Phys, ::Val{M}) where {M}
-@kernel inbounds = true function FillJacDGVertKernel!(A12_11,A22_11,A33_11,A13,A23,A31,A32,
-  B1m_row1_23,B2m_row1_23,B3m_row1_23,B1_col2,B2_col2,B3_cols13,
-  C1_row2, C2_row2, C3_rows13, C2p_col1, C3p_col1, SA, SchurL,SchurD,SchurU,
-  @Const(U),@Const(Gblk),@Const(dz),@Const(DW),@Const(w),fac,
+@kernel inbounds = true function FillJacDGVertKernel!(A13,A23,A32,B1m_34,B1_1,B1_23,B1_4,
+  B2_23,B3_14,B1p_12,C23_2,C14_3,SA,SchurBand,@Const(U),@Const(dz),@Const(DW),@Const(w),fac,
   FacGrav,cS,Phys, ::Val{M}) where {M}
 
   iz,ID = @index(Global, NTuple)
@@ -601,15 +554,11 @@ end
   Th = @private eltype(U) (M,)
   dpdRhoTh = @private eltype(U) (M,)
   DWS = @localmem eltype(U) (M,M)
-  SAL13 = @localmem eltype(U) (M - 1,M - 1)
-  SAL23 = @localmem eltype(U) (M - 1,M - 1)
-  SAL = @localmem eltype(U) (M - 1,M - 1)
+  SAL = @localmem eltype(U) (M,M)
   @uniform RhoPos = 1
   @uniform ThPos = 5
   @uniform invcS = eltype(U)(1) / cS
   @uniform wB = w[1]
-  @uniform invwB = eltype(U)(1) / w[1]
-  @uniform invfac = eltype(U)(1) / fac
 
   if iz == 1
     @. DWS = DW   
@@ -619,8 +568,6 @@ end
   kappa   = Phys.kappa
   kexp    = kappa / (eltype(U)(1) - kappa)
   kfac    = eltype(U)(1) / (eltype(U)(1) - kappa) * Phys.Rd
-  pre_fac = kfac * (Phys.Rd / Phys.p0)^kexp
- 
 
   if ID <= DoF
     sh = (iz - 1) * 4 + 1
@@ -630,123 +577,80 @@ end
       Th[i] = U[i,iz,ID,ThPos] / U[i,iz,ID,RhoPos]
       dpdRhoTh[i] = kfac * (Phys.Rd * U[i,iz,ID,ThPos] / Phys.p0)^kexp
     end      
-    @unroll for i = 1 : M - 1 
-      @unroll for j = 1 : M - 1
-        A13[i,j,iz,ID] = inv2dz * DWS[i,j]
-        A23[i,j,iz,ID] = inv2dz * DWS[i,j] * Th[j]  
-        A32[i,j,iz,ID] = inv2dz * DWS[i,j] * dpdRhoTh[j]  
-        A31[i,j,iz,ID] = Gblk[i,j,iz,ID]
+    @unroll for i = 1 : M 
+      @unroll for j = 1 : M - 2
+        A13[i,j,iz,ID] = inv2dz * DWS[i,j+1]
       end
     end  
-    if iz > 1
-      A13[1,1,iz,ID] = eltype(U)(0)  
-      A23[1,1,iz,ID] = eltype(U)(0)  
-      A32[1,1,iz,ID] = eltype(U)(0)  
-      A12_11[iz,ID] = dpdRhoTh[1] * invcS * invdz * invwB
-      A22_11[iz,ID] = Th[1] * dpdRhoTh[1] * invcS * invdz * invwB
-      A33_11[iz,ID] = cS * invdz * invwB
-    else
-      A32[1, 1, iz, ID] *= -one(eltype(U))  
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
+        A23[i,j,iz,ID] = inv2dz * DWS[i+1,j+1] * Th[j+1]  
+        A32[i,j,iz,ID] = inv2dz * DWS[i+1,j+1] * dpdRhoTh[j+1]  
+      end
     end  
-    for i in 1:(M-1)
-      B1_col2[i, iz, ID] = eltype(U)(2) * DW[i, M] * invdz
-      B2_col2[i, iz, ID] = inv2dz * DWS[i, M] * Th[M]
-      B3_cols13[1, i, iz, ID] = Gblk[i,M,iz,ID]
-      B3_cols13[2, i, iz, ID] = inv2dz * DWS[i, M] * dpdRhoTh[M]
-    end
 
-    # B block
-    #########
-
-    # Surface flux entries (LMARS) for B matrix (connecting each element with the one on the "left")
-    if iz > 1
-      # Density
-      B1m_row1_23[1, iz, ID] = -eltype(U)(1) * invdz * invwB
-      dpdRhoThM = pre_fac * U[M, iz - 1, ID, ThPos]^kexp
-      B1m_row1_23[2, iz, ID] = -dpdRhoThM * invcS * invdz * invwB
-      # Potential temperature
-      ThM = U[M, iz - 1, ID, ThPos] / U[M, iz - 1, ID, RhoPos]
-      B2m_row1_23[1, iz, ID] = -ThM * invdz * invwB
-      B2m_row1_23[2, iz, ID] = -Th[1] * dpdRhoThM * invcS * invdz * invwB
-      # Momentum
-      B3m_row1_23[1, iz, ID] = -cS * invdz * invwB
-      B3m_row1_23[2, iz, ID] = -dpdRhoThM * invdz * invwB
-    end
-    for i in 1:(M-1)
-      C1_row2[i, iz, ID] = Gblk[M,i,iz,ID]  
-      # d(rhow_t)/d(rhotheta) for right DOF of each element wrt nodes 1:polydeg
-      C2_row2[i, iz, ID] = inv2dz * DWS[M, i] * dpdRhoTh[i]
-
-      # d(rho_t)/d(rhow) for right DOF of each element wrt nodes 1:polydeg
-      C3_rows13[1, i, iz, ID] = inv2dz * DWS[M, i]
-      # d(rhotheta_t)/d(rhow) for right DOF of each element wrt nodes 1:polydeg
-      C3_rows13[2, i, iz, ID] = inv2dz * DWS[M, i] * Th[i]
-    end
-
-    if iz > 1
-      dpdRhoThP = pre_fac * U[1, iz, ID, ThPos]^kexp
-      ThM = U[M, iz - 1, ID, ThPos] / U[M, iz - 1, ID, RhoPos]
-
-      C2p_col1[1, iz - 1, ID] = -dpdRhoThP * invcS * invwB / dz[iz - 1, ID]
-      C2p_col1[2, iz - 1, ID] = dpdRhoTh[1] * invwB / dz[iz - 1, ID]
-      C2p_col1[3, iz - 1, ID] = -ThM * dpdRhoTh[1] * invcS * invwB / dz[iz - 1, ID]
-
-      C3p_col1[1, iz - 1, ID] = invwB / dz[iz - 1, ID]
-      C3p_col1[2, iz - 1, ID] = -cS * invwB / dz[iz - 1, ID]
-      C3p_col1[3, iz - 1, ID] = Th[1] * invwB / dz[iz - 1, ID]
-    end
-    # Computation of the local Schur complements
-
-    # Multiplication of the right upper block with the inverse of the upper diagonal
-      
-    @. SAL23[1,:] = A23[1,:,iz,ID] / (fac +  A22_11[iz,ID]) 
-    @unroll for i = 2 : M - 1
-      @. SAL23[i,:] = A23[i,:,iz,ID] * invfac
-    end  
-    @. SAL13[1,:] = (A13[1,:,iz,ID] - A12_11[iz,ID] * SAL23[1,:]) * invfac 
-    @unroll for i = 2 : M - 1
-      @. SAL13[i,:] = A13[i,:,iz,ID] * invfac
-    end  
-    @unroll for i = 1 : M - 1
-      @unroll for j = 1 : M - 1
+    @unroll for i = 1 : M - 2
+      @unroll for j = 1 : M - 2
         SAL[i,j] = eltype(U)(0)
-        @unroll for k = 1 : M - 1
-          SAL[i,j] -= (A32[i,k,iz,ID] * SAL23[k,j] + A31[i,k,iz,ID] * SAL13[k,j])
+        @unroll for k = 1 : M - 2
+          SAL[i,j] += A32[i,k,iz,ID] * A23[k,j,iz,ID]
+        end
+        if i == j
+          SA[i,j,iz,ID] = fac - (FacGrav / fac) * A13[i+1,j,iz,ID] -
+            (eltype(U)(1) / fac) * SAL[i,j]
+        else
+          SA[i,j,iz,ID] = -(FacGrav / fac) * A13[i+1,j,iz,ID] -
+            (eltype(U)(1) / fac) * SAL[i,j]
         end
       end
-      SAL[i,i] += fac
-    end  
-    SAL[1,1] += A33_11[iz,ID]
-    @views @. SA[:,:,iz,ID] = SAL
-    LUFull!(iz,ID,SA,Val(M - 1))
-
-    # Fill SchurD
-
-    D11 = fac
-    D21 = Gblk[M, M, iz, ID]      # boundary gravity ρw_M ← ρ_M (=g pointwise)
-    D31 = eltype(U)(0)
-    if iz < nz
-      D12 = eltype(U)(0)
-      D22 = fac + cS * invdz * invwB
-      D32 = eltype(U)(0)
-      D13 = dpdRhoTh[M] * invcS * invdz * invwB
-      D23 = eltype(U)(0)
-      D33 = fac + Th[M] * dpdRhoTh[M] * invcS * invdz * invwB
-    else
-      D12 = eltype(U)(2) * DWS[M, M] / dz[iz, ID]
-      D22 = fac + inv2dz * cS * invwB
-      D32 = inv2dz * DWS[M, M] * Th[M]
-      D13 = eltype(U)(0)
-      D23 = -inv2dz * DWS[M, M] * dpdRhoTh[M]
-      D33 = fac
     end
-    SchurD[1, 1, iz, ID] = D11; SchurD[2, 1, iz, ID] = D21; SchurD[3, 1, iz, ID] = D31
-    SchurD[1, 2, iz, ID] = D12; SchurD[2, 2, iz, ID] = D22; SchurD[3, 2, iz, ID] = D32
-    SchurD[1, 3, iz, ID] = D13; SchurD[2, 3, iz, ID] = D23; SchurD[3, 3, iz, ID] = D33
+    if iz == 1 && ID == 1
+      @show sum(abs.(SA))
+    end  
+    LUFull!(iz,ID,SA,Val(M - 2))
+    if iz == 1 && ID == 1
+      @show sum(abs.(SA))
+    end  
 
+    if iz > 1
+      B1m_34[1,iz,ID] = -eltype(U)(1) / (wB * dz[iz,ID])
 
-#=    
+      dpdRhoThM   = kfac * (Phys.Rd * U[M,iz-1,ID,ThPos] / Phys.p0)^kexp
+      B1m_34[2,iz,ID] = -dpdRhoThM * invcS / (wB * dz[iz,ID])
+    end
+    @unroll for i = 1 : M
+      B1_23[i,1,iz,ID] = eltype(U)(2) * DW[i,1] / dz[iz,ID]
+      B1_23[i,2,iz,ID] = eltype(U)(2) * DW[i,M] / dz[iz,ID]
+    end  
 
+    if iz == 1
+      B1_1[iz,ID] = eltype(U)(0)
+    else
+      B1_23[1,1,iz,ID] = eltype(U)(0)
+      B1_1[iz,ID] = dpdRhoTh[1] * invcS * invdz / wB 
+    end
+    if iz == nz
+      B1_4[iz,ID] = eltype(U)(0)
+    else
+      B1_23[M,2,iz,ID] = eltype(U)(0)
+      B1_4[iz,ID] = dpdRhoTh[M] * invcS * invdz / wB 
+    end
+    if iz < nz
+      dpdRhoThP   = kfac * (Phys.Rd * U[1,iz+1,ID,ThPos] / Phys.p0)^kexp
+      B1p_12[1,iz,ID] = -dpdRhoThP * invcS / (wB * dz[iz,ID])
+      B1p_12[2,iz,ID] = eltype(U)(1) / (wB * dz[iz,ID])
+    end
+
+    @unroll for i = 1 : M - 2
+      B2_23[i,1,iz,ID] = inv2dz * DWS[i+1,1] * Th[1]
+      B2_23[i,2,iz,ID] = inv2dz * DWS[i+1,M] * Th[M]
+      B3_14[i,1,iz,ID] = inv2dz * DWS[i+1,1] * dpdRhoTh[1]
+      B3_14[i,2,iz,ID] = inv2dz * DWS[i+1,M] * dpdRhoTh[M]
+      C23_2[1,i,iz,ID] = inv2dz * DWS[1,i+1] * dpdRhoTh[i+1]
+      C23_2[2,i,iz,ID] = inv2dz * DWS[M,i+1] * dpdRhoTh[i+1]
+      C14_3[1,i,iz,ID] = inv2dz * DWS[1,i+1] * Th[i+1]
+      C14_3[2,i,iz,ID] = inv2dz * DWS[M,i+1] * Th[i+1]
+    end
 
     if iz > 1
       ThM = U[M,iz-1,ID,ThPos] / U[M,iz-1,ID,RhoPos]
@@ -793,7 +697,6 @@ end
       @atomic :monotonic SchurBand[3,sh+3,ID] += -inv2dz * DWS[M,M] * dpdRhoTh[M]
       @atomic :monotonic SchurBand[4,sh+2,ID] += inv2dz * cS / wB
     end
-=#  
   end  
 end
 
@@ -947,7 +850,7 @@ end
   end  
 end
 
-function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys)
+function FillJacDGVert!(JacVert::JacDGVert,U,DG,dz,fac,Phys)
 
   backend = get_backend(U)
   FTB = eltype(U)
@@ -964,20 +867,17 @@ function FillJacDGVert!(JacVert,U,DG,dz,fac,Phys)
   DoFG = 10
   group = (nz, DoFG)
   ndrange = (nz, DoF) 
-# @. JacVert.SchurBand = FTB(0)
-# @views @. JacVert.SchurBand[4,:,:] = fac
+  @. JacVert.SchurBand = FTB(0)
+  @views @. JacVert.SchurBand[4,:,:] = fac
   KFillJacDGVertKernel! = FillJacDGVertKernel!(backend,group)
-  KFillJacDGVertKernel!(JacVert.A12_11,JacVert.A22_11,JacVert.A33_11,JacVert.A13,JacVert.A23,JacVert.A31,JacVert.A32,
-  JacVert.B1m_row1_23,JacVert.B2m_row1_23,JacVert.B3m_row1_23,JacVert.B1_col2,
-  JacVert.B2_col2,JacVert.B3_cols13,
-  JacVert.C1_row2, JacVert.C2_row2, JacVert.C3_rows13, JacVert.C2p_col1, JacVert.C3p_col1,JacVert.SA,
-  JacVert.SchurL, JacVert.SchurD, JacVert.SchurU,
-  U,JacVert.Gblk,dz,DWZ,DG.wZ,fac,JacVert.FacGrav,
+  KFillJacDGVertKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
+  JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,JacVert.C23_2,
+  JacVert.C14_3,JacVert.SA,JacVert.SchurBand,U,dz,DWZ,DG.wZ,fac,JacVert.FacGrav,
   Phys.cS,Phys,Val(M);ndrange=ndrange) 
 
 end  
 
-function FillJacFrozenDGVert!(JacVert,Aux,DG,dz,fac,Phys)
+function FillJacFrozenDGVert!(JacVert::JacDGVert,Aux,DG,dz,fac,Phys)
 
   backend = get_backend(Aux)
   FTB = eltype(Aux)
@@ -1003,7 +903,8 @@ function FillJacFrozenDGVert!(JacVert,Aux,DG,dz,fac,Phys)
   Phys.cS,Phys,Val(M);ndrange=ndrange) 
 
 end  
-function SchurBoundary!(JacVert)
+
+function SchurBoundary!(JacVert::JacDGVert)
 
   backend = get_backend(JacVert.SchurBand)
   FTB = eltype(JacVert.SchurBand)
@@ -1026,18 +927,7 @@ function SchurBoundary!(JacVert)
 
 end  
 
-function Solve!(k,v,Jac,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
-  
-  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  @. k = v
-  @views TendVCart2VSp!(k,DG,Metric,NumberThreadGPU,VelForm)
-  Solve!(Jac,k)
-  @views @. k[:,:,:,2:3] *= fac
-  @views TendVSp2VCart!(k,DG,Metric,NumberThreadGPU,VelForm)
-
-end
-
-function Solve!(JacVert,b)
+function Solve!(JacVert::JacDGVert,b)
 
   backend = get_backend(JacVert.SchurBand)
   FTB = eltype(JacVert.SchurBand)
@@ -1052,15 +942,20 @@ function Solve!(JacVert,b)
   DoFG = 10
   group = (nz, DoFG)
   ndrange = (nz, DoF)
+  @show "V0",sum(abs.(b))
+  @show ndrange
   KldivVerticalFKernel! = ldivVerticalFKernel!(backend,group)
   KldivVerticalFKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
     JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,JacVert.C23_2,
     JacVert.C14_3,JacVert.SA,JacVert.SchurBand,b,JacVert.rs,invfac,FacGrav,Val(M);ndrange=ndrange)
+  @show "V1", sum(abs.(JacVert.rs))
+  @show "V1", size(JacVert.rs)
 
   group = (DoFG)
   ndrange = (DoF)
   KldivVerticalSKernel! = ldivVerticalSKernel!(backend,group)
   KldivVerticalSKernel!(JacVert.SchurBand,JacVert.rs,Val(4*nz);ndrange=ndrange)
+  @show "V2", sum(abs.(JacVert.rs))
 
   group = (nz, DoFG)
   ndrange = (nz, DoF)
@@ -1068,262 +963,32 @@ function Solve!(JacVert,b)
   KldivVerticalBKernel!(JacVert.A13,JacVert.A23,JacVert.A32,JacVert.B1m_34,JacVert.B1_1,
     JacVert.B1_23,JacVert.B1_4, JacVert.B2_23,JacVert.B3_14,JacVert.B1p_12,
     JacVert.SA,JacVert.SchurBand,b,JacVert.rs,invfac,FacGrav,Val(M);ndrange=ndrange)
+  @show "V3",sum(abs.(b))
 
 end
 
-function Permutation(M,nz)
-#Permutation
-  N = M * nz
-  p = zeros(Int,3*N)
-  ii = 0
-  @inbounds for iz = 1 : nz
-    @inbounds for iv = 1 : 1
-      @inbounds for k = 1 : M 
-        ii += 1
-        p[ii] = k + (iz - 1) * M + (iv - 1) * N
-      end
-    end
-    @inbounds for iv = [2 3] 
-      @inbounds for k = 2 : M - 1
-        ii += 1
-        p[ii] = k + (iz - 1) * M + (iv - 1) * N
-      end
-    end
-  end
-  ivw = 2
-  ivTh = 3
-  @inbounds for iz = 1 : nz
-    ii += 1
-    p[ii] = 1 + (iz-1) * M  + (ivw - 1) * N
-    ii += 1
-    p[ii] = 1 + (iz-1) * M  + (ivTh - 1) * N
-    ii += 1
-    p[ii] = M + (iz - 1) * M + (ivTh - 1) * N
-    ii += 1
-    p[ii] = M + (iz - 1) * M + (ivw - 1) * N
-  end
-  return p
-end  
-
-function DScalarDMomAc(NZ,DG,cS)
-  
-  fac = 0.5
-  M = DG.OrdPolyZ + 1
-  N = NZ * M
-  RowInd = Int[]
-  ColInd = Int[]
-  Val = Float64[]
-  D = DG.DWZ
-  for iZ = 1 : NZ
-    for i = 1 : M
-      for j = 1 : M
-        push!(RowInd,i+(iZ-1)*M)
-        push!(ColInd,j+(iZ-1)*M)
-        push!(Val,-D[i,j])
-      end
-    end  
-    if iZ < NZ
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M)  
-      push!(Val,-fac/DG.wZ[1])
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,-fac/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M)  
-      push!(Val,fac/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,fac/DG.wZ[1])
-    end  
-  end
-  dSdM = sparse(RowInd, ColInd, Val,N,N)
-
-  RowInd = Int[]
-  ColInd = Int[]
-  Val = Float64[]
-  for iZ = 1 : NZ
-    if iZ < NZ
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M)  
-      push!(Val,-fac/cS/DG.wZ[1])
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,+fac/cS/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M)  
-      push!(Val,fac/cS/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,-fac/cS/DG.wZ[1])
-    end  
-  end
-  dSdS = sparse(RowInd, ColInd, Val,N,N)
-  return dSdS,dSdM
-end
-
-function DMomDScalarAc(NZ,DG,cS)
-  
-  fac = 0.5
-  M = DG.OrdPolyZ + 1
-  N = NZ * M
-  RowInd = Int[]
-  ColInd = Int[]
-  Val = Float64[]
-  D = DG.DWZ
-  for iZ = 1 : NZ
-    for i = 1 : M
-      for j = 1 : M
-        push!(RowInd,i+(iZ-1)*M)
-        push!(ColInd,j+(iZ-1)*M)
-        push!(Val,-D[i,j])
-      end
-    end  
-    if iZ < NZ
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M)  
-      push!(Val,-fac/DG.wZ[1])
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,-fac/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M)  
-      push!(Val,fac/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,fac/DG.wZ[1])
-    end  
-    if iZ == 1
-      push!(RowInd,1)  
-      push!(ColInd,1)  
-      push!(Val,1/DG.wZ[1])
-    end    
-    if iZ == NZ
-      push!(RowInd,M*NZ)  
-      push!(ColInd,M*NZ)  
-      push!(Val,-1/DG.wZ[1])
-    end    
-  end
-  dMdS = sparse(RowInd, ColInd, Val,N,N)
-  RowInd = Int[]
-  ColInd = Int[]
-  Val = Float64[]
-  for iZ = 1 : NZ
-    if iZ < NZ
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M)  
-      push!(Val,-fac*cS/DG.wZ[1])
-      push!(RowInd,iZ*M)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,+fac*cS/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M)  
-      push!(Val,fac*cS/DG.wZ[1])
-      push!(RowInd,iZ*M+1)  
-      push!(ColInd,iZ*M+1)  
-      push!(Val,-fac*cS/DG.wZ[1])
-    end  
-    if iZ == 1
-      push!(RowInd,1)  
-      push!(ColInd,1)  
-      push!(Val,-cS/DG.wZ[1])
-    end    
-    if iZ == NZ
-      push!(RowInd,M*NZ)  
-      push!(ColInd,M*NZ)  
-      push!(Val,-cS/DG.wZ[1])
-    end    
-  end  
-  dMdM = sparse(RowInd, ColInd, Val,N,N)
-  return dMdS,dMdM
-end
-
-function InitJacDG(DG,nz,Param)
-  N = (DG.OrdPolyZ + 1) * nz
-  dSdS,dSdM = DScalarDMomAc(nz,DG,Param.cS)
-  dMdS,dMdM = DMomDScalarAc(nz,DG,Param.cS)
-  return dSdS,dSdM,dMdS,dMdM
-end
-
-function JacDGTNeu(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dGeo,dz,Phys)
-  D = DG.DWZ
-  FTB = eltype(U)
-  N = size(dSdM,1)
-  RhoPos = 1
-  ThPos = 5
-  nz = size(U,2)
-  M = size(U,1)
-  oneM = ones(M)
-  NF = size(dz,3)
-  JacLU = Array{SparseArrays.UMFPACK.UmfpackLU}(undef,size(U,3))
-    ID = 1
-    @views dzCol = dz[:,ID]
-    diagdz = spdiagm(2.0 ./ reshape(vec(oneM*dzCol'),N))
-    Th = reshape(U[:,:,ID,ThPos]./U[:,:,ID,RhoPos],N)
-    dpdRhoTh = reshape( FTB(1) / (FTB(1) - Phys.kappa) * Phys.Rd *
-      (Phys.Rd * U[:,:,ID,ThPos] ./ Phys.p0).^(Phys.kappa / (1.0 - Phys.kappa)),N)
-    Geo = reshape(Aux[:,:,ID,2],N)
-    Jac = [sparse(fac*I,N,N)  -diagdz* dSdS * diagm(dpdRhoTh) -diagdz * dSdM
-           spzeros(N,N) sparse(fac*I,N,N) - diagdz*diagm(Th)*dSdS*diagm(dpdRhoTh)  -diagdz*dSdM*diagm(Th)
-           dGeo -diagdz*dMdS*diagm(dpdRhoTh) sparse(fac*I,N,N)-diagdz*dMdM]
-    JacLU[ID] = lu(Jac)
-  return JacLU,Jac
-end
-
-function Jac!(U,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
+function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacDGVert,Global,VelForm)
   Invfac = eltype(U)(1) / fac
   dz = Metric.dz
   FillJacDGVert!(JCache,U,DG,dz,Invfac,Phys)
   SchurBoundary!(JCache)
 end  
 
-function JacFrozen!(Aux,fac,DG,Metric,Phys,Cache,JCache,Global,VelForm)
+function JacFrozen!(Aux,fac,DG,Metric,Phys,Cache,JCache::JacDGVert,Global,VelForm)
   Invfac = eltype(Aux)(1) / fac
   dz = Metric.dz
   FillJacFrozenDGVert!(JCache,Aux,DG,dz,Invfac,Phys)
   SchurBoundary!(JCache)
 end  
 
+function Solve!(k,v,Jac::JacDGVert,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
+  
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  @. k = v
+  @views TendVCart2VSp!(k,DG,Metric,NumberThreadGPU,VelForm)
+  Solve!(Jac,k)
+  @views @. k[:,:,:,2:3] *= fac
+  @views TendVSp2VCart!(k,DG,Metric,NumberThreadGPU,VelForm)
 
-function DerivativeGeo(Geo,DG,dz)
-
-  RowInd = Int[]
-  ColInd = Int[]
-  Val = Float64[]
-  DWS = DG.DWZ
-
-  M = size(DWS,1)
-  nz = size(dz,1)
-  ND = size(dz,2)
-  N = M * nz
-
-  Gblk = zeros(M,M,nz,ND)
-
-  @inbounds for ID in 1 : ND
-    for iz in 1:nz
-      inv2dz = 2 / dz[iz, ID]
-      for i in 1:M
-        acc = 0.0
-        for k in 1:M
-          dGeo = Geo[k,iz,ID] - Geo[i,iz,ID]
-          Gblk[i,k,iz,ID] = inv2dz * 0.5 * DWS[i,k] * dGeo
-          acc += DWS[i,k] * dGeo
-          if ID == 1
-            push!(RowInd,i+(iz-1)*M)
-            push!(ColInd,k+(iz-1)*M)
-            push!(Val,Gblk[i,k,iz,ID])
-          end
-        end
-        if ID == 1
-          push!(RowInd,i+(iz-1)*M)
-          push!(ColInd,i+(iz-1)*M)
-          push!(Val,inv2dz * 0.5 * acc)
-        end  
-        Gblk[i,i,iz,ID] += inv2dz * 0.5 * acc
-      end
-    end
-  end
-  DGeo = sparse(RowInd,ColInd,Val,N,N)
-  return Gblk, DGeo
 end
 

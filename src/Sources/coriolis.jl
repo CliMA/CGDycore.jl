@@ -60,8 +60,8 @@ end
 function (CoriolisFun::CoriolisDeep)(uPos,vPos,wPos,::Examples.VelocityC)
   @inline function Coriolis(F,U,lon,lat)
     FT = eltype(F)
-    F[uPos] += FT(2) * P.Omega * U[vPos]
-    F[vPos] += -FT(2) * P.Omega * U[uPos]
+    F[2] += FT(2) * P.Omega * U[3]
+    F[3] += -FT(2) * P.Omega * U[2]
   end
   return Coriolis
 end
@@ -89,7 +89,7 @@ function Coriolis!(Cor,F,U,Aux,FE,Metric,NumberThreadGPU)
   KCoriolisKernel!(Cor,F,U,Metric.xS,Val(NumV);ndrange=ndrange)
 end
 
-@kernel inbounds = true function CoriolisKernel!(Cor,F,@Const(U),@Const(xS),
+@kernel inbounds = true function Coriolis1Kernel!(Cor,F,@Const(U),@Const(xS),
   ::Val{NUMV}) where {NUMV}
 
   _,_,iD  = @index(Local, NTuple)
@@ -112,6 +112,19 @@ end
     @unroll for iv = 1 : NUMV
       F[K,Iz,ID,iv] += FLoc[iv]
     end  
+  end
+end
+
+@kernel inbounds = true function CoriolisKernel!(Cor,F,@Const(U),@Const(xS),
+  ::Val{NUMV}) where {NUMV}
+
+  _,_,iD  = @index(Local, NTuple)
+  K,Iz,ID = @index(Global, NTuple)
+
+  ND = @uniform @ndrange()[3]
+
+  if ID <= ND
+    @views Cor(F[K,Iz,ID,:],U[K,Iz,ID,:],xS[1,ID],xS[2,ID])
   end
 end
 

@@ -5,9 +5,9 @@ function RiemannNonLinH(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUM
   M = DG.OrdPolyZ + 1
   NE = Grid.NumEdges
   Nz = Grid.nz
-  DoFEG = min(div(NumberThreadGPU,M*Nz),DoFE)
-  group = (M,Nz,DoFEG,1)
-  ndrange = (M,Nz,DoFE,NE)
+  NEG = min(div(NumberThreadGPU,M*Nz),NE)
+  group = (M,Nz,NEG,1)
+  ndrange = (M,Nz,NE,DoFE)
   KRiemannNonLinH3Kernel! = RiemannNonLinH3Kernel!(backend,group)
   KRiemannNonLinH3Kernel!(RiemannSolver,F,U,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
     Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NUMV),Val(NAUX);ndrange=ndrange)
@@ -107,7 +107,7 @@ end
   end  
 end
 
-@kernel inbounds = true function RiemannNonLinH3Kernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
+@kernel inbounds = true function RiemannNonLinH3Kernel1!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
   @Const(EF),@Const(FTE),@Const(NH),@Const(VolSurfH),
   @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
@@ -293,3 +293,121 @@ end
     end  
   end  
 end
+
+@kernel inbounds = true function RiemannNonLinH3Kernel!(
+    RiemannSolver!, F, @Const(U), @Const(Aux), @Const(GlobE),
+    @Const(EF), @Const(FTE), @Const(NH), @Const(VolSurfH),
+    @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}
+) where {NUMV, NAUX}
+
+  # 1. Globale und lokale Indizes auflösen
+  # group = (M, Nz, NEG, 1) -> korrespondiert zu (K, Iz, IE, I)
+  K, Iz, IE, I = @index(Global, NTuple)
+  k_loc, iz_loc, iE_loc, _ = @index(Local, NTuple)
+
+  # Dimensionen der aktuellen Arbeitsgruppe (Workgroup) auslesen
+  M_sz  = @uniform @groupsize()[1]
+  Iz_sz  = @uniform @groupsize()[2]
+  NE_szG = @uniform @groupsize()[3]
+  NE  = @uniform @ndrange()[3]
+
+  # 2. Shared Memory (@localmem) für koordiniertes, coalesced Laden deklarieren
+  # Wir cachen die Werte für die gesamte lokale Gruppe im schnellen On-Chip-Speicher
+  U_L_local   = @localmem eltype(F) (M_sz, Iz_sz, NE_szG, NUMV)
+  U_R_local   = @localmem eltype(F) (M_sz, Iz_sz, NE_szG, NUMV)
+  Aux_L_local = @localmem eltype(F) (M_sz, Iz_sz, NE_szG, NAUX)
+  Aux_R_local = @localmem eltype(F) (M_sz, Iz_sz, NE_szG, NAUX)
+
+  # Private Register-Arrays für den aktuellen Thread
+  FLoc = @private eltype(F) (NUMV,)
+  UL   = @private eltype(F) (NUMV,)
+  UR   = @private eltype(F) (NUMV,)
+  AuxL = @private eltype(F) (NAUX,)
+  AuxR = @private eltype(F) (NAUX,)
+
+  # Indizes für die physikalischen Felder
+  uPos, vPos, wPos = 2, 3, 4
+
+  if IE <= NE
+    indL = GlobE[1, I, IE]
+    indR = GlobE[2, I, IE]
+
+
+    # 3. Kooperatives Vorab-Laden (Coalesced Pre-fetch) in den Shared Cache
+    # Alle Threads der Gruppe arbeiten zusammen, um den globalen Speicher linear zu lesen
+    @unroll for iv = 1:NUMV
+      U_L_local[k_loc, iz_loc, iE_loc, iv] = U[K, Iz, indL, iv]
+      U_R_local[k_loc, iz_loc, iE_loc, iv] = U[K, Iz, indR, iv]
+    end
+    @unroll for iAux = 1:NAUX
+      Aux_L_local[k_loc, iz_loc, iE_loc, iAux] = Aux[K, Iz, indL, iAux]
+      Aux_R_local[k_loc, iz_loc, iE_loc, iAux] = Aux[K, Iz, indR, iAux]
+    end
+  end  
+
+    # 4. Hardware-Barriere: Warten, bis der Cache für alle Threads befüllt ist
+    @synchronize()
+
+  if IE <= NE
+    iFL  = EF[1, IE]
+    iFR  = EF[2, IE]
+    indL = GlobE[1, I, IE]
+    indR = GlobE[2, I, IE]
+
+    n1 = NH[K, Iz, I, IE, 1]
+    n2 = NH[K, Iz, I, IE, 2]
+    n3 = NH[K, Iz, I, IE, 3]
+
+    # --- AB HIER: RECHNEN REIN AUS DEM SCHNELLEN CACHE ---
+
+    # Linke Geometrie-Seite aufbauen
+    if iFL > 0
+      @unroll for iAux = 1:NAUX; AuxL[iAux] = Aux_L_local[k_loc, iz_loc, iE_loc, iAux]; end
+      @unroll for iv   = 1:NUMV; UL[iv]   = U_L_local[k_loc, iz_loc, iE_loc, iv];   end
+    else
+      # Randbedingung: Spiegele Zustand von Rechts (indR) nach Links
+      @unroll for iAux = 1:NAUX; AuxL[iAux] = Aux_R_local[k_loc, iz_loc, iE_loc, iAux]; end
+      @unroll for iv   = 1:NUMV; UL[iv]   = U_R_local[k_loc, iz_loc, iE_loc, iv];   end
+      t = eltype(F)(2) * (n1 * UL[uPos] + n2 * UL[vPos] + n3 * UL[wPos])
+      UL[uPos] -= n1 * t
+      UL[vPos] -= n2 * t
+      UL[wPos] -= n3 * t
+    end
+
+    # Rechte Geometrie-Seite aufbauen
+    if iFR > 0
+      @unroll for iAux = 1:NAUX; AuxR[iAux] = Aux_R_local[k_loc, iz_loc, iE_loc, iAux]; end
+      @unroll for iv   = 1:NUMV; UR[iv]   = U_R_local[k_loc, iz_loc, iE_loc, iv];   end
+    else
+      # Randbedingung: Spiegele Zustand von Links (indL) nach Rechts
+      @unroll for iAux = 1:NAUX; AuxR[iAux] = Aux_L_local[k_loc, iz_loc, iE_loc, iAux]; end
+      @unroll for iv   = 1:NUMV; UR[iv]   = U_L_local[k_loc, iz_loc, iE_loc, iv];   end
+      t = eltype(F)(2) * (n1 * UR[uPos] + n2 * UR[vPos] + n3 * UR[wPos])
+      UR[uPos] -= n1 * t
+      UR[vPos] -= n2 * t
+      UR[wPos] -= n3 * t
+    end
+
+    # 5. Riemann-Solver ausführen (Muss mit @inline deklariert sein)
+    RiemannSolver!(FLoc, UL, UR, AuxL, AuxR, n1, n2, n3)
+
+    # Skalierung mit Oberflächen-Metrik
+    Surf = VolSurfH[K, Iz, I, IE] / w[I]
+    @unroll for iv = 1:NUMV
+      FLoc[iv] *= Surf
+    end
+
+    # 6. Atomares Schreiben zurück in den globalen Speicher
+    if 0 < iFL <= NF
+      @unroll for iv = 1:NUMV
+        @atomic :monotonic F[K, Iz, indL, iv] += -FLoc[iv]
+      end
+    end
+    if 0 < iFR <= NF
+      @unroll for iv = 1:NUMV
+        @atomic :monotonic F[K, Iz, indR, iv] += FLoc[iv]
+      end
+    end
+  end
+end
+

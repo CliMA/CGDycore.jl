@@ -1,5 +1,6 @@
 function CacheJac(backend,FT,M,nz,Model,FE::FiniteElements.DGElement)
-  JCache = DGSEM.JacDGVert(backend,FT,M,nz,FE)
+# JCache = DGSEM.JacDGVert(backend,FT,M,nz,FE)
+  JCache = DGSEM.JacSplitDGVert(backend,FT,M,nz,FE)
 # JCache = DGSEM.JacobianCacheMarcoSplitNS(backend,FT,M,nz,FE)
 end
 function CacheJac(backend,FT,M,nz,Model,FE::FiniteElements.CGElement)

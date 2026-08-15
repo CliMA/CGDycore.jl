@@ -310,51 +310,33 @@ function (::KennedyGruberGrav)(RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos, ::G
 
     FT = eltype(flux)
 
-    # ------ read left state directly from shared memory ------
-    RhoL  = VLoc[K1, Iz1, iD1, RhoPos]
-    uL    = VLoc[K1, Iz1, iD1, uPos]
-    vL    = VLoc[K1, Iz1, iD1, vPos]
-    wL    = VLoc[K1, Iz1, iD1, wPos]
-    ThL   = VLoc[K1, Iz1, iD1, ThPos]
-    pL    = AuxLoc[K1, Iz1, iD1, pPos]
-    GPL   = AuxLoc[K1, Iz1, iD1, GPPos]
+    RhoL  = VLoc[K1, Iz1, iD1, 1]
+    RhoR  = VLoc[K2, Iz2, iD2, 1]
 
-    # ------ read right state directly from shared memory -----
-    RhoR  = VLoc[K2, Iz2, iD2, RhoPos]
-    uR    = VLoc[K2, Iz2, iD2, uPos]
-    vR    = VLoc[K2, Iz2, iD2, vPos]
-    wR    = VLoc[K2, Iz2, iD2, wPos]
-    ThR   = VLoc[K2, Iz2, iD2, ThPos]
-    pR    = AuxLoc[K2, Iz2, iD2, pPos]
-    GPR   = AuxLoc[K2, Iz2, iD2, GPPos]
-
-    # ------ read metric (dXdxI row) from shared memory -------
-    # dXdxILoc layout: (dir, j, K, Iz, iD)  — pass dir as Val for unrolling
-    m_L1  = dXdxILoc[dir, 1, K1, Iz1, iD1]
-    m_L2  = dXdxILoc[dir, 2, K1, Iz1, iD1]
-    m_L3  = dXdxILoc[dir, 3, K1, Iz1, iD1]
-    m_R1  = dXdxILoc[dir, 1, K2, Iz2, iD2]
-    m_R2  = dXdxILoc[dir, 2, K2, Iz2, iD2]
-    m_R3  = dXdxILoc[dir, 3, K2, Iz2, iD2]
 
     # ------ Kennedy-Gruber averages --------------------------
     RhoAv = FT(0.5) * (RhoL + RhoR)
-    pAv   = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
-    uAv   = FT(0.5) * (uL / RhoL + uR / RhoR)
-    vAv   = FT(0.5) * (vL / RhoL + vR / RhoR)
-    wAv   = FT(0.5) * (wL / RhoL + wR / RhoR)
-    ThAv  = FT(0.5) * (ThL / RhoL + ThR / RhoR)
-    mAv1  = FT(0.5) * (m_L1 + m_R1)
-    mAv2  = FT(0.5) * (m_L2 + m_R2)
-    mAv3  = FT(0.5) * (m_L3 + m_R3)
+    pAv   = FT(0.5) * ((AuxLoc[K1, Iz1, iD1, 1] + AuxLoc[K2, Iz2, iD2, 1]) + RhoAv * (AuxLoc[K2, Iz2, iD2, 2] - AuxLoc[K1, Iz1, iD1, 2]))
+    invRhoL = FT(1) / RhoL
+    invRhoR = FT(1) / RhoR
+    uAv   = FT(0.5) * (VLoc[K1, Iz1, iD1, 2] * invRhoL + VLoc[K2, Iz2, iD2, 2] * invRhoR)
+    vAv   = FT(0.5) * (VLoc[K1, Iz1, iD1, 3] * invRhoL + VLoc[K2, Iz2, iD2, 3] * invRhoR)
+    wAv   = FT(0.5) * (VLoc[K1, Iz1, iD1, 4] * invRhoL + VLoc[K2, Iz2, iD2, 4] * invRhoR)
+    ThAv  = FT(0.5) * (VLoc[K1, Iz1, iD1, 5] * invRhoL + VLoc[K2, Iz2, iD2, 5] * invRhoR)
+    # ------ read metric (dXdxI row) from shared memory -------
+    # dXdxILoc layout: (dir, j, K, Iz, iD)  — pass dir as Val for unrolling
+    mAv1  = FT(0.5) * (dXdxILoc[dir, 1, K1, Iz1, iD1] + dXdxILoc[dir, 1, K2, Iz2, iD2])
+    mAv2  = FT(0.5) * (dXdxILoc[dir, 2, K1, Iz1, iD1] + dXdxILoc[dir, 2, K2, Iz2, iD2])
+    mAv3  = FT(0.5) * (dXdxILoc[dir, 3, K1, Iz1, iD1] + dXdxILoc[dir, 3, K2, Iz2, iD2])
 
     qHat  = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
 
-    flux[1] = RhoAv * qHat
-    flux[2] = flux[1] * uAv + mAv1 * pAv
-    flux[3] = flux[1] * vAv + mAv2 * pAv
-    flux[4] = flux[1] * wAv + mAv3 * pAv
-    flux[5] = flux[1] * ThAv
+    f1 = RhoAv * qHat
+    flux[1] = f1
+    flux[2] = f1 * uAv + mAv1 * pAv
+    flux[3] = f1 * vAv + mAv2 * pAv
+    flux[4] = f1 * wAv + mAv3 * pAv
+    flux[5] = f1 * ThAv
   end
 
   return FluxNonLinAver!
@@ -788,26 +770,23 @@ end
 function (::RiemannLMARS)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
   @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
     FT = eltype(F)
-    cS = Param.cS
-    pLL = AuxL[pPos]
-    pRR = AuxR[pPos]
-    RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
-    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
-    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
-    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
-    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
+    RhoMcS = FT(0.5) * Param.cS * (VLL[1] + VRR[1])
+    vLL = (VLL[2] * n1 + VLL[3] * n2 + VLL[4] * n3) / VLL[1]
+    vRR = (VRR[2] * n1 + VRR[3] * n2 + VRR[4] * n3) / VRR[1]
+    pM = FT(0.5) * ((AuxR[1] + AuxL[1]) - RhoMcS * (vRR - vLL))
+    vM = FT(0.5) * ((vRR + vLL) - (AuxR[1] - AuxL[1]) / RhoMcS)
     if vM > FT(0)
-      F[RhoPos] = vM * VLL[RhoPos]
-      F[uPos] = vM * VLL[uPos] + n1 * pM
-      F[vPos] = vM * VLL[vPos] + n2 * pM
-      F[wPos] = vM * VLL[wPos] + n3 * pM
-      F[ThPos] = vM * VLL[ThPos]
+      F[1] = vM * VLL[1]
+      F[2] = vM * VLL[2] + n1 * pM
+      F[3] = vM * VLL[3] + n2 * pM
+      F[4] = vM * VLL[4] + n3 * pM
+      F[5] = vM * VLL[5]
     else
-      F[RhoPos] = vM * VRR[RhoPos]
-      F[uPos] = vM * VRR[uPos] + n1 * pM
-      F[vPos] = vM * VRR[vPos] + n2 * pM
-      F[wPos] = vM * VRR[wPos] + n3 * pM
-      F[ThPos] = vM * VRR[ThPos]
+      F[1] = vM * VRR[1]
+      F[2] = vM * VRR[2] + n1 * pM
+      F[3] = vM * VRR[3] + n2 * pM
+      F[4] = vM * VRR[4] + n3 * pM
+      F[5] = vM * VRR[5]
     end
   end
   return RiemannByLMARSNonLin!
