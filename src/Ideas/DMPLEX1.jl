@@ -113,7 +113,7 @@ function run_dmplex_verification()
     user_edge_to_v = [[1,2], [2, 3], [4, 5], [5, 6], [7, 8], [8, 9], [1, 4], [4, 7], [2, 5], [5, 8], [3, 6], [6, 9]]
 
     # User Faces defined by four user Edge IDs
-    user_face_to_e = [[1, 9, 3, 7], [2
+    user_face_to_e = [[1, 9, 3, 7], [2, 10, 4, 
         [4, 12, 6, 10]  # Face 4 (Top-Right Quad)
     ]
 

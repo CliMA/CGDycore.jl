@@ -131,8 +131,11 @@ end
     @unroll for iaux = 1:NAUX
       AuxLoc[K, Iz, iD, iaux] = Aux[K, Iz, ind, iaux]
     end
-    @unroll for iv = 1:NV
-      VLoc[K, Iz, iD, iv] = V[K, Iz, ind, iv]
+    VLoc[K, Iz, iD, 1] = V[K, Iz, ind, 1]
+    FLoc[K, Iz, iD, 1] = 0
+    invRho = eltype(F)(1) / VLoc[K, Iz, iD, 1]
+    @unroll for iv = 2:NV
+      VLoc[K, Iz, iD, iv] = V[K, Iz, ind, iv] * invRho
       FLoc[K, Iz, iD, iv] = 0
     end
     @unroll for j = 1:3
@@ -193,8 +196,11 @@ end
     @unroll for iaux = 1:NAUX
       AuxLoc[I, J, iz, iaux] = Aux[K, Iz, ind, iaux]
     end
-    @unroll for iv = 1:NV
-      VLoc[I, J, iz, iv] = V[K, Iz, ind, iv]
+    VLoc[I, J, iz, 1] = V[K, Iz, ind, 1]
+    FLoc[I, J, iz, 1] = 0
+    invRho = eltype(F)(1) / VLoc[I, J, iz, 1]
+    @unroll for iv = 2:NV
+      VLoc[I, J, iz, iv] = V[K, Iz, ind, iv] * invRho
       FLoc[I, J, iz, iv] = 0
     end
     @unroll for j = 1:3
@@ -208,6 +214,10 @@ end
 
   # ---- compute phase ----
   if IZ <= NZ
+    K  = mod(IZ - 1, M) + 1
+    Iz = div(IZ - 1, M) + 1
+    ID = I + (J - 1) * N
+    ind = Glob[ID, IF]
     @unroll for l = 1:N
       # x-direction: left=(I,J,iz), right=(l,J,iz)
       FluxAver!(fTilde,
@@ -225,10 +235,6 @@ end
         FLoc[I, J, iz, iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
       end
     end
-    K   = mod(IZ - 1, M) + 1
-    Iz  = div(IZ - 1, M) + 1
-    ID  = I + (J - 1) * N
-    ind = Glob[ID, IF]
     @unroll for iv = 1:NV
       F[K, Iz, ind, iv] += FLoc[I, J, iz, iv]
     end

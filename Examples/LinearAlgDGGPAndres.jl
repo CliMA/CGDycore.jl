@@ -982,14 +982,13 @@ JacLU, Jac = JacDGTNeu(U,Aux,DG,fac,dSdS,dSdM,dMdS,dMdM,dGeo,dz,Phys)
 c = ones(M*nz*3)
 @show size(JacLU[1]),size(c)
 ldiv!(JacLU[1],c)
-stop
 
 
 #DGSEM.SchurBoundary!(JacS)
 
 p = PermutationAndres(M,nz)
 JacP = Jac[p,p]
-n22 = 4*nz
+n22 = 3*nz
 n11 = 3*M*nz - n22
 JacP11 = JacP[1:n11,1:n11]
 JacP12 = JacP[1:n11,n11+1:end]
