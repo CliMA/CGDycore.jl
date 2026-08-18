@@ -285,7 +285,7 @@ end
 end  
 
 
-@kernel inbounds = true function SchurBoundaryKernel!(@Const(A13),@Const(A23),@Const(A31),@Const(A32),
+@kernel inbounds = true function SchurBoundaryKernel1!(@Const(A13),@Const(A23),@Const(A31),@Const(A32),
   @Const(B1m_34),@Const(B1_1),@Const(B1_23),@Const(B1_4), @Const(B2_23),@Const(B3_14),
   @Const(B1p_12),@Const(C23_1),@Const(C23_2),@Const(C14_3),@Const(SA),DU,DD,DL,fac, ::Val{M}) where {M}
 
@@ -941,6 +941,24 @@ function SchurBoundary!(Jac::JacSplitDGVert)
     Jac.C14_3,Jac.SA,Jac.DU,Jac.DD,Jac.DL,Jac.fac,Val(M);ndrange=ndrange)
 end  
 
+function SchurBoundary1!(Jac::JacSplitDGVert)
+
+  backend = get_backend(Jac.DD)
+  FTB = eltype(Jac.DD)
+
+  M = Jac.M
+  nz = Jac.nz
+  ND = size(Jac.DD,1)
+
+  NDG = 1
+  group = (nz, NDG)
+  ndrange = (nz, ND)
+  KSchurBoundaryKernel! = SchurBoundaryKernel1!(backend,group)
+  KSchurBoundaryKernel!(Jac.A13,Jac.A23,Jac.A31,Jac.A32,Jac.B1m_34,Jac.B1_1,
+    Jac.B1_23,Jac.B1_4, Jac.B2_23,Jac.B3_14,Jac.B1p_12,Jac.C23_1,Jac.C23_2,
+    Jac.C14_3,Jac.SA,Jac.DU,Jac.DD,Jac.DL,Jac.fac,Val(M);ndrange=ndrange)
+end  
+
 
 function Solve!(Jac::JacSplitDGVert,b)
 
@@ -1009,38 +1027,6 @@ function precompute_gravity!(GeoPot,dz, DWZ,cache, NumberThreadGPU)
   ndrange = (M,nz,NumI)
   Kprecompute_gravityKernel! = precompute_gravityKernel!(backend,group)
   Kprecompute_gravityKernel!(A31,C23_1,GeoPot,DWZ,dz,Val(M),ndrange=ndrange)
-end
-
-
-@kernel inbounds = true function precompute_gravityKernelV1!(A31,C23_1,@Const(Geo),@Const(DS),@Const(dz), ::Val{M}) where {M}
-
-  i,iz,ID = @index(Global, NTuple)
-
-  ND = @uniform @ndrange()[3]
-  if ID <= ND
-    acc = eltype(dz)(0)
-    Geoi = Geo[i, iz, ID]
-    inv2dz = eltype(A31)(2) / dz[iz, ID]
-    if i == 1
-      @unroll for k in 1:M
-        C23_1[1,k,iz,ID] = inv2dz * DS[i, k] * Geo[k, iz, ID]
-      end
-#     C23_1[1, :, iz, ID] .= 0.0
-#     C23_1[1, 1, iz, ID] = P.Grav
-    elseif i == M  
-      @unroll for k in 1:M
-        C23_1[2,k,iz,ID] = inv2dz * DS[i, k] * Geo[k, iz, ID]
-      end
-#     C23_1[2, :, iz, ID] .= 0.0
-#     C23_1[2, M, iz, ID] = P.Grav
-    else  
-      @unroll for k in 1:M
-        A31[i-1,k,iz,ID] = inv2dz * DS[i, k] * Geo[k, iz, ID]
-      end
-#     A31[i-1, :, iz, ID] .= 0.0
-#     A31[i-1, i, iz, ID] = P.Grav
-    end  
-  end
 end
 
 @kernel inbounds = true function precompute_gravityKernel!(A31,C23_1,@Const(Geo),@Const(DS),@Const(dz), ::Val{M}) where {M}

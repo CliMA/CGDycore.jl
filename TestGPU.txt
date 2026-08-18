@@ -1,0 +1,51 @@
+  new version 
+  0.005886 seconds (706 CPU allocations: 33.062 KiB)
+"FillJacobian" = "FillJacobian"
+  0.011060 seconds (399 CPU allocations: 11.641 KiB)
+  0.006414 seconds (516 CPU allocations: 15.422 KiB) (1 GPU allocation: 59.509 MiB, 0.19% memmgmt time)
+  0.005882 seconds (706 CPU allocations: 33.062 KiB)
+  0.006410 seconds (516 CPU allocations: 15.422 KiB) (1 GPU allocation: 59.509 MiB, 0.19% memmgmt time)
+  0.005892 seconds (706 CPU allocations: 33.062 KiB)
+  0.006406 seconds (516 CPU allocations: 15.422 KiB) (1 GPU allocation: 59.509 MiB, 0.19% memmgmt time)
+  0.005894 seconds (706 CPU allocations: 33.062 KiB)
+  0.006414 seconds (516 CPU allocations: 15.422 KiB) (1 GPU allocation: 59.509 MiB, 0.19% memmgmt time)
+sum(abs.(U)) = 4.4794205120715564e8
+[ Info: Iteration: 196.0 took 0.067310519, 3.6296296296296298% complete
+
+
+"FillJacobian" = "FillJacobian"
+  0.000006 seconds (2 CPU allocations: 32 bytes)
+  0.002503 seconds (337 CPU allocations: 8.938 KiB)
+  0.008617 seconds (321 CPU allocations: 6.750 KiB)
+"Solve" = "Solve"
+  0.000787 seconds (316 CPU allocations: 6.625 KiB)
+  0.003858 seconds (283 CPU allocations: 4.891 KiB)
+  0.001091 seconds (310 CPU allocations: 6.250 KiB)
+"Solve" = "Solve"
+  0.000793 seconds (316 CPU allocations: 6.625 KiB)
+  0.003847 seconds (283 CPU allocations: 4.891 KiB)
+  0.001092 seconds (310 CPU allocations: 6.250 KiB)
+"Solve" = "Solve"
+  0.000792 seconds (316 CPU allocations: 6.625 KiB)
+  0.003860 seconds (283 CPU allocations: 4.891 KiB)
+  0.001092 seconds (310 CPU allocations: 6.250 KiB)
+"Solve" = "Solve"
+  0.000786 seconds (316 CPU allocations: 6.625 KiB)
+  0.003861 seconds (283 CPU allocations: 4.891 KiB)
+  0.001087 seconds (310 CPU allocations: 6.250 KiB)
+sum(abs.(U)) = 4.4794102758945763e8
+[ Info: Iteration: 89.0 took 0.084133752, 1.6481481481481481% complete
+
+
+0.005904 seconds (706 CPU allocations: 33.062 KiB)
+"FillJacobian" = "FillJacobian"
+  0.007560 seconds (483 CPU allocations: 14.391 KiB)
+  0.002828 seconds (518 CPU allocations: 15.234 KiB) (1 GPU allocation: 59.509 MiB, 0.45% memmgmt time)
+  0.005891 seconds (706 CPU allocations: 33.062 KiB)
+  0.002839 seconds (518 CPU allocations: 15.234 KiB) (1 GPU allocation: 59.509 MiB, 0.41% memmgmt time)
+  0.005910 seconds (706 CPU allocations: 33.062 KiB)
+  0.002827 seconds (518 CPU allocations: 15.234 KiB) (1 GPU allocation: 59.509 MiB, 0.24% memmgmt time)
+  0.005891 seconds (706 CPU allocations: 33.062 KiB)
+  0.002832 seconds (518 CPU allocations: 15.234 KiB) (1 GPU allocation: 59.509 MiB, 0.42% memmgmt time)
+sum(abs.(U)) = 4.479414434341426e8
+[ Info: Iteration: 132.0 took 0.049514048, 2.4444444444444446% complete
