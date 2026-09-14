@@ -427,7 +427,7 @@ end
 
 
 @kernel inbounds = true function ldivHDGVerticalFKernel!(@Const(A13),@Const(A23),@Const(A31),@Const(A32),
-  @Const(C2), @Const(C3),@Const(SA),@Const(b),rs,invfac, ::Val{M}) where {M}
+  @Const(C2), @Const(C3),@Const(SA),@Const(b),rs,fac, ::Val{M}) where {M}
 
   iz, ID = @index(Global, NTuple)
 
@@ -449,23 +449,32 @@ end
     @unroll for i = 1 : M
       r1[i] = b[i,iz,ID,RhoPos]
       r2[i] = b[i,iz,ID,ThPos]
+#     r3[i] = b[i,iz,ID,wPos]
     end  
 
+    @unroll for i = 1 : M
+      r3i = zero(eltype(SA))
+      @unroll for j = 1 : M
+        r3i += (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j])
+      end
+#     r3[i] -= r3i * fac
+      r3[i] = b[i,iz,ID,wPos] - r3i * fac
+    end
 #=
     for i = 1 : M
       r3i = zero(eltype(SA))
       for j = 1 : M
-        r3i += A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j]
+        r3i += (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j])
       end
-      r3[i] = b[i,iz,ID,wPos] - r3i * invfac
+      r3[i] = b[i,iz,ID,wPos] - r3i * fac
     end
-=#    
     for i = 1 : M
       r3[i] = b[i,iz,ID,wPos]
       for j = 1 : M
-        r3[i] -= (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j]) * invfac
+        r3[i] -= (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j]) * fac
       end
     end
+=#    
 
     ldivFull!(iz, ID, SA, r3, Val(M))
 
@@ -475,8 +484,8 @@ end
       r21 -= A23[1,j,iz,ID] * r3[j]
       r2M -= A23[M,j,iz,ID] * r3[j]
     end
-    r21 *= invfac
-    r2M *= invfac
+    r21 *= fac
+    r2M *= fac
 
     # Pre-cache target row indices
     i_m2 = 2 * iz - 2
@@ -501,73 +510,8 @@ end
   end
 end
 
-#=
-@kernel inbounds = true function ldivHDGVerticalFKernel!(@Const(A13),@Const(A23),@Const(A31),@Const(A32),
-  @Const(C2), @Const(C3),@Const(SA),@Const(b),rs,invfac, ::Val{M}) where {M}
-
-  iz, ID = @index(Global, NTuple)
-
-  nz = @uniform @ndrange()[1]
-  ND = @uniform @ndrange()[2]
-
-  @uniform FT = eltype(SA)
-
-  r1 = @private FT (M,)
-  r2 = @private FT (M,)
-  r3 = @private FT (M,)
-
-  @uniform RhoPos = 1
-  @uniform wPos = 4
-  @uniform ThPos = 5
-
-  if ID <= ND
-    @unroll for i = 1 : M
-      r1[i] = b[i,iz,ID,RhoPos]
-      r2[i] = b[i,iz,ID,ThPos]
-      r3[i] = b[i,iz,ID,wPos]
-    end
-
-    @unroll for i = 1 : M
-      @unroll for j = 1 : M
-        r3[i] -= invfac * (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j])
-      end
-    end
-
-    ldivFull!(iz, ID, SA, r3, Val(M))
-
-    @unroll for i = 1 : M
-      @unroll for j = 1 : M
-        r2[i] -= A23[i,j,iz,ID] * r3[j]
-      end
-      r2[i] *= invfac
-    end
-
-    # Pre-cache target row indices
-    i_m2 = 2 * iz - 2
-    i_m1 = 2 * iz - 1
-    i_p0 = 2 * iz
-    i_p1 = 2 * iz + 1
-
-    if iz == 1
-      update_rs!(rs, C2[2,1,iz,ID], C3[2,1,iz,ID], r2[1], r3[1], i_m1, ID)
-      update_rs!(rs, C2[1,2,iz,ID], C3[1,2,iz,ID], r2[M], r3[M], i_p0, ID)
-      update_rs!(rs, C2[2,2,iz,ID], C3[2,2,iz,ID], r2[M], r3[M], i_p1, ID)
-    elseif iz > 1 && iz < nz
-      update_rs!(rs, C2[1,1,iz,ID], C3[1,1,iz,ID], r2[1], r3[1], i_m2, ID)
-      update_rs!(rs, C2[2,1,iz,ID], C3[2,1,iz,ID], r2[1], r3[1], i_m1, ID)
-      update_rs!(rs, C2[1,2,iz,ID], C3[1,2,iz,ID], r2[M], r3[M], i_p0, ID)
-      update_rs!(rs, C2[2,2,iz,ID], C3[2,2,iz,ID], r2[M], r3[M], i_p1, ID)
-    elseif iz == nz
-      update_rs!(rs, C2[1,1,iz,ID], C3[1,1,iz,ID], r2[1], r3[1], i_m2, ID)
-      update_rs!(rs, C2[2,1,iz,ID], C3[2,1,iz,ID], r2[1], r3[1], i_m1, ID)
-      update_rs!(rs, C2[2,2,iz,ID], C3[2,2,iz,ID], r2[M], r3[M], i_p0, ID)
-    end
-  end
-end
-=#
-
 @kernel inbounds = true function ldivHDGVerticalBKernel!(@Const(A13),@Const(A23),@Const(A31),@Const(A32),
-  @Const(B1),@Const(B2),@Const(B3),@Const(SA),b,@Const(rs),invfac,  ::Val{M}) where {M}
+  @Const(B1),@Const(B2),@Const(B3),@Const(SA),b,@Const(rs),fac,  ::Val{M}) where {M}
 
   iz,ID = @index(Global, NTuple)
 
@@ -630,20 +574,13 @@ end
       j = 2 * iz
       r3[M] -= B3[2,iz,ID] * rs[j,ID]
     end    
-#=
-    @unroll for i = 1 : M
-      @unroll for j = 1 : M
-        r3[i] -= (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j]) * invfac
-      end
-    end  
-=#
 
     for i = 1 : M
       r3i = zero(eltype(SA))
       @unroll for j = 1 : M
         r3i += (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j])
       end
-      r3[i] -= r3i * invfac
+      r3[i] -= r3i * fac
     end
 
     ldivFull!(iz,ID,SA,r3,Val(M))
@@ -652,8 +589,8 @@ end
         r1[i] = (r1[i] - A13[i,j,iz,ID] * r3[j])
         r2[i] = (r2[i] - A23[i,j,iz,ID] * r3[j])
       end  
-      r1[i] *= invfac
-      r2[i] *= invfac
+      r1[i] *= fac
+      r2[i] *= fac
     end
     @unroll for i = 1 : M
       b[i,iz,ID,RhoPos] = r1[i]

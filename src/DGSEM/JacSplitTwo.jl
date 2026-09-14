@@ -995,8 +995,8 @@ end
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacSplitDGVert,Global,VelForm)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   if JCache.grav_do
-#   @views Geo = Cache.Aux[:,:,:,2]
-    @views Geo = Cache[:,:,:,2]
+    @views Geo = Cache.Aux[:,:,:,2]
+#   @views Geo = Cache[:,:,:,2]
     precompute_gravity!(Geo,Metric.dz,DG.DWZ,JCache,NumberThreadGPU)
     JCache.grav_do = false
   end  
