@@ -26,6 +26,7 @@ using MPI
 
 
 
+include("LinAlg.jl")
 include("LocalFlux.jl")
 include("Rotation.jl")
 include("RiemannNonLin.jl")
@@ -33,7 +34,7 @@ include("FluxVolumeNonLin.jl")
 include("Fcn.jl")
 include("JacUnSplit.jl")
 include("JacSplitTwo.jl")
-include("JacSplitTwo4.jl")
+include("JacHDG.jl")
 include("JacFluxVolumeSparse.jl")
 include("JacRiemannSparse.jl")
 include("JacGravitySparse.jl")
