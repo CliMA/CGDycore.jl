@@ -39,7 +39,7 @@ end
   end
 end
 
-@inline function ldivBand!(ID,A,b,l,u,::Val{n}) where {n}
+@inline function ldivBand1!(ID,A,b,::Val{l},::Val{u},::Val{n}) where {l,u,n}
 
 # Ly = b
   up1 = u + 1 
@@ -59,7 +59,56 @@ end
   end
 end
 
-@inline function luBand!(ID,A,l,u,::Val{n}) where {n}
+@inline function luBand!(ID,A,::Val{kl},::Val{ku},::Val{n}) where {kl,ku,n}
+  diag_row = ku + 1 # The row index where the main diagonal lives
+  @inbounds for k in 1:n
+    # Pivot value is at A[k,k] -> Ab[diag_row, k]
+    pivot = A[diag_row,k,ID]
+
+    # 1. Compute multipliers for rows below k within lower bandwidth
+    @inbounds for i in (k+1):min(k+kl, n)
+      # A[i,k] maps to Ab[diag_row + i - k, k]
+      A[diag_row + i - k,k,ID] /= pivot
+    end
+
+    # 2. Update remaining submatrix elements within the bands
+    @inbounds for j in (k+1):min(k+ku, n)
+      # A[k,j] maps to Ab[diag_row + k - j, j]
+      u_kj = A[diag_row + k - j,j,ID]
+            
+      @inbounds for i in (k+1):min(k+kl, n)
+        # A[i,j] maps to Ab[diag_row + i - j, j]
+        # A[i,k] maps to Ab[diag_row + i - k, k]
+        A[diag_row + i - j,j,ID] -= A[diag_row + i - k,k,ID] * u_kj
+      end
+    end
+  end
+end
+
+@inline function ldivBand!(ID,A,b,::Val{kl},::Val{ku},::Val{n}) where {kl,ku,n}
+  diag_row = ku + 1
+
+  # 1. Forward Substitution (L * y = b)
+  for k in 1:n
+    for i in (k+1):min(k+kl, n)
+      # L_ik is stored at Ab_lu[diag_row + i - k, k]
+      b[i,ID] -= A[diag_row + i - k,k,ID] * b[k,ID]
+    end
+  end
+
+  # 2. Backward Substitution (U * x = y)
+  for k in n:-1:1
+    # U_kk is stored at Ab_lu[diag_row, k]
+    b[k,ID] /= A[diag_row,k,ID]
+
+    for i in max(1, k-ku):(k-1)
+      # U_ik is stored at Ab_lu[diag_row + i - k, k]
+      b[i,ID] -= A[diag_row + i - k,k,ID] * b[k,ID]
+    end
+  end
+end
+
+@inline function luBand1!(ID,A,::Val{l},::Val{u},::Val{n}) where {l,u,n}
 #1  *   *   *  a14  ...    
 #2  *   *  a13 a24  ... 
 #3  *  a12 a23 a34  ... 
@@ -108,23 +157,23 @@ end
   end    
 end
 
-@kernel inbounds = true function luBandKernel!(A,::Val{n}) where {n}
+@kernel inbounds = true function luBandKernel!(A,::Val{l},::Val{u},::Val{n}) where {l,u,n}
   ID, = @index(Global, NTuple)
 
   DoF = @uniform @ndrange()[1]
 
   if ID <= DoF
-    luBand!(ID,A,3,3,Val(n))
+    luBand!(ID,A,Val(l),Val(u),Val(n))
   end
 end
 
-@kernel inbounds = true function ldivVerticalSKernel!(A,rs,::Val{n}) where {n}
+@kernel inbounds = true function ldivVerticalSKernel!(A,rs,::Val{l},::Val{u},::Val{n}) where {l,u,n}
 
   ID, = @index(Global, NTuple)
 
   DoF = @uniform @ndrange()[1]
 
   if ID <= DoF
-    ldivBand!(ID,A,rs,3,3,Val(n))
+    ldivBand!(ID,A,rs,Val(l),Val(u),Val(n))
   end
 end

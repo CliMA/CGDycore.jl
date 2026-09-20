@@ -141,11 +141,6 @@ end
         A32[i,j,iz,ID] = inv2dz * DWS[i+1,j+1] * dpdRhoTh[j+1]  
       end
     end  
-#   @unroll for i = 1 : M - 2 
-#     @unroll for j = 1 : M 
-#       A31[i,j,iz,ID] = Gblk[i+1,j,iz,ID]
-#     end
-#   end  
 
     @unroll for i = 1 : M - 2
       @unroll for j = 1 : M - 2
@@ -198,10 +193,6 @@ end
       B1p_12[2,iz,ID] = invwBdz
     end
 
-#   @unroll for i = 1 : M
-#     C23_1[1,i,iz,ID] = Gblk[1,i,iz,ID]
-#     C23_1[2,i,iz,ID] = Gblk[M,i,iz,ID]
-#   end  
     @unroll for i = 1 : M - 2
       B2_23[i,1,iz,ID] = inv2dz * DWS[i+1,1] * Th[1]
       B2_23[i,2,iz,ID] = inv2dz * DWS[i+1,M] * Th[M]
@@ -238,26 +229,20 @@ end
       invwBdzm = eltype(U)(1) / (wB * dz[iz-1,ID])
       ThAvg = eltype(U)(0.5) * (ThM + Th[1])
 
-#     DD[ID,1,1,iz] = fac + Th[1] * dpdRhoTh[1] * invcS * invwBdz
       DD[ID,1,1,iz] = fac + ThAvg * dpdRhoTh[1] * invcS * invwBdz
       DD[ID,2,2,iz] = fac + cS * invwBdz
 
       DD[ID,3,3,iz-1] = fac + cS * invwBdzm
-#     DD[ID,4,4,iz-1] = fac + ThM * dpdRhoThM * invcS * invwBdzm
       DD[ID,4,4,iz-1] = fac + ThAvg * dpdRhoThM * invcS * invwBdzm
 
-#     DL[ID,1,1,iz-1] = -ThM * invwBdz
       DL[ID,1,1,iz-1] = -ThAvg * invwBdz
-#     DL[ID,1,2,iz-1] = -Th[1] * dpdRhoThM * invcS * invwBdz
       DL[ID,1,2,iz-1] = -ThAvg * dpdRhoThM * invcS * invwBdz
       DL[ID,2,1,iz-1] = -cS * invwBdz
       DL[ID,2,2,iz-1] = -dpdRhoThM * invwBdz
 
       DU[ID,3,1,iz-1] = dpdRhoTh[1] * invwBdzm
-#     DU[ID,4,1,iz-1] = -ThM * dpdRhoTh[1] * invcS * invwBdzm
       DU[ID,4,1,iz-1] = -ThAvg * dpdRhoTh[1] * invcS * invwBdzm
       DU[ID,3,2,iz-1] = -cS * invwBdzm
-#     DU[ID,4,2,iz-1] = Th[1] * invwBdzm
       DU[ID,4,2,iz-1] = ThAvg * invwBdzm
 
       DD[ID,4,3,iz-1] = -DWS[M,M] * (Th[1] - ThM) / dz[iz-1,ID]
@@ -989,14 +974,15 @@ function Solve!(Jac::JacSplitDGVert,b)
   KldivVerticalBKernel!(Jac.A13,Jac.A23,Jac.A31,Jac.A32,Jac.B1m_34,Jac.B1_1,
     Jac.B1_23,Jac.B1_4, Jac.B2_23,Jac.B3_14,Jac.B1p_12,
     Jac.SA,b,Jac.rs,invfac,Val(M);ndrange=ndrange)
+  @show b[:,1,1,1] 
 
 end
 
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacSplitDGVert,Global,VelForm)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   if JCache.grav_do
-    @views Geo = Cache.Aux[:,:,:,2]
-#   @views Geo = Cache[:,:,:,2]
+#   @views Geo = Cache.Aux[:,:,:,2]
+    @views Geo = Cache[:,:,:,2]
     precompute_gravity!(Geo,Metric.dz,DG.DWZ,JCache,NumberThreadGPU)
     JCache.grav_do = false
   end  
@@ -1008,7 +994,7 @@ end
 
 function Solve!(k,v,Jac::JacSplitDGVert,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
 
-
+  @show "in Solve"
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   @. k = v
   @views TendVCart2VSp!(k,DG,Metric,NumberThreadGPU,VelForm)
