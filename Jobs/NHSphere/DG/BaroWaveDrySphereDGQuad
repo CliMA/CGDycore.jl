@@ -1,6 +1,5 @@
 #!/bin/bash
-JULIA_CUDA_HARD_SANITY=yes
-julia --project --check-bounds=yes Examples/DriverDG.jl \
+julia --project Examples/DriverDG.jl \
   --Problem="BaroWaveDrySphere" \
   --FloatTypeBackend="Float64" \
   --NumberThreadGPU=256 \
@@ -53,7 +52,7 @@ julia --project --check-bounds=yes Examples/DriverDG.jl \
   --ns=46 \
   --nz=13 \
   --nPanel=20 \
-  --H=10000.0 \
+  --H=30000.0 \
   --OrdPoly=4 \
   --OrdPolyZ=4 \
   --MetricType="DGMetricCurl"

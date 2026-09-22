@@ -434,18 +434,15 @@ end
   DoF = @uniform @ndrange()[2]
   Th = @private eltype(U) (M,)
   dpdRhoTh = @private eltype(U) (M,)
-  DWS = @localmem eltype(U) (M,M)
-  SAL = @localmem eltype(U) (M,M)
+  DWS = @private eltype(U) (M,M)
+  SAL = @private eltype(U) (M,M)
   @uniform RhoPos = 1
   @uniform ThPos = 5
   @uniform invcS = eltype(U)(1) / cS
   @uniform wB = w[1]
 
-  if iz == 1
-    @. DWS = DW   
-  end
-  @synchronize 
-
+  DWS = DW   
+  
   kappa   = Phys.kappa
   kexp    = kappa / (eltype(U)(1) - kappa)
   kfac    = eltype(U)(1) / (eltype(U)(1) - kappa) * Phys.Rd
@@ -591,17 +588,14 @@ end
   DoF = @uniform @ndrange()[2]
   Th = @private eltype(Aux) (M,)
   dpdRhoTh = @private eltype(Aux) (M,)
-  DWS = @localmem eltype(Aux) (M,M)
-  SAL = @localmem eltype(Aux) (M,M)
+  DWS = @private eltype(Aux) (M,M)
+  SAL = @private eltype(Aux) (M,M)
   @uniform dpdThPos = 3
   @uniform ThPos = 4
   @uniform invcS = eltype(Aux)(1) / cS
   @uniform wB = w[1]
 
-  if iz == 1
-    @. DWS = DW   
-  end
-  @synchronize 
+  @. DWS = DW   
 
   kappa   = Phys.kappa
   kexp    = kappa / (eltype(Aux)(1) - kappa)

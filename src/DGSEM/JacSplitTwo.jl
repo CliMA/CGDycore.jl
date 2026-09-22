@@ -103,18 +103,14 @@ end
   DoF = @uniform @ndrange()[2]
   Th = @private eltype(U) (M,)
   dpdRhoTh = @private eltype(U) (M,)
-  DWS = @localmem eltype(U) (M,M)
-  SAL = @localmem eltype(U) (M-2,M-2)
+  DWS = @private eltype(U) (M,M)
+  SAL = @private eltype(U) (M-2,M-2)
   @uniform RhoPos = 1
   @uniform ThPos = 5
   @uniform invcS = eltype(U)(1) / cS
   @uniform wB = w[1]
 
-  if iz == 1
-    @. DWS = DW   
-  end
-  @synchronize 
-
+  DWS = DW   
 
   if ID <= DoF
     kappa = Phys.kappa

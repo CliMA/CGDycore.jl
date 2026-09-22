@@ -9,18 +9,16 @@ mutable struct JacHDGVert{FT<:AbstractFloat,
   nz::Int
   fac::FT
   FacGrav::FT
-  A13::AT4
-  A23::AT4
+  cS::FT
   A31::AT4
-  A32::AT4
-  A33::AT2
-# B part  
-  B1::AT3
-  B2::AT3
-  B3::AT3
-# C part
-  C2::AT3
-  C3::AT3
+
+# On-the-fly quantities: Th and dpdRhoTh are the only per-node state kept.
+# A13, A23, A32, A33, B1, B2, B3, C2, C3 are all cheap closed-form
+# expressions of Th/dpdRhoTh (+ dz, DWZ, wZ, cS) and are recomputed
+# wherever they're needed instead of being materialized as arrays.
+  Th::AT3
+  dpdRhoTh::AT3
+
   D::AT2
 
   SA::AT4
@@ -34,17 +32,11 @@ function JacHDGVert(backend,FT,M,nz,DG)
   grav_do = true
   fac = 0
   FacGrav = 0
+  cS = 0
   NumI = DG.NumI
-  A13 = KernelAbstractions.zeros(backend,FT,M,M,nz,NumI)
-  A23 = KernelAbstractions.zeros(backend,FT,M,M,nz,NumI)
   A31 = KernelAbstractions.zeros(backend,FT,M,M,nz,NumI)
-  A32 = KernelAbstractions.zeros(backend,FT,M,M,nz,NumI)
-  A33 = KernelAbstractions.zeros(backend,FT,nz,NumI)
-  B1 = KernelAbstractions.zeros(backend,FT,2,nz,NumI)
-  B2 = KernelAbstractions.zeros(backend,FT,2,nz,NumI)
-  B3 = KernelAbstractions.zeros(backend,FT,2,nz,NumI)
-  C2 = KernelAbstractions.zeros(backend,FT,2,nz,NumI)
-  C3 = KernelAbstractions.zeros(backend,FT,2,nz,NumI)
+  Th = KernelAbstractions.zeros(backend,FT,M,nz,NumI)
+  dpdRhoTh = KernelAbstractions.zeros(backend,FT,M,nz,NumI)
   D = KernelAbstractions.zeros(backend,FT,nz-1,NumI)
   SA = KernelAbstractions.zeros(backend,FT,M,M,nz,NumI)
   SchurBand = KernelAbstractions.zeros(backend,FT,3,nz-1,NumI)
@@ -52,8 +44,8 @@ function JacHDGVert(backend,FT,M,nz,DG)
 
   return JacHDGVert{FT,
                    typeof(rs),
-                   typeof(B1),
-                   typeof(A13)}(
+                   typeof(Th),
+                   typeof(A31)}(
 
     CompTri,
     grav_do,
@@ -62,22 +54,30 @@ function JacHDGVert(backend,FT,M,nz,DG)
     nz,
     fac,
     FacGrav,
-    A13,
-    A23,
+    cS,
     A31,
-    A32,
-    A33,
-    B1,
-    B2,
-    B3,
-    C2,
-    C3,
+    Th,
+    dpdRhoTh,
     D,
     SA,
     SchurBand,
     rs,
   )
 end  
+
+# ---------------------------------------------------------------------------
+# Shared on-the-fly reconstruction helpers.
+# These replace what used to be array reads into A13, A23, A32, A33, B1, B2,
+# B3, C2, C3. They are pure, @inline scalar functions so they can be called
+# from any kernel (Fill or Solve) without needing extra global memory.
+# ---------------------------------------------------------------------------
+
+
+@inline function calcA32(DWS,dpdRhoThj,i,j,::Val{M}) where M
+  a = DWS[i,j] * dpdRhoThj
+  return (i == 1 && j == 1) || (i == M && j == M) ? -a : a
+end
+
 
 # Helper inline function to handle the Schur complement atomic update cleanly
 @inline function update_schur!(SchurBand, C2_val, C3_val, r2_val, r3_val, i, j, ID)
@@ -86,19 +86,17 @@ end
   @atomic SchurBand[iB, j, ID] -= t
 end
 
-@kernel inbounds = true function FillJacHDGVertKernel!(A13,A23,@Const(A31),A32,A33,
-  B1,B2,B3,C2,C3,SA,SchurBand,@Const(U),@Const(dz),
-  @Const(DW),@Const(w),fac,cS,Phys, ::Val{M}) where {M}
+@kernel inbounds = true function FillJacHDGVertKernel!(Th,dpdRhoTh,@Const(A31),
+  SA,SchurBand,@Const(U),@Const(dz),
+  @Const(DWS),@Const(w),fac,cS,Phys, ::Val{M}) where {M}
 
   iz, ID = @index(Global, NTuple)
 
   nz = @uniform @ndrange()[1]
   DoF = @uniform @ndrange()[2]
-  Th = @private eltype(SA) (M,)
-  dpdRhoTh = @private eltype(SA) (M,)
+  ThL = @private eltype(SA) (M,)
+  dpdRhoThL = @private eltype(SA) (M,)
   r3 = @private eltype(SA) (M,)
-  DWS = @localmem eltype(SA) (M,M)
-  SAL = @localmem eltype(SA) (M,M)
 
   @uniform RhoPos = 1
   @uniform ThPos = 5
@@ -106,95 +104,39 @@ end
   @uniform wB = w[1]
   @uniform invcSwB = eltype(SA)(1) / (cS * wB)
   @uniform invwB = eltype(SA)(1) / wB
-
-  if iz == 1
-    @. DWS = DW
-  end
-  @synchronize
+  @uniform FTe = eltype(SA)
 
   if ID <= DoF
     kappa = Phys.kappa
     kexp = kappa / (eltype(SA)(1) - kappa)
     kfac = eltype(SA)(1) / (eltype(SA)(1) - kappa) * Phys.Rd
-    inv2dz = eltype(SA)(2) / dz[iz,ID]
     Rdp0 = Phys.Rd / Phys.p0
-    invfac = eltype(SA)(1) / fac
+    facLoc = fac / (dz[iz] * FTe(0.5))
+    invfac = FTe(1) / facLoc
 
     @unroll for i = 1 : M
-      Th[i] = U[i,iz,ID,ThPos] / U[i,iz,ID,RhoPos]
-      dpdRhoTh[i] = kfac * (Rdp0 * U[i,iz,ID,ThPos])^kexp
+      ThL[i] = U[i,iz,ID,ThPos] / U[i,iz,ID,RhoPos]
+      dpdRhoThL[i] = kfac * (Rdp0 * U[i,iz,ID,ThPos])^kexp
+      Th[i,iz,ID] = ThL[i]
+      dpdRhoTh[i,iz,ID] = dpdRhoThL[i]
     end
 
     @unroll for i = 1 : M
       @unroll for j = 1 : M
-        A13[i,j,iz,ID] = inv2dz * DWS[i,j]
-        A23[i,j,iz,ID] = inv2dz * DWS[i,j] * Th[j]
-        A32[i,j,iz,ID] = inv2dz * DWS[i,j] * dpdRhoTh[j]
-      end
-    end
-    A32[1,1,iz,ID] *= -1
-    A32[M,M,iz,ID] *= -1
-
-    if iz == 1
-      Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
-      B1[1,iz,ID] = zero(eltype(SA))
-      B1[2,iz,ID] = inv2dz * invwB
-      B2[1,iz,ID] = zero(eltype(SA))
-      B2[2,iz,ID] = eltype(SA)(0.5) * (Th[M] + Thp) * inv2dz * invwB
-      B3[1,iz,ID] = zero(eltype(SA))
-      B3[2,iz,ID] = -inv2dz * invwB * cS
-      C2[1,iz,ID] = eltype(SA)(0)
-      C2[2,iz,ID] = -dpdRhoTh[M]
-      C3[1,iz,ID] = eltype(SA)(0)
-      C3[2,iz,ID] = -cS
-    elseif iz == nz
-      Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
-      B1[1,iz,ID] = -inv2dz * invwB
-      B1[2,iz,ID] = zero(eltype(SA))
-      B2[1,iz,ID] = -eltype(SA)(0.5) * (Th[1] + Thm) * inv2dz * invwB
-      B2[2,iz,ID] = zero(eltype(SA))
-      B3[1,iz,ID] = -inv2dz * invwB * cS
-      B3[2,iz,ID] = eltype(SA)(0)
-      C2[1,iz,ID] = dpdRhoTh[1] 
-      C2[2,iz,ID] = eltype(SA)(0)
-      C3[1,iz,ID] = -cS
-      C3[2,iz,ID] = eltype(SA)(0)
-    else
-      Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
-      Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
-      B1[1,iz,ID] = -inv2dz * invwB
-      B1[2,iz,ID] = inv2dz * invwB
-      B2[1,iz,ID] = -eltype(SA)(0.5) * (Th[1] + Thm) * inv2dz * invwB
-      B2[2,iz,ID] = eltype(SA)(0.5) * (Th[M] + Thp) * inv2dz * invwB
-      B3[1,iz,ID] = -inv2dz * invwB * cS
-      B3[2,iz,ID] = -inv2dz * invwB * cS
-      C2[1,iz,ID] = dpdRhoTh[1] 
-      C2[2,iz,ID] = -dpdRhoTh[M]
-      C3[1,iz,ID] = -cS
-      C3[2,iz,ID] = -cS
-    end
-
-    @unroll for i = 1 : M
-      @unroll for j = 1 : M
-        SAL[i,j] = zero(eltype(SA))
+        val = zero(eltype(SA))
         @unroll for k = 1 : M
-          SAL[i,j] -= A32[i,k,iz,ID] * A23[k,j,iz,ID] + A31[i,k,iz,ID] * A13[k,j,iz,ID]
+          a32ik = calcA32(DWS,dpdRhoThL[k],i,k,Val(M))
+          a23kj = DWS[k,j] * ThL[j] 
+          val -= a32ik * a23kj + A31[i,k,iz,ID] * DWS[k,j]
         end
-        SAL[i,j] *= fac
+        SA[i,j,iz,ID] = val * facLoc
       end
-      SAL[i,i] += invfac
+      SA[i,i,iz,ID] += invfac
     end
-    A33[iz,ID] = cS * inv2dz * invwB
-    SAL[1,1] += cS * inv2dz * invwB
-    SAL[M,M] += cS * inv2dz * invwB
+    SA[1,1,iz,ID] += cS * invwB
+    SA[M,M,iz,ID] += cS * invwB
 
-
-    LUFull!(SAL, Val(M))
-    @unroll for i = 1 : M
-      @unroll for j = 1 : M
-        SA[i,j,iz,ID] = SAL[i,j]
-      end
-    end
+    LUFull!(iz,ID,SA, Val(M))
   end
 
   # Cache common column indices
@@ -202,79 +144,110 @@ end
   i_p0 = iz
   # CASE 1: iz == 1
   if iz == 1
+    Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
+    B1_1 = zero(FTe);             B1_2 = invwB
+    B2_1 = zero(FTe);             B2_2 = FTe(0.5) * (ThL[M] + Thp) * invwB
+    B3_1 = zero(FTe);             B3_2 = -invwB * cS
+    C2_1 = zero(FTe);             C2_2 = -dpdRhoThL[M]
+    C3_1 = zero(FTe);             C3_2 = -cS
+      
     # Column j = iz 
     j = i_p0
-    r1M = B1[2,iz,ID]
-    r2M = B2[2,iz,ID]
+    r1M = B1_2
+    r2M = B2_2
     @unroll for i = 1 : M
-      r3[i] = -(A31[i,M,iz,ID] * r1M + A32[i,M,iz,ID] * r2M) * fac
+      a32iM = calcA32(DWS,dpdRhoThL[M],i,M,Val(M))
+      r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
     end
-    r3[M] += B3[2,iz,ID]
-    ldivFull!(iz, ID, SA, r3, Val(M))
+    r3[M] += B3_2
+    ldivFull!(iz,ID,SA, r3, Val(M))
 
     @unroll for k = 1 : M
-      r2M -= A23[M,k,iz,ID] * r3[k]
+      a23Mk = DWS[M,k] * ThL[k] 
+      r2M -= a23Mk * r3[k]
     end
-    r2M *= fac
-    update_schur!(SchurBand, C2[2,iz,ID], C3[2,iz,ID], r2M, r3[M], i_p0, j, ID)
+    r2M *= facLoc
+    update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
   end
 
   # CASE 2: iz > 1 && iz < nz
   if iz > 1 && iz < nz
+    Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
+    Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
+    B1_1 = -invwB;       B1_2 = invwB
+    B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB
+    B2_2 =  FTe(0.5) * (ThL[M] + Thp) * invwB
+    B3_1 = -invwB * cS;  B3_2 = -invwB * cS
+    C2_1 = dpdRhoThL[1];          C2_2 = -dpdRhoThL[M]
+    C3_1 = -cS;                   C3_2 = -cS
+
     # Column j = iz - 1
     j = i_m1
-    r11 = B1[1,iz,ID]
-    r21 = B2[1,iz,ID]
+    r11 = B1_1
+    r21 = B2_1
     @unroll for i = 1 : M
-      r3[i] = -(A31[i,1,iz,ID] * r11 + A32[i,1,iz,ID] * r21) * fac
+      a32i1 = calcA32(DWS,dpdRhoThL[1],i,1,Val(M))
+      r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
     end
-    r3[1] += B3[1,iz,ID]
-    ldivFull!(iz, ID, SA, r3, Val(M))
+    r3[1] += B3_1
+    ldivFull!(iz,ID,SA, r3, Val(M))
     r2M = eltype(SA)(0)
     @unroll for k = 1 : M
-      r21 -= A23[1,k,iz,ID] * r3[k]
-      r2M -= A23[M,k,iz,ID] * r3[k]
+      a231k = DWS[1,k] * ThL[k] 
+      a23Mk = DWS[M,k] * ThL[k] 
+      r21 -= a231k * r3[k]
+      r2M -= a23Mk * r3[k]
     end
-    r21 *= fac
-    r2M *= fac
-    update_schur!(SchurBand, C2[1,iz,ID], C3[1,iz,ID], r21, r3[1], i_m1, j, ID)
-    update_schur!(SchurBand, C2[2,iz,ID], C3[2,iz,ID], r2M, r3[M], i_p0, j, ID)
+    r21 *= facLoc
+    r2M *= facLoc
+    update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
+    update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
 
     # Column j = iz 
     j = i_p0
-    r1M = B1[2,iz,ID]
-    r2M = B2[2,iz,ID]
+    r1M = B1_2
+    r2M = B2_2
     @unroll for i = 1 : M
-      r3[i] = -(A31[i,M,iz,ID] * r1M + A32[i,M,iz,ID] * r2M) * fac
+      a32iM = calcA32(DWS,dpdRhoThL[M],i,M,Val(M))
+      r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
     end
-    r3[M] += B3[2,iz,ID]
-    ldivFull!(iz, ID, SA, r3, Val(M))
+    r3[M] += B3_2
+    ldivFull!(iz,ID,SA, r3, Val(M))
 
     r21 = eltype(SA)(0)
     @unroll for k = 1 : M
-      r21 -= A23[1,k,iz,ID] * r3[k]
-      r2M -= A23[M,k,iz,ID] * r3[k]
+      a231k = DWS[1,k] * ThL[k] 
+      a23Mk = DWS[M,k] * ThL[k] 
+      r21 -= a231k * r3[k]
+      r2M -= a23Mk * r3[k]
     end
-    r21 *= fac
-    r2M *= fac
-    update_schur!(SchurBand, C2[1,iz,ID], C3[1,iz,ID], r21, r3[1], i_m1, j, ID)
-    update_schur!(SchurBand, C2[2,iz,ID], C3[2,iz,ID], r2M, r3[M], i_p0, j, ID)
+    r21 *= facLoc
+    r2M *= facLoc
+    update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
+    update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
   end
   if iz == nz
+    Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
+    B1_1 = -invwB;       B1_2 = zero(FTe)
+    B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB; B2_2 = zero(FTe)
+    B3_1 = -invwB * cS;  B3_2 = zero(FTe)
+    C2_1 = dpdRhoThL[1];             C2_2 = zero(FTe)
+    C3_1 = -cS;                   C3_2 = zero(FTe)
     # Column j = iz - 1
     j = i_m1
-    r11 = B1[1,iz,ID]
-    r21 = B2[1,iz,ID]
+    r11 = B1_1
+    r21 = B2_1
     @unroll for i = 1 : M
-      r3[i] = -(A31[i,1,iz,ID] * r11 + A32[i,1,iz,ID] * r21) * fac
+      a32i1 = calcA32(DWS,dpdRhoThL[1],i,1,Val(M))
+      r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
     end
-    r3[1] += B3[1,iz,ID]
-    ldivFull!(iz, ID, SA, r3, Val(M))
+    r3[1] += B3_1
+    ldivFull!(iz,ID,SA, r3, Val(M))
     @unroll for k = 1 : M
-      r21 -= A23[1,k,iz,ID] * r3[k]
+      r21 -=  DWS[1,k] * ThL[k] * r3[k]
     end
-    r21 *= fac
-    update_schur!(SchurBand, C2[1,iz,ID], C3[1,iz,ID], r21, r3[1], i_m1, j, ID)
+    r21 *= facLoc
+    update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
   end  
 end
 
@@ -286,8 +259,8 @@ end
 end
 
 
-@kernel inbounds = true function ldivHDGVerticalFKernel!(@Const(A13),@Const(A23),@Const(A31),@Const(A32),
-  @Const(C2), @Const(C3),@Const(SA),@Const(b),rs,fac, ::Val{M}) where {M}
+@kernel inbounds = true function ldivHDGVerticalFKernel!(@Const(A31),@Const(Th),@Const(dpdRhoTh),
+  @Const(SA),@Const(b),rs,@Const(dz),@Const(DW),@Const(w),fac,cS, ::Val{M}) where {M}
 
   iz, ID = @index(Global, NTuple)
 
@@ -299,22 +272,34 @@ end
   r1 = @private FT (M,)
   r2 = @private FT (M,)
   r3 = @private FT (M,)
+  DWS = @localmem FT (M,M)
 
   @uniform RhoPos = 1
   @uniform wPos = 4
   @uniform ThPos = 5
+  @uniform wB = w[1]
+  @uniform invwB = FT(1) / wB
+
+  if iz == 1
+    @. DWS = DW
+  end
+  @synchronize
 
   if ID <= ND
+    dz2 = dz[iz,ID] * FT(0.5)
+    facLoc = fac / dz2
 
     @unroll for i = 1 : M
-      r1[i] = b[i,iz,ID,RhoPos]
-      r2[i] = b[i,iz,ID,ThPos]
+      r1[i] = b[i,iz,ID,RhoPos] * dz2
+      r2[i] = b[i,iz,ID,ThPos] * dz2
     end  
 
     for i = 1 : M
-      r3[i] = b[i,iz,ID,wPos]
+      r3[i] = b[i,iz,ID,wPos] * dz2
       for j = 1 : M
-        r3[i] -= (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j]) * fac
+        a31ij = A31[i,j,iz,ID]
+        a32ij = calcA32(DWS,dpdRhoTh[j,iz,ID],i,j,Val(M))
+        r3[i] -= (a31ij * r1[j] + a32ij * r2[j]) * facLoc
       end
     end
 
@@ -323,29 +308,33 @@ end
     r21 = r2[1]
     r2M = r2[M]
     @unroll for j = 1 : M
-      r21 -= A23[1,j,iz,ID] * r3[j]
-      r2M -= A23[M,j,iz,ID] * r3[j]
+      a231j = DWS[1,j] * Th[j,iz,ID] 
+      a23Mj = DWS[M,j] * Th[j,iz,ID] 
+      r21 -= a231j * r3[j]
+      r2M -= a23Mj * r3[j]
     end
-    r21 *= fac
-    r2M *= fac
+    r21 *= facLoc
+    r2M *= facLoc
 
     # Pre-cache target row indices
     i_m1 = iz - 1
     i_p0 = iz
 
-    if iz == 1
-      update_rs!(rs, C2[2,iz,ID], C3[2,iz,ID], r2M, r3[M], i_p0, ID)
-    elseif iz > 1 && iz < nz
-      update_rs!(rs, C2[1,iz,ID], C3[1,iz,ID], r21, r3[1], i_m1, ID)
-      update_rs!(rs, C2[2,iz,ID], C3[2,iz,ID], r2M, r3[M], i_p0, ID)
-    elseif iz == nz
-      update_rs!(rs, C2[1,iz,ID], C3[1,iz,ID], r21, r3[1], i_m1, ID)
+    if iz < nz
+      C2_2 = -dpdRhoTh[M,iz,ID]
+      C3_2 = -cS
+      update_rs!(rs, C2_2, C3_2, r2M, r3[M], iz, ID)
+    end  
+    if iz > 1
+      C2_1 = dpdRhoTh[1,iz,ID];
+      C3_1 = -cS;
+      update_rs!(rs, C2_1, C3_1, r21, r3[1], iz-1, ID)
     end
   end
 end
 
-@kernel inbounds = true function ldivHDGVerticalBKernel!(@Const(A13),@Const(A23),@Const(A31),@Const(A32),
-  @Const(B1),@Const(B2),@Const(B3),@Const(SA),b,@Const(rs),fac,  ::Val{M}) where {M}
+@kernel inbounds = true function ldivHDGVerticalBKernel!(@Const(A31),@Const(Th),@Const(dpdRhoTh),
+  @Const(SA),b,@Const(rs),@Const(dz),@Const(DW),@Const(w),fac,cS, ::Val{M}) where {M}
 
   iz,ID = @index(Global, NTuple)
 
@@ -357,56 +346,68 @@ end
   r1 = @private FT (M,)
   r2 = @private FT (M,)
   r3 = @private FT (M,)
+  DWS = @localmem FT (M,M)
 
   @uniform RhoPos = 1
   @uniform wPos = 4
   @uniform ThPos = 5
+  @uniform wB = w[1]
+  @uniform invwB = FT(1) / wB
+
+  if iz == 1
+    @. DWS = DW
+  end
+  @synchronize
 
   if ID <= ND
+    dz2 = dz[iz,ID] * FT(0.5)
+    facLoc = fac / dz2
+    Thm = iz > 1  ? Th[M,iz-1,ID] : zero(FT)
+    Thp = iz < nz ? Th[1,iz+1,ID] : zero(FT)
 
     @unroll for i = 1 : M
-      r1[i] = b[i,iz,ID,RhoPos]
-      r2[i] = b[i,iz,ID,ThPos]
-      r3[i] = b[i,iz,ID,wPos]
+      r1[i] = b[i,iz,ID,RhoPos] * dz2
+      r2[i] = b[i,iz,ID,ThPos] * dz2
+      r3[i] = b[i,iz,ID,wPos] * dz2
     end  
-    if iz == 1
+    if iz <  nz
+      B1_2 = invwB
+      B2_2 = FT(0.5) * (Th[M,iz,ID] + Thp) * invwB
+      B3_2 = -invwB * cS  
       j = iz
-      r1[M] -= B1[2,iz,ID] * rs[j,ID]
-      r2[M] -= B2[2,iz,ID] * rs[j,ID]
-      r3[M] -= B3[2,iz,ID] * rs[j,ID]
+      r1[M] -= B1_2 * rs[j,ID]
+      r2[M] -= B2_2 * rs[j,ID]
+      r3[M] -= B3_2 * rs[j,ID]
     end
-    if iz > 1 && iz < nz
-      j = iz
-      r1[M] -= B1[2,iz,ID] * rs[j,ID]
-      r2[M] -= B2[2,iz,ID] * rs[j,ID]
-      r3[M] -= B3[2,iz,ID] * rs[j,ID]
-      r1[1] -= B1[1,iz,ID] * rs[j-1,ID]
-      r2[1] -= B2[1,iz,ID] * rs[j-1,ID]
-      r3[1] -= B3[1,iz,ID] * rs[j-1,ID]
-    end  
-    if iz == nz
+    if iz > 1
+      B1_1 = -invwB
+      B2_1 = -FT(0.5) * (Th[1,iz,ID] + Thm) * invwB
+      B3_1 = -invwB * cS
       j = iz - 1
-      r1[1] -= B1[1,iz,ID] * rs[j,ID]
-      r2[1] -= B2[1,iz,ID] * rs[j,ID]
-      r3[1] -= B3[1,iz,ID] * rs[j,ID]
+      r1[1] -= B1_1 * rs[j,ID]
+      r2[1] -= B2_1 * rs[j,ID]
+      r3[1] -= B3_1 * rs[j,ID]
     end    
 
     for i = 1 : M
       r3i = zero(eltype(SA))
       @unroll for j = 1 : M
-        r3i += (A31[i,j,iz,ID] * r1[j] + A32[i,j,iz,ID] * r2[j])
+        a31ij = A31[i,j,iz,ID]
+        a32ij = calcA32(DWS,dpdRhoTh[j,iz,ID],i,j,Val(M))
+        r3i += (a31ij * r1[j] + a32ij * r2[j])
       end
-      r3[i] -= r3i * fac
+      r3[i] -= r3i * facLoc
     end
 
     ldivFull!(iz,ID,SA,r3,Val(M))
     @unroll for i = 1 : M
       @unroll for j = 1 : M
-        r1[i] = (r1[i] - A13[i,j,iz,ID] * r3[j])
-        r2[i] = (r2[i] - A23[i,j,iz,ID] * r3[j])
+        a23ij = DWS[i,j] * Th[j,iz,ID]
+        r1[i] = (r1[i] - DWS[i,j] * r3[j])
+        r2[i] = (r2[i] - a23ij * r3[j])
       end  
-      r1[i] *= fac
-      r2[i] *= fac
+      r1[i] *= facLoc
+      r2[i] *= facLoc
     end
     @unroll for i = 1 : M
       b[i,iz,ID,RhoPos] = r1[i]
@@ -426,6 +427,7 @@ function FillJacHDGVert!(Jac::JacHDGVert,U,DG,dz,fac,Phys)
   DoF  = DG.NumI 
   
   Jac.fac = fac
+  Jac.cS = Phys.cS
   
   DWZ = DG.DWZ
   
@@ -435,8 +437,7 @@ function FillJacHDGVert!(Jac::JacHDGVert,U,DG,dz,fac,Phys)
   @. Jac.SchurBand = 0
   @. Jac.SchurBand[2,:,:] = 2.0 * P.cS
   KFillJacHDGVertKernel! = FillJacHDGVertKernel!(backend,group)
-  KFillJacHDGVertKernel!(Jac.A13,Jac.A23,Jac.A31,Jac.A32,Jac.A33,Jac.B1,Jac.B2,Jac.B3,
-  Jac.C2,Jac.C3,Jac.SA,Jac.SchurBand,U,dz,
+  KFillJacHDGVertKernel!(Jac.Th,Jac.dpdRhoTh,Jac.A31,Jac.SA,Jac.SchurBand,U,dz,
   DWZ,DG.wZ,fac,Phys.cS,Phys,Val(M);ndrange=ndrange)
 
 end   
@@ -458,7 +459,7 @@ function SchurBoundary!(Jac::JacHDGVert)
 end  
 
 
-function Solve!(Jac::JacHDGVert,b)
+function Solve!(Jac::JacHDGVert,b,DG,Metric)
 
   backend = get_backend(Jac.SA)
   FTB = eltype(Jac.SA)
@@ -469,14 +470,18 @@ function Solve!(Jac::JacHDGVert,b)
 
   invfac = FTB(1) / Jac.fac
   fac = Jac.fac
+  cS = Jac.cS
+  dz = Metric.dz
+  DWZ = DG.DWZ
+  wZ = DG.wZ
 
   NDG = 32
   group = (nz, NDG)
   ndrange = (nz, ND)
   @. Jac.rs = 0.0
   KldivVerticalFKernel! = ldivHDGVerticalFKernel!(backend,group)
-  KldivVerticalFKernel!(Jac.A13,Jac.A23,Jac.A31,Jac.A32,Jac.C2,Jac.C3,
-    Jac.SA,b,Jac.rs,fac,Val(M);ndrange=ndrange)
+  KldivVerticalFKernel!(Jac.A31,Jac.Th,Jac.dpdRhoTh,
+    Jac.SA,b,Jac.rs,dz,DWZ,wZ,fac,cS,Val(M);ndrange=ndrange)
 
   group = (NDG)
   ndrange = (ND)
@@ -486,8 +491,8 @@ function Solve!(Jac::JacHDGVert,b)
   group = (nz, NDG)
   ndrange = (nz, ND)
   KldivVerticalBKernel! = ldivHDGVerticalBKernel!(backend,group)
-  KldivVerticalBKernel!(Jac.A13,Jac.A23,Jac.A31,Jac.A32,Jac.B1,Jac.B2,Jac.B3,
-    Jac.SA,b,Jac.rs,fac,Val(M);ndrange=ndrange)
+  KldivVerticalBKernel!(Jac.A31,Jac.Th,Jac.dpdRhoTh,
+    Jac.SA,b,Jac.rs,dz,DWZ,wZ,fac,cS,Val(M);ndrange=ndrange)
 
 end
 
@@ -509,7 +514,7 @@ function Solve!(k,v,Jac::JacHDGVert,fac,DG::FiniteElements.DGElement,Metric,Glob
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   @. k = v
   @views TendVCart2VSp!(k,DG,Metric,NumberThreadGPU,VelForm)
-  Solve!(Jac,k)
+  Solve!(Jac,k,DG,Metric)
   @views @. k[:,:,:,2:3] *= fac
   @views TendVSp2VCart!(k,DG,Metric,NumberThreadGPU,VelForm)
 end
@@ -536,13 +541,11 @@ end
   if ID <= ND
     acc = eltype(dz)(0)
     Geoi = Geo[i, iz, ID]
-    inv2dz = eltype(A31)(2) / dz[iz, ID]
     @unroll for k in 1:M
       dphi = Geo[k, iz, ID] - Geoi
-      A31[i,k,iz,ID] = inv2dz * 0.5 * DS[i, k] * dphi
+      A31[i,k,iz,ID] = 0.5 * DS[i, k] * dphi
       acc += DS[i, k] * dphi
     end
-    A31[i, i, iz, ID] += inv2dz * 0.5 * acc
+    A31[i, i, iz, ID] += 0.5 * acc
   end
 end
-
