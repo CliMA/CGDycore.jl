@@ -107,16 +107,15 @@ end
   end  
 end
 
-@kernel inbounds = true function RiemannNonLinH3Kernel1!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
+@kernel inbounds = true function RiemannNonLinH3Kernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
   @Const(EF),@Const(FTE),@Const(NH),@Const(VolSurfH),
   @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
   _,iz, = @index(Local, NTuple)
-  K,Iz,I,IE = @index(Global, NTuple)
+  K, Iz, IE, I = @index(Global, NTuple)
 
   N = @uniform @groupsize()[1]
   M = @uniform @groupsize()[2]
-  TilesDim = @uniform @groupsize()[3]
 
   DoFE = @uniform @ndrange()[3]
 
@@ -126,14 +125,12 @@ end
   AuxL = @private eltype(F) (NAUX,)
   AuxR = @private eltype(F) (NAUX,)
 
-  RhoPos = @uniform 1
   uPos = @uniform 2
   vPos = @uniform 3
   wPos = @uniform 4
-  ThPos = @uniform 5
 
 
-  if I <= DoFE
+  if IE <= DoFE
     iFL = EF[1,IE]
     iFR = EF[2,IE]
     indL = GlobE[1,I,IE]
@@ -205,7 +202,6 @@ end
   @Const(NV),@Const(VolSurfV),
   @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
 
-  Iz,iD,_  = @index(Local, NTuple)
   Iz,ID,IF = @index(Global, NTuple)
 
 
@@ -294,7 +290,7 @@ end
   end  
 end
 
-@kernel inbounds = true function RiemannNonLinH3Kernel!(
+@kernel inbounds = true function RiemannNonLinH3Kernel1!(
     RiemannSolver!, F, @Const(U), @Const(Aux), @Const(GlobE),
     @Const(EF), @Const(FTE), @Const(NH), @Const(VolSurfH),
     @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}

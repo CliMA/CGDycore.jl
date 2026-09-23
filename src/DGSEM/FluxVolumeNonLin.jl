@@ -180,12 +180,12 @@ end
 
   VLoc     = @localmem eltype(F)      (N, N, TilesDim, NV)
   AuxLoc   = @localmem eltype(F)      (N, N, TilesDim, NAUX)
-  FLoc     = @localmem eltype(F)      (N, N, TilesDim, NV)
   # 2 directions × 3 components
   dXdxILoc = @localmem eltype(dXdxI)  (2, 3, N, N, TilesDim)
 
   fTilde = @private eltype(F) (NV,)
   gTilde = @private eltype(F) (NV,)
+  FLoc = @private eltype(F) (NV,)
 
   # ---- load phase ----
   if IZ <= NZ
@@ -231,12 +231,14 @@ end
         I, J, iz,
         I, l, iz,
         Val(2))
+        DVTlI = DVT[l, I] 
+        DVTlJ = DVT[l, J] 
       @unroll for iv = 1:NV
-        FLoc[I, J, iz, iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
+        FLoc[iv] += -DVTlI * fTilde[iv] - DVTlJ * gTilde[iv]
       end
     end
     @unroll for iv = 1:NV
-      F[K, Iz, ind, iv] += FLoc[I, J, iz, iv]
+      F[K, Iz, ind, iv] += FLoc[iv]
     end
   end
 end
@@ -626,7 +628,3 @@ end
     end
   end
 end  
-
-
-
-

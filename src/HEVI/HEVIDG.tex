@@ -5,7 +5,7 @@
 \usepackage{geometry}
 \geometry{margin=1in}
 
-\title{\textbf{Mathematical Formulation of a HEVI-DG Scheme for the Compressible Euler Equations on the Sphere in Cartesian Coordinates with Orography}}
+\title{\textbf{Mathematical Formulation of a HEVI-DG Scheme for the Compressible Euler Equations on the Sphere with Exact Incremental Transformations}}
 \author{}
 \date{}
 
@@ -32,89 +32,56 @@ p = p_0 \left( \frac{\rho \theta R_d}{p_0} \right)^\gamma.
 
 ---
 
-\section{Unified Computational Mapping and Hidden Geometry}
+\section{Unified Computational Mapping and Metric Tensors}
 
-To accommodate spherical grid topologies (such as a radially extruded cubed-sphere mesh) while accounting for terrain-following bottom topography $h(x,y,z)$, the physical domain is mapped to a computational reference coordinate system $\boldsymbol{\xi} = (\xi_1, \xi_2, \eta) \in [-1, 1]^3$.
-
-The horizontal coordinates $(\xi_1, \xi_2)$ span the spherical shell surface panels, while $\eta \in [0, 1]$ represents the radial terrain-following coordinate:
+The physical domain is mapped to a computational reference coordinate system $\boldsymbol{\xi} = (\xi_1, \xi_2, \eta) \in [-1, 1]^3$, where $(\xi_1, \xi_2)$ span the spherical shell surface panels and $\eta \in [0, 1]$ represents the terrain-following radial coordinate:
 \begin{equation}
-\eta = \frac{\|\boldsymbol{x}\|_2 - a - h(\hat{\boldsymbol{x}})}{z_{\text{top}} - h(\hat{\boldsymbol{x}})},
+\eta = \frac{\|\boldsymbol{x}\|_2 - a - h(\hat{\boldsymbol{x}})}{z_{\text{top}} - h(\hat{\boldsymbol{x}})}.
 \end{equation}
-where $a$ is the mean spherical Earth radius and $z_{\text{top}}$ is the domain top height.
 
 \subsection{Differential Metrics and Jacobians}
-The local geometry is entirely encoded in the forward Jacobian matrix $\mathbf{J}$ and the inverse Jacobian matrix $\mathbf{J}^{-1}$:
+The mapping geometry is governed by the forward Jacobian matrix $\mathbf{J}$ and inverse Jacobian matrix $\mathbf{J}^{-1}$:
 \begin{equation}
-\mathbf{J} = \frac{\partial \boldsymbol{x}}{\partial \boldsymbol{\xi}} = \begin{pmatrix} \frac{\partial \boldsymbol{x}}{\partial \xi_1} & \frac{\partial \boldsymbol{x}}{\partial \xi_2} & \frac{\partial \boldsymbol{x}}{\partial \eta} \end{pmatrix}, \qquad
+\mathbf{J} = \frac{\partial \boldsymbol{x}}{\partial \boldsymbol{\xi}} = \begin{pmatrix} \boldsymbol{a}_1 & \boldsymbol{a}_2 & \boldsymbol{a}_3 \end{pmatrix} = \begin{pmatrix} \frac{\partial \boldsymbol{x}}{\partial \xi_1} & \frac{\partial \boldsymbol{x}}{\partial \xi_2} & \frac{\partial \boldsymbol{x}}{\partial \eta} \end{pmatrix}, \qquad
 \mathbf{J}^{-1} = \frac{\partial \boldsymbol{\xi}}{\partial \boldsymbol{x}} = \begin{pmatrix} (\nabla_{\boldsymbol{x}} \xi_1)^T \\[2pt] (\nabla_{\boldsymbol{x}} \xi_2)^T \\[2pt] (\nabla_{\boldsymbol{x}} \eta)^T \end{pmatrix},
 \end{equation}
-with metric Volume Jacobian $|J| = \det(\mathbf{J})$.
+with Volume Jacobian metric $|J| = \det(\mathbf{J})$.
 
-To decouple the implicit column solvers from the $3 \times 3$ matrix operations, we isolate two key metric vectors:
-\begin{enumerate}
-    \item \textbf{Radial Metric Gradient Vector ($\nabla_{\boldsymbol{x}} \eta$):} The 3rd row of $\mathbf{J}^{-1}$, used for forward projection:
-    \begin{equation}
-    \nabla_{\boldsymbol{x}} \eta = \left( \frac{\partial \eta}{\partial x}, \frac{\partial \eta}{\partial y}, \frac{\partial \eta}{\partial z} \right).
-    \end{equation}
-    \item \textbf{Physical Radial Tangent Vector ($\boldsymbol{a}_3$):} The 3rd column of $\mathbf{J}$, representing the physical spatial vector along the extruded line:
-    \begin{equation}
-    \boldsymbol{a}_3 = \frac{\partial \boldsymbol{x}}{\partial \eta} = \left( \frac{\partial x}{\partial \eta}, \frac{\partial y}{\partial \eta}, \frac{\partial z}{\partial \eta} \right)^T.
-    \end{equation}
-\end{enumerate}
+The physical radial tangent vector $\boldsymbol{a}_3$ represents the 3rd column of $\mathbf{J}$:
+\begin{equation}
+\boldsymbol{a}_3 = \frac{\partial \boldsymbol{x}}{\partial \eta} = \left( \frac{\partial x}{\partial \eta}, \frac{\partial y}{\partial \eta}, \frac{\partial z}{\partial \eta} \right)^T.
+\end{equation}
 
 ---
 
-\section{Transformed Strong Metric Form \& HEVI Splitting}
+\section{Exact Contravariant Increment Decomposition}
 
-In computational space, the strong metric form of the conservation law reads:
-\begin{equation}
-\frac{\partial (|J| \boldsymbol{q})}{\partial t} + \frac{\partial \mathbf{F}_{\xi_1}}{\partial \xi_1} + \frac{\partial \mathbf{F}_{\xi_2}}{\partial \xi_2} + \frac{\partial \mathbf{F}_{\eta}}{\partial \eta} = |J| \boldsymbol{S}(\boldsymbol{q}),
-\end{equation}
-where the contravariant fluxes are given by $\mathbf{F}_{\xi_i} = |J| (\nabla_{\boldsymbol{x}} \xi_i) \cdot \mathbf{F}(\boldsymbol{q})$.
+Let $\mathbf{F}_{\boldsymbol{\xi}}^u = (F_{\xi_1}^u, F_{\xi_2}^v, F_\eta^w)^T$ denote the contravariant spatial momentum fluxes evaluated directly from the explicit horizontal divergence and vertical explicit flux evaluations.
 
-\subsection{Horizontal and Vertical Operator Splitting}
-The system is partitioned into an explicit horizontal operator $\boldsymbol{\mathcal{L}}_H(\boldsymbol{q})$ and a vertical implicit operator $\boldsymbol{\mathcal{L}}_V(\boldsymbol{q})$:
+Let $\delta w_\eta^{\text{imp}}$ denote the radial contravariant momentum update obtained from the 1D implicit vertical Newton solve.
+
+\subsection{1. Additive Increment Splitting}
+The total contravariant momentum increment vector $\delta(\rho \boldsymbol{u}_{\boldsymbol{\xi}})$ can be exactly decomposed into the sum of the full contravariant flux vector $\mathbf{F}_{\boldsymbol{\xi}}^u$ and a scalar residual correction in the radial direction:
 \begin{equation}
-\frac{\partial \boldsymbol{q}}{\partial t} = \boldsymbol{\mathcal{L}}_H(\boldsymbol{q}) + \boldsymbol{\mathcal{L}}_V(\boldsymbol{q}).
+\delta(\rho \boldsymbol{u}_{\boldsymbol{\xi}}) = \begin{pmatrix} F_{\xi_1}^u \\[4pt] F_{\xi_2}^v \\[4pt] F_\eta^w \end{pmatrix} + \begin{pmatrix} 0 \\[4pt] 0 \\[4pt] \delta w_\eta^{\text{imp}} - F_\eta^w \end{pmatrix}.
 \end{equation}
 
-\begin{itemize}
-    \item $\boldsymbol{\mathcal{L}}_H(\boldsymbol{q})$ contains the divergence of computational fluxes $\mathbf{F}_{\xi_1}$ and $\mathbf{F}_{\xi_2}$, alongside any explicit horizontal cross-metric topographic slope terms.
-    \item $\boldsymbol{\mathcal{L}}_V(\boldsymbol{q})$ isolates the 1D contravariant radial flux divergence $\frac{\partial \mathbf{F}_\eta}{\partial \eta}$ and gravitational source terms $\boldsymbol{S}(\boldsymbol{q})$.
-\end{itemize}
-
----
-
-\section{Contravariant Forward Mapping \& Simplified Increments}
-
-\subsection{1. Forward Radial Flux Projection}
-For the implicit vertical column solver, only the 1D contravariant scalar radial flux vector $\mathbf{F}_\eta \in \mathbb{R}^5$ is extracted from the physical Cartesian flux tensor $\mathbf{F}(\boldsymbol{q})$:
+\subsection{2. Unified Backtransformation to Geocentric Cartesian Coordinates}
+Multiplying the decomposed increment by the scaled forward Jacobian matrix $\frac{1}{|J|} \mathbf{J}$ yields:
 \begin{equation}
-\mathbf{F}_\eta = |J| \begin{pmatrix} 
-\rho \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta \\ 
-(\rho \boldsymbol{u} \otimes \boldsymbol{u} + p \mathbf{I}_3) \nabla_{\boldsymbol{x}} \eta \\ 
-\rho \theta \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta 
-\end{pmatrix}.
-\end{equation}
-The contravariant radial momentum scalar component $F_\eta^{(\rho w_\eta)}$ is given simply by:
-\begin{equation}
-F_\eta^{(\rho w_\eta)} = |J| \left[ (\rho \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta) (\boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta) + p \|\nabla_{\boldsymbol{x}} \eta\|_2^2 \right].
+\delta(\rho \boldsymbol{u})_{\text{cartesian}} = \frac{1}{|J|} \mathbf{J} \begin{pmatrix} F_{\xi_1}^u \\[4pt] F_{\xi_2}^v \\[4pt] F_\eta^w \end{pmatrix} + \frac{1}{|J|} \mathbf{J} \begin{pmatrix} 0 \\[4pt] 0 \\[4pt] \delta w_\eta^{\text{imp}} - F_\eta^w \end{pmatrix}.
 \end{equation}
 
-\subsection{2. 1D Column Implicit Newton Solve}
-The Implicit-Explicit (IMEX) Runge-Kutta scheme solves a 1D non-linear system per vertical column for the radial computational stage increment:
-\begin{equation}
-\delta \boldsymbol{q}_\eta = \begin{pmatrix} \delta \rho_\eta \\ 0 \\ 0 \\ \delta (\rho w_\eta) \\ \delta (\rho \theta)_\eta \end{pmatrix}.
-\end{equation}
-Because horizontal momentum updates are treated explicitly in $\boldsymbol{\mathcal{L}}_H$, the second and third components of $\delta \boldsymbol{q}_\eta$ are zero.
+By metric consistency, the first term simplifies identically back to the physical Cartesian momentum flux vector $\mathbf{F}_{\text{cartesian}} = (F_u, F_v, F_w)^T$. The second matrix-vector product eliminates the horizontal components, isolating the correction along vector $\boldsymbol{a}_3$:
 
-\subsection{3. Simplified Backtransformation to 3D Cartesian Increments}
-Because only the radial momentum component $\delta (\rho w_\eta)$ undergoes an implicit solve, the backtransformation from computational increments $\delta \boldsymbol{q}_\eta$ to physical geocentric Cartesian increments $\delta \boldsymbol{q} = (\delta \rho, \delta(\rho \boldsymbol{u}), \delta(\rho \theta))^T$ simplifies from a $3 \times 3$ matrix-vector product to a **single vector scaling by the radial tangent vector $\boldsymbol{a}_3$**:
-\begin{align}
-\delta \rho &= \frac{1}{|J|} \delta \rho_\eta, \\[6pt]
-\delta (\rho \boldsymbol{u})_{\text{cartesian}} &= \frac{1}{|J|} \boldsymbol{a}_3 \, \delta (\rho w_\eta) = \frac{1}{|J|} \begin{pmatrix} \frac{\partial x}{\partial \eta} \\[2pt] \frac{\partial y}{\partial \eta} \\[2pt] \frac{\partial z}{\partial \eta} \end{pmatrix} \delta (\rho w_\eta), \\[6pt]
-\delta (\rho \theta) &= \frac{1}{|J|} \delta (\rho \theta)_\eta.
-\end{align}
+\begin{equation}
+\delta(\rho \boldsymbol{u})_{\text{cartesian}} = \begin{pmatrix} F_u \\[4pt] F_v \\[4pt] F_w \end{pmatrix} + \frac{1}{|J|} \boldsymbol{a}_3 \left( \delta w_\eta^{\text{imp}} - F_\eta^w \right).
+\end{equation}
+
+In scalar component form, the Cartesian momentum increment update is given by:
+\begin{equation}
+\begin{pmatrix} \delta(\rho u) \\[4pt] \delta(\rho v) \\[4pt] \delta(\rho w) \end{pmatrix}_{\text{cartesian}} = \begin{pmatrix} F_u \\[4pt] F_v \\[4pt] F_w \end{pmatrix} + \frac{1}{|J|} \begin{pmatrix} \frac{\partial x}{\partial \eta} \\[4pt] \frac{\partial y}{\partial \eta} \\[4pt] \frac{\partial z}{\partial \eta} \end{pmatrix} \left( \delta w_\eta^{\text{imp}} - F_\eta^w \right).
+\end{equation}
 
 ---
 
