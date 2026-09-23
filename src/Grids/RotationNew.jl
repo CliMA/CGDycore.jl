@@ -111,3 +111,42 @@ end
     end
 end
 
+using KernelAbstractions
+
+@kernel function cartesian_to_spherical_velocity_transposed_kernel!(
+    v_r, v_θ, v_φ,                       # Outputs (M, nz, NDoF) - lineare Komponenten
+    v_x, v_y, v_z,                       # Inputs  (M, nz, NDoF)
+    θ_arr, φ_arr                         # Inputs  (NDoF,)
+)
+    idx = @index(Global)
+
+    if idx <= size(v_r, 3)
+        @fastmath begin
+            # Berechne sin und cos on-the-fly direkt in die CPU/GPU-Register
+            s_θ, c_θ = sincos(θ_arr[idx])
+            s_φ, c_φ = sincos(φ_arr[idx])
+
+            # Da M (<=6) und nz (<=40) klein sind, loopen wir linear intern.
+            for nz_idx in 1:size(v_r, 2)
+                for m_idx in 1:size(v_r, 1)
+
+                    # Kartesische Geschwindigkeiten laden
+                    dot_x = v_x[m_idx, nz_idx, idx]
+                    dot_y = v_y[m_idx, nz_idx, idx]
+                    dot_z = v_z[m_idx, nz_idx, idx]
+
+                    # Inverse Transformation via exakt transponierter Matrix
+                    # Zeile 1: dot_r = sin(φ)cos(θ)*ẋ + sin(φ)sin(θ)*ẏ + cos(φ)*ż
+                    v_r[m_idx, nz_idx, idx] = (s_φ * c_θ) * dot_x + (s_φ * s_θ) * dot_y + c_φ * dot_z
+
+                    # Zeile 2: dot_θ = -sin(θ)*ẋ + cos(θ)*ẏ
+                    v_θ[m_idx, nz_idx, idx] = -s_θ * dot_x + c_θ * dot_y
+
+                    # Zeile 3: dot_φ = cos(φ)cos(θ)*ẋ + cos(φ)sin(θ)*ẏ - sin(φ)*ż
+                    v_φ[m_idx, nz_idx, idx] = (c_φ * c_θ) * dot_x + (c_φ * s_θ) * dot_y - s_φ * dot_z
+                end
+            end
+        end
+    end
+end
+:

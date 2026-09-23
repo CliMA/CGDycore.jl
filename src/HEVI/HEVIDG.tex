@@ -1,0 +1,137 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{\textbf{Mathematical Formulation of a HEVI-DG Scheme for the Compressible Euler Equations on the Sphere in Cartesian Coordinates with Orography}}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Governing Equations in Geocentric Cartesian Coordinates}
+
+The 3D non-hydrostatic compressible Euler equations with gravity are formulated in an Earth-centered, Earth-fixed 3D Cartesian coordinate frame $\boldsymbol{x} = (x, y, z)^T \in \mathbb{R}^3$:
+\begin{equation}
+\frac{\partial \boldsymbol{q}}{\partial t} + \nabla_{\boldsymbol{x}} \cdot \mathbf{F}(\boldsymbol{q}) = \boldsymbol{S}(\boldsymbol{q}),
+\end{equation}
+where the conservative state vector $\boldsymbol{q}$, physical Cartesian flux tensor $\mathbf{F}(\boldsymbol{q}) \in \mathbb{R}^{5 \times 3}$, and gravitational source term $\boldsymbol{S}(\boldsymbol{q})$ are defined as:
+\begin{equation}
+\boldsymbol{q} = \begin{pmatrix} \rho \\ \rho \boldsymbol{u} \\ \rho \theta \end{pmatrix}, \quad 
+\mathbf{F}(\boldsymbol{q}) = \begin{pmatrix} \rho \boldsymbol{u}^T \\ \rho \boldsymbol{u} \otimes \boldsymbol{u} + p \mathbf{I}_3 \\ \rho \theta \boldsymbol{u}^T \end{pmatrix}, \quad
+\boldsymbol{S}(\boldsymbol{q}) = \begin{pmatrix} 0 \\ -\rho g \hat{\boldsymbol{r}} \\ 0 \end{pmatrix}.
+\end{equation}
+Here, $\rho$ is density, $\boldsymbol{u} = (u, v, w)^T$ is the physical velocity vector, $\theta$ is virtual potential temperature, $\mathbf{I}_3$ is the $3 \times 3$ identity matrix, $\hat{\boldsymbol{r}} = \frac{\boldsymbol{x}}{\|\boldsymbol{x}\|_2}$ is the radial unit vector, and $g$ is gravitational acceleration. Pressure $p$ is determined by the ideal gas equation of state:
+\begin{equation}
+p = p_0 \left( \frac{\rho \theta R_d}{p_0} \right)^\gamma.
+\end{equation}
+
+---
+
+\section{Unified Computational Mapping and Hidden Geometry}
+
+To accommodate spherical grid topologies (such as a radially extruded cubed-sphere mesh) while accounting for terrain-following bottom topography $h(x,y,z)$, the physical domain is mapped to a computational reference coordinate system $\boldsymbol{\xi} = (\xi_1, \xi_2, \eta) \in [-1, 1]^3$.
+
+The horizontal coordinates $(\xi_1, \xi_2)$ span the spherical shell surface panels, while $\eta \in [0, 1]$ represents the radial terrain-following coordinate:
+\begin{equation}
+\eta = \frac{\|\boldsymbol{x}\|_2 - a - h(\hat{\boldsymbol{x}})}{z_{\text{top}} - h(\hat{\boldsymbol{x}})},
+\end{equation}
+where $a$ is the mean spherical Earth radius and $z_{\text{top}}$ is the domain top height.
+
+\subsection{Differential Metrics and Jacobians}
+The local geometry is entirely encoded in the forward Jacobian matrix $\mathbf{J}$ and the inverse Jacobian matrix $\mathbf{J}^{-1}$:
+\begin{equation}
+\mathbf{J} = \frac{\partial \boldsymbol{x}}{\partial \boldsymbol{\xi}} = \begin{pmatrix} \frac{\partial \boldsymbol{x}}{\partial \xi_1} & \frac{\partial \boldsymbol{x}}{\partial \xi_2} & \frac{\partial \boldsymbol{x}}{\partial \eta} \end{pmatrix}, \qquad
+\mathbf{J}^{-1} = \frac{\partial \boldsymbol{\xi}}{\partial \boldsymbol{x}} = \begin{pmatrix} (\nabla_{\boldsymbol{x}} \xi_1)^T \\[2pt] (\nabla_{\boldsymbol{x}} \xi_2)^T \\[2pt] (\nabla_{\boldsymbol{x}} \eta)^T \end{pmatrix},
+\end{equation}
+with metric Volume Jacobian $|J| = \det(\mathbf{J})$.
+
+To decouple the implicit column solvers from the $3 \times 3$ matrix operations, we isolate two key metric vectors:
+\begin{enumerate}
+    \item \textbf{Radial Metric Gradient Vector ($\nabla_{\boldsymbol{x}} \eta$):} The 3rd row of $\mathbf{J}^{-1}$, used for forward projection:
+    \begin{equation}
+    \nabla_{\boldsymbol{x}} \eta = \left( \frac{\partial \eta}{\partial x}, \frac{\partial \eta}{\partial y}, \frac{\partial \eta}{\partial z} \right).
+    \end{equation}
+    \item \textbf{Physical Radial Tangent Vector ($\boldsymbol{a}_3$):} The 3rd column of $\mathbf{J}$, representing the physical spatial vector along the extruded line:
+    \begin{equation}
+    \boldsymbol{a}_3 = \frac{\partial \boldsymbol{x}}{\partial \eta} = \left( \frac{\partial x}{\partial \eta}, \frac{\partial y}{\partial \eta}, \frac{\partial z}{\partial \eta} \right)^T.
+    \end{equation}
+\end{enumerate}
+
+---
+
+\section{Transformed Strong Metric Form \& HEVI Splitting}
+
+In computational space, the strong metric form of the conservation law reads:
+\begin{equation}
+\frac{\partial (|J| \boldsymbol{q})}{\partial t} + \frac{\partial \mathbf{F}_{\xi_1}}{\partial \xi_1} + \frac{\partial \mathbf{F}_{\xi_2}}{\partial \xi_2} + \frac{\partial \mathbf{F}_{\eta}}{\partial \eta} = |J| \boldsymbol{S}(\boldsymbol{q}),
+\end{equation}
+where the contravariant fluxes are given by $\mathbf{F}_{\xi_i} = |J| (\nabla_{\boldsymbol{x}} \xi_i) \cdot \mathbf{F}(\boldsymbol{q})$.
+
+\subsection{Horizontal and Vertical Operator Splitting}
+The system is partitioned into an explicit horizontal operator $\boldsymbol{\mathcal{L}}_H(\boldsymbol{q})$ and a vertical implicit operator $\boldsymbol{\mathcal{L}}_V(\boldsymbol{q})$:
+\begin{equation}
+\frac{\partial \boldsymbol{q}}{\partial t} = \boldsymbol{\mathcal{L}}_H(\boldsymbol{q}) + \boldsymbol{\mathcal{L}}_V(\boldsymbol{q}).
+\end{equation}
+
+\begin{itemize}
+    \item $\boldsymbol{\mathcal{L}}_H(\boldsymbol{q})$ contains the divergence of computational fluxes $\mathbf{F}_{\xi_1}$ and $\mathbf{F}_{\xi_2}$, alongside any explicit horizontal cross-metric topographic slope terms.
+    \item $\boldsymbol{\mathcal{L}}_V(\boldsymbol{q})$ isolates the 1D contravariant radial flux divergence $\frac{\partial \mathbf{F}_\eta}{\partial \eta}$ and gravitational source terms $\boldsymbol{S}(\boldsymbol{q})$.
+\end{itemize}
+
+---
+
+\section{Contravariant Forward Mapping \& Simplified Increments}
+
+\subsection{1. Forward Radial Flux Projection}
+For the implicit vertical column solver, only the 1D contravariant scalar radial flux vector $\mathbf{F}_\eta \in \mathbb{R}^5$ is extracted from the physical Cartesian flux tensor $\mathbf{F}(\boldsymbol{q})$:
+\begin{equation}
+\mathbf{F}_\eta = |J| \begin{pmatrix} 
+\rho \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta \\ 
+(\rho \boldsymbol{u} \otimes \boldsymbol{u} + p \mathbf{I}_3) \nabla_{\boldsymbol{x}} \eta \\ 
+\rho \theta \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta 
+\end{pmatrix}.
+\end{equation}
+The contravariant radial momentum scalar component $F_\eta^{(\rho w_\eta)}$ is given simply by:
+\begin{equation}
+F_\eta^{(\rho w_\eta)} = |J| \left[ (\rho \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta) (\boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta) + p \|\nabla_{\boldsymbol{x}} \eta\|_2^2 \right].
+\end{equation}
+
+\subsection{2. 1D Column Implicit Newton Solve}
+The Implicit-Explicit (IMEX) Runge-Kutta scheme solves a 1D non-linear system per vertical column for the radial computational stage increment:
+\begin{equation}
+\delta \boldsymbol{q}_\eta = \begin{pmatrix} \delta \rho_\eta \\ 0 \\ 0 \\ \delta (\rho w_\eta) \\ \delta (\rho \theta)_\eta \end{pmatrix}.
+\end{equation}
+Because horizontal momentum updates are treated explicitly in $\boldsymbol{\mathcal{L}}_H$, the second and third components of $\delta \boldsymbol{q}_\eta$ are zero.
+
+\subsection{3. Simplified Backtransformation to 3D Cartesian Increments}
+Because only the radial momentum component $\delta (\rho w_\eta)$ undergoes an implicit solve, the backtransformation from computational increments $\delta \boldsymbol{q}_\eta$ to physical geocentric Cartesian increments $\delta \boldsymbol{q} = (\delta \rho, \delta(\rho \boldsymbol{u}), \delta(\rho \theta))^T$ simplifies from a $3 \times 3$ matrix-vector product to a **single vector scaling by the radial tangent vector $\boldsymbol{a}_3$**:
+\begin{align}
+\delta \rho &= \frac{1}{|J|} \delta \rho_\eta, \\[6pt]
+\delta (\rho \boldsymbol{u})_{\text{cartesian}} &= \frac{1}{|J|} \boldsymbol{a}_3 \, \delta (\rho w_\eta) = \frac{1}{|J|} \begin{pmatrix} \frac{\partial x}{\partial \eta} \\[2pt] \frac{\partial y}{\partial \eta} \\[2pt] \frac{\partial z}{\partial \eta} \end{pmatrix} \delta (\rho w_\eta), \\[6pt]
+\delta (\rho \theta) &= \frac{1}{|J|} \delta (\rho \theta)_\eta.
+\end{align}
+
+---
+
+\section{Kinematic Boundary Conditions and Surface Projection}
+
+At the bottom terrain surface $\eta = 0$, non-penetration requires that the contravariant radial velocity vanishes:
+\begin{equation}
+w_\eta \big|_{\eta=0} = \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta = 0 \implies \boldsymbol{u} \cdot \hat{\boldsymbol{r}} = \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}_H} h.
+\end{equation}
+In the vertical Discontinuous Galerkin boundary flux calculation, this is enforced by setting the boundary flux to purely wall-pressure forces:
+\begin{equation}
+\hat{\mathbf{F}}_\eta \Big|_{\eta=0} = |J| \begin{pmatrix} 0 \\ p_{\text{wall}} (\nabla_{\boldsymbol{x}} \eta)^T \\ 0 \end{pmatrix}.
+\end{equation}
+
+After each time step update, the physical momentum vector $\rho \boldsymbol{u}$ is projected back onto the local physical tangent surface of the terrain to prevent artificial numerical growth normal to the boundary:
+\begin{equation}
+(\rho \boldsymbol{u})_{\text{projected}} = \rho \boldsymbol{u} - \left( \frac{\rho \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta}{\|\nabla_{\boldsymbol{x}} \eta\|_2^2} \right) \nabla_{\boldsymbol{x}} \eta.
+\end{equation}
+
+\end{document}
