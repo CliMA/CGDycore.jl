@@ -57,11 +57,12 @@ function (CoriolisFun::CoriolisDeep)(uPos,vPos,wPos,::Examples.VelocityS)
   return Coriolis
 end
 
-function (CoriolisFun::CoriolisDeep)(uPos,vPos,wPos,::Examples.VelocityC)
+function (CoriolisFun::CoriolisDeep)(::Val{uPos},::Val{vPos},::Val{wPos},
+  ::Examples.VelocityC) where{uPos, vPos, wPos}
   @inline function Coriolis(F,U,lon,lat)
     FT = eltype(F)
-    F[2] += FT(2) * P.Omega * U[3]
-    F[3] += -FT(2) * P.Omega * U[2]
+    F[uPos] += FT(2) * P.Omega * U[vPos]
+    F[vPos] += -FT(2) * P.Omega * U[uPos]
   end
   return Coriolis
 end

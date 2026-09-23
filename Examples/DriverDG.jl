@@ -1,5 +1,5 @@
 import CGDycore:
-  Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore, IMEXRosenbrock
+  Parameters as P, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore, IMEXRosenbrock
 using MPI
 using Base
 using CUDA
@@ -11,7 +11,7 @@ using ArgParse
 
 
 # Model
-parsed_args = Parameters.parse_commandline()
+parsed_args = P.parse_commandline()
 Problem = parsed_args["Problem"]
 Discretization = parsed_args["Discretization"]
 Dimension = parsed_args["Dimension"]
@@ -349,7 +349,8 @@ Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 if InterfaceFluxDG == "RiemannLMARS"
-  RiemannSolver = DGSEM.RiemannLMARS()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
+  RiemannSolver = DGSEM.RiemannLMARS()(Val(Model.RhoPos),Val(Model.uPos),Val(Model.vPos),
+    Val(Model.wPos),Val(Model.RhoThPos),Val(1),P.cS)
   Model.RiemannSolver = RiemannSolver
   RiemannSolverSlow = DGSEM.RiemannLMARSSlow()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos,1)
   Model.RiemannSolverSlow = RiemannSolverSlow
@@ -392,10 +393,10 @@ if FluxDG == "KennedyGruber"
   Model.FluxAverageV = Model.FluxAverageH
   Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
 elseif FluxDG == "KennedyGruberGrav"  
-  Model.FluxAverageH = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-    Model.RhoThPos,pAuxPos,GPAuxPos,Grid.Type)
-  Model.FluxAverageV = DGSEM.KennedyGruberGrav()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-    Model.RhoThPos,pAuxPos,GPAuxPos,Grids.Quad())
+  Model.FluxAverageH = DGSEM.KennedyGruberGrav()(Val(Model.RhoPos),Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),
+    Val(Model.RhoThPos),Val(pAuxPos),Val(GPAuxPos),Grid.Type)
+  Model.FluxAverageV = DGSEM.KennedyGruberGrav()(Val(Model.RhoPos),Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),
+    Val(Model.RhoThPos),Val(pAuxPos),Val(GPAuxPos),Grid.Type)
   Model.FluxAverageSlow = DGSEM.KennedyGruberGravSlow()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.RhoThPos,pAuxPos,GPAuxPos)
   if IntMethod == "MIS"
@@ -449,7 +450,7 @@ end
 
 #Coriolis
 if Coriolis
-  CoriolisFun = Sources.CoriolisDeep()(Model.uPos,Model.vPos,Model.wPos,Examples.VelocityC())
+  CoriolisFun = Sources.CoriolisDeep()(Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),Examples.VelocityC())
   Model.CoriolisFun = CoriolisFun
 else
   CoriolisFun = Sources.CoriolisNo()()
