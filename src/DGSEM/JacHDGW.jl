@@ -91,6 +91,7 @@ end
   ThL = @private eltype(SA) (M,)
   dpdRhoThL = @private eltype(SA) (M,)
   r3 = @private eltype(SA) (M,)
+  SAL = @private eltype(SA) (M,M)
 
   @uniform RhoPos = 1
   @uniform ThPos = 5
@@ -121,125 +122,129 @@ end
         @unroll for k = 1 : M
           val -= (DWSS[i,k] * dpdRhoThL[k] * ThL[j] + A31[i,k,iz,ID]) * DWS[k,j]
         end
-        SA[i,j,iz,ID] = val * facLoc
+        SAL[i,j] = val * facLoc
       end
-      SA[i,i,iz,ID] += invfac
+      SAL[i,i] += invfac
     end
-    SA[1,1,iz,ID] += cS * invwB
-    SA[M,M,iz,ID] += cS * invwB
+    SAL[1,1] += cS * invwB
+    SA[M,M] += cS * invwB
+    LUFull!(SAL, Val(M))
+    @unroll for j = 1 : M
+      @unroll for i = 1 : M
+        SA[i,j,iz,ID] = SAL[i,j]
+      end
+    end  
 
-    LUFull!(iz,ID,SA, Val(M))
-  end
+    # Cache common column indices
+    i_m1 = iz - 1
+    i_p0 = iz
+    # CASE 1: iz == 1
+    if iz == 1
+      Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
+      B1_1 = zero(FTe);             B1_2 = invwB
+      B2_1 = zero(FTe);             B2_2 = FTe(0.5) * (ThL[M] + Thp) * invwB
+      B3_1 = zero(FTe);             B3_2 = -invwB * cS
+      C2_1 = zero(FTe);             C2_2 = -dpdRhoThL[M]
+      C3_1 = zero(FTe);             C3_2 = -cS
+        
+      # Column j = iz 
+      j = i_p0
+      r1M = B1_2
+      r2M = B2_2
+      @unroll for i = 1 : M
+        a32iM = DWSS[i,M] * dpdRhoThL[M]
+        r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
+      end
+      r3[M] += B3_2
+      ldivFull!(SAL, r3, Val(M))
 
-  # Cache common column indices
-  i_m1 = iz - 1
-  i_p0 = iz
-  # CASE 1: iz == 1
-  if iz == 1
-    Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
-    B1_1 = zero(FTe);             B1_2 = invwB
-    B2_1 = zero(FTe);             B2_2 = FTe(0.5) * (ThL[M] + Thp) * invwB
-    B3_1 = zero(FTe);             B3_2 = -invwB * cS
-    C2_1 = zero(FTe);             C2_2 = -dpdRhoThL[M]
-    C3_1 = zero(FTe);             C3_2 = -cS
-      
-    # Column j = iz 
-    j = i_p0
-    r1M = B1_2
-    r2M = B2_2
-    @unroll for i = 1 : M
-      a32iM = DWSS[i,M] * dpdRhoThL[M]
-      r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
+      @unroll for k = 1 : M
+        a23Mk = DWS[M,k] * ThL[k] 
+        r2M -= a23Mk * r3[k]
+      end
+      r2M *= facLoc
+      update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
     end
-    r3[M] += B3_2
-    ldivFull!(iz,ID,SA, r3, Val(M))
 
-    @unroll for k = 1 : M
-      a23Mk = DWS[M,k] * ThL[k] 
-      r2M -= a23Mk * r3[k]
-    end
-    r2M *= facLoc
-    update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
-  end
+    # CASE 2: iz > 1 && iz < nz
+    if iz > 1 && iz < nz
+      Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
+      Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
+      B1_1 = -invwB;       B1_2 = invwB
+      B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB
+      B2_2 =  FTe(0.5) * (ThL[M] + Thp) * invwB
+      B3_1 = -invwB * cS;  B3_2 = -invwB * cS
+      C2_1 = dpdRhoThL[1];          C2_2 = -dpdRhoThL[M]
+      C3_1 = -cS;                   C3_2 = -cS
 
-  # CASE 2: iz > 1 && iz < nz
-  if iz > 1 && iz < nz
-    Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
-    Thp = U[1,iz + 1,ID,ThPos] / U[1,iz + 1,ID,RhoPos]
-    B1_1 = -invwB;       B1_2 = invwB
-    B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB
-    B2_2 =  FTe(0.5) * (ThL[M] + Thp) * invwB
-    B3_1 = -invwB * cS;  B3_2 = -invwB * cS
-    C2_1 = dpdRhoThL[1];          C2_2 = -dpdRhoThL[M]
-    C3_1 = -cS;                   C3_2 = -cS
+      # Column j = iz - 1
+      j = i_m1
+      r11 = B1_1
+      r21 = B2_1
+      @unroll for i = 1 : M
+        a32i1 = DWSS[i,1] * dpdRhoThL[1]
+        r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
+      end
+      r3[1] += B3_1
+      ldivFull!(SAL, r3, Val(M))
+      r2M = eltype(SA)(0)
+      @unroll for k = 1 : M
+        a231k = DWS[1,k] * ThL[k] 
+        a23Mk = DWS[M,k] * ThL[k] 
+        r21 -= a231k * r3[k]
+        r2M -= a23Mk * r3[k]
+      end
+      r21 *= facLoc
+      r2M *= facLoc
+      update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
+      update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
 
-    # Column j = iz - 1
-    j = i_m1
-    r11 = B1_1
-    r21 = B2_1
-    @unroll for i = 1 : M
-      a32i1 = DWSS[i,1] * dpdRhoThL[1]
-      r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
-    end
-    r3[1] += B3_1
-    ldivFull!(iz,ID,SA, r3, Val(M))
-    r2M = eltype(SA)(0)
-    @unroll for k = 1 : M
-      a231k = DWS[1,k] * ThL[k] 
-      a23Mk = DWS[M,k] * ThL[k] 
-      r21 -= a231k * r3[k]
-      r2M -= a23Mk * r3[k]
-    end
-    r21 *= facLoc
-    r2M *= facLoc
-    update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
-    update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
+      # Column j = iz 
+      j = i_p0
+      r1M = B1_2
+      r2M = B2_2
+      @unroll for i = 1 : M
+        a32iM = DWSS[i,M] * dpdRhoThL[M]
+        r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
+      end
+      r3[M] += B3_2
+      ldivFull!(SAL, r3, Val(M))
 
-    # Column j = iz 
-    j = i_p0
-    r1M = B1_2
-    r2M = B2_2
-    @unroll for i = 1 : M
-      a32iM = DWSS[i,M] * dpdRhoThL[M]
-      r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
+      r21 = eltype(SA)(0)
+      @unroll for k = 1 : M
+        a231k = DWS[1,k] * ThL[k] 
+        a23Mk = DWS[M,k] * ThL[k] 
+        r21 -= a231k * r3[k]
+        r2M -= a23Mk * r3[k]
+      end
+      r21 *= facLoc
+      r2M *= facLoc
+      update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
+      update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
     end
-    r3[M] += B3_2
-    ldivFull!(iz,ID,SA, r3, Val(M))
-
-    r21 = eltype(SA)(0)
-    @unroll for k = 1 : M
-      a231k = DWS[1,k] * ThL[k] 
-      a23Mk = DWS[M,k] * ThL[k] 
-      r21 -= a231k * r3[k]
-      r2M -= a23Mk * r3[k]
-    end
-    r21 *= facLoc
-    r2M *= facLoc
-    update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
-    update_schur!(SchurBand, C2_2, C3_2, r2M, r3[M], i_p0, j, ID)
-  end
-  if iz == nz
-    Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
-    B1_1 = -invwB;       B1_2 = zero(FTe)
-    B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB; B2_2 = zero(FTe)
-    B3_1 = -invwB * cS;  B3_2 = zero(FTe)
-    C2_1 = dpdRhoThL[1];             C2_2 = zero(FTe)
-    C3_1 = -cS;                   C3_2 = zero(FTe)
-    # Column j = iz - 1
-    j = i_m1
-    r11 = B1_1
-    r21 = B2_1
-    @unroll for i = 1 : M
-      a32i1 = DWSS[i,1] * dpdRhoThL[1]
-      r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
-    end
-    r3[1] += B3_1
-    ldivFull!(iz,ID,SA, r3, Val(M))
-    @unroll for k = 1 : M
-      r21 -=  DWS[1,k] * ThL[k] * r3[k]
-    end
-    r21 *= facLoc
-    update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
+    if iz == nz
+      Thm = U[M,iz - 1,ID,ThPos] / U[M,iz - 1,ID,RhoPos]
+      B1_1 = -invwB;       B1_2 = zero(FTe)
+      B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB; B2_2 = zero(FTe)
+      B3_1 = -invwB * cS;  B3_2 = zero(FTe)
+      C2_1 = dpdRhoThL[1];             C2_2 = zero(FTe)
+      C3_1 = -cS;                   C3_2 = zero(FTe)
+      # Column j = iz - 1
+      j = i_m1
+      r11 = B1_1
+      r21 = B2_1
+      @unroll for i = 1 : M
+        a32i1 = DWSS[i,1] * dpdRhoThL[1]
+        r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
+      end
+      r3[1] += B3_1
+      ldivFull!(SAL, r3, Val(M))
+      @unroll for k = 1 : M
+        r21 -=  DWS[1,k] * ThL[k] * r3[k]
+      end
+      r21 *= facLoc
+      update_schur!(SchurBand, C2_1, C3_1, r21, r3[1], i_m1, j, ID)
+    end  
   end  
 end
 
