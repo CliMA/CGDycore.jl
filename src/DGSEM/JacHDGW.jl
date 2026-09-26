@@ -127,7 +127,7 @@ end
       SAL[i,i] += invfac
     end
     SAL[1,1] += cS * invwB
-    SA[M,M] += cS * invwB
+    SAL[M,M] += cS * invwB
     LUFull!(SAL, Val(M))
     @unroll for j = 1 : M
       @unroll for i = 1 : M
