@@ -226,7 +226,6 @@ mutable struct DGQuad{FT<:AbstractFloat,
     IntZE2F::Array{FT, 2}
     DS::SAT2
     DW::SAT2
-    DST::Array{FT, 2}
     DSZ::SAT2
     DWZ::SAT2
     DWZM::SAT2
@@ -331,39 +330,39 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   end
 
   (DWCPU,DSCPU,DVCPU)=DG.DerivativeMatrixSingle(OrdPoly)
-  DS = KernelAbstractions.zeros(backend,FT,size(DSCPU))
-  copyto!(DS,DSCPU)
-  DST=DS'
-  DS = SMatrix{OrdPoly+1,OrdPoly+1}(DS)
-  DW = KernelAbstractions.zeros(backend,FT,size(DWCPU))
-  copyto!(DW,DWCPU)
-  DW = SMatrix{OrdPoly+1,OrdPoly+1}(DW)
-  DV = KernelAbstractions.zeros(backend,FT,size(DVCPU))
-  copyto!(DV,DVCPU)
-  DVT=DV'
-  DV = SMatrix{OrdPoly+1,OrdPoly+1}(DV)
-  DVT = SMatrix{OrdPoly+1,OrdPoly+1}(DVT)
+  DSCPU_S = SMatrix{OrdPoly+1,OrdPoly+1}(DSCPU)
+  DS = adapt(backend,DSCPU_S)
+
+  DWCPU_S = SMatrix{OrdPoly+1,OrdPoly+1}(DWCPU)
+  DW = adapt(backend,DWCPU_S)
+
+  DVCPU_S = SMatrix{OrdPoly+1,OrdPoly+1}(DVCPU)
+  DV = adapt(backend,DVCPU_S)
+
+  DVTCPU = DVCPU'
+  DVTCPU_S = SMatrix{OrdPoly+1,OrdPoly+1}(DVTCPU)
+  DVT = adapt(backend,DVTCPU_S)
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
 
   (DWZCPU,DSZCPU,DVZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
-  DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
-  copyto!(DSZ,DSZCPU)
-  DSZ = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DSZ)
-  DWZ = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
-  copyto!(DWZ,DWZCPU)
-  DWZ = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DWZ)
+  DSZCPU_S = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DSZCPU)
+  DSZ = adapt(backend,DSZCPU_S)
+
+  DWZCPU_S = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DWZCPU)
+  DWZ = adapt(backend,DWZCPU_S)
   DWZCPU[1,1] *= -1
   DWZCPU[end,end] *= -1
-  DWZM = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
-  copyto!(DWZM,DWZCPU)
-  DWZM = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DWZM)
-  DVZ = KernelAbstractions.zeros(backend,FT,size(DVZCPU))
-  copyto!(DVZ,DVZCPU)
-  DVZT=DVZ'
-  DVZ = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DVZ)
-  DVZT = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DVZT)
+  DWZMCPU_S = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DWZCPU)
+  DWZM = adapt(backend,DWZMCPU_S)
+
+  DVZCPU_S = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DVZCPU)
+  DVZ = adapt(backend,DVZCPU_S)
+
+  DVZTCPU = DVZCPU'
+  DVZTCPU_S = SMatrix{OrdPoly+1,OrdPoly+1}(DVZTCPU)
+  DVZT = adapt(backend,DVZTCPU_S)
 
   (GlobCPU,GlobECPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
     NumberingFemDGQuad(Grid,OrdPoly,Proc)  
@@ -462,7 +461,6 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     IntZE2F,
     DS,
     DW,
-    DST,
     DSZ,
     DWZ,
     DWZM,

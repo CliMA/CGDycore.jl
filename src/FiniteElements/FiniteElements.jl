@@ -8,6 +8,7 @@ import ..Models
 using LinearAlgebra
 using StaticArrays
 using FastGaussQuadrature
+using Adapt
 using KernelAbstractions
 using DynamicPolynomials
 using KernelAbstractions
