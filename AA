@@ -1,0 +1,103 @@
+function FillJacHDGVert!(Jac::JacHDGVert,U,DG,dz,fac,Phys)
+  
+  backend = get_backend(U)
+  FTB = eltype(U)
+  
+  M = Jac.M
+  nz = Jac.nz
+  DoF  = DG.NumI 
+  
+  Jac.fac = fac
+  Jac.cS = Phys.cS
+  
+  DWZ = DG.DWZ
+  DWZM = DG.DWZM
+  
+  DoFG = 10
+  group = (nz, DoFG)
+  ndrange = (nz, DoF)
+  @. Jac.SchurBand = 0
+  @. Jac.SchurBand[2,:,:] = 2.0 * P.cS
+  KFillJacHDGVertKernel! = FillJacHDGVertKernel!(backend,group)
+  KFillJacHDGVertKernel!(Jac.Th,Jac.dpdRhoTh,Jac.A31,Jac.SA,Jac.SchurBand,U,dz,
+  DWZ,DWZM,DG.wZ,fac,Phys.cS,Phys,Val(M);ndrange=ndrange)
+
+end   
+
+function SchurBoundary!(Jac::JacHDGVert)
+
+  backend = get_backend(Jac.SA)
+  FTB = eltype(Jac.SA)
+
+  M = Jac.M
+  nz = Jac.nz
+  ND = Jac.NumI
+
+  NDG = 32
+  group = (NDG)
+  ndrange = (ND)
+  KluBandKernel! = luBandKernel!(backend,group)
+  KluBandKernel!(Jac.SchurBand,Val(1),Val(1),Val(nz-1),ndrange=ndrange)
+end  
+
+
+function Solve!(Jac::JacHDGVert,b,DG,Metric)
+
+  backend = get_backend(Jac.SA)
+  FTB = eltype(Jac.SA)
+
+  M = Jac.M
+  nz = Jac.nz
+  ND = Jac.NumI
+
+  invfac = FTB(1) / Jac.fac
+  fac = Jac.fac
+  cS = Jac.cS
+  dz = Metric.dz
+  DWZ = DG.DWZ
+  DWZM = DG.DWZM
+  wZ = DG.wZ
+
+  NDG = 32
+  group = (nz, NDG)
+  ndrange = (nz, ND)
+  @. Jac.rs = 0.0
+  KldivVerticalFKernel! = ldivHDGVerticalFKernel!(backend,group)
+  KldivVerticalFKernel!(Jac.A31,Jac.Th,Jac.dpdRhoTh,
+    Jac.SA,b,Jac.rs,dz,DWZ,DWZM,wZ,fac,cS,Val(M);ndrange=ndrange)
+
+  group = (NDG)
+  ndrange = (ND)
+  KldivVerticalSKernel! = ldivVerticalSKernel!(backend,group)
+  KldivVerticalSKernel!(Jac.SchurBand,Jac.rs,Val(1),Val(1),Val(nz-1);ndrange=ndrange)
+
+  group = (nz, NDG)
+  ndrange = (nz, ND)
+  KldivVerticalBKernel! = ldivHDGVerticalBKernel!(backend,group)
+  KldivVerticalBKernel!(Jac.A31,Jac.Th,Jac.dpdRhoTh,
+    Jac.SA,b,Jac.rs,dz,DWZ,DWZM,wZ,fac,cS,Val(M);ndrange=ndrange)
+
+end
+
+function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDGVert,Global,VelForm)
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  if JCache.grav_do
+    @views Geo = Cache.Aux[:,:,:,2]
+#   @views Geo = Cache[:,:,:,2]
+    precompute_gravity!(Geo,Metric.dz,DG.DWZ,JCache,NumberThreadGPU)
+    JCache.grav_do = false
+  end  
+  dz = Metric.dz
+  FillJacHDGVert!(JCache,U,DG,dz,fac,Phys)
+  SchurBoundary!(JCache)
+end
+
+function Solve!(k,v,Jac::JacHDGVert,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
+
+  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
+  @. k = v
+  @views TendVCart2VSp!(k,DG,Metric,NumberThreadGPU,VelForm)
+  Solve!(Jac,k,DG,Metric)
+  @views @. k[:,:,:,2:3] *= fac
+  @views TendVSp2VCart!(k,DG,Metric,NumberThreadGPU,VelForm)
+end

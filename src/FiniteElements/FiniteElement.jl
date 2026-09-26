@@ -430,7 +430,7 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
 
   return DGQuad{FT,
                  typeof(w),
-                 typeof(ksi),
+                 typeof(ksiGPU),
                  typeof(DSZ),
                  typeof(MasterSlave),
                  typeof(PosDoFE),
