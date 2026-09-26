@@ -36,6 +36,7 @@
   if Iz <= Nz 
     I = mod(ID-1,N) + 1
     J = div(ID-I,N) + 1
+    ind = Glob[ID,IF]
     temp = RotLoc[I,J,iz] / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
     for j = 1 : size(Inter,1) 
       for i = 1 : size(Inter,2) 
@@ -454,9 +455,9 @@ end
     vSp = @inbounds SVector{3}(V[K,Iz,ind,2] / rho, V[K,Iz,ind,3] / rho, V[K,Iz,ind,4] / rho)
 
     R = SMatrix{3, 3}(
-        Rotate[1, 1, ID, IF], Rotate[1, 2, ID, IF], Rotate[1, 3, ID, IF],
-        Rotate[2, 1, ID, IF], Rotate[2, 2, ID, IF], Rotate[2, 3, ID, IF],
-        Rotate[3, 1, ID, IF], Rotate[3, 2, ID, IF], Rotate[3, 3, ID, IF]
+        Rotate[1, 1, ind], Rotate[1, 2, ind], Rotate[1, 3, ind],
+        Rotate[2, 1, ind], Rotate[2, 2, ind], Rotate[2, 3, ind],
+        Rotate[3, 1, ind], Rotate[3, 2, ind], Rotate[3, 3, ind]
       )
 
     vCa = R * vSp
@@ -501,13 +502,13 @@ end
     vCa = @inbounds SVector{3}(dU,dV,dW)
 
     R = SMatrix{3, 3}(
-        Rotate[1, 1, ID, IF], Rotate[2, 1, ID, IF], Rotate[3, 1, ID, IF],
-        Rotate[1, 2, ID, IF], Rotate[2, 2, ID, IF], Rotate[3, 2, ID, IF],
-        Rotate[1, 3, ID, IF], Rotate[2, 3, ID, IF], Rotate[3, 3, ID, IF]
+        Rotate[1, 1, ind], Rotate[2, 1, ind], Rotate[3, 1, ind],
+        Rotate[1, 2, ind], Rotate[2, 2, ind], Rotate[3, 2, ind],
+        Rotate[1, 3, ind], Rotate[2, 3, ind], Rotate[3, 3, ind]
       )
 
     vSp = R * vCa
-    JLoc = JJ[ID,K,Iz,IF]
+    JLoc = JJ[K,Iz,ind]
     Rot[K, Iz, ind] = vSp[3] * JLoc
   end  
 end  

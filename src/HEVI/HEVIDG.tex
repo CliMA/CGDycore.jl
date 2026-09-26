@@ -101,4 +101,513 @@ After each time step update, the physical momentum vector $\rho \boldsymbol{u}$ 
 (\rho \boldsymbol{u})_{\text{projected}} = \rho \boldsymbol{u} - \left( \frac{\rho \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta}{\|\nabla_{\boldsymbol{x}} \eta\|_2^2} \right) \nabla_{\boldsymbol{x}} \eta.
 \end{equation}
 
+\section{Implicit Vertical Residual System}
+
+The 1D implicit vertical Newton system solves for state vector updates $\boldsymbol{q}_\eta = (\rho, \rho w_\eta, \rho \theta)^T$ along each extruded radial column. The continuous residual vector $\mathbf{R}(\boldsymbol{q}_\eta) = \left( R_\rho, R_{\rho w_\eta}, R_{\rho \theta} \right)^T$ is given by:
+
+\begin{align}
+R_\rho &= \frac{\partial (\rho w_\eta)}{\partial \eta}, \\[6pt]
+R_{\rho w_\eta} &= \frac{\partial}{\partial \eta} \left( \frac{(\rho w_\eta)^2}{\rho} + |J| \, g^{\eta\eta} \, p(\rho\theta) \right) + |J| \, \rho \, g \left( \hat{\boldsymbol{r}} \cdot \nabla_{\boldsymbol{x}} \eta \right), \\[6pt]
+R_{\rho \theta} &= \frac{\partial}{\partial \eta} \left( \frac{(\rho w_\eta)(\rho \theta)}{\rho} \right),
+\end{align}
+where $g^{\eta\eta} = \|\nabla_{\boldsymbol{x}} \eta\|_2^2 = (\nabla_{\boldsymbol{x}} \eta) \cdot (\nabla_{\boldsymbol{x}} \eta)$ is the radial metric tensor component, $|J|$ is the volume Jacobian, $\hat{\boldsymbol{r}}$ is the unit radial vector, $g$ is gravitational acceleration, and pressure $p(\rho\theta)$ follows the ideal gas law:
+\begin{equation}
+p(\rho\theta) = p_0 \left( \frac{\rho\theta R_d}{p_0} \right)^\gamma \implies \frac{\partial p}{\partial (\rho\theta)} = \frac{\gamma p}{\rho\theta}.
+\end{equation}
+
+
+\section{Block-Jacobian Entries}
+
+The linear system inside the implicit Newton step relies on the local cell block-Jacobian $\mathbf{K} = \frac{\partial \mathbf{R}}{\partial \boldsymbol{q}_\eta} \in \mathbb{R}^{3 \times 3}$:
+
+\begin{equation}
+\mathbf{K} = \begin{pmatrix}
+\frac{\partial R_\rho}{\partial \rho} & \frac{\partial R_\rho}{\partial (\rho w_\eta)} & \frac{\partial R_\rho}{\partial (\rho \theta)} \\[8pt]
+\frac{\partial R_{\rho w_\eta}}{\partial \rho} & \frac{\partial R_{\rho w_\eta}}{\partial (\rho w_\eta)} & \frac{\partial R_{\rho w_\eta}}{\partial (\rho \theta)} \\[8pt]
+\frac{\partial R_{\rho \theta}}{\partial \rho} & \frac{\partial R_{\rho \theta}}{\partial (\rho w_\eta)} & \frac{\partial R_{\rho \theta}}{\partial (\rho \theta)}
+\end{pmatrix}.
+\end{equation}
+
+Letting $\mathcal{D}_\eta \equiv \frac{\partial}{\partial \eta}$ denote the discrete DG derivative operator, the explicit analytical formulas for the requested coupling derivatives are:
+
+\subsection{1. Density Residual Derivatives}
+\begin{align}
+\frac{\partial R_\rho}{\partial \rho} &= 0, \\[6pt]
+\frac{\partial R_\rho}{\partial (\rho w_\eta)} &= \mathcal{D}_\eta (1), \\[6pt]
+\frac{\partial R_\rho}{\partial (\rho \theta)} &= 0.
+\end{align}
+
+\subsection{2. Vertical Momentum Residual Derivatives}
+\begin{align}
+\frac{\partial R_{\rho w_\eta}}{\partial \rho} &= -\mathcal{D}_\eta \left( \frac{(\rho w_\eta)^2}{\rho^2} \right) + |J| \, g \left( \hat{\boldsymbol{r}} \cdot \nabla_{\boldsymbol{x}} \eta \right), \\[6pt]
+\frac{\partial R_{\rho w_\eta}}{\partial (\rho w_\eta)} &= 2 \, \mathcal{D}_\eta \left( \frac{\rho w_\eta}{\rho} \right), \\[6pt]
+\frac{\partial R_{\rho w_\eta}}{\partial (\rho \theta)} &= \mathcal{D}_\eta \left( |J| \, g^{\eta\eta} \frac{\gamma p}{\rho\theta} \right).
+\end{align}
+
+\subsection{3. Potential Temperature Residual Derivatives}
+\begin{align}
+\frac{\partial R_{\rho \theta}}{\partial \rho} &= -\mathcal{D}_\eta \left( \frac{(\rho w_\eta)(\rho \theta)}{\rho^2} \right), \\[6pt]
+\frac{\partial R_{\rho \theta}}{\partial (\rho w_\eta)} &= \mathcal{D}_\eta \left( \frac{\rho \theta}{\rho} \right), \\[6pt]
+\frac{\partial R_{\rho \theta}}{\partial (\rho \theta)} &= \mathcal{D}_\eta \left( \frac{\rho w_\eta}{\rho} \right).
+\end{align}
+
+---
+
+\section{Compact Matrix Representation}
+
+In terms of local primitive flux quantities $w_\eta = \frac{\rho w_\eta}{\rho}$, $\theta = \frac{\rho \theta}{\rho}$, and acoustic parameter $\chi = |J| g^{\eta\eta} \frac{\gamma p}{\rho \theta}$, the full operator block $\mathbf{K}$ simplifies to:
+
+\begin{equation}
+\mathbf{K} = \mathcal{D}_\eta \begin{pmatrix}
+0 & 1 & 0 \\[4pt]
+-w_\eta^2 & 2 w_\eta & \chi \\[4pt]
+-w_\eta \theta & \theta & w_\eta
+\end{pmatrix}
++ \begin{pmatrix}
+0 & 0 & 0 \\[4pt]
+|J| g (\hat{\boldsymbol{r}} \cdot \nabla_{\boldsymbol{x}} \eta) & 0 & 0 \\[4pt]
+0 & 0 & 0
+\end{pmatrix}.
+\end{equation}
+
+
+
+	\section{Governing Equations in 2D Cartesian Coordinates}
+	
+	The 2D non-hydrostatic compressible Euler equations with vertical gravity $\boldsymbol{g} = (0, -g)^T$ in physical Cartesian coordinates $\boldsymbol{x} = (x, z)^T$ are:
+	\begin{equation}
+		\frac{\partial \boldsymbol{q}}{\partial t} + \frac{\partial \mathbf{F}_x(\boldsymbol{q})}{\partial x} + \frac{\partial \mathbf{F}_z(\boldsymbol{q})}{\partial z} = \boldsymbol{S}(\boldsymbol{q}),
+	\end{equation}
+	where the conservative state vector $\boldsymbol{q}$, flux vectors, and gravitational source term are:
+	\begin{equation}
+		\boldsymbol{q} = \begin{pmatrix} \rho \\[2pt] \rho u \\[2pt] \rho w \\[2pt] \rho \theta \end{pmatrix}, \quad 
+		\mathbf{F}_x = \begin{pmatrix} \rho u \\[2pt] \rho u^2 + p \\[2pt] \rho u w \\[2pt] \rho \theta u \end{pmatrix}, \quad 
+		\mathbf{F}_z = \begin{pmatrix} \rho w \\[2pt] \rho u w \\[2pt] \rho w^2 + p \\[2pt] \rho \theta w \end{pmatrix}, \quad 
+		\boldsymbol{S} = \begin{pmatrix} 0 \\[2pt] 0 \\[2pt] -\rho g \\[2pt] 0 \end{pmatrix}.
+	\end{equation}
+	Pressure $p$ follows the ideal gas law:
+	\begin{equation}
+		p(\rho\theta) = p_0 \left( \frac{\rho\theta R_d}{p_0} \right)^\gamma \implies \frac{\partial p}{\partial (\rho\theta)} = \frac{\gamma p}{\rho\theta} = \frac{c^2}{\theta},
+	\end{equation}
+	where $c = \sqrt{\frac{\gamma p}{\rho}}$ is the speed of sound and $\gamma = C_p / C_v$.
+	
+	
+	\subsection{2D Terrain-Following Coordinates}
+	
+	Using Gal-Chen type terrain-following coordinates $(\xi, \eta) \in [-1, 1] \times [0, 1]$:
+	\begin{equation}
+		\xi = x, \qquad \eta = \frac{z - h(x)}{z_{\text{top}} - h(x)},
+	\end{equation}
+	where $h(x)$ is surface topography and $z_{\text{top}}$ is domain height. 
+	
+	The metric terms are:
+	\begin{equation}
+		|J| = \frac{\partial z}{\partial \eta} = z_{\text{top}} - h(x), \qquad 
+		\nabla_{\boldsymbol{x}} \eta = \begin{pmatrix} \frac{\partial \eta}{\partial x} \\[4pt] \frac{\partial \eta}{\partial z} \end{pmatrix} = \begin{pmatrix} -\frac{1 - \eta}{z_{\text{top}} - h(x)} \frac{dh}{dx} \\[6pt] \frac{1}{z_{\text{top}} - h(x)} \end{pmatrix}.
+	\end{equation}
+	The vertical metric scale factor is $g^{\eta\eta} = \|\nabla_{\boldsymbol{x}} \eta\|_2^2 = \left(\frac{\partial \eta}{\partial x}\right)^2 + \left(\frac{\partial \eta}{\partial z}\right)^2$.
+	
+	The 1D contravariant vertical velocity coordinate $w_\eta$ is:
+	\begin{equation}
+		w_\eta = \boldsymbol{u} \cdot \nabla_{\boldsymbol{x}} \eta = u \frac{\partial \eta}{\partial x} + w \frac{\partial \eta}{\partial z}.
+	\end{equation}
+	
+	
+	\subsection{Implicit Vertical Residual System (Acoustics + Gravity)}
+	
+	For the 1D vertical column implicit solve, the state vector is $\boldsymbol{q}_\eta = (\rho, \rho w_\eta, \rho \theta)^T$. The vertical continuous residual operator $\mathbf{R}(\boldsymbol{q}_\eta) = (R_\rho, R_{\rho w_\eta}, R_{\rho\theta})^T$ coupling buoyancy/gravity and acoustic pressure waves is:
+	
+	\begin{align}
+		R_\rho &= \frac{\partial (\rho w_\eta)}{\partial \eta}, \\[8pt]
+		R_{\rho w_\eta} &= \frac{\partial}{\partial \eta} \left( \frac{(\rho w_\eta)^2}{\rho} + |J| \, g^{\eta\eta} \, p(\rho\theta) \right) + |J| \, \rho \, g \left( \frac{\partial \eta}{\partial z} \right), \\[8pt]
+		R_{\rho \theta} &= \frac{\partial}{\partial \eta} \left( \frac{(\rho w_\eta)(\rho \theta)}{\rho} \right).
+	\end{align}
+	
+	Here:
+	\begin{itemize}
+		\item Acoustic wave effects are captured by the pressure term $|J| g^{\eta\eta} p(\rho\theta)$ in the momentum flux.
+		\item Gravity/buoyancy forces enter directly through the source term $|J| \rho g \left( \frac{\partial \eta}{\partial z} \right)$.
+	\end{itemize}
+	
+	
+	\subsection{Analytical Vertical Column Block-Jacobian}
+	
+	Letting $\mathcal{D}_\eta \equiv \frac{\partial}{\partial \eta}$ represent the discrete vertical spatial derivative operator (e.g., DG vertical differentiation matrix), the local cell/node $3 \times 3$ block-Jacobian matrix $\mathbf{K} = \frac{\partial \mathbf{R}}{\partial \boldsymbol{q}_\eta}$ is:
+	
+	\begin{equation}
+		\mathbf{K} = \begin{pmatrix}
+			\frac{\partial R_\rho}{\partial \rho} & \frac{\partial R_\rho}{\partial (\rho w_\eta)} & \frac{\partial R_\rho}{\partial (\rho \theta)} \\[10pt]
+			\frac{\partial R_{\rho w_\eta}}{\partial \rho} & \frac{\partial R_{\rho w_\eta}}{\partial (\rho w_\eta)} & \frac{\partial R_{\rho w_\eta}}{\partial (\rho \theta)} \\[10pt]
+			\frac{\partial R_{\rho \theta}}{\partial \rho} & \frac{\partial R_{\rho \theta}}{\partial (\rho w_\eta)} & \frac{\partial R_{\rho \theta}}{\partial (\rho \theta)}
+		\end{pmatrix}.
+	\end{equation}
+	
+	\subsection{Individual Derivative Components}
+	
+	1. **Mass Equation Derivatives:**
+	\begin{equation}
+		\frac{\partial R_\rho}{\partial \rho} = 0, \qquad 
+		\frac{\partial R_\rho}{\partial (\rho w_\eta)} = \mathcal{D}_\eta(1), \qquad 
+		\frac{\partial R_\rho}{\partial (\rho \theta)} = 0.
+	\end{equation}
+	
+	2. **Vertical Momentum Derivatives (Acoustic Pressure \& Gravity Source):**
+	\begin{align}
+		\frac{\partial R_{\rho w_\eta}}{\partial \rho} &= -\mathcal{D}_\eta \left( \frac{(\rho w_\eta)^2}{\rho^2} \right) + \underbrace{|J| \, g \left( \frac{\partial \eta}{\partial z} \right)}_{\text{Gravity / Buoyancy}}, \\[6pt]
+		\frac{\partial R_{\rho w_\eta}}{\partial (\rho w_\eta)} &= 2 \, \mathcal{D}_\eta \left( \frac{\rho w_\eta}{\rho} \right), \\[6pt]
+		\frac{\partial R_{\rho w_\eta}}{\partial (\rho \theta)} &= \mathcal{D}_\eta \left( \underbrace{|J| \, g^{\eta\eta} \frac{\gamma p}{\rho \theta}}_{\text{Acoustic Speed } c^2} \right).
+	\end{align}
+	
+	3. **Potential Temperature Derivatives:**
+	\begin{align}
+		\frac{\partial R_{\rho \theta}}{\partial \rho} &= -\mathcal{D}_\eta \left( \frac{(\rho w_\eta)(\rho \theta)}{\rho^2} \right), \\[6pt]
+		\frac{\partial R_{\rho \theta}}{\partial (\rho w_\eta)} &= \mathcal{D}_\eta \left( \frac{\rho \theta}{\rho} \right), \\[6pt]
+		\frac{\partial R_{\rho \theta}}{\partial (\rho \theta)} &= \mathcal{D}_\eta \left( \frac{\rho w_\eta}{\rho} \right).
+	\end{align}
+	
+	
+	\subsection{Matrix Operator Representation}
+	
+	Using primitive variables $w_\eta = \frac{\rho w_\eta}{\rho}$ and $\theta = \frac{\rho \theta}{\rho}$, and defining the metric-scaled acoustic flux derivative $\chi = |J| g^{\eta\eta} \frac{\gamma p}{\rho \theta} = |J| g^{\eta\eta} \frac{c^2}{\theta}$, the linearized Newton system for a 1D column operator reads:
+	
+	\begin{equation}
+		\mathbf{K} = \mathcal{D}_\eta \begin{pmatrix}
+			0 & 1 & 0 \\[6pt]
+			-w_\eta^2 & 2 w_\eta & \chi \\[6pt]
+			-w_\eta \theta & \theta & w_\eta
+		\end{pmatrix} 
+		+ \begin{pmatrix}
+			0 & 0 & 0 \\[6pt]
+			|J| g \left(\frac{\partial \eta}{\partial z}\right) & 0 & 0 \\[6pt]
+			0 & 0 & 0
+		\end{pmatrix}.
+	\end{equation}
+	
+	When linearizing around a state at rest ($w_\eta = 0$), the Jacobian reduces cleanly to the core acoustic-gravity pair:
+	\begin{equation}
+		\mathbf{K}_{w_\eta=0} = \begin{pmatrix}
+			0 & \mathcal{D}_\eta & 0 \\[6pt]
+			|J| g \left(\frac{\partial \eta}{\partial z}\right) & 0 & \mathcal{D}_\eta \left( \chi \right) \\[6pt]
+			0 & \mathcal{D}_\eta \left( \theta \right) & 0
+		\end{pmatrix}.
+	\end{equation}
+	
+	Here, $\mathcal{D}_\eta (\chi)$ transmits fast acoustic pressure updates, while $|J| g \left(\frac{\partial \eta}{\partial z}\right)$ supplies the gravity restoring force.
+	
+
+	
+	\section{Transformed System with General Metrics and Cartesian Velocity Components}
+	
+	The 2D non-hydrostatic Euler equations with vertical gravity are mapped from physical coordinates $(x, z)$ to general computational coordinates $(\xi, \eta)$, where $\xi = \xi(x,z)$ and $\eta = \eta(x,z)$. 
+	
+	Retaining physical Cartesian velocity components $(u, w)$, the conservative state vector is $\boldsymbol{q} = (\rho, \rho u, \rho w, \rho \theta)^T$, and the strong-form transformed system reads:
+	\begin{equation}
+		\frac{\partial (|J| \boldsymbol{q})}{\partial t} + \frac{\partial \widetilde{\mathbf{F}}_\xi}{\partial \xi} + \frac{\partial \widetilde{\mathbf{F}}_\eta}{\partial \eta} = |J| \boldsymbol{S},
+	\end{equation}
+	where $|J| = x_\xi z_\eta - x_\eta z_\xi = \frac{1}{\xi_x \eta_z - \xi_z \eta_x}$, $\boldsymbol{S} = (0, 0, -\rho g, 0)^T$, and the vertical flux vector $\widetilde{\mathbf{F}}_\eta$ is:
+	\begin{equation}
+		\widetilde{\mathbf{F}}_\eta = |J| \begin{pmatrix} \rho U_\eta \\[2pt] \rho u U_\eta + \eta_x p \\[2pt] \rho w U_\eta + \eta_z p \\[2pt] \rho \theta U_\eta \end{pmatrix}, \qquad U_\eta = \eta_x u + \eta_z w.
+	\end{equation}
+	Pressure is governed by the equation of state $p(\rho\theta) = p_0 \left( \frac{\rho\theta R_d}{p_0} \right)^\gamma$, with derivative $\frac{\partial p}{\partial (\rho\theta)} = \frac{\gamma p}{\rho\theta}$.
+	
+	---
+	
+	\section{1D Vertical Residual System}
+	
+	The 1D vertical residual vector $\mathbf{R}(\boldsymbol{q}) = (R_\rho, R_{\rho u}, R_{\rho w}, R_{\rho \theta})^T$ for the vertical implicit HEVI solve is:
+	\begin{align}
+		R_\rho &= \frac{\partial}{\partial \eta} \left( |J| \eta_x (\rho u) + |J| \eta_z (\rho w) \right), \\[6pt]
+		R_{\rho u} &= \frac{\partial}{\partial \eta} \left( |J| u \left( \eta_x (\rho u) + \eta_z (\rho w) \right) + |J| \eta_x p(\rho\theta) \right), \\[6pt]
+		R_{\rho w} &= \frac{\partial}{\partial \eta} \left( |J| w \left( \eta_x (\rho u) + \eta_z (\rho w) \right) + |J| \eta_z p(\rho\theta) \right) + |J| \rho g, \\[6pt]
+		R_{\rho \theta} &= \frac{\partial}{\partial \eta} \left( |J| \theta \left( \eta_x (\rho u) + \eta_z (\rho w) \right) \right).
+	\end{align}
+	
+	---
+	
+	\section{Analytical $4 \times 4$ Vertical Block-Jacobian}
+	
+	Let $\mathcal{D}_\eta \equiv \frac{\partial}{\partial \eta}$ denote the vertical derivative operator. The full analytical Jacobian $\mathbf{K} = \frac{\partial \mathbf{R}}{\partial \boldsymbol{q}}$ is given by:
+	
+	\begin{equation}
+		\mathbf{K} = \mathcal{D}_\eta |J| \begin{pmatrix}
+			0 & \eta_x & \eta_z & 0 \\[8pt]
+			-u U_\eta & U_\eta + u \eta_x & u \eta_z & \eta_x \frac{\gamma p}{\rho\theta} \\[8pt]
+			-w U_\eta & w \eta_x & U_\eta + w \eta_z & \eta_z \frac{\gamma p}{\rho\theta} \\[8pt]
+			-\theta U_\eta & \theta \eta_x & \theta \eta_z & U_\eta
+		\end{pmatrix} 
+		+ \begin{pmatrix}
+			0 & 0 & 0 & 0 \\[6pt]
+			0 & 0 & 0 & 0 \\[6pt]
+			|J| g & 0 & 0 & 0 \\[6pt]
+			0 & 0 & 0 & 0
+		\end{pmatrix}.
+	\end{equation}
+	
+	\subsection{Linearization at Rest ($u = w = 0 \implies U_\eta = 0$)}
+	
+	Around a stationary background state, the matrix simplifies to isolate acoustic wave propagation and gravity restoration:
+	
+	\begin{equation}
+		\mathbf{K}_{u=w=0} = \begin{pmatrix}
+			0 & \mathcal{D}_\eta \left( |J| \eta_x \right) & \mathcal{D}_\eta \left( |J| \eta_z \right) & 0 \\[8pt]
+			0 & 0 & 0 & \mathcal{D}_\eta \left( |J| \eta_x \frac{\gamma p}{\rho\theta} \right) \\[8pt]
+			|J| g & 0 & 0 & \mathcal{D}_\eta \left( |J| \eta_z \frac{\gamma p}{\rho\theta} \right) \\[8pt]
+			0 & \mathcal{D}_\eta \left( |J| \theta \eta_x \right) & \mathcal{D}_\eta \left( |J| \theta \eta_z \right) & 0
+		\end{pmatrix}.
+	\end{equation}
+	
+	
+		
+		\section{Extended State Formulation with Contravariant Velocity}
+		
+		To isolate metric updates and decouple flux differentiation inside the implicit column Newton solver, we treat the unscaled contravariant vertical velocity $U_\eta = \eta_x u + \eta_z w$ as an additional unknown.
+		
+		The extended conservative state vector $\boldsymbol{q} \in \mathbb{R}^5$ is:
+		\begin{equation}
+			\boldsymbol{q} = \begin{pmatrix} \rho \\[2pt] \rho u \\[2pt] \rho w \\[2pt] \rho \theta \\[2pt] U_\eta \end{pmatrix}.
+		\end{equation}
+		
+		The 1D vertical Newton residual vector $\mathbf{R}(\boldsymbol{q}) = (R_\rho, R_{\rho u}, R_{\rho w}, R_{\rho \theta}, R_{U_\eta})^T$ consists of 4 spatial flux derivatives and 1 algebraic metric constraint:
+		\begin{align}
+			R_\rho &= \frac{\partial}{\partial \eta} \left( |J| \rho U_\eta \right), \\[6pt]
+			R_{\rho u} &= \frac{\partial}{\partial \eta} \left( |J| \rho u U_\eta + |J| \eta_x p(\rho\theta) \right), \\[6pt]
+			R_{\rho w} &= \frac{\partial}{\partial \eta} \left( |J| \rho w U_\eta + |J| \eta_z p(\rho\theta) \right) + |J| \rho g, \\[6pt]
+			R_{\rho \theta} &= \frac{\partial}{\partial \eta} \left( |J| \rho \theta U_\eta \right), \\[6pt]
+			R_{U_\eta} &= \rho U_\eta - \eta_x (\rho u) - \eta_z (\rho w).
+		\end{align}
+		Here, $p(\rho\theta) = p_0 \left( \frac{\rho\theta R_d}{p_0} \right)^\gamma$ and $\frac{\partial p}{\partial (\rho\theta)} = \frac{\gamma p}{\rho\theta}$.
+		
+		---
+		
+		\section{Newton Iteration Formulation}
+		
+		At Newton iteration $k$, the linear system solved along each extruded vertical column is:
+		\begin{equation}
+			\mathbf{K}^{(k)} \delta \boldsymbol{q}^{(k)} = -\mathbf{R}(\boldsymbol{q}^{(k)}), \qquad \boldsymbol{q}^{(k+1)} = \boldsymbol{q}^{(k)} + \delta \boldsymbol{q}^{(k)},
+		\end{equation}
+		where $\delta \boldsymbol{q} = (\delta \rho, \delta(\rho u), \delta(\rho w), \delta(\rho \theta), \delta U_\eta)^T$ and $\mathbf{K} = \frac{\partial \mathbf{R}}{\partial \boldsymbol{q}} \in \mathbb{R}^{5 \times 5}$.
+		
+		---
+		
+		\section{Analytical $5 \times 5$ Block-Jacobian Matrix}
+		
+		Letting $\mathcal{D}_\eta \equiv \frac{\partial}{\partial \eta}$ represent the spatial vertical derivative operator, the extended $5 \times 5$ local block-Jacobian $\mathbf{K}$ is:
+		
+		\begin{equation}
+			\mathbf{K} = \begin{pmatrix}
+				\frac{\partial R_\rho}{\partial \rho} & \frac{\partial R_\rho}{\partial (\rho u)} & \frac{\partial R_\rho}{\partial (\rho w)} & \frac{\partial R_\rho}{\partial (\rho \theta)} & \frac{\partial R_\rho}{\partial U_\eta} \\[10pt]
+				\frac{\partial R_{\rho u}}{\partial \rho} & \frac{\partial R_{\rho u}}{\partial (\rho u)} & \frac{\partial R_{\rho u}}{\partial (\rho w)} & \frac{\partial R_{\rho u}}{\partial (\rho \theta)} & \frac{\partial R_{\rho u}}{\partial U_\eta} \\[10pt]
+				\frac{\partial R_{\rho w}}{\partial \rho} & \frac{\partial R_{\rho w}}{\partial (\rho u)} & \frac{\partial R_{\rho w}}{\partial (\rho w)} & \frac{\partial R_{\rho w}}{\partial (\rho \theta)} & \frac{\partial R_{\rho w}}{\partial U_\eta} \\[10pt]
+				\frac{\partial R_{\rho \theta}}{\partial \rho} & \frac{\partial R_{\rho \theta}}{\partial (\rho u)} & \frac{\partial R_{\rho \theta}}{\partial (\rho w)} & \frac{\partial R_{\rho \theta}}{\partial (\rho \theta)} & \frac{\partial R_{\rho \theta}}{\partial U_\eta} \\[10pt]
+				\frac{\partial R_{U_\eta}}{\partial \rho} & \frac{\partial R_{U_\eta}}{\partial (\rho u)} & \frac{\partial R_{U_\eta}}{\partial (\rho w)} & \frac{\partial R_{U_\eta}}{\partial (\rho \theta)} & \frac{\partial R_{U_\eta}}{\partial U_\eta}
+			\end{pmatrix}.
+		\end{equation}
+		
+		Evaluating the partial derivatives yields:
+		
+		\begin{equation}
+			\mathbf{K} = \mathcal{D}_\eta |J| \begin{pmatrix}
+				0 & 0 & 0 & 0 & \rho \\[8pt]
+				-u U_\eta & U_\eta & 0 & \eta_x \frac{\gamma p}{\rho\theta} & \rho u \\[8pt]
+				-w U_\eta & 0 & U_\eta & \eta_z \frac{\gamma p}{\rho\theta} & \rho w \\[8pt]
+				-\theta U_\eta & 0 & 0 & U_\eta & \rho \theta \\[8pt]
+				0 & 0 & 0 & 0 & 0
+			\end{pmatrix}
+			+ \begin{pmatrix}
+				0 & 0 & 0 & 0 & 0 \\[6pt]
+				0 & 0 & 0 & 0 & 0 \\[6pt]
+				|J| g & 0 & 0 & 0 & 0 \\[6pt]
+				0 & 0 & 0 & 0 & 0 \\[6pt]
+				U_\eta & -\eta_x & -\eta_z & 0 & \rho
+			\end{pmatrix}.
+		\end{equation}
+		
+		---
+		
+		\section{Linearization Around Rest State ($u = w = 0 \implies U_\eta = 0$)}
+		
+		Under acoustic-gravity conditions around a stationary state, the Jacobian simplifies to:
+		
+		\begin{equation}
+			\mathbf{K}_{u=w=0} = \begin{pmatrix}
+				0 & 0 & 0 & 0 & \mathcal{D}_\eta (|J| \rho) \\[8pt]
+				0 & 0 & 0 & \mathcal{D}_\eta \left( |J| \eta_x \frac{\gamma p}{\rho\theta} \right) & 0 \\[8pt]
+				|J| g & 0 & 0 & \mathcal{D}_\eta \left( |J| \eta_z \frac{\gamma p}{\rho\theta} \right) & 0 \\[8pt]
+				0 & 0 & 0 & 0 & \mathcal{D}_\eta (|J| \rho \theta) \\[8pt]
+				0 & -\eta_x & -\eta_z & 0 & \rho
+			\end{pmatrix}.
+		\end{equation}
+		
+		In this form:
+		\begin{itemize}
+			\item Row 5 enforces $\delta U_\eta = \frac{1}{\rho} \left( \eta_x \delta(\rho u) + \eta_z \delta(\rho w) \right)$.
+			\item Column 5 applies the updated contravariant velocity $\delta U_\eta$ directly into mass and thermal energy transport via $\mathcal{D}_\eta(|J|\rho)$ and $\mathcal{D}_\eta(|J|\rho\theta)$.
+			\item Acoustic pressure waves and gravitational restoring forces remain coupled in rows 2 and 3.
+		\end{itemize}
+		
+		\section{Metric Definitions in $(\xi, \eta, \zeta)$ Coordinates}
+		
+		Under a general 3D transformation $(x, y, z) \to (\xi, \eta, \zeta)$ with coordinate Jacobian determinant $|J| = \det\left(\frac{\partial(x,y,z)}{\partial(\xi,\eta,\zeta)}\right)$, the metric cofactors in the vertical direction $\zeta$ are:
+		\begin{equation}
+			\mu_x \equiv |J| \zeta_x, \qquad \mu_y \equiv |J| \zeta_y, \qquad \mu_z \equiv |J| \zeta_z.
+		\end{equation}
+		
+		The Jacobian-weighted contravariant vertical momentum variable $\widehat{W}_\zeta$ satisfies the exact metric identity:
+		\begin{equation}
+			\widehat{W}_\zeta \equiv |J| \rho U_\zeta = \mu_x (\rho u) + \mu_y (\rho v) + \mu_z (\rho w).
+		\end{equation}
+		
+		\section{System Vectors and Mass Matrix}
+		
+		The state vector $\boldsymbol{q}$, stage unknown vector $\boldsymbol{k}$, and mass matrix $\mathbf{M}$ are:
+		\begin{equation}
+			\boldsymbol{q} = \begin{pmatrix} \rho \\[2pt] \rho u \\[2pt] \rho v \\[2pt] \rho w \\[2pt] \rho \theta \\[2pt] \widehat{W}_\zeta \end{pmatrix}, \qquad
+			\boldsymbol{k} = \begin{pmatrix} k_\rho \\[2pt] k_{\rho u} \\[2pt] k_{\rho v} \\[2pt] k_{\rho w} \\[2pt] k_{\rho \theta} \\[2pt] k_{\widehat{W}_\zeta} \end{pmatrix}, \qquad
+			\mathbf{M} = \text{diag}\left( |J|, |J|, |J|, |J|, |J|, 0 \right).
+		\end{equation}
+		
+		Omitting vertical momentum advection while retaining potential temperature advection via entry $(5,6)$, the implicit flux vector $\mathbf{F}_V$ and source vector $\mathbf{S}_V$ are:
+		\begin{equation}
+			\mathbf{F}_V(\boldsymbol{q}) = \begin{pmatrix} 
+				\widehat{W}_\zeta \\[6pt]
+				\mu_x \, p(\rho \theta) \\[6pt]
+				\mu_y \, p(\rho \theta) \\[6pt]
+				\mu_z \, p(\rho \theta) \\[6pt]
+				\theta \, \widehat{W}_\zeta \\[6pt]
+				0
+			\end{pmatrix}, \qquad
+			\mathbf{S}_V(\boldsymbol{q}) = \begin{pmatrix}
+				0 \\[6pt]
+				0 \\[6pt]
+				0 \\[6pt]
+				-|J| g \rho \\[6pt]
+				0 \\[6pt]
+				\widehat{W}_\zeta - \mu_x (\rho u) - \mu_y (\rho v) - \mu_z (\rho w)
+			\end{pmatrix}.
+		\end{equation}
+		
+		\section{Flux and Source Jacobians}
+		
+		Linearizing with respect to $\boldsymbol{q}$ using thermodynamic pressure derivative $\chi \equiv \frac{\partial p}{\partial (\rho \theta)} = \frac{\gamma p}{\rho \theta}$:
+		
+		\begin{equation}
+			\mathbf{J}_F \equiv \frac{\partial \mathbf{F}_V}{\partial \boldsymbol{q}} = \begin{pmatrix}
+				0 & 0 & 0 & 0 & 0 & 1 \\[6pt]
+				0 & 0 & 0 & 0 & \mu_x \chi & 0 \\[6pt]
+				0 & 0 & 0 & 0 & \mu_y \chi & 0 \\[6pt]
+				0 & 0 & 0 & 0 & \mu_z \chi & 0 \\[6pt]
+				0 & 0 & 0 & 0 & 0 & \theta \\[6pt]
+				0 & 0 & 0 & 0 & 0 & 0
+			\end{pmatrix}, \qquad
+			\mathbf{J}_S \equiv \frac{\partial \mathbf{S}_V}{\partial \boldsymbol{q}} = \begin{pmatrix}
+				0 & 0 & 0 & 0 & 0 & 0 \\[6pt]
+				0 & 0 & 0 & 0 & 0 & 0 \\[6pt]
+				0 & 0 & 0 & 0 & 0 & 0 \\[6pt]
+				-|J| g & 0 & 0 & 0 & 0 & 0 \\[6pt]
+				0 & 0 & 0 & 0 & 0 & 0 \\[6pt]
+				0 & -\mu_x & -\mu_y & -\mu_z & 0 & 1
+			\end{pmatrix}.
+		\end{equation}
+		
+		\section{Full $6 \times 6$ Linear System $\mathbf{A} \boldsymbol{k} = \boldsymbol{r}$}
+		
+		Constructing $\mathbf{A} = \mathbf{M} - \gamma \Delta t \left( \mathcal{D}_\zeta \mathbf{J}_F + \mathbf{J}_S \right)$:
+		
+		\begin{equation}
+			\begin{pmatrix}
+				|J| & 0 & 0 & 0 & 0 & -\gamma \Delta t \mathcal{D}_\zeta \\[10pt]
+				0 & |J| & 0 & 0 & -\gamma \Delta t \mathcal{D}_\zeta \left( \mu_x \chi \cdot \right) & 0 \\[10pt]
+				0 & 0 & |J| & 0 & -\gamma \Delta t \mathcal{D}_\zeta \left( \mu_y \chi \cdot \right) & 0 \\[10pt]
+				-\gamma \Delta t |J| g & 0 & 0 & |J| & -\gamma \Delta t \mathcal{D}_\zeta \left( \mu_z \chi \cdot \right) & 0 \\[10pt]
+				0 & 0 & 0 & 0 & |J| & -\gamma \Delta t \mathcal{D}_\zeta (\theta \cdot) \\[10pt]
+				0 & \gamma \Delta t \mu_x & \gamma \Delta t \mu_y & \gamma \Delta t \mu_z & 0 & -\gamma \Delta t
+			\end{pmatrix}
+			\begin{pmatrix}
+				k_\rho \\[10pt]
+				k_{\rho u} \\[10pt]
+				k_{\rho v} \\[10pt]
+				k_{\rho w} \\[10pt]
+				k_{\rho \theta} \\[10pt]
+				k_{\widehat{W}_\zeta}
+			\end{pmatrix}
+			=
+			\begin{pmatrix}
+				r_\rho \\[10pt]
+				r_{\rho u} \\[10pt]
+				r_{\rho v} \\[10pt]
+				r_{\rho w} \\[10pt]
+				r_{\rho \theta} \\[10pt]
+				r_{\widehat{W}_\zeta}
+			\end{pmatrix}.
+		\end{equation}
+		
+		\section{Explicit Row Equations}
+		
+		\begin{align}
+			|J| k_\rho - \gamma \Delta t \mathcal{D}_\zeta \left( k_{\widehat{W}_\zeta} \right) &= r_\rho, \\[6pt]
+			|J| k_{\rho u} - \gamma \Delta t \mathcal{D}_\zeta \left( \mu_x \chi \, k_{\rho \theta} \right) &= r_{\rho u}, \\[6pt]
+			|J| k_{\rho v} - \gamma \Delta t \mathcal{D}_\zeta \left( \mu_y \chi \, k_{\rho \theta} \right) &= r_{\rho v}, \\[6pt]
+			|J| k_{\rho w} - \gamma \Delta t |J| g k_\rho - \gamma \Delta t \mathcal{D}_\zeta \left( \mu_z \chi \, k_{\rho \theta} \right) &= r_{\rho w}, \\[6pt]
+			|J| k_{\rho \theta} - \gamma \Delta t \mathcal{D}_\zeta \left( \theta \, k_{\widehat{W}_\zeta} \right) &= r_{\rho \theta}, \\[6pt]
+			\gamma \Delta t \left( \mu_x k_{\rho u} + \mu_y k_{\rho v} + \mu_z k_{\rho w} - k_{\widehat{W}_\zeta} \right) &= r_{\widehat{W}_\zeta}.
+		\end{align}
+		
+		
+		
+		\section{Local Expressions for Cartesian Momentum Increments}
+		
+		From the linearized zonal, meridional, and vertical momentum balance equations, the Cartesian momentum stage increments $k_{\rho u}$, $k_{\rho v}$, and $k_{\rho w}$ are expressed directly in terms of density $k_\rho$, potential temperature density $k_{\rho \theta}$, and stage residuals:
+		
+		\begin{align}
+			k_{\rho u} &= \frac{r_{\rho u}}{|J|} + \frac{\gamma \Delta t}{|J|} \mathcal{D}_\zeta \left( \mu_x \chi \, k_{\rho \theta} \right), \label{eq:k_rhou} \\[8pt]
+			k_{\rho v} &= \frac{r_{\rho v}}{|J|} + \frac{\gamma \Delta t}{|J|} \mathcal{D}_\zeta \left( \mu_y \chi \, k_{\rho \theta} \right), \label{eq:k_rhov} \\[8pt]
+			k_{\rho w} &= \frac{r_{\rho w}}{|J|} + \gamma \Delta t g k_\rho + \frac{\gamma \Delta t}{|J|} \mathcal{D}_\zeta \left( \mu_z \chi \, k_{\rho \theta} \right). \label{eq:k_rhow}
+		\end{align}
+		
+		\section{Substitution into Metric Constraint Equation}
+		
+		Substituting equations \eqref{eq:k_rhou}--\eqref{eq:k_rhow} into the metric identity constraint $\mu_x k_{\rho u} + \mu_y k_{\rho v} + \mu_z k_{\rho w} - k_{\widehat{W}_\zeta} = \frac{r_{\widehat{W}_\zeta}}{\gamma \Delta t}$ yields:
+		
+		\begin{equation}
+			(\gamma \Delta t)^2 \mu_z g k_\rho + \frac{(\gamma \Delta t)^2}{|J|} \left[ \sum_{i \in \{x,y,z\}} \mu_i \mathcal{D}_\zeta \left( \mu_i \chi \, k_{\rho \theta} \right) \right] - \gamma \Delta t \, k_{\widehat{W}_\zeta} = \widetilde{r}_{\widehat{W}_\zeta},
+		\end{equation}
+		
+		where the modified contravariant momentum residual is defined as:
+		\begin{equation}
+			\widetilde{r}_{\widehat{W}_\zeta} \equiv r_{\widehat{W}_\zeta} - \gamma \Delta t \left( \frac{\mu_x r_{\rho u} + \mu_y r_{\rho v} + \mu_z r_{\rho w}}{|J|} \right).
+		\end{equation}
+		
+		\section{Reduced $3 \times 3$ Operator Matrix System}
+		
+		Coupling this result with the mass continuity and thermodynamic equations gives the reduced $3 \times 3$ block operator system for $(k_\rho, k_{\rho \theta}, k_{\widehat{W}_\zeta})^T$:
+		
+		\begin{equation}
+			\begin{pmatrix}
+				|J| & 0 & -\gamma \Delta t \mathcal{D}_\zeta \\[12pt]
+				0 & |J| & -\gamma \Delta t \mathcal{D}_\zeta (\theta \cdot) \\[12pt]
+				(\gamma \Delta t)^2 \mu_z g & \frac{(\gamma \Delta t)^2}{|J|} \sum_{i \in \{x,y,z\}} \mu_i \mathcal{D}_\zeta (\mu_i \chi \cdot) & -\gamma \Delta t
+			\end{pmatrix}
+			\begin{pmatrix}
+				k_\rho \\[12pt]
+				k_{\rho \theta} \\[12pt]
+				k_{\widehat{W}_\zeta}
+			\end{pmatrix}
+			=
+			\begin{pmatrix}
+				r_\rho \\[12pt]
+				r_{\rho \theta} \\[12pt]
+				\widetilde{r}_{\widehat{W}_\zeta}
+			\end{pmatrix}.
+		\end{equation}
+		
+		\section{Individual Component Equations}
+		
+		\begin{align}
+			|J| k_\rho - \gamma \Delta t \mathcal{D}_\zeta \left( k_{\widehat{W}_\zeta} \right) &= r_\rho, \\[8pt]
+			|J| k_{\rho \theta} - \gamma \Delta t \mathcal{D}_\zeta \left( \theta \, k_{\widehat{W}_\zeta} \right) &= r_{\rho \theta}, \\[8pt]
+			(\gamma \Delta t)^2 \mu_z g k_\rho + \frac{(\gamma \Delta t)^2}{|J|} \sum_{i \in \{x,y,z\}} \mu_i \mathcal{D}_\zeta \left( \mu_i \chi \, k_{\rho \theta} \right) - \gamma \Delta t \, k_{\widehat{W}_\zeta} &= \widetilde{r}_{\widehat{W}_\zeta}.
+		\end{align}
+
+
+
 \end{document}

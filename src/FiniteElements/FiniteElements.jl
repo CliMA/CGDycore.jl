@@ -6,6 +6,7 @@ import ..Parallels
 import ..Models
 
 using LinearAlgebra
+using StaticArrays
 using FastGaussQuadrature
 using KernelAbstractions
 using DynamicPolynomials

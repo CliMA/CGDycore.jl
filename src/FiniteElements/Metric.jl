@@ -4,38 +4,43 @@ mutable struct MetricDGStruct{FT<:AbstractFloat,
                             AT4<:AbstractArray,
                             AT5<:AbstractArray,
                             AT6<:AbstractArray}
-  J::AT4
+  J::AT3
+  invJ::AT3
   X::AT5
   dXdxI::AT6
-  Rotate::AT4
+  Rotate::AT3
   dz::AT2
   zP::AT2
   xS::AT2
   VolSurfH::AT4
   NH::AT5
   VolSurfV::AT2
+  VolSurfVV::AT3
   NV::AT3
 end
 
 function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
-    J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
+    J      = KernelAbstractions.zeros(backend,FT,OPZ,nz,NumG)
+    invJ   = KernelAbstractions.zeros(backend,FT,OPZ,nz,NumG)
     X      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,3,nz,NF)
     dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
-    Rotate  = KernelAbstractions.zeros(backend,FT,3,3,nQuad,NF)
+    Rotate  = KernelAbstractions.zeros(backend,FT,3,3,NumG)
     dz = KernelAbstractions.zeros(backend,FT,0,0)
     zP = KernelAbstractions.zeros(backend,FT,0,0)
     xS    = KernelAbstractions.zeros(backend,FT,2,NumG)
     VolSurfH = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     NH = KernelAbstractions.zeros(backend,FT,0,0,0,0,0)
     VolSurfV = KernelAbstractions.zeros(backend,FT,0,0)
+    VolSurfVV = KernelAbstractions.zeros(backend,FT,0,0,0)
     NV = KernelAbstractions.zeros(backend,FT,0,0,0)
     return MetricDGStruct{FT,
                         typeof(zP),
                         typeof(NV),
-                        typeof(J),
+                        typeof(VolSurfH),
                         typeof(X),
                         typeof(dXdxI)}(
         J,
+        invJ,
         X,
         dXdxI,
         Rotate,
@@ -45,6 +50,7 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
         VolSurfH,
         NH,
         VolSurfV,
+        VolSurfVV,
         NV,
     )
 end
@@ -126,7 +132,7 @@ function MetricCompute(backend,FT,FE::DGElement,Model,Exchange,Grid,NumberThread
   FillRotate!(backend,Metric,FE,Grid)
   FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
   FillDet!(backend,Metric,FE,Grid)
-  @. Metric.J = FT(1) / Metric.J
+  @. Metric.invJ = FT(1) / Metric.J
   GridSizeDGKernel!(FE,Metric,Grid.Rad,NumberThreadGPU,Grid.Form)
   MetricLowerBoundary!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Form)
   NormalH!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Type)
@@ -800,11 +806,11 @@ function FillRotate!(backend,Metric,FE,Grid)
   group = (DoF,1)
   ndrange = (DoF,NF)
   KRotateKernel! = RotateKernel!(backend,group)
-  KRotateKernel!(Metric.Rotate,Metric.X,Grid.Form;ndrange=ndrange)
+  KRotateKernel!(Metric.Rotate,Metric.X,FE.Glob,Grid.Form;ndrange=ndrange)
 end  
 
 
-@kernel inbounds = true function RotateKernel!(Rotate,@Const(X),::Grids.SphericalGrid)
+@kernel inbounds = true function RotateKernel!(Rotate,@Const(X),@Const(Glob),::Grids.SphericalGrid)
 
   ID,IF = @index(Global, NTuple)
 
@@ -813,20 +819,22 @@ end
   if IF <= NF
     lon,lat,_ = Grids.cart2sphere(X[ID,1,1,1,IF],X[ID,1,2,1,IF],X[ID,1,3,1,IF])
     MR = Grids.MCart2Sphere(lon,lat)
-    @. Rotate[:,:,ID,IF] =  MR
+    ind = Glob[ID,IF]
+    @. Rotate[:,:,ind] =  MR
   end
 end  
 
-@kernel inbounds = true function RotateKernel!(Rotate,@Const(X),::Grids.CartesianGrid)
+@kernel inbounds = true function RotateKernel!(Rotate,@Const(X),@Const(Glob),::Grids.CartesianGrid)
 
   ID,IF = @index(Global, NTuple)
 
   NF = @uniform @ndrange()[1]
 
   if IF <= NF
-    Rotate[1,1,ID,IF] =  eltype(X)(1)
-    Rotate[2,2,ID,IF] =  eltype(X)(1)
-    Rotate[3,3,ID,IF] =  eltype(X)(1)
+    ind = Glob[ID,IF]  
+    Rotate[1,1,ind] =  eltype(X)(1)
+    Rotate[2,2,ind] =  eltype(X)(1)
+    Rotate[3,3,ind] =  eltype(X)(1)
   end
 end  
 
@@ -867,20 +875,27 @@ function FillDet!(backend,Metric,FE,Grid)
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
   KDetKernel! = DetKernel!(backend,group)
-  KDetKernel!(Metric.J,Metric.dXdxI;ndrange=ndrange)
+  KDetKernel!(Metric.J,Metric.dXdxI,FE.Glob;ndrange=ndrange)
 end  
 
-@kernel inbounds = true function DetKernel!(J,@Const(dXdxI))
+@kernel inbounds = true function DetKernel!(J,@Const(dXdxI),@Const(Glob))
 
   ID, K, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
 
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
+  dXdxILoc = @private eltype(J) (3,3)
 
   if Iz <= Nz && IF <= NF
-    @views JLoc = Det3(dXdxI[:,:,K,ID,Iz,IF])
-    J[ID,K,Iz,IF] = sqrt(abs(JLoc))
+    ind = Glob[ID,IF]  
+    @unroll for j = 1 : 3
+      @unroll for i = 1 : 3
+        dXdxILoc[i,j] = dXdxI[i,j,K,ID,Iz,IF]
+      end
+    end  
+    JLoc = Det3(dXdxILoc)
+    J[K,Iz,ind] = sqrt(abs(JLoc))
   end
 end  
 
@@ -1147,11 +1162,12 @@ function NormalV!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU)
   ndrange = (Nz+1,DoF,NF)
   KNormalVKernel! = NormalVKernel!(backend,group)
   Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI)
+  Metric.VolSurfVV = KernelAbstractions.zeros(backend,FT,M,Nz,NumI)
   Metric.NV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI,3,)
-  KNormalVKernel!(Metric.VolSurfV,Metric.NV,M,Metric.dXdxI,FE.Glob,FE.wZ,ndrange=ndrange)
+  KNormalVKernel!(Metric.VolSurfV,Metric.VolSurfVV,Metric.NV,M,Metric.dXdxI,FE.Glob,FE.wZ,ndrange=ndrange)
 end  
 
-@kernel inbounds = true function NormalVKernel!(VolSurfV,NV,M,@Const(dXdxI),@Const(Glob),@Const(w))
+@kernel inbounds = true function NormalVKernel!(VolSurfV,VolSurfVV,NV,M,@Const(dXdxI),@Const(Glob),@Const(w))
 
   # Normal NV(3,I,J,2,iz,IF)
 
@@ -1167,6 +1183,13 @@ end
       nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
       nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
       nSLoc3 = dXdxI[3,3,1,ID,Iz,IF]
+      for k = 1 : M
+        nSLoc1 = dXdxI[3,1,k,ID,Iz,IF]
+        nSLoc2 = dXdxI[3,2,k,ID,Iz,IF]
+        nSLoc3 = dXdxI[3,3,k,ID,Iz,IF]
+        n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
+        VolSurfVV[k,Iz,ind] = n1Norm
+      end  
     else
       nSLoc1 = dXdxI[3,1,M,ID,Iz-1,IF]
       nSLoc2 = dXdxI[3,2,M,ID,Iz-1,IF]

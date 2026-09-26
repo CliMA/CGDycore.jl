@@ -1,4 +1,4 @@
-mutable struct JacHDGVert{FT<:AbstractFloat,
+mutable struct JacHDGJVert{FT<:AbstractFloat,
                          AT2<:AbstractArray,
                          AT3<:AbstractArray,
                          AT4<:AbstractArray}
@@ -27,7 +27,7 @@ mutable struct JacHDGVert{FT<:AbstractFloat,
   rs::AT2
 end  
 
-function JacHDGVert(backend,FT,M,nz,DG) 
+function JacHDGJVert(backend,FT,M,nz,DG) 
   CompTri = false
   grav_do = true
   fac = 0
@@ -42,7 +42,7 @@ function JacHDGVert(backend,FT,M,nz,DG)
   SchurBand = KernelAbstractions.zeros(backend,FT,3,nz-1,NumI)
   rs = KernelAbstractions.zeros(backend,FT,nz-1,NumI)
 
-  return JacHDGVert{FT,
+  return JacHDGJVert{FT,
                    typeof(rs),
                    typeof(Th),
                    typeof(A31)}(
@@ -73,6 +73,12 @@ end
 # ---------------------------------------------------------------------------
 
 
+@inline function calcA32(DWS,dpdRhoThj,i,j,::Val{M}) where M
+  a = DWS[i,j] * dpdRhoThj
+  return (i == 1 && j == 1) || (i == M && j == M) ? -a : a
+end
+
+
 # Helper inline function to handle the Schur complement atomic update cleanly
 @inline function update_schur!(SchurBand, C2_val, C3_val, r2_val, r3_val, i, j, ID)
   t = r2_val * C2_val + r3_val * C3_val
@@ -80,14 +86,14 @@ end
   @atomic SchurBand[iB, j, ID] -= t
 end
 
-@kernel inbounds = true function FillJacHDGVertKernel!(Th,dpdRhoTh,@Const(A31),
-  SA,SchurBand,@Const(U),@Const(dz),
-  @Const(DWS),@Const(DWSS),@Const(w),fac,cS,Phys, ::Val{M}) where {M}
+@kernel inbounds = true function FillJacHDGJVertKernel!(Th,dpdRhoTh,@Const(A31),
+  SA,SchurBand,@Const(U),@Const(J),@Const(invJ),@Const(Surf),
+  @Const(DWS),@Const(w),fac,cS,Phys, ::Val{M}) where {M}
 
   iz, ID = @index(Global, NTuple)
 
   nz = @uniform @ndrange()[1]
-  ND = @uniform @ndrange()[2]
+  DoF = @uniform @ndrange()[2]
   ThL = @private eltype(SA) (M,)
   dpdRhoThL = @private eltype(SA) (M,)
   r3 = @private eltype(SA) (M,)
@@ -100,12 +106,11 @@ end
   @uniform invwB = eltype(SA)(1) / wB
   @uniform FTe = eltype(SA)
 
-  if ID <= ND
+  if ID <= DoF
     kappa = Phys.kappa
     kexp = kappa / (eltype(SA)(1) - kappa)
     kfac = eltype(SA)(1) / (eltype(SA)(1) - kappa) * Phys.Rd
     Rdp0 = Phys.Rd / Phys.p0
-    facLoc = fac / (dz[iz] * FTe(0.5))
     invfac = FTe(1) / facLoc
 
     @unroll for i = 1 : M
@@ -119,11 +124,13 @@ end
       @unroll for j = 1 : M
         val = zero(eltype(SA))
         @unroll for k = 1 : M
-          val -= (DWSS[i,k] * dpdRhoThL[k] * ThL[j] + A31[i,k,iz,ID]) * DWS[k,j]
+          a32ik = calcA32(DWS,dpdRhoThL[k],i,k,Val(M))
+          a23kj = DWS[k,j] * ThL[j] 
+          val -= a32ik * a23kj + A31[i,k,iz,ID] * DWS[k,j]
         end
-        SA[i,j,iz,ID] = val * facLoc
+        SA[i,j,iz,ID] = val * fac * Surf[k,iz,ID]^2 * invJ[k,iz,ID]
       end
-      SA[i,i,iz,ID] += invfac
+      SA[i,i,iz,ID] += invfac * J[i,iz,ID]
     end
     SA[1,1,iz,ID] += cS * invwB
     SA[M,M,iz,ID] += cS * invwB
@@ -140,7 +147,7 @@ end
     B1_1 = zero(FTe);             B1_2 = invwB
     B2_1 = zero(FTe);             B2_2 = FTe(0.5) * (ThL[M] + Thp) * invwB
     B3_1 = zero(FTe);             B3_2 = -invwB * cS
-    C2_1 = zero(FTe);             C2_2 = -dpdRhoThL[M]
+    C2_1 = zero(FTe);             C2_2 = -dpdRhoThL[M] * Surf[M,iz,ID]
     C3_1 = zero(FTe);             C3_2 = -cS
       
     # Column j = iz 
@@ -148,7 +155,7 @@ end
     r1M = B1_2
     r2M = B2_2
     @unroll for i = 1 : M
-      a32iM = DWSS[i,M] * dpdRhoThL[M]
+      a32iM = calcA32(DWS,dpdRhoThL[M],i,M,Val(M))
       r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
     end
     r3[M] += B3_2
@@ -170,7 +177,8 @@ end
     B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB
     B2_2 =  FTe(0.5) * (ThL[M] + Thp) * invwB
     B3_1 = -invwB * cS;  B3_2 = -invwB * cS
-    C2_1 = dpdRhoThL[1];          C2_2 = -dpdRhoThL[M]
+    C2_1 = dpdRhoThL[1] * Surf[1,iz,ID]
+    C2_2 = -dpdRhoThL[M] * Surf[M,iz,ID]
     C3_1 = -cS;                   C3_2 = -cS
 
     # Column j = iz - 1
@@ -178,7 +186,7 @@ end
     r11 = B1_1
     r21 = B2_1
     @unroll for i = 1 : M
-      a32i1 = DWSS[i,1] * dpdRhoThL[1]
+      a32i1 = calcA32(DWS,dpdRhoThL[1],i,1,Val(M))
       r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
     end
     r3[1] += B3_1
@@ -200,7 +208,7 @@ end
     r1M = B1_2
     r2M = B2_2
     @unroll for i = 1 : M
-      a32iM = DWSS[i,M] * dpdRhoThL[M]
+      a32iM = calcA32(DWS,dpdRhoThL[M],i,M,Val(M))
       r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
     end
     r3[M] += B3_2
@@ -223,14 +231,15 @@ end
     B1_1 = -invwB;       B1_2 = zero(FTe)
     B2_1 = -FTe(0.5) * (ThL[1] + Thm) * invwB; B2_2 = zero(FTe)
     B3_1 = -invwB * cS;  B3_2 = zero(FTe)
-    C2_1 = dpdRhoThL[1];             C2_2 = zero(FTe)
+    C2_1 = dpdRhoThL[1] * Surf[1,iz,ID]
+    C2_2 = zero(FTe)
     C3_1 = -cS;                   C3_2 = zero(FTe)
     # Column j = iz - 1
     j = i_m1
     r11 = B1_1
     r21 = B2_1
     @unroll for i = 1 : M
-      a32i1 = DWSS[i,1] * dpdRhoThL[1]
+      a32i1 = calcA32(DWS,dpdRhoThL[1],i,1,Val(M))
       r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
     end
     r3[1] += B3_1
@@ -252,7 +261,7 @@ end
 
 
 @kernel inbounds = true function ldivHDGVerticalFKernel!(@Const(A31),@Const(Th),@Const(dpdRhoTh),
-  @Const(SA),@Const(b),rs,@Const(dz),@Const(DWS),@Const(DWSS),@Const(w),fac,cS, ::Val{M}) where {M}
+  @Const(SA),@Const(b),rs,@Const(dz),@Const(DW),@Const(w),fac,cS, ::Val{M}) where {M}
 
   iz, ID = @index(Global, NTuple)
 
@@ -264,6 +273,7 @@ end
   r1 = @private FT (M,)
   r2 = @private FT (M,)
   r3 = @private FT (M,)
+  DWS = @localmem FT (M,M)
 
   @uniform RhoPos = 1
   @uniform wPos = 4
@@ -271,6 +281,10 @@ end
   @uniform wB = w[1]
   @uniform invwB = FT(1) / wB
 
+  if iz == 1
+    @. DWS = DW
+  end
+  @synchronize
 
   if ID <= ND
     dz2 = dz[iz,ID] * FT(0.5)
@@ -285,7 +299,7 @@ end
       r3[i] = b[i,iz,ID,wPos] * dz2
       for j = 1 : M
         a31ij = A31[i,j,iz,ID]
-        a32ij = DWSS[i,j] * dpdRhoTh[j,iz,ID]
+        a32ij = calcA32(DWS,dpdRhoTh[j,iz,ID],i,j,Val(M))
         r3[i] -= (a31ij * r1[j] + a32ij * r2[j]) * facLoc
       end
     end
@@ -321,7 +335,7 @@ end
 end
 
 @kernel inbounds = true function ldivHDGVerticalBKernel!(@Const(A31),@Const(Th),@Const(dpdRhoTh),
-  @Const(SA),b,@Const(rs),@Const(dz),@Const(DWS),@Const(DWSS),@Const(w),fac,cS, ::Val{M}) where {M}
+  @Const(SA),b,@Const(rs),@Const(dz),@Const(DW),@Const(w),fac,cS, ::Val{M}) where {M}
 
   iz,ID = @index(Global, NTuple)
 
@@ -333,6 +347,7 @@ end
   r1 = @private FT (M,)
   r2 = @private FT (M,)
   r3 = @private FT (M,)
+  DWS = @localmem FT (M,M)
 
   @uniform RhoPos = 1
   @uniform wPos = 4
@@ -340,6 +355,10 @@ end
   @uniform wB = w[1]
   @uniform invwB = FT(1) / wB
 
+  if iz == 1
+    @. DWS = DW
+  end
+  @synchronize
 
   if ID <= ND
     dz2 = dz[iz,ID] * FT(0.5)
@@ -375,7 +394,7 @@ end
       r3i = zero(eltype(SA))
       @unroll for j = 1 : M
         a31ij = A31[i,j,iz,ID]
-        a32ij = DWSS[i,j] * dpdRhoTh[j,iz,ID]
+        a32ij = calcA32(DWS,dpdRhoTh[j,iz,ID],i,j,Val(M))
         r3i += (a31ij * r1[j] + a32ij * r2[j])
       end
       r3[i] -= r3i * facLoc
@@ -399,7 +418,7 @@ end
   end  
 end  
 
-function FillJacHDGVert!(Jac::JacHDGVert,U,DG,dz,fac,Phys)
+function FillJacHDGJVert!(Jac::JacHDGJVert,U,DG,dz,fac,Phys)
   
   backend = get_backend(U)
   FTB = eltype(U)
@@ -412,20 +431,19 @@ function FillJacHDGVert!(Jac::JacHDGVert,U,DG,dz,fac,Phys)
   Jac.cS = Phys.cS
   
   DWZ = DG.DWZ
-  DWZM = DG.DWZM
   
   DoFG = 10
   group = (nz, DoFG)
   ndrange = (nz, DoF)
   @. Jac.SchurBand = 0
   @. Jac.SchurBand[2,:,:] = 2.0 * P.cS
-  KFillJacHDGVertKernel! = FillJacHDGVertKernel!(backend,group)
-  KFillJacHDGVertKernel!(Jac.Th,Jac.dpdRhoTh,Jac.A31,Jac.SA,Jac.SchurBand,U,dz,
-  DWZ,DWZM,DG.wZ,fac,Phys.cS,Phys,Val(M);ndrange=ndrange)
+  KFillJacHDGJVertKernel! = FillJacHDGJVertKernel!(backend,group)
+  KFillJacHDGJVertKernel!(Jac.Th,Jac.dpdRhoTh,Jac.A31,Jac.SA,Jac.SchurBand,U,dz,
+  DWZ,DG.wZ,fac,Phys.cS,Phys,Val(M);ndrange=ndrange)
 
 end   
 
-function SchurBoundary!(Jac::JacHDGVert)
+function SchurBoundary!(Jac::JacHDGJVert)
 
   backend = get_backend(Jac.SA)
   FTB = eltype(Jac.SA)
@@ -442,7 +460,7 @@ function SchurBoundary!(Jac::JacHDGVert)
 end  
 
 
-function Solve!(Jac::JacHDGVert,b,DG,Metric)
+function Solve!(Jac::JacHDGJVert,b,DG,Metric)
 
   backend = get_backend(Jac.SA)
   FTB = eltype(Jac.SA)
@@ -456,7 +474,6 @@ function Solve!(Jac::JacHDGVert,b,DG,Metric)
   cS = Jac.cS
   dz = Metric.dz
   DWZ = DG.DWZ
-  DWZM = DG.DWZM
   wZ = DG.wZ
 
   NDG = 32
@@ -465,7 +482,7 @@ function Solve!(Jac::JacHDGVert,b,DG,Metric)
   @. Jac.rs = 0.0
   KldivVerticalFKernel! = ldivHDGVerticalFKernel!(backend,group)
   KldivVerticalFKernel!(Jac.A31,Jac.Th,Jac.dpdRhoTh,
-    Jac.SA,b,Jac.rs,dz,DWZ,DWZM,wZ,fac,cS,Val(M);ndrange=ndrange)
+    Jac.SA,b,Jac.rs,dz,DWZ,wZ,fac,cS,Val(M);ndrange=ndrange)
 
   group = (NDG)
   ndrange = (ND)
@@ -476,11 +493,11 @@ function Solve!(Jac::JacHDGVert,b,DG,Metric)
   ndrange = (nz, ND)
   KldivVerticalBKernel! = ldivHDGVerticalBKernel!(backend,group)
   KldivVerticalBKernel!(Jac.A31,Jac.Th,Jac.dpdRhoTh,
-    Jac.SA,b,Jac.rs,dz,DWZ,DWZM,wZ,fac,cS,Val(M);ndrange=ndrange)
+    Jac.SA,b,Jac.rs,dz,DWZ,wZ,fac,cS,Val(M);ndrange=ndrange)
 
 end
 
-function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDGVert,Global,VelForm)
+function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDGJVert,Global,VelForm)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   if JCache.grav_do
     @views Geo = Cache.Aux[:,:,:,2]
@@ -489,11 +506,11 @@ function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDGVert,Global,VelForm)
     JCache.grav_do = false
   end  
   dz = Metric.dz
-  FillJacHDGVert!(JCache,U,DG,dz,fac,Phys)
+  FillJacHDGJVert!(JCache,U,DG,dz,fac,Phys)
   SchurBoundary!(JCache)
 end
 
-function Solve!(k,v,Jac::JacHDGVert,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
+function Solve!(k,v,Jac::JacHDGJVert,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
 
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   @. k = v
@@ -504,7 +521,7 @@ function Solve!(k,v,Jac::JacHDGVert,fac,DG::FiniteElements.DGElement,Metric,Glob
 end
 
 
-function precompute_gravity!(GeoPot,dz, DWZ,Jac::JacHDGVert, NumberThreadGPU)
+function precompute_gravity!(GeoPot,dz, DWZ,Jac::JacHDGJVert, NumberThreadGPU)
   (; A31) = Jac
   backend = get_backend(dz)
   M = Jac.M

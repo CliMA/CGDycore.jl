@@ -196,6 +196,7 @@ end
 mutable struct DGQuad{FT<:AbstractFloat,
                         AT1<:AbstractArray,
                         AT2<:AbstractArray,
+                        SAT2<:AbstractArray,
                         IT1<:AbstractArray,
                         IT2<:AbstractArray,
                         IT3<:AbstractArray} <: DGElement 
@@ -223,15 +224,16 @@ mutable struct DGQuad{FT<:AbstractFloat,
     xwZ::AT1
     xwZCPU::Array{FT, 1}
     IntZE2F::Array{FT, 2}
-    DW::AT2
-    DS::AT2
+    DS::SAT2
+    DW::SAT2
     DST::Array{FT, 2}
-    DSZ::AT2
-    DWZ::AT2
-    DV::AT2
-    DVT::AT2
-    DVZ::AT2
-    DVZT::AT2
+    DSZ::SAT2
+    DWZ::SAT2
+    DWZM::SAT2
+    DV::SAT2
+    DVT::SAT2
+    DVZ::SAT2
+    DVZT::SAT2
     S::Array{FT, 2}
     BoundaryDoF::Array{Int, 1}
     MasterSlave::IT1
@@ -331,12 +333,16 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   (DWCPU,DSCPU,DVCPU)=DG.DerivativeMatrixSingle(OrdPoly)
   DS = KernelAbstractions.zeros(backend,FT,size(DSCPU))
   copyto!(DS,DSCPU)
+  DST=DS'
+  DS = SMatrix{OrdPoly+1,OrdPoly+1}(DS)
   DW = KernelAbstractions.zeros(backend,FT,size(DWCPU))
   copyto!(DW,DWCPU)
-  DST=DS'
+  DW = SMatrix{OrdPoly+1,OrdPoly+1}(DW)
   DV = KernelAbstractions.zeros(backend,FT,size(DVCPU))
   copyto!(DV,DVCPU)
   DVT=DV'
+  DV = SMatrix{OrdPoly+1,OrdPoly+1}(DV)
+  DVT = SMatrix{OrdPoly+1,OrdPoly+1}(DVT)
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'
@@ -344,11 +350,20 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
   (DWZCPU,DSZCPU,DVZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
   DSZ = KernelAbstractions.zeros(backend,FT,size(DSZCPU))
   copyto!(DSZ,DSZCPU)
+  DSZ = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DSZ)
   DWZ = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
   copyto!(DWZ,DWZCPU)
+  DWZ = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DWZ)
+  DWZCPU[1,1] *= -1
+  DWZCPU[end,end] *= -1
+  DWZM = KernelAbstractions.zeros(backend,FT,size(DWZCPU))
+  copyto!(DWZM,DWZCPU)
+  DWZM = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DWZM)
   DVZ = KernelAbstractions.zeros(backend,FT,size(DVZCPU))
   copyto!(DVZ,DVZCPU)
   DVZT=DVZ'
+  DVZ = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DVZ)
+  DVZT = SMatrix{OrdPolyZ+1,OrdPolyZ+1}(DVZT)
 
   (GlobCPU,GlobECPU,NumG,NumI,StencilCPU,MasterSlaveCPU,BoundaryDoFCPU) =
     NumberingFemDGQuad(Grid,OrdPoly,Proc)  
@@ -416,7 +431,8 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
 
   return DGQuad{FT,
                  typeof(w),
-                 typeof(DW),
+                 typeof(ksi),
+                 typeof(DSZ),
                  typeof(MasterSlave),
                  typeof(PosDoFE),
                  typeof(GlobE)}(
@@ -444,11 +460,12 @@ function DGQuad{FT}(backend,OrdPoly,OrdPolyZ,OrdPrint,OrdPrintZ,Grid,Proc) where
     xwZ,
     xwZCPU,
     IntZE2F,
-    DW,
     DS,
+    DW,
     DST,
     DSZ,
     DWZ,
+    DWZM,
     DV,
     DVT,
     DVZ,

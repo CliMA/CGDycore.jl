@@ -598,7 +598,6 @@ elseif IntMethod == "RungeKuttaEx"
   dt = (dtau,)
 end
 
-
 Integration.TimeStepper(MethodInt,dt,U,Fcn,Jac,DG,Exchange,Metric,
   Trans,Phys,Param,Grid,Global,Grid.Type,VelForm)
 

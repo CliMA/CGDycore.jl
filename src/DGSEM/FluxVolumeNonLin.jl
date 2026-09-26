@@ -197,11 +197,11 @@ end
       AuxLoc[I, J, iz, iaux] = Aux[K, Iz, ind, iaux]
     end
     VLoc[I, J, iz, 1] = V[K, Iz, ind, 1]
-    FLoc[I, J, iz, 1] = 0
+    FLoc[1] = 0
     invRho = eltype(F)(1) / VLoc[I, J, iz, 1]
     @unroll for iv = 2:NV
       VLoc[I, J, iz, iv] = V[K, Iz, ind, iv] * invRho
-      FLoc[I, J, iz, iv] = 0
+      FLoc[iv] = 0
     end
     @unroll for j = 1:3
       @unroll for i = 1:2
@@ -231,10 +231,8 @@ end
         I, J, iz,
         I, l, iz,
         Val(2))
-        DVTlI = DVT[l, I] 
-        DVTlJ = DVT[l, J] 
       @unroll for iv = 1:NV
-        FLoc[iv] += -DVTlI * fTilde[iv] - DVTlJ * gTilde[iv]
+        FLoc[iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
       end
     end
     @unroll for iv = 1:NV
