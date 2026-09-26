@@ -1,9 +1,10 @@
 @inline function LUFull!(A,::Val{n}) where {n}
 
-  @inbounds for j = 1 : n - 1
-    @inbounds for i = j + 1 : n
-      A[i,j] /= A[j,j]
-      @inbounds for k = j + 1 : n
+  @unroll @inbounds for j = 1 : n - 1
+    invAjj = eltype(A)(1) / A[j,j]
+    @unroll @inbounds for i = j + 1 : n
+      A[i,j] *= invAjj
+      @unroll @inbounds for k = j + 1 : n
         A[i,k] -= A[i,j] * A[j,k]
       end
     end
@@ -29,10 +30,11 @@ end
 
 @inline function LUFull!(iz,ID,A,::Val{n}) where {n}
 
-  @inbounds for j = 1 : n - 1
-    @inbounds for i = j + 1 : n 
-      A[i,j,iz,ID] /= A[j,j,iz,ID]  
-      @inbounds for k = j + 1 : n
+  @unroll @inbounds for j = 1 : n - 1
+    invAjj = eltype(A)(1) / A[j,j,iz,ID]
+    @unroll @inbounds for i = j + 1 : n 
+      A[i,j,iz,ID] *= invAjj
+      @unroll @inbounds for k = j + 1 : n
         A[i,k,iz,ID] -= A[i,j,iz,ID] * A[j,k,iz,ID]
       end  
     end  
@@ -42,15 +44,15 @@ end
 @inline function ldivFull!(iz,ID,A,b,::Val{n}) where {n}
 
 # Forward loop
-  @inbounds for k = 1 : n - 1
-    @inbounds for i = k + 1 : n
+  @unroll @inbounds for k = 1 : n - 1
+    @unroll @inbounds for i = k + 1 : n
       b[i] -= A[i,k,iz,ID] * b[k]
     end
   end
 #  Backward loop
-  @inbounds for k = n : -1 : 1
+  @unroll @inbounds for k = n : -1 : 1
     b[k] /= A[k,k,iz,ID]
-    @inbounds for i = 1 : k - 1
+    @unroll @inbounds for i = 1 : k - 1
       b[i] -= A[i,k,iz,ID] * b[k]
     end
   end

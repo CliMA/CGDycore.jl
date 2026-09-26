@@ -84,14 +84,17 @@ end
   SA,SchurBand,@Const(U),@Const(dz),
   @Const(DWS),@Const(DWSS),@Const(w),fac,cS,Phys, ::Val{M}) where {M}
 
+  _, iD = @index(Global, NTuple)
   iz, ID = @index(Global, NTuple)
 
+  nD = @uniform @groupsize()[2]
   nz = @uniform @ndrange()[1]
   ND = @uniform @ndrange()[2]
+
   ThL = @private eltype(SA) (M,)
   dpdRhoThL = @private eltype(SA) (M,)
   r3 = @private eltype(SA) (M,)
-  SAL = @private eltype(SA) (M,M)
+  SAL = @localmem eltype(SA) (M,M,nz,nD)
 
   @uniform RhoPos = 1
   @uniform ThPos = 5
@@ -122,16 +125,16 @@ end
         @unroll for k = 1 : M
           val -= (DWSS[i,k] * dpdRhoThL[k] * ThL[j] + A31[i,k,iz,ID]) * DWS[k,j]
         end
-        SAL[i,j] = val * facLoc
+        SAL[i,j,iz,iD] = val * facLoc
       end
-      SAL[i,i] += invfac
+      SAL[i,i,iz,iD] += invfac
     end
-    SAL[1,1] += cS * invwB
-    SAL[M,M] += cS * invwB
-    LUFull!(SAL, Val(M))
+    SAL[1,1,iz,iD] += cS * invwB
+    SAL[M,M,iz,iD] += cS * invwB
+    LUFull!(iz,iD,SAL, Val(M))
     @unroll for j = 1 : M
       @unroll for i = 1 : M
-        SA[i,j,iz,ID] = SAL[i,j]
+        SA[i,j,iz,ID] = SAL[i,j,iz,iD]
       end
     end  
 
@@ -156,7 +159,7 @@ end
         r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
       end
       r3[M] += B3_2
-      ldivFull!(SAL, r3, Val(M))
+      ldivFull!(iz,iD,SAL, r3, Val(M))
 
       @unroll for k = 1 : M
         a23Mk = DWS[M,k] * ThL[k] 
@@ -186,7 +189,7 @@ end
         r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
       end
       r3[1] += B3_1
-      ldivFull!(SAL, r3, Val(M))
+      ldivFull!(iz,iD,SAL, r3, Val(M))
       r2M = eltype(SA)(0)
       @unroll for k = 1 : M
         a231k = DWS[1,k] * ThL[k] 
@@ -208,7 +211,7 @@ end
         r3[i] = -(A31[i,M,iz,ID] * r1M + a32iM * r2M) * facLoc
       end
       r3[M] += B3_2
-      ldivFull!(SAL, r3, Val(M))
+      ldivFull!(iz,iD,SAL, r3, Val(M))
 
       r21 = eltype(SA)(0)
       @unroll for k = 1 : M
@@ -238,7 +241,7 @@ end
         r3[i] = -(A31[i,1,iz,ID] * r11 + a32i1 * r21) * facLoc
       end
       r3[1] += B3_1
-      ldivFull!(SAL, r3, Val(M))
+      ldivFull!(iz,iD,SAL, r3, Val(M))
       @unroll for k = 1 : M
         r21 -=  DWS[1,k] * ThL[k] * r3[k]
       end
