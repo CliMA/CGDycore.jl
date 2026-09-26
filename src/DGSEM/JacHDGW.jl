@@ -84,7 +84,7 @@ end
   SA,SchurBand,@Const(U),@Const(dz),
   @Const(DWS),@Const(DWSS),@Const(w),fac,cS,Phys, ::Val{M}) where {M}
 
-  _, iD = @index(Global, NTuple)
+  _, iD = @index(Local, NTuple)
   iz, ID = @index(Global, NTuple)
 
   nD = @uniform @groupsize()[2]
