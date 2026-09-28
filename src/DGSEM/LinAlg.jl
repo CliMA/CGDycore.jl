@@ -11,48 +11,82 @@
   end
 end
 
+@inline function LUFull!(A,n)
+
+  @unroll for j = 1 : n - 1
+    invAjj = eltype(A)(1) / A[j,j]
+    @unroll for i = j + 1 : n
+      A[i,j] *= invAjj
+      @unroll for k = j + 1 : n
+        A[i,k] -= A[i,j] * A[j,k]
+      end
+    end
+    A[j,j] = invAjj
+  end
+  A[n,n] = eltype(A)(1) / A[n,n]
+end
+
 @inline function ldivFull!(A,b,::Val{n}) where {n}
 
 # Forward loop
-  @inbounds for k = 1 : n - 1
-    @inbounds for i = k + 1 : n
+  @unroll for k = 1 : n - 1
+    @unroll for i = k + 1 : n
       b[i] -= A[i,k] * b[k]
     end
   end
 #  Backward loop
-  @inbounds for k = n : -1 : 1
+  @unroll for k = n : -1 : 1
     b[k] /= A[k,k]
-    @inbounds for i = 1 : k - 1
+    @unroll for i = 1 : k - 1
       b[i] -= A[i,k] * b[k]
     end
   end
 end
 
-@inline function LUFull!(iz,ID,A,::Val{n}) where {n}
+@inline function ldivFull!(A,b,n)
 
-  @unroll for j = 1 : n - 1
+# Forward loop
+  @unroll for k = 1 : n - 1
+    @unroll for i = k + 1 : n
+      b[i] -= A[i,k] * b[k]
+    end
+  end
+#  Backward loop
+  @unroll for k = n : -1 : 1
+    b[k] *= A[k,k]
+    @unroll for i = 1 : k - 1
+      b[i] -= A[i,k] * b[k]
+    end
+  end
+end
+
+@inline function LUFull!(iz,ID,A)
+
+  n = size(A,1)
+  for j = 1 : n - 1
     invAjj = eltype(A)(1) / A[j,j,iz,ID]
-    @unroll for i = j + 1 : n 
+    for i = j + 1 : n 
       A[i,j,iz,ID] *= invAjj
-      @unroll for k = j + 1 : n
+      for k = j + 1 : n
         A[i,k,iz,ID] -= A[i,j,iz,ID] * A[j,k,iz,ID]
       end  
     end  
   end  
 end
 
-@inline function ldivFull!(iz,ID,A,b,::Val{n}) where {n}
+@inline function ldivFull!(iz,ID,A,b)
 
+  n = size(A,1)
 # Forward loop
-  @unroll for k = 1 : n - 1
-    @unroll for i = k + 1 : n
+  @inbounds for k = 1 : n - 1
+    for i = k + 1 : n
       b[i] -= A[i,k,iz,ID] * b[k]
     end
   end
-#  Backward loop
-  @unroll for k = n : -1 : 1
+# Backward loop
+  for k = n : -1 : 1
     b[k] /= A[k,k,iz,ID]
-    @unroll for i = 1 : k - 1
+    for i = 1 : k - 1
       b[i] -= A[i,k,iz,ID] * b[k]
     end
   end
@@ -78,6 +112,60 @@ end
   end
 end
 
+@inline function LUTri!(ID,A,N) 
+    # Handle the very first diagonal element
+    A[2, 1, ID] = eltype(A)(1) / A[2, 1, ID]
+
+    @unroll for i in 1:(N-1)
+        # 1. Compute multiplier for L and store it in Row 3 (dl)
+        # We multiply by the pre-computed inverse diagonal of row 'i'
+        A[3, i, ID] = A[3, i, ID] * A[2, i, ID]
+
+        # 2. Update the next diagonal element of U in Row 2 (d)
+        d_next = A[2, i+1, ID] - A[3, i, ID] * A[1, i+1, ID]
+
+        # 3. Store the reciprocal of the next diagonal element
+        A[2, i+1, ID] = eltype(A)(1) / d_next
+    end
+end
+
+@inline function ldivTri!(ID,A, b, N)
+    # --- Step 1: Forward Substitution (Solve L * y = b) ---
+    # We overwrite b with y in-place.
+    @unroll for i in 2:N
+        b[i, ID] = b[i, ID] - A[3, i-1, ID] * b[i-1, ID]
+    end
+
+    # --- Step 2: Backward Substitution (Solve U * x = y) ---
+    # We overwrite y (currently in b) with x in-place.
+    # Uses the pre-computed inverse diagonal (Row 2) to avoid hardware division.
+    b[N, ID] = b[N, ID] * A[2, N, ID]
+    @unroll for i in (N-1):-1:1
+        b[i, ID] = (b[i, ID] - A[1, i+1, ID] * b[i+1, ID]) * A[2, i, ID]
+    end
+end
+
+@kernel inbounds = true function luTriKernel!(A,::Val{n}) where {n}
+  ID, = @index(Global, NTuple)
+
+  ND = @uniform @ndrange()[1]
+
+  if ID <= ND
+    LUTri!(ID,A,n)
+  end
+end
+
+@kernel inbounds = true function ldivVerticalTriKernel!(A,rs,::Val{n}) where {n}
+
+  ID, = @index(Global, NTuple)
+
+  ND = @uniform @ndrange()[1]
+
+  if ID <= ND
+    ldivTri!(ID,A,rs,n)
+  end
+end
+
 @inline function luBand!(ID,A,::Val{kl},::Val{ku},::Val{n}) where {kl,ku,n}
   diag_row = ku + 1 # The row index where the main diagonal lives
   @inbounds for k in 1:n
@@ -97,7 +185,6 @@ end
             
       @inbounds for i in (k+1):min(k+kl, n)
         # A[i,j] maps to Ab[diag_row + i - j, j]
-        # A[i,k] maps to Ab[diag_row + i - k, k]
         A[diag_row + i - j,j,ID] -= A[diag_row + i - k,k,ID] * u_kj
       end
     end

@@ -20,10 +20,7 @@ mutable struct JacHDGVert{FT<:AbstractFloat,
   Th::AT3
   dpdRhoTh::AT3
 
-  D::AT2
-
   SA::AT_SA
-
   SchurBand::AT3
   rs::AT2
 end  
@@ -45,7 +42,6 @@ function JacHDGVert(backend, FT, M, nz, DG)
 
   Th = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
   dpdRhoTh = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
-  D = KernelAbstractions.zeros(backend, FT, nz-1, NumI)
   SchurBand = KernelAbstractions.zeros(backend, FT, 3, nz-1, NumI)
   rs = KernelAbstractions.zeros(backend, FT, nz-1, NumI)
 
@@ -64,7 +60,6 @@ function JacHDGVert(backend, FT, M, nz, DG)
     A31,
     Th,
     dpdRhoTh,
-    D,
     SA,
     SchurBand,
     rs,
@@ -137,11 +132,10 @@ end
     SA_loc[M,M] += cS * invwB
 
     # 3. Save static matrix to global memory for Ldiv kernels
-    SA_static = SMatrix(SA_loc)
-    SA_gpu[iz, ID] = SA_static
 
     # Compute LU factorization in thread registers
-    SA_lu = lu(SA_static)
+    LUFull!(SA_loc,M)
+    SA_gpu[iz, ID] = SA_loc
 
     # 4. Handle Structural Boundary/Trace RHS vectors
     i_m1 = iz - 1
@@ -166,14 +160,14 @@ end
       r3_loc[M] += B3_2
 
       # Solved completely in register space!
-      r3_sol = SA_lu \ SVector(r3_loc)
+      ldivFull!(SA_loc, r3_loc, M)
 
       @unroll for k = 1:M
         a23Mk = DWS[M,k] * ThL[k]
-        r2M -= a23Mk * r3_sol[k]
+        r2M -= a23Mk * r3_loc[k]
       end
       r2M *= facLoc
-      update_schur!(SchurBand, C2_2, C3_2, r2M, r3_sol[M], i_p0, i_p0, ID)
+      update_schur!(SchurBand, C2_2, C3_2, r2M, r3_loc[M], i_p0, i_p0, ID)
     end
 
     # CASE 2: iz > 1 && iz < nz
@@ -195,16 +189,16 @@ end
         r3_loc[i] = -(A31_loc[i,1] * r11 + a32i1 * r21) * facLoc
       end
       r3_loc[1] += B3_1
-      r3_sol = SA_lu \ SVector(r3_loc)
+      ldivFull!(SA_loc, r3_loc, M)
 
       r2M = zero(FT)
       @unroll for k = 1:M
-        r21 -= DWS[1,k] * ThL[k] * r3_sol[k]
-        r2M -= DWS[M,k] * ThL[k] * r3_sol[k]
+        r21 -= DWS[1,k] * ThL[k] * r3_loc[k]
+        r2M -= DWS[M,k] * ThL[k] * r3_loc[k]
       end
       r21 *= facLoc; r2M *= facLoc
-      update_schur!(SchurBand, C2_1, C3_1, r21, r3_sol[1], i_m1, i_m1, ID)
-      update_schur!(SchurBand, C2_2, C3_2, r2M, r3_sol[M], i_p0, i_m1, ID)
+      update_schur!(SchurBand, C2_1, C3_1, r21, r3_loc[1], i_m1, i_m1, ID)
+      update_schur!(SchurBand, C2_2, C3_2, r2M, r3_loc[M], i_p0, i_m1, ID)
 
       # Column j = iz
       r1M = B1_2; r2M = B2_2
@@ -213,16 +207,16 @@ end
         r3_loc[i] = -(A31_loc[i,M] * r1M + a32iM * r2M) * facLoc
       end
       r3_loc[M] += B3_2
-      r3_sol = SA_lu \ SVector(r3_loc)
+      ldivFull!(SA_loc, r3_loc, M)
 
       r21 = zero(FT)
       @unroll for k = 1:M
-        r21 -= DWS[1,k] * ThL[k] * r3_sol[k]
-        r2M -= DWS[M,k] * ThL[k] * r3_sol[k]
+        r21 -= DWS[1,k] * ThL[k] * r3_loc[k]
+        r2M -= DWS[M,k] * ThL[k] * r3_loc[k]
       end
       r21 *= facLoc; r2M *= facLoc
-      update_schur!(SchurBand, C2_1, C3_1, r21, r3_sol[1], i_m1, i_p0, ID)
-      update_schur!(SchurBand, C2_2, C3_2, r2M, r3_sol[M], i_p0, i_p0, ID)
+      update_schur!(SchurBand, C2_1, C3_1, r21, r3_loc[1], i_m1, i_p0, ID)
+      update_schur!(SchurBand, C2_2, C3_2, r2M, r3_loc[M], i_p0, i_p0, ID)
     end
 
     # CASE 3: iz == nz
@@ -241,13 +235,13 @@ end
         r3_loc[i] = -(A31_loc[i,1] * r11 + a32i1 * r21) * facLoc
       end
       r3_loc[1] += B3_1
-      r3_sol = SA_lu \ SVector(r3_loc)
+      ldivFull!(SA_loc, r3_loc, M)
 
       @unroll for k = 1:M
-        r21 -= DWS[1,k] * ThL[k] * r3_sol[k]
+        r21 -= DWS[1,k] * ThL[k] * r3_loc[k]
       end
       r21 *= facLoc
-      update_schur!(SchurBand, C2_1, C3_1, r21, r3_sol[1], i_m1, i_m1, ID)
+      update_schur!(SchurBand, C2_1, C3_1, r21, r3_loc[1], i_m1, i_m1, ID)
     end
   end
 end
@@ -292,15 +286,15 @@ end
 
     # Load SA static matrix and solve in registers
     SA_static = SA_gpu[iz, ID]
-    r3_sol = SA_static \ SVector(r3)
+    ldivFull!(SA_static, r3, M)
 
     r21 = r2[1]
     r2M = r2[M]
     @unroll for j = 1:M
       a231j = DWS[1, j] * Th[j, iz, ID]
       a23Mj = DWS[M, j] * Th[j, iz, ID]
-      r21 -= a231j * r3_sol[j]
-      r2M -= a23Mj * r3_sol[j]
+      r21 -= a231j * r3[j]
+      r2M -= a23Mj * r3[j]
     end
     r21 *= facLoc
     r2M *= facLoc
@@ -308,12 +302,12 @@ end
     if iz < nz
       C2_2 = -dpdRhoTh[M, iz, ID]
       C3_2 = -cS
-      update_rs!(rs, C2_2, C3_2, r2M, r3_sol[M], iz, ID)
+      update_rs!(rs, C2_2, C3_2, r2M, r3[M], iz, ID)
     end
     if iz > 1
       C2_1 = dpdRhoTh[1, iz, ID]
       C3_1 = -cS
-      update_rs!(rs, C2_1, C3_1, r21, r3_sol[1], iz-1, ID)
+      update_rs!(rs, C2_1, C3_1, r21, r3[1], iz-1, ID)
     end
   end
 end
@@ -383,13 +377,13 @@ end
 
     # Solve in registers
     SA_static = SA_gpu[iz, ID]
-    r3_sol = SA_static \ SVector(r3_rhs)
+    ldivFull!(SA_static, r3_rhs, M)
 
     @unroll for i = 1:M
       @unroll for j = 1:M
         a23ij = DWS[i, j] * Th[j, iz, ID]
-        r1[i] = (r1[i] - DWS[i, j] * r3_sol[j])
-        r2[i] = (r2[i] - a23ij * r3_sol[j])
+        r1[i] = (r1[i] - DWS[i, j] * r3_rhs[j])
+        r2[i] = (r2[i] - a23ij * r3_rhs[j])
       end
       r1[i] *= facLoc
       r2[i] *= facLoc
@@ -398,7 +392,7 @@ end
     @unroll for i = 1:M
       b[i, iz, ID, RhoPos] = r1[i]
       b[i, iz, ID, ThPos]  = r2[i]
-      b[i, iz, ID, wPos]   = r3_sol[i]
+      b[i, iz, ID, wPos]   = r3_rhs[i]
     end
   end
 end
@@ -484,8 +478,8 @@ function SchurBoundary!(Jac::JacHDGVert)
   NDG = 32
   group = (NDG)
   ndrange = (ND)
-  KluBandKernel! = luBandKernel!(backend,group)
-  KluBandKernel!(Jac.SchurBand,Val(1),Val(1),Val(nz-1),ndrange=ndrange)
+  KluTriKernel! = luTriKernel!(backend,group)
+  KluTriKernel!(Jac.SchurBand,Val(nz-1),ndrange=ndrange)
 end  
 
 
@@ -516,8 +510,8 @@ function Solve!(Jac::JacHDGVert,b,DG,Metric)
 
   group = (NDG)
   ndrange = (ND)
-  KldivVerticalSKernel! = ldivVerticalSKernel!(backend,group)
-  KldivVerticalSKernel!(Jac.SchurBand,Jac.rs,Val(1),Val(1),Val(nz-1);ndrange=ndrange)
+  KldivVerticalTriKernel! = ldivVerticalTriKernel!(backend,group)
+  KldivVerticalTriKernel!(Jac.SchurBand,Jac.rs,Val(nz-1);ndrange=ndrange)
 
   group = (nz, NDG)
   ndrange = (nz, ND)
