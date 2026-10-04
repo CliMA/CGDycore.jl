@@ -56,6 +56,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
   PrintStartInt=0
 
   Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux,KV=KV)
+
   @time begin
     @inbounds for i = 1 : nIter
       Δt = @elapsed begin

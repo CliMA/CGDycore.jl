@@ -18,8 +18,6 @@ include("FEM/FEM.jl")
 include("FiniteVolumes/FiniteVolumes.jl")
 include("Integration/Integration.jl")
 include("DyCore/DyCore.jl")
-include("CDO/CDO.jl")
-include("IMEXRosenbrock/IMEXRosenbrock.jl")
 
 
 

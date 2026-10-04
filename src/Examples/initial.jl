@@ -939,8 +939,8 @@ function (profile::BaroWaveDryExample)(Param,Phys,::VelocityC)
     end
     uSPert,vSPert = perturbation_stream_function(lon, lat, Z)
     uS = uS + uSPert
-    uS = vS + vSPert
-    w = FT(0)
+    vS = vS + vSPert
+    w = FT(0.0)
     UC = Grids.VelSphere2Cart(SVector{3}(uS, vS, w),lon,lat)
 
     qV = FT(0)

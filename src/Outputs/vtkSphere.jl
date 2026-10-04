@@ -552,6 +552,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
       RhoPos = Global.Model.RhoPos
+      @show sum(abs.(UR[:,:,:,uPos]))
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["u", VTKCellData()] = cCellCPU
