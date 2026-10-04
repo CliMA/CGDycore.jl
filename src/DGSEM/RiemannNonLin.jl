@@ -44,9 +44,9 @@ end
   FLoc = @private eltype(F) (NUMV,)
 
   if ind <= NumI
-    n1 = NV[Iz,ind,1]
-    n2 = NV[Iz,ind,2]
-    n3 = NV[Iz,ind,3]
+    n1 = NV[1,Iz,ind]
+    n2 = NV[2,Iz,ind]
+    n3 = NV[3,Iz,ind]
     if Iz == 1
       @unroll for iAux = 1 : NAUX
         AuxL[iAux] = Aux[1,Iz,ind,iAux]
@@ -197,98 +197,6 @@ end
   end  
 end
 
-
-@kernel inbounds = true function RiemannNonLinV3NonConservativeKernel!(RiemannSolver!,NonConservativeFlux,F,@Const(U),@Const(Aux),@Const(Glob),
-  @Const(NV),@Const(VolSurfV),
-  @Const(w), ::Val{M}, ::Val{NUMV}, ::Val{NAUX}) where {M, NUMV, NAUX}
-
-  Iz,ID,IF = @index(Global, NTuple)
-
-
-  Nz = @uniform @ndrange()[1]
-  NQ = @uniform @ndrange()[2]
-
-  VLL = @private eltype(F) (NUMV,)
-  VRR = @private eltype(F) (NUMV,)
-  AuxL = @private eltype(F) (NAUX,)
-  AuxR = @private eltype(F) (NAUX,)
-  FLocL = @private eltype(F) (NUMV,)
-  FLocR = @private eltype(F) (NUMV,)
-
-  RhoPos = @uniform 1
-  uPos = @uniform 2
-  vPos = @uniform 3
-  wPos = @uniform 4
-  ThPos = @uniform 5
-
-  if ID <= NQ
-    ind = Glob[ID,IF]
-    if Iz > 1    
-      @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[M,Iz-1,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[M,Iz-1,ind,iv]
-      end  
-    else
-      @unroll for iAux = 1 : NAUX  
-        AuxL[iAux] = Aux[1,Iz,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VLL[iv] = U[1,Iz,ind,iv]
-      end  
-      t = eltype(F)(2) * (NV[1,ID,Iz,IF] * VLL[uPos] +
-        NV[2,ID,Iz,IF] * VLL[vPos] +
-        NV[3,ID,Iz,IF] * VLL[wPos]) 
-      VLL[uPos] -= NV[1,ID,Iz,IF] * t  
-      VLL[vPos] -= NV[2,ID,Iz,IF] * t  
-      VLL[wPos] -= NV[3,ID,Iz,IF] * t  
-    end  
-    if Iz < Nz
-      @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[1,Iz,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[1,Iz,ind,iv]
-      end  
-    else  
-      @unroll for iAux = 1 : NAUX  
-        AuxR[iAux] = Aux[M,Iz-1,ind,iAux]
-      end  
-      @unroll for iv = 1 : NUMV  
-        VRR[iv] = U[M,Iz-1,ind,iv]
-      end  
-      t = eltype(F)(2) * (NV[1,ID,Iz,IF] * VRR[uPos] +
-        NV[2,ID,Iz,IF] * VRR[vPos] +
-        NV[3,ID,Iz,IF] * VRR[wPos]) 
-      VRR[uPos] -= NV[1,ID,Iz,IF] * t  
-      VRR[vPos] -= NV[2,ID,Iz,IF] * t  
-      VRR[wPos] -= NV[3,ID,Iz,IF] * t  
-    end
-
-    RiemannSolver!(FLocL,FLocR,VLL,VRR,AuxL,AuxR,@view(NV[:,ID,Iz,IF]))
-
-    Surf = VolSurfV[ID,Iz,IF] / w[1]  
-    @unroll for iv = 1 : NUMV
-      FLocL[iv] *= Surf
-      FLocR[iv] *= Surf
-    end
-    if Iz > 1 
-      @atomic :monotonic F[M,Iz-1,ind,RhoPos] -= FLocR[RhoPos]
-      @atomic :monotonic F[M,Iz-1,ind,uPos] -= FLocR[uPos] 
-      @atomic :monotonic F[M,Iz-1,ind,vPos] -= FLocR[vPos]
-      @atomic :monotonic F[M,Iz-1,ind,wPos] -= FLocR[wPos]
-      @atomic :monotonic F[M,Iz-1,ind,ThPos] -= FLocR[ThPos]
-    end  
-    if Iz < Nz
-      @atomic :monotonic F[1,Iz,ind,RhoPos] += FLocL[RhoPos]
-      @atomic :monotonic F[1,Iz,ind,uPos] += FLocL[uPos]
-      @atomic :monotonic F[1,Iz,ind,vPos] += FLocL[vPos]
-      @atomic :monotonic F[1,Iz,ind,wPos] += FLocL[wPos]
-      @atomic :monotonic F[1,Iz,ind,ThPos] += FLocL[ThPos]
-    end  
-  end  
-end
 
 @kernel inbounds = true function RiemannNonLinH3Kernel1!(
     RiemannSolver!, F, @Const(U), @Const(Aux), @Const(GlobE),

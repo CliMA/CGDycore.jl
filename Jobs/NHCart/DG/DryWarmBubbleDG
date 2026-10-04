@@ -1,5 +1,5 @@
 #!/bin/bash
-julia --project Examples/DriverDG.jl \
+julia --project --check-bounds=yes Examples/DriverDG.jl \
   --Problem="WarmBubble2DXCart" \
   --NumberThreadGPU=512 \
   --FloatTypeBackend="Float64" \
@@ -28,8 +28,8 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --Curl=false \
   --dtau=.07 \
-  --IntMethod="RungeKuttaEx" \
-  --Table="RK1" \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
   `#Grid       `        \
   --GridForm="Cartesian" \
   --GridType="Quad" \

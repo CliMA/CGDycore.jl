@@ -17,6 +17,7 @@ mutable struct MetricDGStruct{FT<:AbstractFloat,
   VolSurfV::AT2
   VolSurfVV::AT3
   NV::AT3
+  NVV::AT4
 end
 
 function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
@@ -33,6 +34,7 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
     VolSurfV = KernelAbstractions.zeros(backend,FT,0,0)
     VolSurfVV = KernelAbstractions.zeros(backend,FT,0,0,0)
     NV = KernelAbstractions.zeros(backend,FT,0,0,0)
+    NVV = KernelAbstractions.zeros(backend,FT,0,0,0,0)
     return MetricDGStruct{FT,
                         typeof(zP),
                         typeof(NV),
@@ -52,6 +54,7 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::DGElement)
         VolSurfV,
         VolSurfVV,
         NV,
+        NVV,
     )
 end
 
@@ -828,7 +831,7 @@ end
 
   ID,IF = @index(Global, NTuple)
 
-  NF = @uniform @ndrange()[1]
+  NF = @uniform @ndrange()[2]
 
   if IF <= NF
     ind = Glob[ID,IF]  
@@ -1163,11 +1166,12 @@ function NormalV!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU)
   KNormalVKernel! = NormalVKernel!(backend,group)
   Metric.VolSurfV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI)
   Metric.VolSurfVV = KernelAbstractions.zeros(backend,FT,M,Nz,NumI)
-  Metric.NV = KernelAbstractions.zeros(backend,FT,Nz+1,NumI,3,)
-  KNormalVKernel!(Metric.VolSurfV,Metric.VolSurfVV,Metric.NV,M,Metric.dXdxI,FE.Glob,FE.wZ,ndrange=ndrange)
+  Metric.NV = KernelAbstractions.zeros(backend,FT,3,Nz+1,NumI)
+  Metric.NVV = KernelAbstractions.zeros(backend,FT,3,M,Nz,NumI)
+  KNormalVKernel!(Metric.VolSurfV,Metric.VolSurfVV,Metric.NV,Metric.NVV,M,Metric.dXdxI,FE.Glob,FE.wZ,ndrange=ndrange)
 end  
 
-@kernel inbounds = true function NormalVKernel!(VolSurfV,VolSurfVV,NV,M,@Const(dXdxI),@Const(Glob),@Const(w))
+@kernel inbounds = true function NormalVKernel!(VolSurfV,VolSurfVV,NV,NVV,M,@Const(dXdxI),@Const(Glob),@Const(w))
 
   # Normal NV(3,I,J,2,iz,IF)
 
@@ -1189,6 +1193,9 @@ end
         nSLoc3 = dXdxI[3,3,k,ID,Iz,IF]
         n1Norm = sqrt(nSLoc1 * nSLoc1 + nSLoc2 * nSLoc2 + nSLoc3 * nSLoc3)
         VolSurfVV[k,Iz,ind] = n1Norm
+        NVV[1,k,Iz,ind] = nSLoc1 / n1Norm
+        NVV[2,k,Iz,ind] = nSLoc2 / n1Norm
+        NVV[3,k,Iz,ind] = nSLoc3 / n1Norm
       end  
     else
       nSLoc1 = dXdxI[3,1,M,ID,Iz-1,IF]
@@ -1200,9 +1207,9 @@ end
     nSLoc2 = nSLoc2 / n1Norm
     nSLoc3 = nSLoc3 / n1Norm
     VolSurfV[Iz,ind] = n1Norm * invw
-    NV[Iz,ind,1] = nSLoc1
-    NV[Iz,ind,2] = nSLoc2
-    NV[Iz,ind,3] = nSLoc3
+    NV[1,Iz,ind] = nSLoc1
+    NV[2,Iz,ind] = nSLoc2
+    NV[3,Iz,ind] = nSLoc3
   end
 end
 

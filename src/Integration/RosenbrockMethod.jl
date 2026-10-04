@@ -123,6 +123,30 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
+  elseif str == "SSPKnoth12L"
+    nStage = 3
+    alpha = zeros(FT,nStage,nStage)
+    alpha[2, 1] = 1
+    alpha[3, 1] = 1 // 4
+    alpha[3, 2] = 1 // 4
+
+    b = zeros(FT,nStage)
+    b[1] = 1 // 3
+    b[2] = 1 // 3
+    b[3] = 1 // 3
+
+    Gamma = zeros(FT,nStage,nStage)
+    Gamma[1, 1] = 1
+    Gamma[2, 2] = 1
+    Gamma[3, 1] = -5 // 4
+    Gamma[3, 2] = -7 // 4
+    Gamma[3, 3] = 1
+    gamma = FT(1)        
+
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
+
   elseif str == "ROS2W"
     @show "ROS2W"
     nStage = 2

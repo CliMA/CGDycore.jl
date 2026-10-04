@@ -347,6 +347,7 @@ end
 # Initial values
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
+@. U[:,:,:,5] += 5
 
 if InterfaceFluxDG == "RiemannLMARS"
   RiemannSolver = DGSEM.RiemannLMARS()(Val(Model.RhoPos),Val(Model.uPos),Val(Model.vPos),
