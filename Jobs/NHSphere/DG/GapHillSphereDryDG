@@ -25,8 +25,8 @@ julia --project Examples/DriverDG.jl \
   --Upwind=true \
   --HorLimit=false \
   --Decomp="EqualArea" \
-  --SimDays=10 \
-  --SimHours=0 \
+  --SimDays=0 \
+  --SimHours=12 \
   --SimSeconds=0 \
   --vtkFileName="output/VTK/GapHill/DGHybrid" \
   --PrintSeconds=0 \
@@ -48,13 +48,9 @@ julia --project Examples/DriverDG.jl \
   --GridType="CubedSphere" \
   --AdaptGridType="Sleve" \
   --ScaleFactor=20.0 \
-  --RefineLevel=4 \
-  --nLon=20 \
-  --nLat=20 \
-  --ns=46 \
   --nz=13 \
-  --nPanel=20 \
-  --H=10000.0 \
+  --nPanel=40 \
+  --H=20000.0 \
   --OrdPoly=4 \
   --OrdPolyZ=4 \
   --MetricType="DGMetricCurl"

@@ -49,9 +49,6 @@ julia --project Examples/DriverDG.jl \
   --AdaptGridType="Sleve" \
   --ScaleFactor=20.0 \
   --RefineLevel=4 \
-  --nLon=20 \
-  --nLat=20 \
-  --ns=46 \
   --nz=13 \
   --nPanel=20 \
   --H=10000.0 \
