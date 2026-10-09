@@ -1,8 +1,10 @@
 module Outputs
 
 import ..DG
+import ..Examples
 import ..Grids
 import ..FiniteElements
+import ..DGSEM
 import ..Thermodynamics
 
 #using WriteVTK

@@ -228,9 +228,7 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad,Metri
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
   DSZGPU = KernelAbstractions.zeros(backend,Float64,size(DSZ))
   copyto!(DSZGPU,DSZ)
-  @show MetricType
   if occursin("Curl",MetricType) 
-    @show "Case Curl"  
     KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
     KFillContraKernel1!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
     KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
@@ -238,7 +236,6 @@ function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad,Metri
     KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
     KFillContraKernel3!(Metric.dXdxI,Metric.X,DSGPU,Val(N),Val(M);ndrange=ndrange)
   else
-    @show "No Curl"  
     KFillContraKernel! = MetricQuadKernel!(backend,group)
     KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
   end
@@ -419,7 +416,7 @@ end
     dXdxI[3,2,K,ID,IZ,IF] = DZdx * DXdy - DXdx * DZdy
     dXdxI[3,3,K,ID,IZ,IF] = DXdx * DYdy - DYdx * DXdy
   end
-
+  
 end
 
 @kernel inbounds = true function MetricTriKernel3!(dXdxI,J,@Const(X),@Const(Dx1),
@@ -1184,9 +1181,6 @@ end
     ind = Glob[ID,IF]  
     invw = eltype(VolSurfV)(1) / w[1]
     if Iz < NZ  
-      nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
-      nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
-      nSLoc3 = dXdxI[3,3,1,ID,Iz,IF]
       for k = 1 : M
         nSLoc1 = dXdxI[3,1,k,ID,Iz,IF]
         nSLoc2 = dXdxI[3,2,k,ID,Iz,IF]
@@ -1197,6 +1191,9 @@ end
         NVV[2,k,Iz,ind] = nSLoc2 / n1Norm
         NVV[3,k,Iz,ind] = nSLoc3 / n1Norm
       end  
+      nSLoc1 = dXdxI[3,1,1,ID,Iz,IF]
+      nSLoc2 = dXdxI[3,2,1,ID,Iz,IF]
+      nSLoc3 = dXdxI[3,3,1,ID,Iz,IF]
     else
       nSLoc1 = dXdxI[3,1,M,ID,Iz-1,IF]
       nSLoc2 = dXdxI[3,2,M,ID,Iz-1,IF]

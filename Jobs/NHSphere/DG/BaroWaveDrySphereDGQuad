@@ -8,7 +8,7 @@ julia --project Examples/DriverDG.jl \
   --NumAux=2 \
   --pAuxPos=1 \
   --GPAuxPos=2 \
-  --Equation="CompressibleShallow" \
+  --Equation="CompressibleDeep" \
   --ModelType="Conservative" \
   --State="Dry" \
   --Discretization="DG" \

@@ -1347,7 +1347,7 @@ end
 
 Base.@kwdef struct GapSphereExample <: Example end
 
-function (profile::GapSphereExample)(Param,Phys)
+function (profile::GapSphereExample)(Param,Phys,::VelocityS)
   @inline function local_profile(x,time)
     FT = eltype(x)
     (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
@@ -1360,6 +1360,108 @@ function (profile::GapSphereExample)(Param,Phys)
     Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
     Rho = pLoc / (Phys.Rd * Param.TEq)
     return (Rho,uS,vS,w,Th)
+  end
+  return local_profile
+end
+
+function (profile::GapSphereExample)(Param,Phys,::VelocityC)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+
+    RadEarth = Phys.RadEarth / Param.X
+    Omega = Phys.Omega * Param.X
+
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+    z = max(FT(0), R - RadEarth)
+
+    d1 = Param.xLon / (FT(2) * RadEarth ) * log(FT(10))^(-FT(1)/Param.e1)
+    d2 = Param.xLat / (FT(2) * RadEarth ) * log(FT(10))^(-FT(1)/Param.e2)
+    d3 = Param.xGap / (FT(2) * RadEarth ) * log(FT(10))^(-FT(1)/Param.e3)
+    zS =Param. h0 * exp(-((lon-Param.lonC) / d1)^Param.e1 - ((lat-Param.latC) / d2)^Param.e2) *
+      (FT(1) - exp(-((lat-Param.latC)/d3)^Param.e3))
+
+    PhiS = Phys.Grav * zS
+
+    z = max(FT(0), R - RadEarth)
+
+    uS = Param.uEq * cos(lat)
+    vS = FT(0.0)
+    w = FT(0.0)
+    UC = Grids.VelSphere2Cart(SVector{3}(uS, vS, w),lon,lat)
+
+    pS = Phys.p0 * exp( -(RadEarth * Param.N^2 * Param.uEq) / (2Phys.Grav^2 * Phys.kappa) *
+      (Param.uEq / RadEarth + 2Omega) * (sin(lat)^2 - 1) - Param.N^2 / (Phys.Grav^2 * Phys.kappa) * PhiS)
+
+    pLoc = pS * exp(-Phys.Grav * (z - zS) / (Phys.Rd * Param.TEq))
+
+    Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
+    Rho = pLoc / (Phys.Rd * Param.TEq)
+
+    return (Rho,UC[1],UC[2],UC[3],Th)
+  end
+  return local_profile
+end
+
+Base.@kwdef struct VortexSphereExample <: Example end
+
+function (profile::VortexSphereExample)(Param,Phys,::VelocityS)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+
+    RadEarth = Phys.RadEarth / Param.X
+    Omega = Phys.Omega * Param.X
+
+    d = Phys.RadEarth*Grids.SizeGreatCircle(lon,lat,lonC,latC)
+    zS = Phys.Grav * h0 * exp(-(d/Width)^2)
+    PhiS = Phys.Grav * zS
+
+    z = max(FT(0), R - RadEarth)
+
+    uS = Param.uEq * cos(lat)
+    vS = FT(0.0)
+    w = FT(0.0)
+
+#   Surface pressure
+    pS = Phys.p0 * exp( -(RadEarth * Param.N^2 * Param.uEq) / (2Phys.Grav^2 * Phys.kappa) *
+      (Param.uEq / RadEarth + 2Omega) * (sin(lat)^2 - 1) - Param.N^2 / (Phys.Grav^2 * Phys.kappa) * PhiS) 
+    pLoc = pS * exp(-Phys.Grav * (z - zS) / (Phys.Rd * Param.TEq))  
+
+    Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
+    Rho = pLoc / (Phys.Rd * Param.TEq)
+    return (Rho,uS,vS,w,Th)
+  end
+  return local_profile
+end
+
+function (profile::VortexSphereExample)(Param,Phys,::VelocityC)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
+
+    RadEarth = Phys.RadEarth / Param.X
+    Omega = Phys.Omega * Param.X
+
+    d = Phys.RadEarth * Grids.SizeGreatCircle(lon,lat,Param.lonC,Param.latC)
+    zS = Param.h0 * exp(-(d/Param.Width)^2)
+    PhiS = Phys.Grav * zS
+
+    z = max(FT(0), R - RadEarth)
+
+    uS = Param.uEq * cos(lat)
+    vS = FT(0.0)
+    w = FT(0.0)
+    UC = Grids.VelSphere2Cart(SVector{3}(uS, vS, w),lon,lat)
+
+    pS = Phys.p0 * exp( -(RadEarth * Param.N^2 * Param.uEq) / (2Phys.Grav^2 * Phys.kappa) *
+      (Param.uEq / RadEarth + 2Omega) * (sin(lat)^2 - 1) - Param.N^2 / (Phys.Grav^2 * Phys.kappa) * PhiS)
+
+    pLoc = pS * exp(-Phys.Grav * (z - zS) / (Phys.Rd * Param.TEq))
+
+    Th = Param.TEq * (Phys.p0 / pLoc)^(Phys.Rd / Phys.Cpd)
+    Rho = pLoc / (Phys.Rd * Param.TEq)
+
+    return (Rho,UC[1],UC[2],UC[3],Th)
   end
   return local_profile
 end

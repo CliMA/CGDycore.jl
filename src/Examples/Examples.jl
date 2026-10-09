@@ -67,7 +67,10 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
     Profile = Examples.SchaerSphereExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "GapSphere"
-    Profile = Examples.GapSphereExample()(Param,Phys)
+    Profile = Examples.GapSphereExample()(Param,Phys,VelForm)
+    Model.InitialProfile = Profile
+  elseif Problem == "VortexSphere"
+    Profile = Examples.VortexSphereExample()(Param,Phys,VelForm)
     Model.InitialProfile = Profile
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" ||
     Problem == "FriersonSphere"

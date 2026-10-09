@@ -2,6 +2,20 @@ abstract type DampingValue end
 
 Base.@kwdef struct DampingW <: DampingValue end
 
+
+function (::DampingW)(H,StrideDamp,Relax,::Val{uPos},::Val{vPos},::Val{wPos},::Examples.VelocityC,
+  ::Grids.CartesianGrid) where {uPos,vPos,wPos}
+  @inline function Damping(F,U,xS,z)
+    FT = eltype(z)
+    if z>=H-StrideDamp
+      Damp = Relax *
+        sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
+      F[wPos] += -Damp * U[wPos]
+    end
+  end
+  return Damping
+end
+
 function (::DampingW)(H,StrideDamp,Relax,uPos,vPos,wPos,::Examples.VelocityS,::Grids.SphericalGrid)
   @inline function Damping(F,U,xS,z)
     FT = eltype(z)

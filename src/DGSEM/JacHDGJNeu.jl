@@ -123,6 +123,14 @@ end
     end
     A[i, i] += FT(0.5) * acc
   end
+#=
+  @unroll for i = 1:M
+    @. A[i,:] = FT(0)
+    for j = 1 : M
+      A[i,i] += DS[i,j] * G[j]  
+    end   
+  end  
+=#  
   return SMatrix(A)
 end
 
@@ -152,17 +160,20 @@ end
     ThL   = MVector{M, FT}(undef)
     dpL   = MVector{M, FT}(undef)
     facL  = MVector{M, FT}(undef)
+    InvSfL  = MVector{M, FT}(undef)
 
     @unroll for i = 1:M
       rth = U[i, iz, ID, ThPos]
-      Sf  = Surf[i, iz, ID]
+      InvSfL[i]  = inv(Surf[i, iz, ID])
       ThL[i]  = rth / U[i, iz, ID, RhoPos]
       dpL[i]  = kfac * (Rdp0 * rth)^kexp
-      facL[i] = fac * Sf / J[i, iz, ID]
+#     facL[i] = fac * Sf / J[i, iz, ID]
+      facL[i] = fac / J[i, iz, ID]
       Th[i, iz, ID]       = ThL[i]
       dpdRhoTh[i, iz, ID] = dpL[i]
       FacLoc[i, iz, ID]   = facL[i]
-      InvSurf[i, iz, ID]  = inv(Sf)
+#     InvSurf[i, iz, ID]  = inv(Sf)
+      InvSurf[i, iz, ID]  = InvSfL[i]
     end
 
     # Gravity matrix from the geopotential (not stored)
@@ -178,10 +189,10 @@ end
         end
         SA_loc[i,j] = val * facL[i]
       end
-      SA_loc[i,i] += inv(facL[i])
+      SA_loc[i,i] += inv(facL[i]) * InvSfL[i]^2
     end
-    SA_loc[1,1] += cS * invwB
-    SA_loc[M,M] += cS * invwB
+    SA_loc[1,1] += cS * invwB * InvSfL[1]
+    SA_loc[M,M] += cS * invwB * InvSfL[M]
 
     # LU in registers (inverse-diagonal convention), then store for Solve!
     LUFull!(SA_loc, Val(M))
@@ -198,8 +209,8 @@ end
     B1_2 =  invwB
     B2_2 =  FT(0.5) * (ThL[M] + Thp) * invwB
     B3_2 = -invwB * cS
-    C2_1 =  dpL[1]
-    C2_2 = -dpL[M]
+    C2_1 =  dpL[1] * Surf[1, iz, ID]
+    C2_2 = -dpL[M] * Surf[M, iz, ID]
     C3   = -cS
 
     # RHS for the lower-face column (ra) and the upper-face column (rb);
@@ -210,8 +221,8 @@ end
       ra[i] = -(A31[i,1] * B1_1 + DWSS[i,1] * dpL[1] * B2_1) * facL[i]
       rb[i] = -(A31[i,M] * B1_2 + DWSS[i,M] * dpL[M] * B2_2) * facL[i]
     end
-    ra[1] += B3_1
-    rb[M] += B3_2
+    ra[1] += B3_1 * InvSfL[1]
+    rb[M] += B3_2 * InvSfL[M]
     ldivFull2!(SA_loc, ra, rb, Val(M))
 
     r2_1a = B2_1
@@ -251,7 +262,7 @@ end
 ################################################################################
 @kernel inbounds = true function ldivHDGVerticalFKernel!(
     @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(FacLoc), @Const(SA_gpu),
-    @Const(b), RsC, @Const(J), @Const(NV), DWS, DWSS, cS, ::Val{M}
+    @Const(b), RsC, @Const(J), @Const(InvSurf), @Const(NV), DWS, DWSS, cS, ::Val{M}
 ) where {M}
 
   iz, ID = @index(Global, NTuple)
@@ -270,14 +281,14 @@ end
     dpL = MVector{M, FT}(undef)
 
     @unroll for i = 1:M
-      Ji = J[i, iz, ID]
+      Ji = J[i, iz, ID] 
       ThL[i] = Th[i, iz, ID]
       dpL[i] = dpdRhoTh[i, iz, ID]
-      r1[i] = b[i, iz, ID, RhoPos] * Ji
+      r1[i] = b[i, iz, ID, RhoPos] * Ji 
       r2[i] = b[i, iz, ID, ThPos] * Ji
       r3[i] = (NV[1,i,iz,ID] * b[i, iz, ID, uPos] +
                NV[2,i,iz,ID] * b[i, iz, ID, vPos] +
-               NV[3,i,iz,ID] * b[i, iz, ID, wPos]) * Ji
+               NV[3,i,iz,ID] * b[i, iz, ID, wPos]) * Ji * InvSurf[i, iz, ID]
     end
 
     A31 = build_A31(Geo, DWS, iz, ID, Val(M))
@@ -306,10 +317,10 @@ end
     # Contributions to the face RHS (gathered by ldivTriBlkKernel!).
     # RsC[ID,1,iz] -> face iz-1 (node 1), RsC[ID,2,iz] -> face iz (node M).
     if iz > 1
-      RsC[ID, 1, iz] = -(r21 * dpL[1] + r3[1] * (-cS))
+      RsC[ID, 1, iz] = -(r21 * dpL[1] / InvSurf[1, iz, ID] + r3[1] * (-cS))
     end
     if iz < nz
-      RsC[ID, 2, iz] = -(r2M * (-dpL[M]) + r3[M] * (-cS))
+      RsC[ID, 2, iz] = -(r2M * (-dpL[M] / InvSurf[M, iz, ID]) + r3[M] * (-cS))
     end
   end
 end
@@ -340,7 +351,7 @@ end
     dpL = MVector{M, FT}(undef)
 
     @unroll for i = 1:M
-      Ji = J[i, iz, ID]
+      Ji = J[i, iz, ID] 
       ThL[i] = Th[i, iz, ID]
       dpL[i] = dpdRhoTh[i, iz, ID]
       r1[i] = b[i, iz, ID, RhoPos] * Ji
@@ -348,7 +359,7 @@ end
       b3[i] = NV[1,i,iz,ID] * b[i, iz, ID, uPos] +
               NV[2,i,iz,ID] * b[i, iz, ID, vPos] +
               NV[3,i,iz,ID] * b[i, iz, ID, wPos]
-      r3[i] = b3[i] * Ji
+      r3[i] = b3[i] * Ji * InvSurf[i, iz, ID]
     end
 
     # Face (trace) corrections
@@ -360,7 +371,7 @@ end
       rs_val = rs[ID, iz]
       r1[M] -= B1_2 * rs_val
       r2[M] -= B2_2 * rs_val
-      r3[M] -= B3_2 * rs_val
+      r3[M] -= B3_2 * rs_val * InvSurf[M, iz, ID]
     end
     if iz > 1
       Thm  = Th[M, iz-1, ID]
@@ -370,7 +381,7 @@ end
       rs_val = rs[ID, iz-1]
       r1[1] -= B1_1 * rs_val
       r2[1] -= B2_1 * rs_val
-      r3[1] -= B3_1 * rs_val
+      r3[1] -= B3_1 * rs_val * InvSurf[1, iz, ID]
     end
 
     A31 = build_A31(Geo, DWS, iz, ID, Val(M))
@@ -401,8 +412,8 @@ end
     @unroll for i = 1:M
       isf = InvSurf[i, iz, ID]
       bb  = r3[i] * isf - fac * b3[i]
-      bout[i, iz, ID, RhoPos] = r1[i] * isf
-      bout[i, iz, ID, ThPos]  = r2[i] * isf
+      bout[i, iz, ID, RhoPos] = r1[i] 
+      bout[i, iz, ID, ThPos]  = r2[i] 
       bout[i, iz, ID, uPos]   = fac * b[i, iz, ID, uPos] + NV[1,i,iz,ID] * bb
       bout[i, iz, ID, vPos]   = fac * b[i, iz, ID, vPos] + NV[2,i,iz,ID] * bb
       bout[i, iz, ID, wPos]   = fac * b[i, iz, ID, wPos] + NV[3,i,iz,ID] * bb
@@ -474,7 +485,7 @@ function SolveHDGVert!(Jac::JacHDGVert, bout, b, Metric)
 
   KldivVerticalFKernel! = ldivHDGVerticalFKernel!(backend)
   KldivVerticalFKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.FacLoc, Jac.SA,
-    b, Jac.RsC, Metric.J, Metric.NVV, Jac.DWS, Jac.DWSS, cS, Val(M);
+    b, Jac.RsC, Metric.J, Jac.InvSurf, Metric.NVV, Jac.DWS, Jac.DWSS, cS, Val(M);
     ndrange=(nz, ND))
 
   KldivTriBlkKernel! = ldivTriBlkKernel!(backend, (128,))
@@ -487,6 +498,7 @@ function SolveHDGVert!(Jac::JacHDGVert, bout, b, Metric)
 end
 
 # In-place variant (same signature as before)
+
 function Solve!(Jac::JacHDGVert,b,DG,Metric,NumberThreadGPU)
   SolveHDGVert!(Jac, b, b, Metric)
 end
@@ -494,7 +506,7 @@ end
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDGVert,Global,VelForm)
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   if JCache.grav_do
-    @views Geo = Cache.Aux[:,:,:,2]
+    @views Geo = Cache.Aux[:,:,1:DG.NumI,2]
     precompute_gravity!(Geo,DG.DWZ,JCache,NumberThreadGPU)
     JCache.grav_do = false
   end  

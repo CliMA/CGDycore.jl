@@ -508,10 +508,32 @@ Base.@kwdef struct ParamSchaerSphericalSphere{FT}
 end  
 
 Base.@kwdef struct ParamGapSphere{FT}
-  TEq::FT  = 300.0
+  TEq::FT  = 288.0
   X::FT = 20
   H::FT = 20000
   uEq::FT = 10
+  N::FT = 0.0182 
+  h0::FT = 1.5e3
+  lonC::FT = 0.5 * pi
+  latC::FT = 0.05 * pi
+  e1::FT = 10.0
+  e2::FT = 10.0
+  e3::FT = 10.0
+  xLon::FT = 800000.0
+  xLat::FT = 6000000.0
+  xGap::FT = 500000.0
+end  
+
+Base.@kwdef struct ParamVortexSphere{FT}
+  TEq::FT  = 288.0
+  X::FT = 20
+  H::FT = 20000
+  uEq::FT = 10
+  h0::FT = 1.5e3
+  lonC::FT = 0.5 * pi
+  latC::FT = pi / 9
+  Width::FT = 250000.0
+  N::FT = 0.0182 
 end  
 
 
@@ -528,6 +550,9 @@ function Parameters(FT,Problem::String)
   elseif Problem == "GapSphere"
     @show Problem
     Param = ParamGapSphere{FT}()
+  elseif Problem == "VortexSphere"
+    @show Problem
+    Param = ParamVortexSphere{FT}()
   elseif Problem == "BickleyJet"
     @show Problem
     Param = ParamBickleyJet{FT}()

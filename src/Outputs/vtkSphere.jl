@@ -77,30 +77,33 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
     for iF in 1 : NumFaces
       if Grid.Form == Grids.SphericalGrid()
         if Flat
-          lam = zeros(length(Grid.Faces[iF].N))
-          theta = zeros(length(Grid.Faces[iF].N))
-          NumNodesLoc = 0
-          for iN in Grid.Faces[iF].N
-            NumNodesLoc += 1
-            (lam[NumNodesLoc],theta[NumNodesLoc],z) = Grids.cart2sphere(Grid.Nodes[iN].P.x,
-              Grid.Nodes[iN].P.y,Grid.Nodes[iN].P.z)
-          end
-          lammin = minimum(lam)
-          lammax = maximum(lam)
-          if abs(lammin - lammax) > 2*pi-dTol
-            for i = 1 : NumNodesLoc
-              if lam[i] > pi
-                lam[i] = lam[i] - 2*pi
-                if lam[i] > 3*pi
-                  lam[i] = lam[i]  - 2*pi
-                end
-              end
+          # Bestimme die Anzahl der Knoten für dieses Face direkt
+          nn = length(Grid.Faces[iF].N)
+          lam = zeros(nn)
+          theta = zeros(nn)
+    
+          # 1. Konvertiere alle Knoten des aktuellen Face nach Spherical
+          for (i, iN) in enumerate(Grid.Faces[iF].N)
+            # Nutze direkt Destructuring, falls cart2sphere ein Tuple zurückgibt
+            lam[i], theta[i], _ = Grids.cart2sphere(Grid.Nodes[iN].P.x, Grid.Nodes[iN].P.y, Grid.Nodes[iN].P.z)
+          end  
+    
+          # 2. Nutze den ersten Knoten als Referenz (Anker), um Sprünge zu korrigieren
+          lam_ref = lam[1]
+          for i in 2:nn
+            Δlam = lam[i] - lam_ref
+            if Δlam > pi
+              lam[i] -= 2*pi
+            elseif Δlam < -pi
+              lam[i] += 2*pi
             end
           end
-          for i = 1 : NumNodesLoc
-            NumNodes += 1
-            pts[:,NumNodes] = [lam[i],theta[i],0.0]
-          end
+
+          # 3. Punkte in das globale Array 'pts' schreiben
+          for i in 1:nn
+            NumNodes += 1 
+            pts[:, NumNodes] .= (lam[i], theta[i], 0.0) # .= verhindert unnötige Allokationen
+          end    
         else    
           for iN in  Grid.Faces[iF].N
             NumNodes += 1
@@ -151,18 +154,17 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
               for i in 1 : 4
                 (lam[i],theta[i],z) = Grids.cart2sphere(NodeLoc[1,i],NodeLoc[2,i],NodeLoc[3,i])
               end
-              lammin = minimum(lam)
-              lammax = maximum(lam)
-              if abs(lammin - lammax) > 2*pi-dTol
-                for i = 1 : 4
-                  if lam[i] > pi
-                    lam[i] = lam[i] - 2*pi
-                    if lam[i] > 3*pi
-                      lam[i] = lam[i]  - 2*pi
-                    end
-                  end
+
+              lam_ref = lam[1]
+              for i in 2:4
+                Δlam = lam[i] - lam_ref
+                if Δlam > pi
+                  lam[i] -= 2*pi
+                elseif Δlam < -pi
+                  lam[i] += 2*pi
                 end
               end
+
               for i in 1 : 4
                 NumNodes += 1
                 pts[:,NumNodes] = [lam[i],theta[i],0.0]
@@ -217,18 +219,16 @@ function vtkStruct{FT}(backend,Grid,NumFaces,Flat;Refine=0) where FT<:AbstractFl
               for i in 1 : 3
                 (lam[i],theta[i],z) = Grids.cart2sphere(NodeLoc[1,i],NodeLoc[2,i],NodeLoc[3,i])
               end  
-              lammin = minimum(lam)
-              lammax = maximum(lam)
-              if abs(lammin - lammax) > 2*pi-dTol
-                for i = 1 : 3
-                  if lam[i] > pi
-                    lam[i] = lam[i] - 2*pi
-                    if lam[i] > 3*pi
-                      lam[i] = lam[i]  - 2*pi
-                    end
-                  end
+              lam_ref = lam[1]
+              for i in 2:3
+                Δlam = lam[i] - lam_ref
+                if Δlam > pi
+                  lam[i] -= 2*pi
+                elseif Δlam < -pi
+                  lam[i] += 2*pi
                 end
               end
+
               for i in 1 : 3
                 NumNodes += 1
                 pts[:,NumNodes] = [lam[i],theta[i],0.0]
@@ -327,26 +327,16 @@ function vtkStruct{FT}(backend,OrdPrint::Int,OrdPrintZ::Int,Trans,FE,Metric,Glob
             for i=1:2*NumPoint
               (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
             end 
-            lammin = minimum(lam)
-            lammax = maximum(lam)
-            if abs(lammin-lammax) > pi
-              smaller = count(<(pi), lam)
-              greater = count(>=(pi), lam)
 
-              if greater >= smaller
-                @inbounds for i = 1 : 2*NumPoint
-                  if lam[i] < pi
-                    lam[i] += 2 * pi
-                  end
-                end
-              else
-                @inbounds for i = 1 : 2*NumPoint
-                  if lam[i] >= pi
-                    lam[i] -= 2 * pi
-                  end
-                end
-              end
-            end
+            lam_ref = lam[1]
+            for i in 2:2*NumPoint
+               Δlam = lam[i] - lam_ref
+               if Δlam > pi
+                 lam[i] -= 2*pi
+               elseif Δlam < -pi
+                 lam[i] += 2*pi
+               end
+             end
             @inbounds for i = 1 : 2*NumPoint
               pts[:,ipts] = [lam[i],theta[i],max(z[i]-Global.Grid.Rad,0.0)/Global.Grid.H*3]
               ipts = ipts + 1
@@ -419,16 +409,13 @@ function vtkInit2D(OrdPrint::Int,Trans,FE,Metric,Global)
           for i=1:4
             (lam[i],theta[i],z[i]) = Grids.cart2sphere(x[i,1],x[i,2],x[i,3])
           end 
-          lammin = minimum(lam)
-          lammax = maximum(lam)
-          if abs(lammin - lammax) > 2*pi-dTol
-            for i = 1 : 4
-              if lam[i] > pi
-                lam[i] = lam[i] - 2*pi
-                if lam[i] > 3*pi
-                  lam[i] = lam[i]  - 2*pi
-                end
-              end
+          lam_ref = lam[1]
+          for i in 2:4
+            Δlam = lam[i] - lam_ref
+            if Δlam > pi
+              lam[i] -= 2*pi
+            elseif Δlam < -pi
+              lam[i] += 2*pi
             end
           end
           for i = 1 : 4
@@ -495,7 +482,6 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber, 
   stepS = "$step"
   vtk_filename_noext = pwd()*"/output/VTK/" * filename * stepS
   vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
-  @show size(cells),size(c)
   for iC = 1 : length(cName)
     vtk[cName[iC], VTKCellData()] = c[:,iC]
   end
@@ -503,7 +489,7 @@ function vtkSkeleton!(vtkCache,filename, part::Int, nparts::Int, c, FileNumber, 
   return nothing
 end  
 
-function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts::Int;
+function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, part::Int, nparts::Int;
   Thermo=zeros(0,0,0,0),KV=zeros(0,0,0))
 
   NF = Global.Grid.NumFaces
@@ -531,10 +517,16 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
   backend = get_backend(U)				      
   FTB = eltype(U)
   if length(size(U)) == 3
-    UR = reshape(U,1,size(U,1),size(U,2),size(U,3))  
+    URIn = reshape(U,1,size(U,1),size(U,2),size(U,3))  
   else
-    UR = U
+    URIn = U
   end  
+  if VelForm == Examples.VelocityC() && GridForm == Grids.SphericalGrid()
+    UR = copy(URIn)  
+    DGSEM.StateVCart2VSp!(UR,FE,Metric,NumberThreadGPU,Examples.VelocityS())
+  else
+    UR = URIn  
+  end
   cCell = KernelAbstractions.zeros(backend,FTB,OrdPrintH,(OrdPrintZ + 1),nz,NF)
   cCellCPU = zeros(OrdPrintH*(OrdPrintZ + 1)*nz*NF) 
   for i=1:length(Global.Output.cNames)
@@ -552,7 +544,6 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global, part::Int, nparts
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
       RhoPos = Global.Model.RhoPos
-      @show sum(abs.(UR[:,:,:,uPos]))
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["u", VTKCellData()] = cCellCPU

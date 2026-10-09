@@ -1,5 +1,5 @@
 import CGDycore:
-  Parameters as P, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore, IMEXRosenbrock
+  Parameters as P, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration, FiniteElements, DGSEM, CGSEM, DyCore
 using MPI
 using Base
 using CUDA
@@ -327,6 +327,10 @@ elseif TopoS == "BaroWaveHill"
   TopoProfile = Examples.BaroWaveHill()()
 elseif TopoS == "SchaerSphereCircle"
   TopoProfile = Examples.SchaerSphereCircle()(Param,Phys)
+elseif TopoS == "GapHillSphere"
+  TopoProfile = Examples.GapHillSphere()(Phys,ScaleFactor)
+elseif TopoS == "VortexHillSphere"
+  TopoProfile = Examples.VortexHillSphere()(Phys,ScaleFactor)  
 else
   TopoProfile = Examples.Flat()()  
 end  
@@ -450,7 +454,8 @@ end
 
 #Coriolis
 if Coriolis
-  CoriolisFun = Sources.CoriolisDeep()(Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),Examples.VelocityC())
+  CoriolisFun = Sources.CoriolisDeep()(Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),P.Omega * ScaleFactor,
+    Examples.VelocityC())
   Model.CoriolisFun = CoriolisFun
 else
   CoriolisFun = Sources.CoriolisNo()()
@@ -463,10 +468,10 @@ end
 
 if Damping
   Damp = Sources.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),
-    Model.uPos,Model.vPos,Model.wPos,Examples.VelocityC(),Grid.Form)
+    Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),Examples.VelocityC(),Grid.Form)
   Model.Damp = Damp
 end
-Model.GeoPotential = Sources.GeoPotentialDeep()(GPAuxPos,Grid.Form)
+Model.GeoPotential = Sources.GeoPotentialDeep()(GPAuxPos,RadEarth,Grid.Form)
     
 
 
@@ -595,6 +600,7 @@ elseif IntMethod == "MISLin"
 elseif IntMethod == "RungeKuttaEx"
   MethodInt = Integration.RungeKuttaExMethod{FTB}(Table)
   Fcn = (DGSEM.FcnSplit!,)
+  Jac = nothing
   dt = (dtau,)
 end
 

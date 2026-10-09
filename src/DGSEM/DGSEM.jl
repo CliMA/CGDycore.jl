@@ -9,7 +9,6 @@ import ..Models
 import ..Surfaces
 import ..Grids
 import ..Sources
-import ..Outputs
 import ..FiniteElements
 
 using StaticArrays

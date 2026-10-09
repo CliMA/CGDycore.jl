@@ -55,7 +55,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
   end
   PrintStartInt=0
 
-  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux,KV=KV)
+  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,Grid.Form,Proc,ProcNumber;Thermo=Aux,KV=KV)
 
   @time begin
     @inbounds for i = 1 : nIter
@@ -69,7 +69,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
         end  
         if mod(i,PrintInt) == 0
           @. @views U[:,:,FE.BoundaryDoF,3] = FT(0)  
-          Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
+          Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,Grid.Form,Proc,ProcNumber;Thermo=Aux,KV=KV)
         end
         if time[1] >= StartAverageTime && StartAverageTime >= 0.0
           Statistics.AverageInTime!(UAver,U,iAv)
@@ -83,9 +83,10 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
     end
   end  
   @. @views U[:,:,FE.BoundaryDoF,3] = FT(0)  
-  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
+  Outputs.unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,Grid.Form,Proc,ProcNumber;Thermo=Aux,KV=KV)
   if StartAverageTime >= 0 && StartAverageTime < SimTime
     Outputs.unstructured_vtkSphere(UAver,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
+    Outputs.unstructured_vtkSphere(UAver,Trans,FE,Metric,Phys,Global,VelForm,Grid.Form,Proc,ProcNumber;Thermo=Aux,KV=KV)
   end  
 end
 
