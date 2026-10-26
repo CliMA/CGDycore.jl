@@ -17,6 +17,7 @@ Discretization = parsed_args["Discretization"]
 Dimension = parsed_args["Dimension"]
 VelocityForm = parsed_args["VelocityForm"]
 FluxDG = parsed_args["FluxDG"]
+DensityMeanDG = parsed_args["DensityMeanDG"]
 InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
 ProfRho = parsed_args["ProfRho"]
 ProfTheta = parsed_args["ProfTheta"]
@@ -354,9 +355,9 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
-DGSEM.SetFluxes!(Model,DG,FTB,FluxDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,P.cS)
+DGSEM.SetFluxes!(Model,DG,FTB,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,P.cS)
 if FluxDG == "KennedyGruber"
-  Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
+  Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos;RadEarth=FTB(RadEarth))
 end
 
 if ModelType == "Boussinesq"
@@ -398,7 +399,7 @@ if Damping
     Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),Examples.VelocityC(),Grid.Form)
   Model.Damp = Damp
 end
-Model.GeoPotential = Sources.GeoPotentialDeep()(GPAuxPos,RadEarth,Grid.Form)
+Model.GeoPotential = Sources.GeoPotentialDeep()(GPAuxPos,FTB(RadEarth),Grid.Form)
     
 
 

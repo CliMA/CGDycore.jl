@@ -27,6 +27,11 @@ function parse_commandline()
     arg_type = String
     default = "KennedyGruberGrav"
 
+    "--DensityMeanDG"
+    help = "Density mean in density flux and gravity term for PotTempTEC/PotTempEC (Arith, Log, Gamma)"
+    arg_type = String
+    default = "Arith"
+
     "--FluxDGLin"
     help = "Linearized flux for DG"
     arg_type = String

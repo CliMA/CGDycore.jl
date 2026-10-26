@@ -65,7 +65,13 @@ function FluxVolumeNonLinV(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
     Val(NV),Val(NAUX);ndrange=ndrange)
 end
 
-@kernel inbounds = true function FluxSplitVolumeNonLinV3Kernel!(FluxAver!,
+# Load the state of one node from shared memory as SVector; I are the node
+# indices, the last index of A runs over the components.
+@inline LoadLoc(A, ::Val{N}, I...) where {N} = SVector{N}(ntuple(n -> A[I..., n], Val(N)))
+# Metric row J a^dir of one node
+@inline LoadMetric(A, ::Val{dir}, I...) where {dir} = SVector{3}(ntuple(j -> A[dir, j, I...], Val(3)))
+
+@kernel inbounds = true function FluxSplitVolumeNonLinV3Kernel!(FluxAver,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
     @Const(DVT), @Const(Glob),
     ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
@@ -84,8 +90,6 @@ end
   # Store only the 3 metric coefficients needed for the vertical direction.
   # Layout: (3, M, Nz, TilesDim)  — direction index first for coalescing.
   dXdxILoc = @localmem eltype(dXdxI)  (1, 3, M, Nz, TilesDim)
-
-  hTilde = @private eltype(F) (NV,)
 
   # ---- load phase ----
   if ID <= ND
@@ -107,17 +111,16 @@ end
 
   @synchronize
 
-  # ---- compute phase — NO @views, NO slices ----
+  # ---- compute phase ----
   if ID <= ND
     ind = Glob[ID, IF]
+    VL = LoadLoc(VLoc, Val(NV), K, Iz, iD)
+    AuxL = LoadLoc(AuxLoc, Val(NAUX), K, Iz, iD)
+    mL = LoadMetric(dXdxILoc, Val(1), K, Iz, iD)
     @unroll for l = 1:M
-      # Pass parent arrays + left/right indices directly.
-      # FluxAver! reads VLoc[K,Iz,iD,iv] and VLoc[l,Iz,iD,iv] internally.
-      FluxAver!(hTilde,
-        VLoc, AuxLoc, dXdxILoc,
-        K, Iz, iD,    # left  state: vary K
-        l, Iz, iD,    # right state: vary l
-        Val(1))
+      hTilde = FluxAver(VL, LoadLoc(VLoc, Val(NV), l, Iz, iD),
+        AuxL, LoadLoc(AuxLoc, Val(NAUX), l, Iz, iD),
+        mL, LoadMetric(dXdxILoc, Val(1), l, Iz, iD))
       @unroll for iv = 1:NV
         FLoc[K, Iz, iD, iv] += -DVT[l, K] * hTilde[iv]
       end
@@ -128,7 +131,7 @@ end
   end
 end
 
-@kernel inbounds = true function FluxSplitVolumeNonLinHQuadKernel!(FluxAver!,
+@kernel inbounds = true function FluxSplitVolumeNonLinHQuadKernel!(FluxAver,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
     @Const(DVT), @Const(Glob),
     ::Val{N}, ::Val{NV}, ::Val{NAUX}) where {N, NV, NAUX}
@@ -145,8 +148,6 @@ end
   # 2 directions × 3 components
   dXdxILoc = @localmem eltype(dXdxI)  (2, 3, N, N, TilesDim)
 
-  fTilde = @private eltype(F) (NV,)
-  gTilde = @private eltype(F) (NV,)
   FLoc = @private eltype(F) (NV,)
 
   # ---- load phase ----
@@ -180,19 +181,19 @@ end
     Iz = div(IZ - 1, M) + 1
     ID = I + (J - 1) * N
     ind = Glob[ID, IF]
+    VL = LoadLoc(VLoc, Val(NV), I, J, iz)
+    AuxL = LoadLoc(AuxLoc, Val(NAUX), I, J, iz)
+    mL1 = LoadMetric(dXdxILoc, Val(1), I, J, iz)
+    mL2 = LoadMetric(dXdxILoc, Val(2), I, J, iz)
     @unroll for l = 1:N
-      # x-direction: left=(I,J,iz), right=(l,J,iz)
-      FluxAver!(fTilde,
-        VLoc, AuxLoc, dXdxILoc,
-        I, J, iz,
-        l, J, iz,
-        Val(1))
-      # y-direction: left=(I,J,iz), right=(I,l,iz)
-      FluxAver!(gTilde,
-        VLoc, AuxLoc, dXdxILoc,
-        I, J, iz,
-        I, l, iz,
-        Val(2))
+      # x-direction: right=(l,J,iz)
+      fTilde = FluxAver(VL, LoadLoc(VLoc, Val(NV), l, J, iz),
+        AuxL, LoadLoc(AuxLoc, Val(NAUX), l, J, iz),
+        mL1, LoadMetric(dXdxILoc, Val(1), l, J, iz))
+      # y-direction: right=(I,l,iz)
+      gTilde = FluxAver(VL, LoadLoc(VLoc, Val(NV), I, l, iz),
+        AuxL, LoadLoc(AuxLoc, Val(NAUX), I, l, iz),
+        mL2, LoadMetric(dXdxILoc, Val(2), I, l, iz))
       @unroll for iv = 1:NV
         FLoc[iv] += -DVT[l, I] * fTilde[iv] - DVT[l, J] * gTilde[iv]
       end
@@ -203,7 +204,7 @@ end
   end
 end
 
-@kernel inbounds = true function FluxSplitVolumeNonLinHTriKernel!(FluxAver!,
+@kernel inbounds = true function FluxSplitVolumeNonLinHTriKernel!(FluxAver,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
     @Const(Dx1), @Const(Dx2), @Const(Glob),
     ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
@@ -222,9 +223,6 @@ end
   # 2 horizontal directions × 3 metric components
   dXdxILoc = @localmem eltype(dXdxI)  (2, 3, N, TilesDim)
 
-  fTilde = @private eltype(F) (NV,)
-  gTilde = @private eltype(F) (NV,)
-
   # ---- load phase ----
   if IZ <= NZ
     K   = mod(IZ - 1, M) + 1
@@ -233,8 +231,11 @@ end
     @unroll for iaux = 1:NAUX
       AuxLoc[ID, iz, iaux] = Aux[K, Iz, ind, iaux]
     end
-    @unroll for iv = 1:NV
-      VLoc[ID, iz, iv] = V[K, Iz, ind, iv]
+    VLoc[ID, iz, 1] = V[K, Iz, ind, 1]
+    FLoc[ID, iz, 1] = 0
+    invRho = eltype(F)(1) / VLoc[ID, iz, 1]
+    @unroll for iv = 2:NV
+      VLoc[ID, iz, iv] = V[K, Iz, ind, iv] * invRho
       FLoc[ID, iz, iv] = 0
     end
     @unroll for j = 1:3
@@ -246,19 +247,18 @@ end
 
   @synchronize
 
-  # ---- compute phase — no @views, no slices, no Val{NV} in FluxAver! ----
+  # ---- compute phase ----
   if IZ <= NZ
+    VL = LoadLoc(VLoc, Val(NV), ID, iz)
+    AuxL = LoadLoc(AuxLoc, Val(NAUX), ID, iz)
+    mL1 = LoadMetric(dXdxILoc, Val(1), ID, iz)
+    mL2 = LoadMetric(dXdxILoc, Val(2), ID, iz)
     @unroll for l = 1:N
-      # x1-direction: left=(ID,iz), right=(l,iz)
-      FluxAver!(fTilde,
-        VLoc, AuxLoc, dXdxILoc,
-        ID, iz,
-        l,  iz, Val(1))
-      # x2-direction: same pair, different metric row
-      FluxAver!(gTilde,
-        VLoc, AuxLoc, dXdxILoc,
-        ID, iz,
-        l,  iz, Val(2))
+      VR = LoadLoc(VLoc, Val(NV), l, iz)
+      AuxR = LoadLoc(AuxLoc, Val(NAUX), l, iz)
+      # x1- and x2-direction: same pair, different metric row
+      fTilde = FluxAver(VL, VR, AuxL, AuxR, mL1, LoadMetric(dXdxILoc, Val(1), l, iz))
+      gTilde = FluxAver(VL, VR, AuxL, AuxR, mL2, LoadMetric(dXdxILoc, Val(2), l, iz))
       @unroll for iv = 1:NV
         FLoc[ID, iz, iv] += -Dx1[ID, l] * fTilde[iv] - Dx2[ID, l] * gTilde[iv]
       end
