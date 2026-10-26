@@ -35,8 +35,9 @@ function FillThetaAlpha!(Th,Al,U,Phys)
 end
 
 # Vector invariant form: Th = rhotheta, Al = dPi / drhotheta, Rm = rho,
-# Ps = cp theta and the Exner pressure Pi = (Rd rhotheta / p0)^(Rd/Cvd)
-@kernel inbounds = true function CoeffVIKernel!(Th,Al,Rm,Ps,Pi,@Const(U),Cpd,ex,Rdp0)
+# Ps = cp theta, the Exner pressure Pi = (Rd rhotheta / p0)^(Rd/Cvd) and the
+# sound speed Cs = sqrt(gamma p / rho)
+@kernel inbounds = true function CoeffVIKernel!(Th,Al,Rm,Ps,Pi,Cs,@Const(U),Cpd,ex,Rdp0,p0,Gamma)
   i,iz,ID = @index(Global, NTuple)
   ND = @uniform @ndrange()[3]
   if ID <= ND
@@ -48,19 +49,22 @@ end
     Rm[i,iz,ID] = Rho
     Ps[i,iz,ID] = Cpd * RhoTh / Rho
     Pi[i,iz,ID] = PiLoc
+    Cs[i,iz,ID] = sqrt(Gamma * p0 * (Rdp0 * RhoTh)^Gamma / Rho)
   end
 end
 
-function FillCoeffVI!(Th,Al,Rm,Ps,Pi,U,Phys)
+function FillCoeffVI!(Th,Al,Rm,Ps,Pi,Cs,U,Phys)
   backend = get_backend(Th)
   FT = eltype(Th)
   M, nz, ND = size(Th)
   Cpd  = FT(Phys.Cpd)
   ex   = FT(Phys.Rd) / FT(Phys.Cvd)
   Rdp0 = FT(Phys.Rd) / FT(Phys.p0)
+  p0   = FT(Phys.p0)
+  Gamma = FT(Phys.Cpd) / FT(Phys.Cvd)
   NDG = max(1,min(div(256,M*nz),ND))
   KCoeffVIKernel! = CoeffVIKernel!(backend,(M,nz,NDG))
-  KCoeffVIKernel!(Th,Al,Rm,Ps,Pi,U,Cpd,ex,Rdp0;ndrange=(M,nz,ND))
+  KCoeffVIKernel!(Th,Al,Rm,Ps,Pi,Cs,U,Cpd,ex,Rdp0,p0,Gamma;ndrange=(M,nz,ND))
 end
 
 ################################################################################
@@ -83,6 +87,31 @@ end
   return SMatrix{3,3,FT}(0, 0, 0,
     -AlR / (2 * cS), -ThB * AlR / (2 * cS), FT(0.5) * AlR,
     FT(0.5), FT(0.5) * ThR, -FT(0.5) * cS)
+end
+
+# Derivatives of the vector invariant interface flux with respect to the lower
+# (L) and the upper (R) state; rows (rho, rhotheta, w), columns (rho, rhotheta, w).
+# Side = 1: flux of the lower element (FL), Side = 2: of the upper element (FR).
+@inline function VIdL(ThL,ThR,RmL,RmR,AlL,PsL,PsR,c,Side)
+  FT = typeof(ThL)
+  RmB = FT(0.5) * (RmL + RmR)
+  ThB = FT(0.5) * (ThL + ThR)
+  PsB = FT(0.5) * (PsL + PsR)
+  dw = Side == 1 ? (PsL - FT(0.5) * PsB) * AlL : FT(0.5) * PsB * AlL
+  return SMatrix{3,3,FT}(0, 0, 0,
+    RmB * PsB * AlL / (2 * c), ThB * PsB * AlL / (2 * c), dw,
+    FT(0.5) * RmB, FT(0.5) * ThB, FT(0.5) * c)
+end
+
+@inline function VIdR(ThL,ThR,RmL,RmR,AlR,PsL,PsR,c,Side)
+  FT = typeof(ThL)
+  RmB = FT(0.5) * (RmL + RmR)
+  ThB = FT(0.5) * (ThL + ThR)
+  PsB = FT(0.5) * (PsL + PsR)
+  dw = Side == 1 ? FT(0.5) * PsB * AlR : (PsR - FT(0.5) * PsB) * AlR
+  return SMatrix{3,3,FT}(0, 0, 0,
+    -RmB * PsB * AlR / (2 * c), -ThB * PsB * AlR / (2 * c), dw,
+    FT(0.5) * RmB, FT(0.5) * ThB, -FT(0.5) * c)
 end
 
 # Reflecting wall, flux (0, 0, p -+ cS rhow) of the interior state;

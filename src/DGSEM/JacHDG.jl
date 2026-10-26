@@ -26,7 +26,9 @@ using LinearAlgebra
 #   dpdRhoTh : pressure derivative            dp/drhotheta  | dPi/drhotheta
 #   Ps  : scaling of the pressure term        1             | cp theta
 #   gravity                                   split A31     | linearized
-#     cp theta grad(Pi): diagonal cp (D Pi)_i (delta rhotheta - theta delta rho) / rho
+#     cp theta grad(Pi), split form in delta theta (see build_GP)
+#   Cs  : sound speed in the interface dissipation, constant cS | local sqrt(gamma p / rho),
+#         face value 1/2 (c_L + c_R) as in the interface flux
 ################################################################################
 
 mutable struct JacHDG{FT<:AbstractFloat,
@@ -53,6 +55,7 @@ mutable struct JacHDG{FT<:AbstractFloat,
   Rm::AT3
   Ps::AT3
   Pi::AT3                # Exner pressure (vector invariant form)
+  Cs::AT3                # node sound speed (vector invariant form)
   VI::Bool
   FacLoc::AT3            # fac * Surf / J
   InvSurf::AT3           # 1 / Surf
@@ -88,6 +91,7 @@ function JacHDG(backend, FT, M, nz, DG)
   Rm       = KernelAbstractions.ones(backend, FT, M, nz, NumI)
   Ps       = KernelAbstractions.ones(backend, FT, M, nz, NumI)
   Pi       = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
+  Cs       = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
   FacLoc   = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
   InvSurf  = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
 
@@ -118,6 +122,7 @@ function JacHDG(backend, FT, M, nz, DG)
     Rm,
     Ps,
     Pi,
+    Cs,
     false,
     FacLoc,
     InvSurf,
@@ -147,6 +152,18 @@ end
   return SMatrix(A)
 end
 
+# Sound speed of the lower (node 1) and upper (node M) face of element iz
+@inline function FaceSoundSpeed(Cs, cS, iz, ID, nz, ::Val{M}, ::Val{false}) where {M}
+  return cS, cS
+end
+
+@inline function FaceSoundSpeed(Cs, cS, iz, ID, nz, ::Val{M}, ::Val{true}) where {M}
+  FT = eltype(Cs)
+  c1 = iz > 1  ? FT(0.5) * (Cs[1, iz, ID] + Cs[M, iz-1, ID]) : Cs[1, iz, ID]
+  cM = iz < nz ? FT(0.5) * (Cs[M, iz, ID] + Cs[1, iz+1, ID]) : Cs[M, iz, ID]
+  return c1, cM
+end
+
 # Gravity matrix GM (acts on rho) and pressure matrix PrM (acts on rhotheta)
 # of the vertical momentum row
 @inline function build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, ::Val{M}, ::Val{false}) where {M}
@@ -156,22 +173,32 @@ end
   return GM, PrM
 end
 
+# Vector invariant: the pressure term sum_k D_ik cp theta^num_ik (Pi_k - Pi_i) is
+# linearized with delta theta^num = (delta theta_i + delta theta_k) / 2, which gives
+# the split form Bs_ik = cp (1/2 D_ik (Pi_k - Pi_i) + delta_ik 1/2 sum_m D_im (Pi_m - Pi_i))
+# acting on delta theta_k = (delta rhotheta_k - theta_k delta rho_k) / rho_k
 @inline function build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, ::Val{M}, ::Val{true}) where {M}
   FT = eltype(Geo)
-  GM = MMatrix{M, M, FT, M*M}(ntuple(n -> zero(FT), Val(M*M)))
+  P = ntuple(i -> Pi[i, iz, ID], Val(M))
+  GM = MMatrix{M, M, FT, M*M}(undef)
   PrM = MMatrix{M, M, FT, M*M}(undef)
   @unroll for i = 1:M
-    dPi = zero(FT)
-    @unroll for k = 1:M
-      dPi = muladd(DWSS[i, k], Pi[k, iz, ID], dPi)
+    # cp = Ps_i / theta_i
+    cp = Ps[i, iz, ID] * Rm[i, iz, ID] / Th[i, iz, ID]
+    acc = zero(FT)
+    @unroll for m = 1:M
+      acc = muladd(DWSS[i, m], P[m] - P[i], acc)
     end
-    # cp (D Pi)_i / rho_i with cp = Ps_i / theta_i, theta_i = ThL_i / Rm_i
-    Bt = Ps[i, iz, ID] * dPi / Th[i, iz, ID]
-    GM[i, i] = -Bt * Th[i, iz, ID] / Rm[i, iz, ID]
     @unroll for k = 1:M
-      PrM[i, k] = Ps[i, iz, ID] * DWSS[i, k] * dpdRhoTh[k, iz, ID]
+      Bs = FT(0.5) * DWSS[i, k] * (P[k] - P[i])
+      if i == k
+        Bs += FT(0.5) * acc
+      end
+      Bs *= cp
+      rRho = FT(1) / Rm[k, iz, ID]
+      GM[i, k] = -Bs * Th[k, iz, ID] * rRho * rRho
+      PrM[i, k] = Ps[i, iz, ID] * DWSS[i, k] * dpdRhoTh[k, iz, ID] + Bs * rRho
     end
-    PrM[i, i] += Bt
   end
   return SMatrix(GM), SMatrix(PrM)
 end
@@ -180,7 +207,7 @@ end
 # Jac! : build and factor the local matrices, per-element Schur contributions
 ################################################################################
 @kernel inbounds = true function FillJacHDGKernel!(
-    @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi), FacLoc, InvSurf, SA_gpu, Blk,
+    @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi), @Const(Cs), FacLoc, InvSurf, SA_gpu, Blk,
     @Const(Geo), @Const(J), @Const(Surf),
     DWS, DWSS, wB, fac, cS, ::Val{M}, ::Val{VI}
 ) where {M, VI}
@@ -232,8 +259,9 @@ end
       end
       SA_loc[i,i] += inv(facL[i])
     end
-    SA_loc[1,1] += cS * invwB
-    SA_loc[M,M] += cS * invwB
+    c1, cM = FaceSoundSpeed(Cs, cS, iz, ID, nz, Val(M), Val(VI))
+    SA_loc[1,1] += c1 * invwB
+    SA_loc[M,M] += cM * invwB
 
     # LU in registers (inverse-diagonal convention), then store for Solve!
     LUInv!(SA_loc, Val(M))
@@ -248,13 +276,14 @@ end
     # Trace couplings: lower face (node 1) and upper face (node M)
     B1_1 = -FT(0.5) * (RmL[1] + Rmm) * invwB
     B2_1 = -FT(0.5) * (ThL[1] + Thm) * invwB
-    B3_1 = -invwB * cS
+    B3_1 = -invwB * c1
     B1_2 =  FT(0.5) * (RmL[M] + Rmp) * invwB
     B2_2 =  FT(0.5) * (ThL[M] + Thp) * invwB
-    B3_2 = -invwB * cS
+    B3_2 = -invwB * cM
     C2_1 =  Ps[1, iz, ID] * dpL[1]
     C2_2 = -Ps[M, iz, ID] * dpL[M]
-    C3   = -cS
+    C3_1 = -c1
+    C3_2 = -cM
 
     # RHS for the lower-face column (ra) and the upper-face column (rb);
     # both are solved with the same factors in one sweep.
@@ -287,15 +316,22 @@ end
 
     # Per-element contributions to the Schur tridiagonal (values to be ADDED,
     # i.e. minus the former "t"); gathered later by luTriBlkKernel!.
+    # VI: the face diagonal c_L + c_R is added by the two elements (cS2 = 0)
     if has_below
-      Blk[ID, 1, iz] = -(r2_1a * C2_1 + ra[1] * C3)    # diag  of face iz-1
+      Blk[ID, 1, iz] = -(r2_1a * C2_1 + ra[1] * C3_1)    # diag  of face iz-1
+      if VI
+        Blk[ID, 1, iz] += c1
+      end
     end
     if has_below & has_above
-      Blk[ID, 2, iz] = -(r2_Ma * C2_2 + ra[M] * C3)    # sub   (iz, iz-1)
-      Blk[ID, 3, iz] = -(r2_1b * C2_1 + rb[1] * C3)    # super (iz-1, iz)
+      Blk[ID, 2, iz] = -(r2_Ma * C2_2 + ra[M] * C3_2)    # sub   (iz, iz-1)
+      Blk[ID, 3, iz] = -(r2_1b * C2_1 + rb[1] * C3_1)    # super (iz-1, iz)
     end
     if has_above
-      Blk[ID, 4, iz] = -(r2_Mb * C2_2 + rb[M] * C3)    # diag  of face iz
+      Blk[ID, 4, iz] = -(r2_Mb * C2_2 + rb[M] * C3_2)    # diag  of face iz
+      if VI
+        Blk[ID, 4, iz] += cM
+      end
     end
   end
 end
@@ -304,7 +340,7 @@ end
 # Solve! : forward elimination (element-local), tridiagonal solve, back-substitution
 ################################################################################
 @kernel inbounds = true function ldivHDGVerticalFKernel!(
-    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi),
+    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi), @Const(Cs),
     @Const(FacLoc), @Const(SA_gpu),
     @Const(b), RsC, @Const(J), @Const(NV), DWS, DWSS, cS, ::Val{M}, ::Val{VI}
 ) where {M, VI}
@@ -360,11 +396,12 @@ end
 
     # Contributions to the face RHS (gathered by ldivTriBlkKernel!).
     # RsC[ID,1,iz] -> face iz-1 (node 1), RsC[ID,2,iz] -> face iz (node M).
+    c1, cM = FaceSoundSpeed(Cs, cS, iz, ID, nz, Val(M), Val(VI))
     if iz > 1
-      RsC[ID, 1, iz] = -(r21 * (Ps[1, iz, ID] * dpL[1]) + r3[1] * (-cS))
+      RsC[ID, 1, iz] = -(r21 * (Ps[1, iz, ID] * dpL[1]) + r3[1] * (-c1))
     end
     if iz < nz
-      RsC[ID, 2, iz] = -(r2M * (-Ps[M, iz, ID] * dpL[M]) + r3[M] * (-cS))
+      RsC[ID, 2, iz] = -(r2M * (-Ps[M, iz, ID] * dpL[M]) + r3[M] * (-cM))
     end
   end
 end
@@ -372,7 +409,7 @@ end
 # b (input) and bout (output) may be the same array: every thread reads its own
 # nodes before writing them, so they are deliberately NOT marked @Const.
 @kernel inbounds = true function ldivHDGVerticalBKernel!(
-    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi),
+    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi), @Const(Cs),
     @Const(FacLoc), @Const(InvSurf),
     @Const(SA_gpu), b, bout, @Const(rs), @Const(J), @Const(NV),
     DWS, DWSS, wB, fac, cS, ::Val{M}, ::Val{VI}
@@ -408,11 +445,12 @@ end
     end
 
     # Face (trace) corrections
+    c1, cM = FaceSoundSpeed(Cs, cS, iz, ID, nz, Val(M), Val(VI))
     if iz < nz
       Thp  = Th[1, iz+1, ID]
       B1_2 = FT(0.5) * (Rm[M, iz, ID] + Rm[1, iz+1, ID]) * invwB
       B2_2 = FT(0.5) * (ThL[M] + Thp) * invwB
-      B3_2 = -invwB * cS
+      B3_2 = -invwB * cM
       rs_val = rs[ID, iz]
       r1[M] -= B1_2 * rs_val
       r2[M] -= B2_2 * rs_val
@@ -422,7 +460,7 @@ end
       Thm  = Th[M, iz-1, ID]
       B1_1 = -FT(0.5) * (Rm[1, iz, ID] + Rm[M, iz-1, ID]) * invwB
       B2_1 = -FT(0.5) * (ThL[1] + Thm) * invwB
-      B3_1 = -invwB * cS
+      B3_1 = -invwB * c1
       rs_val = rs[ID, iz-1]
       r1[1] -= B1_1 * rs_val
       r2[1] -= B2_1 * rs_val
@@ -483,7 +521,7 @@ function FillJacHDG!(Jac::JacHDG,DG,Metric,fac,Phys)
   Jac.cS = Phys.cS
 
   KFillJacHDGKernel! = FillJacHDGKernel!(backend)
-  KFillJacHDGKernel!(Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.FacLoc, Jac.InvSurf, Jac.SA, Jac.Blk,
+  KFillJacHDGKernel!(Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.Cs, Jac.FacLoc, Jac.InvSurf, Jac.SA, Jac.Blk,
     Jac.Geo, Metric.J, Metric.VolSurfVV,
     Jac.DWS, Jac.DWSS, Jac.wB, Jac.fac, Jac.cS, Val(M), Val(Jac.VI);
     ndrange=(nz, ND))
@@ -499,7 +537,8 @@ function SchurBoundary!(Jac::JacHDG)
   ND = Jac.NumI
 
   KluTriBlkKernel! = luTriBlkKernel!(backend, (128,))
-  KluTriBlkKernel!(Jac.SchurBand, Jac.Blk, FT(2) * Jac.cS, N; ndrange=(ND,))
+  cS2 = Jac.VI ? zero(FT) : FT(2) * Jac.cS
+  KluTriBlkKernel!(Jac.SchurBand, Jac.Blk, cS2, N; ndrange=(ND,))
 end  
 
 # bout = J^{-1} b   (bout and b may be the same array)
@@ -516,7 +555,7 @@ function SolveHDG!(Jac::JacHDG, bout, b, Metric)
   cS  = Jac.cS
 
   KldivVerticalFKernel! = ldivHDGVerticalFKernel!(backend)
-  KldivVerticalFKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.FacLoc, Jac.SA,
+  KldivVerticalFKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.Cs, Jac.FacLoc, Jac.SA,
     b, Jac.RsC, Metric.J, Metric.NVV, Jac.DWS, Jac.DWSS, cS, Val(M), Val(Jac.VI);
     ndrange=(nz, ND))
 
@@ -524,7 +563,7 @@ function SolveHDG!(Jac::JacHDG, bout, b, Metric)
   KldivTriBlkKernel!(Jac.SchurBand, Jac.RsC, Jac.rs, N; ndrange=(ND,))
 
   KldivVerticalBKernel! = ldivHDGVerticalBKernel!(backend)
-  KldivVerticalBKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.FacLoc, Jac.InvSurf, Jac.SA,
+  KldivVerticalBKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.Cs, Jac.FacLoc, Jac.InvSurf, Jac.SA,
     b, bout, Jac.rs, Metric.J, Metric.NVV, Jac.DWS, Jac.DWSS, Jac.wB, fac, cS, Val(M), Val(Jac.VI);
     ndrange=(nz, ND))
 end
@@ -533,7 +572,7 @@ function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDG,Global)
   InitGeo!(JCache,Cache,DG,Global)
   if Global.Model.ModelType == "VectorInvariant"
     JCache.VI = true
-    FillCoeffVI!(JCache.Th,JCache.dpdRhoTh,JCache.Rm,JCache.Ps,JCache.Pi,U,Phys)
+    FillCoeffVI!(JCache.Th,JCache.dpdRhoTh,JCache.Rm,JCache.Ps,JCache.Pi,JCache.Cs,U,Phys)
   else
     FillThetaAlpha!(JCache.Th,JCache.dpdRhoTh,U,Phys)
   end
