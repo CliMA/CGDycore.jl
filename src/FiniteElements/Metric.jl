@@ -684,7 +684,7 @@ end
     @unroll for l = 2 : N
       t11 += DH[J,l] * (XLoc[I,l,K,2] * DZdz[I,l,K] - XLoc[I,l,K,3] * DYdz[I,l,K])
       t21 += DH[J,l] * (XLoc[I,l,K,3] * DXdz[I,l,K] - XLoc[I,l,K,1] * DZdz[I,l,K])
-      t31 += DH[J,1] * (XLoc[I,l,K,1] * DYdz[I,l,K] - XLoc[I,l,K,2] * DXdz[I,l,K])
+      t31 += DH[J,l] * (XLoc[I,l,K,1] * DYdz[I,l,K] - XLoc[I,l,K,2] * DXdz[I,l,K])
     end  
 
     dXdxI[1,1,K,ID,IZ,IF] = 0.5 * (t11 - t12)
