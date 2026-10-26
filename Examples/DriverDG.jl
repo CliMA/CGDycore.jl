@@ -4,7 +4,10 @@ using MPI
 using Base
 using CUDA
 #using AMDGPU
-using Metal
+# Metal only on Apple machines
+if get(ENV, "JuliaGPU", "CUDA") == "Metal"
+  using Metal
+end
 using KernelAbstractions
 #using StaticArrays
 using ArgParse
