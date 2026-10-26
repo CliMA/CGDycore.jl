@@ -27,6 +27,11 @@ function parse_commandline()
     arg_type = String
     default = "KennedyGruberGrav"
 
+    "--CompensatedSum"
+    help = "Kahan compensated summation of the state update (Rosenbrock, RungeKuttaEx), for Float32"
+    arg_type = Bool
+    default = false
+
     "--DensityMeanDG"
     help = "Density mean in density flux and gravity term for PotTempTEC/PotTempEC (Arith, Log, Gamma)"
     arg_type = String

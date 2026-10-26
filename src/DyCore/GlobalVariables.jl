@@ -8,6 +8,7 @@ mutable struct TimeStepperStruct{FT<:AbstractFloat}
   SimMinutes::Int
   SimSeconds::Int
   SimTime::Float64
+  CompensatedSum::Bool
   ROS::Integration.RosenbrockMethod{FT}
   LinIMEX::Integration.LinIMEXMethod{FT}
   IMEX::Integration.IMEXDirkMethod{FT}
@@ -25,6 +26,7 @@ function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
   SimMinutes = 0
   SimSeconds = 0
   SimTime = 0.0
+  CompensatedSum = false
   ROS=Integration.RosenbrockMethod{FT}()
   LinIMEX=Integration.LinIMEXMethod{FT}()
   IMEX=Integration.IMEXDirkMethod{FT}()
@@ -41,6 +43,7 @@ function TimeStepperStruct{FT}(backend) where FT<:AbstractFloat
     SimMinutes,
     SimSeconds,
     SimTime,
+    CompensatedSum,
     ROS,
     LinIMEX,
     IMEX,

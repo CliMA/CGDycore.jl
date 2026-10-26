@@ -4,6 +4,7 @@ mutable struct CacheROSStruct{FT<:AbstractFloat,
   Vn::AT4
   k::AT5
   fV::AT4
+  Comp::AT4      # Kahan compensation of the state update
 end
 
 function Cache(backend,FT,IntMethod::RosenbrockMethod,FE,M,nz,NumV) 
@@ -13,12 +14,14 @@ function Cache(backend,FT,IntMethod::RosenbrockMethod,FE,M,nz,NumV)
   Vn = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV)
   fV = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   k = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage)
+  Comp = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   return CacheROSStruct{FT,
                      typeof(Vn),
                      typeof(k)}(
     Vn,
     k,
     fV,
+    Comp,
   )
 end
 
@@ -46,7 +49,11 @@ NVTX.@annotate function TimeIntegration!(ROS::RosenbrockMethod,V,dt,Fcn,Aux,Jac,
     @views AXPY!(fV,k[:,:,:,:,1:iStage-1],1/dtau,ROS.c[iStage,1:iStage-1],Global)
     @views Solve!(k[:,:,:,:,iStage],fV,JCache,dtau*ROS.gammaD,FE,Metric,Global,DiscType)
   end
-  AXPY!(V,k,ROS.m,Global)
+  if Global.TimeStepper.CompensatedSum
+    AXPYKahan!(V,Cache.Comp,k,ROS.m,Global)
+  else
+    AXPY!(V,k,ROS.m,Global)
+  end
 end
 
 NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlow,Aux,FE,Metric,

@@ -17,6 +17,7 @@ Discretization = parsed_args["Discretization"]
 Dimension = parsed_args["Dimension"]
 VelocityForm = parsed_args["VelocityForm"]
 FluxDG = parsed_args["FluxDG"]
+CompensatedSum = parsed_args["CompensatedSum"]
 DensityMeanDG = parsed_args["DensityMeanDG"]
 InterfaceFluxDG = parsed_args["InterfaceFluxDG"]
 ProfRho = parsed_args["ProfRho"]
@@ -464,6 +465,7 @@ Global.TimeStepper.SimHours = SimHours
 Global.TimeStepper.SimMinutes = SimMinutes
 Global.TimeStepper.SimSeconds = SimSeconds
 Global.TimeStepper.SimTime = SimTime
+Global.TimeStepper.CompensatedSum = CompensatedSum
 
 Parallels.InitExchangeData3D(backend,FTB,(OrdPolyZ+1),nz,NumV,Exchange)
 

@@ -3,6 +3,7 @@ mutable struct CacheRKEStruct{FT<:AbstractFloat,
                            AT5<:AbstractArray}
   Vn::AT4
   f::AT5
+  Comp::AT4      # Kahan compensation of the state update
 end
 
 function Cache(backend,FT,IntMethod::RungeKuttaExMethod,FE,M,nz,NumV)
@@ -11,11 +12,13 @@ function Cache(backend,FT,IntMethod::RungeKuttaExMethod,FE,M,nz,NumV)
   nStage = IntMethod.nStage
   Vn = KernelAbstractions.zeros(backend,FT,M,nz,NumG,NumV)
   f = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV,nStage)
+  Comp = KernelAbstractions.zeros(backend,FT,M,nz,NumI,NumV)
   return CacheRKEStruct{FT,
                      typeof(Vn),
                      typeof(f)}(
     Vn,
     f,
+    Comp,
   )
 end
 
@@ -35,8 +38,12 @@ function TimeIntegration!(RK::RungeKuttaExMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys
     end
     @views CallFcn!(FcnFull,f[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   end
-  @inbounds for iStage=1:RK.nStage
-    @views @. V = V + dtau * RK.b[iStage] * f[:,:,:,:,iStage]
+  if Global.TimeStepper.CompensatedSum
+    AXPYKahan!(V,Cache.Comp,f,dtau * RK.b,Global)
+  else
+    @inbounds for iStage=1:RK.nStage
+      @views @. V = V + dtau * RK.b[iStage] * f[:,:,:,:,iStage]
+    end
   end
 end
 
