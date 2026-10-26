@@ -43,21 +43,6 @@ end
     fRhoTh)
 end
 
-Base.@kwdef struct KennedyGruber <: AverageFlux end
-
-function (::KennedyGruber)(::Val{pPos}) where {pPos}
-  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR)
-    FT = eltype(VL)
-    qHat, uAv, vAv, wAv, m1, m2, m3 = contravariant_velocity(VL, VR, mL, mR)
-    RhoAv = FT(0.5) * (VL[1] + VR[1])
-    pM = FT(0.5) * (AuxL[pPos] + AuxR[pPos])
-    fRho = RhoAv * qHat
-    fRhoTh = fRho * FT(0.5) * (VL[5] + VR[5])
-    return flux_vector(fRho, fRhoTh, pM, uAv, vAv, wAv, m1, m2, m3)
-  end
-  return FluxNonLinAver
-end
-
 Base.@kwdef struct KennedyGruberGrav <: AverageFlux end
 
 function (::KennedyGruberGrav)(::Val{pPos}, ::Val{GPPos}) where {pPos, GPPos}

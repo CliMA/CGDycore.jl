@@ -356,9 +356,6 @@ Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
 DGSEM.SetFluxes!(Model,DG,FTB,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,P.cS)
-if FluxDG == "KennedyGruber"
-  Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos;RadEarth=FTB(RadEarth))
-end
 
 if ModelType == "Boussinesq"
   Model.BuoyancyFun = CGSEM.BuoyancyBoussinesq()(Param,Model.wPos,Model.RhoThPos)

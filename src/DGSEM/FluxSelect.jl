@@ -28,9 +28,7 @@ function SetFluxes!(Model,DG,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,
     error("split-form volume fluxes need the variables (Rho,Rhou,Rhov,Rhow,RhoTh) at positions 1:5")
   end
 
-  if FluxDG == "KennedyGruber"
-    FluxAverage = KennedyGruber()(Val(pAuxPos))
-  elseif FluxDG == "KennedyGruberGrav"
+  if FluxDG == "KennedyGruberGrav"
     FluxAverage = KennedyGruberGrav()(Val(pAuxPos),Val(GPAuxPos))
   elseif FluxDG == "PotTempTEC"
     FluxAverage = PotTempTEC()(Val(pAuxPos),Val(GPAuxPos),SetDensityMean(DensityMeanDG),FT(Phys.Gamma))
