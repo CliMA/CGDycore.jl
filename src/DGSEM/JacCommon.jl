@@ -34,6 +34,35 @@ function FillThetaAlpha!(Th,Al,U,Phys)
   KThetaAlphaKernel!(Th,Al,U,kfac,kexp,Rdp0;ndrange=(M,nz,ND))
 end
 
+# Vector invariant form: Th = rhotheta, Al = dPi / drhotheta, Rm = rho,
+# Ps = cp theta and the Exner pressure Pi = (Rd rhotheta / p0)^(Rd/Cvd)
+@kernel inbounds = true function CoeffVIKernel!(Th,Al,Rm,Ps,Pi,@Const(U),Cpd,ex,Rdp0)
+  i,iz,ID = @index(Global, NTuple)
+  ND = @uniform @ndrange()[3]
+  if ID <= ND
+    Rho = U[i,iz,ID,1]
+    RhoTh = U[i,iz,ID,5]
+    PiLoc = (Rdp0 * RhoTh)^ex
+    Th[i,iz,ID] = RhoTh
+    Al[i,iz,ID] = ex * PiLoc / RhoTh
+    Rm[i,iz,ID] = Rho
+    Ps[i,iz,ID] = Cpd * RhoTh / Rho
+    Pi[i,iz,ID] = PiLoc
+  end
+end
+
+function FillCoeffVI!(Th,Al,Rm,Ps,Pi,U,Phys)
+  backend = get_backend(Th)
+  FT = eltype(Th)
+  M, nz, ND = size(Th)
+  Cpd  = FT(Phys.Cpd)
+  ex   = FT(Phys.Rd) / FT(Phys.Cvd)
+  Rdp0 = FT(Phys.Rd) / FT(Phys.p0)
+  NDG = max(1,min(div(256,M*nz),ND))
+  KCoeffVIKernel! = CoeffVIKernel!(backend,(M,nz,NDG))
+  KCoeffVIKernel!(Th,Al,Rm,Ps,Pi,U,Cpd,ex,Rdp0;ndrange=(M,nz,ND))
+end
+
 ################################################################################
 # Interface fluxes, variable order (rho, rhotheta, rhow)
 ################################################################################

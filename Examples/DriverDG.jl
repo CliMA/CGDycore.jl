@@ -492,9 +492,6 @@ if Proc == 1
 end
 dtau = FTB(dtau)
 
-if ModelType == "VectorInvariant" && IntMethod != "RungeKuttaEx"
-  error("ModelType VectorInvariant has no vertical Jacobian yet, use IntMethod RungeKuttaEx")
-end
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
 # O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()

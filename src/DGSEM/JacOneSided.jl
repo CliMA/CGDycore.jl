@@ -469,6 +469,9 @@ function SolveOneSided!(Jac::JacOneSided,k,v,DG,Metric,facH)
 end
 
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacOneSided,Global)
+  if Global.Model.ModelType == "VectorInvariant"
+    error("HEVISolver $(typeof(JCache).name.name) is not available for ModelType VectorInvariant, use HDG")
+  end
   InitGeo!(JCache,Cache,DG,Global)
   FillThetaAlpha!(JCache.Th,JCache.Al,U,Phys)
   FillJacOneSided!(JCache,DG,Metric,eltype(U)(1) / fac,Phys)

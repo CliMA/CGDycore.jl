@@ -17,6 +17,16 @@ using LinearAlgebra
 #
 # There are no atomics: every element writes its own contributions and the
 # tridiagonal kernels gather them (also makes the result deterministic).
+#
+# The same linear algebra serves the conservative variables (rho, rhotheta,
+# rhow) and the vector invariant variables (rho, rhotheta, w); only the node
+# coefficients differ (VI = true for the vector invariant form):
+#   Rm  : coefficient of the mass flux        1             | rho
+#   Th  : coefficient of the rhotheta flux    theta         | rhotheta
+#   dpdRhoTh : pressure derivative            dp/drhotheta  | dPi/drhotheta
+#   Ps  : scaling of the pressure term        1             | cp theta
+#   gravity                                   split A31     | linearized
+#     cp theta grad(Pi): diagonal cp (D Pi)_i (delta rhotheta - theta delta rho) / rho
 ################################################################################
 
 mutable struct JacHDG{FT<:AbstractFloat,
@@ -40,6 +50,10 @@ mutable struct JacHDG{FT<:AbstractFloat,
   Geo::AT3               # geopotential copy; A31 is rebuilt from it on the fly
   Th::AT3
   dpdRhoTh::AT3
+  Rm::AT3
+  Ps::AT3
+  Pi::AT3                # Exner pressure (vector invariant form)
+  VI::Bool
   FacLoc::AT3            # fac * Surf / J
   InvSurf::AT3           # 1 / Surf
 
@@ -71,6 +85,9 @@ function JacHDG(backend, FT, M, nz, DG)
   Geo      = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
   Th       = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
   dpdRhoTh = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
+  Rm       = KernelAbstractions.ones(backend, FT, M, nz, NumI)
+  Ps       = KernelAbstractions.ones(backend, FT, M, nz, NumI)
+  Pi       = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
   FacLoc   = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
   InvSurf  = KernelAbstractions.zeros(backend, FT, M, nz, NumI)
 
@@ -98,6 +115,10 @@ function JacHDG(backend, FT, M, nz, DG)
     Geo,
     Th,
     dpdRhoTh,
+    Rm,
+    Ps,
+    Pi,
+    false,
     FacLoc,
     InvSurf,
     SA,
@@ -126,14 +147,43 @@ end
   return SMatrix(A)
 end
 
+# Gravity matrix GM (acts on rho) and pressure matrix PrM (acts on rhotheta)
+# of the vertical momentum row
+@inline function build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, ::Val{M}, ::Val{false}) where {M}
+  FT = eltype(Geo)
+  GM = build_A31(Geo, DWS, iz, ID, Val(M))
+  PrM = SMatrix{M, M, FT, M*M}(ntuple(n -> DWSS[mod1(n, M), div(n - 1, M) + 1] * dpdRhoTh[div(n - 1, M) + 1, iz, ID], Val(M*M)))
+  return GM, PrM
+end
+
+@inline function build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, ::Val{M}, ::Val{true}) where {M}
+  FT = eltype(Geo)
+  GM = MMatrix{M, M, FT, M*M}(ntuple(n -> zero(FT), Val(M*M)))
+  PrM = MMatrix{M, M, FT, M*M}(undef)
+  @unroll for i = 1:M
+    dPi = zero(FT)
+    @unroll for k = 1:M
+      dPi = muladd(DWSS[i, k], Pi[k, iz, ID], dPi)
+    end
+    # cp (D Pi)_i / rho_i with cp = Ps_i / theta_i, theta_i = ThL_i / Rm_i
+    Bt = Ps[i, iz, ID] * dPi / Th[i, iz, ID]
+    GM[i, i] = -Bt * Th[i, iz, ID] / Rm[i, iz, ID]
+    @unroll for k = 1:M
+      PrM[i, k] = Ps[i, iz, ID] * DWSS[i, k] * dpdRhoTh[k, iz, ID]
+    end
+    PrM[i, i] += Bt
+  end
+  return SMatrix(GM), SMatrix(PrM)
+end
+
 ################################################################################
 # Jac! : build and factor the local matrices, per-element Schur contributions
 ################################################################################
 @kernel inbounds = true function FillJacHDGKernel!(
-    @Const(Th), @Const(dpdRhoTh), FacLoc, InvSurf, SA_gpu, Blk,
+    @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi), FacLoc, InvSurf, SA_gpu, Blk,
     @Const(Geo), @Const(J), @Const(Surf),
-    DWS, DWSS, wB, fac, cS, ::Val{M}
-) where {M}
+    DWS, DWSS, wB, fac, cS, ::Val{M}, ::Val{VI}
+) where {M, VI}
 
   iz, ID = @index(Global, NTuple)
 
@@ -162,8 +212,13 @@ end
       InvSurf[i, iz, ID]  = inv(Sf)
     end
 
-    # Gravity matrix from the geopotential (not stored)
-    A31 = build_A31(Geo, DWS, iz, ID, Val(M))
+    RmL = MVector{M, FT}(undef)
+    @unroll for i = 1:M
+      RmL[i] = Rm[i, iz, ID]
+    end
+
+    # Gravity and pressure matrices (not stored)
+    GM, PrM = build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, Val(M), Val(VI))
 
     # Local matrix SA (in registers)
     SA_loc = MMatrix{M, M, FT, M*M}(undef)
@@ -171,7 +226,7 @@ end
       @unroll for j = 1:M
         val = zero(FT)
         @unroll for k = 1:M
-          val = muladd(-(DWSS[i,k] * dpL[k] * ThL[j] + A31[i,k]), DWS[k,j], val)
+          val = muladd(-(PrM[i,k] * ThL[j] + GM[i,k] * RmL[j]), DWS[k,j], val)
         end
         SA_loc[i,j] = val * facL[i]
       end
@@ -184,19 +239,21 @@ end
     LUInv!(SA_loc, Val(M))
     SA_gpu[iz, ID] = SA_loc
 
-    # Neighbouring theta (only used when the neighbour exists)
+    # Neighbouring coefficients (only used when the neighbour exists)
     Thm = has_below ? Th[M, iz-1, ID] : ThL[1]
     Thp = has_above ? Th[1, iz+1, ID] : ThL[M]
+    Rmm = has_below ? Rm[M, iz-1, ID] : RmL[1]
+    Rmp = has_above ? Rm[1, iz+1, ID] : RmL[M]
 
     # Trace couplings: lower face (node 1) and upper face (node M)
-    B1_1 = -invwB
+    B1_1 = -FT(0.5) * (RmL[1] + Rmm) * invwB
     B2_1 = -FT(0.5) * (ThL[1] + Thm) * invwB
     B3_1 = -invwB * cS
-    B1_2 =  invwB
+    B1_2 =  FT(0.5) * (RmL[M] + Rmp) * invwB
     B2_2 =  FT(0.5) * (ThL[M] + Thp) * invwB
     B3_2 = -invwB * cS
-    C2_1 =  dpL[1]
-    C2_2 = -dpL[M]
+    C2_1 =  Ps[1, iz, ID] * dpL[1]
+    C2_2 = -Ps[M, iz, ID] * dpL[M]
     C3   = -cS
 
     # RHS for the lower-face column (ra) and the upper-face column (rb);
@@ -204,8 +261,8 @@ end
     ra = MVector{M, FT}(undef)
     rb = MVector{M, FT}(undef)
     @unroll for i = 1:M
-      ra[i] = -(A31[i,1] * B1_1 + DWSS[i,1] * dpL[1] * B2_1) * facL[i]
-      rb[i] = -(A31[i,M] * B1_2 + DWSS[i,M] * dpL[M] * B2_2) * facL[i]
+      ra[i] = -(GM[i,1] * B1_1 + PrM[i,1] * B2_1) * facL[i]
+      rb[i] = -(GM[i,M] * B1_2 + PrM[i,M] * B2_2) * facL[i]
     end
     ra[1] += B3_1
     rb[M] += B3_2
@@ -247,9 +304,10 @@ end
 # Solve! : forward elimination (element-local), tridiagonal solve, back-substitution
 ################################################################################
 @kernel inbounds = true function ldivHDGVerticalFKernel!(
-    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(FacLoc), @Const(SA_gpu),
-    @Const(b), RsC, @Const(J), @Const(NV), DWS, DWSS, cS, ::Val{M}
-) where {M}
+    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi),
+    @Const(FacLoc), @Const(SA_gpu),
+    @Const(b), RsC, @Const(J), @Const(NV), DWS, DWSS, cS, ::Val{M}, ::Val{VI}
+) where {M, VI}
 
   iz, ID = @index(Global, NTuple)
 
@@ -277,12 +335,12 @@ end
                NV[3,i,iz,ID] * b[i, iz, ID, wPos]) * Ji
     end
 
-    A31 = build_A31(Geo, DWS, iz, ID, Val(M))
+    GM, PrM = build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, Val(M), Val(VI))
     @unroll for i = 1:M
       acc = zero(FT)
       @unroll for j = 1:M
-        acc = muladd(A31[i,j], r1[j], acc)
-        acc = muladd(DWSS[i,j] * dpL[j], r2[j], acc)
+        acc = muladd(GM[i,j], r1[j], acc)
+        acc = muladd(PrM[i,j], r2[j], acc)
       end
       r3[i] -= acc * FacLoc[i, iz, ID]
     end
@@ -303,10 +361,10 @@ end
     # Contributions to the face RHS (gathered by ldivTriBlkKernel!).
     # RsC[ID,1,iz] -> face iz-1 (node 1), RsC[ID,2,iz] -> face iz (node M).
     if iz > 1
-      RsC[ID, 1, iz] = -(r21 * dpL[1] + r3[1] * (-cS))
+      RsC[ID, 1, iz] = -(r21 * (Ps[1, iz, ID] * dpL[1]) + r3[1] * (-cS))
     end
     if iz < nz
-      RsC[ID, 2, iz] = -(r2M * (-dpL[M]) + r3[M] * (-cS))
+      RsC[ID, 2, iz] = -(r2M * (-Ps[M, iz, ID] * dpL[M]) + r3[M] * (-cS))
     end
   end
 end
@@ -314,10 +372,11 @@ end
 # b (input) and bout (output) may be the same array: every thread reads its own
 # nodes before writing them, so they are deliberately NOT marked @Const.
 @kernel inbounds = true function ldivHDGVerticalBKernel!(
-    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(FacLoc), @Const(InvSurf),
+    @Const(Geo), @Const(Th), @Const(dpdRhoTh), @Const(Rm), @Const(Ps), @Const(Pi),
+    @Const(FacLoc), @Const(InvSurf),
     @Const(SA_gpu), b, bout, @Const(rs), @Const(J), @Const(NV),
-    DWS, DWSS, wB, fac, cS, ::Val{M}
-) where {M}
+    DWS, DWSS, wB, fac, cS, ::Val{M}, ::Val{VI}
+) where {M, VI}
 
   iz, ID = @index(Global, NTuple)
 
@@ -351,7 +410,7 @@ end
     # Face (trace) corrections
     if iz < nz
       Thp  = Th[1, iz+1, ID]
-      B1_2 = invwB
+      B1_2 = FT(0.5) * (Rm[M, iz, ID] + Rm[1, iz+1, ID]) * invwB
       B2_2 = FT(0.5) * (ThL[M] + Thp) * invwB
       B3_2 = -invwB * cS
       rs_val = rs[ID, iz]
@@ -361,7 +420,7 @@ end
     end
     if iz > 1
       Thm  = Th[M, iz-1, ID]
-      B1_1 = -invwB
+      B1_1 = -FT(0.5) * (Rm[1, iz, ID] + Rm[M, iz-1, ID]) * invwB
       B2_1 = -FT(0.5) * (ThL[1] + Thm) * invwB
       B3_1 = -invwB * cS
       rs_val = rs[ID, iz-1]
@@ -370,12 +429,12 @@ end
       r3[1] -= B3_1 * rs_val
     end
 
-    A31 = build_A31(Geo, DWS, iz, ID, Val(M))
+    GM, PrM = build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, Val(M), Val(VI))
     @unroll for i = 1:M
       acc = zero(FT)
       @unroll for j = 1:M
-        acc = muladd(A31[i,j], r1[j], acc)
-        acc = muladd(DWSS[i,j] * dpL[j], r2[j], acc)
+        acc = muladd(GM[i,j], r1[j], acc)
+        acc = muladd(PrM[i,j], r2[j], acc)
       end
       r3[i] -= acc * FacLoc[i, iz, ID]          # r3 now holds the solve RHS
     end
@@ -387,7 +446,7 @@ end
       s1 = r1[i]
       s2 = r2[i]
       @unroll for j = 1:M
-        s1 -= DWS[i, j] * r3[j]
+        s1 -= DWS[i, j] * (Rm[j, iz, ID] * r3[j])
         s2 -= DWS[i, j] * ThL[j] * r3[j]
       end
       fl = FacLoc[i, iz, ID]
@@ -424,9 +483,9 @@ function FillJacHDG!(Jac::JacHDG,DG,Metric,fac,Phys)
   Jac.cS = Phys.cS
 
   KFillJacHDGKernel! = FillJacHDGKernel!(backend)
-  KFillJacHDGKernel!(Jac.Th, Jac.dpdRhoTh, Jac.FacLoc, Jac.InvSurf, Jac.SA, Jac.Blk,
+  KFillJacHDGKernel!(Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.FacLoc, Jac.InvSurf, Jac.SA, Jac.Blk,
     Jac.Geo, Metric.J, Metric.VolSurfVV,
-    Jac.DWS, Jac.DWSS, Jac.wB, Jac.fac, Jac.cS, Val(M);
+    Jac.DWS, Jac.DWSS, Jac.wB, Jac.fac, Jac.cS, Val(M), Val(Jac.VI);
     ndrange=(nz, ND))
 end   
 
@@ -457,22 +516,27 @@ function SolveHDG!(Jac::JacHDG, bout, b, Metric)
   cS  = Jac.cS
 
   KldivVerticalFKernel! = ldivHDGVerticalFKernel!(backend)
-  KldivVerticalFKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.FacLoc, Jac.SA,
-    b, Jac.RsC, Metric.J, Metric.NVV, Jac.DWS, Jac.DWSS, cS, Val(M);
+  KldivVerticalFKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.FacLoc, Jac.SA,
+    b, Jac.RsC, Metric.J, Metric.NVV, Jac.DWS, Jac.DWSS, cS, Val(M), Val(Jac.VI);
     ndrange=(nz, ND))
 
   KldivTriBlkKernel! = ldivTriBlkKernel!(backend, (128,))
   KldivTriBlkKernel!(Jac.SchurBand, Jac.RsC, Jac.rs, N; ndrange=(ND,))
 
   KldivVerticalBKernel! = ldivHDGVerticalBKernel!(backend)
-  KldivVerticalBKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.FacLoc, Jac.InvSurf, Jac.SA,
-    b, bout, Jac.rs, Metric.J, Metric.NVV, Jac.DWS, Jac.DWSS, Jac.wB, fac, cS, Val(M);
+  KldivVerticalBKernel!(Jac.Geo, Jac.Th, Jac.dpdRhoTh, Jac.Rm, Jac.Ps, Jac.Pi, Jac.FacLoc, Jac.InvSurf, Jac.SA,
+    b, bout, Jac.rs, Metric.J, Metric.NVV, Jac.DWS, Jac.DWSS, Jac.wB, fac, cS, Val(M), Val(Jac.VI);
     ndrange=(nz, ND))
 end
 
 function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDG,Global)
   InitGeo!(JCache,Cache,DG,Global)
-  FillThetaAlpha!(JCache.Th,JCache.dpdRhoTh,U,Phys)
+  if Global.Model.ModelType == "VectorInvariant"
+    JCache.VI = true
+    FillCoeffVI!(JCache.Th,JCache.dpdRhoTh,JCache.Rm,JCache.Ps,JCache.Pi,U,Phys)
+  else
+    FillThetaAlpha!(JCache.Th,JCache.dpdRhoTh,U,Phys)
+  end
   FillJacHDG!(JCache,DG,Metric,fac,Phys)
   SchurBoundary!(JCache)
 end
