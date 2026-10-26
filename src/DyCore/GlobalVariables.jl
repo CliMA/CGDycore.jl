@@ -398,6 +398,8 @@ Base.@kwdef mutable struct ModelStruct{FT}
   SurfaceFluxValues::Any
   MetricType::String
   HEVISolver::String
+  ThetaMeanDG::String
+  SoundSpeedDG::String
 end
 
 function ModelStruct{FT}() where FT <:AbstractFloat
@@ -503,6 +505,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   SurfaceFluxValues = ""
   MetricType = ""
   HEVISolver = "HDG"
+  ThetaMeanDG = "Log"
+  SoundSpeedDG = "Local"
   return ModelStruct{FT}(
    Problem,
    Discretization,
@@ -606,6 +610,8 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    SurfaceFluxValues,
    MetricType,
    HEVISolver,
+   ThetaMeanDG,
+   SoundSpeedDG,
    )
 end  
 

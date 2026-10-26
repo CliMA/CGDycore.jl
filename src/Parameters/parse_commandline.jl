@@ -27,6 +27,16 @@ function parse_commandline()
     arg_type = String
     default = "KennedyGruberGrav"
 
+    "--ThetaMeanDG"
+    help = "Numerical theta of the vector invariant fluxes: Log (1/{{1/theta}}_log) or Arith ({{theta}})"
+    arg_type = String
+    default = "Log"
+
+    "--SoundSpeedDG"
+    help = "Sound speed of the vector invariant interface flux: Local ({{c}}) or Fixed (cS)"
+    arg_type = String
+    default = "Local"
+
     "--CompensatedSum"
     help = "Kahan compensated summation of the state update (Rosenbrock, RungeKuttaEx), for Float32"
     arg_type = Bool

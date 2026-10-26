@@ -29,7 +29,7 @@ end
 
 function SetFluxes!(Model,DG,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,cS)
   if Model.ModelType == "VectorInvariant"
-    SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos)
+    SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos,cS)
     return
   end
 
@@ -78,7 +78,7 @@ end
 # pressure is kept in Aux at ExnerAuxPos.
 const ExnerAuxPos = 3
 
-function SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos)
+function SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos,cS)
   if (Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos) != (1,2,3,4,5) || Model.NumV != 5
     error("VectorInvariant needs the variables (Rho,u,v,w,RhoTh) at positions 1:5")
   end
@@ -86,8 +86,23 @@ function SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,
     error("VectorInvariant keeps the Exner pressure at Aux position $ExnerAuxPos, use NumAux >= $ExnerAuxPos")
   end
 
+  if Model.ThetaMeanDG == "Log"
+    ThMean = LogMean()
+  elseif Model.ThetaMeanDG == "Arith"
+    ThMean = ArithMean()
+  else
+    error("ThetaMeanDG = $(Model.ThetaMeanDG), choose Log or Arith")
+  end
+  if Model.SoundSpeedDG == "Local"
+    cFix = zero(FT)
+  elseif Model.SoundSpeedDG == "Fixed"
+    cFix = FT(cS)
+  else
+    error("SoundSpeedDG = $(Model.SoundSpeedDG), choose Local or Fixed")
+  end
+
   if FluxDG == "VectorInvariant"
-    FluxAverage = VectorInvariantFlux()(Val(ExnerAuxPos),Val(GPAuxPos),FT(Phys.Cpd))
+    FluxAverage = VectorInvariantFlux()(Val(ExnerAuxPos),Val(GPAuxPos),FT(Phys.Cpd),ThMean)
   else
     error("FluxDG = $FluxDG is not available for ModelType VectorInvariant, use VectorInvariant")
   end
@@ -96,7 +111,7 @@ function SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,
 
   if InterfaceFluxDG == "RiemannVectorInvariant"
     Model.RiemannSolver = RiemannVectorInvariant()(Val(pAuxPos),Val(ExnerAuxPos),Val(GPAuxPos),
-      FT(Phys.Cpd),FT(Phys.Gamma))
+      FT(Phys.Cpd),FT(Phys.Gamma),ThMean,cFix)
   else
     error("InterfaceFluxDG = $InterfaceFluxDG is not available for ModelType VectorInvariant, use RiemannVectorInvariant")
   end

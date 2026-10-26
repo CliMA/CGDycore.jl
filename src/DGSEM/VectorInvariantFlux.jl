@@ -15,11 +15,17 @@
 # the diagonal, so the split-form volume kernels are used unchanged).
 ################################################################################
 
+# Numerical theta: LogMean 1/{{1/theta}}_log (entropy conservative,
+# well-balanced for T = const and theta = const) or ArithMean {{theta}}
+# (total energy conservative, well-balanced for theta = const)
+@inline ThetaNum(::LogMean, ThL, ThR) = inv_ln_mean(one(ThL) / ThL, one(ThR) / ThR)
+@inline ThetaNum(::ArithMean, ThL, ThR) = typeof(ThL)(0.5) * (ThL + ThR)
+
 # Well-balanced, entropy and total energy conservative volume flux (Eq. 58),
 # primitive states (rho, u, v, w, theta)
 Base.@kwdef struct VectorInvariantFlux <: AverageFlux end
 
-function (::VectorInvariantFlux)(::Val{ExPos}, ::Val{GPPos}, Cpd) where {ExPos, GPPos}
+function (::VectorInvariantFlux)(::Val{ExPos}, ::Val{GPPos}, Cpd, ThMean = LogMean()) where {ExPos, GPPos}
   @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR)
     FT = eltype(VL)
     n1 = FT(0.5) * (mL[1] + mR[1])
@@ -33,7 +39,7 @@ function (::VectorInvariantFlux)(::Val{ExPos}, ::Val{GPPos}, Cpd) where {ExPos, 
     m2 = FT(0.5) * (RhoL * VL[3] + RhoR * VR[3])
     m3 = FT(0.5) * (RhoL * VL[4] + RhoR * VR[4])
     fRho = n1 * m1 + n2 * m2 + n3 * m3
-    ThNum = inv_ln_mean(FT(1) / VL[5], FT(1) / VR[5])
+    ThNum = ThetaNum(ThMean, VL[5], VR[5])
     fRhoTh = fRho * ThNum
     KAv = FT(0.25) * (VL[2] * VL[2] + VL[3] * VL[3] + VL[4] * VL[4] +
       VR[2] * VR[2] + VR[3] * VR[3] + VR[4] * VR[4])
@@ -60,9 +66,11 @@ end
 # Entropy stable and well-balanced interface flux (Eq. 72) with the
 # nonconservative surface term: FL = f + 1/2 H [[g]], FR = f - 1/2 H [[g]].
 # Stored states (rho, u, v, w, rho theta), unit normal n from L to R.
+# cFix > 0: fixed sound speed cFix instead of {{c}} = {{sqrt(gamma p / rho)}}.
 Base.@kwdef struct RiemannVectorInvariant <: RiemannSolver end
 
-function (::RiemannVectorInvariant)(::Val{pPos}, ::Val{ExPos}, ::Val{GPPos}, Cpd, Gamma) where {pPos, ExPos, GPPos}
+function (::RiemannVectorInvariant)(::Val{pPos}, ::Val{ExPos}, ::Val{GPPos}, Cpd, Gamma,
+  ThMean = LogMean(), cFix = zero(Cpd)) where {pPos, ExPos, GPPos}
   @inline function RiemannVI!(FL, FR, VLL, VRR, AuxL, AuxR, n1, n2, n3)
     FT = eltype(FL)
     RhoL = VLL[1]
@@ -72,8 +80,12 @@ function (::RiemannVectorInvariant)(::Val{pPos}, ::Val{ExPos}, ::Val{GPPos}, Cpd
     ThL = VLL[5] / RhoL
     ThR = VRR[5] / RhoR
     RhoAv = FT(0.5) * (RhoL + RhoR)
-    cAv = FT(0.5) * (sqrt(Gamma * AuxL[pPos] / RhoL) + sqrt(Gamma * AuxR[pPos] / RhoR))
-    ThNum = inv_ln_mean(FT(1) / ThL, FT(1) / ThR)
+    if cFix > FT(0)
+      cAv = cFix
+    else
+      cAv = FT(0.5) * (sqrt(Gamma * AuxL[pPos] / RhoL) + sqrt(Gamma * AuxR[pPos] / RhoR))
+    end
+    ThNum = ThetaNum(ThMean, ThL, ThR)
     PG = Cpd * ThNum * (AuxR[ExPos] - AuxL[ExPos]) + (AuxR[GPPos] - AuxL[GPPos])
 
     Vn = FT(0.5) * ((uL + uR) * n1 + (vL + vR) * n2 + (wL + wR) * n3)

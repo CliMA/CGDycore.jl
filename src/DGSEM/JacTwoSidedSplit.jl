@@ -585,7 +585,7 @@ function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacTwoSidedSplit,Global)
   InitGeo!(JCache,Cache,DG,Global)
   if Global.Model.ModelType == "VectorInvariant"
     JCache.VI = true
-    FillCoeffVI!(JCache.Th,JCache.Al,JCache.Rm,JCache.Ps,JCache.Pi,JCache.Cs,U,Phys)
+    FillCoeffVI!(JCache.Th,JCache.Al,JCache.Rm,JCache.Ps,JCache.Pi,JCache.Cs,U,Phys,Global.Model.SoundSpeedDG)
   else
     FillThetaAlpha!(JCache.Th,JCache.Al,U,Phys)
   end

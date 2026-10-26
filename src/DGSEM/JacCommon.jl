@@ -36,8 +36,8 @@ end
 
 # Vector invariant form: Th = rhotheta, Al = dPi / drhotheta, Rm = rho,
 # Ps = cp theta, the Exner pressure Pi = (Rd rhotheta / p0)^(Rd/Cvd) and the
-# sound speed Cs = sqrt(gamma p / rho)
-@kernel inbounds = true function CoeffVIKernel!(Th,Al,Rm,Ps,Pi,Cs,@Const(U),Cpd,ex,Rdp0,p0,Gamma)
+# sound speed Cs = sqrt(gamma p / rho), or the fixed cFix > 0 of the interface flux
+@kernel inbounds = true function CoeffVIKernel!(Th,Al,Rm,Ps,Pi,Cs,@Const(U),Cpd,ex,Rdp0,p0,Gamma,cFix)
   i,iz,ID = @index(Global, NTuple)
   ND = @uniform @ndrange()[3]
   if ID <= ND
@@ -49,11 +49,11 @@ end
     Rm[i,iz,ID] = Rho
     Ps[i,iz,ID] = Cpd * RhoTh / Rho
     Pi[i,iz,ID] = PiLoc
-    Cs[i,iz,ID] = sqrt(Gamma * p0 * (Rdp0 * RhoTh)^Gamma / Rho)
+    Cs[i,iz,ID] = cFix > 0 ? cFix : sqrt(Gamma * p0 * (Rdp0 * RhoTh)^Gamma / Rho)
   end
 end
 
-function FillCoeffVI!(Th,Al,Rm,Ps,Pi,Cs,U,Phys)
+function FillCoeffVI!(Th,Al,Rm,Ps,Pi,Cs,U,Phys,SoundSpeedDG)
   backend = get_backend(Th)
   FT = eltype(Th)
   M, nz, ND = size(Th)
@@ -62,9 +62,10 @@ function FillCoeffVI!(Th,Al,Rm,Ps,Pi,Cs,U,Phys)
   Rdp0 = FT(Phys.Rd) / FT(Phys.p0)
   p0   = FT(Phys.p0)
   Gamma = FT(Phys.Cpd) / FT(Phys.Cvd)
+  cFix = SoundSpeedDG == "Fixed" ? FT(Phys.cS) : zero(FT)
   NDG = max(1,min(div(256,M*nz),ND))
   KCoeffVIKernel! = CoeffVIKernel!(backend,(M,nz,NDG))
-  KCoeffVIKernel!(Th,Al,Rm,Ps,Pi,Cs,U,Cpd,ex,Rdp0,p0,Gamma;ndrange=(M,nz,ND))
+  KCoeffVIKernel!(Th,Al,Rm,Ps,Pi,Cs,U,Cpd,ex,Rdp0,p0,Gamma,cFix;ndrange=(M,nz,ND))
 end
 
 ################################################################################

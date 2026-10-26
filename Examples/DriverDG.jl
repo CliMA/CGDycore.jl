@@ -114,6 +114,8 @@ OrdPoly = parsed_args["OrdPoly"]
 OrdPolyZ = parsed_args["OrdPolyZ"]
 MetricType = parsed_args["MetricType"]
 HEVISolver = parsed_args["HEVISolver"]
+ThetaMeanDG = parsed_args["ThetaMeanDG"]
+SoundSpeedDG = parsed_args["SoundSpeedDG"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -273,6 +275,8 @@ Model.State = State
 Model.ModelType = ModelType
 Model.MetricType = MetricType
 Model.HEVISolver = HEVISolver
+Model.ThetaMeanDG = ThetaMeanDG
+Model.SoundSpeedDG = SoundSpeedDG
 
 if VelocityForm == "Spherical"  
    VelForm = Examples.VelocityS()
