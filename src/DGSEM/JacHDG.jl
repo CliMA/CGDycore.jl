@@ -477,13 +477,6 @@ function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDG,Global)
   SchurBoundary!(JCache)
 end
 
-function JacFrozen!(Aux,fac,DG,Metric,Phys,Cache,JCache::JacHDG,Global)
-  InitGeo!(JCache,Cache,DG,Global)
-  FillThetaAlphaFrozen!(JCache.Th,JCache.dpdRhoTh,Aux)
-  FillJacHDG!(JCache,DG,Metric,fac,Phys)
-  SchurBoundary!(JCache)
-end
-
 # k = J^{-1} v : the copy k = v is fused into the kernels (v is read, k is written)
 function Solve!(k,v,Jac::JacHDG,fac,DG::FiniteElements.DGElement,Metric,Global)
   SolveHDG!(Jac, k, v, Metric)

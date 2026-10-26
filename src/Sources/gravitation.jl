@@ -51,14 +51,15 @@ function (GeoPotentialFun::GeoPotentialDeep)(GeoPos,RadEarth,::Grids.SphericalGr
   @inline function GeoPotential(Aux,X)
     FT = eltype(X)
     r = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
-    Aux[GeoPos] = P.Grav * (RadEarth - RadEarth^2 / r)
+    Aux[GeoPos] = FT(P.Grav) * (FT(RadEarth) - FT(RadEarth)^2 / r)
   end
   return GeoPotential
 end
 
 function (GeoPotentialFun::GeoPotentialDeep)(GeoPos,RadEarth,::Grids.CartesianGrid)
   @inline function GeoPotential(Aux,X)
-    Aux[GeoPos] =  P.Grav * X[3] 
+    FT = eltype(X)
+    Aux[GeoPos] =  FT(P.Grav) * X[3] 
   end
   return GeoPotential
 end
@@ -90,9 +91,9 @@ Base.@kwdef struct BuoyancyDeep <: BuoyancyType end
 
 function (::BuoyancyDeep)(::Grids.SphericalGrid,::Examples.VelocityC,RhoPos,uPos,vPos,wPos;RadEarth=P.RadEarth)
   @inline function Buoyancy(F,U,X)
-
+    FT = eltype(X)
     r = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
-    fac = -P.Grav * (RadEarth / r)^2 / r * U[RhoPos]
+    fac = -FT(P.Grav) * (FT(RadEarth) / r)^2 / r * U[RhoPos]
     F[uPos] += fac * X[1]
     F[vPos] += fac * X[2]
     F[wPos] += fac * X[3]
@@ -102,9 +103,9 @@ end
 
 function (::BuoyancyDeep)(::Grids.SphericalGrid,::Examples.VelocityS,RhoPos,uPos,vPos,wPos;RadEarth=P.RadEarth)
   @inline function Buoyancy(F,U,X)
-
+    FT = eltype(X)
     r = sqrt(X[1]^2 + X[2]^2 + X[3]^2)
-    fac = -P.Grav * (RadEarth / r)^2 * U[RhoPos]
+    fac = -FT(P.Grav) * (FT(RadEarth) / r)^2 * U[RhoPos]
     F[wPos] += fac 
   end
   return Buoyancy

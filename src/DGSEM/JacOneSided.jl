@@ -474,12 +474,6 @@ function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacOneSided,Global)
   FillJacOneSided!(JCache,DG,Metric,eltype(U)(1) / fac,Phys)
 end
 
-function JacFrozen!(Aux,fac,DG,Metric,Phys,Cache,JCache::JacOneSided,Global)
-  InitGeo!(JCache,Cache,DG,Global)
-  FillThetaAlphaFrozen!(JCache.Th,JCache.Al,Aux)
-  FillJacOneSided!(JCache,DG,Metric,eltype(Aux)(1) / fac,Phys)
-end
-
 function Solve!(k,v,Jac::JacOneSided,fac,DG::FiniteElements.DGElement,Metric,Global)
   SolveOneSided!(Jac,k,v,DG,Metric,fac)
 end

@@ -44,14 +44,14 @@ function DGVertical{FT}(backend,OrdPolyZ,OrdPrintZ) where FT<:AbstractFloat
   end
 
   (DWZCPU,DSZCPU,DVZCPU)=DG.DerivativeMatrixSingle(OrdPolyZ)
-  DSZ = adapt(backend,SMatrix{Mz,Mz}(DSZCPU))
-  DWZ = adapt(backend,SMatrix{Mz,Mz}(DWZCPU))
+  DSZ = adapt(backend,SMatrix{Mz,Mz,FT}(DSZCPU))
+  DWZ = adapt(backend,SMatrix{Mz,Mz,FT}(DWZCPU))
   DWZMCPU = copy(DWZCPU)
   DWZMCPU[1,1] *= -1
   DWZMCPU[end,end] *= -1
-  DWZM = adapt(backend,SMatrix{Mz,Mz}(DWZMCPU))
-  DVZ = adapt(backend,SMatrix{Mz,Mz}(DVZCPU))
-  DVZT = adapt(backend,SMatrix{Mz,Mz}(Matrix(DVZCPU')))
+  DWZM = adapt(backend,SMatrix{Mz,Mz,FT}(DWZMCPU))
+  DVZ = adapt(backend,SMatrix{Mz,Mz,FT}(DVZCPU))
+  DVZT = adapt(backend,SMatrix{Mz,Mz,FT}(Matrix(DVZCPU')))
 
   InterOutputVCPU = zeros(FT,OrdPrintZ+1,OrdPolyZ+1)
   dd = 2 / (OrdPrintZ + 1)
@@ -179,10 +179,10 @@ function DGQuadH{FT}(backend,OrdPoly,OrdPrint) where FT<:AbstractFloat
   end
 
   (DWCPU,DSCPU,DVCPU)=DG.DerivativeMatrixSingle(OrdPoly)
-  DS = adapt(backend,SMatrix{OP,OP}(DSCPU))
-  DW = adapt(backend,SMatrix{OP,OP}(DWCPU))
-  DV = adapt(backend,SMatrix{OP,OP}(DVCPU))
-  DVT = adapt(backend,SMatrix{OP,OP}(Matrix(DVCPU')))
+  DS = adapt(backend,SMatrix{OP,OP,FT}(DSCPU))
+  DW = adapt(backend,SMatrix{OP,OP,FT}(DWCPU))
+  DV = adapt(backend,SMatrix{OP,OP,FT}(DVCPU))
+  DVT = adapt(backend,SMatrix{OP,OP,FT}(Matrix(DVCPU')))
 
   Q = diagm(wCPU) * DSCPU
   S = Q - Q'

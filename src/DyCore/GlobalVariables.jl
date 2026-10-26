@@ -376,15 +376,11 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Pressure::Any
   GeoPotential::Any
   RiemannSolver::Any
-  RiemannSolverFast::Any
-  RiemannSolverSlow::Any
   RiemannSolverLin::Any
   NonConservativeFlux::Any
   Flux::Any
   FluxAverageH::Any
   FluxAverageV::Any
-  FluxAverageFast::Any
-  FluxAverageSlow::Any
   FluxLin::Any
   BuoyancyFun::Any
   dPresdRhoTh::Any
@@ -485,15 +481,11 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Pressure = ""
   GeoPotential = ""
   RiemannSolver = ""
-  RiemannSolverFast = ""
-  RiemannSolverSlow = ""
   RiemannSolverLin = ""
   NonConservativeFlux = ""
   Flux = ""
   FluxAverageH = ""
   FluxAverageV = ""
-  FluxAverageFast = ""
-  FluxAverageSlow = ""
   FluxLin = ""
   BuoyancyFun = ""
   dPresdRhoTh = ""
@@ -592,14 +584,10 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Pressure,
    GeoPotential,
    RiemannSolver,
-   RiemannSolverFast,
-   RiemannSolverSlow,
    RiemannSolverLin,
    NonConservativeFlux,
    FluxAverageH,
    FluxAverageV,
-   FluxAverageFast,
-   FluxAverageSlow,
    FluxLin,
    BuoyancyFun,
    Flux,

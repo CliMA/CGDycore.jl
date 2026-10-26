@@ -223,10 +223,10 @@ function FillContravariant!(backend,Metric,FE::DGQuad,Grid,MetricType)
   ndrange = (N,N,M,Nz,NF)
   CurlMetric = false
   _,DS,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPoly)
-  DSGPU = KernelAbstractions.zeros(backend,Float64,size(DS))
+  DSGPU = KernelAbstractions.zeros(backend,FT,size(DS))
   copyto!(DSGPU,DS)
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
-  DSZGPU = KernelAbstractions.zeros(backend,Float64,size(DSZ))
+  DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
   copyto!(DSZGPU,DSZ)
   if occursin("Curl",MetricType) 
     KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
@@ -310,9 +310,9 @@ end
 
   if IZ <= NZ && IF <= NF
     ID = I + (J - 1) * N
-    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF]
-    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF]
-    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF]
+    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF] - X[1,1,1,IZ,IF]
+    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF] - X[1,1,2,IZ,IF]
+    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF] - X[1,1,3,IZ,IF]
   end  
   @synchronize
 
@@ -372,9 +372,9 @@ end
 
   if IZ <= NZ && IF <= NF
     ID = I + (J - 1) * N
-    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF]
-    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF]
-    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF]
+    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF] - X[1,1,1,IZ,IF]
+    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF] - X[1,1,2,IZ,IF]
+    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF] - X[1,1,3,IZ,IF]
   end  
   @synchronize
 
@@ -437,9 +437,9 @@ end
 
 
   if IZ <= NZ && IF <= NF
-    XLoc[ID,K,1] = X[ID,K,1,IZ,IF]
-    XLoc[ID,K,2] = X[ID,K,2,IZ,IF]
-    XLoc[ID,K,3] = X[ID,K,3,IZ,IF]
+    XLoc[ID,K,1] = X[ID,K,1,IZ,IF] - X[1,1,1,IZ,IF]
+    XLoc[ID,K,2] = X[ID,K,2,IZ,IF] - X[1,1,2,IZ,IF]
+    XLoc[ID,K,3] = X[ID,K,3,IZ,IF] - X[1,1,3,IZ,IF]
   end  
   @synchronize
 
@@ -500,9 +500,9 @@ end
 
   if IZ <= NZ && IF <= NF
     ID = I + (J - 1) * N
-    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF]
-    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF]
-    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF]
+    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF] - X[1,1,1,IZ,IF]
+    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF] - X[1,1,2,IZ,IF]
+    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF] - X[1,1,3,IZ,IF]
   end  
   @synchronize
 
@@ -570,9 +570,9 @@ end
 
 
   if IZ <= NZ && IF <= NF
-    XLoc[ID,K,1] = X[ID,K,1,IZ,IF]
-    XLoc[ID,K,2] = X[ID,K,2,IZ,IF]
-    XLoc[ID,K,3] = X[ID,K,3,IZ,IF]
+    XLoc[ID,K,1] = X[ID,K,1,IZ,IF] - X[1,1,1,IZ,IF]
+    XLoc[ID,K,2] = X[ID,K,2,IZ,IF] - X[1,1,2,IZ,IF]
+    XLoc[ID,K,3] = X[ID,K,3,IZ,IF] - X[1,1,3,IZ,IF]
   end  
   @synchronize
 
@@ -641,9 +641,9 @@ end
 
   if IZ <= NZ && IF <= NF
     ID = I + (J - 1) * N
-    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF]
-    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF]
-    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF]
+    XLoc[I,J,K,1] = X[ID,K,1,IZ,IF] - X[1,1,1,IZ,IF]
+    XLoc[I,J,K,2] = X[ID,K,2,IZ,IF] - X[1,1,2,IZ,IF]
+    XLoc[I,J,K,3] = X[ID,K,3,IZ,IF] - X[1,1,3,IZ,IF]
   end  
   @synchronize
 
@@ -711,9 +711,9 @@ end
 
 
   if IZ <= NZ && IF <= NF
-    XLoc[ID,K,1] = X[ID,K,1,IZ,IF]
-    XLoc[ID,K,2] = X[ID,K,2,IZ,IF]
-    XLoc[ID,K,3] = X[ID,K,3,IZ,IF]
+    XLoc[ID,K,1] = X[ID,K,1,IZ,IF] - X[1,1,1,IZ,IF]
+    XLoc[ID,K,2] = X[ID,K,2,IZ,IF] - X[1,1,2,IZ,IF]
+    XLoc[ID,K,3] = X[ID,K,3,IZ,IF] - X[1,1,3,IZ,IF]
   end  
   @synchronize
 

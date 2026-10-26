@@ -8,8 +8,7 @@
 # (Metric.NVV and Metric.VolSurfVV). The horizontal momentum is not coupled.
 #
 # Linearization state per node: theta = rhotheta / rho and
-# alpha = dp / drhotheta, either from the current state U (Jac!) or frozen
-# in Aux (JacFrozen!, theta in Aux[:,:,:,4], alpha in Aux[:,:,:,3]).
+# alpha = dp / drhotheta, computed from the current state U (Jac!).
 ################################################################################
 
 @kernel inbounds = true function ThetaAlphaKernel!(Th,Al,@Const(U),kfac,kexp,Rdp0)
@@ -19,15 +18,6 @@
     RhoTh = U[i,iz,ID,5]
     Th[i,iz,ID] = RhoTh / U[i,iz,ID,1]
     Al[i,iz,ID] = kfac * (Rdp0 * RhoTh)^kexp
-  end
-end
-
-@kernel inbounds = true function ThetaAlphaFrozenKernel!(Th,Al,@Const(Aux))
-  i,iz,ID = @index(Global, NTuple)
-  ND = @uniform @ndrange()[3]
-  if ID <= ND
-    Th[i,iz,ID] = Aux[i,iz,ID,4]
-    Al[i,iz,ID] = Aux[i,iz,ID,3]
   end
 end
 
@@ -42,14 +32,6 @@ function FillThetaAlpha!(Th,Al,U,Phys)
   NDG = max(1,min(div(256,M*nz),ND))
   KThetaAlphaKernel! = ThetaAlphaKernel!(backend,(M,nz,NDG))
   KThetaAlphaKernel!(Th,Al,U,kfac,kexp,Rdp0;ndrange=(M,nz,ND))
-end
-
-function FillThetaAlphaFrozen!(Th,Al,Aux)
-  backend = get_backend(Th)
-  M, nz, ND = size(Th)
-  NDG = max(1,min(div(256,M*nz),ND))
-  KThetaAlphaFrozenKernel! = ThetaAlphaFrozenKernel!(backend,(M,nz,NDG))
-  KThetaAlphaFrozenKernel!(Th,Al,Aux;ndrange=(M,nz,ND))
 end
 
 ################################################################################

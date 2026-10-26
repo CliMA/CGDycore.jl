@@ -27,6 +27,7 @@ using MPI
 
 include("LinAlg.jl")
 include("LocalFlux.jl")
+include("FluxSelect.jl")
 include("Rotation.jl")
 include("RiemannNonLin.jl")
 include("FluxVolumeNonLin.jl")
