@@ -54,7 +54,7 @@ function TimeIntegration!(MIS::MISMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cache,J
   @views @. Yn[:,:,:,:,1] = V
   @inbounds for iStage = 1 : nStage
     @. VnI = Yn[:,:,:,:,iStage]
-    @time @views FcnSlow(Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
+    @time @views CallFcn!(FcnSlow,Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
     @views @.  Yn[:,:,:,:,iStage+1] = V
     @views InitialConditionMIS!(Yn[:,:,:,:,iStage+1], Yn, V, MIS.alpha, iStage)
     SlowTendency!(dZn, Yn, Sdu, V, MIS.d, MIS.gamma, MIS.beta, dtSlow, iStage)
@@ -87,7 +87,7 @@ TimeStepperFast!(Fast,dtFast,MIS.d[iStage+1]*dtSlow,Yn[:,:,:,:,iStage+1],Delta,d
   dtau = tEnd/numit
   if IntMethod.JacComp
     fac = dtau * IntMethod.gammaD
-    Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+    CallJac!(Jac,U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
   end  
   @inbounds for i = 1 : numit
     @time TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
@@ -102,7 +102,7 @@ function TimeStepperFast!(IntMethod,dt,tEnd,U,D,FSlow,Fcn,Jac,FE,Exchange,Metric
   dtau = tEnd/numit
   if IntMethod.JacComp
     fac = dtau * IntMethod.gammaD
-    Jac(CacheAux.Aux,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+    CallJac!(Jac,CacheAux.Aux,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
   end  
   @. U -= D 
   @inbounds for i = 1 : numit

@@ -236,7 +236,7 @@ function write_vtk_hdf5(filename::String, grid::Grids.GridStruct, cell_data::Dic
         
         # Build 3D connectivity and types
         ncells_2d = grid.NumFaces
-        ncells_3d = ncells_2d * nz  # nz 3D cell per face (not per layer)
+        ncells_3d = ncells_2d  # one 3D cell per face (not per layer)
         connectivity = Int[]
         types = UInt8[]
         offsets = zeros(Int, ncells_3d + 1)
@@ -244,15 +244,14 @@ function write_vtk_hdf5(filename::String, grid::Grids.GridStruct, cell_data::Dic
         
         cell_idx = 1
         # Create only one layer of 3D cells (from bottom to top interface)
-        for iz in 1:nz
         for iF in 1:ncells_2d
             face = grid.Faces[iF]
             nverts = length(face.N)
             
             # Bottom face nodes (surface level, iz=1)
-            bottom_nodes = face.N .+ (iz - 1) * npoints_2d
+            bottom_nodes = face.N .+ 0 * npoints_2d
             # Top face nodes (top level, iz=nz+1)  
-            top_nodes = face.N .+ iz * npoints_2d
+            top_nodes = face.N .+ (nz) * npoints_2d
             
             # For radial extrusion on CubedSphere, use consistent orientation
             # VTK_HEXAHEDRON connectivity: bottom face CCW, top face CCW (same order)
@@ -280,9 +279,14 @@ function write_vtk_hdf5(filename::String, grid::Grids.GridStruct, cell_data::Dic
                 cell_idx += 1
             end
         end
+        
+        # Expand cell_data for 3D (single layer)
+        cell_data_3d = Dict{String, Vector}()
+        for (key, data_2d) in cell_data
+            cell_data_3d[key] = data_2d  # No expansion needed for single layer
         end
         
         # Write the 3D file
-        write_vtk_hdf5(filename, points, connectivity, types, offsets, cell_data; point_data=point_data)
+        write_vtk_hdf5(filename, points, connectivity, types, offsets, cell_data_3d; point_data=point_data)
     end
 end

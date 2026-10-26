@@ -422,11 +422,6 @@ function parse_commandline()
     arg_type = String
     default = "Sleve"
 
-    "--MetricType"
-    help = "Type of metric computation"
-    arg_type = String
-    default = "DGMetric"
-
     "--nx"
     help = "Number of horizontal grid cell in x-direction"
     arg_type = Int
@@ -506,6 +501,16 @@ function parse_commandline()
     help = "Order of the local polynoms in vertical direction"
     arg_type = Int
     default = 0
+
+    "--MetricType"
+    help = "Type of metric computation"
+    arg_type = String
+    default = "Curl"
+
+    "--HEVISolver"
+    help = "Vertically implicit solver of the HEVI scheme: HDG, TwoSidedSplit or OneSided"
+    arg_type = String
+    default = "HDG"
 
     "--HyperVisc"
     help = "HyperViscosity"

@@ -133,12 +133,12 @@ function MetricCompute(backend,FT,FE::DGElement,Model,Exchange,Grid,NumberThread
   F = PointsFromGrid(backend,FT,Grid)
   FillX!(backend,Metric,FE,F,Grid,zS)
   FillRotate!(backend,Metric,FE,Grid)
-  FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
+  FillContravariant!(backend,Metric,FE,Grid,Model.MetricType)
   FillDet!(backend,Metric,FE,Grid)
   @. Metric.invJ = FT(1) / Metric.J
   GridSizeDGKernel!(FE,Metric,Grid.Rad,NumberThreadGPU,Grid.Form)
   MetricLowerBoundary!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Form)
-  NormalH!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Type)
+  NormalH!(backend,Metric,FE,Grid,NumberThreadGPU)
   NormalV!(backend,Metric,FE,Grid,NumberThreadGPU)  
 
   return Metric
@@ -211,7 +211,7 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   return Metric
 end
 
-function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Quad,MetricType)
+function FillContravariant!(backend,Metric,FE::DGQuad,Grid,MetricType)
   FT = eltype(Metric.X)
   DoF = FE.DoF
   DoFE = FE.DoFE
@@ -274,7 +274,7 @@ function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,Metri
   KApplyRotateKernel!(Metric.dXdxI,Metric.X,Grid.Form;ndrange=ndrange)
 end
 
-function FillContravariant!(backend,Metric,FE::DGElement,Grid,::Grids.Tri,MetricType)
+function FillContravariant!(backend,Metric,FE::DGTri,Grid,MetricType)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
   NF = Grid.NumFaces
@@ -1001,7 +1001,7 @@ end
   A[1,3] * (A[2,1] * A[3,2] - A[2,2] * A[3,1])
 end
 
-function NormalH!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU,::Grids.Quad)
+function NormalH!(backend,Metric,FE::DGQuad,Grid,NumberThreadGPU)
   N = FE.OrdPoly + 1
   M = FE.OrdPolyZ + 1
   NE = Grid.NumEdges
@@ -1080,7 +1080,7 @@ end
   end
 end
 
-function NormalH!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU,::Grids.Tri)
+function NormalH!(backend,Metric,FE::DGTri,Grid,NumberThreadGPU)
   FT = eltype(Metric.dXdxI)
   N = FE.DoFE
   M = FE.OrdPolyZ + 1
@@ -1090,8 +1090,8 @@ function NormalH!(backend,Metric,FE::DGElement,Grid,NumberThreadGPU,::Grids.Tri)
   group = (M,N,NzG)
   ndrange = (M,N,Nz,NE)
   KNormalHTriKernel! = NormalHTriKernel!(backend,group)
-  Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,M,N,Nz,NE)
-  Metric.NH = KernelAbstractions.zeros(backend,FT,3,M,N,Nz,NE)
+  Metric.VolSurfH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE)
+  Metric.NH = KernelAbstractions.zeros(backend,FT,M,Nz,N,NE,3)
   KNormalHTriKernel!(Metric.VolSurfH,Metric.NH,
     Metric.dXdxI,Grid.EF,Grid.FE,FE.PosDoFE,ndrange=ndrange)
 end
@@ -1137,15 +1137,15 @@ end
     nSLoc1 = nSLoc1 / n1Norm
     nSLoc2 = nSLoc2 / n1Norm
     nSLoc3 = nSLoc3 / n1Norm
-    VolSurfH[K,I,Iz,IE] = n1Norm
+    VolSurfH[K,Iz,I,IE] = n1Norm
     if IF1 < IF2
-      NH[1,K,I,Iz,IE] = nSLoc1
-      NH[2,K,I,Iz,IE] = nSLoc2
-      NH[3,K,I,Iz,IE] = nSLoc3
+      NH[K,Iz,I,IE,1] = nSLoc1
+      NH[K,Iz,I,IE,2] = nSLoc2
+      NH[K,Iz,I,IE,3] = nSLoc3
     else  
-      NH[1,K,I,Iz,IE] = -nSLoc1
-      NH[2,K,I,Iz,IE] = -nSLoc2
-      NH[3,K,I,Iz,IE] = -nSLoc3
+      NH[K,Iz,I,IE,1] = -nSLoc1
+      NH[K,Iz,I,IE,2] = -nSLoc2
+      NH[K,Iz,I,IE,3] = -nSLoc3
     end  
   end
 end

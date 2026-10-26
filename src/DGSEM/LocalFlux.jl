@@ -237,9 +237,14 @@ function (::ArtianoExner)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
   return FluxNonLinAver!
 end
 
+# Average fluxes are built for the memory layout of the calling kernel: tensor layout
+# (quadrilateral horizontal and all vertical kernels) or the nodal triangle layout
+const TensorLayout = Union{FiniteElements.DGQuadH,FiniteElements.DGVertical}
+const TriLayout = FiniteElements.DGTriH
+
 Base.@kwdef struct KennedyGruber <: AverageFlux end
 
-function (::KennedyGruber)(RhoPos, uPos, vPos, wPos, ThPos, pPos, ::Grids.Quad)
+function (::KennedyGruber)(RhoPos, uPos, vPos, wPos, ThPos, pPos, ::TensorLayout)
 
   @inline function FluxNonLinAver!(flux,
       VLoc, AuxLoc, dXdxILoc,
@@ -301,7 +306,7 @@ end
 Base.@kwdef struct KennedyGruberGrav <: AverageFlux end
 
 function (::KennedyGruberGrav)(::Val{RhoPos}, ::Val{uPos}, ::Val{vPos}, ::Val{wPos}, ::Val{ThPos}, 
-  ::Val{pPos}, ::Val{GPPos}, ::Grids.Quad) where {RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos}
+  ::Val{pPos}, ::Val{GPPos}, ::TensorLayout) where {RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos}
 
   @inline function FluxNonLinAver!(flux,
     VLoc, AuxLoc, dXdxILoc,
@@ -340,76 +345,42 @@ function (::KennedyGruberGrav)(::Val{RhoPos}, ::Val{uPos}, ::Val{vPos}, ::Val{wP
   end
 end
 
-Base.@kwdef struct KennedyGruberGrav2 <: AverageFlux end
-
-function (::KennedyGruberGrav2)(RhoPos,uPos,vPos,wPos,ThPos,pPos,GPPos,Phys)
-  @inline function FluxNonLinAver!(flux,VL,VR,AuxL,AuxR,m_L,m_R)
-    FT = eltype(flux)
-
-    RhoAv = FT(0.5) * (VL[RhoPos] + VR[RhoPos])
-    pAv   = FT(0.5) * ((AuxL[pPos] + AuxR[pPos]) + RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
-    uAv   = FT(0.5) * (VL[uPos] / VL[RhoPos] + VR[uPos] / VR[RhoPos])
-    vAv   = FT(0.5) * (VL[vPos] / VL[RhoPos] + VR[vPos] / VR[RhoPos])
-    wAv   = FT(0.5) * (VL[wPos] / VL[RhoPos] + VR[wPos] / VR[RhoPos])
-    ThAv  = FT(0.5) * (VL[ThPos] / VL[RhoPos] + VR[ThPos] / VR[RhoPos])
-    mAv1  = FT(0.5) * (m_L[1] + m_R[1])
-    mAv2  = FT(0.5) * (m_L[2] + m_R[2])
-    mAv3  = FT(0.5) * (m_L[3] + m_R[3])
-    qHat  = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-
-    flux[1] = RhoAv * qHat
-    flux[2] = flux[1] * uAv + mAv1 * pAv
-    flux[3] = flux[1] * vAv + mAv2 * pAv
-    flux[4] = flux[1] * wAv + mAv3 * pAv
-    flux[5] = flux[1] * ThAv
-  end
-  return FluxNonLinAver!
-end
-
-Base.@kwdef struct KennedyGruberGrav1 <: AverageFlux end
-
-function (::KennedyGruberGrav1)(RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos, ::Grids.Quad)
+function (::KennedyGruberGrav)(::Val{RhoPos}, ::Val{uPos}, ::Val{vPos}, ::Val{wPos}, ::Val{ThPos}, 
+  ::Val{pPos}, ::Val{GPPos}, ::TriLayout) where {RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos}
 
   @inline function FluxNonLinAver!(flux,
-      VLoc, AuxLoc, dXdxILoc,
-      K1, Iz1, iD1,   # left state indices  (localidx into @localmem)
-      K2, Iz2, iD2,   # right state indices
-      ::Val{dir}) where {dir}
+    VLoc, AuxLoc, dXdxILoc,
+    ID1, iz1,
+    ID2, iz2,
+    ::Val{dir}) where {dir}   # dir = 1 for fTilde, 2 for gTilde
 
     FT = eltype(flux)
 
-    # ------ read left state directly from shared memory ------
-    RhoL  = VLoc[K1, Iz1, iD1, RhoPos]
-    uL    = VLoc[K1, Iz1, iD1, uPos]
-    vL    = VLoc[K1, Iz1, iD1, vPos]
-    wL    = VLoc[K1, Iz1, iD1, wPos]
-    ThL   = VLoc[K1, Iz1, iD1, ThPos]
-    pL    = AuxLoc[K1, Iz1, iD1, pPos]
-    GPL   = AuxLoc[K1, Iz1, iD1, GPPos]
+    RhoL = VLoc[ID1, iz1, RhoPos]
+    uL   = VLoc[ID1, iz1, uPos]
+    vL   = VLoc[ID1, iz1, vPos]
+    wL   = VLoc[ID1, iz1, wPos]
+    ThL  = VLoc[ID1, iz1, ThPos]
+    pL   = AuxLoc[ID1, iz1, pPos]
+    GPL  = AuxLoc[ID1, iz1, GPPos]
 
-    # ------ read right state directly from shared memory -----
-    RhoR  = VLoc[K2, Iz2, iD2, RhoPos]
-    uR    = VLoc[K2, Iz2, iD2, uPos]
-    vR    = VLoc[K2, Iz2, iD2, vPos]
-    wR    = VLoc[K2, Iz2, iD2, wPos]
-    ThR   = VLoc[K2, Iz2, iD2, ThPos]
-    pR    = AuxLoc[K2, Iz2, iD2, pPos]
-    GPR   = AuxLoc[K2, Iz2, iD2, GPPos]
+    RhoR = VLoc[ID2, iz2, RhoPos]
+    uR   = VLoc[ID2, iz2, uPos]
+    vR   = VLoc[ID2, iz2, vPos]
+    wR   = VLoc[ID2, iz2, wPos]
+    ThR  = VLoc[ID2, iz2, ThPos]
+    pR   = AuxLoc[ID2, iz2, pPos]
+    GPR  = AuxLoc[ID2, iz2, GPPos]
 
-    # ------ read metric (dXdxI row) from shared memory -------
-    # dXdxILoc layout: (dir, j, K, Iz, iD)  — pass dir as Val for unrolling
-    m_L1  = dXdxILoc[dir, 1, K1, Iz1, iD1]
-    m_L2  = dXdxILoc[dir, 2, K1, Iz1, iD1]
-    m_L3  = dXdxILoc[dir, 3, K1, Iz1, iD1]
-    m_R1  = dXdxILoc[dir, 1, K2, Iz2, iD2]
-    m_R2  = dXdxILoc[dir, 2, K2, Iz2, iD2]
-    m_R3  = dXdxILoc[dir, 3, K2, Iz2, iD2]
+    m_L1 = dXdxILoc[dir, 1, ID1, iz1]
+    m_L2 = dXdxILoc[dir, 2, ID1, iz1]
+    m_L3 = dXdxILoc[dir, 3, ID1, iz1]
+    m_R1 = dXdxILoc[dir, 1, ID2, iz2]
+    m_R2 = dXdxILoc[dir, 2, ID2, iz2]
+    m_R3 = dXdxILoc[dir, 3, ID2, iz2]
 
-    # ------ Kennedy-Gruber averages --------------------------
     RhoAv = FT(0.5) * (RhoL + RhoR)
     pAv   = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
-    pLL   = FT(0.5) * (pL  + FT(0.5) * RhoL * (GPR - GPL))
-    pRR   = FT(0.5) * (pR  + FT(0.5) * RhoR * (GPR - GPL))
     uAv   = FT(0.5) * (uL / RhoL + uR / RhoR)
     vAv   = FT(0.5) * (vL / RhoL + vR / RhoR)
     wAv   = FT(0.5) * (wL / RhoL + wR / RhoR)
@@ -417,70 +388,13 @@ function (::KennedyGruberGrav1)(RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos, ::
     mAv1  = FT(0.5) * (m_L1 + m_R1)
     mAv2  = FT(0.5) * (m_L2 + m_R2)
     mAv3  = FT(0.5) * (m_L3 + m_R3)
+    qHat  = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
 
-    flux[1]  = FT(0.5) * (m_L1 * uL + m_R1 * uR + 
-      m_L2 * vL + m_R2 * vR + m_L3 * wL + m_R3 * wR)
-
-    flux[2] = flux[1] * uAv + m_L1 * pLL + m_R1 * pRR
-    flux[3] = flux[1] * vAv + m_L2 * pLL + m_R2 * pRR
-    flux[4] = flux[1] * wAv + m_L3 * pLL + m_R3 * pRR
+    flux[1] = RhoAv * qHat
+    flux[2] = flux[1] * uAv + mAv1 * pAv
+    flux[3] = flux[1] * vAv + mAv2 * pAv
+    flux[4] = flux[1] * wAv + mAv3 * pAv
     flux[5] = flux[1] * ThAv
-  end
-
-  return FluxNonLinAver!
-end
- 
-function (::KennedyGruberGrav)(RhoPos, uPos, vPos, wPos, ThPos, pPos, GPPos, ::Grids.Tri)
-  return let RhoPos = RhoPos, uPos = uPos, vPos = vPos, wPos = wPos, ThPos = ThPos, pPos = pPos, GPPos = GPPos
-
-    @inline function FluxNonLinAver!(flux,
-      VLoc, AuxLoc, dXdxILoc,
-      ID1, iz1,
-      ID2, iz2,
-      ::Val{dir}) where {dir}   # dir = 1 for fTilde, 2 for gTilde
-
-      FT = eltype(flux)
-
-      RhoL = VLoc[ID1, iz1, RhoPos]
-      uL   = VLoc[ID1, iz1, uPos]
-      vL   = VLoc[ID1, iz1, vPos]
-      wL   = VLoc[ID1, iz1, wPos]
-      ThL  = VLoc[ID1, iz1, ThPos]
-      pL   = AuxLoc[ID1, iz1, pPos]
-      GPL  = AuxLoc[ID1, iz1, GPPos]
-
-      RhoR = VLoc[ID2, iz2, RhoPos]
-      uR   = VLoc[ID2, iz2, uPos]
-      vR   = VLoc[ID2, iz2, vPos]
-      wR   = VLoc[ID2, iz2, wPos]
-      ThR  = VLoc[ID2, iz2, ThPos]
-      pR   = AuxLoc[ID2, iz2, pPos]
-      GPR  = AuxLoc[ID2, iz2, GPPos]
-
-      m_L1 = dXdxILoc[dir, 1, ID1, iz1]
-      m_L2 = dXdxILoc[dir, 2, ID1, iz1]
-      m_L3 = dXdxILoc[dir, 3, ID1, iz1]
-      m_R1 = dXdxILoc[dir, 1, ID2, iz2]
-      m_R2 = dXdxILoc[dir, 2, ID2, iz2]
-      m_R3 = dXdxILoc[dir, 3, ID2, iz2]
-
-      RhoAv = FT(0.5) * (RhoL + RhoR)
-      pAv   = FT(0.5) * ((pL + pR) + RhoAv * (GPR - GPL))
-      uAv   = FT(0.5) * (uL / RhoL + uR / RhoR)
-      vAv   = FT(0.5) * (vL / RhoL + vR / RhoR)
-      wAv   = FT(0.5) * (wL / RhoL + wR / RhoR)
-      ThAv  = FT(0.5) * (ThL / RhoL + ThR / RhoR)
-      mAv1  = FT(0.5) * (m_L1 + m_R1)
-      mAv2  = FT(0.5) * (m_L2 + m_R2)
-      mAv3  = FT(0.5) * (m_L3 + m_R3)
-      qHat  = mAv1 * uAv + mAv2 * vAv + mAv3 * wAv
-
-      flux[1] = RhoAv * qHat
-      flux[2] = flux[1] * uAv + mAv1 * pAv
-      flux[3] = flux[1] * vAv + mAv2 * pAv
-      flux[4] = flux[1] * wAv + mAv3 * pAv
-      flux[5] = flux[1] * ThAv
-    end
   end
 end
 
@@ -568,7 +482,7 @@ end
 
 Base.@kwdef struct KennedyGruberGravLinFast <: AverageFlux end
 
-function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::Grids.Tri)
+function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::TriLayout)
   @inline function FluxNonLinAverSemi!(flux,
       VLoc, AuxLoc, dXdxILoc,
       ID1, iz1,
@@ -619,7 +533,7 @@ function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAu
 end
 
 
-function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::Grids.Quad)
+function (::KennedyGruberGravLinFast)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::TensorLayout)
   @inline function FluxNonLinAverSemi!(flux,
       VLoc, AuxLoc, dXdxILoc,
       K1, Iz1, iD1,   # left state indices  (localidx into @localmem)
@@ -672,7 +586,7 @@ end
 
 Base.@kwdef struct KennedyGruberGravLinFast1 <: AverageFlux end
 
-function (::KennedyGruberGravLinFast1)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::Grids.Quad)
+function (::KennedyGruberGravLinFast1)(RhoPos,uPos,vPos,wPos,ThPos,pRhoThPos,ThAuxPos,GPPos,::TensorLayout)
   @inline function FluxNonLinAverSemi!(flux,
       VLoc, AuxLoc, dXdxILoc,
       I1, J1, K1,   # left state indices  (localidx into @localmem)
@@ -769,6 +683,29 @@ function (::RiemannLMARS)(::Val{RhoPos},::Val{uPos},::Val{vPos},::Val{wPos},
   ::Val{ThPos},::Val{pPos},cS) where{RhoPos,uPos,vPos,wPos,ThPos,pPos}
   @inline function RiemannByLMARSNonLin!(F,VLL,VRR,AuxL,AuxR,n1,n2,n3)
     FT = eltype(F)
+
+    pLL = AuxL[pPos]
+    pRR = AuxR[pPos]
+    RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
+    pM = FT(0.5) * (pLL + pRR) - FT(0.5) * cS * RhoM * (vRR - vLL)
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * (pRR - pLL) / RhoM
+    if vM > FT(0)
+      F[RhoPos] = vM * VLL[RhoPos]
+      F[uPos] = vM * VLL[uPos] + n1 * pM
+      F[vPos] = vM * VLL[vPos] + n2 * pM
+      F[wPos] = vM * VLL[wPos] + n3 * pM
+      F[ThPos] = vM * VLL[ThPos]
+    else
+      F[RhoPos] = vM * VRR[RhoPos]
+      F[uPos] = vM * VRR[uPos] + n1 * pM
+      F[vPos] = vM * VRR[vPos] + n2 * pM
+      F[wPos] = vM * VRR[wPos] + n3 * pM
+      F[ThPos] = vM * VRR[ThPos]
+    end
+
+#=    
     RhoMcS = FT(0.5) * cS * (VLL[RhoPos] + VRR[RhoPos])
     vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
     vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
@@ -787,6 +724,7 @@ function (::RiemannLMARS)(::Val{RhoPos},::Val{uPos},::Val{vPos},::Val{wPos},
       F[4] = vM * VRR[wPos] + n3 * pM
       F[5] = vM * VRR[ThPos]
     end
+=#    
   end
   return RiemannByLMARSNonLin!
 end

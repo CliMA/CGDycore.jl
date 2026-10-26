@@ -113,6 +113,7 @@ y0 = parsed_args["y0"]
 OrdPoly = parsed_args["OrdPoly"]
 OrdPolyZ = parsed_args["OrdPolyZ"]
 MetricType = parsed_args["MetricType"]
+HEVISolver = parsed_args["HEVISolver"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -269,6 +270,7 @@ Model.StretchType = StretchType
 Model.State = State
 Model.ModelType = ModelType
 Model.MetricType = MetricType
+Model.HEVISolver = HEVISolver
 
 if VelocityForm == "Spherical"  
    VelForm = Examples.VelocityS()
@@ -393,14 +395,15 @@ Model.NonConservativeFlux = NonConservativeFlux
 
 if FluxDG == "KennedyGruber"
   Model.FluxAverageH = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-    Model.RhoThPos,pAuxPos,Grid.Type)
-  Model.FluxAverageV = Model.FluxAverageH
+    Model.RhoThPos,pAuxPos,DG.H)
+  Model.FluxAverageV = DGSEM.KennedyGruber()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
+    Model.RhoThPos,pAuxPos,DG.V)
   Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
 elseif FluxDG == "KennedyGruberGrav"  
   Model.FluxAverageH = DGSEM.KennedyGruberGrav()(Val(Model.RhoPos),Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),
-    Val(Model.RhoThPos),Val(pAuxPos),Val(GPAuxPos),Grid.Type)
+    Val(Model.RhoThPos),Val(pAuxPos),Val(GPAuxPos),DG.H)
   Model.FluxAverageV = DGSEM.KennedyGruberGrav()(Val(Model.RhoPos),Val(Model.uPos),Val(Model.vPos),Val(Model.wPos),
-    Val(Model.RhoThPos),Val(pAuxPos),Val(GPAuxPos),Grid.Type)
+    Val(Model.RhoThPos),Val(pAuxPos),Val(GPAuxPos),DG.V)
   Model.FluxAverageSlow = DGSEM.KennedyGruberGravSlow()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
   Model.RhoThPos,pAuxPos,GPAuxPos)
   if IntMethod == "MIS"
@@ -413,7 +416,7 @@ elseif FluxDG == "KennedyGruberGrav"
 #   Model.FluxAverageFast =  DGSEM.LinearizedEulerFlux()(Model.RhoPos,Model.uPos,Model.vPos,
 #     Model.wPos,Model.RhoThPos,3,4)
     Model.FluxAverageFast = DGSEM.KennedyGruberGravLinFast1()(Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,
-      Model.RhoThPos,3,4,GPAuxPos,Grid.Type)
+      Model.RhoThPos,3,4,GPAuxPos,DG.H)
     Model.BuoyancyFun = Sources.BuoyancyDeep()(Grid.Form,VelForm,Model.RhoPos,Model.uPos,Model.vPos,Model.wPos)
   end  
 elseif FluxDG == "ArtianoExner"  
@@ -488,7 +491,7 @@ if ModelType == "Conservative"
     "Pres",
 #   "w",
 #   "Th",
-    "Vort",
+#   "Vort",
     ]
 elseif ModelType == "Boussinesq"
   Global.Output.cNames = [
@@ -577,7 +580,7 @@ elseif IntMethod == "MIS"
     Fcn = (DGSEM.FcnSplitEx!,DGSEM.FcnSplitIm!)
   end  
   dt = (dtau,dtauSmall)
-  Jac = JacFrozen!
+  Jac = DGSEM.JacFrozen!
 elseif IntMethod == "MISSemi"
   MethodInt = Integration.MISSemiMethod{FTB}(Table)
   MethodInt.FastMethod = Integration.RosenbrockMethod{FTB}("ROS2W")

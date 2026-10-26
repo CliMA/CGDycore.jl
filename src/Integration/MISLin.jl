@@ -104,7 +104,7 @@ function TimeIntegration!(MIS::MISLinMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cach
   @views @. Yn[:,:,:,:,1] = V
   @inbounds for iStage = 1 : nStage
     @. VnI = Yn[:,:,:,:,iStage]
-    @views FcnSlow(Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
+    @views CallFcn!(FcnSlow,Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
     if iStage == 1
       @views FrozenStateLin(Vn,Aux.Aux)
     end  

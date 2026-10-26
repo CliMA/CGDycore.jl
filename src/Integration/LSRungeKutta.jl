@@ -25,11 +25,11 @@ function TimeIntegration!(LSRK::LSRungeKuttaMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Ph
   dtau, = dt
   FcnFull, = Fcn
 
-  FcnFull(f,V,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+  CallFcn!(FcnFull,f,V,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   @. fTemp = f
   @. V += (dtau * LSRK.b[1]) * f
   @inbounds for iStage = 2 : LSRK.nStage
-    FcnFull(f,V,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    CallFcn!(FcnFull,f,V,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @. fTemp = f - LSRK.a[iStage] * fTemp
     @. V += (dtau * LSRK.b[iStage]) * fTemp
   end
@@ -44,11 +44,11 @@ function TimeIntegrationFast!(LSRK::LSRungeKuttaMethod,V,dt,Fcn,FSlow,Aux,FE,Met
   @views VnI = Vn[:,:,1:size(V,3),1:size(V,4)]
 
   @. VnI = V
-  Fcn(f,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+  CallFcn!(Fcn,f,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   @. fTemp = f + FSlow
   @. VnI += (dt * LSRK.b[1]) * fTemp
   @inbounds for iStage = 2 : LSRK.nStage
-    Fcn(f,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    CallFcn!(Fcn,f,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @. fTemp = f + FSlow - LSRK.a[iStage] * fTemp
     @. VnI += (dt * LSRK.b[iStage]) * fTemp
   end

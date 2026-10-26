@@ -46,8 +46,8 @@ function TimeIntegration!(IMEX::IMEXDirkMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,C
   FcnE, FcnI = Fcn
 
   @. VnI = V
-  @views FcnE(fEY[:,:,:,:,1],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
-  Jac(V,dtau*gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
+  @views CallFcn!(FcnE,fEY[:,:,:,:,1],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+  CallJac!(Jac,V,dtau*gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
   @views @. Z[:,:,:,:,1] = 0.0
   @inbounds for iStage = 2 : nStage 
     @. R = IMEX.D[iStage,1] * dtau * fEY[:,:,:,:,1]
@@ -60,13 +60,13 @@ function TimeIntegration!(IMEX::IMEXDirkMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,C
     fac = gammaD * dtau
     @inbounds for iTer = 1 : 2
       @views @. VnI = V + Z[:,:,:,:,iStage]
-      FcnI(fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+      CallFcn!(FcnI,fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
       @views @. fV = (1 / fac) * (Z[:,:,:,:,iStage] - R) - fV
       Solve!(dZ,fV,JCache,dtau*gammaD,FE,Metric,Global,DiscType)
       @views @. Z[:,:,:,:,iStage] = Z[:,:,:,:,iStage] - dZ 
     end  
     @views @. VnI = V + Z[:,:,:,:,iStage]
-    @views FcnE(fEY[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    @views CallFcn!(FcnE,fEY[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   end  
   @views @. V = V + IMEX.d[1] * dtau *  fEY[:,:,:,:,1]  
   @inbounds for jStage = 2 : nStage

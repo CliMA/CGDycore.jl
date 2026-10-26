@@ -40,11 +40,11 @@ function TimeIntegration!(LinIMEX::LinIMEXMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys
   FcnFull, = Fcn
 
   @. VnI = V
-  Jac(V,dtau*gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
+  CallJac!(Jac,V,dtau*gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
 
   @. Ymyn[:,:,:,:,1] = 0
   @inbounds for iStage = 2 : nStage
-    @views FcnFull(f[:,:,:,:,iStage-1],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    @views CallFcn!(FcnFull,f[:,:,:,:,iStage-1],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @views @. fV = LinIMEX.D[iStage,1] * f[:,:,:,:,1]
     @inbounds for jStage = 2 : iStage - 1
       @views @. fV += LinIMEX.D[iStage,jStage] * f[:,:,:,:,jStage] +
@@ -55,7 +55,7 @@ function TimeIntegration!(LinIMEX::LinIMEXMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys
   end
 
   if LinIMEX.d[nStage] != 0.0
-    @views FcnFull(f[:,:,:,:,nStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
+    @views CallFcn!(FcnFull,f[:,:,:,:,nStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @views @. V += dtau * LinIMEX.d[nStage] * f[:,:,:,:,nStage]
   end  
   @inbounds for iStage = 1 : nStage - 1

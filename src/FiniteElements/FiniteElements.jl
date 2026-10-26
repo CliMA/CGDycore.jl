@@ -16,7 +16,8 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras: @unroll
 
 include("ConstructDG.jl")
-include("FiniteElement.jl")	
+include("FiniteElement.jl")
+include("DGElement.jl")
 include("NumberingFem.jl")
 include("NumberingFemDG.jl")
 include("Metric.jl")

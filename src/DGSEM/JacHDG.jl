@@ -19,7 +19,7 @@ using LinearAlgebra
 # tridiagonal kernels gather them (also makes the result deterministic).
 ################################################################################
 
-mutable struct JacHDGVert{FT<:AbstractFloat,
+mutable struct JacHDG{FT<:AbstractFloat,
                          AT2<:AbstractArray,
                          AT3<:AbstractArray,
                          AT_SA<:AbstractArray,
@@ -34,8 +34,8 @@ mutable struct JacHDGVert{FT<:AbstractFloat,
   cS::FT
   wB::FT                 # first 1D quadrature weight (w[1])
 
-  DWS::SM                # DG.DWZ  as static matrix (passed by value to kernels)
-  DWSS::SM               # DG.DWZM as static matrix
+  DWS::SM                # DG.V.DWZ  as static matrix (passed by value to kernels)
+  DWSS::SM               # DG.V.DWZM as static matrix
 
   Geo::AT3               # geopotential copy; A31 is rebuilt from it on the fly
   Th::AT3
@@ -50,7 +50,7 @@ mutable struct JacHDGVert{FT<:AbstractFloat,
   rs::AT2
 end  
 
-function JacHDGVert(backend, FT, M, nz, DG) 
+function JacHDG(backend, FT, M, nz, DG) 
   CompTri = false
   grav_do = true
   fac = zero(FT)
@@ -62,9 +62,9 @@ function JacHDGVert(backend, FT, M, nz, DG)
   MatM = SMatrix{M, M, FT, M*M}
 
   # Differentiation matrices and first weight as kernel-argument constants
-  DWS  = MatM(Tuple(FT.(vec(Array(DG.DWZ)[1:M, 1:M]))))
-  DWSS = MatM(Tuple(FT.(vec(Array(DG.DWZM)[1:M, 1:M]))))
-  wB   = FT(Array(DG.wZ)[1])
+  DWS  = MatM(Tuple(FT.(vec(Array(DG.V.DWZ)[1:M, 1:M]))))
+  DWSS = MatM(Tuple(FT.(vec(Array(DG.V.DWZM)[1:M, 1:M]))))
+  wB   = FT(Array(DG.V.wZ)[1])
 
   SA = KernelAbstractions.zeros(backend, MatM, nz, NumI)
 
@@ -79,7 +79,7 @@ function JacHDGVert(backend, FT, M, nz, DG)
   RsC       = KernelAbstractions.zeros(backend, FT, NumI, 2, nz)
   rs        = KernelAbstractions.zeros(backend, FT, NumI, nz-1)
 
-  return JacHDGVert{FT,
+  return JacHDG{FT,
                    typeof(rs),
                    typeof(Th),
                    typeof(SA),
@@ -129,10 +129,10 @@ end
 ################################################################################
 # Jac! : build and factor the local matrices, per-element Schur contributions
 ################################################################################
-@kernel inbounds = true function FillJacHDGVertKernel!(
-    Th, dpdRhoTh, FacLoc, InvSurf, SA_gpu, Blk,
-    @Const(Geo), @Const(U), @Const(J), @Const(Surf),
-    DWS, DWSS, wB, fac, cS, kexp, kfac, Rdp0, ::Val{M}
+@kernel inbounds = true function FillJacHDGKernel!(
+    @Const(Th), @Const(dpdRhoTh), FacLoc, InvSurf, SA_gpu, Blk,
+    @Const(Geo), @Const(J), @Const(Surf),
+    DWS, DWSS, wB, fac, cS, ::Val{M}
 ) where {M}
 
   iz, ID = @index(Global, NTuple)
@@ -154,13 +154,10 @@ end
     facL  = MVector{M, FT}(undef)
 
     @unroll for i = 1:M
-      rth = U[i, iz, ID, ThPos]
       Sf  = Surf[i, iz, ID]
-      ThL[i]  = rth / U[i, iz, ID, RhoPos]
-      dpL[i]  = kfac * (Rdp0 * rth)^kexp
+      ThL[i]  = Th[i, iz, ID]
+      dpL[i]  = dpdRhoTh[i, iz, ID]
       facL[i] = fac * Sf / J[i, iz, ID]
-      Th[i, iz, ID]       = ThL[i]
-      dpdRhoTh[i, iz, ID] = dpL[i]
       FacLoc[i, iz, ID]   = facL[i]
       InvSurf[i, iz, ID]  = inv(Sf)
     end
@@ -184,12 +181,12 @@ end
     SA_loc[M,M] += cS * invwB
 
     # LU in registers (inverse-diagonal convention), then store for Solve!
-    LUFull!(SA_loc, Val(M))
+    LUInv!(SA_loc, Val(M))
     SA_gpu[iz, ID] = SA_loc
 
     # Neighbouring theta (only used when the neighbour exists)
-    Thm = has_below ? U[M, iz-1, ID, ThPos] / U[M, iz-1, ID, RhoPos] : ThL[1]
-    Thp = has_above ? U[1, iz+1, ID, ThPos] / U[1, iz+1, ID, RhoPos] : ThL[M]
+    Thm = has_below ? Th[M, iz-1, ID] : ThL[1]
+    Thp = has_above ? Th[1, iz+1, ID] : ThL[M]
 
     # Trace couplings: lower face (node 1) and upper face (node M)
     B1_1 = -invwB
@@ -212,7 +209,7 @@ end
     end
     ra[1] += B3_1
     rb[M] += B3_2
-    ldivFull2!(SA_loc, ra, rb, Val(M))
+    ldivInv2!(SA_loc, ra, rb, Val(M))
 
     r2_1a = B2_1
     r2_Ma = zero(FT)
@@ -292,7 +289,7 @@ end
 
     # Solve in registers with the stored factors
     SA_static = SA_gpu[iz, ID]
-    ldivFull!(SA_static, r3, Val(M))
+    ldivInv!(SA_static, r3, Val(M))
 
     r21 = r2[1]
     r2M = r2[M]
@@ -384,7 +381,7 @@ end
     end
 
     SA_static = SA_gpu[iz, ID]
-    ldivFull!(SA_static, r3, Val(M))
+    ldivInv!(SA_static, r3, Val(M))
 
     @unroll for i = 1:M
       s1 = r1[i]
@@ -414,16 +411,9 @@ end
 # Host side
 ################################################################################
 
-# The geopotential is static: copy it once, A31 is rebuilt inside the kernels.
-# (GeoPot, DWZ, NumberThreadGPU are kept for call compatibility.)
-function precompute_gravity!(GeoPot, DWZ, Jac::JacHDGVert, NumberThreadGPU)
-  Jac.Geo .= GeoPot
-  return nothing
-end
-
-function FillJacHDGVert!(Jac::JacHDGVert,U,DG,Metric,fac,Phys)
+function FillJacHDG!(Jac::JacHDG,DG,Metric,fac,Phys)
   
-  backend = get_backend(U)
+  backend = get_backend(Jac.Th)
   FT = eltype(Jac.Th)
   
   M = Jac.M
@@ -433,21 +423,15 @@ function FillJacHDGVert!(Jac::JacHDGVert,U,DG,Metric,fac,Phys)
   Jac.fac = fac
   Jac.cS = Phys.cS
 
-  # Thermodynamic constants as plain scalars of the working precision
-  kappa = FT(Phys.kappa)
-  kexp  = kappa / (one(FT) - kappa)
-  kfac  = FT(Phys.Rd) / (one(FT) - kappa)
-  Rdp0  = FT(Phys.Rd) / FT(Phys.p0)
-
-  KFillJacHDGVertKernel! = FillJacHDGVertKernel!(backend)
-  KFillJacHDGVertKernel!(Jac.Th, Jac.dpdRhoTh, Jac.FacLoc, Jac.InvSurf, Jac.SA, Jac.Blk,
-    Jac.Geo, U, Metric.J, Metric.VolSurfVV,
-    Jac.DWS, Jac.DWSS, Jac.wB, Jac.fac, Jac.cS, kexp, kfac, Rdp0, Val(M);
+  KFillJacHDGKernel! = FillJacHDGKernel!(backend)
+  KFillJacHDGKernel!(Jac.Th, Jac.dpdRhoTh, Jac.FacLoc, Jac.InvSurf, Jac.SA, Jac.Blk,
+    Jac.Geo, Metric.J, Metric.VolSurfVV,
+    Jac.DWS, Jac.DWSS, Jac.wB, Jac.fac, Jac.cS, Val(M);
     ndrange=(nz, ND))
 end   
 
 # Assemble the Schur tridiagonal from the element blocks and factor it.
-function SchurBoundary!(Jac::JacHDGVert)
+function SchurBoundary!(Jac::JacHDG)
 
   backend = get_backend(Jac.rs)
   FT = eltype(Jac.rs)
@@ -460,7 +444,7 @@ function SchurBoundary!(Jac::JacHDGVert)
 end  
 
 # bout = J^{-1} b   (bout and b may be the same array)
-function SolveHDGVert!(Jac::JacHDGVert, bout, b, Metric)
+function SolveHDG!(Jac::JacHDG, bout, b, Metric)
 
   backend = get_backend(b)
 
@@ -486,23 +470,21 @@ function SolveHDGVert!(Jac::JacHDGVert, bout, b, Metric)
     ndrange=(nz, ND))
 end
 
-# In-place variant (same signature as before)
-function Solve!(Jac::JacHDGVert,b,DG,Metric,NumberThreadGPU)
-  SolveHDGVert!(Jac, b, b, Metric)
+function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDG,Global)
+  InitGeo!(JCache,Cache,DG,Global)
+  FillThetaAlpha!(JCache.Th,JCache.dpdRhoTh,U,Phys)
+  FillJacHDG!(JCache,DG,Metric,fac,Phys)
+  SchurBoundary!(JCache)
 end
 
-function Jac!(U,fac,DG,Metric,Phys,Cache,JCache::JacHDGVert,Global,VelForm)
-  NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
-  if JCache.grav_do
-    @views Geo = Cache.Aux[:,:,:,2]
-    precompute_gravity!(Geo,DG.DWZ,JCache,NumberThreadGPU)
-    JCache.grav_do = false
-  end  
-  FillJacHDGVert!(JCache,U,DG,Metric,fac,Phys)
+function JacFrozen!(Aux,fac,DG,Metric,Phys,Cache,JCache::JacHDG,Global)
+  InitGeo!(JCache,Cache,DG,Global)
+  FillThetaAlphaFrozen!(JCache.Th,JCache.dpdRhoTh,Aux)
+  FillJacHDG!(JCache,DG,Metric,fac,Phys)
   SchurBoundary!(JCache)
 end
 
 # k = J^{-1} v : the copy k = v is fused into the kernels (v is read, k is written)
-function Solve!(k,v,Jac::JacHDGVert,fac,DG::FiniteElements.DGElement,Metric,Global,VelForm)
-  SolveHDGVert!(Jac, k, v, Metric)
+function Solve!(k,v,Jac::JacHDG,fac,DG::FiniteElements.DGElement,Metric,Global)
+  SolveHDG!(Jac, k, v, Metric)
 end

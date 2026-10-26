@@ -463,7 +463,7 @@ CacheS = zeros(size(U,1),size(U,2),DG.NumI,5)
 @views @. p = Model.Pressure(U[:,:,:,5]) 
 @views @. p = p / U[:,:,:,Model.ThPos]
 @views @. Th = U[:,:,:,Model.ThPos] / U[:,:,:,Model.RhoPos]
-DGSEM.FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,Grid.Type)
+DGSEM.FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global)
 @show sum(abs.(F))
 stop
 

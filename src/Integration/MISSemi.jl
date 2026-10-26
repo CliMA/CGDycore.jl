@@ -58,7 +58,7 @@ function TimeIntegration!(MIS::MISSemiMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys,Cac
   @views @. Yn[:,:,:,:,1] = V
   @inbounds for iStage = 1 : nStage
     @. VnI = Yn[:,:,:,:,iStage]
-    @views FcnSlow(Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
+    @views CallFcn!(FcnSlow,Sdu[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,Type)
     @views FrozeState(YFn[:,:,:,:,iStage],Vn,Aux.Aux)
     @views @.  Yn[:,:,:,:,iStage+1] = V
     @views InitialConditionMIS!(Yn[:,:,:,:,iStage+1], Yn, V, MIS.alpha, iStage)
@@ -91,7 +91,7 @@ function TimeStepperFast!(IntMethod,dt,tEnd,U,FSlow,Fcn,Jac,FE,Exchange,Metric,P
   FTB = eltype(U)
   dtau = tEnd/numit
   fac = dtau * IntMethod.gamma
-  Jac(U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
+  CallJac!(Jac,U,fac,FE,Metric,Phys,CacheAux,JCache,Global,VelForm)
   @inbounds for i = 1 : numit
     TimeIntegrationFast!(IntMethod,U,dtau,Fcn,FSlow,CacheAux,FE,Metric,Phys,Cache,JCache,Exchange,
       Global,Param,VelForm)

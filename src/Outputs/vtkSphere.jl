@@ -523,7 +523,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
   end  
   if VelForm == Examples.VelocityC() && GridForm == Grids.SphericalGrid()
     UR = copy(URIn)  
-    DGSEM.StateVCart2VSp!(UR,FE,Metric,NumberThreadGPU,Examples.VelocityS())
+    DGSEM.RotateCart2Sph!(UR,FE,Metric,NumberThreadGPU)
   else
     UR = URIn  
   end

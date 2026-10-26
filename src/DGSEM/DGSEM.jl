@@ -25,18 +25,16 @@ using MPI
 
 
 
-include("LinAlgNeu.jl")
+include("LinAlg.jl")
 include("LocalFlux.jl")
 include("Rotation.jl")
 include("RiemannNonLin.jl")
 include("FluxVolumeNonLin.jl")
 include("Fcn.jl")
-include("JacUnSplit.jl")
-include("JacSplitTwo.jl")
-include("JacHDGJNeu.jl")
-include("JacFluxVolumeSparse.jl")
-include("JacRiemannSparse.jl")
-include("JacGravitySparse.jl")
+include("JacCommon.jl")
+include("JacHDG.jl")
+include("JacTwoSidedSplit.jl")
+include("JacOneSided.jl")
 include("FcnLin.jl")
 include("Orography.jl")
 include("GeoPot.jl")

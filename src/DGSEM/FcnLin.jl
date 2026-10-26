@@ -1,4 +1,4 @@
-function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,::Grids.Quad)
+function FcnGPULin!(F,U,DG::FiniteElements.DGQuad,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global)
   backend = get_backend(F)
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
@@ -6,7 +6,7 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   RiemannSolver = Model.RiemannSolver
   FT = eltype(F)
   N = DG.OrdPoly + 1
-  M = DG.OrdPolyZ + 1
+  M = DG.V.OrdPolyZ + 1
   NF = Grid.NumFaces
   NE = Grid.NumEdges
   Nz = Grid.nz
@@ -56,7 +56,7 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   group = (M,Nz,NDG,1)
   ndrange = (M,Nz,N*N,NF)
   KFluxVolumeNonLinV3Kernel! = FluxVolumeNonLinV3Kernel!(backend,group)
-  KFluxVolumeNonLinV3Kernel!(Model.FluxLin,F,U,Aux,Metric.dXdxI,DG.DWZ,DG.Glob,
+  KFluxVolumeNonLinV3Kernel!(Model.FluxLin,F,U,Aux,Metric.dXdxI,DG.V.DWZ,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(U,Exchange)
@@ -74,7 +74,7 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   ndrange = (Nz+1,NQ,NF)
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
   KRiemanNonLinV3Kernel!(Model.RiemannSolverLin,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
-    Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
+    Metric.VolSurfV,DG.V.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
 
   NQ = N * N
   NQG = min(div(NumberThreadGPU,Nz*M),NQ)
@@ -93,7 +93,7 @@ function FcnGPULin!(F,U,DG,Model,Metric,Exchange,Grid,Cache,CacheS,Phys,Global,:
   @. F += FS
 end
 
-function FcnGPU!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::Grids.Tri)
+function FcnGPU!(F,U,DG::FiniteElements.DGTri,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global)
   backend = get_backend(F)
   Damp = Model.Damp
   GeoPotential = Model.GeoPotential
@@ -102,7 +102,7 @@ function FcnGPU!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::G
   FT = eltype(F)
   DoF = DG.DoF
   DoFE = DG.DoFE
-  M = DG.OrdPolyZ + 1
+  M = DG.V.OrdPolyZ + 1
   NF = Grid.NumFaces
   NE = Grid.NumEdges
   Nz = Grid.nz
@@ -179,7 +179,7 @@ function FcnGPU!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::G
   group = (M,Nz,NDG,1)
   ndrange = (M,Nz,DoF,NF)
   KFluxVolumeNonLinV3Kernel! = FluxVolumeNonLinV3Kernel!(backend,group)
-  KFluxVolumeNonLinV3Kernel!(Model.FluxAverage,F,U,Aux,Metric.dXdxI,DG.DVZT,DG.Glob,
+  KFluxVolumeNonLinV3Kernel!(Model.FluxAverage,F,U,Aux,Metric.dXdxI,DG.V.DVZT,DG.Glob,
     Val(NV),Val(NAUX);ndrange=ndrange)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(CacheU[:,:,:,1:NV+NAUX],Exchange)
@@ -195,7 +195,7 @@ function FcnGPU!(F,U,DG,Model,Metric,Exchange,Grid,CacheU,CacheS,Phys,Global,::G
   ndrange = (Nz+1,DoF,NF)
   KRiemanNonLinV3Kernel! = RiemanNonLinV3Kernel!(backend,group)
   KRiemanNonLinV3Kernel!(RiemannSolver,NonConservativeFlux,F,U,Aux,DG.Glob,Metric.NV,
-    Metric.VolSurfV,DG.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
+    Metric.VolSurfV,DG.V.wZ,Val(M),Val(NV),Val(NAUX);ndrange=ndrange) 
 
   DoFG = min(div(NumberThreadGPU,Nz*M),DoF)
   group = (Nz,M,DoFG,1)

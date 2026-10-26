@@ -1,4 +1,4 @@
-function Vorticity(Vort,U,DG::FiniteElements.DGElement,Metric,NumberThreadGPU,::Grids.Quad)
+function Vorticity(Vort,U,DG::FiniteElements.DGQuad,Metric,NumberThreadGPU)
   backend = get_backend(Vort)
   Nz = size(U,2)
   NF = size(DG.Glob,2)
@@ -6,11 +6,11 @@ function Vorticity(Vort,U,DG::FiniteElements.DGElement,Metric,NumberThreadGPU,::
   DoF = DG.DoF
   DoFE = DG.DoFE
   N = DG.OrdPoly + 1 
-  M = DG.OrdPolyZ + 1 
+  M = DG.V.OrdPolyZ + 1 
   group = (N,N,M,1,1)
   ndrange = (N,N,M,Nz,NF)
   KVorticityQuadKernel! = VorticityQuadKernel!(backend,group)
-  KVorticityQuadKernel!(Vort,U,Metric.dXdxI,Metric.J,Metric.Rotate,DG.DS,DG.DSZ,DG.Glob,
+  KVorticityQuadKernel!(Vort,U,Metric.dXdxI,Metric.J,Metric.Rotate,DG.DS,DG.V.DSZ,DG.Glob,
     Val(N),Val(M) ;ndrange=ndrange)
 end
 
