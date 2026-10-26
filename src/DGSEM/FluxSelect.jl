@@ -16,7 +16,23 @@ function SetDensityMean(DensityMeanDG)
   end
 end
 
+# Conservative interface fluxes are the same for both sides
+function TwoSided(RiemannSolver!)
+  @inline function RiemannTwoSided!(FL,FR,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+    RiemannSolver!(FL,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+    @unroll for iv = 1 : length(FL)
+      FR[iv] = FL[iv]
+    end
+  end
+  return RiemannTwoSided!
+end
+
 function SetFluxes!(Model,DG,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,cS)
+  if Model.ModelType == "VectorInvariant"
+    SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos)
+    return
+  end
+
   RhoPos = Model.RhoPos
   uPos = Model.uPos
   vPos = Model.vPos
@@ -43,17 +59,45 @@ function SetFluxes!(Model,DG,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,
   Model.FluxAverageV = FluxAverage
 
   if InterfaceFluxDG == "RiemannLMARS"
-    Model.RiemannSolver = RiemannLMARS()(Val(RhoPos),Val(uPos),Val(vPos),Val(wPos),
-      Val(RhoThPos),Val(1),FT(cS))
+    Model.RiemannSolver = TwoSided(RiemannLMARS()(Val(RhoPos),Val(uPos),Val(vPos),Val(wPos),
+      Val(RhoThPos),Val(1),FT(cS)))
   elseif InterfaceFluxDG == "RiemannExLMARS"
-    Model.RiemannSolver = RiemannExLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1)
+    Model.RiemannSolver = TwoSided(RiemannExLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1))
   elseif InterfaceFluxDG == "RiemannExnerLMARS"
-    Model.RiemannSolver = RiemannExnerLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1)
+    Model.RiemannSolver = TwoSided(RiemannExnerLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1))
   elseif InterfaceFluxDG == "RiemannExPLMARS"
-    Model.RiemannSolver = RiemannExPLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1)
+    Model.RiemannSolver = TwoSided(RiemannExPLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1))
   else
     error("InterfaceFluxDG = $InterfaceFluxDG is not available for the split-form DGSEM")
   end
 
   Model.NonConservativeFlux = BuoyancyFlux()(RhoPos,GPAuxPos)
+end
+
+# Vector invariant form (rho, v, rho theta), arXiv:2610.05820. The Exner
+# pressure is kept in Aux at ExnerAuxPos.
+const ExnerAuxPos = 3
+
+function SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos)
+  if (Model.RhoPos,Model.uPos,Model.vPos,Model.wPos,Model.RhoThPos) != (1,2,3,4,5) || Model.NumV != 5
+    error("VectorInvariant needs the variables (Rho,u,v,w,RhoTh) at positions 1:5")
+  end
+  if Model.NumAux < ExnerAuxPos || ExnerAuxPos in (pAuxPos,GPAuxPos)
+    error("VectorInvariant keeps the Exner pressure at Aux position $ExnerAuxPos, use NumAux >= $ExnerAuxPos")
+  end
+
+  if FluxDG == "VectorInvariant"
+    FluxAverage = VectorInvariantFlux()(Val(ExnerAuxPos),Val(GPAuxPos),FT(Phys.Cpd))
+  else
+    error("FluxDG = $FluxDG is not available for ModelType VectorInvariant, use VectorInvariant")
+  end
+  Model.FluxAverageH = FluxAverage
+  Model.FluxAverageV = FluxAverage
+
+  if InterfaceFluxDG == "RiemannVectorInvariant"
+    Model.RiemannSolver = RiemannVectorInvariant()(Val(pAuxPos),Val(ExnerAuxPos),Val(GPAuxPos),
+      FT(Phys.Cpd),FT(Phys.Gamma))
+  else
+    error("InterfaceFluxDG = $InterfaceFluxDG is not available for ModelType VectorInvariant, use RiemannVectorInvariant")
+  end
 end

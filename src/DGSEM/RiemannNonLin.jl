@@ -1,3 +1,6 @@
+# The interface solvers are two-sided, RiemannSolver!(FL,FR,VLL,VRR,AuxL,AuxR,n1,n2,n3):
+# the lower/left element gets -FL, the upper/right element +FR. Conservative
+# fluxes have FL = FR (see TwoSided), nonconservative surface terms differ.
 function RiemannNonLinH(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
   backend = get_backend(F)
   DoF = DG.DoF
@@ -42,6 +45,7 @@ end
   AuxL = @private eltype(F) (NAUX,)
   AuxR = @private eltype(F) (NAUX,)
   FLoc = @private eltype(F) (NUMV,)
+  FRLoc = @private eltype(F) (NUMV,)
 
   if ind <= NumI
     n1 = NV[1,Iz,ind]
@@ -62,10 +66,10 @@ end
       VLL[2] -= n1 * t
       VLL[3] -= n2 * t
       VLL[4] -= n3 * t
-      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+      RiemannSolver!(FLoc,FRLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
       Surf = VolSurfV[Iz,ind]  
       @unroll for iv = 1 : NUMV  
-        F[1,Iz,ind,iv] += FLoc[iv] * Surf
+        F[1,Iz,ind,iv] += FRLoc[iv] * Surf
       end  
     elseif Iz == Nz 
       @unroll for iAux = 1 : NAUX  
@@ -82,7 +86,7 @@ end
       VRR[2] -= n1 * t
       VRR[3] -= n2 * t
       VRR[4] -= n3 * t
-      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+      RiemannSolver!(FLoc,FRLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
       Surf = VolSurfV[Iz,ind]   
       @unroll for iv = 1 : NUMV  
         F[end,Iz-1,ind,iv] -= FLoc[iv] * Surf
@@ -96,12 +100,11 @@ end
         VLL[iv] = U[end,Iz-1,ind,iv]
         VRR[iv] = U[1,Iz,ind,iv]
       end  
-      RiemannSolver!(FLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+      RiemannSolver!(FLoc,FRLoc,VLL,VRR,AuxL,AuxR,n1,n2,n3)
       Surf = VolSurfV[Iz,ind]  
       @unroll for iv = 1 : NUMV  
-        FLoc[iv] *= Surf
-        F[end,Iz-1,ind,iv] -= FLoc[iv]
-        F[1,Iz,ind,iv] += FLoc[iv]
+        F[end,Iz-1,ind,iv] -= FLoc[iv] * Surf
+        F[1,Iz,ind,iv] += FRLoc[iv] * Surf
       end  
     end    
   end  
@@ -117,6 +120,7 @@ end
   DoFE = @uniform @ndrange()[3]
 
   FLoc = @private eltype(F) (NUMV,)
+  FRLoc = @private eltype(F) (NUMV,)
   UL = @private eltype(F) (NUMV,)
   UR = @private eltype(F) (NUMV,)
   AuxL = @private eltype(F) (NAUX,)
@@ -176,19 +180,16 @@ end
       UR[vPos] -= n2 * t  
       UR[wPos] -= n3 * t  
     end  
-    RiemannSolver!(FLoc,UL,UR,AuxL,AuxR,n1,n2,n3)
+    RiemannSolver!(FLoc,FRLoc,UL,UR,AuxL,AuxR,n1,n2,n3)
     Surf = VolSurfH[K,Iz,I,IE] / w[I]  
-    @unroll for iv = 1 : NUMV  
-      FLoc[iv] *= Surf
-    end  
     if 0 < iFL <= NF
       @unroll for iv = 1 : NUMV  
-        @atomic :monotonic F[K,Iz,indL,iv] += -FLoc[iv]
+        @atomic :monotonic F[K,Iz,indL,iv] += -FLoc[iv] * Surf
       end  
     end  
     if 0 < iFR <= NF
       @unroll for iv = 1 : NUMV  
-        @atomic :monotonic F[K,Iz,indR,iv] += FLoc[iv]
+        @atomic :monotonic F[K,Iz,indR,iv] += FRLoc[iv] * Surf
       end  
     end  
   end  

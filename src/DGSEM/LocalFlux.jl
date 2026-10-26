@@ -254,8 +254,6 @@ function (::KennedyGruberIEGrav)(RhoPos,uPos,vPos,wPos,IEPos,pPos,GPPos)
   return FluxNonLinAver!
 end
 
-abstract type RiemannSolver end
-
 Base.@kwdef struct RiemannLMARS <: RiemannSolver end
 Base.@kwdef struct RiemannExnerLMARS <: RiemannSolver end
 Base.@kwdef struct ArtianoEnergyStable <: RiemannSolver end

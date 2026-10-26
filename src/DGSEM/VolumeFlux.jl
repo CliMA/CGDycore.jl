@@ -21,6 +21,19 @@
 ################################################################################
 
 abstract type AverageFlux end
+abstract type RiemannSolver end
+
+# Formulation of the prognostic variables, decides which components are
+# divided by rho when the volume kernels load the primitive state
+abstract type Formulation end
+struct ConservativeForm <: Formulation end      # (rho, rho v, rho theta)
+struct VectorInvariantForm <: Formulation end   # (rho, v, rho theta)
+
+Formulation(ModelType::String) =
+  ModelType == "VectorInvariant" ? VectorInvariantForm() : ConservativeForm()
+
+@inline PrimScale(::ConservativeForm, iv, invRho) = invRho
+@inline PrimScale(::VectorInvariantForm, iv, invRho) = iv == 5 ? invRho : one(invRho)
 
 @inline function contravariant_velocity(VL, VR, mL, mR)
   FT = eltype(VL)

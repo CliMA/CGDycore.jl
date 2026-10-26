@@ -547,6 +547,11 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       vtk["u", VTKCellData()] = cCellCPU
+    elseif  str == "wVel" 
+      wPos = Global.Model.wPos
+      @views InterpolateGPU!(cCell,UR[:,:,:,wPos],FE)
+      copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
+      vtk["w", VTKCellData()] = cCellCPU
     elseif  str == "v" 
       vPos = Global.Model.vPos
       @views InterpolateGPU!(cCell,UR[:,:,:,vPos],FE)

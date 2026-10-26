@@ -31,12 +31,12 @@ function TimeIntegration!(RK::RungeKuttaExMethod,V,dt,Fcn,Aux,Jac,FE,Metric,Phys
   @inbounds for iStage=1:RK.nStage
     @. VnI = V
     @inbounds for jStage=1:iStage-1
-      @views @. VnI = VnI + dt * RK.A[iStage,jStage] * f[:,:,:,:,jStage]
+      @views @. VnI = VnI + dtau * RK.A[iStage,jStage] * f[:,:,:,:,jStage]
     end
     @views CallFcn!(FcnFull,f[:,:,:,:,iStage],Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
   end
   @inbounds for iStage=1:RK.nStage
-    @views @. V = V + dt * RK.b[iStage] * f[:,:,:,:,iStage]
+    @views @. V = V + dtau * RK.b[iStage] * f[:,:,:,:,iStage]
   end
 end
 

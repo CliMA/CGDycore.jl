@@ -1,5 +1,5 @@
 
-function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG::FiniteElements.DGQuad,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG::FiniteElements.DGQuad,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,Form=ConservativeForm())
   backend = get_backend(F)
   DoF = DG.DoF 
   DoFE = DG.DoFE 
@@ -10,7 +10,7 @@ function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG::FiniteElements.DGQuad,dX
   ndrange = (N,N,M*Nz,NF)
   KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHQuadKernel!(backend,group)
   KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DVT,DG.Glob,
-    Val(N), Val(NV),Val(NAUX);ndrange=ndrange)
+    Val(N), Val(NV),Val(NAUX),Form;ndrange=ndrange)
 end  
 
 function FluxVolumeNonLinH(Flux,F,U,Aux,DG::FiniteElements.DGQuad,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
@@ -27,7 +27,7 @@ function FluxVolumeNonLinH(Flux,F,U,Aux,DG::FiniteElements.DGQuad,dXdxI,Nz,NF,Nu
     Val(NV),Val(NAUX);ndrange=ndrange)
 end
 
-function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG::FiniteElements.DGTri,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG::FiniteElements.DGTri,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,Form=ConservativeForm())
   backend = get_backend(F)
   DoF = DG.DoF
   M = DG.V.OrdPolyZ + 1
@@ -36,10 +36,10 @@ function FluxSplitVolumeNonLinH(FluxAverage,F,U,Aux,DG::FiniteElements.DGTri,dXd
   ndrange = (DoF,M*Nz,NF)
   KFluxSplitVolumeNonLinHKernel! = FluxSplitVolumeNonLinHTriKernel!(backend,group)
   KFluxSplitVolumeNonLinHKernel!(FluxAverage,F,U,Aux,dXdxI,DG.DSx1,DG.DSx2,DG.Glob,
-    Val(NV),Val(NAUX);ndrange=ndrange)
+    Val(NV),Val(NAUX),Form;ndrange=ndrange)
 end
 
-function FluxSplitVolumeNonLinV(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+function FluxSplitVolumeNonLinV(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,Form=ConservativeForm())
   backend = get_backend(F)
   DoF = DG.DoF 
   DoFE = DG.DoFE 
@@ -49,7 +49,7 @@ function FluxSplitVolumeNonLinV(FluxAverage,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadG
   ndrange = (M,Nz,DoF,NF)
   KFluxSplitVolumeNonLinV3Kernel! = FluxSplitVolumeNonLinV3Kernel!(backend,group)
   KFluxSplitVolumeNonLinV3Kernel!(FluxAverage,F,U,Aux,dXdxI,DG.V.DVZT,DG.Glob,
-    Val(NV),Val(NAUX);ndrange=ndrange)
+    Val(NV),Val(NAUX),Form;ndrange=ndrange)
 end  
 
 function FluxVolumeNonLinV(Flux,F,U,Aux,DG,dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
@@ -74,7 +74,7 @@ end
 @kernel inbounds = true function FluxSplitVolumeNonLinV3Kernel!(FluxAver,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
     @Const(DVT), @Const(Glob),
-    ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+    ::Val{NV}, ::Val{NAUX}, Form) where {NV, NAUX}
 
   K, Iz, iD     = @index(Local, NTuple)
   _, _, ID, IF  = @index(Global, NTuple)
@@ -101,7 +101,7 @@ end
     FLoc[K, Iz, iD, 1] = 0
     invRho = eltype(F)(1) / VLoc[K, Iz, iD, 1]
     @unroll for iv = 2:NV
-      VLoc[K, Iz, iD, iv] = V[K, Iz, ind, iv] * invRho
+      VLoc[K, Iz, iD, iv] = V[K, Iz, ind, iv] * PrimScale(Form, iv, invRho)
       FLoc[K, Iz, iD, iv] = 0
     end
     @unroll for j = 1:3
@@ -134,7 +134,7 @@ end
 @kernel inbounds = true function FluxSplitVolumeNonLinHQuadKernel!(FluxAver,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
     @Const(DVT), @Const(Glob),
-    ::Val{N}, ::Val{NV}, ::Val{NAUX}) where {N, NV, NAUX}
+    ::Val{N}, ::Val{NV}, ::Val{NAUX}, Form) where {N, NV, NAUX}
 
   I, J, iz      = @index(Local, NTuple)
   _, _, IZ, IF  = @index(Global, NTuple)
@@ -163,7 +163,7 @@ end
     FLoc[1] = 0
     invRho = eltype(F)(1) / VLoc[I, J, iz, 1]
     @unroll for iv = 2:NV
-      VLoc[I, J, iz, iv] = V[K, Iz, ind, iv] * invRho
+      VLoc[I, J, iz, iv] = V[K, Iz, ind, iv] * PrimScale(Form, iv, invRho)
       FLoc[iv] = 0
     end
     @unroll for j = 1:3
@@ -207,7 +207,7 @@ end
 @kernel inbounds = true function FluxSplitVolumeNonLinHTriKernel!(FluxAver,
     F, @Const(V), @Const(Aux), @Const(dXdxI),
     @Const(Dx1), @Const(Dx2), @Const(Glob),
-    ::Val{NV}, ::Val{NAUX}) where {NV, NAUX}
+    ::Val{NV}, ::Val{NAUX}, Form) where {NV, NAUX}
 
   ID, iz        = @index(Local, NTuple)
   _, IZ, IF     = @index(Global, NTuple)
@@ -235,7 +235,7 @@ end
     FLoc[ID, iz, 1] = 0
     invRho = eltype(F)(1) / VLoc[ID, iz, 1]
     @unroll for iv = 2:NV
-      VLoc[ID, iz, iv] = V[K, Iz, ind, iv] * invRho
+      VLoc[ID, iz, iv] = V[K, Iz, ind, iv] * PrimScale(Form, iv, invRho)
       FLoc[ID, iz, iv] = 0
     end
     @unroll for j = 1:3

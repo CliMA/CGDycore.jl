@@ -415,6 +415,15 @@ if ModelType == "Conservative"
 #   "Th",
 #   "Vort",
     ]
+elseif ModelType == "VectorInvariant"
+  Global.Output.cNames = [
+    "Rho",
+    "u",
+    "v",
+    "wVel",
+    "RhoTh",
+    "Pres",
+    ]
 elseif ModelType == "Boussinesq"
   Global.Output.cNames = [
     "Rho",
@@ -483,6 +492,9 @@ if Proc == 1
 end
 dtau = FTB(dtau)
 
+if ModelType == "VectorInvariant" && IntMethod != "RungeKuttaEx"
+  error("ModelType VectorInvariant has no vertical Jacobian yet, use IntMethod RungeKuttaEx")
+end
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"
   MethodInt = Integration.RosenbrockMethod{FTB}(Table)
 # O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()

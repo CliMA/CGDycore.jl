@@ -1,3 +1,11 @@
+# Exner pressure Pi = (Rd rho theta / p0)^(Rd/Cvd) for the vector invariant form
+function Exner!(Pi,RhoTh,Phys)
+  FT = eltype(Pi)
+  Rdp0 = FT(Phys.Rd) / FT(Phys.p0)
+  ex = FT(Phys.Rd) / FT(Phys.Cvd)
+  @. Pi = (Rdp0 * RhoTh)^ex
+end
+
 function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global)
   backend = get_backend(F)
   FT = eltype(F)
@@ -23,16 +31,24 @@ function FcnSplit!(F,U,DG,Metric,Phys,CacheAux,Exchange,Global)
 
   @. F = 0
 
+  Form = Formulation(Model.ModelType)
+
   @views @. Aux[:,:,1:DG.NumI,1] = Model.Pressure(U[:,:,1:DG.NumI,5])
+  if Form == VectorInvariantForm()
+    @views Exner!(Aux[:,:,1:DG.NumI,ExnerAuxPos],U[:,:,1:DG.NumI,5],Phys)
+  end
 
   @views Parallels.ExchangeData3DSendGPU(U[:,:,:,1:NV],Exchange)
 
-  FluxSplitVolumeNonLinH(Model.FluxAverageH,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
-  FluxSplitVolumeNonLinV(Model.FluxAverageV,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX)
+  FluxSplitVolumeNonLinH(Model.FluxAverageH,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,Form)
+  FluxSplitVolumeNonLinV(Model.FluxAverageV,F,U,Aux,DG,Metric.dXdxI,Nz,NF,NumberThreadGPU,NV,NAUX,Form)
   RiemannNonLinV(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
   @views Parallels.ExchangeData3DRecvSetGPU!(U[:,:,:,1:NV],Exchange)
   @views @. Aux[:,:,DG.NumI+1:DG.NumG,1] = Model.Pressure(U[:,:,DG.NumI+1:DG.NumG,5])
+  if Form == VectorInvariantForm()
+    @views Exner!(Aux[:,:,DG.NumI+1:DG.NumG,ExnerAuxPos],U[:,:,DG.NumI+1:DG.NumG,5],Phys)
+  end
 
   RiemannNonLinH(Model.RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NV,NAUX)
 
