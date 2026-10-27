@@ -1,0 +1,869 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\vv}{\bm{v}}
+\newcommand{\Jm}{\mathcal{J}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+\title{The continuous Galerkin spectral element dynamical core\\
+of CGDycore.jl (\code{src/CGSEM})\\[0.3em]
+\large Numerical scheme and comparison with HOMME and ClimaCore}
+\author{Summary of the implementation}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note describes the numerical scheme implemented in the module
+\code{CGSEM} of CGDycore.jl as it is coded in the kernels of
+\code{src/CGSEM}. The scheme combines a continuous Galerkin spectral element
+method (SEM) on Gauss--Lobatto--Legendre (GLL) points in the horizontal with
+a low-order, staggered (Charney--Phillips type) discretization in a
+terrain-following height coordinate in the vertical. The prognostic variables
+are density, the velocity components in vector-invariant form, the vertical
+velocity on layer interfaces, the density-weighted potential temperature and
+tracer densities. Time integration is done by Rosenbrock-type W-methods with an
+approximate Jacobian that contains only the vertical acoustic and buoyancy
+coupling (HEVI). We describe the discrete operators term by term and compare
+the design with the spectral element cores HOMME (E3SM) and ClimaCore
+(CliMA).
+\end{abstract}
+
+\tableofcontents
+
+%==============================================================================
+\section{Overview}
+%==============================================================================
+
+The main routine for the right-hand side is \code{Fcn!} in
+\code{CGSEM/Fcn.jl}. One evaluation consists of
+\begin{enumerate}
+\item a diagnostic step \code{FcnPrepare!} (pressure, temperature, eddy
+  coefficients),
+\item a first pass of horizontal hyperviscosity (Laplacians of momentum,
+  potential temperature and tracers), followed by direct stiffness summation
+  (DSS) and parallel exchange,
+\item the second pass, in which all tendencies are computed: biharmonic
+  hyperviscosity, rotational and Coriolis terms, gradient of kinetic energy,
+  pressure gradient and gravity, transport of $\rho$, $\rho\theta$ and the
+  tracers,
+\item DSS/parallel exchange of the tendency and the column physics (vertical
+  diffusion, surface fluxes, forcing, microphysics, sedimentation, damping).
+\end{enumerate}
+All element-wise operators are evaluated in KernelAbstractions kernels, one
+thread per horizontal node and layer. The contributions of the elements are
+accumulated into the global degrees of freedom by atomic additions and divided
+by the assembled lumped mass. In this way DSS is part of every operator
+kernel. The elements are ordered so that the elements at the boundary of a
+process come first: they are computed first, the exchange is started, the
+interior elements are computed and finally the exchange is completed (overlap
+of communication and computation).
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{lL}
+\toprule
+Horizontal & CG spectral elements on quadrilaterals (cubed sphere or
+  Cartesian), GLL collocation, polynomial order $p$ (typically $p=3$ or $4$),
+  lumped mass, DSS\\
+Vertical & terrain-following height coordinate, $N_z$ layers, lowest-order
+  staggering: $\rho,u,v,\rho\theta,\rho q$ in layers, $w$ on interfaces\\
+Momentum & vector-invariant form, prognostic velocities $u,v,w$\\
+Thermodynamics & $\rho\theta$ (dry); variants with internal or total energy\\
+Horizontal transport & centred SEM operators; split form for $\rho\theta$\\
+Vertical transport & limited third-order upwind reconstruction
+  (Koren-type limiter, non-uniform grid)\\
+Dissipation & biharmonic hyperviscosity, separate coefficients for
+  vorticity, divergence and scalars\\
+Tracer limiter & optional optimization-based limiter (local bounds,
+  mass conservation)\\
+Time integration & Rosenbrock W-methods (e.g.\ \code{SSP-Knoth}) with a
+  frozen vertical acoustic Jacobian, Schur complement for $w$, tridiagonal
+  solves per column\\
+\bottomrule
+\end{tabularx}
+\caption{Main components of the CGSEM scheme.}
+\end{table}
+
+%==============================================================================
+\section{Continuous equations}
+%==============================================================================
+
+The dry compressible Euler equations are solved in the vector-invariant form
+\begin{align}
+  \partial_t \rho + \nabla\cdot(\rho\vv) &= 0, \label{eq:cont}\\
+  \partial_t \vv + (\bm{\omega} + 2\bm{\Omega})\times\vv
+    + \nabla K + \frac{1}{\rho}\nabla p + \nabla\Phi &= \bm{D}_{\vv},
+    \label{eq:mom}\\
+  \partial_t (\rho\theta) + \nabla\cdot(\rho\theta\vv) &= D_{\theta},
+    \label{eq:theta}\\
+  \partial_t (\rho q_l) + \nabla\cdot(\rho q_l\vv) &= D_{q_l} + S_{q_l},
+    \qquad l = 1,\dots,N_{Tr}, \label{eq:tracer}
+\end{align}
+with $\bm{\omega} = \nabla\times\vv$, the kinetic energy
+$K = \tfrac12|\vv|^2$, the geopotential $\Phi$ (gravity
+$\bm g = -\nabla\Phi$, shallow or deep), the dissipation terms $\bm D$ and
+the physical sources $S$. For the dry state the pressure is
+\begin{equation}
+  p = p_0\left(\frac{R_d\,\rho\theta}{p_0}\right)^{1/(1-\kappa)},
+  \qquad \kappa = R_d/c_{pd}.
+\end{equation}
+The velocity $\vv = (u,v,w)$ is stored in local Cartesian components:
+on the sphere $u$ and $v$ are the eastward and northward components and $w$
+is the radial component. Other options select internal or total energy instead of
+$\rho\theta$ (\code{DryInternalEnergy}, \code{DryTotalEnergy}, \dots), moisture
+variables, a turbulent kinetic energy and EDMF variables; they reuse the same
+operators and are not discussed here.
+
+%==============================================================================
+\section{Grid, coordinate transformation and metric terms}
+%==============================================================================
+
+\subsection{Horizontal elements and vertical layers}
+
+The horizontal mesh consists of quadrilateral elements $\Omega_e$, for
+example the elements of an equiangular or equidistant cubed sphere with
+$n_{\text{Panel}}\times n_{\text{Panel}}$ elements per panel. Every column of
+elements is divided into $N_z$ layers between the interfaces
+$z_{1/2} < z_{3/2} < \dots < z_{N_z+1/2} = H$ (optionally stretched). A
+grid cell $\Omega_{e,k}$ is mapped from the reference cell
+$(\xi^1,\xi^2,\zeta)\in[-1,1]^3$ by
+\begin{equation}
+  \bm{x}(\xi^1,\xi^2,\zeta) = \frac{\bm{X}(\xi^1,\xi^2)}{|\bm{X}(\xi^1,\xi^2)|}
+    \bigl(a + h(z(\zeta), z_s(\xi^1,\xi^2))\bigr),
+  \quad
+  z(\zeta) = \tfrac12\bigl((1-\zeta) z_{k-1/2} + (1+\zeta) z_{k+1/2}\bigr),
+\end{equation}
+where $\bm X$ is the bilinear interpolation of the four element corners on the
+cube, $a$ is the radius of the planet and $h(z,z_s)$ is the terrain-following
+transformation (\code{AdaptGrid}, e.g.\ Gal-Chen or SLEVE) of the
+orography $z_s$. In the Cartesian case $\bm x$ is the analogous mapping
+without the projection onto the sphere.
+
+\subsection{Nodes and derivative matrices}
+
+In the horizontal the GLL points $\xi_i$ with the weights $\omega_i$,
+$i=1,\dots,N$, $N=p+1$, are used as interpolation and quadrature nodes. The
+strong and weak derivative matrices are
+\begin{equation}
+  D_{ij} = \ell_j'(\xi_i), \qquad
+  D^W = -W^{-1} D^T W, \quad W = \operatorname{diag}(\omega_1,\dots,\omega_N),
+\end{equation}
+(\code{DS} and \code{DW} in the code). In the vertical each layer has the
+two GLL points $\zeta = -1$ (bottom, index $K=1$) and $\zeta=+1$ (top,
+$K=2$); the corresponding two-point quadrature has the weights $1,1$.
+The metric terms are stored at the $N\times N\times 2$ points of every cell.
+
+\subsection{Metric terms}
+
+With the Jacobian matrix $\partial\bm x/\partial\bm\xi$ in the local basis
+(east, north, radial), the code stores the pointwise determinant and the
+adjugate,
+\begin{equation}
+  J = \det\frac{\partial\bm x}{\partial\bm\xi}, \qquad
+  \Jm^{a}_{\;b} = J\,\frac{\partial\xi^a}{\partial x^b},
+  \qquad a,b = 1,2,3,
+\end{equation}
+(\code{J} and \code{dXdxI[a,b,K,ID,k,e]}, $\xi^3=\zeta$). The rows
+$\Jm^a = J\nabla\xi^a$ are the contravariant basis vectors scaled by $J$. The
+derivative of the height with respect to $\zeta$ is computed by the two-point
+difference $\partial_\zeta h \approx \tfrac12(h_{K=2}-h_{K=1})$ and the
+horizontal derivatives of $h$ by the matrix $D$. The divergence, gradient and
+curl are written in the metric-conservative forms
+\begin{equation}
+  J\nabla\cdot\bm f = \sum_{a}\partial_{\xi^a}\bigl(\Jm^a\cdot\bm f\bigr),\quad
+  J\nabla\phi = \sum_a \Jm^a\,\partial_{\xi^a}\phi,\quad
+  J(\nabla\times\vv)_i = \sum_a \varepsilon_{ibc}\,
+    \partial_{\xi^a}\bigl(\Jm^a_{\;b}\,v_c\bigr),
+  \label{eq:metricops}
+\end{equation}
+which are equivalent to the usual forms because of the metric identities
+$\sum_a\partial_{\xi^a}\Jm^a = 0$.
+
+\subsection{Lumped mass matrix and direct stiffness summation}
+
+Let $g$ be a global horizontal node and $k$ a layer. The assembled half-cell
+masses are
+\begin{equation}
+  M^{(K)}_{g,k} = \sum_{(e,i,j)\mapsto g} J^{(K)}_{e,ij,k}, \qquad K=1,2,
+  \qquad M_{g,k} = M^{(1)}_{g,k} + M^{(2)}_{g,k}
+\end{equation}
+(\code{MassCGKernel!}, array \code{M[k,g,K]}). The sum runs over all copies of
+the node $g$ in the elements that contain it. The exact lumped GLL mass would
+be $\omega_i\omega_j M_{g,k}$; on a conforming quadrilateral mesh the product
+$\omega_i\omega_j$ is the same for all copies of a node (the GLL weights are
+symmetric), so the weights cancel in every quotient
+``assembled contribution / assembled mass'' and are omitted in both.
+
+A generic term is evaluated in strong form element by element and assembled
+as a $J$-weighted average,
+\begin{equation}
+  F_{g,k} = \frac{1}{M_{g,k}} \sum_{(e,i,j)\mapsto g} R_{e,ij,k},
+  \label{eq:dss}
+\end{equation}
+where $R_{e,ij,k}$ is $J$ times the pointwise tendency, summed over the two
+vertical nodes of the layer. This is the SEM collocation with lumped mass
+together with DSS.
+The vertical velocity lives on the interfaces $k+\tfrac12$ and gets the
+assembled interface masses $M^{(2)}_{g,k}+M^{(1)}_{g,k+1}$, weighted with the
+density (Section~\ref{sec:w}).
+
+%==============================================================================
+\section{Vertical staggering and boundary conditions}
+%==============================================================================
+
+Per horizontal node and layer $k=1,\dots,N_z$ the unknowns
+$\rho_k, u_k, v_k, (\rho\theta)_k, (\rho q_l)_k$ are constant in the layer.
+The vertical velocity $w_{k+1/2}$, $k=1,\dots,N_z-1$, is stored on the interior
+interfaces (array position $k$ belongs to the top of layer $k$). Inside a
+layer the velocity at the two vertical nodes is
+\begin{equation}
+  \vv^{(1)}_k = (u_k, v_k, w_{k-1/2}), \qquad \vv^{(2)}_k = (u_k, v_k, w_{k+1/2}),
+\end{equation}
+so $u,v$ are piecewise constant and $w$ is piecewise linear in $\zeta$
+(Charney--Phillips staggering of $w$ against $\rho,\rho\theta$).
+At the top $w_{N_z+1/2}=0$. At the lower boundary the kinematic condition
+$\Jm^3\cdot\vv = 0$ (no flow through the orography) gives
+\begin{equation}
+  w_{1/2} = -\frac{\Jm^3_{\;1}u_1 + \Jm^3_{\;2}v_1}{\Jm^3_{\;3}}.
+\end{equation}
+The vertical fluxes of mass, $\rho\theta$ and tracers vanish at the bottom and
+at the top.
+
+%==============================================================================
+\section{Spatial discretization of the individual terms}
+%==============================================================================
+
+In the following, sums over $m$ are horizontal SEM derivatives inside an
+element, e.g.\ $(D_1 f)_{ij} = \sum_m D_{im}f_{mj}$ and
+$(D_2 f)_{ij} = \sum_m D_{jm}f_{im}$. Every element contribution is assembled
+with \eqref{eq:dss}.
+
+\subsection{Continuity equation}
+
+The horizontal mass fluxes in contravariant form, summed over both vertical
+nodes of the layer, are
+\begin{equation}
+  U^a_k = \rho_k \sum_{K=1}^2 \bigl(\Jm^{a,(K)}_{\;1} u_k + \Jm^{a,(K)}_{\;2} v_k\bigr),
+  \qquad a = 1,2,
+\end{equation}
+(\code{Contra12}). The vertical mass flux through the interface $k+\tfrac12$
+uses the metric from both sides,
+\begin{equation}
+  W_{k+1/2} = \rho_k\,\Jm^{3,(2)}_k\cdot(u_k,v_k,w_{k+1/2})
+    + \rho_{k+1}\,\Jm^{3,(1)}_{k+1}\cdot(u_{k+1},v_{k+1},w_{k+1/2})
+\end{equation}
+(\code{Contra3}). The element contribution to the density tendency is
+\begin{equation}
+  R^\rho_k = -\bigl(D_1 U^1_k + D_2 U^2_k\bigr)
+     - \tfrac12\bigl(W_{k+1/2} - W_{k-1/2}\bigr).
+\end{equation}
+
+\subsection{Potential temperature: horizontal split form}
+
+With $\theta_k = (\rho\theta)_k/\rho_k$ the horizontal part of the flux
+divergence is discretized in the split form
+\begin{equation}
+  R^{\rho\theta,h}_k = -\tfrac12\Bigl(D_1(U^1\theta) + D_2(U^2\theta)
+    + U^1 D_1\theta + U^2 D_2\theta + \theta\,(D_1 U^1 + D_2 U^2)\Bigr)_k
+\end{equation}
+(\code{DivRhoTrUpwind3New2Kernel!}). Together with the discrete continuity
+equation this split form keeps a constant $\theta$ constant (the
+split form reduces to $\theta$ times the mass flux divergence), and it is a
+skew-symmetric (kinetic-energy-preserving type) discretization of the
+advection of $\theta$. Tracers $\rho q_l$ use the plain flux form
+$-(D_1(U^1 q_l) + D_2(U^2 q_l))$.
+
+\subsection{Vertical transport of \texorpdfstring{$\rho\theta$}{rho theta} and tracers}
+\label{sec:upwind}
+
+The vertical fluxes of $\rho\theta$ and $\rho q_l$ use the same mass flux
+$\tfrac12 W_{k+1/2}$ as the continuity equation (consistency with mass) and
+an upwind value of the specific quantity $c = \theta$ or $q_l$,
+\begin{equation}
+  \mathcal{F}_{k+1/2} = \tfrac14\Bigl((|W| + W)\,c^{L}_{k+1/2}
+    + (W - |W|)\,c^{R}_{k+1/2}\Bigr), \qquad W = W_{k+1/2}.
+\end{equation}
+The interface values $c^{L}$, $c^{R}$ are reconstructed from the four layers
+$k-1,k,k+1,k+2$ with a limited third-order upwind-biased reconstruction on
+the non-uniform grid (\code{RecU4}). With the layer volumes
+$J_k = \sum_K J^{(K)}_k$ and
+\begin{equation}
+  r = \frac{c_k - c_{k-1}}{c_{k+1} - c_k}, \qquad
+  \kappa_R = \frac{J_k}{J_k+J_{k+1}}\,\frac{J_{k-1}+J_k}{J_{k-1}+J_k+J_{k+1}},\quad
+  \kappa_L = \frac{J_k}{J_{k-1}+J_k}\,\frac{J_{k+1}}{J_{k-1}+J_k+J_{k+1}},
+\end{equation}
+the left value is
+\begin{equation}
+  c^{L}_{k+1/2} = c_k + \max\bigl(0, \min(r,\, \kappa_L r + \kappa_R,\, 1)\bigr)\,(c_{k+1}-c_k),
+\end{equation}
+and $c^R$ is defined mirror-symmetrically. On a uniform grid
+$\kappa_L = 1/6$, $\kappa_R = 1/3$, and without the limiter
+$c^L = -\tfrac16 c_{k-1} + \tfrac56 c_k + \tfrac13 c_{k+1}$, the
+third-order upwind-biased value. The limiter is of Koren type \cite{Koren1993} (TVD, bounded by
+$0$ and $1$ and by the first-order slope $r$). Near the boundaries the missing
+layers are replaced by the boundary layer.
+
+\subsection{Momentum: rotational term}
+
+The vorticity is evaluated with the conservative curl \eqref{eq:metricops}.
+The horizontal derivatives are taken with $D$ separately at both vertical
+nodes $K=1,2$ of the layer. The vertical derivative of a flux $f$ (for example
+$\Jm^3_{\;3}v - \Jm^3_{\;2}w$) has two parts:
+\begin{itemize}
+\item inside the layer the two-point difference $\tfrac12(f^{(2)}_k - f^{(1)}_k)$,
+\item at each interface the jump $\tfrac12(f^{(1)}_{k+1} - f^{(2)}_k)$; each of
+  the two adjacent half cells gets half of it (a central interface
+  treatment, comparable to a DG lifting with the central flux).
+\end{itemize}
+The cross product with $\vv$ is formed pointwise at the vertical nodes with the
+interface values of $w$. The horizontal momentum tendency is
+\begin{equation}
+  \partial_t (u,v)_k \leftarrow
+  -\frac{1}{M_{g,k}}\sum_{\text{copies}}\sum_{K=1}^2
+  \Bigl[(J\bm\omega^{(K)})\times\vv^{(K)}\Bigr]_{1,2}
+\end{equation}
+(\code{MomentumVectorInvariantCoriolisKernel!}). The Coriolis force is added
+in the same kernel. With the shallow-atmosphere approximation only the
+vertical component $f=2\Omega\sin\varphi$ is used, multiplied by
+$J^{(1)}+J^{(2)}$. Variants: $f$-plane, deep atmosphere.
+
+\subsection{Momentum: kinetic energy, pressure gradient and gravity}
+
+The kinetic energy at the two vertical nodes of a layer is
+\begin{equation}
+  K^{(1)}_k = \tfrac12\bigl(u_k^2 + v_k^2 + w_{k-1/2}^2\bigr),\qquad
+  K^{(2)}_k = \tfrac12\bigl(u_k^2 + v_k^2 + w_{k+1/2}^2\bigr).
+\end{equation}
+Its gradient $J\nabla K = \sum_a\Jm^a\partial_{\xi^a}K$ is formed with $D$ in
+the horizontal and with the same two-part vertical difference as above
+(\code{GradFullKernel!}).
+
+The horizontal pressure gradient uses the horizontal derivatives of the
+layer pressure $p_k$:
+\begin{equation}
+  (J\nabla p)_b \approx \sum_{K=1}^2\sum_{a=1}^2 \Jm^{a,(K)}_{\;b}\,\partial_{\xi^a}p_k
+  + \Bigl(\sum_{K}\Jm^{3,(K)}_{\;b}\Bigr)\,\partial_\zeta p,
+  \qquad
+  \partial_\zeta p \approx -g\,\rho_k\,
+  \frac{J^{(1)}_k + J^{(2)}_k}{\Jm^{3,(1)}_{3,k} + \Jm^{3,(2)}_{3,k}},
+  \qquad b = 1,2.
+\end{equation}
+Because $\Jm^3_{\;3} = J\,\partial\zeta/\partial z$, the quotient is
+$\partial z/\partial\zeta$, so the vertical pressure derivative in the
+terrain-following correction term is replaced by its hydrostatic value
+$\partial_z p = -\rho g$. This is the treatment of the horizontal pressure
+gradient over terrain used in MPAS \cite{KlempSkamarock2021}. It needs no
+vertical average of $\partial_\zeta p$ from the interfaces to the layer
+centres, and it is exact for hydrostatic states. The horizontal tendency is
+$-(J\nabla p)_{1,2}/\rho_k$, assembled with $M_{g,k}$. Without orography
+$\Jm^3_{\;1} = \Jm^3_{\;2} = 0$ and the correction term vanishes.
+
+\subsection{Vertical momentum}
+\label{sec:w}
+
+All contributions to the vertical velocity are formed in the two half cells
+that touch the interface $k+\tfrac12$ (top half of layer $k$, bottom half of
+layer $k+1$) and assembled with density-weighted masses:
+\begin{equation}
+  \partial_t w_{k+1/2} =
+  \frac{\sum_{\text{copies}}\bigl(\rho_k R^{w,(2)}_k + \rho_{k+1} R^{w,(1)}_{k+1}
+    + R^{p}_{k+1/2}\bigr)}
+  {\sum_{\text{copies}}\bigl(\rho_k J^{(2)}_k + \rho_{k+1} J^{(1)}_{k+1}\bigr)}.
+\end{equation}
+Here $R^{w,(K)}$ contains the rotational term, the vertical gradient of $K$
+and the Coriolis term (deep atmosphere only). The vertical pressure gradient and
+gravity are
+\begin{equation}
+  R^p_{k+1/2} = -\tfrac12\bigl(p_{k+1} - p_k\bigr)
+     \bigl(\Jm^{3,(2)}_{3,k} + \Jm^{3,(1)}_{3,k+1}\bigr)
+     - g\bigl(\rho_k J^{(2)}_k + \rho_{k+1} J^{(1)}_{k+1}\bigr),
+\end{equation}
+i.e.\ $\bar\rho\,\partial_t w = -\partial_z p - \bar\rho g$ with the
+volume-weighted interface density $\bar\rho$. For a hydrostatic state
+$(p_{k+1}-p_k)/\Delta z_{k+1/2} = -g\bar\rho_{k+1/2}$ is the discrete
+balance that the right-hand side preserves exactly.
+
+\subsection{Discrete kinetic energy and vertical averaging}
+\label{sec:kin}
+
+The definition of the discrete kinetic energy and the averaging to the
+interfaces are chosen such that the vertical discretization conserves the
+density-weighted kinetic energy of a column. We show this for the
+two-dimensional system in the coordinates $(\xi,\zeta)$ written in covariant
+($u_\xi,u_\zeta$) and contravariant ($u^\xi,u^\zeta$) components,
+\begin{align}
+  J\partial_t\rho &= -\partial_\xi(J\rho u^\xi) - \partial_\zeta(J\rho u^\zeta),\\
+  J\rho\,\partial_t u_\xi &= -J\rho\,\partial_\xi K
+     - J\rho u^\zeta\,\partial_\xi u_\zeta + J\rho u^\zeta\,\partial_\zeta u_\xi,\\
+  J\rho\,\partial_t u_\zeta &= -J\rho\,\partial_\zeta K
+     + J\rho u^\xi\,\partial_\xi u_\zeta - J\rho u^\xi\,\partial_\zeta u_\xi,
+\end{align}
+with $K = \tfrac12(u_\xi u^\xi + u_\zeta u^\zeta)$; pressure gradient and
+gravity are omitted. The covariant $u_k$ (and $u^\xi$) live in the layers,
+$w_{k+1/2}$ (and $u^\zeta$) on the interfaces.
+
+\paragraph{Half-cell contravariant velocities.}
+With the symmetric metric tensor $G_k$ of layer $k$, which maps covariant to
+contravariant components, the velocities of the lower (L) and upper (R) half
+cell are
+\begin{equation}
+  \begin{pmatrix} U^L_k\\ W^L_k\end{pmatrix}
+    = G_k\begin{pmatrix} u_k\\ w_{k-1/2}\end{pmatrix},\qquad
+  \begin{pmatrix} U^R_k\\ W^R_k\end{pmatrix}
+    = G_k\begin{pmatrix} u_k\\ w_{k+1/2}\end{pmatrix}.
+\end{equation}
+The boundary values $w_{1/2}$ and $w_{N+1/2}$ are chosen such that
+$W^L_1 = W^R_N = 0$. The layer and interface values are
+\begin{equation}
+  U_k = \tfrac12\bigl(U^L_k + U^R_k\bigr),\qquad
+  W_{k+1/2} = \frac{J_k\rho_k W^R_k + J_{k+1}\rho_{k+1}W^L_{k+1}}
+                   {J_k\rho_k + J_{k+1}\rho_{k+1}},
+  \label{eq:Wavg}
+\end{equation}
+i.e.\ the contravariant vertical velocity at an interface is the
+mass-weighted mean of the two adjacent half cells.
+
+\paragraph{Kinetic energy.}
+The kinetic energy of a layer is the mean of the two half-cell energies,
+\begin{equation}
+\begin{split}
+  K_k &= \frac14\begin{pmatrix} u_k\\ w_{k-1/2}\end{pmatrix}^{\!T}
+          G_k\begin{pmatrix} u_k\\ w_{k-1/2}\end{pmatrix}
+      + \frac14\begin{pmatrix} u_k\\ w_{k+1/2}\end{pmatrix}^{\!T}
+          G_k\begin{pmatrix} u_k\\ w_{k+1/2}\end{pmatrix}\\
+      &= \frac14\bigl(u_k(U^L_k+U^R_k) + w_{k-1/2}W^L_k + w_{k+1/2}W^R_k\bigr).
+\end{split}
+  \label{eq:Kdisc}
+\end{equation}
+Because $G_k$ is symmetric,
+$\dot K_k = \tfrac12\bigl(\dot u_k(U^L_k+U^R_k) + \dot w_{k-1/2}W^L_k
+  + \dot w_{k+1/2}W^R_k\bigr)$.
+
+\paragraph{Semi-discrete equations.}
+Let $D_x$ be the horizontal derivative, $D_{k+1/2}$ a discretization of
+$\partial_\zeta u_\xi$ at the interface and
+$\Omega_{k+1/2} = D_{k+1/2} - D_x w_{k+1/2}$ the discrete vorticity there.
+Then
+\begin{align}
+  J_k\dot\rho_k &= -D_x(J_k\rho_kU_k)
+    - \tfrac12(J_k\rho_k + J_{k+1}\rho_{k+1})W_{k+1/2}\notag\\
+    &\quad + \tfrac12(J_{k-1}\rho_{k-1} + J_k\rho_k)W_{k-1/2},
+    \label{eq:rho2d}\\
+  J_k\rho_k\dot u_k &= -J_k\rho_k D_xK_k
+    + \tfrac12 J_k\rho_k\bigl(W_{k+1/2}\Omega_{k+1/2}
+    + W_{k-1/2}\Omega_{k-1/2}\bigr),
+    \label{eq:u2d}\\
+  \tfrac12(J_k\rho_k + J_{k+1}\rho_{k+1})\,\dot w_{k+1/2} &=
+    -\tfrac12(J_k\rho_k + J_{k+1}\rho_{k+1})(K_{k+1} - K_k)\notag\\
+    &\quad - \tfrac12(J_k\rho_kU_k + J_{k+1}\rho_{k+1}U_{k+1})\,\Omega_{k+1/2}.
+    \label{eq:w2d}
+\end{align}
+By \eqref{eq:Wavg}, the vertical mass flux in \eqref{eq:rho2d} is
+$\tfrac12(J_k\rho_kW^R_k + J_{k+1}\rho_{k+1}W^L_{k+1})$.
+
+\paragraph{Column energy.}
+Summing $J_k\rho_kK_k$ over the column and using \eqref{eq:Wavg} and the
+boundary conditions gives
+\begin{equation}
+  \mathcal K = \sum_{k=1}^N J_k\rho_kK_k
+   = \sum_{k=1}^N J_k\rho_k u_kU_k
+   + \sum_{k=1}^{N-1}\tfrac12(J_k\rho_k + J_{k+1}\rho_{k+1})\,w_{k+1/2}W_{k+1/2},
+\end{equation}
+and therefore
+\begin{equation}
+\begin{split}
+  \dot{\mathcal K} = {}&\sum_{k=1}^N J_k\dot\rho_kK_k
+   + \sum_{k=1}^N J_k\rho_k\dot u_kU_k\\
+   &+ \sum_{k=1}^{N-1}\tfrac12(J_k\rho_k + J_{k+1}\rho_{k+1})\,\dot w_{k+1/2}W_{k+1/2}.
+\end{split}
+\end{equation}
+Inserting \eqref{eq:rho2d}--\eqref{eq:w2d}, the vertical terms cancel pairwise:
+\begin{itemize}
+\item The vorticity terms cancel between the $u$ and the $w$ equation.
+  This requires the same interface velocity $W_{k+1/2}$ in \eqref{eq:u2d} as
+  in the energy, and the mass-weighted layer velocity in \eqref{eq:w2d}.
+\item The vertical mass flux in the continuity equation times $K_k$ cancels,
+  after summation by parts, against the vertical kinetic energy gradient
+  in \eqref{eq:w2d}. This requires the same weight
+  $\tfrac12(J_k\rho_k + J_{k+1}\rho_{k+1})$ in both places and the layer
+  mean \eqref{eq:Kdisc} for $K$.
+\end{itemize}
+What remains are boundary terms proportional to $W_{1/2}$ and $W_{N+1/2}$,
+which vanish. The horizontal terms are handled by the SEM summation-by-parts
+property of $D_x$ with the lumped GLL mass.
+
+\paragraph{Relation to the implementation.}
+The code uses Cartesian velocity components, so $G_k$ becomes the identity in
+these components, and the metric enters through $\Jm^3$:
+\begin{itemize}
+\item The half-cell energies $K^{(1)}_k$, $K^{(2)}_k$ of
+  \code{GradFullKernel!} are the two terms in \eqref{eq:Kdisc}, i.e.\
+  $K_k = \tfrac12(K^{(1)}_k + K^{(2)}_k)$. $K_k$ itself is never formed.
+  The horizontal gradient is applied to each half-cell energy with the
+  metric of its node and weighted with the half-cell masses.
+\item The vertical mass flux of \code{Contra3} is exactly
+  $\tfrac12(J_k\rho_kW^R_k + J_{k+1}\rho_{k+1}W^L_{k+1})$ with
+  $J_kW^R_k = \Jm^{3,(2)}_k\cdot\vv^{(2)}_k$, i.e.\ the averaging
+  \eqref{eq:Wavg}. The same flux is used for $\rho\theta$ and the tracers.
+\item The rotational term is formed pointwise in each half cell with the
+  Cartesian half-cell velocity. Since $(\bm\omega\times\vv)\cdot\vv = 0$ and the
+  $w$ contributions are weighted with $\rho_k$ and $\rho_{k+1}$ in the
+  denominator of Section~\ref{sec:w}, it is energy neutral half cell by half
+  cell. This takes the role of the averaged $W_{k+1/2}$ in \eqref{eq:u2d}.
+\item The vertical kinetic energy gradient in the $w$ equation is assembled
+  half cell by half cell. In flat coordinates this gives
+  \begin{equation}
+    \tfrac12\rho_k\bigl(K^{(1)}_{k+1} - K^{(1)}_k\bigr)
+    + \tfrac12\rho_{k+1}\bigl(K^{(2)}_{k+1} - K^{(2)}_k\bigr)
+  \end{equation}
+  instead of $\tfrac12(\rho_k + \rho_{k+1})(K_{k+1} - K_k)$ in
+  \eqref{eq:w2d}. The difference is
+  $\tfrac14(\rho_k - \rho_{k+1})
+   \bigl[(K^{(1)}_{k+1} - K^{(1)}_k) - (K^{(2)}_{k+1} - K^{(2)}_k)\bigr]$.
+  It vanishes for $\rho_k = \rho_{k+1}$ but not in general, so the column
+  energy identity above holds for the code only up to this term.
+\end{itemize}
+
+\subsection{Horizontal hyperviscosity}
+
+The dissipation $\bm D_{\vv}$, $D_\theta$, $D_{q_l}$ is a biharmonic operator
+in the horizontal, built in two passes with a DSS in between
+(\code{HyperViscKernel!}, \code{HyperViscKoeffKernel!}).
+\begin{enumerate}
+\item First pass: per layer the vertical vorticity
+  $\zeta_v = \bm k\cdot\nabla\times\vv$ and the divergence
+  $\delta = \nabla_h\cdot\vv$ are computed in strong form and divided by
+  $J^{(1)}+J^{(2)}$. Then the weak forms of the rotational and the divergent
+  part of the vector Laplacian,
+  \begin{equation}
+    \bm L_{\text{rot}} = -\bm k\times\nabla^W \zeta_v,\qquad
+    \bm L_{\text{div}} = \nabla^W\delta,\qquad
+    L_\theta = \nabla^W\cdot\nabla\theta,
+  \end{equation}
+  are formed with $D^W$ (so that $\bm L_{\text{rot}}+\bm L_{\text{div}}
+  = \nabla(\nabla\cdot\vv) - \nabla\times(\nabla\times\vv)$ is the vector
+  Laplacian). They are stored separately and assembled (DSS + exchange).
+\item Second pass: the same operators are applied to the stored fields:
+  \begin{equation}
+    \bm D_{\vv} = -\nu_{\text{curl}}\,\Delta_{\text{rot}}\bm L_{\text{rot}}
+       - \nu_{\text{grad}}\,\Delta_{\text{div}}\bm L_{\text{div}},\qquad
+    D_\theta = -\nu_{\theta}\,\nabla^W\cdot\bigl(\rho\,\nabla L_\theta\bigr).
+  \end{equation}
+\end{enumerate}
+The coefficients are \code{HyperDCurl}, \code{HyperDGrad} and
+\code{HyperDDiv}. Optionally there is a hyperviscosity for $w$
+(\code{HyperDDivW}). Tracers are treated like $\theta$. The default scaling
+with the resolution (\code{HyperViscosity}) is
+\begin{equation}
+  \nu = 5\cdot 10^{14}\,\mathrm{m^4\,s^{-1}}\;
+  \Bigl(\frac{32}{n_{\text{Panel}}}\Bigr)^{\log_2 10}
+  \approx 5\cdot 10^{14}\,\Bigl(\frac{32}{n_{\text{Panel}}}\Bigr)^{3.32},
+\end{equation}
+comparable to the $\Delta x^{3.2}$ scaling that is used in HOMME.
+
+\subsection{Optional horizontal limiter for tracers}
+
+With \code{HorLimit=true} the horizontal tracer transport uses an
+optimization-based limiter in the spirit of Guba et al.\ (2014)
+(\code{LimitKernel!}, \code{DivRhoTrUpwind3LimKernel!}):
+\begin{enumerate}
+\item the minimum and maximum of $q$ in every element are computed, and the
+  bounds $q_{\min}, q_{\max}$ are taken over the element and its neighbours
+  (a stencil of 13 elements);
+\item a provisional explicit step $\tilde\rho$, $\widetilde{\rho q}$ with the
+  current stage time step is formed;
+\item a constant shift $\lambda$ is determined per element and layer so that
+  $q^\star = \operatorname{median}(q_{\min}, \widetilde{\rho q}/\tilde\rho + \lambda, q_{\max})$
+  conserves the tracer mass in the element,
+  $\sum \omega_i\omega_j J\,(q^\star\tilde\rho - \widetilde{\rho q}) = 0$.
+  The scalar equation is solved by a secant iteration (at most 8 steps).
+\end{enumerate}
+The limited tendency is then derived from $q^\star$. The vertical part
+uses the reconstruction of Section~\ref{sec:upwind}.
+
+%==============================================================================
+\section{Time integration}
+%==============================================================================
+
+\subsection{Rosenbrock W-methods}
+
+The semi-discrete system $U' = F(U)$ is integrated with an $s$-stage
+Rosenbrock-type method in the transformed form \cite{HairerWanner}
+(\code{Integration/Rosenbrock.jl})
+\begin{align}
+  Y_i &= U^n + \sum_{j<i} a_{ij}\,k_j,\\
+  \Bigl(\frac{1}{\gamma\Delta t}I - \mathbf J\Bigr)k_i &= F(Y_i)
+    + \frac{1}{\Delta t}\sum_{j<i} c_{ij}\,k_j, \qquad i = 1,\dots,s,\\
+  U^{n+1} &= U^n + \sum_{i} m_i\,k_i,
+\end{align}
+with $A = \alpha\Gamma^{-1}$, $C = -\Gamma^{-1}$ (off-diagonal part) and
+$m = \Gamma^{-T}b$. The Jacobian approximation $\mathbf J$ is computed once
+per step from the state $U^n$ (W-method) and contains only the vertical
+coupling terms (HEVI), so the method is explicit in the horizontal and
+linearly implicit in the vertical. The table \code{SSP-Knoth} has
+$s=3$, $\gamma=1$,
+\begin{equation}
+  \alpha = \begin{pmatrix} 0&0&0\\ 1&0&0\\ \tfrac14&\tfrac14&0\end{pmatrix},\quad
+  b = \begin{pmatrix}\tfrac16\\ \tfrac16\\ \tfrac23\end{pmatrix},\quad
+  \Gamma = \begin{pmatrix} 1&0&0\\ 0&1&0\\ -\tfrac34&-\tfrac34&1\end{pmatrix};
+\end{equation}
+its explicit part ($\alpha$, $b$) is the three-stage SSP Runge--Kutta method
+of Shu and Osher \cite{ShuOsher1988}. Further tables (\code{SSPKnoth12L}, \code{ROS2W},
+\code{ROSRK3}, \code{ARS343}, \dots) and explicit Runge--Kutta methods are
+available.
+
+\subsection{Vertical Jacobian and Schur complement}
+
+Per column and horizontal node the Jacobian couples $w$ with $\rho$ and
+$\rho\theta$ (\code{JacAcousticKernel!}). With the layer thicknesses
+$\Delta z_k$, the interface values
+$\rho_F = (\rho_k\Delta z_k + \rho_{k+1}\Delta z_{k+1})/(\Delta z_k+\Delta z_{k+1})$
+(and analogously $(\rho\theta)_F$) and $\Delta z_{k+1/2} =
+\tfrac12(\Delta z_k + \Delta z_{k+1})$, the non-zero blocks are
+\begin{align}
+  \frac{\partial F_{\rho,k}}{\partial w_{k\pm1/2}} &= \mp\frac{\rho_{F,k\pm1/2}}{\Delta z_k},
+  &
+  \frac{\partial F_{\rho\theta,k}}{\partial w_{k\pm1/2}} &=
+    \mp\frac{(\rho\theta)_{F,k\pm1/2}}{\Delta z_k},\\
+  \frac{\partial F_{w,k+1/2}}{\partial (\rho\theta)_{k+1}} &=
+    -\frac{\partial_{\rho\theta}p_{k+1}}{\rho_F\,\Delta z_{k+1/2}},
+  &
+  \frac{\partial F_{w,k+1/2}}{\partial (\rho\theta)_{k}} &=
+    \frac{\partial_{\rho\theta}p_{k}}{\rho_F\,\Delta z_{k+1/2}},\\
+  \frac{\partial F_{w,k+1/2}}{\partial \rho_{k+1}} &=
+    -\frac{g\,\Delta z_{k+1}}{\rho_F(\Delta z_k+\Delta z_{k+1})},
+  &
+  \frac{\partial F_{w,k+1/2}}{\partial \rho_{k}} &=
+    -\frac{g\,\Delta z_{k}}{\rho_F(\Delta z_k+\Delta z_{k+1})}
+\end{align}
+(plus $\partial_\rho p$ terms, which vanish for the dry $\rho\theta$
+formulation). The linear system
+\begin{equation}
+  \begin{pmatrix}
+    \tfrac1{\gamma\Delta t}I & 0 & -J_{\rho w}\\
+    0 & \tfrac1{\gamma\Delta t}I & -J_{\rho\theta w}\\
+    -J_{w\rho} & -J_{w\rho\theta} & \tfrac1{\gamma\Delta t}I
+  \end{pmatrix}
+  \begin{pmatrix} k_\rho\\ k_{\rho\theta}\\ k_w\end{pmatrix}
+  =
+  \begin{pmatrix} r_\rho\\ r_{\rho\theta}\\ r_w\end{pmatrix}
+\end{equation}
+is reduced to the Schur complement for $w$,
+\begin{equation}
+  \Bigl(\frac{1}{(\gamma\Delta t)^2}I - J_{w\rho}J_{\rho w}
+    - J_{w\rho\theta}J_{\rho\theta w}\Bigr) k_w
+  = \frac{1}{\gamma\Delta t} r_w + J_{w\rho} r_\rho + J_{w\rho\theta} r_{\rho\theta},
+\end{equation}
+which is tridiagonal ($J_{\rho w}$, $J_{\rho\theta w}$ are lower and
+$J_{w\rho}$, $J_{w\rho\theta}$ upper bidiagonal). It is solved per column
+with the Thomas algorithm (\code{SchurSolveTriKernel!}), followed by the back
+substitution $k_\rho = \gamma\Delta t\,(r_\rho + J_{\rho w}k_w)$,
+$k_{\rho\theta} = \gamma\Delta t\,(r_{\rho\theta} + J_{\rho\theta w}k_w)$
+and $k_{u,v,q} = \gamma\Delta t\,r_{u,v,q}$. The tridiagonal matrix is
+assembled once per time step. Optionally the vertical diffusion of the scalars
+is also treated implicitly by an extra tridiagonal solve per tracer
+(\code{SchurSolveTriDiffKernel!}).
+
+%==============================================================================
+\section{Comparison with HOMME and ClimaCore}
+%==============================================================================
+
+All three dynamical cores use the same horizontal discretization: continuous
+Galerkin spectral elements on the cubed sphere with GLL collocation, lumped
+mass, DSS and a vector-invariant momentum equation; they differ in the vertical
+coordinate, the vertical discretization, the thermodynamic variable and the
+time integration. Table~\ref{tab:comp} summarizes the differences. The
+entries for HOMME and ClimaCore are based on the cited literature and
+describe the standard configurations.
+
+\begin{table}[h]
+\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.6cm}LLL}
+\toprule
+ & CGDycore.jl (CGSEM) & HOMME / HOMME-NH (E3SM) & ClimaCore / ClimaAtmos (CliMA)\\
+\midrule
+Horizontal & CG-SEM, GLL, $p=3$--$4$, DSS & CG-SEM, GLL, $n_p=4$ ($p=3$), DSS
+  & CG-SEM, GLL, typically $p=3$, DSS\\
+Vertical coordinate & terrain-following height & floating Lagrangian
+  mass coordinate, remap to hybrid $\eta$ & terrain-following height\\
+Vertical discretization & lowest-order staggered, $w$ on interfaces,
+  metric from two-point layers
+  & mimetic finite differences: $\Delta\pi$, $\Theta$ at mid levels, $w$,
+  $\phi$ at interfaces
+  & staggered finite differences (centers/faces)\\
+Prognostic variables & $\rho$, $u,v$, $w$, $\rho\theta$, $\rho q$
+  & $\bm u_h$, $w$, $\phi$, $\Delta\pi$, $\Theta=\theta_v\Delta\pi$, $q\,\Delta\pi$
+  & $\rho$, covariant $\bm u_h$, covariant $u_3$, $\rho e_{tot}$, $\rho q$\\
+Thermodynamics & potential temperature (energy variants)
+  & virtual potential temperature & total energy\\
+Vertical transport & limited third-order upwind (Koren type)
+  & implicit through the Lagrangian coordinate and conservative remap
+  & first/third-order upwind, optional flux-corrected transport\\
+Dissipation & biharmonic, separate $\nu$ for curl/div/scalars
+  & biharmonic (Laplacian or tensor), subcycled, sponge layer
+  & biharmonic hyperdiffusion\\
+Tracer limiter & optional optimization-based limiter
+  & optimization-based limiter, or semi-Lagrangian transport
+  & limiters / flux correction\\
+Time integration & Rosenbrock W-methods (HEVI)
+  & IMEX Runge--Kutta (HEVI)
+  & IMEX additive Runge--Kutta (e.g.\ ARS343)\\
+Implicit part & linear vertical acoustics and buoyancy, Schur complement
+  for $w$, frozen Jacobian
+  & vertical acoustics in $(w,\phi)$, Newton iteration
+  & vertical acoustics (and optionally diffusion), Newton with approximate
+  Jacobian\\
+\bottomrule
+\end{tabularx}
+\caption{Comparison of the three spectral element dynamical cores.}
+\label{tab:comp}
+\end{table}
+
+\paragraph{HOMME.}
+HOMME (the High-Order Methods Modeling Environment, dynamical core of CAM-SE
+and E3SM) introduced the CG-SEM on the cubed sphere for atmospheric models
+\cite{TaylorFournier2010,Dennis2012}. The nonhydrostatic version
+\cite{Taylor2020} uses a floating Lagrangian vertical coordinate in which the
+vertical mass flux vanishes; the layers are remapped conservatively to a
+reference hybrid coordinate after a number of steps. The vertical
+discretization is mimetic and the semi-discrete scheme conserves the total
+energy. Time integration is by IMEX Runge--Kutta methods \cite{Steyer2019}
+in which only the vertical acoustic terms are implicit; the resulting
+nonlinear system for $w$ and $\phi$ is solved by Newton's method with
+tridiagonal linear systems. Hyperviscosity and the limiter
+\cite{Guba2014a,Guba2014b} are applied in separate steps.
+
+\paragraph{ClimaCore.}
+ClimaCore.jl provides the operators of the CliMA atmosphere model
+\cite{Yatunin2025}. It combines the horizontal SEM with a staggered
+finite-difference discretization in a terrain-following height coordinate,
+like CGDycore. The momentum is stored in covariant components (horizontal
+on the cell centers, vertical on the faces) and the thermodynamic variable
+is the total energy. The IMEX additive Runge--Kutta methods treat the vertical
+acoustic terms implicitly with a Newton iteration and an approximate Jacobian.
+
+\paragraph{Specific features of CGDycore.}
+Compared to the two other cores, the CGSEM scheme
+\begin{itemize}
+\item stores the velocity in local Cartesian (east, north, radial)
+  components instead of covariant components, and evaluates all metric terms
+  in the conservative (adjugate) form \eqref{eq:metricops} at the two vertical
+  nodes of each layer;
+\item assembles the vertical velocity with density-weighted half-cell masses,
+  which gives a $\bar\rho\,\partial_t w$ form of the vertical momentum
+  equation and an exact discrete hydrostatic balance;
+\item uses a split (skew-symmetric) form for the horizontal advection of
+  $\theta$ and a limited third-order upwind scheme in the vertical;
+\item uses linearly implicit Rosenbrock W-methods instead of IMEX Runge--Kutta
+  methods: no Newton iteration is needed, the Jacobian is frozen over the
+  step and the linear algebra reduces to one tridiagonal solve per column
+  and stage;
+\item computes the vertical pressure derivative in the terrain-following
+  correction of the horizontal pressure gradient from the hydrostatic
+  relation.
+\end{itemize}
+
+%==============================================================================
+\section{Remarks}
+%==============================================================================
+
+\begin{itemize}
+\item The approximation $\partial_z p \approx -\rho g$ in the terrain term of
+  the horizontal pressure gradient (as in MPAS \cite{KlempSkamarock2021}) is
+  exact for hydrostatic states. It neglects the vertical derivative of the
+  nonhydrostatic pressure perturbation.
+\item The kinetic energy and the interface velocity are defined as in
+  Section~\ref{sec:kin}. The vertical kinetic energy gradient in the $w$
+  equation is assembled half cell by half cell rather than from the layer
+  mean $K_k$. This differs from the energy-conserving form by a term
+  proportional to $\rho_k - \rho_{k+1}$.
+\item The Jacobian contains neither vertical advection nor the
+  $u,v$-dependence of the lower boundary condition. Its accuracy influences
+  only the stability and the order of the W-method, not the consistency of
+  the scheme.
+\item The interface treatment of the vertical derivatives in the rotational
+  term and in the kinetic energy gradient distributes the jump equally to the
+  two adjacent half cells (central treatment). The vertical upwinding only
+  acts on the scalar transport.
+\end{itemize}
+
+\begin{thebibliography}{99}
+\bibitem{TaylorFournier2010}
+M.~A. Taylor and A.~Fournier,
+A compatible and conservative spectral element method on unstructured grids,
+\emph{J. Comput. Phys.} 229 (2010) 5879--5895.
+
+\bibitem{Dennis2012}
+J.~M. Dennis, J.~Edwards, K.~J. Evans, O.~Guba, P.~H. Lauritzen,
+A.~A. Mirin, A.~St-Cyr, M.~A. Taylor, P.~H. Worley,
+CAM-SE: A scalable spectral element dynamical core for the Community
+Atmosphere Model,
+\emph{Int. J. High Perform. Comput. Appl.} 26 (2012) 74--89.
+
+\bibitem{Taylor2020}
+M.~A. Taylor, O.~Guba, A.~Steyer, P.~A. Ullrich, D.~M. Hall, C.~Eldred,
+An energy consistent discretization of the nonhydrostatic equations in
+primitive variables,
+\emph{J. Adv. Model. Earth Syst.} 12 (2020) e2019MS001783.
+
+\bibitem{Steyer2019}
+A.~Steyer, C.~J. Vogl, M.~Taylor, O.~Guba,
+Efficient IMEX Runge--Kutta methods for nonhydrostatic dynamics,
+arXiv:1906.07219 (2019).
+
+\bibitem{Guba2014a}
+O.~Guba, M.~A. Taylor, P.~A. Ullrich, J.~R. Overfelt, M.~N. Levy,
+The spectral element method (SEM) on variable-resolution grids: evaluating
+grid sensitivity and resolution-aware numerical viscosity,
+\emph{Geosci. Model Dev.} 7 (2014) 2803--2816.
+
+\bibitem{Guba2014b}
+O.~Guba, M.~Taylor, A.~St-Cyr,
+Optimization-based limiters for the spectral element method,
+\emph{J. Comput. Phys.} 267 (2014) 176--195.
+
+\bibitem{Yatunin2025}
+D.~Yatunin, S.~Byrne, C.~Kawczynski, S.~Kandala, G.~Bozzola, A.~Sridhar,
+Z.~Shen, A.~Jaruga, J.~Solomon, C.~Kao, et al.,
+The CliMA atmosphere dynamical core: concepts, numerics, and scaling,
+preprint (2025).
+
+\bibitem{KlempSkamarock2021}
+J.~B. Klemp and W.~C. Skamarock,
+Adapting the MPAS dynamical core for applications extending into the
+thermosphere,
+\emph{J. Adv. Model. Earth Syst.} 13 (2021) e2021MS002499.
+
+\bibitem{Koren1993}
+B.~Koren,
+A robust upwind discretization method for advection, diffusion and source
+terms,
+in: \emph{Numerical Methods for Advection--Diffusion Problems},
+Vieweg, Braunschweig, 1993, pp.~117--138.
+
+\bibitem{HairerWanner}
+E.~Hairer and G.~Wanner,
+\emph{Solving Ordinary Differential Equations II: Stiff and
+Differential-Algebraic Problems}, 2nd ed., Springer, 1996.
+
+\bibitem{ShuOsher1988}
+C.-W. Shu and S.~Osher,
+Efficient implementation of essentially non-oscillatory shock-capturing
+schemes,
+\emph{J. Comput. Phys.} 77 (1988) 439--471.
+\end{thebibliography}
+
+\end{document}
