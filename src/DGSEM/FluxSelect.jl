@@ -27,12 +27,35 @@ function TwoSided(RiemannSolver!)
   return RiemannTwoSided!
 end
 
-function SetFluxes!(Model,DG,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,cS)
-  if Model.ModelType == "VectorInvariant"
-    SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos,cS)
-    return
-  end
+# Selection in three steps: discretization (DG, CG), formulation (ModelType
+# Conservative, VectorInvariant), then volume and interface flux. FluxDG or
+# InterfaceFluxDG = "Default" selects the default flux of the formulation.
+const DefaultFluxes = Dict(
+  "Conservative" => ("KennedyGruberGrav", "RiemannLMARS"),
+  "VectorInvariant" => ("VectorInvariant", "RiemannVectorInvariant"))
 
+function SetFluxes!(Model,Discretization,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,cS)
+  # CG has no two-point volume and interface fluxes
+  Discretization == "DG" || return
+
+  ModelType = Model.ModelType
+  if !haskey(DefaultFluxes, ModelType)
+    error("ModelType = $ModelType is not available for DG, choose $(join(keys(DefaultFluxes), " or "))")
+  end
+  FluxDGDef, InterfaceFluxDGDef = DefaultFluxes[ModelType]
+  FluxDG = FluxDG == "Default" ? FluxDGDef : FluxDG
+  InterfaceFluxDG = InterfaceFluxDG == "Default" ? InterfaceFluxDGDef : InterfaceFluxDG
+  @info "DG fluxes" ModelType FluxDG InterfaceFluxDG
+
+  if ModelType == "Conservative"
+    SetFluxesConservative!(Model,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,cS)
+  elseif ModelType == "VectorInvariant"
+    SetFluxesVectorInvariant!(Model,FT,FluxDG,InterfaceFluxDG,Phys,pAuxPos,GPAuxPos,cS)
+  end
+end
+
+# Conservative split form (rho, rho v, rho theta)
+function SetFluxesConservative!(Model,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,cS)
   RhoPos = Model.RhoPos
   uPos = Model.uPos
   vPos = Model.vPos
@@ -53,7 +76,7 @@ function SetFluxes!(Model,DG,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,
   elseif FluxDG == "PotTempETEC"
     FluxAverage = PotTempETEC()(Val(pAuxPos),Val(GPAuxPos),FT(Phys.Gamma))
   else
-    error("FluxDG = $FluxDG is not available for the split-form DGSEM")
+    error("FluxDG = $FluxDG is not available for ModelType Conservative, choose KennedyGruberGrav, PotTempTEC, PotTempEC or PotTempETEC")
   end
   Model.FluxAverageH = FluxAverage
   Model.FluxAverageV = FluxAverage
@@ -68,7 +91,7 @@ function SetFluxes!(Model,DG,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,
   elseif InterfaceFluxDG == "RiemannExPLMARS"
     Model.RiemannSolver = TwoSided(RiemannExPLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1))
   else
-    error("InterfaceFluxDG = $InterfaceFluxDG is not available for the split-form DGSEM")
+    error("InterfaceFluxDG = $InterfaceFluxDG is not available for ModelType Conservative, choose RiemannLMARS, RiemannExLMARS, RiemannExnerLMARS or RiemannExPLMARS")
   end
 
   Model.NonConservativeFlux = BuoyancyFlux()(RhoPos,GPAuxPos)

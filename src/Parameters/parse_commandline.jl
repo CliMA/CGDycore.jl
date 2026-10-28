@@ -23,9 +23,9 @@ function parse_commandline()
     default = "Spherical"
 
     "--FluxDG"
-    help = "Average flux for DG"
+    help = "Average flux for DG, Default: KennedyGruberGrav (Conservative), VectorInvariant (VectorInvariant)"
     arg_type = String
-    default = "KennedyGruberGrav"
+    default = "Default"
 
     "--ThetaMeanDG"
     help = "Numerical theta of the vector invariant fluxes: Log (1/{{1/theta}}_log) or Arith ({{theta}})"
@@ -53,9 +53,9 @@ function parse_commandline()
     default = "LinearizedEuler"
 
     "--InterfaceFluxDG"
-    help = "Interface flux for DG"
+    help = "Interface flux for DG, Default: RiemannLMARS (Conservative), RiemannVectorInvariant (VectorInvariant)"
     arg_type = String
-    default = "KennedyGruberGrav"
+    default = "Default"
 
     "--Profile"
     help = "Profile for initial onditions"

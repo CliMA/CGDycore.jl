@@ -3,8 +3,13 @@ abstract type DampingValue end
 Base.@kwdef struct DampingW <: DampingValue end
 
 
-function (::DampingW)(H,StrideDamp,Relax,::Val{uPos},::Val{vPos},::Val{wPos},::Examples.VelocityC,
-  ::Grids.CartesianGrid) where {uPos,vPos,wPos}
+# Variable positions as Int or Val
+@inline PosVal(::Val{P}) where {P} = P
+@inline PosVal(P::Integer) = P
+
+function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityC,
+  ::Grids.CartesianGrid)
+  wPos = PosVal(wPosV)
   @inline function Damping(F,U,xS,z)
     FT = eltype(z)
     if z>=H-StrideDamp
@@ -16,7 +21,8 @@ function (::DampingW)(H,StrideDamp,Relax,::Val{uPos},::Val{vPos},::Val{wPos},::E
   return Damping
 end
 
-function (::DampingW)(H,StrideDamp,Relax,uPos,vPos,wPos,::Examples.VelocityS,::Grids.SphericalGrid)
+function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityS,::Grids.SphericalGrid)
+  wPos = PosVal(wPosV)
   @inline function Damping(F,U,xS,z)
     FT = eltype(z)
     if z>=H-StrideDamp
@@ -28,7 +34,10 @@ function (::DampingW)(H,StrideDamp,Relax,uPos,vPos,wPos,::Examples.VelocityS,::G
   return Damping
 end
 
-function (::DampingW)(H,StrideDamp,Relax,uPos,vPos,wPos,::Examples.VelocityC,::Grids.SphericalGrid)
+function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityC,::Grids.SphericalGrid)
+  uPos = PosVal(uPosV)
+  vPos = PosVal(vPosV)
+  wPos = PosVal(wPosV)
   @inline function Damping(F,U,xS,z)
     FT = eltype(F)
     if z>=H-StrideDamp

@@ -281,13 +281,11 @@ Model.HEVISolver = HEVISolver
 Model.ThetaMeanDG = ThetaMeanDG
 Model.SoundSpeedDG = SoundSpeedDG
 
-if VelocityForm == "Spherical"  
-   VelForm = Examples.VelocityS()
-elseif VelocityForm == "Cartesian"  
-   VelForm = Examples.VelocityC()
-else
-   VelForm = Examples.VelocityC()
-end   
+# DG works with Cartesian velocity components only (fluxes, Coriolis, damping)
+if VelocityForm != "Cartesian"
+  @warn "VelocityForm = $VelocityForm is not supported for DG, Cartesian is used"
+end
+VelForm = Examples.VelocityC()
 
 # Equation
 if Equation == "CompressibleShallow"
@@ -363,7 +361,7 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
-DGSEM.SetFluxes!(Model,DG,FTB,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,P.cS)
+DGSEM.SetFluxes!(Model,Discretization,FTB,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,P.cS)
 
 if ModelType == "Boussinesq"
   Model.BuoyancyFun = CGSEM.BuoyancyBoussinesq()(Param,Model.wPos,Model.RhoThPos)
