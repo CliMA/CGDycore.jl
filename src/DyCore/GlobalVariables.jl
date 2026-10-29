@@ -329,6 +329,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   MetricType::FiniteElements.MetricDifferentiation
   HEVISolver::String
   ThetaMeanDG::String
+  PressureGradient::String
   SoundSpeedDG::String
 end
 
@@ -436,6 +437,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   MetricType = FiniteElements.SingleDifferentiation()
   HEVISolver = "HDG"
   ThetaMeanDG = "Log"
+  PressureGradient = "Standard"
   SoundSpeedDG = "Local"
   return ModelStruct{FT}(
    Problem,
@@ -541,6 +543,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    MetricType,
    HEVISolver,
    ThetaMeanDG,
+   PressureGradient,
    SoundSpeedDG,
    )
 end  

@@ -109,6 +109,7 @@ x0 = parsed_args["x0"]
 y0 = parsed_args["y0"]
 OrdPoly = parsed_args["OrdPoly"]
 MetricType = parsed_args["MetricType"]
+PressureGradient = parsed_args["PressureGradient"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -265,6 +266,7 @@ Model.StretchType = StretchType
 Model.State = State
 Model.ModelType = ModelType
 Model.MetricType = FiniteElements.MetricDifferentiation(MetricType,FiniteElements.SingleDifferentiation())
+Model.PressureGradient = PressureGradient
 if HyperVisc == 0
   Model.HyperVisc = CGSEM.HyperViscosity(nPanel)  
 end  

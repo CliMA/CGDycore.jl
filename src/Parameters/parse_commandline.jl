@@ -27,6 +27,11 @@ function parse_commandline()
     arg_type = String
     default = "Default"
 
+    "--PressureGradient"
+    help = "CGSEM horizontal pressure gradient: Standard (grad p / rho) or Split (matches the split theta transport, dry)"
+    arg_type = String
+    default = "Standard"
+
     "--ThetaMeanDG"
     help = "Numerical theta of the vector invariant fluxes: Log (1/{{1/theta}}_log) or Arith ({{theta}})"
     arg_type = String

@@ -123,6 +123,31 @@ function RosenbrockMethod{FT}(Method) where FT<:AbstractFloat
     a = alpha / Gamma
     c = -inv(Gamma)
     m = Gamma'\b
+  elseif str == "SSP-KnothL"
+#   Artiano, Rueda-Ramirez, Knoth, Ranocha, Gassner (arXiv:2610.15775), Table 1:
+#   three stages, W-method of order 2, L-stable, gamma = 1 - 1/sqrt(2);
+#   explicit part (alpha, b) is the SSP Runge-Kutta method of Shu and Osher
+    nStage = 3
+    gamma = 1 - 1 / sqrt(2)
+    alpha = zeros(FT,nStage,nStage)
+    alpha[2,1] = 1
+    alpha[3,1] = 1/4
+    alpha[3,2] = 1/4
+    b = zeros(FT,nStage)
+    b[1] = 1/6
+    b[2] = 1/6
+    b[3] = 2/3
+    Gamma = zeros(FT,nStage,nStage)
+    Gamma[1,1] = gamma
+    Gamma[2,1] = 3 / sqrt(2) - 3
+    Gamma[2,2] = gamma
+    Gamma[3,1] = (3 * sqrt(2) - 4) / 8
+    Gamma[3,2] = -1/4
+    Gamma[3,3] = gamma
+    gamma = FT(gamma)
+    a = alpha / Gamma
+    c = -inv(Gamma)
+    m = Gamma'\b
   elseif str == "SSPKnoth12L"
     nStage = 3
     alpha = zeros(FT,nStage,nStage)

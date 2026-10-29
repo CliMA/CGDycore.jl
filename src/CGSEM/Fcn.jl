@@ -306,7 +306,16 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   ndrangeC = NDoF
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
-  KGradFullKernel! = GradFullKernel!(backend,group)
+  if Global.Model.PressureGradient == "Split"
+    State == "Dry" || throw(ArgumentError("PressureGradient Split needs State Dry"))
+    KGradFullKernel! = GradFullSplitKernel!(backend,group)
+    PressureArgs = (FT(Phys.Rd),FT(Phys.Cpd))
+  elseif Global.Model.PressureGradient == "Standard"
+    KGradFullKernel! = GradFullKernel!(backend,group)
+    PressureArgs = ()
+  else
+    throw(ArgumentError("unknown PressureGradient $(Global.Model.PressureGradient)"))
+  end
   KGradKernel! = GradKernel!(backend,group)
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
@@ -421,7 +430,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
       @views KHyperViscTracerKoeffEDMFKernel!(FTrEDMF,CacheTrEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDiv,ndrange=ndrangeBEDMFTr)
   end  
   KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,GridForm,Curvature,ndrange=ndrangeB)
-  KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,ndrange=ndrangeB)
+  KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,PressureArgs...,ndrange=ndrangeB)
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
     State == "IceInternalEnergy"
@@ -487,7 +496,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end  
 
   KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,GridForm,Curvature,ndrange=ndrangeI)
-  KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
+  KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,PressureArgs...,ndrange=ndrangeI)
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||

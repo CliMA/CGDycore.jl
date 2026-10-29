@@ -610,6 +610,29 @@ $\Jm^3_{\;1} = \Jm^3_{\;2} = 0$ and the correction term vanishes; the first
 term is then, by \eqref{eq:metid}, the spherical gradient
 $\bigl((a\cos\varphi)^{-1}\partial_\lambda p,\; a^{-1}\partial_\varphi p\bigr)$.
 
+\paragraph{Split form of the pressure gradient.}
+With the option \code{--PressureGradient="Split"}
+(kernel \code{GradFullSplitKernel!}, dry $\rho\theta$ only) the first term is replaced by the form that matches the
+split transport of $\rho\theta$, as in the entropy stable formulation of
+HOMME \cite{TaylorSplit2025}. The derivative of the internal energy with
+respect to $\rho\theta$ is $c_p\Pi$; multiplying the split transport by
+$c_p\Pi$ and summing by parts gives the pressure term per unit mass
+\begin{equation}
+  \tfrac12 c_p\bigl(\theta\nabla\Pi + \nabla(\theta\Pi) - \Pi\nabla\theta\bigr)
+  = \tfrac{c_p}2\Bigl(\theta\,\nabla\frac T\theta + \nabla T
+    - \frac T\theta\,\nabla\theta\Bigr),\qquad
+  T = \frac{p}{R_d\rho},\quad \Pi = \frac T\theta ,
+\end{equation}
+with the horizontal SEM derivatives $D_a$ and $\sum_K\Jm^{a,(K)}_{\;b}$ as
+in the transport. The Exner pressure is never evaluated: $p = R_d\rho\theta\Pi$
+gives $\Pi = p/(R_d\rho\theta)$ without a fractional power. In the continuum
+the expression equals $c_p\theta\nabla\Pi = \nabla p/\rho$; discretely the
+horizontal pressure work and the horizontal $\rho\theta$ transport cancel to
+round-off in the energy (relative $10^{-14}$), while the standard form
+$\rho^{-1}D_ap$ leaves a truncation error ($2\cdot10^{-6}$ to $6\cdot10^{-10}$
+for $n_{\text{Panel}} = 4$ to $16$). The terrain correction and the vertical
+momentum equation are the same as in the standard form.
+
 \subsection{Vertical momentum}
 \label{sec:w}
 
@@ -886,7 +909,14 @@ $s=3$, $\gamma=1$,
   \Gamma = \begin{pmatrix} 1&0&0\\ 0&1&0\\ -\tfrac34&-\tfrac34&1\end{pmatrix};
 \end{equation}
 its explicit part ($\alpha$, $b$) is the three-stage SSP Runge--Kutta method
-of Shu and Osher \cite{ShuOsher1988}. Further tables (\code{SSPKnoth12L}, \code{ROS2W},
+of Shu and Osher \cite{ShuOsher1988}. Its stability function tends to
+$-1/6$ for $z\to-\infty$. The table \code{SSP-KnothL} \cite{Artiano2026}
+has the same $\alpha$ and $b$, $\gamma = 1-1/\sqrt2$ and
+\begin{equation}
+  \Gamma = \begin{pmatrix} \gamma&0&0\\ \tfrac3{\sqrt2}-3&\gamma&0\\
+    \tfrac{3\sqrt2-4}8&-\tfrac14&\gamma\end{pmatrix};
+\end{equation}
+it is a W-method of order 2 and L-stable. Further tables (\code{SSPKnoth12L}, \code{ROS2W},
 \code{ROSRK3}, \code{ARS343}, \dots) and explicit Runge--Kutta methods are
 available. Optionally (\code{CompensatedSum}) the final update
 $U^n + \sum_i m_i k_i$ is accumulated with Kahan compensated summation.
@@ -1146,6 +1176,17 @@ Differential-Algebraic Problems}, 2nd ed., Springer, 1996.
 O.~K. Hughes, O.~Guba, M.~A. Taylor, C.~Jablonowski,
 The deep atmosphere extension of the non-hydrostatic HOMME dynamical core,
 \emph{EGUsphere} preprint, doi:10.5194/egusphere-2026-4425 (2026).
+
+\bibitem{TaylorSplit2025}
+M.~A. Taylor, M.~Waruszewski, C.~Eldred, O.~Guba,
+An entropy stable formulation of E3SM's spectral element atmospheric
+dynamical core, poster, E3SM All-Hands Meeting, August 2025.
+
+\bibitem{Artiano2026}
+M.~Artiano, A.~M. Rueda-Ram\'irez, O.~Knoth, H.~Ranocha, G.~J. Gassner,
+GPU-accelerated nested Schur-complement solvers for atmospheric flow
+simulations using horizontally-explicit, vertically-implicit schemes and
+discontinuous Galerkin methods, arXiv:2610.15775 (2026).
 
 \bibitem{ShuOsher1988}
 C.-W. Shu and S.~Osher,
