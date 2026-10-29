@@ -374,8 +374,8 @@ if Coriolis
   if CoriolisType == "Shallow"
     CoriolisFun = Sources.CoriolisShallow()(Phys)
     Model.CoriolisFun = CoriolisFun
-  elseif CoriolisType == "Deep"
-    CoriolisFun = Sources.CoriolisDeep()(Phys)
+  elseif CoriolisType == "Deep" || CoriolisType == "NonTraditional"
+    CoriolisFun = Sources.CoriolisNonTraditional()(Phys)
     Model.CoriolisFun = CoriolisFun
   elseif CoriolisType == "FPlane"
     CoriolisFun = Sources.FPlane()(Param,Phys)

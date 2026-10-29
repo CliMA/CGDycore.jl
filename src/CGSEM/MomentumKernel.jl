@@ -162,14 +162,17 @@
     FW1 += Curvature * JJ[ID,1,Iz,IF] * KinH
     FW2 += Curvature * JJ[ID,2,Iz,IF] * KinH
 
-#   Coriolis
-    x = eltype(F)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
-    y = eltype(F)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
-    z = eltype(F)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
-    FuCor, FvCor, FwCor = CoriolisFun(x,y,z,uCol[I,J,iz],vCol[I,J,iz],wCol[I,J,iz],wCol[I,J,iz+1])
-    FU += FuCor * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
-    FV += FvCor * (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+#   Coriolis, in each half cell with its vertical velocity (energy neutral also with
+#   the non-traditional terms)
+    FuCor, FvCor, FwCor = CoriolisFun(X[ID,1,1,Iz,IF],X[ID,1,2,Iz,IF],X[ID,1,3,Iz,IF],
+      uCol[I,J,iz],vCol[I,J,iz],wCol[I,J,iz],wCol[I,J,iz])
+    FU += FuCor * JJ[ID,1,Iz,IF]
+    FV += FvCor * JJ[ID,1,Iz,IF]
     FW1 += FwCor * JJ[ID,1,Iz,IF]
+    FuCor, FvCor, FwCor = CoriolisFun(X[ID,2,1,Iz,IF],X[ID,2,2,Iz,IF],X[ID,2,3,Iz,IF],
+      uCol[I,J,iz],vCol[I,J,iz],wCol[I,J,iz+1],wCol[I,J,iz+1])
+    FU += FuCor * JJ[ID,2,Iz,IF]
+    FV += FvCor * JJ[ID,2,Iz,IF]
     FW2 += FwCor * JJ[ID,2,Iz,IF]
 
     @atomic :monotonic F[1,Iz,ind,2] += (-vCol[I,J,iz] * W1 - wCol[I,J,iz] * V1 -
@@ -341,12 +344,12 @@ CurvatureCoefficient(Rad,::Grids.CartesianGrid,Equation) = zero(Rad)
     FW1 += Curvature * JJ[ID,1,Iz,IF] * KinH
     FW2 += Curvature * JJ[ID,2,Iz,IF] * KinH
 
-#   Coriolis
-    x = eltype(F)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
-    y = eltype(F)(0.5) * (X[ID,1,2,Iz,IF] + X[ID,2,2,Iz,IF])
-    z = eltype(F)(0.5) * (X[ID,1,3,Iz,IF] + X[ID,2,3,Iz,IF])
-    _, _, FwCor = CoriolisFun(x,y,z,uCol[I,J,iz],vCol[I,J,iz],wCol[I,J,iz],wCol[I,J,iz+1])
+#   Coriolis, in each half cell
+    _, _, FwCor = CoriolisFun(X[ID,1,1,Iz,IF],X[ID,1,2,Iz,IF],X[ID,1,3,Iz,IF],
+      uCol[I,J,iz],vCol[I,J,iz],wCol[I,J,iz],wCol[I,J,iz])
     FW1 += FwCor * JJ[ID,1,Iz,IF]
+    _, _, FwCor = CoriolisFun(X[ID,2,1,Iz,IF],X[ID,2,2,Iz,IF],X[ID,2,3,Iz,IF],
+      uCol[I,J,iz],vCol[I,J,iz],wCol[I,J,iz+1],wCol[I,J,iz+1])
     FW2 += FwCor * JJ[ID,2,Iz,IF]
 
     if Iz > 1  

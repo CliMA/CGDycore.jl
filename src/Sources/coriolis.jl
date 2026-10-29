@@ -27,6 +27,26 @@ function (CoriolisFun::CoriolisShallow)(Phys)
   return Coriolis
 end
 
+# Full Coriolis force 2 Omega x v in the spherical frame, including the non-traditional
+# terms with cos(lat), for the CGSEM kernels (one node, w1 = w2 = w of the half cell)
+Base.@kwdef struct CoriolisNonTraditional <: CoriolisType end
+
+function (CoriolisFun::CoriolisNonTraditional)(Phys)
+  @inline function Coriolis(x,y,z,u,v,w1,w2)
+    FT = eltype(x)
+    r = sqrt(x^2 + y^2 + z^2)
+    sinlat = z / r
+    coslat = sqrt(x^2 + y^2) / r
+    Ws = FT(2) * Phys.Omega * sinlat
+    Wc = FT(2) * Phys.Omega * coslat
+    Fu = v * Ws - w1 * Wc
+    Fv = -u * Ws
+    Fw = u * Wc
+    return Fu,Fv,Fw
+  end
+  return Coriolis
+end
+
 Base.@kwdef struct CoriolisShallowDG <: CoriolisType end
 
 function (CoriolisFun::CoriolisShallowDG)(Phys)

@@ -151,8 +151,11 @@ The Coriolis term and gravity are prescribed by the function objects
 \code{CoriolisFun} and \code{GravitationFun}. The variants that fit the
 CGSEM kernel interface are \code{CoriolisShallow}
 ($2\bm\Omega\times\vv$ reduced to the vertical component
-$f = 2\Omega\sin\varphi$), \code{FPlane} ($f = f_0 + \beta(y-y_0)$) and
-\code{CoriolisNo}; all of them act only on $u$ and $v$. Gravity is
+$f = 2\Omega\sin\varphi$), \code{FPlane} ($f = f_0 + \beta(y-y_0)$),
+\code{CoriolisNo}, which act only on $u$ and $v$, and
+\code{CoriolisNonTraditional} (\code{--CoriolisType="NonTraditional"} or
+\code{"Deep"}), the full $2\bm\Omega\times\vv$ including the
+non-traditional terms with $f_c = 2\Omega\cos\varphi$. Gravity is
 $g$ (\code{GravitationShallow}) or $g\,(a/r)^2$ (\code{GravitationDeep}),
 evaluated at the node.
 
@@ -554,15 +557,25 @@ interface values of $w$. The horizontal momentum tendency is
 the corresponding contributions $(J\bm\omega^{(K)}\times\vv^{(K)})_3$ of the
 two half cells adjacent to an interface (Section~\ref{sec:w}).
 
-The Coriolis force is added in the same kernel. \code{CoriolisFun} is
-evaluated at the layer centre $\tfrac12(\bm X^{(1)}+\bm X^{(2)})$ and returns
-$(fv,\,-fu,\,0)$, which is multiplied by $J^{(1)}+J^{(2)}$ for $u$, $v$ and
-by $J^{(K)}$ for the $w$ contributions of the half cells. With
-\code{CoriolisShallow} $f = 2\Omega\sin\varphi$ with
-$\sin\varphi = z/|\bm X|$; with \code{FPlane}
-$f = f_0 + \beta(y-y_0)$. The $\cos\varphi$ part of the Coriolis force
-(deep atmosphere) is not provided by the variants that match the interface
-of this kernel, so the third component is zero.
+The Coriolis force is added in the same kernel, in each half cell with its
+own vertical velocity: \code{CoriolisFun} is evaluated at the node
+$\bm X^{(K)}$ with $(u_k,v_k,w_{k\mp1/2})$ and its result is multiplied by
+$J^{(K)}$, for $u$, $v$ and for the $w$ contribution of the half cell.
+With
+\code{CoriolisShallow} it returns $(f_sv,\,-f_su,\,0)$,
+$f_s = 2\Omega\sin\varphi$, $\sin\varphi = z/|\bm X|$; with \code{FPlane}
+$f_s = f_0 + \beta(y-y_0)$; with \code{CoriolisNonTraditional}
+\begin{equation}
+  \bigl(f_sv - f_cw,\; -f_su,\; f_cu\bigr),\qquad
+  f_c = 2\Omega\cos\varphi .
+\end{equation}
+The non-traditional terms $-f_cw$ and $f_cu$ cancel in the energy within each
+half cell, $u\,(-f_cw_{k\mp1/2}) + w_{k\mp1/2}\,f_cu = 0$, with the same
+weights as the rotational term (the $w$ contributions are weighted with
+$\rho_k$, Section~\ref{sec:w}); discretely the Coriolis contribution to the
+kinetic energy vanishes to round-off. Together with the shallow metric this is
+the NHNT equation set of \cite{Hughes2026}, with the deep metric their NHD
+set.
 
 \subsection{Momentum: kinetic energy, pressure gradient and gravity}
 
@@ -610,7 +623,7 @@ layer $k+1$) and assembled with density-weighted masses:
   {\sum_{\text{copies}}\bigl(\rho_k J^{(2)}_k + \rho_{k+1} J^{(1)}_{k+1}\bigr)}.
 \end{equation}
 Here $R^{w,(K)}$ contains the rotational term and the vertical gradient of
-$K$ (the Coriolis contribution is zero for the available variants). The
+$K$ and, with the non-traditional Coriolis force, the term $f_cu$. The
 vertical pressure gradient and gravity are
 \begin{equation}
   R^p_{k+1/2} = -\tfrac12\bigl(p_{k+1} - p_k\bigr)
@@ -1128,6 +1141,11 @@ Vieweg, Braunschweig, 1993, pp.~117--138.
 E.~Hairer and G.~Wanner,
 \emph{Solving Ordinary Differential Equations II: Stiff and
 Differential-Algebraic Problems}, 2nd ed., Springer, 1996.
+
+\bibitem{Hughes2026}
+O.~K. Hughes, O.~Guba, M.~A. Taylor, C.~Jablonowski,
+The deep atmosphere extension of the non-hydrostatic HOMME dynamical core,
+\emph{EGUsphere} preprint, doi:10.5194/egusphere-2026-4425 (2026).
 
 \bibitem{ShuOsher1988}
 C.-W. Shu and S.~Osher,
