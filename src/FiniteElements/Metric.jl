@@ -1,3 +1,21 @@
+# Computation of the contravariant metric J grad xi^a: single differentiation
+# (cross products of the derivatives of X) or double differentiation (curl form of Kopriva)
+abstract type MetricDifferentiation end
+struct SingleDifferentiation <: MetricDifferentiation end
+struct DoubleDifferentiation <: MetricDifferentiation end
+
+function MetricDifferentiation(MetricType::AbstractString,Default::MetricDifferentiation)
+  if MetricType == ""
+    return Default
+  elseif MetricType == "Single"
+    return SingleDifferentiation()
+  elseif MetricType == "Double"
+    return DoubleDifferentiation()
+  else
+    throw(ArgumentError("unknown MetricType \"$MetricType\", use \"Single\" or \"Double\""))
+  end
+end
+
 mutable struct MetricDGStruct{FT<:AbstractFloat,
                             AT2<:AbstractArray,
                             AT3<:AbstractArray,
@@ -159,16 +177,10 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   Metric.dz = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   F = PointsFromGrid(backend,FT,Grid)
 
-  if occursin("DGMetric",Model.MetricType)
-    FillX!(backend,Metric,FE,F,Grid,zS)
-    FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
-    FillDet!(backend,Metric,FE,Grid)
-  else  
-#   Grids.JacobiDG3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
-#     Grid.Rad,Grid.Type,Grid.Form)
-    Grids.JacobiSphere3GPU!(Grid.AdaptGrid,Metric.X,Metric.dXdxI,Metric.J,FE,F,Grid.z,zS,
-    Grid.Rad,Models.CompressibleShallow())
-  end  
+  FillX!(backend,Metric,FE,F,Grid,zS)
+  FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
+  FillDet!(backend,Metric,FE,Grid)
+  ShallowMetric!(backend,Metric,FE,Grid,Grid.Form,Model.Equation)
 
   MassMatrix!(backend,FT,Metric,FE,Exchange,NumberThreadGPU)
 
@@ -221,24 +233,13 @@ function FillContravariant!(backend,Metric,FE::DGQuad,Grid,MetricType)
   Nz = Grid.nz
   group = (N,N,M,1,1)
   ndrange = (N,N,M,Nz,NF)
-  CurlMetric = false
   _,DS,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPoly)
   DSGPU = KernelAbstractions.zeros(backend,FT,size(DS))
   copyto!(DSGPU,DS)
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
   DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
   copyto!(DSZGPU,DSZ)
-  if occursin("Curl",MetricType) 
-    KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
-    KFillContraKernel1!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
-    KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
-    KFillContraKernel2!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
-    KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
-    KFillContraKernel3!(Metric.dXdxI,Metric.X,DSGPU,Val(N),Val(M);ndrange=ndrange)
-  else
-    KFillContraKernel! = MetricQuadKernel!(backend,group)
-    KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
-  end
+  ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,MetricType)
 end
 
 function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,MetricType)
@@ -257,39 +258,50 @@ function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,Metri
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
   DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
   copyto!(DSZGPU,DSZ)
-  if occursin("Curl",MetricType) 
-    KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
-    KFillContraKernel1!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
-    KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
-    KFillContraKernel2!(Metric.dXdxI,Metric.X,FE.DSGPU,FE.DSZGPU,Val(N),Val(M);ndrange=ndrange)
-    KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
-    KFillContraKernel3!(Metric.dXdxI,Metric.X,FE.DSGPU,Val(N),Val(M);ndrange=ndrange)
-  else
-    KFillContraKernel! = MetricQuadKernel!(backend,group)
-    KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
-  end  
+  ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,MetricType)
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
   KApplyRotateKernel! = ApplyRotateKernel!(backend,group)
   KApplyRotateKernel!(Metric.dXdxI,Metric.X,Grid.Form;ndrange=ndrange)
 end
 
-function FillContravariant!(backend,Metric,FE::DGTri,Grid,MetricType)
+function FillContravariant!(backend,Metric,FE::DGTri,Grid,::DoubleDifferentiation)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
   NF = Grid.NumFaces
   Nz = Grid.nz
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
-  CurlMetric = true
-  if occursin("Curl",MetricType) 
-    KFillContraKernel1! = MetricTriKernel1!(backend,group)
-    KFillContraKernel1!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx2,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
-    KFillContraKernel2! = MetricTriKernel2!(backend,group)
-    KFillContraKernel2!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
-    KFillContraKernel3! = MetricTriKernel3!(backend,group)
-    KFillContraKernel3!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.Dx2,Val(DoF),Val(M);ndrange=ndrange)
-  end
+  KFillContraKernel1! = MetricTriKernel1!(backend,group)
+  KFillContraKernel1!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx2,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
+  KFillContraKernel2! = MetricTriKernel2!(backend,group)
+  KFillContraKernel2!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
+  KFillContraKernel3! = MetricTriKernel3!(backend,group)
+  KFillContraKernel3!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.Dx2,Val(DoF),Val(M);ndrange=ndrange)
+end
+
+function FillContravariant!(backend,Metric,FE::DGTri,Grid,::SingleDifferentiation)
+  throw(ArgumentError("MetricType Single is not available for DG triangles, use Double"))
+end
+
+# Single differentiation: adjugate from the cross products of the derivatives of X
+function ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,::SingleDifferentiation)
+  group = (N,N,M,1,1)
+  ndrange = (N,N,M,Nz,NF)
+  KFillContraKernel! = MetricQuadKernel!(backend,group)
+  KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
+end
+
+# Double differentiation: curl form of Kopriva, fulfils the discrete metric identities
+function ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,::DoubleDifferentiation)
+  group = (N,N,M,1,1)
+  ndrange = (N,N,M,Nz,NF)
+  KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
+  KFillContraKernel1!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
+  KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
+  KFillContraKernel2!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
+  KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
+  KFillContraKernel3!(Metric.dXdxI,Metric.X,DSGPU,Val(N),Val(M);ndrange=ndrange)
 end
 
 @kernel inbounds = true function FillContraCurlQuadKernel3!(dXdxI,@Const(X),@Const(DH), ::Val{N}, ::Val{M}) where {N,M}
@@ -876,6 +888,73 @@ function FillDet!(backend,Metric,FE,Grid)
   ndrange = (DoF,M,Nz,NF)
   KDetKernel! = DetKernel!(backend,group)
   KDetKernel!(Metric.J,Metric.dXdxI,FE.Glob;ndrange=ndrange)
+end  
+
+function FillDet!(backend,Metric,FE::CGElement,Grid)
+  DoF = FE.DoF
+  M = FE.OrdPolyZ + 1
+  NF = Grid.NumFaces
+  Nz = Grid.nz
+  group = (DoF,M,1,1)
+  ndrange = (DoF,M,Nz,NF)
+  KDetCGKernel! = DetCGKernel!(backend,group)
+  KDetCGKernel!(Metric.J,Metric.dXdxI;ndrange=ndrange)
+end  
+
+@kernel inbounds = true function DetCGKernel!(J,@Const(dXdxI))
+
+  ID, K, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+  dXdxILoc = @private eltype(J) (3,3)
+
+  if Iz <= Nz && IF <= NF
+    @unroll for j = 1 : 3
+      @unroll for i = 1 : 3
+        dXdxILoc[i,j] = dXdxI[i,j,K,ID,Iz,IF]
+      end
+    end  
+    J[ID,K,Iz,IF] = sqrt(abs(Det3(dXdxILoc)))
+  end
+end  
+
+# Shallow atmosphere: the tangential rows of the Jacobian in the spherical frame are
+# scaled by a/r (metric of Guba), adj(S*L) = adj(L)*adj(S) with S = diag(a/r,a/r,1)
+function ShallowMetric!(backend,Metric,FE::CGElement,Grid,::Grids.SphericalGrid,
+  ::Union{Models.CompressibleShallow,Models.Advection,Models.ShallowWater})
+  DoF = FE.DoF
+  M = FE.OrdPolyZ + 1
+  NF = Grid.NumFaces
+  Nz = Grid.nz
+  group = (DoF,M,1,1)
+  ndrange = (DoF,M,Nz,NF)
+  KShallowMetricKernel! = ShallowMetricKernel!(backend,group)
+  KShallowMetricKernel!(Metric.dXdxI,Metric.J,Metric.X,Grid.Rad;ndrange=ndrange)
+end  
+
+function ShallowMetric!(backend,Metric,FE,Grid,GridForm,Equation)
+end  
+
+@kernel inbounds = true function ShallowMetricKernel!(dXdxI,J,@Const(X),Rad)
+
+  ID, K, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  if Iz <= Nz && IF <= NF
+    r = sqrt(X[ID,K,1,Iz,IF]^2 + X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2)
+    s = Rad / r
+    @unroll for a = 1 : 3
+      dXdxI[a,1,K,ID,Iz,IF] *= s
+      dXdxI[a,2,K,ID,Iz,IF] *= s
+      dXdxI[a,3,K,ID,Iz,IF] *= s * s
+    end
+    J[ID,K,Iz,IF] *= s * s
+  end
 end  
 
 @kernel inbounds = true function DetKernel!(J,@Const(dXdxI),@Const(Glob))

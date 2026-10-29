@@ -37,7 +37,7 @@ julia --project Examples/DriverDG.jl \
   --OrdPrintZ=4 \
   --StartAverageDays=100 \
   --Flat=true \
-  --MetricType="DGMetric" \
+  --MetricType="Single" \
   --dtau=30 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \

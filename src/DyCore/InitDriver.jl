@@ -91,7 +91,6 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
   end
 
 
-# (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiSphere3,CG,Exchange,Global,zS)
   Metric = FiniteElements.MetricCompute(backend,FT,CG,Model,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output Orography
@@ -152,7 +151,6 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,T
     zS = Grids.Orography(backend,FT,CG,Exchange,Global,TopoProfile,Grid.Type)
   end
 
-# (CG,Metric) = CGSEM.DiscretizationCG(backend,FT,Grids.JacobiDG3,CG,Exchange,Global,zS)
   Metric = FiniteElements.MetricCompute(backend,FT,CG,Model,Exchange,Grid,NumberThreadGPU,zS)
 
   # Output Orography

@@ -193,6 +193,8 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   SedimentationSource = Global.Model.SedimentationSource
   CoriolisFun = Global.Model.CoriolisFun
   GravitationFun = Global.Model.GravitationFun
+  GridForm = Global.Grid.Form
+  Curvature = CurvatureCoefficient(FT(Global.Grid.Rad),GridForm,Equation)
   HorLimit = Global.Model.HorLimit
 
   KoeffCurl = Global.Model.HyperDCurl
@@ -418,7 +420,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     @views KHyperViscTracerKoeffEDMFKernel!(FThEDMF,CacheThEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDiv,ndrange=ndrangeBEDMF)
       @views KHyperViscTracerKoeffEDMFKernel!(FTrEDMF,CacheTrEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDiv,ndrange=ndrangeBEDMFTr)
   end  
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeB)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,GridForm,Curvature,ndrange=ndrangeB)
   KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,ndrange=ndrangeB)
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
@@ -449,7 +451,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end
   if EDMF
     KMomentumCoriolisDraftKernel! = MomentumVectorInvariantCoriolisDraftKernel!(backend,group)  
-    KMomentumCoriolisDraftKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI,J,X,M,Glob,CoriolisFun,ndrange=ndrangeBEDMF)
+    KMomentumCoriolisDraftKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI,J,X,M,Glob,CoriolisFun,GridForm,Curvature,ndrange=ndrangeBEDMF)
     KRhoGradKinEDMFKernel! = RhoGradKinEDMFKernel!(backend,group)
     KRhoGradKinEDMFKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI,J,M,Glob,ndrange=ndrangeBEDMF)
     KAdvectionTrUpwind3Kernel! = AdvectionTrUpwind3Kernel!(backend,groupTr)
@@ -484,7 +486,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     end  
   end  
 
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeI)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,GridForm,Curvature,ndrange=ndrangeI)
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,ndrange=ndrangeI)
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
@@ -516,7 +518,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end
 
   if EDMF
-    KMomentumCoriolisDraftKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,ndrange=ndrangeIEDMF)
+    KMomentumCoriolisDraftKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,GridForm,Curvature,ndrange=ndrangeIEDMF)
     KRhoGradKinEDMFKernel!(F,U,wEDMF,aRhoEDMF,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMF)
     KAdvectionTrUpwind3Kernel!(FThEDMF,ThEDMF,U,wEDMF,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeIEDMF)
     if NumTr > 0

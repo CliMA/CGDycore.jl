@@ -268,7 +268,7 @@ Model.Stretch = Stretch
 Model.StretchType = StretchType
 Model.State = State
 Model.ModelType = ModelType
-Model.MetricType = MetricType
+Model.MetricType = FiniteElements.MetricDifferentiation(MetricType,FiniteElements.DoubleDifferentiation())
 
 if VelocityForm == "Spherical"  
    VelForm = Examples.VelocityS()

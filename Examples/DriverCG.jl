@@ -1,6 +1,6 @@
 import CGDycore:
   Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  
-    CGSEM, DyCore, IMEXRosenbrock
+    FiniteElements, CGSEM, DyCore, IMEXRosenbrock
 using MPI
 using Base
 using CUDA
@@ -264,7 +264,7 @@ Model.Stretch = Stretch
 Model.StretchType = StretchType
 Model.State = State
 Model.ModelType = ModelType
-Model.MetricType = MetricType
+Model.MetricType = FiniteElements.MetricDifferentiation(MetricType,FiniteElements.SingleDifferentiation())
 if HyperVisc == 0
   Model.HyperVisc = CGSEM.HyperViscosity(nPanel)  
 end  

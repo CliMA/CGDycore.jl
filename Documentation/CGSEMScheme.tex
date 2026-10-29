@@ -32,9 +32,12 @@ This note describes the numerical scheme implemented in the module
 method (SEM) on Gauss--Lobatto--Legendre (GLL) points in the horizontal with
 a low-order, staggered (Charney--Phillips type) discretization in a
 terrain-following height coordinate in the vertical. The prognostic variables
-are density, the velocity components in vector-invariant form, the vertical
-velocity on layer interfaces, the density-weighted potential temperature and
-tracer densities. Time integration is done by Rosenbrock-type W-methods with an
+are density, the horizontal velocity components and the vertical velocity
+(on layer interfaces) in the local orthonormal spherical frame
+(east, north, radial), the density-weighted potential temperature and tracer
+densities. The momentum equation is used in vector-invariant form, and all
+metric terms of the sphere enter through the adjugate of the element mapping
+written in the spherical frame. Time integration is done by Rosenbrock-type W-methods with an
 approximate Jacobian that contains only the vertical acoustic and buoyancy
 coupling (HEVI). We describe the discrete operators term by term and compare
 the design with the spectral element cores HOMME (E3SM) and ClimaCore
@@ -62,8 +65,16 @@ The main routine for the right-hand side is \code{Fcn!} in
 \item DSS/parallel exchange of the tendency and the column physics (vertical
   diffusion, surface fluxes, forcing, microphysics, sedimentation, damping).
 \end{enumerate}
+Before the first pass the meridional velocity is set to zero at the
+boundary degrees of freedom \code{BoundaryDoF} (lateral walls of Cartesian
+channel configurations; the set is empty on the sphere). If the tracer
+limiter is active, the element bounds of the tracers are computed and their
+exchange is started at the same time.
+
 All element-wise operators are evaluated in KernelAbstractions kernels, one
-thread per horizontal node and layer. The contributions of the elements are
+thread per horizontal node and layer; a work group holds the $N\times N$
+nodes of one element and a tile of layers, and the neighbouring layers that
+a vertical stencil needs are loaded into shared memory as halo values. The contributions of the elements are
 accumulated into the global degrees of freedom by atomic additions and divided
 by the assembled lumped mass. In this way DSS is part of every operator
 kernel. The elements are ordered so that the elements at the boundary of a
@@ -80,7 +91,10 @@ Horizontal & CG spectral elements on quadrilaterals (cubed sphere or
   lumped mass, DSS\\
 Vertical & terrain-following height coordinate, $N_z$ layers, lowest-order
   staggering: $\rho,u,v,\rho\theta,\rho q$ in layers, $w$ on interfaces\\
-Momentum & vector-invariant form, prognostic velocities $u,v,w$\\
+Momentum & vector-invariant form, prognostic velocities $u,v,w$ in the
+  local spherical frame $(\bm e_\lambda,\bm e_\varphi,\bm e_r)$\\
+Metric & adjugate of the element mapping in the spherical frame, stored at
+  the $N\times N\times 2$ nodes of every cell\\
 Thermodynamics & $\rho\theta$ (dry); variants with internal or total energy\\
 Horizontal transport & centred SEM operators; split form for $\rho\theta$\\
 Vertical transport & limited third-order upwind reconstruction
@@ -120,9 +134,29 @@ the physical sources $S$. For the dry state the pressure is
   p = p_0\left(\frac{R_d\,\rho\theta}{p_0}\right)^{1/(1-\kappa)},
   \qquad \kappa = R_d/c_{pd}.
 \end{equation}
-The velocity $\vv = (u,v,w)$ is stored in local Cartesian components:
-on the sphere $u$ and $v$ are the eastward and northward components and $w$
-is the radial component. Other options select internal or total energy instead of
+On the sphere the velocity is used in its spherical representation,
+\begin{equation}
+  \vv = u\,\bm e_\lambda + v\,\bm e_\varphi + w\,\bm e_r ,
+\end{equation}
+i.e.\ $u$, $v$ and $w$ are the components with respect to the local
+orthonormal basis of the spherical coordinates $(\lambda,\varphi,r)$ (east,
+north, radial) at the node, not Cartesian components of $\mathbb R^3$. The
+basis rotates from node to node. The formulation is derived from the
+Cartesian vector-invariant form by moving the rotation matrix into the
+contravariant metric (Section~\ref{sec:sphframe}), so that the rotation is
+not represented explicitly in the operators. In the Cartesian configurations (channel,
+box) $u$, $v$, $w$ are the Cartesian components.
+
+The Coriolis term and gravity are prescribed by the function objects
+\code{CoriolisFun} and \code{GravitationFun}. The variants that fit the
+CGSEM kernel interface are \code{CoriolisShallow}
+($2\bm\Omega\times\vv$ reduced to the vertical component
+$f = 2\Omega\sin\varphi$), \code{FPlane} ($f = f_0 + \beta(y-y_0)$) and
+\code{CoriolisNo}; all of them act only on $u$ and $v$. Gravity is
+$g$ (\code{GravitationShallow}) or $g\,(a/r)^2$ (\code{GravitationDeep}),
+evaluated at the node.
+
+Other options select internal or total energy instead of
 $\rho\theta$ (\code{DryInternalEnergy}, \code{DryTotalEnergy}, \dots), moisture
 variables, a turbulent kinetic energy and EDMF variables; they reuse the same
 operators and are not discussed here.
@@ -166,31 +200,206 @@ two GLL points $\zeta = -1$ (bottom, index $K=1$) and $\zeta=+1$ (top,
 $K=2$); the corresponding two-point quadrature has the weights $1,1$.
 The metric terms are stored at the $N\times N\times 2$ points of every cell.
 
-\subsection{Metric terms}
+\subsection{Cartesian contravariant metric and rotation to the spherical frame}
+\label{sec:sphframe}
 
-With the Jacobian matrix $\partial\bm x/\partial\bm\xi$ in the local basis
-(east, north, radial), the code stores the pointwise determinant and the
-adjugate,
+The idea of the formulation is that all information about the sphere is
+contained in the metric terms. The starting point is the vector-invariant
+form \eqref{eq:cont}--\eqref{eq:tracer} with the Cartesian velocity
+$\vv_C\in\mathbb R^3$ and the Cartesian contravariant metric
 \begin{equation}
-  J = \det\frac{\partial\bm x}{\partial\bm\xi}, \qquad
-  \Jm^{a}_{\;b} = J\,\frac{\partial\xi^a}{\partial x^b},
-  \qquad a,b = 1,2,3,
+  J = \det\frac{\partial\bm x}{\partial\bm\xi},\qquad
+  \Jm^a_C = J\,\nabla\xi^a \;\in\mathbb R^3,\qquad a = 1,2,3,
 \end{equation}
-(\code{J} and \code{dXdxI[a,b,K,ID,k,e]}, $\xi^3=\zeta$). The rows
-$\Jm^a = J\nabla\xi^a$ are the contravariant basis vectors scaled by $J$. The
-derivative of the height with respect to $\zeta$ is computed by the two-point
-difference $\partial_\zeta h \approx \tfrac12(h_{K=2}-h_{K=1})$ and the
-horizontal derivatives of $h$ by the matrix $D$. The divergence, gradient and
-curl are written in the metric-conservative forms
+($\xi^3=\zeta$), for which the operators
+\begin{equation}
+  J\nabla\cdot\bm f = \sum_{a}\partial_{\xi^a}\bigl(\Jm^a_C\cdot\bm f\bigr),\quad
+  J\nabla\phi = \sum_a \Jm^a_C\,\partial_{\xi^a}\phi,\quad
+  J\nabla\times\vv_C = \sum_a \partial_{\xi^a}\bigl(\Jm^a_C\times\vv_C\bigr)
+  \label{eq:cartops}
+\end{equation}
+are exact because of the metric identities $\sum_a\partial_{\xi^a}\Jm^a_C = 0$.
+
+Let $R(\lambda,\varphi)$ be the rotation matrix whose rows are the unit
+vectors $\bm e_\lambda,\bm e_\varphi,\bm e_r$ at the node
+(\code{Grids.MCart2Sphere}). The spherical velocity is
+\begin{equation}
+  \vv = R\,\vv_C,\qquad \vv_C = R^T\vv,\qquad \vv = (u,v,w)^T .
+\end{equation}
+Substituting $\vv_C = R^T\vv$ into the Cartesian forms, $R$ can be moved
+into the metric. The spherical contravariant metric is
+\begin{equation}
+  \Jm^a = R\,\Jm^a_C, \qquad
+  \Jm^a_{\;b} = \sum_c R_{bc}\,(\Jm^a_C)_c = \Jm^a_C\cdot\bm e_b,
+  \label{eq:adjrot}
+\end{equation}
+i.e.\ the adjugate of the Cartesian Jacobian multiplied by the rotation
+matrix. This is what the code stores in \code{dXdxI[a,b,K,ID,k,e]}
+($=\Jm^a_{\;b}$ at vertical node $K$) together with \code{J[ID,K,k,e]}.
+
+\paragraph{Computation of the metric.}
+All metric terms are computed in \code{FiniteElements/Metric.jl}
+(\code{MetricCompute}).
+\begin{itemize}
+\item The node positions $\bm X$ are generated
+  (\code{FillXKernel!}), the Cartesian adjugate is computed from the
+  derivatives of $\bm X$ by cross products (single differentiation,
+  \code{--MetricType="Single"}, \code{MetricQuadKernel!}, default for CG) or
+  in the curl form of Kopriva (double differentiation,
+  \code{--MetricType="Double"}, \code{FillContraCurlQuadKernel1-3!}, default
+  for DG), which fulfils the discrete metric identities. With only two
+  vertical nodes per layer the double form evaluates $\Jm^{1,2}$ with the
+  mean radius $\bar r$ of the layer instead of the node radius $r_K$, an
+  error $\Delta r/(2r)$ that also enters $J$. \code{ApplyRotateKernel!} then multiplies with
+  $R^T$ from the right as in \eqref{eq:adjrot}, and $J = |\det\Jm|^{1/2}$
+  (\code{DetKernel!}, for CGSEM \code{DetCGKernel!} with $J$ stored per
+  element node). This is the exact rotated Cartesian (deep) metric of the
+  polynomial interpolant of $\bm x$. For the shallow atmosphere (every
+  \code{Equation} except \code{CompressibleDeep}) the tangential rows of $L$
+  are scaled by $a/r$, $L\to SL$ with $S = \operatorname{diag}(a/r,a/r,1)$,
+  i.e.\ $\Jm^a_{\;b}\to\Jm^a_{\;b}\,s_b$ with $s = (a/r,\,a/r,\,(a/r)^2)$ and
+  $J\to(a/r)^2J$ (\code{ShallowMetricKernel!}). This is the shallow metric of
+  Guba below, evaluated with the polynomial derivatives of $\bm x$ instead of
+  the analytic ones; without orography the two agree to $2\cdot10^{-7}$
+  ($n_{\text{Panel}} = 16$, $p = 3$) and converge with order $p+2$.
+\item The earlier metric of Guba (\code{JacobiSphere3Kernel!}, removed from
+  \code{Grids}) has the same continuous form. Here the Jacobian is formed directly in the spherical frame as a product
+  of two matrices: the derivative $\tfrac14 BC = \partial\bm X/\partial\bm\xi$
+  of the bilinear cube point and the matrix
+  $\tfrac{a}{|\bm X|}\,D_\lambda A$ (\code{DD*A}) that projects onto the sphere and onto
+  $\bm e_\lambda$, $\bm e_\varphi$,
+  \begin{equation}
+    L = \begin{pmatrix}
+      \bm e_\lambda\cdot\partial_{\xi^1}\bm x_s & \bm e_\lambda\cdot\partial_{\xi^2}\bm x_s & 0\\
+      \bm e_\varphi\cdot\partial_{\xi^1}\bm x_s & \bm e_\varphi\cdot\partial_{\xi^2}\bm x_s & 0\\
+      \partial_{\xi^1} h & \partial_{\xi^2} h & \partial_\zeta h
+    \end{pmatrix},\qquad \bm x_s = a\frac{\bm X}{|\bm X|},
+    \label{eq:Lsph}
+  \end{equation}
+  and $\Jm = \operatorname{adj}L$, $J = \det L$. Since the rows of $R$ are
+  orthonormal, $L = R\,\partial\bm x/\partial\bm\xi$ and
+  $\operatorname{adj}L = \operatorname{adj}(\partial\bm x/\partial\bm\xi)\,R^T$,
+  which is \eqref{eq:adjrot}. The shallow-atmosphere version uses the radius
+  $a$ in the tangential rows instead of $a+h$; the deep version scales them
+  by $(a+h)/a$ and is the exact rotated Cartesian metric. The entries $L_{13} = L_{23} = 0$ reflect that
+  the $\zeta$-lines are radial. The derivatives of $h$ are computed with $D$
+  in the horizontal and by
+  $\partial_\zeta h \approx \tfrac12(h_{K=2}-h_{K=1})$ in the vertical.
+\end{itemize}
+In the Cartesian configurations $R = I$ (\code{ApplyRotateKernel!} is
+empty).
+
+\paragraph{Lam\'e form.}
+Equivalently, $L = \operatorname{diag}(h_\lambda,h_\varphi,h_r)\,
+\partial(\lambda,\varphi,r)/\partial\bm\xi$ with $h_\lambda = r\cos\varphi$,
+$h_\varphi = r$, $h_r = 1$ (shallow: $r\to a$). With $H = h_\lambda h_\varphi h_r$
+and $\hat J = \det\partial(\lambda,\varphi,r)/\partial\bm\xi$,
+\begin{equation}
+  J = H\hat J,\qquad
+  \Jm^a_{\;b} = \frac{H}{h_b}\,\hat J\,\frac{\partial\xi^a}{\partial q^b},
+  \qquad
+  \sum_a\partial_{\xi^a}\bigl(\Jm^a_{\;b}\,f\bigr)
+   = \hat J\,\partial_{q^b}\Bigl(\frac{H}{h_b}\,f\Bigr),
+  \label{eq:metid}
+\end{equation}
+$(q^1,q^2,q^3) = (\lambda,\varphi,r)$. The spherical metric does not fulfil
+$\sum_a\partial_{\xi^a}\Jm^a_{\;b} = 0$; the non-zero remainder is
+$\hat J\,\partial_{q^b}(H/h_b)$, i.e.\ exactly the curvature of the basis
+vectors.
+
+\subsection{Discrete differential operators in spherical components}
+
+The code uses the operators \eqref{eq:cartops} with $\Jm^a_C$, $\vv_C$
+replaced by $\Jm^a$, $\vv$:
 \begin{equation}
   J\nabla\cdot\bm f = \sum_{a}\partial_{\xi^a}\bigl(\Jm^a\cdot\bm f\bigr),\quad
   J\nabla\phi = \sum_a \Jm^a\,\partial_{\xi^a}\phi,\quad
-  J(\nabla\times\vv)_i = \sum_a \varepsilon_{ibc}\,
-    \partial_{\xi^a}\bigl(\Jm^a_{\;b}\,v_c\bigr),
+  J\bm\omega = \sum_a \partial_{\xi^a}\bigl(\Jm^a\times\vv\bigr).
   \label{eq:metricops}
 \end{equation}
-which are equivalent to the usual forms because of the metric identities
-$\sum_a\partial_{\xi^a}\Jm^a = 0$.
+Whether this is the Cartesian scheme written in spherical components depends
+on whether the rotation $R$ appears inside or outside a derivative.
+\begin{itemize}
+\item \emph{Fluxes and divergence.}
+  $\Jm^a\cdot\vv = (R\Jm^a_C)\cdot(R\vv_C) = \Jm^a_C\cdot\vv_C$ holds
+  pointwise. The contravariant mass, $\rho\theta$ and tracer fluxes, and
+  hence the discrete continuity, $\rho\theta$ and tracer equations, are
+  identical node by node to the Cartesian discretization. The same applies to
+  the lower boundary condition $\Jm^3\cdot\vv = 0$.
+\item \emph{Gradient.}
+  $\sum_a\Jm^a\partial_{\xi^a}\phi = R\sum_a\Jm^a_C\partial_{\xi^a}\phi$:
+  the discrete gradient (pressure gradient, gradient of $K$) is the rotated
+  Cartesian discrete gradient, exactly.
+\item \emph{Kinetic energy.} $|\vv| = |\vv_C|$, so $K$ is identical.
+\item \emph{DSS.} $R$ depends only on the position of the node, so all
+  copies of a node have the same $R$ and the assembly commutes with the
+  rotation.
+\item \emph{Curl.} Here the rotation is inside the derivative. With
+  $R(\bm a\times\bm b) = (R\bm a)\times(R\bm b)$,
+  \begin{equation}
+    R\sum_a\partial_{\xi^a}\bigl(\Jm^a_C\times\vv_C\bigr)
+    = \sum_a\partial_{\xi^a}\bigl(\Jm^a\times\vv\bigr)
+     - \sum_a\bigl(\partial_{\xi^a}R\bigr)R^T\bigl(\Jm^a\times\vv\bigr).
+    \label{eq:curlrot}
+  \end{equation}
+  The skew-symmetric matrices $(\partial_{\xi^a}R)R^T$ describe the rotation
+  of the local basis from node to node. They are not contained in the
+  metric \eqref{eq:adjrot}. Since the $\zeta$-lines are radial,
+  $\partial_\zeta R = 0$ and only the horizontal derivatives contribute. If
+  only the first term on the right-hand side is used, the continuous limit
+  of \eqref{eq:metid} gives
+  \begin{equation}
+    \bm\omega^{\text{code}} = \nabla\times\vv + \delta\bm\omega,\qquad
+    \delta\omega_i = \sum_{b,c}\varepsilon_{ibc}\,
+      \frac{v_c}{h_i h_b}\,\partial_{q^b}h_i ,
+    \label{eq:dom}
+  \end{equation}
+  which is
+  \begin{equation}
+    \delta\bm\omega = \Bigl(-\frac{v + w\tan\varphi}{r},\;\frac{u}{r},\;0\Bigr)
+    \ \ \text{(deep, rotated Cartesian metric)},\qquad
+    \delta\bm\omega = \Bigl(-\frac{w\tan\varphi}{a},\;0,\;0\Bigr)
+    \ \ \text{(shallow metric of Guba)}.
+  \end{equation}
+  (The deep result was verified symbolically from \eqref{eq:curlrot}.)
+  The vertical vorticity, including the curvature term $u\tan\varphi/r$, is
+  reproduced exactly in both cases, because $h_r = 1$. The horizontal
+  components carry the additional terms; in the shallow case the momentum
+  equation would get $-w^2\tan\varphi/a$ in $\partial_t v$ and
+  $+vw\tan\varphi/a$ in $\partial_t w$. These terms are singular at the
+  poles, where the cubed sphere with even $n_{\text{Panel}}$ has nodes, so
+  they cannot be compensated by analytic source terms.
+\end{itemize}
+
+\paragraph{Curl of the Cartesian velocity.}
+The code therefore evaluates the horizontal derivatives in the curl with the
+Cartesian components inside the derivative and rotates the result back,
+\begin{equation}
+  J\bm\omega = R\sum_{a=1,2} D_a\bigl(R^T(\Jm^a\times\vv)\bigr)
+     + D_\zeta\bigl(\Jm^3\times\vv\bigr),
+  \label{eq:curlcart}
+\end{equation}
+where $R$ is evaluated at every node from its position (\code{CurlFrame}),
+$R^T(\Jm^a\times\vv) = \Jm^a_C\times\vv_C$, and the vertical part is
+unchanged because $R$ is constant along a column. With the deep metric this
+is node by node the rotated Cartesian curl, also at the poles. With the
+shallow metric, \eqref{eq:metid} applied to \eqref{eq:curlcart} gives in the
+continuous limit $\nabla\times\vv + (v/a,\,-u/a,\,0)$, i.e.\ the additional
+tendencies $(uw/a,\; vw/a,\; -(u^2+v^2)/a)$, which contain no
+$\tan\varphi$. They are subtracted in every half cell,
+\begin{equation}
+  \partial_t u \mathrel{-}= \frac{u w}{a},\qquad
+  \partial_t v \mathrel{-}= \frac{v w}{a},\qquad
+  \partial_t w \mathrel{+}= \frac{u^2 + v^2}{a},
+\end{equation}
+with the half-cell weights $J^{(K)}$ and the half-cell vertical velocities
+$w_{k\mp1/2}$ of the rotational term (\code{CurvatureCoefficient} $=1/a$, zero
+for \code{CompressibleDeep} and Cartesian grids). The correction is energy
+neutral in each half cell, $u\,(uw) + v\,(vw) - w\,(u^2+v^2) = 0$. For
+$u = U\cos\varphi$, $v = 0$, $w = W$ the discrete rotational term converges
+with order $p$ to $-\bm\omega\times\vv$ of the shallow and of the deep
+equations, with Guba's and with the \code{DGMetric} metric, also on grids
+with nodes at the poles.
 
 \subsection{Lumped mass matrix and direct stiffness summation}
 
@@ -205,7 +414,10 @@ the node $g$ in the elements that contain it. The exact lumped GLL mass would
 be $\omega_i\omega_j M_{g,k}$; on a conforming quadrilateral mesh the product
 $\omega_i\omega_j$ is the same for all copies of a node (the GLL weights are
 symmetric), so the weights cancel in every quotient
-``assembled contribution / assembled mass'' and are omitted in both.
+``assembled contribution / assembled mass'' and are omitted in both. The
+weighted mass $\sum\tfrac12(J^{(1)}+J^{(2)})\,\omega_i\omega_j$ is assembled
+separately (\code{MMass}) and is used only where real volumes are needed,
+e.g.\ for global integrals.
 
 A generic term is evaluated in strong form element by element and assembled
 as a $J$-weighted average,
@@ -317,8 +529,11 @@ $0$ and $1$ and by the first-order slope $r$). Near the boundaries the missing
 layers are replaced by the boundary layer.
 
 \subsection{Momentum: rotational term}
+\label{sec:rot}
 
-The vorticity is evaluated with the conservative curl \eqref{eq:metricops}.
+The vorticity is evaluated with the conservative curl \eqref{eq:curlcart}:
+the horizontal fluxes $\Jm^a\times\vv$, $a=1,2$, are rotated to Cartesian
+components before the derivative and the result is rotated back.
 The horizontal derivatives are taken with $D$ separately at both vertical
 nodes $K=1,2$ of the layer. The vertical derivative of a flux $f$ (for example
 $\Jm^3_{\;3}v - \Jm^3_{\;2}w$) has two parts:
@@ -335,10 +550,19 @@ interface values of $w$. The horizontal momentum tendency is
   -\frac{1}{M_{g,k}}\sum_{\text{copies}}\sum_{K=1}^2
   \Bigl[(J\bm\omega^{(K)})\times\vv^{(K)}\Bigr]_{1,2}
 \end{equation}
-(\code{MomentumVectorInvariantCoriolisKernel!}). The Coriolis force is added
-in the same kernel. With the shallow-atmosphere approximation only the
-vertical component $f=2\Omega\sin\varphi$ is used, multiplied by
-$J^{(1)}+J^{(2)}$. Variants: $f$-plane, deep atmosphere.
+(\code{MomentumVectorInvariantCoriolisKernel!}). The vertical velocity gets
+the corresponding contributions $(J\bm\omega^{(K)}\times\vv^{(K)})_3$ of the
+two half cells adjacent to an interface (Section~\ref{sec:w}).
+
+The Coriolis force is added in the same kernel. \code{CoriolisFun} is
+evaluated at the layer centre $\tfrac12(\bm X^{(1)}+\bm X^{(2)})$ and returns
+$(fv,\,-fu,\,0)$, which is multiplied by $J^{(1)}+J^{(2)}$ for $u$, $v$ and
+by $J^{(K)}$ for the $w$ contributions of the half cells. With
+\code{CoriolisShallow} $f = 2\Omega\sin\varphi$ with
+$\sin\varphi = z/|\bm X|$; with \code{FPlane}
+$f = f_0 + \beta(y-y_0)$. The $\cos\varphi$ part of the Coriolis force
+(deep atmosphere) is not provided by the variants that match the interface
+of this kernel, so the third component is zero.
 
 \subsection{Momentum: kinetic energy, pressure gradient and gravity}
 
@@ -369,7 +593,9 @@ gradient over terrain used in MPAS \cite{KlempSkamarock2021}. It needs no
 vertical average of $\partial_\zeta p$ from the interfaces to the layer
 centres, and it is exact for hydrostatic states. The horizontal tendency is
 $-(J\nabla p)_{1,2}/\rho_k$, assembled with $M_{g,k}$. Without orography
-$\Jm^3_{\;1} = \Jm^3_{\;2} = 0$ and the correction term vanishes.
+$\Jm^3_{\;1} = \Jm^3_{\;2} = 0$ and the correction term vanishes; the first
+term is then, by \eqref{eq:metid}, the spherical gradient
+$\bigl((a\cos\varphi)^{-1}\partial_\lambda p,\; a^{-1}\partial_\varphi p\bigr)$.
 
 \subsection{Vertical momentum}
 \label{sec:w}
@@ -383,16 +609,21 @@ layer $k+1$) and assembled with density-weighted masses:
     + R^{p}_{k+1/2}\bigr)}
   {\sum_{\text{copies}}\bigl(\rho_k J^{(2)}_k + \rho_{k+1} J^{(1)}_{k+1}\bigr)}.
 \end{equation}
-Here $R^{w,(K)}$ contains the rotational term, the vertical gradient of $K$
-and the Coriolis term (deep atmosphere only). The vertical pressure gradient and
-gravity are
+Here $R^{w,(K)}$ contains the rotational term and the vertical gradient of
+$K$ (the Coriolis contribution is zero for the available variants). The
+vertical pressure gradient and gravity are
 \begin{equation}
   R^p_{k+1/2} = -\tfrac12\bigl(p_{k+1} - p_k\bigr)
      \bigl(\Jm^{3,(2)}_{3,k} + \Jm^{3,(1)}_{3,k+1}\bigr)
      - g\bigl(\rho_k J^{(2)}_k + \rho_{k+1} J^{(1)}_{k+1}\bigr),
 \end{equation}
 i.e.\ $\bar\rho\,\partial_t w = -\partial_z p - \bar\rho g$ with the
-volume-weighted interface density $\bar\rho$. For a hydrostatic state
+volume-weighted interface density $\bar\rho$. Here $g$ is
+\code{GravitationFun} evaluated at the interface; in the layer term of the
+horizontal pressure gradient it is evaluated at the layer centre.
+Because $\Jm^3_{\;3}$ is the radial component of $J\nabla\zeta$ in the
+spherical frame, $p_{k+1}-p_k$ is differenced along the radial direction
+also over orography. For a hydrostatic state
 $(p_{k+1}-p_k)/\Delta z_{k+1/2} = -g\bar\rho_{k+1/2}$ is the discrete
 balance that the right-hand side preserves exactly.
 
@@ -506,8 +737,10 @@ which vanish. The horizontal terms are handled by the SEM summation-by-parts
 property of $D_x$ with the lumped GLL mass.
 
 \paragraph{Relation to the implementation.}
-The code uses Cartesian velocity components, so $G_k$ becomes the identity in
-these components, and the metric enters through $\Jm^3$:
+The code uses the orthonormal spherical components $(u,v,w)$. With respect
+to an orthonormal basis covariant and contravariant components coincide, so
+$G_k$ is the identity in these components, $K = \tfrac12(u^2+v^2+w^2)$, and
+the metric enters only through the adjugate $\Jm$:
 \begin{itemize}
 \item The half-cell energies $K^{(1)}_k$, $K^{(2)}_k$ of
   \code{GradFullKernel!} are the two terms in \eqref{eq:Kdisc}, i.e.\
@@ -519,7 +752,8 @@ these components, and the metric enters through $\Jm^3$:
   $J_kW^R_k = \Jm^{3,(2)}_k\cdot\vv^{(2)}_k$, i.e.\ the averaging
   \eqref{eq:Wavg}. The same flux is used for $\rho\theta$ and the tracers.
 \item The rotational term is formed pointwise in each half cell with the
-  Cartesian half-cell velocity. Since $(\bm\omega\times\vv)\cdot\vv = 0$ and the
+  half-cell velocity $\vv^{(K)}_k$. Since $(\bm\omega\times\vv)\cdot\vv = 0$
+  for any $\bm\omega$ (the shallow curvature correction is of the same form) and the
   $w$ contributions are weighted with $\rho_k$ and $\rho_{k+1}$ in the
   denominator of Section~\ref{sec:w}, it is energy neutral half cell by half
   cell. This takes the role of the averaged $W_{k+1/2}$ in \eqref{eq:u2d}.
@@ -565,7 +799,18 @@ in the horizontal, built in two passes with a DSS in between
 \end{enumerate}
 The coefficients are \code{HyperDCurl}, \code{HyperDGrad} and
 \code{HyperDDiv}. Optionally there is a hyperviscosity for $w$
-(\code{HyperDDivW}). Tracers are treated like $\theta$. The default scaling
+(\code{HyperDDivW}), a biharmonic of $w$ on the interfaces with the
+interface metric $\Jm^{(2)}_k + \Jm^{(1)}_{k+1}$. Tracers (and the TKE) are
+treated like $\theta$ with the specific value $q_l = (\rho q_l)/\rho$ in the
+first pass and the density weight in the second pass; with
+\code{HorLimit=true} the tracer hyperviscosity is switched off.
+
+All hyperviscosity operators use only the horizontal entries
+$\Jm^a_{\;b}$, $a,b = 1,2$ of the adjugate, summed over the two vertical
+nodes; they act along the coordinate surfaces $\zeta = \text{const}$ and
+contain no terrain correction. In the spherical frame the curl and the
+divergence of the first pass are, by \eqref{eq:metid}, the spherical
+vertical vorticity and horizontal divergence on these surfaces. The default scaling
 with the resolution (\code{HyperViscosity}) is
 \begin{equation}
   \nu = 5\cdot 10^{14}\,\mathrm{m^4\,s^{-1}}\;
@@ -584,15 +829,21 @@ optimization-based limiter in the spirit of Guba et al.\ (2014)
   bounds $q_{\min}, q_{\max}$ are taken over the element and its neighbours
   (a stencil of 13 elements);
 \item a provisional explicit step $\tilde\rho$, $\widetilde{\rho q}$ with the
-  current stage time step is formed;
+  current stage time step $\Delta\tau$ (\code{dtauStage}) is formed from the
+  element-local horizontal flux divergences (before DSS, without the
+  vertical flux);
 \item a constant shift $\lambda$ is determined per element and layer so that
   $q^\star = \operatorname{median}(q_{\min}, \widetilde{\rho q}/\tilde\rho + \lambda, q_{\max})$
   conserves the tracer mass in the element,
   $\sum \omega_i\omega_j J\,(q^\star\tilde\rho - \widetilde{\rho q}) = 0$.
   The scalar equation is solved by a secant iteration (at most 8 steps).
 \end{enumerate}
-The limited tendency is then derived from $q^\star$. The vertical part
-uses the reconstruction of Section~\ref{sec:upwind}.
+The limited horizontal tendency of the element,
+$J\,(q^\star\tilde\rho - \rho q)/\Delta\tau$, is then assembled with DSS like
+every other term. The vertical part uses the reconstruction of
+Section~\ref{sec:upwind} and is not limited. In this mode $\rho\theta$ is
+transported in plain flux form (\code{DivRhoThUpwind3Kernel!}) instead of
+the split form.
 
 %==============================================================================
 \section{Time integration}
@@ -611,7 +862,8 @@ Rosenbrock-type method in the transformed form \cite{HairerWanner}
 \end{align}
 with $A = \alpha\Gamma^{-1}$, $C = -\Gamma^{-1}$ (off-diagonal part) and
 $m = \Gamma^{-T}b$. The Jacobian approximation $\mathbf J$ is computed once
-per step from the state $U^n$ (W-method) and contains only the vertical
+per step from the state $U^n$ in the first stage (W-method,
+\code{CallJac!}) and contains only the vertical
 coupling terms (HEVI), so the method is explicit in the horizontal and
 linearly implicit in the vertical. The table \code{SSP-Knoth} has
 $s=3$, $\gamma=1$,
@@ -623,13 +875,20 @@ $s=3$, $\gamma=1$,
 its explicit part ($\alpha$, $b$) is the three-stage SSP Runge--Kutta method
 of Shu and Osher \cite{ShuOsher1988}. Further tables (\code{SSPKnoth12L}, \code{ROS2W},
 \code{ROSRK3}, \code{ARS343}, \dots) and explicit Runge--Kutta methods are
-available.
+available. Optionally (\code{CompensatedSum}) the final update
+$U^n + \sum_i m_i k_i$ is accumulated with Kahan compensated summation.
 
 \subsection{Vertical Jacobian and Schur complement}
 
 Per column and horizontal node the Jacobian couples $w$ with $\rho$ and
-$\rho\theta$ (\code{JacAcousticKernel!}). With the layer thicknesses
-$\Delta z_k$, the interface values
+$\rho\theta$ (\code{JacAcousticKernel!}). It is built from the geometric
+layer thicknesses $\Delta z_k$ (radial distance of the two vertical nodes,
+\code{Metric.dz}) and the constant $g$, not from the metric terms of the
+spatial operator; the terrain slope and the variation of $g$ with height are
+therefore not contained in $\mathbf J$. For the total-energy variant the
+role of $\rho\theta$ in the interface value is taken by the total enthalpy
+$\rho e + p$, and $\partial_\rho p \neq 0$.
+With the interface values
 $\rho_F = (\rho_k\Delta z_k + \rho_{k+1}\Delta z_{k+1})/(\Delta z_k+\Delta z_{k+1})$
 (and analogously $(\rho\theta)_F$) and $\Delta z_{k+1/2} =
 \tfrac12(\Delta z_k + \Delta z_{k+1})$, the non-zero blocks are
@@ -673,7 +932,8 @@ with the Thomas algorithm (\code{SchurSolveTriKernel!}), followed by the back
 substitution $k_\rho = \gamma\Delta t\,(r_\rho + J_{\rho w}k_w)$,
 $k_{\rho\theta} = \gamma\Delta t\,(r_{\rho\theta} + J_{\rho\theta w}k_w)$
 and $k_{u,v,q} = \gamma\Delta t\,r_{u,v,q}$. The tridiagonal matrix is
-assembled once per time step. Optionally the vertical diffusion of the scalars
+assembled in the first solve of a step (flag \code{CompTri}) and reused in the
+later stages, since $\gamma$ is the same for all stages. Optionally the vertical diffusion of the scalars
 is also treated implicitly by an extra tridiagonal solve per tracer
 (\code{SchurSolveTriDiffKernel!}).
 
@@ -704,7 +964,7 @@ Vertical discretization & lowest-order staggered, $w$ on interfaces,
   & mimetic finite differences: $\Delta\pi$, $\Theta$ at mid levels, $w$,
   $\phi$ at interfaces
   & staggered finite differences (centers/faces)\\
-Prognostic variables & $\rho$, $u,v$, $w$, $\rho\theta$, $\rho q$
+Prognostic variables & $\rho$, $u,v,w$ (orthonormal spherical components), $\rho\theta$, $\rho q$
   & $\bm u_h$, $w$, $\phi$, $\Delta\pi$, $\Theta=\theta_v\Delta\pi$, $q\,\Delta\pi$
   & $\rho$, covariant $\bm u_h$, covariant $u_3$, $\rho e_{tot}$, $\rho q$\\
 Thermodynamics & potential temperature (energy variants)
@@ -758,10 +1018,12 @@ acoustic terms implicitly with a Newton iteration and an approximate Jacobian.
 \paragraph{Specific features of CGDycore.}
 Compared to the two other cores, the CGSEM scheme
 \begin{itemize}
-\item stores the velocity in local Cartesian (east, north, radial)
-  components instead of covariant components, and evaluates all metric terms
-  in the conservative (adjugate) form \eqref{eq:metricops} at the two vertical
-  nodes of each layer;
+\item stores the velocity in orthonormal spherical components (east, north,
+  radial) instead of covariant components, forms the Jacobian of the element
+  mapping in the local spherical frame and evaluates all operators in the
+  conservative (adjugate) form \eqref{eq:metricops} at the two vertical
+  nodes of each layer, so that the curvature terms of the sphere are
+  contained in the metric and need no separate treatment;
 \item assembles the vertical velocity with density-weighted half-cell masses,
   which gives a $\bar\rho\,\partial_t w$ form of the vertical momentum
   equation and an exact discrete hydrostatic balance;
@@ -794,6 +1056,14 @@ Compared to the two other cores, the CGSEM scheme
   $u,v$-dependence of the lower boundary condition. Its accuracy influences
   only the stability and the order of the W-method, not the consistency of
   the scheme.
+\item Moving the rotation $R$ into the metric is exact for all fluxes,
+  divergences and gradients, so the spherical scheme is node by node the
+  rotated Cartesian scheme for these terms. For the curl the derivative of
+  $R$ is not contained in the metric \eqref{eq:curlrot}. The horizontal
+  derivatives in the curl therefore act on the Cartesian components
+  \eqref{eq:curlcart}; with the shallow metric the remaining curvature
+  terms $(uw,\,vw,\,-(u^2+v^2))/a$ are subtracted. Both are energy neutral
+  and regular at the poles.
 \item The interface treatment of the vertical derivatives in the rotational
   term and in the kinetic energy gradient distributes the jump equally to the
   two adjacent half cells (central treatment). The vertical upwinding only

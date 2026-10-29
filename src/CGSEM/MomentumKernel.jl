@@ -1,5 +1,5 @@
 @kernel inbounds = true function MomentumVectorInvariantCoriolisKernel!(F,@Const(U),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(X),@Const(M),@Const(Glob),CoriolisFun)
+  @Const(JJ),@Const(X),@Const(M),@Const(Glob),CoriolisFun,GridForm,Curvature)
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF = @index(Global, NTuple)
@@ -19,12 +19,7 @@
   tempuZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempvZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempwZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
-  tempuZ1 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempuZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempvZ1 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempvZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempwZ1 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempwZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  YC = @localmem eltype(F) (N,N,3,2,2,ColumnTilesDim)
 
   if Iz <= Nz
     uCol[I,J,iz] = U[1,Iz,ind,2]
@@ -86,24 +81,21 @@
 #   U = Dx*(dx13*v - dx12*w) + Dy*(dx23*v - dx22*w) + Dz*(dx33*v - dx32*w)    
 #   V = Dx*(dx13*u - dx11*w) + Dy*(dx23*u - dx21*w) + Dz*(dx33*u - dx31*w)
 #   W = Dx*(dx12*u - dx11*v) + Dy*(dx22*u - dx21*v) + Dz*(dx32*u - dx31*v)
-    tempuZ1[I,J,1,iz] = - dXdxI[1,2,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempuZ1[I,J,2,iz] = - dXdxI[1,2,2,ID,Iz,IF] * wCol[I,J,iz+1]
-#   DerivativeX!(U,temp,D)
-    tempuZ2[I,J,1,iz] = - dXdxI[2,2,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempuZ2[I,J,2,iz] = - dXdxI[2,2,2,ID,Iz,IF] * wCol[I,J,iz+1]
-#   DerivativeY!(U,temp,D)
-    tempvZ1[I,J,1,iz] = - dXdxI[1,1,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempvZ1[I,J,2,iz] = - dXdxI[1,1,2,ID,Iz,IF] * wCol[I,J,iz+1]
-#   DerivativeX!(V,temp,D)
-    tempvZ2[I,J,1,iz] = - dXdxI[2,1,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempvZ2[I,J,2,iz] = - dXdxI[2,1,2,ID,Iz,IF] * wCol[I,J,iz+1]
-#   DerivativeY!(V,temp,D)
-    tempwZ1[I,J,1,iz] = dXdxI[1,2,1,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[1,1,1,ID,Iz,IF] * vCol[I,J,iz]
-    tempwZ1[I,J,2,iz] = dXdxI[1,2,2,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[1,1,2,ID,Iz,IF] * vCol[I,J,iz]
-#   DerivativeX!(W,temp,D)
-    tempwZ2[I,J,1,iz] = dXdxI[2,2,1,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[2,1,1,ID,Iz,IF] * vCol[I,J,iz]
-    tempwZ2[I,J,2,iz] = dXdxI[2,2,2,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[2,1,2,ID,Iz,IF] * vCol[I,J,iz]
-#   DerivativeY!(W,temp,D)
+#   (U,V,W) = (-y1,y2,-y3) with y = dx_a x (u,v,w). The horizontal derivatives act on R^T y,
+#   the Cartesian components, and the result is rotated back with R (rows e_lam, e_phi, e_r).
+#   This is the curl of the Cartesian velocity, R is constant along the vertical.
+    R = CurlFrame(X[ID,1,1,Iz,IF],X[ID,1,2,Iz,IF],X[ID,1,3,Iz,IF],GridForm)
+    @unroll for K = 1 : 2
+      wK = wCol[I,J,iz+K-1]
+      @unroll for a = 1 : 2
+        y1 = dXdxI[a,2,K,ID,Iz,IF] * wK - dXdxI[a,3,K,ID,Iz,IF] * vCol[I,J,iz]
+        y2 = dXdxI[a,3,K,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[a,1,K,ID,Iz,IF] * wK
+        y3 = dXdxI[a,1,K,ID,Iz,IF] * vCol[I,J,iz] - dXdxI[a,2,K,ID,Iz,IF] * uCol[I,J,iz]
+        YC[I,J,1,K,a,iz] = R[1,1] * y1 + R[2,1] * y2 + R[3,1] * y3
+        YC[I,J,2,K,a,iz] = R[1,2] * y1 + R[2,2] * y2 + R[3,2] * y3
+        YC[I,J,3,K,a,iz] = R[1,3] * y1 + R[2,3] * y2 + R[3,3] * y3
+      end
+    end
     
   end
   @synchronize 
@@ -137,20 +129,38 @@
     V2 = eltype(F)(0.5) * (tempvZ[I,J,2,iz+1] - tempvZ[I,J,1,iz+1])
     W1 = eltype(F)(0.5) * (tempwZ[I,J,2,iz+1] - tempwZ[I,J,1,iz+1])
     W2 = eltype(F)(0.5) * (tempwZ[I,J,2,iz+1] - tempwZ[I,J,1,iz+1])
-    U1 += D[I,1] * tempuZ1[1,J,1,iz] + D[J,1] * tempuZ2[I,1,1,iz]
-    U2 += D[I,1] * tempuZ1[1,J,2,iz] + D[J,1] * tempuZ2[I,1,2,iz]
-    V1 += D[I,1] * tempvZ1[1,J,1,iz] + D[J,1] * tempvZ2[I,1,1,iz]
-    V2 += D[I,1] * tempvZ1[1,J,2,iz] + D[J,1] * tempvZ2[I,1,2,iz]
-    W1 += D[I,1] * tempwZ1[1,J,1,iz] + D[J,1] * tempwZ2[I,1,1,iz]
-    W2 += D[I,1] * tempwZ1[1,J,2,iz] + D[J,1] * tempwZ2[I,1,2,iz]
+    c11 = D[I,1] * YC[1,J,1,1,1,iz] + D[J,1] * YC[I,1,1,1,2,iz]
+    c21 = D[I,1] * YC[1,J,2,1,1,iz] + D[J,1] * YC[I,1,2,1,2,iz]
+    c31 = D[I,1] * YC[1,J,3,1,1,iz] + D[J,1] * YC[I,1,3,1,2,iz]
+    c12 = D[I,1] * YC[1,J,1,2,1,iz] + D[J,1] * YC[I,1,1,2,2,iz]
+    c22 = D[I,1] * YC[1,J,2,2,1,iz] + D[J,1] * YC[I,1,2,2,2,iz]
+    c32 = D[I,1] * YC[1,J,3,2,1,iz] + D[J,1] * YC[I,1,3,2,2,iz]
     for k = 2 : N
-      U1 += D[I,k] * tempuZ1[k,J,1,iz] + D[J,k] * tempuZ2[I,k,1,iz]
-      U2 += D[I,k] * tempuZ1[k,J,2,iz] + D[J,k] * tempuZ2[I,k,2,iz]
-      V1 += D[I,k] * tempvZ1[k,J,1,iz] + D[J,k] * tempvZ2[I,k,1,iz]
-      V2 += D[I,k] * tempvZ1[k,J,2,iz] + D[J,k] * tempvZ2[I,k,2,iz]
-      W1 += D[I,k] * tempwZ1[k,J,1,iz] + D[J,k] * tempwZ2[I,k,1,iz]
-      W2 += D[I,k] * tempwZ1[k,J,2,iz] + D[J,k] * tempwZ2[I,k,2,iz]
+      c11 += D[I,k] * YC[k,J,1,1,1,iz] + D[J,k] * YC[I,k,1,1,2,iz]
+      c21 += D[I,k] * YC[k,J,2,1,1,iz] + D[J,k] * YC[I,k,2,1,2,iz]
+      c31 += D[I,k] * YC[k,J,3,1,1,iz] + D[J,k] * YC[I,k,3,1,2,iz]
+      c12 += D[I,k] * YC[k,J,1,2,1,iz] + D[J,k] * YC[I,k,1,2,2,iz]
+      c22 += D[I,k] * YC[k,J,2,2,1,iz] + D[J,k] * YC[I,k,2,2,2,iz]
+      c32 += D[I,k] * YC[k,J,3,2,1,iz] + D[J,k] * YC[I,k,3,2,2,iz]
     end  
+    R = CurlFrame(X[ID,1,1,Iz,IF],X[ID,1,2,Iz,IF],X[ID,1,3,Iz,IF],GridForm)
+    U1 -= R[1,1] * c11 + R[1,2] * c21 + R[1,3] * c31
+    U2 -= R[1,1] * c12 + R[1,2] * c22 + R[1,3] * c32
+    V1 += R[2,1] * c11 + R[2,2] * c21 + R[2,3] * c31
+    V2 += R[2,1] * c12 + R[2,2] * c22 + R[2,3] * c32
+    W1 -= R[3,1] * c11 + R[3,2] * c21 + R[3,3] * c31
+    W2 -= R[3,1] * c12 + R[3,2] * c22 + R[3,3] * c32
+
+#   Shallow atmosphere: with the shallow metric the curl of the Cartesian velocity adds the
+#   tendencies u*w/a, v*w/a, -(u^2+v^2)/a, which are subtracted again.
+#   Energy neutral in each half cell.
+    w1 = wCol[I,J,iz]
+    w2 = wCol[I,J,iz+1]
+    KinH = uCol[I,J,iz] * uCol[I,J,iz] + vCol[I,J,iz] * vCol[I,J,iz]
+    FU -= Curvature * uCol[I,J,iz] * (JJ[ID,1,Iz,IF] * w1 + JJ[ID,2,Iz,IF] * w2)
+    FV -= Curvature * vCol[I,J,iz] * (JJ[ID,1,Iz,IF] * w1 + JJ[ID,2,Iz,IF] * w2)
+    FW1 += Curvature * JJ[ID,1,Iz,IF] * KinH
+    FW2 += Curvature * JJ[ID,2,Iz,IF] * KinH
 
 #   Coriolis
     x = eltype(F)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])
@@ -177,8 +187,24 @@
   end
 end
 
+# Rotation to the spherical frame at a node, rows e_lam, e_phi, e_r
+@inline function CurlFrame(x,y,z,::Grids.SphericalGrid)
+  lon,lat,_ = Grids.cart2sphere(x,y,z)
+  return Grids.MCart2Sphere(lon,lat)
+end
+
+@inline function CurlFrame(x,y,z,::Grids.CartesianGrid)
+  FT = eltype(x)
+  return @SMatrix [FT(1) FT(0) FT(0); FT(0) FT(1) FT(0); FT(0) FT(0) FT(1)]
+end
+
+# Coefficient of the curvature terms that are removed for the shallow atmosphere
+CurvatureCoefficient(Rad,::Grids.SphericalGrid,::Models.CompressibleDeep) = zero(Rad)
+CurvatureCoefficient(Rad,::Grids.SphericalGrid,Equation) = one(Rad) / Rad
+CurvatureCoefficient(Rad,::Grids.CartesianGrid,Equation) = zero(Rad)
+
 @kernel inbounds = true function MomentumVectorInvariantCoriolisDraftKernel!(F,@Const(U),@Const(w),@Const(Rho),@Const(D),@Const(dXdxI),
-  @Const(JJ),@Const(X),@Const(M),@Const(Glob),CoriolisFun)
+  @Const(JJ),@Const(X),@Const(M),@Const(Glob),CoriolisFun,GridForm,Curvature)
 
   I, J, iz   = @index(Local, NTuple)
   _,_,Iz,IF,IE = @index(Global, NTuple)
@@ -199,12 +225,7 @@ end
   tempuZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempvZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
   tempwZ = @localmem eltype(F) (N,N,2,ColumnTilesDim+2)
-  tempuZ1 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempuZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempvZ1 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempvZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempwZ1 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
-  tempwZ2 = @localmem eltype(F) (N,N,2,ColumnTilesDim)
+  YC = @localmem eltype(F) (N,N,3,2,2,ColumnTilesDim)
 
   if Iz <= Nz
     uCol[I,J,iz] = U[1,Iz,ind,2]
@@ -259,17 +280,19 @@ end
 #   U = Dx*(dx13*v - dx12*w) + Dy*(dx23*v - dx22*w) + Dz*(dx33*v - dx32*w)    
 #   V = Dx*(dx13*u - dx11*w) + Dy*(dx23*u - dx21*w) + Dz*(dx33*u - dx31*w)
 #   W = Dx*(dx12*u - dx11*v) + Dy*(dx22*u - dx21*v) + Dz*(dx32*u - dx31*v)
-    tempuZ1[I,J,1,iz] = - dXdxI[1,2,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempuZ1[I,J,2,iz] = - dXdxI[1,2,2,ID,Iz,IF] * wCol[I,J,iz+1]
-#   DerivativeX!(U,temp,D)
-    tempuZ2[I,J,1,iz] = - dXdxI[2,2,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempuZ2[I,J,2,iz] = - dXdxI[2,2,2,ID,Iz,IF] * wCol[I,J,iz+1]
-#   DerivativeY!(U,temp,D)
-    tempvZ1[I,J,1,iz] = - dXdxI[1,1,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempvZ1[I,J,2,iz] = - dXdxI[1,1,2,ID,Iz,IF] * wCol[I,J,iz+1]
-#   DerivativeX!(V,temp,D)
-    tempvZ2[I,J,1,iz] = - dXdxI[2,1,1,ID,Iz,IF] * wCol[I,J,iz]
-    tempvZ2[I,J,2,iz] = - dXdxI[2,1,2,ID,Iz,IF] * wCol[I,J,iz+1]
+#   Horizontal derivatives of the Cartesian components, see MomentumVectorInvariantCoriolisKernel!
+    R = CurlFrame(X[ID,1,1,Iz,IF],X[ID,1,2,Iz,IF],X[ID,1,3,Iz,IF],GridForm)
+    @unroll for K = 1 : 2
+      wK = wCol[I,J,iz+K-1]
+      @unroll for a = 1 : 2
+        y1 = dXdxI[a,2,K,ID,Iz,IF] * wK - dXdxI[a,3,K,ID,Iz,IF] * vCol[I,J,iz]
+        y2 = dXdxI[a,3,K,ID,Iz,IF] * uCol[I,J,iz] - dXdxI[a,1,K,ID,Iz,IF] * wK
+        y3 = dXdxI[a,1,K,ID,Iz,IF] * vCol[I,J,iz] - dXdxI[a,2,K,ID,Iz,IF] * uCol[I,J,iz]
+        YC[I,J,1,K,a,iz] = R[1,1] * y1 + R[2,1] * y2 + R[3,1] * y3
+        YC[I,J,2,K,a,iz] = R[1,2] * y1 + R[2,2] * y2 + R[3,2] * y3
+        YC[I,J,3,K,a,iz] = R[1,3] * y1 + R[2,3] * y2 + R[3,3] * y3
+      end
+    end
     
   end
   @synchronize 
@@ -293,16 +316,30 @@ end
     U2 = eltype(F)(0.5) * (tempuZ[I,J,2,iz+1] - tempuZ[I,J,1,iz+1])
     V1 = eltype(F)(0.5) * (tempvZ[I,J,2,iz+1] - tempvZ[I,J,1,iz+1])
     V2 = eltype(F)(0.5) * (tempvZ[I,J,2,iz+1] - tempvZ[I,J,1,iz+1])
-    U1 += D[I,1] * tempuZ1[1,J,1,iz] + D[J,1] * tempuZ2[I,1,1,iz]
-    U2 += D[I,1] * tempuZ1[1,J,2,iz] + D[J,1] * tempuZ2[I,1,2,iz]
-    V1 += D[I,1] * tempvZ1[1,J,1,iz] + D[J,1] * tempvZ2[I,1,1,iz]
-    V2 += D[I,1] * tempvZ1[1,J,2,iz] + D[J,1] * tempvZ2[I,1,2,iz]
+    c11 = D[I,1] * YC[1,J,1,1,1,iz] + D[J,1] * YC[I,1,1,1,2,iz]
+    c21 = D[I,1] * YC[1,J,2,1,1,iz] + D[J,1] * YC[I,1,2,1,2,iz]
+    c31 = D[I,1] * YC[1,J,3,1,1,iz] + D[J,1] * YC[I,1,3,1,2,iz]
+    c12 = D[I,1] * YC[1,J,1,2,1,iz] + D[J,1] * YC[I,1,1,2,2,iz]
+    c22 = D[I,1] * YC[1,J,2,2,1,iz] + D[J,1] * YC[I,1,2,2,2,iz]
+    c32 = D[I,1] * YC[1,J,3,2,1,iz] + D[J,1] * YC[I,1,3,2,2,iz]
     for k = 2 : N
-      U1 += D[I,k] * tempuZ1[k,J,1,iz] + D[J,k] * tempuZ2[I,k,1,iz]
-      U2 += D[I,k] * tempuZ1[k,J,2,iz] + D[J,k] * tempuZ2[I,k,2,iz]
-      V1 += D[I,k] * tempvZ1[k,J,1,iz] + D[J,k] * tempvZ2[I,k,1,iz]
-      V2 += D[I,k] * tempvZ1[k,J,2,iz] + D[J,k] * tempvZ2[I,k,2,iz]
+      c11 += D[I,k] * YC[k,J,1,1,1,iz] + D[J,k] * YC[I,k,1,1,2,iz]
+      c21 += D[I,k] * YC[k,J,2,1,1,iz] + D[J,k] * YC[I,k,2,1,2,iz]
+      c31 += D[I,k] * YC[k,J,3,1,1,iz] + D[J,k] * YC[I,k,3,1,2,iz]
+      c12 += D[I,k] * YC[k,J,1,2,1,iz] + D[J,k] * YC[I,k,1,2,2,iz]
+      c22 += D[I,k] * YC[k,J,2,2,1,iz] + D[J,k] * YC[I,k,2,2,2,iz]
+      c32 += D[I,k] * YC[k,J,3,2,1,iz] + D[J,k] * YC[I,k,3,2,2,iz]
     end  
+    R = CurlFrame(X[ID,1,1,Iz,IF],X[ID,1,2,Iz,IF],X[ID,1,3,Iz,IF],GridForm)
+    U1 -= R[1,1] * c11 + R[1,2] * c21 + R[1,3] * c31
+    U2 -= R[1,1] * c12 + R[1,2] * c22 + R[1,3] * c32
+    V1 += R[2,1] * c11 + R[2,2] * c21 + R[2,3] * c31
+    V2 += R[2,1] * c12 + R[2,2] * c22 + R[2,3] * c32
+
+#   Shallow atmosphere: subtract the tendency -(u^2+v^2)/a, see MomentumVectorInvariantCoriolisKernel!
+    KinH = uCol[I,J,iz] * uCol[I,J,iz] + vCol[I,J,iz] * vCol[I,J,iz]
+    FW1 += Curvature * JJ[ID,1,Iz,IF] * KinH
+    FW2 += Curvature * JJ[ID,2,Iz,IF] * KinH
 
 #   Coriolis
     x = eltype(F)(0.5) * (X[ID,1,1,Iz,IF] + X[ID,2,1,Iz,IF])

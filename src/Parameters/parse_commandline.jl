@@ -523,9 +523,9 @@ function parse_commandline()
     default = 0
 
     "--MetricType"
-    help = "Type of metric computation"
+    help = "Metric terms: \"Single\" (cross products of the derivatives) or \"Double\" (curl form of Kopriva), default CG Single, DG Double"
     arg_type = String
-    default = "Curl"
+    default = ""
 
     "--HEVISolver"
     help = "Vertically implicit solver of the HEVI scheme: HDG, TwoSidedSplit or OneSided"

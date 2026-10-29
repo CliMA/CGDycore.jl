@@ -53,4 +53,4 @@ julia --project Examples/DriverDG.jl \
   --H=20000.0 \
   --OrdPoly=4 \
   --OrdPolyZ=4 \
-  --MetricType="DGMetricCurl"
+  --MetricType="Double"
