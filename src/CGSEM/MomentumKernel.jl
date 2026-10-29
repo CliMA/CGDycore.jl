@@ -234,7 +234,7 @@ CurvatureCoefficient(Rad,::Grids.CartesianGrid,Equation) = zero(Rad)
     RhoCol[I,J,iz+1] = Rho[Iz,ind,IE]
     if iz == 1 && Iz == 1
       wCol[I,J,1] = -(dXdxI[3,1,1,ID,1,IF] * U[1,Iz,ind,2] +
-        dXdxI[3,2,1,ID,1,IF] * w[Iz,ind,IE]) / dXdxI[3,3,1,ID,1,IF]
+        dXdxI[3,2,1,ID,1,IF] * U[1,Iz,ind,3]) / dXdxI[3,3,1,ID,1,IF]
       RhoCol[I,J,1] = Rho[1,ind,IE]
     elseif iz == 1
       wCol[I,J,1] = w[Iz-1,ind,IE]

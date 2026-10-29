@@ -101,7 +101,7 @@ end
 
   if IC <= NumG
     if Iz == 1
-      wL = wCol = -(nS[1,Iz] * U[K,Iz,IC,2] + nS[1,Iz] * U[K,Iz,IC,3]) / nS[3,Iz]
+      wL = -(nS[1,IC] * U[K,Iz,IC,2] + nS[2,IC] * U[K,Iz,IC,3]) / nS[3,IC]
     else
       wL = U[K,Iz,IC,4]
     end
