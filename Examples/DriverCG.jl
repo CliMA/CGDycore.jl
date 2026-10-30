@@ -111,6 +111,7 @@ OrdPoly = parsed_args["OrdPoly"]
 MetricType = parsed_args["MetricType"]
 PressureGradient = parsed_args["PressureGradient"]
 OutputType = parsed_args["OutputType"]
+OutputCompression = parsed_args["OutputCompression"]
 # Viscosity
 HyperVisc = parsed_args["HyperVisc"]
 HyperDCurl = parsed_args["HyperDCurl"]
@@ -612,6 +613,7 @@ else
 end 
 Global.Output.vtkFileName = vtkFileName
 Global.Output.OutputType = OutputType
+Global.Output.OutputCompression = OutputCompression
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,CG,Metric,Global)
 
 

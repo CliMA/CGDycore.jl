@@ -31,6 +31,10 @@ function parse_commandline()
     help = "Output of the CGSEM sphere fields: VTK (pvtu per output) or ADIOS2 (one BP5 file, VTX)"
     arg_type = String
     default = "VTK"
+    "--OutputCompression"
+    help = "Lossless Blosc2 compression of the ADIOS2 output: lz4, lz4hc, zstd (not readable by ParaView 6.1) or none"
+    arg_type = String
+    default = "lz4"
 
     "--PressureGradient"
     help = "CGSEM horizontal pressure gradient: Standard (grad p / rho) or Split (matches the split theta transport, dry)"

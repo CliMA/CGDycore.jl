@@ -741,6 +741,11 @@ end
     wCol[I,J,iz] = wCon
     cFL, cFR = RecU4(cCol[I,J,iz],cCol[I,J,iz+1],cCol[I,J,iz+2],cCol[I,J,iz+3],
       JCol[I,J,iz],JCol[I,J,iz+1],JCol[I,J,iz+2],JCol[I,J,iz+3]) 
+#   central second order at the interfaces next to the boundaries, no ghost cells
+    if Iz == 1 || Iz == Nz - 1
+      cFL = eltype(F)(0.5) * (cCol[I,J,iz+1] + cCol[I,J,iz+2])
+      cFR = cFL
+    end
     Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + 
       (-abs(wCon) + wCon) * cFR)
     @atomic :monotonic F[1,Iz,ind,5] += -Flux / MCCol[I,J,iz]
@@ -871,6 +876,11 @@ end
     wCol[I,J,iz] = wCon
     cFL, cFR = RecU4(cCol[I,J,iz],cCol[I,J,iz+1],cCol[I,J,iz+2],cCol[I,J,iz+3],
       JCol[I,J,iz],JCol[I,J,iz+1],JCol[I,J,iz+2],JCol[I,J,iz+3]) 
+#   central second order at the interfaces next to the boundaries, no ghost cells
+    if Iz == 1 || Iz == Nz - 1
+      cFL = eltype(F)(0.5) * (cCol[I,J,iz+1] + cCol[I,J,iz+2])
+      cFR = cFL
+    end
     Flux = eltype(F)(0.25) * ((abs(wCon) + wCon) * cFL + 
       (-abs(wCon) + wCon) * cFR)
     @atomic :monotonic F[1,Iz,ind,5] += -Flux / MCCol[I,J,iz]

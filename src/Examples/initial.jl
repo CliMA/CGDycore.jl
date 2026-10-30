@@ -32,8 +32,8 @@ function (profile::InertiaGravityExample)(Param,Phys)
     v = eltype(x)(0)
     w = eltype(x)(0)
     T = pLoc / (Phys.Rd * Rho)
-    E = Phys.Cvd * T + FT(0.5) * (u * u + v * v) + Phys.Grav * x[3]
-    IE = Phys.Cvd * T
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys)
+    E = IE + FT(0.5) * (u * u + v * v) + Phys.Grav * x[3]
     qv = eltype(x)(0)
     qc = eltype(x)(0)
 
@@ -435,8 +435,8 @@ function (profile::WarmBubbleCartExample)(Param,Phys)
     end
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     T = pLoc / (Rd * Rho)
-    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
-    IE = Cvd * T 
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys)
+    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
     qV = FT(0)
     qC = FT(0)
     ThBGrd = Th0
@@ -466,8 +466,8 @@ function (profile::NeutralCartExample)(Param,Phys)
     Th = Th0
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     T = pLoc / (Rd * Rho)
-    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
-    IE = Cvd * T 
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys)
+    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
     qV = FT(0)
     qC = FT(0)
     ThBGrd = Th0
@@ -499,8 +499,8 @@ function (profile::StratifiedExample)(Param,Phys)
     pLoc = p0 * (FT(1) - Grav / (Cpd * Th0 * S) * (FT(1) - exp(-S * z))).^(Cpd / Rd)
     Rho = pLoc / ((pLoc / p0)^kappa * Rd * Th)
     T = pLoc / (Rd * Rho)
-    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
-    IE = Cvd * T 
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys)
+    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
     qv = FT(0)
     qc = FT(0)
 
@@ -534,8 +534,8 @@ function (profile::StratifiedSphereExample)(Param,Phys)
     T = Th * pi_ex
     pLoc = p0 * pi_ex^(Cpd / Rd)
     Rho = pLoc / (Rd * T)
-    E = Cvd * T + FT(0.5) * (u * u + v * v) + Grav * z
-    IE = Cvd * T 
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys)
+    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
     qv = FT(0)
     qc = FT(0)
 
@@ -781,7 +781,7 @@ function (profile::BaroWaveDryCart)(Param,Phys)
     p = eta * p0
     Rho = p / (Rd * T)
     Th = T * (p0 / p)^(Rd / Cpd)
-    E = Cvd * T + FT(0.5) * (uC * uC + vC * vC) + Grav * z
+    E = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys) + FT(0.5) * (uC * uC + vC * vC) + Grav * z
     return (Rho,uC,vC,w,Th,E)
   end
   return local_profile
@@ -1134,8 +1134,8 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     vS = FT(0)
     w = FT(0)
 
-    E = FT(P.Cvd) * Temperature + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
-    IE = FT(P.Cvd) * Temperature
+    IE = FT(Thermodynamics.InternalEnergyW(1.0,0.0,0.0,Temperature,P))
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
     if Z <= FT(2000.0)
       Th = Th + rand()  
     end  
@@ -1212,8 +1212,8 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     vS = FT(0)
     w = FT(0)
 
-    E = FT(P.Cvd) * Temperature + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
-    IE = FT(P.Cvd) * Temperature
+    IE = FT(Thermodynamics.InternalEnergyW(1.0,0.0,0.0,Temperature,P))
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
     if Z <= FT(2000.0)
       Th = Th + rand()  
     end  

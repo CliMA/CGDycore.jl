@@ -76,6 +76,7 @@ mutable struct OutputStruct
   OrdPrintZ::Int
   dTol::Float64
   OutputType::String
+  OutputCompression::String
   Writer::Any
 end
 function OutputStruct()
@@ -101,6 +102,7 @@ function OutputStruct()
   OrdPrintZ=1
   dTol=1.e-8
   OutputType="VTK"
+  OutputCompression="lz4"
   Writer=nothing
   return OutputStruct(
   vtk,
@@ -125,6 +127,7 @@ function OutputStruct()
   OrdPrintZ,
   dTol,
   OutputType,
+  OutputCompression,
   Writer,
   )
 end  
