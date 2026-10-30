@@ -492,6 +492,26 @@ end
 function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, part::Int, nparts::Int;
   Thermo=zeros(0,0,0,0),KV=zeros(0,0,0))
 
+  if Global.Output.OutputType == "ADIOS2"
+    return adios_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm,part,nparts;Thermo=Thermo,KV=KV)
+  end
+  pts = Global.vtkCache.pts
+  cells = Global.vtkCache.cells
+  step = Global.Output.vtk
+  vtk_filename_noext = Global.Output.vtkFileName * "$step"
+  vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
+  CellFieldsSphere!((name, data) -> (vtk[name, VTKCellData()] = data),
+    U,Trans,FE,Metric,Phys,Global,VelForm,GridForm;Thermo=Thermo,KV=KV)
+  outfiles=vtk_save(vtk)
+  Global.Output.vtk = Global.Output.vtk + 1
+  return outfiles::Vector{String}
+end
+
+# Cell data of the output fields Global.Output.cNames on the print cells of vtkCache,
+# handed to sink(name, data) with data a host vector (reused between fields)
+function CellFieldsSphere!(sink,U,Trans,FE,Metric,Phys,Global,VelForm,GridForm;
+  Thermo=zeros(0,0,0,0),KV=zeros(0,0,0))
+
   NF = Global.Grid.NumFaces
   nz = Global.Grid.nz
   NG = FE.NumG
@@ -508,11 +528,6 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
   filename = Global.Output.vtkFileName
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Grid = Global.Grid
-
-  step = Global.Output.vtk
-  stepS="$step"
-  vtk_filename_noext = filename * stepS
-  vtk = pvtk_grid(vtk_filename_noext, pts, cells; compress=3, part = part, nparts = nparts)
 
   backend = get_backend(U)				      
   FTB = eltype(U)
@@ -535,52 +550,52 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
       RhoPos = Global.Model.RhoPos
       @views InterpolateGPU!(cCell,UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["rho", VTKCellData()] = cCellCPU
+      sink("rho", cCellCPU)
     elseif  str == "u" 
       uPos = Global.Model.uPos
       @views InterpolateGPU!(cCell,UR[:,:,:,uPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["u", VTKCellData()] = cCellCPU
+      sink("u", cCellCPU)
     elseif  str == "Rhou" 
       uPos = Global.Model.uPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["u", VTKCellData()] = cCellCPU
+      sink("u", cCellCPU)
     elseif  str == "wVel" 
       wPos = Global.Model.wPos
       @views InterpolateGPU!(cCell,UR[:,:,:,wPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["w", VTKCellData()] = cCellCPU
+      sink("w", cCellCPU)
     elseif  str == "v" 
       vPos = Global.Model.vPos
       @views InterpolateGPU!(cCell,UR[:,:,:,vPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["v", VTKCellData()] = cCellCPU
+      sink("v", cCellCPU)
     elseif  str == "Thermo" 
       ThPos = Global.Model.RhoThPos
       @views InterpolateGPU!(cCell,UR[:,:,:,ThPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["Thermo", VTKCellData()] = cCellCPU
+      sink("Thermo", cCellCPU)
     elseif  str == "Rhov" 
       vPos = Global.Model.vPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,vPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["v", VTKCellData()] = cCellCPU
+      sink("v", cCellCPU)
     elseif  str == "Rhow" 
       wPos = Global.Model.wPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,wPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["w", VTKCellData()] = cCellCPU
+      sink("w", cCellCPU)
     elseif  str == "wDG" 
       wPos = Global.Model.wPos
       wCell = zeros(OrdPrint*OrdPrint*OrdPrintZ*nz*NF)
       @. @views UR[:,:,FE.BoundaryDoF,wPos] = FTB(0.0)
       @views InterpolateGPU!(cCell,UR[:,:,:,wPos],vtkInter,FE.Glob)
       copyto!(wCell,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
-      vtk["wDG", VTKCellData()] = wCell
+      sink("wDG", wCell)
     elseif  str == "w" 
       uPos = Global.Model.uPos
       vPos = Global.Model.uPos
@@ -588,30 +603,30 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
       wCell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views InterpolateW!(wCell,UR[:,:,:,wPos],UR[:,:,:,uPos],UR[:,:,:,vPos],
         vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz,Metric.dXdxI)
-      vtk["w", VTKCellData()] = wCell
+      sink("w", wCell)
     elseif  str == "wB" 
       uPos = Global.Model.uPos
       vPos = Global.Model.uPos
       wPos = Global.Model.wPos
       InterpolateWBGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,vPos],UR[:,:,:,wPos],Metric.dXdxI,FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["w", VTKCellData()] = cCellCPU
+      sink("w", cCellCPU)
     elseif  str == "BDG" 
       BPos = Global.Model.RhoThPos
       @views InterpolateGPU!(cCell,UR[:,:,:,BPos],vtkInter,FE.Glob)
       @views copyto!(cCellCPU,reshape(cCell,OrdPrint*OrdPrint*OrdPrintZ*nz*NF))
-      vtk["BDG", VTKCellData()] = cCellCPU
+      sink("BDG", cCellCPU)
     elseif str == "Th"  
       @views PotT = Thermo[:,:,:,3]
       InterpolateGPU!(cCell,PotT,FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["Th", VTKCellData()] = cCellCPU
+      sink("Th", cCellCPU)
     elseif str == "RhoTh"  
       ThPos = Global.Model.RhoThPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,ThPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["Th", VTKCellData()] = cCellCPU
+      sink("Th", cCellCPU)
     elseif str == "ThE"  
       ThECell = zeros(OrdPrint*OrdPrint*nz*NF)  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
@@ -629,7 +644,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
         elseif RhoTPos >0
         end
         copyto!(ThECell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
-        vtk["ThE", VTKCellData()] = ThECell 
+        sink("ThE", ThECell)
       end    
     elseif str == "ThDiff"  
       if Global.Model.Thermo == "TotalEnergy" || Global.Model.Thermo == "InternalEnergy"
@@ -637,7 +652,7 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
         RhoPos = Global.Model.RhoPos
         ThCell = zeros(OrdPrint*OrdPrint*nz*NF)  
         @views InterpolateTh!(ThCell,Pres,UR[:,:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz,Global.Phys)
-        vtk["Th", VTKCellData()] = ThCell 
+        sink("Th", ThCell)
       else
         RhoPos = Global.Model.RhoPos
         ThPos = Global.Model.RhoThPos
@@ -651,37 +666,37 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
         InterpolateGPU!(ThCellBGrd,ThBGrdR,FE)
         @. cCell -= ThCellBGrd
         copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-        vtk["ThDiff", VTKCellData()] = cCellCPU
+        sink("ThDiff", cCellCPU)
       end
     elseif str == "Pres"   
       @views Pres = Thermo[:,:,:,1]
       InterpolateGPU!(cCell,Pres,FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["Pres", VTKCellData()] = cCellCPU 
+      sink("Pres", cCellCPU)
     elseif  str == "Tke" 
       TkePos = Global.Model.TkePos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,TkePos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["Tke", VTKCellData()] = cCellCPU
+      sink("Tke", cCellCPU)
     elseif  str == "qV" 
       RhoVPos = Global.Model.RhoVPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,RhoVPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["qV", VTKCellData()] = cCellCPU
+      sink("qV", cCellCPU)
     elseif  str == "qC" 
       RhoCPos = Global.Model.RhoCPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,RhoCPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["qC", VTKCellData()] = cCellCPU
+      sink("qC", cCellCPU)
     elseif  str == "qT" 
       RhoTPos = Global.Model.RhoTPos
       RhoPos = Global.Model.RhoPos
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,RhoTPos],UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["qT", VTKCellData()] = cCellCPU
+      sink("qT", cCellCPU)
     elseif  str == "DiffKoeff" 
       DiffKoeff = KV  
       RhoPos = Global.Model.RhoPos
@@ -692,14 +707,14 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
       end  
       @views InterpolateRhoGPU!(cCell,DiffKoeffR,UR[:,:,:,RhoPos],FE)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["DiffKoeff", VTKCellData()] = cCellCPU
+      sink("DiffKoeff", cCellCPU)
     elseif  str == "Tr1" 
       Tr1Pos = Global.Model.NumV + 1
       RhoPos = Global.Model.RhoPos
       Tr1Cell = zeros(OrdPrint*OrdPrint*nz*NF)
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,Tr1Pos],UR[:,:,:,RhoPos],vtkInter,FE.Glob)
       copyto!(Tr1Cell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
-      vtk["Tr1", VTKCellData()] = Tr1Cell
+      sink("Tr1", Tr1Cell)
     elseif  str == "Tr2" 
       Tr2Pos = Global.Model.NumV + 2
       Tr2Cell = zeros(OrdPrint*OrdPrint*nz*NF)
@@ -707,16 +722,13 @@ function unstructured_vtkSphere(U,Trans,FE,Metric,Phys,Global,VelForm,GridForm, 
 #     @views Interpolate!(Tr2Cell,U[:,:,Tr2Pos],U[:,:,RhoPos],vtkInter,OrdPoly,OrdPrint,FE.Glob,NF,nz)
       @views InterpolateRhoGPU!(cCell,UR[:,:,:,Tr2Pos],UR[:,:,:,RhoPos],vtkInter,FE.Glob)
       copyto!(Tr2Cell,reshape(cCell,OrdPrint*OrdPrint*nz*NF))
-      vtk["Tr2", VTKCellData()] = Tr2Cell
+      sink("Tr2", Tr2Cell)
     elseif str == "Vort"
       InterpolateVortGPU!(cCell,U,FE,Metric,NumberThreadGPU,Grid.Type)
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
-      vtk["Vort", VTKCellData()] = cCellCPU
+      sink("Vort", cCellCPU)
     end   
   end   
-  outfiles=vtk_save(vtk)
-  Global.Output.vtk = Global.Output.vtk + 1
-  return outfiles::Vector{String}
 end
 
 function InterpolateWB!(cCell,w,u,v,Inter,OrdPoly,OrdPrint,Glob,NF,nz,dXdxI)

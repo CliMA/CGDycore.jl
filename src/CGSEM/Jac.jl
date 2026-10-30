@@ -14,7 +14,8 @@ function JacGPU!(U,fac,CG,Metric,Phys,Cache,JCache,Global,Equation::Models.Equat
   if Global.Model.State == "Dry" || Global.Model.State == "Moist" || Global.Model.State == "ShallowWater"
     @views p = Cache.Aux[:,:,:,4]
   elseif  Global.Model.State == "DryInternalEnergy" || Global.Model.State == "MoistInternalEnergy"  
-    @views p = Cache.Aux[:,:,:,4]
+#   flux of the enthalpy rho*e + p
+    @views p = Cache.Aux[:,:,:,1]
   elseif Global.Model.State == "DryTotalEnergy" || Global.Model.State == "MoistTotalEnergy"  
     @views p = Cache.Aux[:,:,:,1]
   end  

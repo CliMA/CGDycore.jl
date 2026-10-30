@@ -88,5 +88,6 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
     Outputs.unstructured_vtkSphere(UAver,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
     Outputs.unstructured_vtkSphere(UAver,Trans,FE,Metric,Phys,Global,VelForm,Grid.Form,Proc,ProcNumber;Thermo=Aux,KV=KV)
   end  
+  Outputs.close_output!(Global)
 end
 

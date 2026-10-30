@@ -27,6 +27,11 @@ function parse_commandline()
     arg_type = String
     default = "Default"
 
+    "--OutputType"
+    help = "Output of the CGSEM sphere fields: VTK (pvtu per output) or ADIOS2 (one BP5 file, VTX)"
+    arg_type = String
+    default = "VTK"
+
     "--PressureGradient"
     help = "CGSEM horizontal pressure gradient: Standard (grad p / rho) or Split (matches the split theta transport, dry)"
     arg_type = String
