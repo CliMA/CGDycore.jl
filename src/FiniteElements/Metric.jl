@@ -214,6 +214,7 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   ndrangeS = (NumG)
   KMetricLowerBoundaryScaleKernel! = MetricLowerBoundaryScaleKernel!(backend,groupS)
   KMetricLowerBoundaryScaleKernel!(Metric.nSS,ndrange=ndrangeS)
+  TangentialRows!(backend,Metric,FE,Grid,Model.VelocityFrame)
 
   HorLimit = false
   if HorLimit
@@ -829,6 +830,40 @@ end
 
 # Radial unit normal at every global node for the projection of the tangential
 # velocity tendency in the Cartesian frame
+# Cartesian frame: after J, the shallow scaling and the surface normals, which need the full
+# rows, keep only the tangential part J grad xi^a - (J grad xi^a . n) n in dXdxI[a,1:3];
+# the normal part is in dXdxI[a,4]. Then the large normal part of J grad zeta never
+# enters the tangential tendency, which avoids a cancellation in Float32.
+function TangentialRows!(backend,Metric,FE,Grid,::Models.SphericalFrame)
+end
+
+function TangentialRows!(backend,Metric,FE,Grid,::Models.CartesianFrame)
+  DoF = FE.DoF
+  M = FE.OrdPolyZ + 1
+  NF = Grid.NumFaces
+  Nz = Grid.nz
+  KTangentialRowsKernel! = TangentialRowsKernel!(backend,(DoF,M,1,1))
+  KTangentialRowsKernel!(Metric.dXdxI,Metric.X,Grid.Form;ndrange=(DoF,M,Nz,NF))
+end
+
+@kernel inbounds = true function TangentialRowsKernel!(dXdxI,@Const(X),GridForm)
+
+  ID, K, Iz, IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  if Iz <= Nz && IF <= NF
+    n1, n2, n3 = FrameNormal(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF],GridForm)
+    @unroll for a = 1 : 3
+      c = dXdxI[a,4,K,ID,Iz,IF]
+      dXdxI[a,1,K,ID,Iz,IF] -= c * n1
+      dXdxI[a,2,K,ID,Iz,IF] -= c * n2
+      dXdxI[a,3,K,ID,Iz,IF] -= c * n3
+    end
+  end
+end
+
 function NodeNormal!(backend,Metric,FE,Grid,::Models.SphericalFrame)
 end
 

@@ -930,6 +930,28 @@ spherical frame. The node normals are stored once per DSS node in
 \end{equation}
 (\code{BottomW}).
 
+\paragraph{Tangential and normal part of the rows.}
+After $J$, the shallow scaling and the surface normals, which use the full
+rows, are computed, columns $1$--$3$ keep only the tangential part
+(\code{TangentialRows!}),
+\begin{equation}
+  \code{dXdxI}[a,1{:}3] = \Jm^a_C - (\Jm^a_C\cdot\hat{\bm n})\,\hat{\bm n},
+  \qquad \code{dXdxI}[a,4] = \Jm^a_C\cdot\hat{\bm n}.
+\end{equation}
+Since $\bm u_h$ is tangential, the contravariant velocity and the lower
+boundary condition are unchanged. A gradient
+$\sum_a\Jm^a_C\partial_{\xi^a}\phi$ now contributes its tangential part to
+$\bm u_h$ directly. With the full rows, the large normal part of
+$\Jm^3_C$ (gravity and the vertical pressure and kinetic energy gradients,
+$\approx 10\,$m\,s$^{-2}$) entered the tendency of $\bm u_h$ and was removed
+again by the projection below. In Float32 this cancellation left a residual
+of relative size $10^{-7}$ with the same sign in every step, $\hat{\bm n}\cdot\bm u_h$
+grew by $10^{-2}\,$m\,s$^{-1}$ per hour and the baroclinic wave became unstable
+after one day. With the split rows the growth is $4.5\cdot10^{-5}\,$m\,s$^{-1}$
+per hour and the Float32 solution after two days deviates from the Float64 one as
+much as in the spherical frame. Only the cross products of the curl need the
+full rows, which are rebuilt as $\code{dXdxI}[a,1{:}3] + \code{dXdxI}[a,4]\,\hat{\bm n}$.
+
 \paragraph{Operators.}
 Divergence and transport (\code{DivRhoTrUpwind3New2CartKernel!}), the
 pressure gradient in standard and split form, kinetic energy and gravity

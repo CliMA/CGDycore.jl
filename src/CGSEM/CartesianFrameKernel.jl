@@ -1,8 +1,10 @@
 # Kernels for the Cartesian velocity frame (VelocityFrame Cartesian): the tangential
 # velocity is stored in Cartesian components (ux,uy,uz) at (uPos,vPos,uzPos), the radial
-# velocity w at wPos. The metric is the Cartesian one with the additional column
-# dXdxI[a,4] = J grad xi^a . n, n = X/|X|, so that the contravariant velocity is
-#   J grad xi^a . (uh + w n) = dXdxI[a,1:3] . uh + dXdxI[a,4] w.
+# velocity w at wPos. Each row J grad xi^a of the Cartesian metric is split into its
+# tangential part dXdxI[a,1:3] and its normal part dXdxI[a,4] = J grad xi^a . n, n = X/|X|,
+# so that the contravariant velocity is
+#   J grad xi^a . (uh + w n) = dXdxI[a,1:3] . uh + dXdxI[a,4] w,
+# and gradients add only tangential vectors to uh (no cancellation in Float32).
 # No rotation matrix and no trigonometric functions are needed.
 
 # Options that still use the spherical components u, v (surface fluxes, momentum diffusion,
@@ -181,9 +183,11 @@ end
   end
 end
 
-# row a of the Cartesian metric at vertical node K, the vector J grad xi^a
+# tangential part of row a of the Cartesian metric at vertical node K
 @inline MetricRow(dXdxI,a,K,ID,Iz,IF) =
   SVector(dXdxI[a,1,K,ID,Iz,IF],dXdxI[a,2,K,ID,Iz,IF],dXdxI[a,3,K,ID,Iz,IF])
+# full row J grad xi^a = tangential part + normal part n, for the cross products of the curl
+@inline MetricRowFull(dXdxI,a,K,ID,Iz,IF,n) = MetricRow(dXdxI,a,K,ID,Iz,IF) + dXdxI[a,4,K,ID,Iz,IF] * n
 
 # Lower boundary: no flow through the orography, J grad zeta . (uh + w n) = 0
 @inline BottomW(dXdxI,u1,u2,u3,ID,IF) =
@@ -434,30 +438,30 @@ end
     v1 = uh + wCol[I,J,iz] * n
     v2 = uh + wCol[I,J,iz+1] * n
 #   J grad zeta x v at both vertical nodes, and the neighbours across the tile boundaries
-    T1 = cross(MetricRow(dXdxI,3,1,ID,Iz,IF),v1)
-    T2 = cross(MetricRow(dXdxI,3,2,ID,Iz,IF),v2)
+    T1 = cross(MetricRowFull(dXdxI,3,1,ID,Iz,IF,n),v1)
+    T2 = cross(MetricRowFull(dXdxI,3,2,ID,Iz,IF,n),v2)
     @unroll for d = 1 : 3
       TZ[I,J,d,1,iz+1] = T1[d]
       TZ[I,J,d,2,iz+1] = T2[d]
     end
     if iz == 1 && Iz > 1
       uhm1 = SVector(U[1,Iz-1,ind,2],U[1,Iz-1,ind,3],U[1,Iz-1,ind,uzPos])
-      T = cross(MetricRow(dXdxI,3,2,ID,Iz-1,IF),uhm1 + wCol[I,J,1] * n)
+      T = cross(MetricRowFull(dXdxI,3,2,ID,Iz-1,IF,n),uhm1 + wCol[I,J,1] * n)
       @unroll for d = 1 : 3
         TZ[I,J,d,2,1] = T[d]
       end
     end
     if iz == ColumnTilesDim && Iz < Nz
       uhp1 = SVector(U[1,Iz+1,ind,2],U[1,Iz+1,ind,3],U[1,Iz+1,ind,uzPos])
-      T = cross(MetricRow(dXdxI,3,1,ID,Iz+1,IF),uhp1 + wCol[I,J,iz+1] * n)
+      T = cross(MetricRowFull(dXdxI,3,1,ID,Iz+1,IF,n),uhp1 + wCol[I,J,iz+1] * n)
       @unroll for d = 1 : 3
         TZ[I,J,d,1,iz+2] = T[d]
       end
     end
 #   J grad xi^a x v, a = 1,2, for the horizontal derivatives
     @unroll for a = 1 : 2
-      Y1 = cross(MetricRow(dXdxI,a,1,ID,Iz,IF),v1)
-      Y2 = cross(MetricRow(dXdxI,a,2,ID,Iz,IF),v2)
+      Y1 = cross(MetricRowFull(dXdxI,a,1,ID,Iz,IF,n),v1)
+      Y2 = cross(MetricRowFull(dXdxI,a,2,ID,Iz,IF,n),v2)
       @unroll for d = 1 : 3
         YC[I,J,d,1,a,iz] = Y1[d]
         YC[I,J,d,2,a,iz] = Y2[d]
