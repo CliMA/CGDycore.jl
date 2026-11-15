@@ -882,6 +882,123 @@ transported in plain flux form (\code{DivRhoThUpwind3Kernel!}) instead of
 the split form.
 
 %==============================================================================
+\section{Cartesian velocity frame (\code{--VelocityFrame=Cartesian})}
+\label{sec:cartframe}
+%==============================================================================
+
+As an alternative to the spherical components $(u,v,w)$ the horizontal
+velocity can be stored with its Cartesian components. The prognostic
+velocity is
+\begin{equation}
+  \vv = \bm u_h + w\,\hat{\bm n},\qquad
+  \bm u_h = (u_x,u_y,u_z)^T,\quad \hat{\bm n}\cdot\bm u_h = 0,\qquad
+  \hat{\bm n} = \frac{\bm X}{|\bm X|},
+\end{equation}
+with $\bm u_h$ at the positions \code{uPos}, \code{vPos} and
+\code{uzPos} $=6$ (\code{NumV} $\ge 6$, the tracers follow \code{NumV}) and
+$w$ at the interfaces as before. The rotation matrix $R$ of
+Section~\ref{sec:sphframe} is never formed: the only quantity that depends
+on the sphere besides $\bm X$ is $\hat{\bm n}$, which costs one square root.
+No trigonometric function is evaluated at run time; $\sin$ and $\cos$ only
+appear in the conversion of the initial state and of the output
+(\code{ToVelocityFrame!}, \code{FromVelocityFrame}). The spherical frame
+remains the default (\code{Models.SphericalFrame}); the new option is
+\code{Models.CartesianFrame(uzPos)}.
+
+\paragraph{Metric.}
+\code{dXdxI} gets a fourth column. Columns $1$--$3$ hold the unrotated
+Cartesian rows $\Jm^a_C$ and column $4$ the normal part
+\begin{equation}
+  \code{dXdxI}[a,1{:}3] = \Jm^a_C,\qquad
+  \code{dXdxI}[a,4] = \Jm^a_C\cdot\hat{\bm n},
+\end{equation}
+(\code{NormalColumnKernel!} instead of \code{ApplyRotateKernel!}), so that the
+contravariant velocity is
+$\Jm^a_C\cdot\vv = \Jm^a_C\cdot\bm u_h + (\Jm^a_C\cdot\hat{\bm n})\,w$.
+The shallow metric is the Cartesian form of $L\to SL$: with $s = a/r$,
+\begin{equation}
+  \Jm^a_C \to s\,\Jm^a_C + (s^2-s)\,(\hat{\bm n}\cdot\Jm^a_C)\,\hat{\bm n},\qquad
+  \hat{\bm n}\cdot\Jm^a_C \to s^2\,\hat{\bm n}\cdot\Jm^a_C,\qquad
+  J\to s^2 J
+\end{equation}
+(\code{ShallowMetricCartKernel!}), i.e.\ the tangential part is scaled by
+$s$ and the normal part by $s^2$, exactly as $s = (a/r,a/r,(a/r)^2)$ in the
+spherical frame. The node normals are stored once per DSS node in
+\code{Metric.nR}. The lower boundary condition $\Jm^3\cdot\vv = 0$ gives
+\begin{equation}
+  w_{1/2} = -\frac{\Jm^3_C\cdot\bm u_h}{\Jm^3_C\cdot\hat{\bm n}}
+\end{equation}
+(\code{BottomW}).
+
+\paragraph{Operators.}
+Divergence and transport (\code{DivRhoTrUpwind3New2CartKernel!}), the
+pressure gradient in standard and split form, kinetic energy and gravity
+(\code{GradFullCartKernel!}) and the hyperviscosity
+(\code{HyperViscCartKernel!}, \code{HyperViscKoeffCartKernel!}) are the
+operators \eqref{eq:cartops} with $\Jm^a_C$. A gradient contributes the full
+Cartesian vector $\sum_a\Jm^a_C\partial_{\xi^a}\phi$ to $\bm u_h$ and its
+normal component (column $4$) to $w$. In the hyperviscosity the vorticity
+is $\zeta = \hat{\bm n}\cdot\sum_a\partial_{\xi^a}(\Jm^a_C\times\bm u_h)$,
+with the normal product formed before the derivative, and the cache of the
+first pass holds the three Cartesian components of $\hat{\bm n}\times\nabla\zeta$
+and of $\nabla\delta$ (seven instead of five slots).
+
+\paragraph{Rotational term.}
+At each vertical node $K$ of a layer the full velocity
+$\vv^{(K)} = \bm u_h + w^{(K)}\hat{\bm n}$ is formed with the interface value
+$w^{(K)} = w_{k\mp1/2}$. The curl is the Cartesian curl \eqref{eq:cartops},
+\begin{equation}
+  J\bm\omega^{(K)} = \sum_{a=1}^2 D_a\bigl(\Jm^a_C\times\vv\bigr)^{(K)}
+   + D_\zeta\bigl(\Jm^3_C\times\vv\bigr),
+\end{equation}
+with the same two-point difference and interface jumps as in
+Section~\ref{sec:rot}. No \code{CurlFrame} rotation is needed, since the
+Cartesian basis is constant. The tendency
+$\bm A^{(K)} = -J\bm\omega^{(K)}\times\vv^{(K)}$ is added to $\bm u_h$ and
+$\hat{\bm n}\cdot\bm A^{(K)}$ to the $w$ contribution of the half cell. With
+the shallow metric the curvature terms are removed as in the spherical
+frame,
+\begin{equation}
+  \partial_t\bm u_h \leftarrow -\frac{1}{a}\bigl(J^{(1)}w^{(1)} + J^{(2)}w^{(2)}\bigr)\bm u_h,
+  \qquad
+  \partial_t w^{(K)} \leftarrow \frac{1}{a}J^{(K)}|\bm u_h|^2 .
+\end{equation}
+The Coriolis functions have Cartesian versions that return the
+tangential vector and the normal component:
+\code{CoriolisShallow} $-2\Omega\hat n_z\,\hat{\bm n}\times\bm u_h$, \code{FPlane}
+the same with $f_0+\beta(y-y_0)$, and \code{CoriolisNonTraditional}
+$\bm A = -2\Omega\,\hat{\bm z}\times(\bm u_h + w\hat{\bm n})$ with
+$\hat{\bm n}\cdot\bm A$ for $w$.
+
+\paragraph{Tangential projection.}
+The kernels add unprojected Cartesian vectors to the tendency of $\bm u_h$.
+At the end of \code{Fcn!}, after DSS and the division by the mass,
+\code{ProjectTangential!} applies once per node
+\begin{equation}
+  F_{\bm u_h} \leftarrow F_{\bm u_h} - (\hat{\bm n}\cdot F_{\bm u_h})\,\hat{\bm n},
+\end{equation}
+so that $\hat{\bm n}\cdot\bm u_h = 0$ is preserved by every stage. Since the
+normal parts already enter the $w$ equation through column $4$ and
+$\hat{\bm n}\cdot\bm A$, the projection only removes the redundant normal
+component; it does not change the dynamics.
+
+\paragraph{Time integration.}
+The vertical Jacobian (Section~\ref{sec:jac}) depends only on $\Delta z$ and
+is unchanged; $u_z$ is treated explicitly like $u$ and $v$.
+
+\paragraph{Scope and verification.}
+The option is restricted to the dry core
+(\code{CGSEM.CheckVelocityFrame}): surface fluxes, momentum diffusion,
+forcing, turbulence, EDMF, the horizontal limiter and the energy states still
+read spherical $u$, $v$ and are rejected. Compared with the spherical frame
+on the baroclinic wave ($n_{\text{Panel}} = 6$, $p = 3$, $12$ levels), every
+term agrees to $10^{-13}$ relative (deep and shallow metric, with
+orography, standard and split pressure gradient, non-traditional Coriolis,
+hyperviscosity). After one day of integration $\rho$ and $\rho\theta$ agree
+to $2\cdot10^{-13}$ and $u$, $v$ to $10^{-11}$; after ten days the
+difference has grown to $5\cdot10^{-7}$ by the baroclinic instability.
+
+%==============================================================================
 \section{Time integration}
 %==============================================================================
 
@@ -922,6 +1039,7 @@ available. Optionally (\code{CompensatedSum}) the final update
 $U^n + \sum_i m_i k_i$ is accumulated with Kahan compensated summation.
 
 \subsection{Vertical Jacobian and Schur complement}
+\label{sec:jac}
 
 Per column and horizontal node the Jacobian couples $w$ with $\rho$ and
 $\rho\theta$ (\code{JacAcousticKernel!}). It is built from the geometric
