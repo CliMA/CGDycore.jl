@@ -252,6 +252,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   uPos::Int
   vPos::Int
   wPos::Int
+  uzPos::Int
   RhoThPos::Int
   RhoTPos::Int
   RhoVPos::Int
@@ -339,6 +340,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   HEVISolver::String
   ThetaMeanDG::String
   PressureGradient::String
+  VelocityFrame::Models.VelocityFrame
   SoundSpeedDG::String
 end
 
@@ -360,6 +362,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   uPos = 0
   vPos = 0
   wPos = 0
+  uzPos = 0
   RhoThPos = 0
   RhoTPos = 0
   RhoVPos = 0
@@ -447,6 +450,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   HEVISolver = "HDG"
   ThetaMeanDG = "Log"
   PressureGradient = "Standard"
+  VelocityFrame = Models.SphericalFrame()
   SoundSpeedDG = "Local"
   return ModelStruct{FT}(
    Problem,
@@ -466,6 +470,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    uPos,
    vPos,
    wPos,
+   uzPos,
    RhoThPos,
    RhoTPos,
    RhoVPos,
@@ -553,6 +558,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    HEVISolver,
    ThetaMeanDG,
    PressureGradient,
+   VelocityFrame,
    SoundSpeedDG,
    )
 end  

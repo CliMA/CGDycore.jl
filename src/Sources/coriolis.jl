@@ -149,3 +149,47 @@ end
   end
 end
 
+# Cartesian velocity frame (CGSEM): Coriolis(x,y,z,uh,w) with the tangential velocity uh in
+# Cartesian components, returns the Cartesian tendency of uh (projected later onto the
+# tangent plane) and the tendency of the radial velocity w
+function (CoriolisFun::FPlane)(Param,Phys,::Models.CartesianFrame)
+  @inline function Coriolis(x,y,z,uh,w)
+    FT = eltype(x)
+    W = Param.f0 + Param.beta0 * (y - Param.y0)
+    return SVector(uh[2] * W, -uh[1] * W, FT(0)), FT(0)
+  end
+  return Coriolis
+end
+
+# -f n x uh, f = 2 Omega sin(lat)
+function (CoriolisFun::CoriolisShallow)(Phys,::Models.CartesianFrame)
+  @inline function Coriolis(x,y,z,uh,w)
+    FT = eltype(x)
+    r = sqrt(x^2 + y^2 + z^2)
+    n = SVector(x, y, z) / r
+    W = FT(2) * Phys.Omega * n[3]
+    return -W * cross(n, uh), FT(0)
+  end
+  return Coriolis
+end
+
+# -2 Omega x (uh + w n)
+function (CoriolisFun::CoriolisNonTraditional)(Phys,::Models.CartesianFrame)
+  @inline function Coriolis(x,y,z,uh,w)
+    FT = eltype(x)
+    r = sqrt(x^2 + y^2 + z^2)
+    n = SVector(x, y, z) / r
+    Om2 = SVector(FT(0), FT(0), FT(2) * Phys.Omega)
+    A = -cross(Om2, uh + w * n)
+    return A, dot(n, A)
+  end
+  return Coriolis
+end
+
+function (CoriolisFun::CoriolisNo)(::Models.CartesianFrame)
+  @inline function Coriolis(x,y,z,uh,w)
+    FT = eltype(x)
+    return SVector(FT(0), FT(0), FT(0)), FT(0)
+  end
+  return Coriolis
+end

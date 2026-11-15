@@ -4,6 +4,7 @@ import ..Parameters as P
 import ..Grids
 import ..Thermodynamics
 import ..FiniteElements
+import ..Models
 
 using NLsolve
 using StaticArrays

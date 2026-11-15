@@ -41,6 +41,11 @@ function parse_commandline()
     arg_type = String
     default = "Standard"
 
+    "--VelocityFrame"
+    help = "CGSEM velocity: Spherical (u,v,w in the local spherical frame) or Cartesian (tangential velocity in Cartesian components at uzPos = NumV, radial w)"
+    arg_type = String
+    default = "Spherical"
+
     "--ThetaMeanDG"
     help = "Numerical theta of the vector invariant fluxes: Log (1/{{1/theta}}_log) or Arith ({{theta}})"
     arg_type = String

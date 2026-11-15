@@ -188,8 +188,14 @@ end
   end
 end
 
+@inline BottomWOut(u,v,uz::Nothing,dXdxI,iDoF,IF,ind) = -(u[1,1,ind] * dXdxI[3,1,1,iDoF,1,IF] +
+  v[1,1,ind] * dXdxI[3,2,1,iDoF,1,IF]) / dXdxI[3,3,1,iDoF,1,IF]
+
+@inline BottomWOut(u,v,uz,dXdxI,iDoF,IF,ind) = -(u[1,1,ind] * dXdxI[3,1,1,iDoF,1,IF] +
+  v[1,1,ind] * dXdxI[3,2,1,iDoF,1,IF] + uz[1,1,ind] * dXdxI[3,3,1,iDoF,1,IF]) / dXdxI[3,4,1,iDoF,1,IF]
+
 @kernel inbounds = true function InterpolateWBKernel!(cCell,@Const(u),@Const(v),@Const(w),
- @Const(InterH),@Const(InterV),@Const(dXdxI),@Const(Glob))
+ @Const(InterH),@Const(InterV),@Const(dXdxI),@Const(Glob),uz)
   IP, KP, iz   = @index(Local,  NTuple)
   _,_,Iz,IF = @index(Global,  NTuple)
 
@@ -205,8 +211,7 @@ end
       ind = Glob[iDoF,IF]
       cLoc = eltype(cCell)(0)
       for k = 1 : DoFV
-        w0 = -(u[1,Iz,ind] * dXdxI[3,1,1,iDoF,Iz,IF] +
-          v[1,Iz,ind] * dXdxI[3,2,1,iDoF,Iz,IF]) / dXdxI[3,3,1,iDoF,Iz,IF]  
+        w0 = BottomWOut(u,v,uz,dXdxI,iDoF,IF,ind)
         cLoc += eltype(cCell)(0.5) * InterV[KP,k] * (w[k,Iz,ind] + w0) 
       end
       cCellLoc +=  InterH[IP,iDoF] * cLoc
@@ -387,7 +392,9 @@ function InterpolateRhoGPU!(cCell,c,Rho,FE)
 
 end
 
-function InterpolateWBGPU!(cCell,u,v,w,dXdxI,FE)
+# uz: third Cartesian component of the tangential velocity (Cartesian velocity frame), the
+# lower boundary condition then uses the normal column dXdxI[3,4]
+function InterpolateWBGPU!(cCell,u,v,w,dXdxI,FE;uz=nothing)
 
   backend = get_backend(w)
   FT = eltype(w)
@@ -405,7 +412,7 @@ function InterpolateWBGPU!(cCell,u,v,w,dXdxI,FE)
   ndrange = (NumCellH,NumCellV, Nz, NF)
 
   KInterpolateWBKernel! = InterpolateWBKernel!(backend,group)
-  KInterpolateWBKernel!(cCell,u,v,w,InterH,InterV,dXdxI,Glob,ndrange=ndrange)
+  KInterpolateWBKernel!(cCell,u,v,w,InterH,InterV,dXdxI,Glob,uz,ndrange=ndrange)
   KernelAbstractions.synchronize(backend)
 end
 

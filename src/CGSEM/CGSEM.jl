@@ -10,6 +10,7 @@ import ..Thermodynamics
 import ..Surfaces
 
 using StaticArrays
+using LinearAlgebra: cross, dot
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions.Extras
@@ -26,6 +27,7 @@ include("MomentumKernel.jl")
 include("ViscKernel.jl")
 include("GradKineticKernel.jl")
 include("GradPressureKernel.jl")
+include("CartesianFrameKernel.jl")
 include("Cache.jl")
 include("HyperViscosity.jl")
 

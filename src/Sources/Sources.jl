@@ -4,6 +4,10 @@ import ..Parameters as P
 import ..Examples
 import ..Grids
 import ..FiniteElements
+import ..Models
+
+using StaticArrays
+using LinearAlgebra: cross, dot
 
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace

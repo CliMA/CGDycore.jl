@@ -110,6 +110,7 @@ y0 = parsed_args["y0"]
 OrdPoly = parsed_args["OrdPoly"]
 MetricType = parsed_args["MetricType"]
 PressureGradient = parsed_args["PressureGradient"]
+VelocityFrame = parsed_args["VelocityFrame"]
 OutputType = parsed_args["OutputType"]
 OutputCompression = parsed_args["OutputCompression"]
 # Viscosity
@@ -269,6 +270,16 @@ Model.State = State
 Model.ModelType = ModelType
 Model.MetricType = FiniteElements.MetricDifferentiation(MetricType,FiniteElements.SingleDifferentiation())
 Model.PressureGradient = PressureGradient
+if VelocityFrame == "Spherical"
+  Model.VelocityFrame = Models.SphericalFrame()
+elseif VelocityFrame == "Cartesian"
+# third Cartesian component of the tangential velocity behind rho theta, the tracers follow NumV
+  NumV >= 6 || throw(ArgumentError("VelocityFrame Cartesian needs NumV >= 6 (uz at position 6)"))
+  Model.uzPos = 6
+  Model.VelocityFrame = Models.CartesianFrame(Model.uzPos)
+else
+  throw(ArgumentError("unknown VelocityFrame $VelocityFrame, use Spherical or Cartesian"))
+end
 if HyperVisc == 0
   Model.HyperVisc = CGSEM.HyperViscosity(nPanel)  
 end  
@@ -373,23 +384,24 @@ if Forcing
       Model.wPos,Model.RhoThPos,Model.pAuxPos,Examples.VelocityS())
 end
 
-#Coriolis
+#Coriolis, in the Cartesian velocity frame as Cartesian vectors
+CorFrame = Model.VelocityFrame isa Models.CartesianFrame ? (Model.VelocityFrame,) : ()
 if Coriolis
   if CoriolisType == "Shallow"
-    CoriolisFun = Sources.CoriolisShallow()(Phys)
+    CoriolisFun = Sources.CoriolisShallow()(Phys,CorFrame...)
     Model.CoriolisFun = CoriolisFun
   elseif CoriolisType == "Deep" || CoriolisType == "NonTraditional"
-    CoriolisFun = Sources.CoriolisNonTraditional()(Phys)
+    CoriolisFun = Sources.CoriolisNonTraditional()(Phys,CorFrame...)
     Model.CoriolisFun = CoriolisFun
   elseif CoriolisType == "FPlane"
-    CoriolisFun = Sources.FPlane()(Param,Phys)
+    CoriolisFun = Sources.FPlane()(Param,Phys,CorFrame...)
     Model.CoriolisFun = CoriolisFun
   else
-    CoriolisFun = Sources.CoriolisNo()()
+    CoriolisFun = Sources.CoriolisNo()(CorFrame...)
     Model.CoriolisFun = CoriolisFun
   end
 else
-  CoriolisFun = Sources.CoriolisNo()()
+  CoriolisFun = Sources.CoriolisNo()(CorFrame...)
   Model.CoriolisFun = CoriolisFun
 end
 
@@ -536,6 +548,8 @@ if Damping
   Model.Damp = Damp
 end  
 
+CGSEM.CheckVelocityFrame(Model,Model.VelocityFrame)
+
 # Output
 Global.Output.vtk=0
 Global.Output.Flat = Flat
@@ -640,6 +654,10 @@ if JuliaGPU == "Metal"
   Global.ParallelCom.NumberThreadTriGPU = NumberThreadTriGPU / 2
 end  
 nT = max(7 + NumTr, NumV + NumTr)
+# hyperviscosity cache of the Cartesian velocity frame
+if Model.VelocityFrame isa Models.CartesianFrame
+  nT += 2
+end
 Parallels.InitExchangeData3D(backend,FTB,1,nz,nT,Exchange)
 
 if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "RosenbrockAMD"

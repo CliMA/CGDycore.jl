@@ -78,9 +78,49 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGElement,Metric,Excha
   if Model.TkePos > 0
     @views @. U[:,:,:,Model.TkePos] = U[:,:,Model.RhoPos] * 1.e-2 
   end  
+  ToVelocityFrame!(backend,U,CG,Metric,Global,Model.VelocityFrame)
 
   return U
 end  
+
+function ToVelocityFrame!(backend,U,CG,Metric,Global,::Models.SphericalFrame)
+end
+
+# Copy of the state with the spherical components u, v at (uPos,vPos), for the output
+function FromVelocityFrame(U,CG,Metric,Global)
+  backend = get_backend(U)
+  Model = Global.Model
+  Nz = Global.Grid.nz
+  NF = Global.Grid.NumFaces
+  N = CG.OrdPoly + 1
+  NzG = min(div(256,N*N),Nz)
+  group = (N * N, NzG, 1)
+  ndrange = (N * N, Nz, NF)
+  UR = copy(U)
+  KCartesianToSphericalFrameKernel! = CartesianToSphericalFrameKernel!(backend, group)
+  KCartesianToSphericalFrameKernel!(UR,U,Model.uPos,Model.vPos,Model.VelocityFrame.uzPos,CG.Glob,Metric.X,
+    Global.Grid.Form,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+  return UR
+end
+
+# Tangential velocity u e_lam + v e_phi in Cartesian components (ux,uy,uz)
+function ToVelocityFrame!(backend,U,CG,Metric,Global,Frame::Models.CartesianFrame)
+  Model = Global.Model
+  Nz = Global.Grid.nz
+  NF = Global.Grid.NumFaces
+  N = CG.OrdPoly + 1
+  NzG = min(div(256,N*N),Nz)
+  group = (N * N, NzG, 1)
+  ndrange = (N * N, Nz, NF)
+# copies, the elements share the nodes
+  uS = copy(U[:,:,:,Model.uPos])
+  vS = copy(U[:,:,:,Model.vPos])
+  KSphericalToCartesianFrameKernel! = SphericalToCartesianFrameKernel!(backend, group)
+  KSphericalToCartesianFrameKernel!(U,uS,vS,Model.uPos,Model.vPos,Frame.uzPos,CG.Glob,Metric.X,
+    Global.Grid.Form,ndrange=ndrange)
+  KernelAbstractions.synchronize(backend)
+end
 
 function InitialConditions(backend,FTB,DG::FiniteElements.DGElement,Metric,Phys,Global,Profile,Param)
   Model = Global.Model

@@ -256,7 +256,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
 #       +1 Auxdynamic variable
 #       +1 Vertical velocity
 #       +NumTr Tracer)
-  LenTemp1 = 5
+# Cartesian frame: the momentum parts of the hyperviscosity cache are Cartesian vectors
+  LenTempF = Global.Model.VelocityFrame isa Models.CartesianFrame ? 7 : 5
+  LenTemp1 = LenTempF
   if KoeffDivW > 0
     LenTemp1 += 1  
     @views Cachew = Temp1[:,:,:,LenTemp1]
@@ -278,7 +280,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     LenTemp1 += ND * NumTr
   end  
       
-  @views CacheF = Temp1[:,:,:,1:5]
+  @views CacheF = Temp1[:,:,:,1:LenTempF]
   Aux = Cache.Aux
   @views p = Cache.Aux[:,:,:,1]
 
@@ -306,6 +308,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   ndrangeC = NDoF
 
   KRhoGradKinKernel! = RhoGradKinKernel!(backend,group)
+  Frame = Global.Model.VelocityFrame
   if Global.Model.PressureGradient == "Split"
     State == "Dry" || throw(ArgumentError("PressureGradient Split needs State Dry"))
     KGradFullKernel! = GradFullSplitKernel!(backend,group)
@@ -316,9 +319,21 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   else
     throw(ArgumentError("unknown PressureGradient $(Global.Model.PressureGradient)"))
   end
-  KGradKernel! = GradKernel!(backend,group)
+# Cartesian frame: one gradient kernel for both forms, uz at Frame.uzPos in the transport
+  TransportArgs = ()
+  ViscArgs = ()
   KHyperViscKernel! = HyperViscKernel!(backend, group)
   KHyperViscKoeffKernel! = HyperViscKoeffKernel!(backend, group)
+  if Frame isa Models.CartesianFrame
+    KGradFullKernel! = GradFullCartKernel!(backend,group)
+    PressureArgs = (Frame.uzPos,Val(Global.Model.PressureGradient == "Split"),FT(Phys.Rd),FT(Phys.Cpd))
+    TransportArgs = (Frame.uzPos,)
+    ViscArgs = (Metric.nR,Frame.uzPos)
+    KHyperViscKernel! = HyperViscCartKernel!(backend, group)
+    KHyperViscKoeffKernel! = HyperViscKoeffCartKernel!(backend, group)
+    EDMF && throw(ArgumentError("VelocityFrame Cartesian: EDMF is not available"))
+  end
+  KGradKernel! = GradKernel!(backend,group)
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
    State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
    State == "IceInternalEnergy"
@@ -331,11 +346,13 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     KDivRhoKETrUpwind3New2Kernel! = DivRhoKETrUpwind3New2Kernel!(backend, groupTr)
   end
   KDivRhoThUpwind3Kernel! = DivRhoThUpwind3Kernel!(backend, group)
-  KMomentumCoriolisKernel! = MomentumVectorInvariantCoriolisKernel!(backend, group)
+  KMomentumCoriolisKernel! = Frame isa Models.CartesianFrame ?
+    MomentumVectorInvariantCoriolisCartKernel!(backend, group) : MomentumVectorInvariantCoriolisKernel!(backend, group)
   KHyperViscTracerKernel! = HyperViscTracerKernel!(backend, groupTr)
   KHyperViscTracerKoeffKernel! = HyperViscTracerKoeffKernel!(backend, groupTr)
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
-  KDivRhoTrUpwind3New2Kernel! = DivRhoTrUpwind3New2Kernel!(backend, groupTr)
+  KDivRhoTrUpwind3New2Kernel! = Frame isa Models.CartesianFrame ?
+    DivRhoTrUpwind3New2CartKernel!(backend, groupTr) : DivRhoTrUpwind3New2Kernel!(backend, groupTr)
   KDivRhoTrUpwind3LimKernel! = DivRhoTrUpwind3LimKernel!(backend, groupTr)
   KLimitKernel! = LimitKernel!(backend, groupL)
 
@@ -353,7 +370,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
 # First phase  
 ####
   Temp1 .= FT(0)
-  KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+  KHyperViscKernel!(CacheF,U,DS,DW,dXdxI,J,M,Glob,ViscArgs...,ndrange=ndrangeB)
   if ~HorLimit && NumTr > 0
     @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
@@ -383,7 +400,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end  
   @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,:,1:LenTemp1],Exchange)
 
-  KHyperViscKernel!(CacheF,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+  KHyperViscKernel!(CacheF,U,DS,DW,dXdxI_I,J_I,M,Glob_I,ViscArgs...,ndrange=ndrangeI)
   if ~HorLimit && NumTr > 0
     @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
@@ -409,7 +426,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
 # Second phase  
 ####
   F .= FT(0)
-  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeB)
+  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI,J,M,Glob,KoeffCurl,KoeffGrad,KoeffDiv,ViscArgs...,ndrange=ndrangeB)
   if ~HorLimit && NumTr > 0
     @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrangeB)
@@ -429,7 +446,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     @views KHyperViscTracerKoeffEDMFKernel!(FThEDMF,CacheThEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDiv,ndrange=ndrangeBEDMF)
       @views KHyperViscTracerKoeffEDMFKernel!(FTrEDMF,CacheTrEDMF,DS,DW,dXdxI,J,M,Glob,KoeffDiv,ndrange=ndrangeBEDMFTr)
   end  
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,GridForm,Curvature,ndrange=ndrangeB)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI,J,X,M,Glob,CoriolisFun,GridForm,Curvature,TransportArgs...,ndrange=ndrangeB)
   KGradFullKernel!(F,U,p,DS,dXdxI,X,J,M,Glob,GravitationFun,PressureArgs...,ndrange=ndrangeB)
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
@@ -441,7 +458,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
           dXdxI,J,M,Glob,dtau,ww,q[:,:,:,iT],q[:,:,:,NumTr+iT],Stencil,ndrange=ndrangeB)
       end  
     else  
-      KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
+      KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,TransportArgs...,ndrange=ndrangeB)
     end 
     if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
         State == "IceInternalEnergy"
@@ -472,7 +489,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
 
   Parallels.ExchangeData3DSendGPU(F,Exchange)
 
-  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ndrange=ndrangeI)
+  KHyperViscKoeffKernel!(F,U,CacheF,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffCurl,KoeffGrad,KoeffDiv,ViscArgs...,ndrange=ndrangeI)
   if ~HorLimit && NumTr > 0
     @views KHyperViscTracerKoeffKernel!(FTr[:,:,:,:],NumTr,CacheTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
       KoeffDiv,ndrange=ndrangeI)
@@ -495,7 +512,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     end  
   end  
 
-  KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,GridForm,Curvature,ndrange=ndrangeI)
+  KMomentumCoriolisKernel!(F,U,DS,dXdxI_I,J_I,X_I,M,Glob_I,CoriolisFun,GridForm,Curvature,TransportArgs...,ndrange=ndrangeI)
   KGradFullKernel!(F,U,p,DS,dXdxI_I,X_I,J_I,M,Glob_I,GravitationFun,PressureArgs...,ndrange=ndrangeI)
 
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
@@ -508,7 +525,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
           dXdxI_I,J_I,M,Glob_I,dtau,ww,q[:,:,:,iT],q[:,:,:,NumTr+iT],Stencil_I,ndrange=ndrangeI)
       end  
     else  
-      KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+      KDivRhoTrUpwind3New2Kernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,TransportArgs...,ndrange=ndrangeI)
     end  
     if State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
         State == "IceInternalEnergy"
@@ -587,5 +604,6 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   if Global.Model.Damping
     Sources.Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU)  
   end  
+  ProjectTangential!(F,Metric,Global,Frame)
 end
 

@@ -96,12 +96,14 @@ mutable struct MetricCGStruct{FT<:AbstractFloat,
   xS::AT2
   M::AT3
   MMass::AT2
+  nR::AT2
 end
 
-function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::CGElement)
+# NumColumn = 4 for the Cartesian velocity frame: dXdxI[a,4] = J grad xi^a . n
+function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::CGElement;NumColumn=3)
     J      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,nz,NF)
     X      = KernelAbstractions.zeros(backend,FT,nQuad,OPZ,3,nz,NF)
-    dXdxI  = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
+    dXdxI  = KernelAbstractions.zeros(backend,FT,3,NumColumn,OPZ,nQuad,nz,NF)
     dXdx   = KernelAbstractions.zeros(backend,FT,3,3,OPZ,nQuad,nz,NF)
     nSS  = KernelAbstractions.zeros(backend,FT,3,NumG)
     nS = KernelAbstractions.zeros(backend,FT,nQuad,3,NF)
@@ -113,6 +115,7 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::CGElement)
     xS    = KernelAbstractions.zeros(backend,FT,2,NumG)
     M = KernelAbstractions.zeros(backend,FT,0,0,0)
     MMass = KernelAbstractions.zeros(backend,FT,0,0)
+    nR = KernelAbstractions.zeros(backend,FT,0,0)
     return MetricCGStruct{FT,
                         typeof(zP),
                         typeof(nS),
@@ -133,6 +136,7 @@ function MetricCreate(backend,FT,nQuad,OPZ,NF,nz,NumG,::CGElement)
         xS,
         M,
         MMass,
+        nR,
     )
 end
 
@@ -172,17 +176,19 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   Nz = Grid.nz
 
   EdgeFace!(backend,Grid)
-  Metric = MetricCreate(backend,FT,DoF,M,NF,Nz,FE.NumG,FE)
+  NumColumn = Model.VelocityFrame isa Models.CartesianFrame ? 4 : 3
+  Metric = MetricCreate(backend,FT,DoF,M,NF,Nz,FE.NumG,FE;NumColumn)
   Metric.zP = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   F = PointsFromGrid(backend,FT,Grid)
 
   FillX!(backend,Metric,FE,F,Grid,zS)
-  FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType)
+  FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType,Model.VelocityFrame)
   FillDet!(backend,Metric,FE,Grid)
-  ShallowMetric!(backend,Metric,FE,Grid,Grid.Form,Model.Equation)
+  ShallowMetric!(backend,Metric,FE,Grid,Grid.Form,Model.Equation,Model.VelocityFrame)
 
   MassMatrix!(backend,FT,Metric,FE,Exchange,NumberThreadGPU)
+  NodeNormal!(backend,Metric,FE,Grid,Model.VelocityFrame)
 
   NzG = min(div(NumberThreadGPU,DoF),Nz)
   group = (DoF,NzG,1)
@@ -242,7 +248,7 @@ function FillContravariant!(backend,Metric,FE::DGQuad,Grid,MetricType)
   ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,MetricType)
 end
 
-function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,MetricType)
+function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,MetricType,Frame)
   FT = eltype(Metric.X)
   DoF = FE.DoF
   DoFE = FE.DoFE
@@ -261,8 +267,19 @@ function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,Metri
   ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,MetricType)
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
+  ApplyFrame!(backend,Metric,Grid,group,ndrange,Frame)
+end
+
+# Spherical frame: rotate the Cartesian metric into (e_lam, e_phi, e_r)
+function ApplyFrame!(backend,Metric,Grid,group,ndrange,::Models.SphericalFrame)
   KApplyRotateKernel! = ApplyRotateKernel!(backend,group)
   KApplyRotateKernel!(Metric.dXdxI,Metric.X,Grid.Form;ndrange=ndrange)
+end
+
+# Cartesian frame: keep the Cartesian metric, add the normal component J grad xi^a . n
+function ApplyFrame!(backend,Metric,Grid,group,ndrange,::Models.CartesianFrame)
+  KNormalColumnKernel! = NormalColumnKernel!(backend,group)
+  KNormalColumnKernel!(Metric.dXdxI,Metric.X,Grid.Form;ndrange=ndrange)
 end
 
 function FillContravariant!(backend,Metric,FE::DGTri,Grid,::DoubleDifferentiation)
@@ -810,6 +827,60 @@ end
   end
 end  
 
+# Radial unit normal at every global node for the projection of the tangential
+# velocity tendency in the Cartesian frame
+function NodeNormal!(backend,Metric,FE,Grid,::Models.SphericalFrame)
+end
+
+function NodeNormal!(backend,Metric,FE,Grid,::Models.CartesianFrame)
+  FT = eltype(Metric.X)
+  DoF = FE.DoF
+  NF = Grid.NumFaces
+  Metric.nR = KernelAbstractions.zeros(backend,FT,3,FE.NumG)
+  KNodeNormalKernel! = NodeNormalKernel!(backend,(DoF,1))
+  KNodeNormalKernel!(Metric.nR,Metric.X,FE.Glob,Grid.Form;ndrange=(DoF,NF))
+end
+
+@kernel inbounds = true function NodeNormalKernel!(nR,@Const(X),@Const(Glob),GridForm)
+
+  ID,IF = @index(Global, NTuple)
+
+  NF = @uniform @ndrange()[2]
+
+  if IF <= NF
+    ind = Glob[ID,IF]
+    n1, n2, n3 = FrameNormal(X[ID,1,1,1,IF],X[ID,1,2,1,IF],X[ID,1,3,1,IF],GridForm)
+    nR[1,ind] = n1
+    nR[2,ind] = n2
+    nR[3,ind] = n3
+  end
+end
+
+# Unit normal (radial direction) of a node, no trigonometric functions
+@inline function FrameNormal(x,y,z,::Grids.SphericalGrid)
+  r = sqrt(x^2 + y^2 + z^2)
+  return x / r, y / r, z / r
+end
+
+@inline FrameNormal(x,y,z,::Grids.CartesianGrid) = (zero(x), zero(x), one(x))
+
+@kernel inbounds = true function NormalColumnKernel!(dXdxI,@Const(X),GridForm)
+
+  ID, K, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  if Iz <= Nz && IF <= NF
+    n1, n2, n3 = FrameNormal(X[ID,K,1,Iz,IF],X[ID,K,2,Iz,IF],X[ID,K,3,Iz,IF],GridForm)
+    @unroll for a = 1 : 3
+      dXdxI[a,4,K,ID,Iz,IF] = dXdxI[a,1,K,ID,Iz,IF] * n1 + dXdxI[a,2,K,ID,Iz,IF] * n2 +
+        dXdxI[a,3,K,ID,Iz,IF] * n3
+    end
+  end
+end
+
 function FillRotate!(backend,Metric,FE,Grid)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
@@ -923,18 +994,48 @@ end
 # Shallow atmosphere: the tangential rows of the Jacobian in the spherical frame are
 # scaled by a/r (metric of Guba), adj(S*L) = adj(L)*adj(S) with S = diag(a/r,a/r,1)
 function ShallowMetric!(backend,Metric,FE::CGElement,Grid,::Grids.SphericalGrid,
-  ::Union{Models.CompressibleShallow,Models.Advection,Models.ShallowWater})
+  ::Union{Models.CompressibleShallow,Models.Advection,Models.ShallowWater},Frame)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
   NF = Grid.NumFaces
   Nz = Grid.nz
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
-  KShallowMetricKernel! = ShallowMetricKernel!(backend,group)
+  KShallowMetricKernel! = ShallowMetricKernel(backend,group,Frame)
   KShallowMetricKernel!(Metric.dXdxI,Metric.J,Metric.X,Grid.Rad;ndrange=ndrange)
 end  
 
-function ShallowMetric!(backend,Metric,FE,Grid,GridForm,Equation)
+function ShallowMetric!(backend,Metric,FE,Grid,GridForm,Equation,Frame)
+end  
+
+ShallowMetricKernel(backend,group,::Models.SphericalFrame) = ShallowMetricKernel!(backend,group)
+ShallowMetricKernel(backend,group,::Models.CartesianFrame) = ShallowMetricCartKernel!(backend,group)
+
+# Shallow metric in the Cartesian frame: tangential part scaled by s = a/r, normal part by s^2,
+# J grad xi^a -> s P J grad xi^a + s^2 (n . J grad xi^a) n
+@kernel inbounds = true function ShallowMetricCartKernel!(dXdxI,J,@Const(X),Rad)
+
+  ID, K, iz   = @index(Local, NTuple)
+  _,_,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  if Iz <= Nz && IF <= NF
+    r = sqrt(X[ID,K,1,Iz,IF]^2 + X[ID,K,2,Iz,IF]^2 + X[ID,K,3,Iz,IF]^2)
+    n1 = X[ID,K,1,Iz,IF] / r
+    n2 = X[ID,K,2,Iz,IF] / r
+    n3 = X[ID,K,3,Iz,IF] / r
+    s = Rad / r
+    @unroll for a = 1 : 3
+      c = dXdxI[a,4,K,ID,Iz,IF]
+      dXdxI[a,1,K,ID,Iz,IF] = s * dXdxI[a,1,K,ID,Iz,IF] + (s * s - s) * c * n1
+      dXdxI[a,2,K,ID,Iz,IF] = s * dXdxI[a,2,K,ID,Iz,IF] + (s * s - s) * c * n2
+      dXdxI[a,3,K,ID,Iz,IF] = s * dXdxI[a,3,K,ID,Iz,IF] + (s * s - s) * c * n3
+      dXdxI[a,4,K,ID,Iz,IF] = s * s * c
+    end
+    J[ID,K,Iz,IF] *= s * s
+  end
 end  
 
 @kernel inbounds = true function ShallowMetricKernel!(dXdxI,J,@Const(X),Rad)

@@ -5,6 +5,15 @@ struct Advection  <: EquationType end
 struct CompressibleShallow  <: EquationType end
 struct CompressibleDeep  <: EquationType  end
 
+# Frame of the CGSEM velocity: components (u,v,w) in the local spherical frame,
+# or the tangential velocity in Cartesian components (ux,uy,uz) at uzPos together
+# with the radial velocity w (no rotation matrix, the frame is the normal X/|X|)
+abstract type VelocityFrame end
+struct SphericalFrame <: VelocityFrame end
+struct CartesianFrame <: VelocityFrame
+  uzPos::Int
+end
+
 abstract type State end
 struct ShallowWaterState  <: State  end
 struct ShallowWaterStateDG  <: State  end

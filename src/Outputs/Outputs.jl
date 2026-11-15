@@ -2,6 +2,7 @@ module Outputs
 
 import ..DG
 import ..Examples
+import ..Models
 import ..Grids
 import ..FiniteElements
 import ..DGSEM

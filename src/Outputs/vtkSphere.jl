@@ -539,6 +539,9 @@ function CellFieldsSphere!(sink,U,Trans,FE,Metric,Phys,Global,VelForm,GridForm;
   if VelForm == Examples.VelocityC() && GridForm == Grids.SphericalGrid()
     UR = copy(URIn)  
     DGSEM.RotateCart2Sph!(UR,FE,Metric,NumberThreadGPU)
+  elseif Global.Model.VelocityFrame isa Models.CartesianFrame
+#   CGSEM with the Cartesian velocity frame: spherical u, v for the output
+    UR = Examples.FromVelocityFrame(URIn,FE,Metric,Global)
   else
     UR = URIn  
   end
@@ -608,7 +611,12 @@ function CellFieldsSphere!(sink,U,Trans,FE,Metric,Phys,Global,VelForm,GridForm;
       uPos = Global.Model.uPos
       vPos = Global.Model.uPos
       wPos = Global.Model.wPos
-      InterpolateWBGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,vPos],UR[:,:,:,wPos],Metric.dXdxI,FE)
+      if Global.Model.VelocityFrame isa Models.CartesianFrame
+        InterpolateWBGPU!(cCell,URIn[:,:,:,Global.Model.uPos],URIn[:,:,:,Global.Model.vPos],URIn[:,:,:,wPos],
+          Metric.dXdxI,FE;uz=URIn[:,:,:,Global.Model.VelocityFrame.uzPos])
+      else
+        InterpolateWBGPU!(cCell,UR[:,:,:,uPos],UR[:,:,:,vPos],UR[:,:,:,wPos],Metric.dXdxI,FE)
+      end
       copyto!(cCellCPU,reshape(cCell,OrdPrintH*(OrdPrintZ + 1)*nz*NF))
       sink("w", cCellCPU)
     elseif  str == "BDG" 

@@ -389,3 +389,51 @@ end
   return SVector{3}(VelCa1, VelCa2 ,VelCa3)
 end
 =#
+
+@kernel inbounds = true function SphericalToCartesianFrameKernel!(U,@Const(uS),@Const(vS),uPos,vPos,uzPos,
+  @Const(Glob),@Const(X),GridForm)
+
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[2]
+
+  if Iz <= Nz
+    ind = Glob[I,IF]
+    ex, ey = TangentialFrame(X[I,1,1,Iz,IF],X[I,1,2,Iz,IF],X[I,1,3,Iz,IF],GridForm)
+    u = uS[1,Iz,ind]
+    v = vS[1,Iz,ind]
+    U[1,Iz,ind,uPos] = u * ex[1] + v * ey[1]
+    U[1,Iz,ind,vPos] = u * ex[2] + v * ey[2]
+    U[1,Iz,ind,uzPos] = u * ex[3] + v * ey[3]
+  end
+end
+
+@kernel inbounds = true function CartesianToSphericalFrameKernel!(UR,@Const(U),uPos,vPos,uzPos,
+  @Const(Glob),@Const(X),GridForm)
+
+  I, iz   = @index(Local, NTuple)
+  _,Iz,IF = @index(Global, NTuple)
+
+  Nz = @uniform @ndrange()[2]
+
+  if Iz <= Nz
+    ind = Glob[I,IF]
+    ex, ey = TangentialFrame(X[I,1,1,Iz,IF],X[I,1,2,Iz,IF],X[I,1,3,Iz,IF],GridForm)
+    uh = SVector(U[1,Iz,ind,uPos],U[1,Iz,ind,vPos],U[1,Iz,ind,uzPos])
+    UR[1,Iz,ind,uPos] = ex[1] * uh[1] + ex[2] * uh[2] + ex[3] * uh[3]
+    UR[1,Iz,ind,vPos] = ey[1] * uh[1] + ey[2] * uh[2] + ey[3] * uh[3]
+  end
+end
+
+# e_lam, e_phi of the spherical frame, as in the initial profiles (only for the initial and output state)
+@inline function TangentialFrame(x,y,z,::Grids.SphericalGrid)
+  lon,lat,_ = Grids.cart2sphere(x,y,z)
+  R = Grids.MCart2Sphere(lon,lat)
+  return SVector(R[1,1],R[1,2],R[1,3]), SVector(R[2,1],R[2,2],R[2,3])
+end
+
+@inline function TangentialFrame(x,y,z,::Grids.CartesianGrid)
+  FT = eltype(x)
+  return SVector(FT(1),FT(0),FT(0)), SVector(FT(0),FT(1),FT(0))
+end
