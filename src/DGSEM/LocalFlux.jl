@@ -337,6 +337,43 @@ function (::RiemannLMARS)(::Val{RhoPos},::Val{uPos},::Val{vPos},::Val{wPos},
   return RiemannByLMARSNonLin!
 end
 
+# LMARS for KennedyGruberGravDiff: each side gets the interface pressure minus its own
+# pressure, pM - pLL = (pRR - pLL)/2 - cS RhoM (vRR - vLL)/2 for the lower/left side and
+# pM - pRR for the upper/right side, formed without the absolute pressure.
+Base.@kwdef struct RiemannLMARSDiff <: RiemannSolver end
+
+function (::RiemannLMARSDiff)(::Val{RhoPos},::Val{uPos},::Val{vPos},::Val{wPos},
+  ::Val{ThPos},::Val{pPos},cS) where{RhoPos,uPos,vPos,wPos,ThPos,pPos}
+  @inline function RiemannByLMARSDiff!(FL,FR,VLL,VRR,AuxL,AuxR,n1,n2,n3)
+    FT = eltype(FL)
+    dp = AuxR[pPos] - AuxL[pPos]
+    RhoM = FT(0.5) * (VLL[RhoPos] + VRR[RhoPos])
+    vLL = (VLL[uPos] * n1 + VLL[vPos] * n2 + VLL[wPos] * n3) / VLL[RhoPos]
+    vRR = (VRR[uPos] * n1 + VRR[vPos] * n2 + VRR[wPos] * n3) / VRR[RhoPos]
+    pDiss = FT(0.5) * cS * RhoM * (vRR - vLL)
+    pML = FT(0.5) * dp - pDiss
+    pMR = -FT(0.5) * dp - pDiss
+    vM = FT(0.5) * (vRR + vLL) - FT(1.0) /(FT(2.0) * cS) * dp / RhoM
+    up = vM > FT(0)
+    fRho = vM * ifelse(up, VLL[RhoPos], VRR[RhoPos])
+    fu = vM * ifelse(up, VLL[uPos], VRR[uPos])
+    fv = vM * ifelse(up, VLL[vPos], VRR[vPos])
+    fw = vM * ifelse(up, VLL[wPos], VRR[wPos])
+    fTh = vM * ifelse(up, VLL[ThPos], VRR[ThPos])
+    FL[RhoPos] = fRho
+    FL[uPos] = fu + n1 * pML
+    FL[vPos] = fv + n2 * pML
+    FL[wPos] = fw + n3 * pML
+    FL[ThPos] = fTh
+    FR[RhoPos] = fRho
+    FR[uPos] = fu + n1 * pMR
+    FR[vPos] = fv + n2 * pMR
+    FR[wPos] = fw + n3 * pMR
+    FR[ThPos] = fTh
+  end
+  return RiemannByLMARSDiff!
+end
+
 function (::ArtianoEnergyStable)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos)
   @inline function RiemannByLMARSNonLin!(FL,FR,VLL,VRR,AuxL,AuxR,n1,n2,n3)
     FT = eltype(FL)

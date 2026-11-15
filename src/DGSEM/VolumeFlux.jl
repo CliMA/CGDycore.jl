@@ -71,6 +71,27 @@ function (::KennedyGruberGrav)(::Val{pPos}, ::Val{GPPos}) where {pPos, GPPos}
   return FluxNonLinAver
 end
 
+# KennedyGruberGrav with the pressure difference instead of the mean: in the volume sum
+# Sum_l DV[i,l] {{p}}_il m_il the own value p_i drops out by the discrete metric identities
+# (curl form), the remaining boundary terms -+ p_i m_i / w are removed by RiemannLMARSDiff,
+# which subtracts p_i from the interface pressure. The hydrostatic balance is then the
+# balance of the small differences p_l - p_i and rho (Phi_l - Phi_i), without the
+# p ~ 1e5 Pa in the sums (Float32). The two-point flux is not symmetric.
+Base.@kwdef struct KennedyGruberGravDiff <: AverageFlux end
+
+function (::KennedyGruberGravDiff)(::Val{pPos}, ::Val{GPPos}) where {pPos, GPPos}
+  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR)
+    FT = eltype(VL)
+    qHat, uAv, vAv, wAv, m1, m2, m3 = contravariant_velocity(VL, VR, mL, mR)
+    RhoAv = FT(0.5) * (VL[1] + VR[1])
+    pM = FT(0.5) * ((AuxR[pPos] - AuxL[pPos]) + RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
+    fRho = RhoAv * qHat
+    fRhoTh = fRho * FT(0.5) * (VL[5] + VR[5])
+    return flux_vector(fRho, fRhoTh, pM, uAv, vAv, wAv, m1, m2, m3)
+  end
+  return FluxNonLinAver
+end
+
 # TEC: f_rho = rhoM {{v}}, f_rhotheta = {{rho theta}}_gamma {{v}}
 Base.@kwdef struct PotTempTEC <: AverageFlux end
 

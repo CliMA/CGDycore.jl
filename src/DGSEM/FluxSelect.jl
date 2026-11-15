@@ -69,6 +69,12 @@ function SetFluxesConservative!(Model,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Pa
 
   if FluxDG == "KennedyGruberGrav"
     FluxAverage = KennedyGruberGrav()(Val(pAuxPos),Val(GPAuxPos))
+  elseif FluxDG == "KennedyGruberGravDiff"
+    InterfaceFluxDG == "RiemannLMARSDiff" ||
+      error("FluxDG = KennedyGruberGravDiff needs InterfaceFluxDG = RiemannLMARSDiff")
+    Model.MetricType isa FiniteElements.DoubleDifferentiation ||
+      error("FluxDG = KennedyGruberGravDiff needs MetricType = Double (discrete metric identities)")
+    FluxAverage = KennedyGruberGravDiff()(Val(pAuxPos),Val(GPAuxPos))
   elseif FluxDG == "PotTempTEC"
     FluxAverage = PotTempTEC()(Val(pAuxPos),Val(GPAuxPos),SetDensityMean(DensityMeanDG),FT(Phys.Gamma))
   elseif FluxDG == "PotTempEC"
@@ -76,7 +82,7 @@ function SetFluxesConservative!(Model,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Pa
   elseif FluxDG == "PotTempETEC"
     FluxAverage = PotTempETEC()(Val(pAuxPos),Val(GPAuxPos),FT(Phys.Gamma))
   else
-    error("FluxDG = $FluxDG is not available for ModelType Conservative, choose KennedyGruberGrav, PotTempTEC, PotTempEC or PotTempETEC")
+    error("FluxDG = $FluxDG is not available for ModelType Conservative, choose KennedyGruberGrav, KennedyGruberGravDiff, PotTempTEC, PotTempEC or PotTempETEC")
   end
   Model.FluxAverageH = FluxAverage
   Model.FluxAverageV = FluxAverage
@@ -84,6 +90,11 @@ function SetFluxesConservative!(Model,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Pa
   if InterfaceFluxDG == "RiemannLMARS"
     Model.RiemannSolver = TwoSided(RiemannLMARS()(Val(RhoPos),Val(uPos),Val(vPos),Val(wPos),
       Val(RhoThPos),Val(1),FT(cS)))
+  elseif InterfaceFluxDG == "RiemannLMARSDiff"
+    FluxDG == "KennedyGruberGravDiff" ||
+      error("InterfaceFluxDG = RiemannLMARSDiff needs FluxDG = KennedyGruberGravDiff")
+    Model.RiemannSolver = RiemannLMARSDiff()(Val(RhoPos),Val(uPos),Val(vPos),Val(wPos),
+      Val(RhoThPos),Val(1),FT(cS))
   elseif InterfaceFluxDG == "RiemannExLMARS"
     Model.RiemannSolver = TwoSided(RiemannExLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1))
   elseif InterfaceFluxDG == "RiemannExnerLMARS"
@@ -91,7 +102,7 @@ function SetFluxesConservative!(Model,FT,FluxDG,DensityMeanDG,InterfaceFluxDG,Pa
   elseif InterfaceFluxDG == "RiemannExPLMARS"
     Model.RiemannSolver = TwoSided(RiemannExPLMARS()(Param,Phys,RhoPos,uPos,vPos,wPos,RhoThPos,1))
   else
-    error("InterfaceFluxDG = $InterfaceFluxDG is not available for ModelType Conservative, choose RiemannLMARS, RiemannExLMARS, RiemannExnerLMARS or RiemannExPLMARS")
+    error("InterfaceFluxDG = $InterfaceFluxDG is not available for ModelType Conservative, choose RiemannLMARS, RiemannLMARSDiff, RiemannExLMARS, RiemannExnerLMARS or RiemannExPLMARS")
   end
 
   Model.NonConservativeFlux = BuoyancyFlux()(RhoPos,GPAuxPos)
