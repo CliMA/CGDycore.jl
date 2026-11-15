@@ -185,9 +185,12 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   F = PointsFromGrid(backend,FT,Grid)
 
   XL, X64 = FillX!(backend,Metric,FE,F,Grid,zS)
-  FillContravariant!(backend,Metric,XL,FE,Grid,Grid.Type,Model.MetricType,Model.VelocityFrame)
-  FillDet!(backend,Metric,FE,Grid)
-  ShallowMetric!(backend,Metric,FE,Grid,Grid.Form,Model.Equation,Model.VelocityFrame)
+  dXdxIT = OnFrameBackend!(backend,Metric,X64) do backendM,MetricM
+    FillContravariant!(backendM,MetricM,XL,FE,Grid,Grid.Type,Model.MetricType,Model.VelocityFrame)
+    FillDet!(backendM,MetricM,FE,Grid)
+    ShallowMetric!(backendM,MetricM,FE,Grid,Grid.Form,Model.Equation,Model.VelocityFrame)
+    TangentialRowsCopy(backendM,MetricM,FE,Grid,Model.VelocityFrame)
+  end
 
   MassMatrix!(backend,FT,Metric,FE,Exchange,NumberThreadGPU)
   NodeNormal!(backend,Metric,FE,Grid,Model.VelocityFrame)
@@ -219,7 +222,7 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   ndrangeS = (NumG)
   KMetricLowerBoundaryScaleKernel! = MetricLowerBoundaryScaleKernel!(backend,groupS)
   KMetricLowerBoundaryScaleKernel!(Metric.nSS,ndrange=ndrangeS)
-  TangentialRows!(backend,Metric,FE,Grid,Model.VelocityFrame)
+  isnothing(dXdxIT) || copyto!(Metric.dXdxI,dXdxIT)
 
   HorLimit = false
   if HorLimit
@@ -865,6 +868,15 @@ end
 function TangentialRows!(backend,Metric,FE,Grid,::Models.SphericalFrame)
 end
 
+TangentialRowsCopy(backend,Metric,FE,Grid,::Models.SphericalFrame) = nothing
+
+function TangentialRowsCopy(backend,Metric,FE,Grid,Frame::Models.CartesianFrame)
+  MetricT = (dXdxI = copy(Metric.dXdxI), X = Metric.X)
+  TangentialRows!(backend,MetricT,FE,Grid,Frame)
+  KernelAbstractions.synchronize(backend)
+  return MetricT.dXdxI
+end
+
 function TangentialRows!(backend,Metric,FE,Grid,::Models.CartesianFrame)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
@@ -1016,6 +1028,24 @@ function FillX!(backend,Metric,FE,F,Grid,zS)
   end
   return XL, XH
 end  
+
+# Rotation (spherical frame) or normal column (Cartesian frame), J and the shallow scaling.
+# Below Float64 on the CPU in Float64 from the Float64 positions X64: the rotation of the
+# large vertical row J grad zeta leaves a remainder eps |J grad zeta| in its tangential
+# components, i.e. a spurious horizontal force eps g, if it is evaluated in Float32.
+# Returns the metric with tangential rows (Cartesian frame) for the end of MetricCompute.
+function OnFrameBackend!(f,backend,Metric,X64)
+  if eltype(Metric.dXdxI) == Float64
+    dXdxIT = f(backend,Metric)
+  else
+    MetricH = (dXdxI = zeros(Float64,size(Metric.dXdxI)), J = zeros(Float64,size(Metric.J)), X = X64)
+    dXdxIT = f(KernelAbstractions.CPU(),MetricH)
+    KernelAbstractions.synchronize(KernelAbstractions.CPU())
+    copyto!(Metric.dXdxI,eltype(Metric.dXdxI).(MetricH.dXdxI))
+    copyto!(Metric.J,eltype(Metric.J).(MetricH.J))
+  end
+  return isnothing(dXdxIT) ? nothing : eltype(Metric.dXdxI).(Array(dXdxIT))
+end
 
 # Grid size dz and height zP of the layers from the Float64 positions X64 (a host array below
 # Float64), r2 - r1 of the rounded positions would be wrong by about 1 m in Float32

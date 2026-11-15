@@ -305,9 +305,18 @@ also works on backends without Float64 such as Metal. In Float32,
 $|\bm X|\approx 6.4\cdot10^6\,$m is rounded to about $0.5\,$m, which is a large
 fraction of the lowest layers, and in the curl form the products
 $X_l\,\partial X_m$ (element size squared) cancel to $\Jm^{1,2}$ (element size
-times layer depth). Before, $J$ had relative errors of $5\cdot10^{-4}$ (CG) and
-$7\cdot10^{-3}$ (DG, curl form) and the DG face terms up to $2\cdot10^{-2}$; now all
-metric terms agree with Float64 to $10^{-6}$.
+times layer depth). For CGSEM the rotation (or the normal column and the tangential split of the
+Cartesian frame), $J$ and the shallow scaling are part of this Float64 setup
+(\code{OnFrameBackend!}): rotated in Float32, the large vertical row $\Jm^3$ left
+a remainder $\epsilon|\Jm^3|$ in its tangential components, a spurious horizontal
+force $\epsilon g$. Before, $J$ had relative errors of $5\cdot10^{-4}$ (CG) and
+$7\cdot10^{-3}$ (DG, curl form), the DG face terms up to $2\cdot10^{-2}$ and the
+tangential components of $\Jm^3$ $6\cdot10^{-7}|\Jm^3|$; now all metric terms
+agree with Float64 to $10^{-6}$ and the tangential components of $\Jm^3$ to
+$7\cdot10^{-9}|\Jm^3|$. In the baroclinic wave ($n_{\text{Panel}}=32$, 64 levels,
+two days) the Float32 solution of the spherical frame then deviates from the
+Float64 one by $1.2\cdot10^{-5}$ in $\rho$, $3.4\cdot10^{-3}$ in $v$ and $2.4\cdot10^{-2}$
+in $w$ (before $3\cdot10^{-4}$, $9\cdot10^{-2}$ and $0.95$).
 
 \paragraph{Lam\'e form.}
 Equivalently, $L = \operatorname{diag}(h_\lambda,h_\varphi,h_r)\,
@@ -1019,7 +1028,16 @@ At the end of \code{Fcn!}, after DSS and the division by the mass,
 so that $\hat{\bm n}\cdot\bm u_h = 0$ is preserved by every stage. Since the
 normal parts already enter the $w$ equation through column $4$ and
 $\hat{\bm n}\cdot\bm A$, the projection only removes the redundant normal
-component; it does not change the dynamics.
+component; it does not change the dynamics. After every time step the state
+itself is projected in the same way (\code{Integration.ProjectState!}). The
+update $\bm u_h + \sum_i m_i\bm k_i$ rounds the three Cartesian components
+separately, and in a nearly steady flow the rounding has the same sign step by
+step: in Float32 $\hat{\bm n}\cdot\bm u_h$ grew linearly to $2\cdot10^{-3}\,$m\,s$^{-1}$
+in two days, acted like an additional $w$ in the curl term and gave a
+deviation of $0.16$ in $w$ from the Float64 solution. With the projection
+$\hat{\bm n}\cdot\bm u_h$ stays at the rounding level ($2\cdot10^{-6}\,$m\,s$^{-1}$) and
+the Float32 solution of the Cartesian frame is as accurate as the one of the
+spherical frame.
 
 \paragraph{Time integration.}
 The vertical Jacobian (Section~\ref{sec:jac}) depends only on $\Delta z$ and

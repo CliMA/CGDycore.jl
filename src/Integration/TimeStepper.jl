@@ -62,6 +62,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
       Δt = @elapsed begin
         TimeIntegration!(IntMethod,U,dt,Fcn,CacheAux,Jac,FE,Metric,Phys,CacheInt,JCache,Exchange,
           Global,Param,VelForm)
+        ProjectState!(U,FE,Metric,Global)
         dtG, = dt
         time[1] += dtG
         if Proc == 1

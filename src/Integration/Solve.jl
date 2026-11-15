@@ -5,6 +5,14 @@ CallFcn!(Fcn,F,U,FE::FiniteElements.DGElement,Metric,Phys,Aux,Exchange,Global,Ve
 CallFcn!(Fcn,F,U,FE::FiniteElements.CGElement,Metric,Phys,Aux,Exchange,Global,VelForm) =
   Fcn(F,U,FE,Metric,Phys,Aux,Exchange,Global,VelForm)
 
+# Cartesian velocity frame of CGSEM: after every step the tangential velocity of the state
+# is projected onto the tangent plane. The tendencies are tangential, but the rounding of the
+# state update (each Cartesian component separately) has the same sign step by step in a
+# nearly steady flow, so that n . uh grows linearly (2e-3 m/s in two days in Float32).
+ProjectState!(U,FE::FiniteElements.CGElement,Metric,Global) =
+  CGSEM.ProjectTangential!(U,Metric,Global,Global.Model.VelocityFrame)
+ProjectState!(U,FE,Metric,Global) = nothing
+
 CallJac!(Jac,U,fac,FE::FiniteElements.DGElement,Metric,Phys,Aux,JCache,Global,VelForm) =
   Jac(U,fac,FE,Metric,Phys,Aux,JCache,Global)
 CallJac!(Jac,U,fac,FE::FiniteElements.CGElement,Metric,Phys,Aux,JCache,Global,VelForm) =
