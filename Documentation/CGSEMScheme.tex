@@ -292,6 +292,23 @@ All metric terms are computed in \code{FiniteElements/Metric.jl}
 In the Cartesian configurations $R = I$ (\code{ApplyRotateKernel!} is
 empty).
 
+\paragraph{Metric in reduced precision.}
+The metric kernels differentiate the element-local positions
+$\bm X - \bm X_1$ ($\bm X_1$ the first node of the element). These are formed
+without the absolute positions as
+$(h-h_1)\,\hat{\bm e} + (a+h_1)(\hat{\bm e}-\hat{\bm e}_1)$, with $\hat{\bm e}$ the
+unit radial direction and $h$ the height of the node, so that vertical
+differences are exact height differences (\code{XLocal!}). Below Float64 the
+positions, the contravariant metric and $\Delta z$ are computed in Float64 on the
+CPU and then rounded to the working precision (\code{OnMetricBackend!}); this
+also works on backends without Float64 such as Metal. In Float32,
+$|\bm X|\approx 6.4\cdot10^6\,$m is rounded to about $0.5\,$m, which is a large
+fraction of the lowest layers, and in the curl form the products
+$X_l\,\partial X_m$ (element size squared) cancel to $\Jm^{1,2}$ (element size
+times layer depth). Before, $J$ had relative errors of $5\cdot10^{-4}$ (CG) and
+$7\cdot10^{-3}$ (DG, curl form) and the DG face terms up to $2\cdot10^{-2}$; now all
+metric terms agree with Float64 to $10^{-6}$.
+
 \paragraph{Lam\'e form.}
 Equivalently, $L = \operatorname{diag}(h_\lambda,h_\varphi,h_r)\,
 \partial(\lambda,\varphi,r)/\partial\bm\xi$ with $h_\lambda = r\cos\varphi$,

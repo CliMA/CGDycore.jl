@@ -153,12 +153,14 @@ function MetricCompute(backend,FT,FE::DGElement,Model,Exchange,Grid,NumberThread
   Metric.zP = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   Metric.dz = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   F = PointsFromGrid(backend,FT,Grid)
-  FillX!(backend,Metric,FE,F,Grid,zS)
+  XL, X64 = FillX!(backend,Metric,FE,F,Grid,zS)
   FillRotate!(backend,Metric,FE,Grid)
-  FillContravariant!(backend,Metric,FE,Grid,Model.MetricType)
+  FillContravariant!(backend,Metric,XL,FE,Grid,Model.MetricType)
   FillDet!(backend,Metric,FE,Grid)
   @. Metric.invJ = FT(1) / Metric.J
-  GridSizeDGKernel!(FE,Metric,Grid.Rad,NumberThreadGPU,Grid.Form)
+  OnGridSizeBackend!(Metric,FE,X64) do MetricG,FEG
+    GridSizeDGKernel!(FEG,MetricG,Grid.Rad,NumberThreadGPU,Grid.Form)
+  end
   MetricLowerBoundary!(backend,Metric,FE,Grid,NumberThreadGPU,Grid.Form)
   NormalH!(backend,Metric,FE,Grid,NumberThreadGPU)
   NormalV!(backend,Metric,FE,Grid,NumberThreadGPU)  
@@ -182,8 +184,8 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   Metric.dz = KernelAbstractions.zeros(backend,FT,Nz,FE.NumG)
   F = PointsFromGrid(backend,FT,Grid)
 
-  FillX!(backend,Metric,FE,F,Grid,zS)
-  FillContravariant!(backend,Metric,FE,Grid,Grid.Type,Model.MetricType,Model.VelocityFrame)
+  XL, X64 = FillX!(backend,Metric,FE,F,Grid,zS)
+  FillContravariant!(backend,Metric,XL,FE,Grid,Grid.Type,Model.MetricType,Model.VelocityFrame)
   FillDet!(backend,Metric,FE,Grid)
   ShallowMetric!(backend,Metric,FE,Grid,Grid.Form,Model.Equation,Model.VelocityFrame)
 
@@ -193,14 +195,17 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   NzG = min(div(NumberThreadGPU,DoF),Nz)
   group = (DoF,NzG,1)
   ndrange = (DoF,Nz,NF)
-  if Grid.Form == Grids.SphericalGrid()
-    KGridSizeSphereKernel! = GridSizeSphereKernel!(backend,group)
-    Rad = Grid.Rad
-    KGridSizeSphereKernel!(Metric.zP,Metric.dz,Metric.X,FE.Glob,
-      Rad,ndrange=ndrange)
-  else
-    KGridSizeCartKernel! = GridSizeCartKernel!(backend,group)
-    KGridSizeCartKernel!(Metric.zP,Metric.dz,Metric.X,FE.Glob,ndrange=ndrange)
+  OnGridSizeBackend!(Metric,FE,X64) do MetricG,FEG
+    backendG = get_backend(MetricG.dz)
+    if Grid.Form == Grids.SphericalGrid()
+      KGridSizeSphereKernel! = GridSizeSphereKernel!(backendG,group)
+      Rad = Grid.Rad
+      KGridSizeSphereKernel!(MetricG.zP,MetricG.dz,MetricG.X,FEG.Glob,
+        Rad,ndrange=ndrange)
+    else
+      KGridSizeCartKernel! = GridSizeCartKernel!(backendG,group)
+      KGridSizeCartKernel!(MetricG.zP,MetricG.dz,MetricG.X,FEG.Glob,ndrange=ndrange)
+    end
   end
   NFG = min(div(NumberThreadGPU,DoF),NF)
   group = (DoF, NFG)
@@ -230,7 +235,7 @@ function MetricCompute(backend,FT,FE::CGElement,Model,Exchange,Grid,NumberThread
   return Metric
 end
 
-function FillContravariant!(backend,Metric,FE::DGQuad,Grid,MetricType)
+function FillContravariant!(backend,Metric,XL,FE::DGQuad,Grid,MetricType)
   FT = eltype(Metric.X)
   DoF = FE.DoF
   DoFE = FE.DoFE
@@ -241,15 +246,11 @@ function FillContravariant!(backend,Metric,FE::DGQuad,Grid,MetricType)
   group = (N,N,M,1,1)
   ndrange = (N,N,M,Nz,NF)
   _,DS,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPoly)
-  DSGPU = KernelAbstractions.zeros(backend,FT,size(DS))
-  copyto!(DSGPU,DS)
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
-  DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
-  copyto!(DSZGPU,DSZ)
-  ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,MetricType)
+  ContravariantQuad!(backend,Metric,XL,DS,DSZ,N,M,Nz,NF,MetricType)
 end
 
-function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,MetricType,Frame)
+function FillContravariant!(backend,Metric,XL,FE::CGElement,Grid,::Grids.Quad,MetricType,Frame)
   FT = eltype(Metric.X)
   DoF = FE.DoF
   DoFE = FE.DoFE
@@ -260,12 +261,8 @@ function FillContravariant!(backend,Metric,FE::CGElement,Grid,::Grids.Quad,Metri
   group = (N,N,M,1,1)
   ndrange = (N,N,M,Nz,NF)
   _,DS,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPoly)
-  DSGPU = KernelAbstractions.zeros(backend,FT,size(DS))
-  copyto!(DSGPU,DS)
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
-  DSZGPU = KernelAbstractions.zeros(backend,FT,size(DSZ))
-  copyto!(DSZGPU,DSZ)
-  ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,MetricType)
+  ContravariantQuad!(backend,Metric,XL,DS,DSZ,N,M,Nz,NF,MetricType)
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
   ApplyFrame!(backend,Metric,Grid,group,ndrange,Frame)
@@ -283,43 +280,74 @@ function ApplyFrame!(backend,Metric,Grid,group,ndrange,::Models.CartesianFrame)
   KNormalColumnKernel!(Metric.dXdxI,Metric.X,Grid.Form;ndrange=ndrange)
 end
 
-function FillContravariant!(backend,Metric,FE::DGTri,Grid,::DoubleDifferentiation)
+function FillContravariant!(backend,Metric,XL,FE::DGTri,Grid,::DoubleDifferentiation)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
   NF = Grid.NumFaces
   Nz = Grid.nz
-  group = (DoF,M,1,1)
-  ndrange = (DoF,M,Nz,NF)
-  KFillContraKernel1! = MetricTriKernel1!(backend,group)
-  KFillContraKernel1!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx2,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
-  KFillContraKernel2! = MetricTriKernel2!(backend,group)
-  KFillContraKernel2!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.DSZ,Val(DoF),Val(M);ndrange=ndrange)
-  KFillContraKernel3! = MetricTriKernel3!(backend,group)
-  KFillContraKernel3!(Metric.dXdxI,Metric.J,Metric.X,FE.Dx1,FE.Dx2,Val(DoF),Val(M);ndrange=ndrange)
+  _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
+  OnMetricBackend!(backend,Metric.dXdxI,Metric.J,XL,(FE.Dx1,FE.Dx2,DSZ)) do backendM,dXdxI,J,XL,(Dx1,Dx2,DSZ)
+    group = (DoF,M,1,1)
+    ndrange = (DoF,M,Nz,NF)
+    KFillContraKernel1! = MetricTriKernel1!(backendM,group)
+    KFillContraKernel1!(dXdxI,J,XL,Dx2,DSZ,Val(DoF),Val(M);ndrange=ndrange)
+    KFillContraKernel2! = MetricTriKernel2!(backendM,group)
+    KFillContraKernel2!(dXdxI,J,XL,Dx1,DSZ,Val(DoF),Val(M);ndrange=ndrange)
+    KFillContraKernel3! = MetricTriKernel3!(backendM,group)
+    KFillContraKernel3!(dXdxI,J,XL,Dx1,Dx2,Val(DoF),Val(M);ndrange=ndrange)
+  end
 end
 
-function FillContravariant!(backend,Metric,FE::DGTri,Grid,::SingleDifferentiation)
+# The contravariant metric is computed in Float64. Below Float64 the kernels run on the CPU
+# (also for backends without Float64 such as Metal) and the result is rounded to the working
+# precision. In the curl form the products X_l dX_m (~ element size^2) are differentiated to
+# J grad xi^1,2 (~ element size * layer depth), in Float32 this loses three digits.
+function OnMetricBackend!(f,backend,dXdxI,J,XL,D)
+  if eltype(dXdxI) == Float64
+    f(backend,dXdxI,J,XL,map(A -> ToBackend(backend,A),D))
+  else
+    backendH = KernelAbstractions.CPU()
+    dXdxIH = zeros(Float64,size(dXdxI))
+    JH = Float64.(Array(J))
+    f(backendH,dXdxIH,JH,Float64.(Array(XL)),map(A -> Float64.(Array(A)),D))
+    KernelAbstractions.synchronize(backendH)
+    copyto!(dXdxI,eltype(dXdxI).(dXdxIH))
+    copyto!(J,eltype(J).(JH))
+  end
+end
+
+function ToBackend(backend,A)
+  AB = KernelAbstractions.zeros(backend,Float64,size(A))
+  copyto!(AB,Float64.(Array(A)))
+  return AB
+end
+
+function FillContravariant!(backend,Metric,XL,FE::DGTri,Grid,::SingleDifferentiation)
   throw(ArgumentError("MetricType Single is not available for DG triangles, use Double"))
 end
 
 # Single differentiation: adjugate from the cross products of the derivatives of X
-function ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,::SingleDifferentiation)
-  group = (N,N,M,1,1)
-  ndrange = (N,N,M,Nz,NF)
-  KFillContraKernel! = MetricQuadKernel!(backend,group)
-  KFillContraKernel!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
+function ContravariantQuad!(backend,Metric,XL,DS,DSZ,N,M,Nz,NF,::SingleDifferentiation)
+  OnMetricBackend!(backend,Metric.dXdxI,Metric.J,XL,(DS,DSZ)) do backendM,dXdxI,J,XL,(DS,DSZ)
+    group = (N,N,M,1,1)
+    ndrange = (N,N,M,Nz,NF)
+    KFillContraKernel! = MetricQuadKernel!(backendM,group)
+    KFillContraKernel!(dXdxI,XL,DS,DSZ,Val(N),Val(M);ndrange=ndrange)
+  end
 end
 
 # Double differentiation: curl form of Kopriva, fulfils the discrete metric identities
-function ContravariantQuad!(backend,Metric,DSGPU,DSZGPU,N,M,Nz,NF,::DoubleDifferentiation)
-  group = (N,N,M,1,1)
-  ndrange = (N,N,M,Nz,NF)
-  KFillContraKernel1! = FillContraCurlQuadKernel1!(backend,group)
-  KFillContraKernel1!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
-  KFillContraKernel2! = FillContraCurlQuadKernel2!(backend,group)
-  KFillContraKernel2!(Metric.dXdxI,Metric.X,DSGPU,DSZGPU,Val(N),Val(M);ndrange=ndrange)
-  KFillContraKernel3! = FillContraCurlQuadKernel3!(backend,group)
-  KFillContraKernel3!(Metric.dXdxI,Metric.X,DSGPU,Val(N),Val(M);ndrange=ndrange)
+function ContravariantQuad!(backend,Metric,XL,DS,DSZ,N,M,Nz,NF,::DoubleDifferentiation)
+  OnMetricBackend!(backend,Metric.dXdxI,Metric.J,XL,(DS,DSZ)) do backendM,dXdxI,J,XL,(DS,DSZ)
+    group = (N,N,M,1,1)
+    ndrange = (N,N,M,Nz,NF)
+    KFillContraKernel1! = FillContraCurlQuadKernel1!(backendM,group)
+    KFillContraKernel1!(dXdxI,XL,DS,DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel2! = FillContraCurlQuadKernel2!(backendM,group)
+    KFillContraKernel2!(dXdxI,XL,DS,DSZ,Val(N),Val(M);ndrange=ndrange)
+    KFillContraKernel3! = FillContraCurlQuadKernel3!(backendM,group)
+    KFillContraKernel3!(dXdxI,XL,DS,Val(N),Val(M);ndrange=ndrange)
+  end
 end
 
 @kernel inbounds = true function FillContraCurlQuadKernel3!(dXdxI,@Const(X),@Const(DH), ::Val{N}, ::Val{M}) where {N,M}
@@ -956,6 +984,11 @@ end
   end
 end  
 
+# Node positions X and the element-local positions XL = X - X(first node of the element),
+# which the metric kernels differentiate. XL is formed without the absolute positions,
+#   XL = (h - h1) e + (Rad + h1) (e - e1),   e unit radial direction, h height,
+# so that its vertical differences are exact height differences also in Float32
+# (|X| ~ 6.4e6 m is rounded to about 0.5 m in Float32, the lowest layers are a few 10 m).
 function FillX!(backend,Metric,FE,F,Grid,zS)
   DoF = FE.DoF
   M = FE.OrdPolyZ + 1
@@ -963,11 +996,42 @@ function FillX!(backend,Metric,FE,F,Grid,zS)
   Nz = Grid.nz
   group = (DoF,M,1,1)
   ndrange = (DoF,M,Nz,NF)
-  KFillXKernel! = FillXKernel!(backend,group)
-  KFillXKernel!(Metric.X,Grid.Rad,Grid.AdaptGrid,FE.ksi,FE.xwZ,F,Grid.z,zS,Grid.Type,Grid.Form;ndrange=ndrange)
+  if eltype(Metric.X) == Float64
+    XL = similar(Metric.X)
+    KFillXKernel! = FillXKernel!(backend,group)
+    KFillXKernel!(Metric.X,XL,Grid.Rad,Grid.AdaptGrid,FE.ksi,FE.xwZ,F,Grid.z,zS,Grid.Type,Grid.Form;
+      ndrange=ndrange)
+    XH = Metric.X
+  else
+#   below Float64 on the CPU in Float64 (XL is a host array then), X is rounded afterwards
+    backendH = KernelAbstractions.CPU()
+    H64(A) = Float64.(Array(A))
+    XH = zeros(Float64,size(Metric.X))
+    XL = zeros(Float64,size(Metric.X))
+    KFillXKernel! = FillXKernel!(backendH,group)
+    KFillXKernel!(XH,XL,Float64(Grid.Rad),Grid.AdaptGrid,H64(FE.ksi),H64(FE.xwZ),H64(F),H64(Grid.z),H64(zS),
+      Grid.Type,Grid.Form;ndrange=ndrange)
+    KernelAbstractions.synchronize(backendH)
+    copyto!(Metric.X,eltype(Metric.X).(XH))
+  end
+  return XL, XH
 end  
 
-@kernel inbounds = true function FillXKernel!(X,Rad,AdaptGrid,@Const(ksi),@Const(zeta),@Const(F),@Const(z),@Const(zs),
+# Grid size dz and height zP of the layers from the Float64 positions X64 (a host array below
+# Float64), r2 - r1 of the rounded positions would be wrong by about 1 m in Float32
+function OnGridSizeBackend!(f,Metric,FE,X64)
+  if eltype(Metric.dz) == Float64
+    f(Metric,FE)
+  else
+    MetricH = (dz = zeros(Float64,size(Metric.dz)), zP = zeros(Float64,size(Metric.zP)), X = X64)
+    f(MetricH,(Glob = Array(FE.Glob),))
+    KernelAbstractions.synchronize(KernelAbstractions.CPU())
+    copyto!(Metric.dz,eltype(Metric.dz).(MetricH.dz))
+    copyto!(Metric.zP,eltype(Metric.zP).(MetricH.zP))
+  end
+end
+
+@kernel inbounds = true function FillXKernel!(X,XL,Rad,AdaptGrid,@Const(ksi),@Const(zeta),@Const(F),@Const(z),@Const(zs),
   ElemType,GridForm)
 
   ID, K, iz   = @index(Local, NTuple)
@@ -982,8 +1046,76 @@ end
     z2 = z[Iz+1]
     @views XPoint!(AdaptGrid,X[ID,K,:,Iz,IF],Rad,
     ksi[1,ID],ksi[2,ID],zeta[K],F[:,:,IF],z1,z2,H,zs[ID,IF],ElemType,GridForm)
+    @views XLocal!(AdaptGrid,XL[ID,K,:,Iz,IF],Rad,ksi[1,ID],ksi[2,ID],zeta[K],ksi[1,1],ksi[2,1],zeta[1],
+      F[:,:,IF],z1,z2,zs[ID,IF],zs[1,IF],ElemType,GridForm)
   end
 end  
+
+# point of the bilinear (quadrilateral) or linear (triangle) element map
+@inline function XFlat(ksi1,ksi2,F,::Grids.Quad)
+  one = eltype(F)(1)
+  quarter = eltype(F)(1/4)
+  w1 = quarter * (one-ksi1)*(one-ksi2)
+  w2 = quarter * (one+ksi1)*(one-ksi2)
+  w3 = quarter * (one+ksi1)*(one+ksi2)
+  w4 = quarter * (one-ksi1)*(one+ksi2)
+  return (w1 * F[1,1] + w2 * F[2,1] + w3 * F[3,1] + w4 * F[4,1],
+    w1 * F[1,2] + w2 * F[2,2] + w3 * F[3,2] + w4 * F[4,2],
+    w1 * F[1,3] + w2 * F[2,3] + w3 * F[3,3] + w4 * F[4,3])
+end
+
+@inline function XFlat(ksi1,ksi2,F,::Grids.Tri)
+  one = eltype(F)(1)
+  half = eltype(F)(1/2)
+  w1 = half * (-ksi1 - ksi2)
+  w2 = half * (one + ksi1)
+  w3 = half * (one + ksi2)
+  return (w1 * F[1,1] + w2 * F[2,1] + w3 * F[3,1],
+    w1 * F[1,2] + w2 * F[2,2] + w3 * F[3,2],
+    w1 * F[1,3] + w2 * F[2,3] + w3 * F[3,3])
+end
+
+@inline function XHeight(AdaptGrid,ksi3,z1,z2,zs)
+  one = eltype(z1)(1)
+  half = eltype(z1)(1/2)
+  zLoc = half * ((one-ksi3) * z1 + (one+ksi3) * z2)
+  hR, = AdaptGrid(zLoc,zs)
+  return hR
+end
+
+@inline function XUnit(ksi1,ksi2,F,ElemType)
+  X1, X2, X3 = XFlat(ksi1,ksi2,F,ElemType)
+  XMax = max(abs(X1), abs(X2), abs(X3))
+  X1 = X1 / XMax
+  X2 = X2 / XMax
+  X3 = X3 / XMax
+  r = sqrt(X1 * X1 + X2 * X2 + X3 * X3)
+  return X1 / r, X2 / r, X3 / r
+end
+
+@inline function XLocal!(AdaptGrid,XL,Rad,ksi1,ksi2,ksi3,ksiR1,ksiR2,ksiR3,F,z1,z2,zs,zsR,ElemType,
+  ::Grids.SphericalGrid)
+  e1, e2, e3 = XUnit(ksi1,ksi2,F,ElemType)
+  eR1, eR2, eR3 = XUnit(ksiR1,ksiR2,F,ElemType)
+  h = XHeight(AdaptGrid,ksi3,z1,z2,zs)
+  hR = XHeight(AdaptGrid,ksiR3,z1,z2,zsR)
+  dh = h - hR
+  RR = Rad + hR
+  XL[1] = dh * e1 + RR * (e1 - eR1)
+  XL[2] = dh * e2 + RR * (e2 - eR2)
+  XL[3] = dh * e3 + RR * (e3 - eR3)
+end
+
+@inline function XLocal!(AdaptGrid,XL,Rad,ksi1,ksi2,ksi3,ksiR1,ksiR2,ksiR3,F,z1,z2,zs,zsR,ElemType,
+  ::Grids.CartesianGrid)
+  X1, X2, X3 = XFlat(ksi1,ksi2,F,ElemType)
+  XR1, XR2, XR3 = XFlat(ksiR1,ksiR2,F,ElemType)
+  h = XHeight(AdaptGrid,ksi3,z1,z2,zs)
+  hR = XHeight(AdaptGrid,ksiR3,z1,z2,zsR)
+  XL[1] = X1 - XR1
+  XL[2] = X2 - XR2
+  XL[3] = (X3 - XR3) + (h - hR)
+end
 
 function FillDet!(backend,Metric,FE,Grid)
   DoF = FE.DoF
