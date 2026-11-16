@@ -289,7 +289,12 @@ function FillContravariant!(backend,Metric,XL,FE::DGTri,Grid,::DoubleDifferentia
   NF = Grid.NumFaces
   Nz = Grid.nz
   _,DSZ,_,_,_ = DG.DerivativeMatrixSingle(FE.OrdPolyZ)
-  OnMetricBackend!(backend,Metric.dXdxI,Metric.J,XL,(FE.Dx1,FE.Dx2,DSZ)) do backendM,dXdxI,J,XL,(Dx1,Dx2,DSZ)
+  if FE.DoFE == FE.k + 2
+    Dx1H, Dx2H, PN = TriMetricOperators(FE)
+  else
+    Dx1H, Dx2H, PN = FE.Dx1, FE.Dx2, nothing
+  end
+  OnMetricBackend!(backend,Metric.dXdxI,Metric.J,XL,(Dx1H,Dx2H,DSZ)) do backendM,dXdxI,J,XL,(Dx1,Dx2,DSZ)
     group = (DoF,M,1,1)
     ndrange = (DoF,M,Nz,NF)
     KFillContraKernel1! = MetricTriKernel1!(backendM,group)
@@ -298,6 +303,80 @@ function FillContravariant!(backend,Metric,XL,FE::DGTri,Grid,::DoubleDifferentia
     KFillContraKernel2!(dXdxI,J,XL,Dx1,DSZ,Val(DoF),Val(M);ndrange=ndrange)
     KFillContraKernel3! = MetricTriKernel3!(backendM,group)
     KFillContraKernel3!(dXdxI,J,XL,Dx1,Dx2,Val(DoF),Val(M);ndrange=ndrange)
+    if !isnothing(PN)
+      KProjectKernel! = MetricTriProjectKernel!(backendM,group)
+      KProjectKernel!(dXdxI,ToBackend(backendM,PN),Val(DoF),Val(M);ndrange=ndrange)
+    end
+  end
+end
+
+# Metric operators of the triangles. The flux differencing uses the SBP operators DSx1, DSx2,
+# exact on P_k only. Free stream needs sum_i DS_i (J grad xi^i) = 0 and face normals that agree in
+# both neighbours. Both hold if the products of the curl form are mapped to P_k by an operator whose
+# trace on an edge depends only on the nodes of this edge: vertex values, edge moments against
+# P_{k-2}, interior moments against P_{k-3}. The horizontal derivatives are exact derivatives of
+# this P_k map, rows 1 and 2 (which also hold vertical derivatives) are mapped to P_k at the end.
+# Needs vertex nodes on the edges (LGL edges, DoFE = k + 2).
+function TriMetricOperators(FE)
+  k = FE.k
+  DoF = FE.DoF
+  ksi = FE.ksiCPU
+  w = Float64.(Array(FE.w))
+  Pos = FE.PosDoFECPU
+  DoFE = size(Pos,1)
+  sE, wE = gausslobatto(DoFE)
+  pw = [(i - j, j) for i = 0 : k for j = 0 : i]
+  V = [ksi[1,n]^a * ksi[2,n]^b for n = 1 : DoF, (a,b) in pw]
+  V1 = [a == 0 ? 0.0 : a * ksi[1,n]^(a-1) * ksi[2,n]^b for n = 1 : DoF, (a,b) in pw]
+  V2 = [b == 0 ? 0.0 : b * ksi[1,n]^a * ksi[2,n]^(b-1) for n = 1 : DoF, (a,b) in pw]
+  L = zeros(length(pw),DoF)
+  iL = 0
+  for s = 1 : 3
+    iL += 1
+    L[iL,Pos[1,s]] = 1
+  end
+  for s = 1 : 3, j = 0 : k - 2
+    iL += 1
+    for e = 1 : DoFE
+      L[iL,Pos[e,s]] += wE[e] * sE[e]^j
+    end
+  end
+  for i = 0 : k - 3, j = 0 : i
+    iL += 1
+    @. L[iL,:] = w * ksi[1,:]^(i-j) * ksi[2,:]^j
+  end
+  P = (L * V) \ L
+  return V1 * P, V2 * P, V * P
+end
+
+@kernel inbounds = true function MetricTriProjectKernel!(dXdxI,@Const(PN),::Val{DoF},::Val{M}) where {DoF,M}
+
+  ID, K,   = @index(Local, NTuple)
+  _,_,IZ,IF = @index(Global, NTuple)
+
+  ALoc = @localmem eltype(dXdxI) (2,3,DoF,M)
+  NZ = @uniform @ndrange()[3]
+  NF = @uniform @ndrange()[4]
+
+  if IZ <= NZ && IF <= NF
+    @unroll for m = 1 : 3
+      @unroll for i = 1 : 2
+        ALoc[i,m,ID,K] = dXdxI[i,m,K,ID,IZ,IF]
+      end
+    end
+  end
+  @synchronize
+
+  if IZ <= NZ && IF <= NF
+    @unroll for m = 1 : 3
+      @unroll for i = 1 : 2
+        s = PN[ID,1] * ALoc[i,m,1,K]
+        @unroll for l = 2 : DoF
+          s += PN[ID,l] * ALoc[i,m,l,K]
+        end
+        dXdxI[i,m,K,ID,IZ,IF] = s
+      end
+    end
   end
 end
 
@@ -1487,16 +1566,16 @@ end
   if IE <= NE && Iz <= NZ
     IF1 = EF[1,IE]
     IF2 = EF[2,IE]
+    # edge node I is PosDoFE[I,.] in the first and PosDoFE[N-I+1,.] in the second element (GlobE)
     if IF1 < IF2
-      IF = IF1  
-      IS = FE[1,IE]  
+      IF = IF1
+      IS = FE[1,IE]
+      ID = PosDoFE[I,IS]
     else
       IF = IF2
-      IS = FE[2,IE]  
-    end  
-#   IF = EF[1,IE]
-#   IS = FE[1,IE]  
-    ID = PosDoFE[I,IS]  
+      IS = FE[2,IE]
+      ID = PosDoFE[N-I+1,IS]
+    end
     if IS == 1
       nSLoc1 = -dXdxI[2,1,K,ID,Iz,IF]
       nSLoc2 = -dXdxI[2,2,K,ID,Iz,IF]
