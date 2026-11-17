@@ -361,6 +361,7 @@ end
 Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,DG,Metric,Phys,Global,Model.InitialProfile,Param)
 
+(pAuxPos > 0 && GPAuxPos > 0) || error("DG needs the pressure and the geopotential in the auxiliary fields, set pAuxPos=1 and GPAuxPos=2")
 DGSEM.SetFluxes!(Model,Discretization,FTB,FluxDG,DensityMeanDG,InterfaceFluxDG,Param,Phys,pAuxPos,GPAuxPos,P.cS)
 
 if ModelType == "Boussinesq"
@@ -480,7 +481,7 @@ GridLengthMin,GridLengthMax = Grids.GridLength(Grid)
 if dtau == 0.0
   dtau = GridLengthMin / Param.cS / sqrt(2)  / (OrdPoly + 1)^1.5
 end  
-if nz > 1 && IntMethod == "RungeKutta"
+if nz > 1 && (IntMethod == "RungeKutta" || IntMethod == "RungeKuttaEx")
   dtau = min(Grid.H / nz / Param.cS / (OrdPolyZ + 1)^1.5, dtau)
 end  
 EndTime = SimTime + 3600*24*SimDays + 3600 * SimHours + 60 * SimMinutes + SimSeconds
@@ -505,7 +506,7 @@ if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "Ro
   Fcn = (DGSEM.FcnSplit!,)
   Jac = DGSEM.Jac!
   dt = (dtau,)
-elseif IntMethod == "RungeKuttaEx"
+elseif IntMethod == "RungeKuttaEx" || IntMethod == "RungeKutta"
   MethodInt = Integration.RungeKuttaExMethod{FTB}(Table)
   Fcn = (DGSEM.FcnSplit!,)
   Jac = nothing

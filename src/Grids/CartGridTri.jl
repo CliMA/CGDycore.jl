@@ -7,7 +7,7 @@ function CartGridTri(backend,FT,nx::Int,ny::Int,lx::Float64,ly::Float64,x0::Floa
              0   0  0    0]
   Dim=3
   Type = Tri()
-  Form="Planar"
+  Form = CartesianGrid()
   Pert=0.0
   PertX=0.2
   PertY=0.2

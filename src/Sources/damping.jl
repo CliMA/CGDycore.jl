@@ -7,8 +7,8 @@ Base.@kwdef struct DampingW <: DampingValue end
 @inline PosVal(::Val{P}) where {P} = P
 @inline PosVal(P::Integer) = P
 
-function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityC,
-  ::Grids.CartesianGrid)
+function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,
+  ::Union{Examples.VelocityC,Examples.VelocityS},::Grids.CartesianGrid)
   wPos = PosVal(wPosV)
   @inline function Damping(F,U,xS,z)
     FT = eltype(z)

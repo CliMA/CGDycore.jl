@@ -76,7 +76,7 @@ function InitialConditions(backend,FTB,CG::FiniteElements.CGElement,Metric,Excha
     KernelAbstractions.synchronize(backend)
   end  
   if Model.TkePos > 0
-    @views @. U[:,:,:,Model.TkePos] = U[:,:,Model.RhoPos] * 1.e-2 
+    @views @. U[:,:,:,Model.TkePos] = U[:,:,:,Model.RhoPos] * 1.e-2 
   end  
   ToVelocityFrame!(backend,U,CG,Metric,Global,Model.VelocityFrame)
 

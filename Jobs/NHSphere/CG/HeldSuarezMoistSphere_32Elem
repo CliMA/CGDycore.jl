@@ -1,7 +1,7 @@
 #!/bin/bash
 julia --project --check-bounds=yes Examples/DriverCG.jl \
   --Problem="HeldSuarezMoistSphere" \
-  --NumberThreadGPU=512 \
+  --NumberThreadGPU=256 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumTr=2 \
@@ -23,6 +23,7 @@ julia --project --check-bounds=yes Examples/DriverCG.jl \
   --StrideDamp=10000 \
   --Relax=1.0e-3 \
   --Forcing=true \
+  --pAuxPos=1 \
   --SurfaceFlux=true \
   --SurfaceFluxMom=true \
   --VerticalDiffusionMom=false \

@@ -120,6 +120,10 @@ HyperDGrad = parsed_args["HyperDGrad"]
 HyperDDiv = parsed_args["HyperDDiv"]
 # Output
 OrdPrint = parsed_args["OrdPrint"]
+# 0: print with the polynomial order (the interpolation in FE and the vtk cells must agree)
+if OrdPrint == 0
+  OrdPrint = OrdPoly
+end
 OrdPrintZ = parsed_args["OrdPrintZ"]
 PrintDays = parsed_args["PrintDays"]
 PrintHours = parsed_args["PrintHours"]
@@ -380,6 +384,7 @@ Examples.InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
 U = Examples.InitialConditions(backend,FTB,CG,Metric,Exchange,Phys,Global,Model.InitialProfile,Param)
 
 if Forcing
+  pAuxPos > 0 || error("Forcing needs the pressure in the auxiliary fields, set pAuxPos=1")
   Model.Force = Sources.HeldSuarezDryForcing()(Param,Model.RhoPos,Model.uPos,Model.vPos,
       Model.wPos,Model.RhoThPos,Model.pAuxPos,Examples.VelocityS())
 end
@@ -469,6 +474,8 @@ elseif State == "IceInternalEnergy"
 elseif State == "ShallowWater"
   Pressure = Models.ShallowWaterState()(Phys)
   Model.Pressure = Pressure
+else
+  error("State = $State is not available, choose Dry, DryInternalEnergy, DryTotalEnergy, Moist, MoistInternalEnergy, MoistTotalEnergy, IceInternalEnergy or ShallowWater")
 end
 
 #Microphysics
@@ -490,7 +497,7 @@ if Microphysics
     Model.MicrophysicsSource = MicrophysicsSource
     Model.SedimentationSource = SedimentationSource
   else
-    @show "False Type Microphysics"
+    error("TypeMicrophysics = $TypeMicrophysics is not available, choose SimpleMicrophysicsPot, SimpleMicrophysicsIE or OneMomentMicrophysicsMoistEquil")
   end
 end
 
@@ -500,7 +507,7 @@ if Model.SurfaceFlux
   Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.NumG)
   Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
   @. Global.LandUseData.LandClass = 2 # Need more Oswald
-  if Problem == "HeldSuarezMoistSphere"  
+  if Problem == "HeldSuarezMoistSphere" || Problem == "BaroWaveMoistSphere" || Problem == "FriersonSphere"
     SurfaceValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)  
     Model.SurfaceValues = SurfaceValues
   else
@@ -511,7 +518,7 @@ end
 # SurfaceFlux
 if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
   if SurfaceScheme == ""
-    @show "Warning: No surface scheme"  
+    error("SurfaceFlux, VerticalDiffusion, SurfaceFluxMom or VerticalDiffusionMom need a SurfaceScheme, choose MOST")
   elseif SurfaceScheme == "MOST"
     @show "SurfaceScheme MOST"
     SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
@@ -607,9 +614,8 @@ elseif ModelType == "Conservative"
     "Rho",
     "Rhou",
     "Rhov",
-    "w",
+    "Rhow",
     "Th",
-    "Vort",
     ]
 end
 
@@ -665,7 +671,7 @@ if IntMethod == "Rosenbrock" || IntMethod == "RosenbrockSSP" || IntMethod == "Ro
 # O,MethodInt = IMEXRosenbrock.FindRosenbrockMethod()
   Fcn = (CGSEM.Fcn!,)
   dt = (dtau,)
-elseif IntMethod == "RungeKuttaEx"
+elseif IntMethod == "RungeKuttaEx" || IntMethod == "RungeKutta"
   MethodInt = Integration.RungeKuttaExMethod{FTB}(Table)
   Fcn = (CGSEM.Fcn!,)
   dt = dtau

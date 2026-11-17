@@ -1,7 +1,7 @@
 #!/bin/bash
 julia --project --check-bounds=yes Examples/DriverDG.jl \
   --Problem="WarmBubble2DXCart" \
-  --NumberThreadGPU=512 \
+  --NumberThreadGPU=256 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumAux=4 \

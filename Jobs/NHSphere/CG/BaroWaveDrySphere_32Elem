@@ -1,7 +1,7 @@
 #!/bin/bash
 julia --project Examples/DriverCG.jl \
   --Problem="BaroWaveDrySphere" \
-  --NumberThreadGPU=512 \
+  --NumberThreadGPU=256 \
   --FloatTypeBackend="Float64" \
   `#Model `    \
   --NumV=5 \
@@ -37,7 +37,7 @@ julia --project Examples/DriverCG.jl \
   --vtkFileName="output/VTK/BaroWaveDrySphere/CGE32Quad" \
   --dtau=230 \
   --IntMethod="Rosenbrock" \
-  --Table="ROS4O3opt16c" \
+  --Table="SSP-Knoth" \
   `#Grid `        \
   --GridForm="Spherical" \
   --Stretch=true \

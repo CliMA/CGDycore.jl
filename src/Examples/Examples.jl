@@ -61,7 +61,7 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
   elseif Problem == "BaroWaveDrySphere" || Problem == "BaroWaveHillDrySphere"
     Profile = Examples.BaroWaveDryExample()(Param,Phys,VelForm)
     Model.InitialProfile = Profile
-  elseif Problem == Problem == "BaroWaveMoistSphere"
+  elseif Problem == "BaroWaveMoistSphere"
     Profile = Examples.BaroWaveMoistExample()(Param,Phys)
     Model.InitialProfile = Profile
   elseif Problem == "SchaerSphericalSphere"
@@ -75,7 +75,7 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
     Model.InitialProfile = Profile
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" ||
     Problem == "FriersonSphere"
-    Profile, = Examples.HeldSuarezDryExample()(Param,Model.RhoPos,Model.uPos,Model.vPos,
+    Profile, = Examples.HeldSuarezDryExample()(Param,Phys,Model.RhoPos,Model.uPos,Model.vPos,
       Model.wPos,Model.RhoThPos,Model.pAuxPos,VelForm)
     Model.InitialProfile = Profile
   elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
@@ -84,7 +84,8 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
     Profile = Examples.StratifiedSphereExample()(Param,Phys)
     Model.InitialProfile = Profile
     Model.Force = Force
-  elseif Problem == "Stratified" || Problem == "HillAgnesiXCart" || Problem == "HillSchaerCart"
+  elseif Problem == "Stratified" || Problem == "HillAgnesiXCart" || Problem == "HillSchaerCart" ||
+    Problem == "HillAgnesiYCart" || Problem == "HillGaussCart"
     Profile = Examples.StratifiedExample()(Param,Phys)
     Model.InitialProfile = Profile
     @show "Stratified"

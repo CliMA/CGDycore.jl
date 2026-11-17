@@ -1,0 +1,37 @@
+#!/bin/bash
+julia --project Examples/DriverCG.jl \
+  --Problem="HaurwitzSphere" \
+  --NumberThreadGPU=256 \
+  --FloatTypeBackend="Float32" \
+  --NumV=5 \
+  --NumTr=0 \
+  --Coriolis=true \
+  --Upwind=true \
+  --HorLimit=false \
+  --ModelType="VectorInvariant" \
+  --Equation="CompressibleShallow" \
+  --State="ShallowWater" \
+  --Buoyancy=false \
+  --Decomp="EqualArea" \
+  --SimSeconds=0 \
+  --SimDays=14 \
+  --PrintSeconds=0 \
+  --PrintMinutes=0 \
+  --PrintHours=12 \
+  --PrintDays=0 \
+  --StartAverageDays=100 \
+  --Flat=false \
+  --dtau=60 \
+  --IntMethod="RungeKutta" \
+  --Table="RK4" \
+  --TopoS="" \
+  --GridType="CubedSphere" \
+  --nz=1 \
+  --nPanel=50 \
+  --H=300.0 \
+  --OrdPoly=3 \
+  --HyperVisc=true \
+  --HyperDCurl=1.0e14 \
+  --HyperDGrad=1.0e14 \
+  --HyperDDiv=1.0e14 \
+  --HyperDDivW=0.e16

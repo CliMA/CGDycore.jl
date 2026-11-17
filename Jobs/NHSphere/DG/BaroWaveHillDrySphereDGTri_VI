@@ -1,0 +1,54 @@
+#!/bin/bash
+# DG baroclinic wave with BaroWaveHill orography on triangles, VectorInvariant form,
+# volume flux VectorInvariant, interface flux RiemannVectorInvariant
+# device: export JuliaDevice="GPU" JuliaGPU="CUDA" (or "Metal"), default CPU
+julia --project Examples/DriverDG.jl \
+  --Problem="BaroWaveHillDrySphere" \
+  --FloatTypeBackend="Float64" \
+  --NumberThreadGPU=128 \
+  --NumberThreadTriGPU=16 \
+  --NumV=5 \
+  --NumTr=0 \
+  --NumAux=4 \
+  --pAuxPos=1 \
+  --GPAuxPos=2 \
+  --Equation="CompressibleShallow" \
+  --ModelType="VectorInvariant" \
+  --State="Dry" \
+  --Discretization="DG" \
+  --FluxDG="VectorInvariant" \
+  --InterfaceFluxDG="RiemannVectorInvariant" \
+  --VelocityForm="Cartesian" \
+  --MetricType="Double" \
+  --Buoyancy=false \
+  --Coriolis=true \
+  --Damping=true \
+  --StrideDamp=20000 \
+  --Relax=1.0e-3 \
+  --Forcing=false \
+  --VerticalDiffusion=false \
+  --Upwind=true \
+  --HorLimit=false \
+  --Decomp="EqualArea" \
+  --SimDays=5 \
+  --PrintHours=6 \
+  --PrintDays=0 \
+  --OrdPrint=4 \
+  --OrdPrintZ=4 \
+  --vtkFileName="output/VTK/BaroWaveHillDrySphere/DGTri_VI" \
+  --StartAverageDays=100 \
+  --Flat=true \
+  --dtau=75 \
+  --dtauSmall=5 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="BaroWaveHill" \
+  --AdaptGridType="Sleve" \
+  --Stretch=false \
+  --GridForm="Spherical" \
+  --GridType="TriangularSphere" \
+  --RefineLevel=4 \
+  --nz=13 \
+  --H=31000.0 \
+  --OrdPoly=4 \
+  --OrdPolyZ=4

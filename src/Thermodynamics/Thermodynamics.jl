@@ -64,7 +64,7 @@ end
   a = FT(17.368)
   b = FT(238.88)
   T_C = T - Phys.T0
-  fwps = e_s0 * exp(a * T_C / (b + T_C))
+  fpws = e_s0 * exp(a * T_C / (b + T_C))
   fpws * a * ((b + T_C) - T_C) / (b + T_C) / (b + T_C)
 end
 

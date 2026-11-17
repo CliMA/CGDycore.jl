@@ -2,7 +2,7 @@
 julia --project Examples/DriverDG.jl \
   --Problem="HillAgnesiXCart" \
   --Discretization="DG" \
-  --NumberThreadGPU=512 \
+  --NumberThreadGPU=256 \
   --FloatTypeBackend="Float64" \
   --NumV=5 \
   --NumAux=2 \

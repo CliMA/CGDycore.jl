@@ -1,10 +1,10 @@
 #!/bin/bash
-julia --project Examples/Driver.jl \
+julia --project Examples/DriverCG.jl \
   --Problem="GapSphere" \
   --Device="CPU" \
   --GPUType="Metal" \
   --FloatTypeBackend="Float32" \
-  --NumberThreadGPU=512 \
+  --NumberThreadGPU=256 \
   --NumV=5 \
   --NumTr=0 \
   --ProfpBGrd="" \

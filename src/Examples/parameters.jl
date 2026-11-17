@@ -53,12 +53,12 @@ Base.@kwdef struct ParamGalewskySphere{FT}
   cS::FT = sqrt(H0G * 9.81)
 end
 
-Base.@kwdef struct ParamHaurwitzSphere
-  ω = 7.848e-6 # Hz
-  K = 7.848e-6 # Hz
-  h0 = 8000 # m
-  R = 4
-  cS = sqrt(8000 * 9.81)
+Base.@kwdef struct ParamHaurwitzSphere{FT}
+  ω::FT = 7.848e-6 # Hz
+  K::FT = 7.848e-6 # Hz
+  h0::FT = 8000 # m
+  R::FT = 4
+  cS::FT = sqrt(8000 * 9.81)
 end
 
 Base.@kwdef struct ParamModonCollision{FT}
@@ -72,21 +72,21 @@ Base.@kwdef struct ParamModonCollision{FT}
     cS::FT = sqrt(h0*9.81)
 end
 
-Base.@kwdef struct ParamLinearBlob
+Base.@kwdef struct ParamLinearBlob{FT}
 # lat0 = 4.0*atan(1.0)
-  lat0 = 0.0
-  lon0 = 0.0
-  Width = 0.8
-  H = 1.0e1
-  cS = 100.0
+  lat0::FT = 0.0
+  lon0::FT = 0.0
+  Width::FT = 0.8
+  H::FT = 1.0e1
+  cS::FT = 100.0
 end
 
-Base.@kwdef struct ParamLinearBlobCart
-  x0 = 0.0
-  y0 = 0.0
-  Width = 600.0
-  H = 1.0e1
-  cS = 360.0
+Base.@kwdef struct ParamLinearBlobCart{FT}
+  x0::FT = 0.0
+  y0::FT = 0.0
+  Width::FT = 600.0
+  H::FT = 1.0e1
+  cS::FT = 360.0
 end
 
 Base.@kwdef struct ParamBaroWaveDryCart{FT}
@@ -147,8 +147,14 @@ Base.@kwdef struct ParamBaroWaveDrySphere{FT}
   p_w::FT = 34.0e3
   q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
   q_t::FT = 1.0e-12
-  # Surface flux
+  # Surface flux, sea surface temperature as in the moist Held-Suarez case
   CMom::FT = 1.e-3
+  CM::FT  = 0.0044
+  CE::FT  = 0.0044
+  CH::FT = 0.0044
+  DeltaTS::FT = 29.0
+  TSMin::FT = 271.0
+  DeltaLat::FT = 26.0 * pi / 180.0
   cS::FT = 360
 end
 
@@ -311,21 +317,22 @@ Base.@kwdef struct ParamHillAgnesiXCart{FT}
   Stretch::Bool = false
   CMom::FT = 1.e-3
   TSurf::FT = 299
+  RhoVSurf::FT = 0
   cS::FT = 360
 end
 
-Base.@kwdef struct ParamHillAgnesiYCart
-  Deep=false
-  NBr=1.e-2
-  Th0=300.0
-  uMax=0
-  vMax=10
-  wMax=0
-  TEq=300.0
-  a = 1000.0
-  h = 400.0
-  yc = 0.0
-  Stretch = false
+Base.@kwdef struct ParamHillAgnesiYCart{FT}
+  Deep::Bool = false
+  NBr::FT = 1.e-2
+  Th0::FT = 300.0
+  uMax::FT = 0
+  vMax::FT = 10
+  wMax::FT = 0
+  TEq::FT = 300.0
+  a::FT = 1000.0
+  h::FT = 400.0
+  yc::FT = 0.0
+  Stretch::Bool = false
 end
 
 Base.@kwdef struct ParamWarmBubble2DXCart{FT}
@@ -376,14 +383,14 @@ end
 Base.@kwdef struct ParamTestGradient
 end
 
-Base.@kwdef struct ParamHillGaussCart
-  Deep=false
-  NBr=1.e-2
-  Th0=300.0
-  uMax=0
-  vMax=0
-  TEq=300.0
-  Stretch = false
+Base.@kwdef struct ParamHillGaussCart{FT}
+  Deep::Bool = false
+  NBr::FT = 1.e-2
+  Th0::FT = 300.0
+  uMax::FT = 0
+  vMax::FT = 0
+  TEq::FT = 300.0
+  Stretch::Bool = false
 end
 
 H = 1.2e4
@@ -398,17 +405,17 @@ omega_0 = 23000 * pi / tau
 RadEarth = 6.37122e+6
 p0 = 1.e5
 p_top = p0 * exp(-H / ScaleHeight)
-Base.@kwdef struct ParamAdvectionSphereGaussian
-  TimeDependent = true
-  hMax = 0.95
-  b = 5.0
-  lon1 = 5.0e0 / 6.0e0 * pi
-  lat1 = 0.0e0
-  lon2 = 7.0e0 / 6.0e0 * pi
-  lat2 = 0.0e0
-  EndTime = 12.0 * 24.0 * 3600.0
-  FacVel = 10.0
-  StreamFun = true
+Base.@kwdef struct ParamAdvectionSphereGaussian{FT}
+  TimeDependent::Bool = true
+  hMax::FT = 0.95
+  b::FT = 5.0
+  lon1::FT = 5.0e0 / 6.0e0 * pi
+  lat1::FT = 0.0e0
+  lon2::FT = 7.0e0 / 6.0e0 * pi
+  lat2::FT = 0.0e0
+  EndTime::FT = 12.0 * 24.0 * 3600.0
+  FacVel::FT = 10.0
+  StreamFun::Bool = true
 end  
 Base.@kwdef struct ParamAdvectionSphereSlottedCylinder{FT}
   uMax::FT = 1.0
@@ -573,13 +580,13 @@ function Parameters(FT,Problem::String)
     Param = ParamInertiaGravityLongCart{FT}()
   elseif Problem == "HaurwitzSphere"
     @show Problem
-    Param = ParamHaurwitzSphere()
+    Param = ParamHaurwitzSphere{FT}()
   elseif Problem == "LinearBlob"
     @show Problem
-    Param = ParamLinearBlob()
+    Param = ParamLinearBlob{FT}()
   elseif Problem == "LinearBlobCart"
     @show Problem
-    Param = ParamLinearBlobCart()
+    Param = ParamLinearBlobCart{FT}()
   elseif Problem == "HeldSuarezDrySphere" || Problem == "HeldSuarezDrySphereOro" ||
     Problem == "FriersonSphere" 
     @show Problem
@@ -597,10 +604,10 @@ function Parameters(FT,Problem::String)
     Param = ParamHillAgnesiXCart{FT}()
   elseif Problem == "HillAgnesiYCart"
     @show Problem
-    Param = ParamHillAgnesiYCart()
+    Param = ParamHillAgnesiYCart{FT}()
   elseif Problem == "HillGaussCart"
     @show Problem
-    Param = ParamHillGaussCart()
+    Param = ParamHillGaussCart{FT}()
   elseif Problem == "AdvectionSphereDCMIP"
     @show Problem
     Param = ParamAdvectionSphereDCMIP{FT}()
@@ -609,7 +616,7 @@ function Parameters(FT,Problem::String)
     Param = ParamAdvectionSphereSpherical{FT}()  
   elseif Problem == "AdvectionSphereGaussian"
     @show Problem
-    Param = ParamAdvectionSphereGaussian()
+    Param = ParamAdvectionSphereGaussian{FT}()
   elseif Problem == "AdvectionSphereSlottedCylinder"
     @show Problem
     Param = ParamAdvectionSphereSlottedCylinder{FT}()
@@ -639,16 +646,16 @@ function Parameters(FT,Problem::String)
     Param = ParamHillAgnesiXCart()
   elseif Problem == "HillAgnesiYCart"
     @show Problem
-    Param = ParamHillAgnesiYCart()
+    Param = ParamHillAgnesiYCart{FT}()
   elseif Problem == "HillGaussCart"
     @show Problem
-    Param = ParamHillGaussCart()
+    Param = ParamHillGaussCart{FT}()
   elseif Problem == "AdvectionDCMIP"
     @show Problem
     Param = ParamAdvectionSphereDCMIP{FT}()
   elseif Problem == "AdvectionSphereGaussian"
     @show Problem
-    Param = ParamAdvectionSphereGaussian()
+    Param = ParamAdvectionSphereGaussian{FT}()
   elseif Problem == "AdvectionSphereSlottedCylinder"
     @show Problem
     Param = ParamAdvectionSphereSlottedCylinder()

@@ -1,0 +1,44 @@
+#!/bin/bash
+julia --project Examples/DriverCG.jl \
+  --Problem="BryanFritschCart" \
+  --FloatTypeBackend="Float32" \
+  `#Model `        \
+  --NumV=5 \
+  --NumTr=2 \
+  --RhoTPos=6 \
+  --RhoRPos=7 \
+  --Equation="CompressibleShallow" \
+  --State="MoistInternalEnergy" \
+  --Damping=false \
+  --Upwind=true \
+  --Microphysics=true \
+  --TypeMicrophysics="OneMomentMicrophysicsMoistEquil" \
+  --Sedimentation=true \
+  --SimTime=1000 \
+  `#Output `        \
+  --PrintTime=50.0 \
+  `#Integration `        \
+  --dtau=.2 \
+  --IntMethod="RungeKutta" \
+  --Table="RK4" \
+  `#Grid       `        \
+  --GridForm="Cartesian" \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --H=10000.0 \
+  --Lx=20000.0 \
+  --Ly=2000.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nz=80 \
+  --nx=40 \
+  --ny=2 \
+  `#Topography `        \
+  --TopoS="" \
+  `#Discretization `     \
+  --OrdPoly=4 \
+  --HyperVisc=true \
+  --HyperDCurl=1.e7 \
+  --HyperDGrad=1.e7 \
+  --HyperDDiv=1.e7

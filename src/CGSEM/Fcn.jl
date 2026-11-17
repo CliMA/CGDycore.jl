@@ -218,6 +218,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   TrPos = NumV
   if TkePos > 0
     @views Tke = U[:,:,:,TkePos]  
+    # TkePos:TkePos for the tracer kernels, the column layout for the upwind and source kernels
+    @views Tke4 = U[:,:,:,TkePos:TkePos]
+    @views Tke2 = U[1,:,:,TkePos]
     TrPos += 1
   end  
   @views UTr = U[:,:,:,TrPos+1:TrPos+NumTr]
@@ -243,6 +246,8 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   @views FRho = F[:,:,:,1]
   if TkePos > 0
     @views FTke = F[:,:,:,TkePos]  
+    @views FTke4 = F[:,:,:,TkePos:TkePos]
+    @views FTke2 = F[1,:,:,TkePos]
   end  
   @views FTr = F[:,:,:,TrPos+1:TrPos+NumTr]
 # Cache
@@ -265,7 +270,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end  
   if TkePos > 0
     LenTemp1 += 1
-    @views CacheTke = Temp1[:,:,:,LenTemp1]
+    @views CacheTke = Temp1[:,:,:,LenTemp1:LenTemp1]
   end  
   if ~HorLimit && NumTr > 0
     @views CacheTr = Temp1[:,:,:,LenTemp1+1:LenTemp1+NumTr]
@@ -375,7 +380,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
   if TkePos > 0
-    @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
+    @views KHyperViscTracerKernel!(CacheTke,1,Tke4,Rho,DS,DW,dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
       
   if KoeffDivW > 0
@@ -405,7 +410,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     @views KHyperViscTracerKernel!(CacheTr[:,:,:,:],NumTr,UTr[:,:,:,:],Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if TkePos > 0
-    @views KHyperViscTracerKernel!(CacheTke,Tke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    @views KHyperViscTracerKernel!(CacheTke,1,Tke4,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if KoeffDivW > 0
     @views KHyperViscWKernel!(Cachew,U[:,:,:,4],DS,DW,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
@@ -432,9 +437,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
       KoeffDiv,ndrange=ndrangeB)
   end  
   if TkePos > 0
-    @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI,J,M,Glob,
+    @views KHyperViscTracerKoeffKernel!(FTke4,1,CacheTke,Rho,DS,DW,dXdxI,J,M,Glob,
       KoeffDiv,ndrange=ndrangeB)
-    @views KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS, dXdxI,J,M,Glob,ndrange=ndrangeB)
+    @views KDivRhoTrUpwind3Kernel!(FTke2,Tke2,U,DS, dXdxI,J,M,Glob,ndrange=ndrangeB)
   end  
   if KoeffDivW > 0
     KHyperViscWKoeffKernel! = HyperViscWKoeffKernel!(backend, groupTr)
@@ -495,9 +500,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
       KoeffDiv,ndrange=ndrangeI)
   end  
   if TkePos > 0
-    @views KHyperViscTracerKoeffKernel!(FTke,CacheTke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
+    @views KHyperViscTracerKoeffKernel!(FTke4,1,CacheTke,Rho,DS,DW,dXdxI_I,J_I,M,Glob_I,
       KoeffDiv,ndrange=ndrangeI)
-    KDivRhoTrUpwind3Kernel!(FTke,Tke,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
+    KDivRhoTrUpwind3Kernel!(FTke2,Tke2,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
   end  
   if KoeffDivW > 0
     @views KHyperViscWKoeffKernel!(F[:,:,:,4],Cachew,DS,DW,dXdxI_I,J_I,M,Glob_I,KoeffDivW,ndrange=ndrangeI)
@@ -557,7 +562,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   if Global.Model.Turbulence
     KV = Cache.KV
     KTkeSourceKernel! = TkeSourceKernel!(backend, groupG)
-    KTkeSourceKernel!(Global.Model.TurbulenceSource,FTke,KV,U,dz,ndrange=ndrangeG)
+    KTkeSourceKernel!(Global.Model.TurbulenceSource,FTke2,view(KV,1,:,:),U,dz,ndrange=ndrangeG)
   end 
   if Global.Model.VerticalDiffusionMom
     KVerticalDiffusionMomentumKernel! = VerticalDiffusionMomentumKernel!(backend,groupG)

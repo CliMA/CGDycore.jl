@@ -772,11 +772,10 @@ function (profile::BaroWaveDryCart)(Param,Phys)
     Grav = Phys.Grav
     z = x[3]
     eta = z2Eta(x[1],x[2],x[3],Param,Phys)
-    Temperature = 300.0
-    uC = -u0 * sin(pi * x[2] / Ly)^2 * log(eta) * exp(-(log(eta)/b)^2)
+    uC = -u0 * sin(FT(pi) * x[2] / Ly)^2 * log(eta) * exp(-(log(eta)/b)^2)
     uC += up * exp(-((x[1] - xC)^2 + (x[2] - yC)^2)/ Lp^2)
-    vC = 0.0
-    w = 0.0
+    vC = FT(0)
+    w = FT(0)
     T = TemperatureBaroWaveCart(x[1],x[2],eta,Param,Phys)
     p = eta * p0
     Rho = p / (Rd * T)
@@ -1084,16 +1083,23 @@ end
 
 Base.@kwdef struct HeldSuarezDryExample <: Example end
 
-function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::VelocityS)
+# deterministic perturbation in [0,1) to break the symmetry (rand() does not run in GPU kernels)
+@inline function HashNoise(lon,lat)
+  FT = typeof(lon)
+  h = sin(FT(12.9898) * lon + FT(78.233) * lat) * FT(43758.5453)
+  return h - floor(h)
+end
+
+function (::HeldSuarezDryExample)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos,::VelocityS)
   @inline function profile(x,time)
     FT = eltype(x)
     (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    Z = max(R - FT(P.RadEarth), FT(0))
+    Z = max(R - Phys.RadEarth, FT(0))
     T0 = FT(0.5) * (Param.T0E + Param.T0P)
     ConstA = FT(1.0) / Param.LapseRate
     ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
     ConstC = FT(0.5) * (Param.K + FT(2.0)) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
-    ConstH = FT(P.Rd) * T0 / FT(P.Grav)
+    ConstH = Phys.Rd * T0 / Phys.Grav
     ScaledZ = Z / (Param.B * ConstH)
     Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
     ConstB * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
@@ -1102,28 +1108,28 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     ConstB * Z * exp(-ScaledZ * ScaledZ)
     IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
     if Param.Deep
-      RRatio = R / FT(P.RadEarth)
+      RRatio = R / Phys.RadEarth
     else
       RRatio = FT(1.0)
     end
     InteriorTerm = (RRatio * cos(lat))^Param.K -
     Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
     Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
-    Pressure = FT(P.p0) * exp(-FT(P.Grav)/FT(P.Rd) *
+    Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
-    Rho = Pressure / (FT(P.Rd) * Temperature)
-    Th = Temperature * (FT(P.p0) / Pressure)^(FT(P.Rd) / FT(P.Cpd))
+    Rho = Pressure / (Phys.Rd * Temperature)
+    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
     InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
          (RRatio * cos(lat))^(Param.K + FT(1.0))
-    BigU = FT(P.Grav) / FT(P.RadEarth) * Param.K *
+    BigU = Phys.Grav / Phys.RadEarth * Param.K *
       IntTau2 * InteriorTermU * Temperature
     if Param.Deep
       RCoslat = R * cos(lat)
     else
-      RCoslat =FT(P.RadEarth) * cos(lat)
+      RCoslat =Phys.RadEarth * cos(lat)
     end
-    OmegaRCoslat = FT(P.Omega)*RCoslat
+    OmegaRCoslat = Phys.Omega*RCoslat
 
     #                 if (dOmegaRCoslat * dOmegaRCoslat + dRCoslat * dBigU < 0.0) {
     #                         _EXCEPTIONT("Negative discriminant detected.")
@@ -1134,10 +1140,10 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     vS = FT(0)
     w = FT(0)
 
-    IE = FT(Thermodynamics.InternalEnergyW(1.0,0.0,0.0,Temperature,P))
-    E = IE + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),Temperature,Phys)
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
     if Z <= FT(2000.0)
-      Th = Th + rand()  
+      Th = Th + HashNoise(lon,lat)  
     end  
     return (Rho,uS,vS,w,Th,E,IE)
   end
@@ -1145,8 +1151,8 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     FT = eltype(U)
     p = Aux[pPos]
     lat = xS[2]
-    Sigma = p / FT(P.p0)
-    SigmaPowKappa = fast_powGPU(Sigma,FT(P.kappa))
+    Sigma = p / Phys.p0
+    SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
     sinlat = sin(lat)
     coslat = cos(lat)
@@ -1156,22 +1162,22 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
       Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
-    T = p / (U[RhoPos] * FT(P.Rd))
+    T = p / (U[RhoPos] * Phys.Rd)
     DeltaT =  kT * (T - Teq)
     F[ThPos]  = - U[ThPos] / T * DeltaT 
   end
   return profile,Force
 end
-function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::VelocityC)
+function (::HeldSuarezDryExample)(Param,Phys,RhoPos,uPos,vPos,wPos,ThPos,pPos,::VelocityC)
   @inline function profile(x,time)
     FT = eltype(x)
     (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
-    Z = max(R - FT(P.RadEarth), FT(0))
+    Z = max(R - Phys.RadEarth, FT(0))
     T0 = FT(0.5) * (Param.T0E + Param.T0P)
     ConstA = FT(1.0) / Param.LapseRate
     ConstB = (T0 - Param.T0P) / (T0 * Param.T0P)
     ConstC = FT(0.5) * (Param.K + FT(2.0)) * (Param.T0E - Param.T0P) / (Param.T0E * Param.T0P)
-    ConstH = FT(P.Rd) * T0 / FT(P.Grav)
+    ConstH = Phys.Rd * T0 / Phys.Grav
     ScaledZ = Z / (Param.B * ConstH)
     Tau1 = ConstA * Param.LapseRate / T0 * exp(Param.LapseRate / T0 * Z) +
     ConstB * (FT(1.0) - FT(2.0) * ScaledZ * ScaledZ) * exp(-ScaledZ * ScaledZ)
@@ -1180,28 +1186,28 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     ConstB * Z * exp(-ScaledZ * ScaledZ)
     IntTau2 = ConstC * Z * exp(-ScaledZ * ScaledZ)
     if Param.Deep
-      RRatio = R / FT(P.RadEarth)
+      RRatio = R / Phys.RadEarth
     else
       RRatio = FT(1.0)
     end
     InteriorTerm = (RRatio * cos(lat))^Param.K -
     Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
     Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
-    Pressure = FT(P.p0) * exp(-FT(P.Grav)/FT(P.Rd) *
+    Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
-    Rho = Pressure / (FT(P.Rd) * Temperature)
-    Th = Temperature * (FT(P.p0) / Pressure)^(FT(P.Rd) / FT(P.Cpd))
+    Rho = Pressure / (Phys.Rd * Temperature)
+    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
 
     InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
          (RRatio * cos(lat))^(Param.K + FT(1.0))
-    BigU = FT(P.Grav) / FT(P.RadEarth) * Param.K *
+    BigU = Phys.Grav / Phys.RadEarth * Param.K *
       IntTau2 * InteriorTermU * Temperature
     if Param.Deep
       RCoslat = R * cos(lat)
     else
-      RCoslat =FT(P.RadEarth) * cos(lat)
+      RCoslat =Phys.RadEarth * cos(lat)
     end
-    OmegaRCoslat = FT(P.Omega)*RCoslat
+    OmegaRCoslat = Phys.Omega*RCoslat
 
     #                 if (dOmegaRCoslat * dOmegaRCoslat + dRCoslat * dBigU < 0.0) {
     #                         _EXCEPTIONT("Negative discriminant detected.")
@@ -1212,10 +1218,10 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     vS = FT(0)
     w = FT(0)
 
-    IE = FT(Thermodynamics.InternalEnergyW(1.0,0.0,0.0,Temperature,P))
-    E = IE + FT(0.5) * (uS * uS + vS * vS) + FT(P.Grav) * Z
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),Temperature,Phys)
+    E = IE + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
     if Z <= FT(2000.0)
-      Th = Th + rand()  
+      Th = Th + HashNoise(lon,lat)  
     end  
     return (Rho,uS,vS,w,Th,E,IE)
   end
@@ -1224,8 +1230,8 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     p = Aux[pPos]
     lon = xS[1]
     lat = xS[2]
-    Sigma = p / FT(P.p0)
-    SigmaPowKappa = fast_powGPU(Sigma,FT(P.kappa))
+    Sigma = p / Phys.p0
+    SigmaPowKappa = fast_powGPU(Sigma,Phys.kappa)
     height_factor = max(FT(0), (Sigma - Param.sigma_b) / (FT(1) - Param.sigma_b))
     sinlat = sin(lat)
     coslat = cos(lat)
@@ -1235,9 +1241,9 @@ function (::HeldSuarezDryExample)(Param,RhoPos,uPos,vPos,wPos,ThPos,pPos,::Veloc
     Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
       Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
-    T = p / (U[RhoPos] * FT(P.Rd))
+    T = p / (U[RhoPos] * Phys.Rd)
     DeltaT =  kT * (T - Teq)
-    FUC = Grids.VelSphere2Cart(SVector{3}(FuS, Fvs, FT(0)),lon,lat)
+    FUC = Grids.VelSphere2Cart(SVector{3}(FuS, FvS, FT(0)),lon,lat)
     F[uPos] = FUC[1]
     F[vPos] = FUC[2]
     F[wPos] = FUC[3]
@@ -1554,10 +1560,10 @@ end
 
 @inline function z2Eta(x,y,z,Param,Phys)
 
-  Eta = 1.e-2
+  Eta = eltype(z)(1.e-2)
   for i = 1 : 10
-    F = -Grav * z + GeoPotentialBaroWaveCart(x,y,Eta,Param,Phys)
-    dFdEta = -Rd / Eta * TemperatureBaroWaveCart(x,y,Eta,Param,Phys)
+    F = -Phys.Grav * z + GeoPotentialBaroWaveCart(x,y,Eta,Param,Phys)
+    dFdEta = -Phys.Rd / Eta * TemperatureBaroWaveCart(x,y,Eta,Param,Phys)
     Eta = Eta - F / dFdEta
   end
 
