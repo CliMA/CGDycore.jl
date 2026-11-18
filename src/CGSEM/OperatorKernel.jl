@@ -1286,7 +1286,7 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    Source(view(F,:,IC,:),view(U,:,IC,:),view(Thermo,:,IC,:),view(dz,:,IC))
+    Source(view(F,1,:,IC,:),view(U,1,:,IC,:),view(Thermo,1,:,IC,:),view(dz,:,IC))
   end
 end
 

@@ -12,6 +12,7 @@ mpirun -n 6 julia --project Examples/DriverCG.jl \
   --Forcing=false \
   --Curl=false \
   --ModelType="VectorInvariant" \
+  --Equation="CompressibleShallow" \
   --Coriolis=true \
   --VerticalDiffusion=false \
   --Upwind=true \

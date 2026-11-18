@@ -110,7 +110,9 @@ end
     else
       wR = U[K,Iz+1,IC,4] 
     end  
-    Pressure!(view(Aux,K,Iz,IC,:),view(U,K,Iz,IC,:),wL,wR,zP[Iz,IC];T=Aux[K,Iz,IC,2])
+    # start of the saturation adjustment, no temperature before the first evaluation
+    TStart = Aux[K,Iz,IC,2] > eltype(U)(0) ? Aux[K,Iz,IC,2] : eltype(U)(300)
+    Pressure!(view(Aux,K,Iz,IC,:),view(U,K,Iz,IC,:),wL,wR,zP[Iz,IC];T=TStart)
   end
 end
 

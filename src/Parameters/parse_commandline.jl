@@ -242,9 +242,9 @@ function parse_commandline()
     default = false
 
     "--Equation"
-    help = "Equation Type, Shallow, Deep"
+    help = "Equation Type, CompressibleShallow, CompressibleDeep"
     arg_type = String
-    default = "Shallow"
+    default = "CompressibleShallow"
 
     "--EDMF"
     help = "EDMF"

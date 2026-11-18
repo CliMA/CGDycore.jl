@@ -44,7 +44,7 @@ julia --project Examples/DriverCG.jl \
   --GridType="CubedSphere" \
   --nz=64 \
   --nPanel=16 \
-  --H=45000.0 \
+  --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
   --HyperDCurl=1.e16 \

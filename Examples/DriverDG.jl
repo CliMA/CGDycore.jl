@@ -292,6 +292,8 @@ if Equation == "CompressibleShallow"
   Model.Equation = Models.CompressibleShallow()
 elseif Equation == "CompressibleDeep"
   Model.Equation = Models.CompressibleDeep()
+else
+  error("Equation = $Equation is not available, choose CompressibleShallow or CompressibleDeep")
 end
 
 # Grid
