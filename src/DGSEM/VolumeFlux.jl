@@ -9,6 +9,11 @@
 # the order (rho, rho u, rho v, rho w, rho theta). The volume kernels are
 # independent of the flux formula.
 #
+# With the additional argument SymAnti() a flux returns the pair (S, A) of its
+# symmetric and antisymmetric part, f(L,R) = S + A and f(R,L) = S - A (S, A
+# with the averaged metric). The volume kernels with half sweep evaluate a
+# pair of nodes once and give the second node S - A.
+#
 # Gravity is discretized as the nonconservative product rhoM * [[phi]] and
 # added to the pressure average, {{p}} + 1/2 rhoM [[phi]].
 #
@@ -21,6 +26,7 @@
 ################################################################################
 
 abstract type AverageFlux end
+struct SymAnti end
 abstract type RiemannSolver end
 
 # Formulation of the prognostic variables, decides which components are
@@ -56,6 +62,14 @@ end
     fRhoTh)
 end
 
+# Symmetric and antisymmetric part of flux_vector, pM = pS + pA with the
+# symmetric pressure part pS and the antisymmetric part pA (jumps)
+@inline function flux_vector_sym_anti(fRho, fRhoTh, pS, pA, uAv, vAv, wAv, m1, m2, m3)
+  FT = typeof(fRho)
+  return flux_vector(fRho, fRhoTh, pS, uAv, vAv, wAv, m1, m2, m3),
+    SVector(FT(0), m1 * pA, m2 * pA, m3 * pA, FT(0))
+end
+
 Base.@kwdef struct KennedyGruberGrav <: AverageFlux end
 
 function (::KennedyGruberGrav)(::Val{pPos}, ::Val{GPPos}) where {pPos, GPPos}
@@ -67,6 +81,16 @@ function (::KennedyGruberGrav)(::Val{pPos}, ::Val{GPPos}) where {pPos, GPPos}
     fRho = RhoAv * qHat
     fRhoTh = fRho * FT(0.5) * (VL[5] + VR[5])
     return flux_vector(fRho, fRhoTh, pM, uAv, vAv, wAv, m1, m2, m3)
+  end
+  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR, ::SymAnti)
+    FT = eltype(VL)
+    qHat, uAv, vAv, wAv, m1, m2, m3 = contravariant_velocity(VL, VR, mL, mR)
+    RhoAv = FT(0.5) * (VL[1] + VR[1])
+    pS = FT(0.5) * (AuxL[pPos] + AuxR[pPos])
+    pA = FT(0.5) * RhoAv * (AuxR[GPPos] - AuxL[GPPos])
+    fRho = RhoAv * qHat
+    fRhoTh = fRho * FT(0.5) * (VL[5] + VR[5])
+    return flux_vector_sym_anti(fRho, fRhoTh, pS, pA, uAv, vAv, wAv, m1, m2, m3)
   end
   return FluxNonLinAver
 end
@@ -89,6 +113,15 @@ function (::KennedyGruberGravDiff)(::Val{pPos}, ::Val{GPPos}) where {pPos, GPPos
     fRhoTh = fRho * FT(0.5) * (VL[5] + VR[5])
     return flux_vector(fRho, fRhoTh, pM, uAv, vAv, wAv, m1, m2, m3)
   end
+  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR, ::SymAnti)
+    FT = eltype(VL)
+    qHat, uAv, vAv, wAv, m1, m2, m3 = contravariant_velocity(VL, VR, mL, mR)
+    RhoAv = FT(0.5) * (VL[1] + VR[1])
+    pA = FT(0.5) * ((AuxR[pPos] - AuxL[pPos]) + RhoAv * (AuxR[GPPos] - AuxL[GPPos]))
+    fRho = RhoAv * qHat
+    fRhoTh = fRho * FT(0.5) * (VL[5] + VR[5])
+    return flux_vector_sym_anti(fRho, fRhoTh, FT(0), pA, uAv, vAv, wAv, m1, m2, m3)
+  end
   return FluxNonLinAver
 end
 
@@ -105,6 +138,16 @@ function (::PotTempTEC)(::Val{pPos}, ::Val{GPPos}, Mean::DensityMean, Gamma) whe
     fRhoTh = stolarsky_mean(VL[1] * VL[5], VR[1] * VR[5], FT(Gamma)) * qHat
     return flux_vector(fRho, fRhoTh, pM, uAv, vAv, wAv, m1, m2, m3)
   end
+  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR, ::SymAnti)
+    FT = eltype(VL)
+    qHat, uAv, vAv, wAv, m1, m2, m3 = contravariant_velocity(VL, VR, mL, mR)
+    RhoM = density_mean(Mean, VL[1], VR[1], FT(Gamma))
+    pS = FT(0.5) * (AuxL[pPos] + AuxR[pPos])
+    pA = FT(0.5) * RhoM * (AuxR[GPPos] - AuxL[GPPos])
+    fRho = RhoM * qHat
+    fRhoTh = stolarsky_mean(VL[1] * VL[5], VR[1] * VR[5], FT(Gamma)) * qHat
+    return flux_vector_sym_anti(fRho, fRhoTh, pS, pA, uAv, vAv, wAv, m1, m2, m3)
+  end
   return FluxNonLinAver
 end
 
@@ -120,6 +163,16 @@ function (::PotTempEC)(::Val{pPos}, ::Val{GPPos}, Mean::DensityMean, Gamma) wher
     fRho = RhoM * qHat
     fRhoTh = fRho / ln_mean(FT(1) / VL[5], FT(1) / VR[5])
     return flux_vector(fRho, fRhoTh, pM, uAv, vAv, wAv, m1, m2, m3)
+  end
+  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR, ::SymAnti)
+    FT = eltype(VL)
+    qHat, uAv, vAv, wAv, m1, m2, m3 = contravariant_velocity(VL, VR, mL, mR)
+    RhoM = density_mean(Mean, VL[1], VR[1], FT(Gamma))
+    pS = FT(0.5) * (AuxL[pPos] + AuxR[pPos])
+    pA = FT(0.5) * RhoM * (AuxR[GPPos] - AuxL[GPPos])
+    fRho = RhoM * qHat
+    fRhoTh = fRho / ln_mean(FT(1) / VL[5], FT(1) / VR[5])
+    return flux_vector_sym_anti(fRho, fRhoTh, pS, pA, uAv, vAv, wAv, m1, m2, m3)
   end
   return FluxNonLinAver
 end
@@ -138,6 +191,17 @@ function (::PotTempETEC)(::Val{pPos}, ::Val{GPPos}, Gamma) where {pPos, GPPos}
     fRho = RhoM * qHat
     fRhoTh = stolarsky_mean(VL[1] * VL[5], VR[1] * VR[5], FT(Gamma)) * qHat
     return flux_vector(fRho, fRhoTh, pM, uAv, vAv, wAv, m1, m2, m3)
+  end
+  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR, ::SymAnti)
+    FT = eltype(VL)
+    qHat, uAv, vAv, wAv, m1, m2, m3 = contravariant_velocity(VL, VR, mL, mR)
+    RhoM = stolarsky_mean(VL[1] * VL[5], VR[1] * VR[5], FT(Gamma)) *
+      ln_mean(FT(1) / VL[5], FT(1) / VR[5])
+    pS = FT(0.5) * (AuxL[pPos] + AuxR[pPos])
+    pA = FT(0.5) * RhoM * (AuxR[GPPos] - AuxL[GPPos])
+    fRho = RhoM * qHat
+    fRhoTh = stolarsky_mean(VL[1] * VL[5], VR[1] * VR[5], FT(Gamma)) * qHat
+    return flux_vector_sym_anti(fRho, fRhoTh, pS, pA, uAv, vAv, wAv, m1, m2, m3)
   end
   return FluxNonLinAver
 end

@@ -25,10 +25,15 @@ continuous Galerkin (CGSEM) and the discontinuous Galerkin (DGSEM)
 spectral element dycores of CGDycore.jl. Both use their standard setup
 for about 100~km horizontal resolution, the largest stable time step,
 and Float32 and Float64. DGSEM is run with three pairs of numerical
-fluxes: the vector-invariant form and two conservative forms. All runs use one NVIDIA
+fluxes: the vector-invariant form and two conservative forms. ClimaAtmos.jl
+is run on the CGSEM grid and TrixiAtmo.jl on the DGSEM grid as external
+comparisons. All runs use one NVIDIA
 A100 on Levante and write no output. The day-10 surface pressure is
 compared against a DGSEM run with twice the resolution in both
-directions.
+directions. After the kernel work of Section~\ref{sec:kernels}, DGSEM VI
+reaches 19.1~SYPD in Float32 (13.1 before) with bitwise reproducible
+results, against 22.6~SYPD of TrixiAtmo, which is 2.7 times less
+accurate in Float32.
 \end{abstract}
 
 \section{Test case and setups}
@@ -62,6 +67,28 @@ layer and no forcing, ten simulated days.
   \item \textbf{Diff}: conservative form, \code{KennedyGruberGravDiff} and
     \code{RiemannLMARSDiff} (pressure as a difference to a reference state).
   \end{itemize}
+\item \textbf{ClimaAtmos.jl} v0.42.18 (CliMA, continuous Galerkin
+  spectral elements horizontally on ClimaCore, staggered finite
+  differences vertically), \code{DryBaroclinicWave} with
+  \code{h\_elem: 32}, \code{nh\_poly: 3}, 64 uniform levels to 30~km,
+  shallow atmosphere, default fourth-order hyperdiffusion. It is a minimal
+  dry-dycore configuration: \code{enable\_diagnostics: false},
+  \code{output\_default\_diagnostics: false},
+  \code{dt\_save\_state\_to\_disk: "Inf"},
+  \code{disable\_surface\_flux\_tendency: true}, and
+  \code{update\_jacobian\_every: "dt"}, which builds the Jacobian once per step
+  instead of once per implicit solve.
+  The horizontal grid is the same as for the standard CGSEM run.
+\item \textbf{TrixiAtmo.jl} (main, commit 5874d5f, on Trixi.jl v0.18.1-DEV),
+  elixir \code{elixir\_potential\_temperature\_baroclinic\_instability.jl}:
+  DGSEM on a \code{P4estMeshCubedSphereTopography} with $20\times20$ trees per
+  face and 13 vertically, polynomial degree 4, i.e.\ the DGSEM grid;
+  potential-temperature form of the Euler equations
+  (\code{CompressibleEulerPotentialTemperatureEquationsWithGravity3D}),
+  volume flux \code{flux\_ec} with \code{flux\_nonconservative\_isothermal},
+  surface flux \code{flux\_lmars\_es}, Coriolis source term, deep geopotential.
+  It runs on the GPU through \code{trixi\_adapt(semi; storage\_type = CuArray,
+  real\_type)}, without callbacks and output.
 \end{itemize}
 
 \paragraph{Additional CGSEM grids.} To separate the effect of the
@@ -101,13 +128,16 @@ CG-A           & 20 & 4 & 38\,402 & 52 & $1.13^\circ$, 125 km & 86 km & 2.00\,M 
 CG-B           & 25 & 4 & 60\,002 & 65 & $0.90^\circ$, 100 km & 69 km & 3.90\,M \\
 DGSEM          & 20 & 4 & 60\,000 & $13\times5=65$ & $0.90^\circ$, 100 km & 86 km & 3.90\,M \\
 DGSEM reference& 40 & 4 & 240\,000 & $26\times5=130$ & $0.45^\circ$, 50 km & 43 km & 31.2\,M \\
+ClimaAtmos     & 32 & 3 & 55\,298 & 64 & $0.94^\circ$, 104 km & 86 km & 3.54\,M \\
+TrixiAtmo      & 20 & 4 & 60\,000 & $13\times5=65$ & $0.90^\circ$, 100 km & 86 km & 3.90\,M \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 Vertically, DGSEM has elements of $2.31$~km with 5 GLL nodes (mean node
 spacing 577~m). CGSEM has 64 stretched layers (mean 469~m), CG-A 52
-uniform layers (577~m) and CG-B 65 uniform layers (462~m).
+uniform layers (577~m) and CG-B 65 uniform layers (462~m). ClimaAtmos
+has 64 uniform levels of 469~m.
 
 \section{Time integration}
 
@@ -120,6 +150,14 @@ vertically linearly implicit (HEVI). CGSEM solves the column systems
 with \code{CGSEM.JacGPU!}. DGSEM uses \code{JacHEVI} with the default
 \code{--HEVISolver=HDG}, a static condensation onto the element
 interfaces of each column.
+
+ClimaAtmos uses its default IMEX additive Runge--Kutta method ARS343
+(\code{ode\_algo}), with the vertical acoustic and gravity terms
+implicit, one Newton iteration per implicit stage
+(\code{max\_newton\_iters\_ode: 1}) and here one Jacobian per step. TrixiAtmo uses the Rosenbrock-W
+method \code{SSPRW32} (same structure as \code{SSP-Knoth}) with
+\code{JacobianVerticalTwoSided(c = 340)}, the two-sided nested
+Schur-complement solver of Artiano et al.\ (arXiv:2610.15775).
 
 Since the horizontal terms are explicit, the time step is limited by
 the horizontal Courant number $C=c\,\Delta t/\Delta x_\text{min}$, with
@@ -138,6 +176,9 @@ CG-A           & 225 & 0.89 & NaN after 0.21 days \\
 CG-B           & 120 & 0.59 & stable \\
 DGSEM (all flux pairs) & 85 & 0.33 & stable \\
 DGSEM reference& 42.5 & 0.33 & stable \\
+ClimaAtmos     & 150 & 0.59 & stable for 10 days \\
+ClimaAtmos     & 300 & 1.18 & NaN within 1 day (Float32 and Float64) \\
+TrixiAtmo      & 85 & 0.33 & stable \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -154,7 +195,12 @@ The wall time covers the ten days without the first step, which
 includes compilation; it is measured with
 \code{KernelAbstractions.synchronize}. SYPD is
 $(10/365)/(t_\text{wall}/86400)$. The CGSEM runs check every 40 steps
-for a non-finite state, which costs less than 1\,\%.
+for a non-finite state, which costs less than 1\,\%. For ClimaAtmos the
+wall time is the \code{solve\_atmos!} time of the 5\,759 steps after the
+first one, and the GPU is an A100-SXM4-80GB. For TrixiAtmo it is the
+\code{Trixi.solve} time of the ten days after two warm-up steps, also on an
+A100-SXM4-80GB. The DGSEM timings in this section are those before the
+kernel improvements; Section~\ref{sec:kernels} gives the final ones.
 
 \begin{center}
 \small
@@ -176,6 +222,10 @@ DGSEM Cons     & Float64 & 10\,165 & 231.2 & 22.7 & 10.2 \\
 DGSEM Diff     & Float32 & 10\,165 & 157.4 & 15.5 & 15.0 \\
 DGSEM Diff     & Float64 & 10\,165 & 231.4 & 22.8 & 10.2 \\
 DGSEM reference& Float64 & 20\,329 & 5426.4 & 266.9 & 0.44 \\
+ClimaAtmos     & Float32 & 5\,760 & 596.3 & 103.5 & 3.97 \\
+ClimaAtmos     & Float64 & 5\,760 & 1347.6 & 234.0 & 1.76 \\
+TrixiAtmo      & Float32 & 10\,165 & 104.8 & 10.3 & 22.6 \\
+TrixiAtmo      & Float64 & 10\,165 & 176.8 & 17.4 & 13.4 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -189,7 +239,12 @@ hydrostatically over half a layer, $p_s=p_1+g\rho_1\Delta z_1/2$.
 The DGSEM runs on the same grid are compared node by node.
 For the error against the reference, all fields are interpolated
 linearly onto a $0.5^\circ$ grid from $0^\circ$ to $85^\circ$N, and the rms is
-weighted with $\cos\varphi$.
+weighted with $\cos\varphi$. ClimaAtmos stores no surface pressure. It is
+extrapolated hydrostatically from the lowest level (234~m),
+$p_s=p_1\exp(g z_1/(R_d T_1))$. ClimaAtmos's baroclinic wave uses a
+sea-level reference pressure of 1013.25~hPa instead of 1000~hPa, so
+13.25~hPa are subtracted before the comparison. That offset holds
+only approximately.
 
 \begin{center}
 \small
@@ -213,6 +268,10 @@ DGSEM Cons     & Float32 & 930.9 & 1023.2 & 2.08 & 19.9 \\
 DGSEM Cons     & Float64 & 924.9 & 1023.2 & 0.40 & 9.4 \\
 DGSEM Diff     & Float32 & 924.9 & 1023.3 & 0.41 & 9.4 \\
 DGSEM Diff     & Float64 & 924.9 & 1023.2 & 0.40 & 9.4 \\
+ClimaAtmos ($-13.25$) & Float32 & 928.3 & 1023.5 & 1.09 & 17.2 \\
+ClimaAtmos ($-13.25$) & Float64 & 928.4 & 1023.3 & 1.09 & 17.2 \\
+TrixiAtmo      & Float32 & 925.0 & 1024.0 & 1.09 & 15.7 \\
+TrixiAtmo      & Float64 & 924.8 & 1023.3 & 0.45 & 10.7 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -230,6 +289,8 @@ CG-B           & 0.052 & 0.88 \\
 DGSEM VI       & 0.071 & 1.19 \\
 DGSEM Cons     & 2.05  & 18.3 \\
 DGSEM Diff     & 0.074 & 1.34 \\
+ClimaAtmos     & 0.089 & 1.82 \\
+TrixiAtmo      & 1.05  & 12.8 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -239,9 +300,10 @@ Diff agree to $10^{-4}$~hPa, and VI and Cons differ by 0.13~hPa rms
 (max 5.0~hPa, in the deepest lows).
 
 \section{Findings}
+\label{sec:findings}
 
 \begin{itemize}
-\item \textbf{Float32.} CGSEM, DGSEM VI and DGSEM Diff run in Float32
+\item \textbf{Float32.} CGSEM, ClimaAtmos, DGSEM VI and DGSEM Diff run in Float32
   with the accuracy of Float64: the Float32 error is at most a sixth of
   the error against the reference.
   The conservative DGSEM fluxes with the full pressure
@@ -266,18 +328,352 @@ Diff agree to $10^{-4}$~hPa, and VI and Cons differ by 0.13~hPa rms
   15\,\% (Float32) to 37\,\% (Float64) more per step than the
   conservative forms. Float32 is 1.5--1.8 times faster than Float64
   for both dycores.
+\item \textbf{ClimaAtmos.} On the same grid and with the same time step
+  as the standard CGSEM run, ClimaAtmos reaches 3.97~SYPD in Float32 and
+  1.76~SYPD in Float64. CGSEM is 5.0 (Float32) and 6.2 (Float64) times
+  faster per step. Building the Jacobian once per step instead of once per
+  solve changes the cost by only 2\,\% (0.1056~s against 0.1035~s per
+  step in a 1-day Float32 run), so the cost is in the tendency
+  evaluations. Float32 works (0.09~hPa rms). The error against the reference
+  is 1.09~hPa rms with up to 17~hPa in the lows (Figure~\ref{fig:all}),
+  which looks like a phase shift. Part of it may come from the shallow atmosphere and the
+  pressure offset.
 \item \textbf{Time step of the CGSEM job file.} The CGSEM baroclinic-wave job
   file sets $\Delta t=230$~s, which blows up after 0.11 days. The
   standard $\Delta t\approx150$~s is stable.
 \end{itemize}
+
+\section{Comments on ClimaAtmos}
+
+ClimaAtmos advances in time with its own package ClimaTimeSteppers.jl,
+here with the IMEX method ARS343. On the same grid and with the same time
+step as the standard CGSEM run, it is 5.0 (Float32) and 6.2 (Float64) times
+slower per step. A kernel profile of five Float32 steps
+(\code{CUDA.@profile}, 107~ms per step) shows:
+\begin{itemize}
+\item \textbf{Not launch-bound.} The GPU is busy 96\,\% of the time.
+  The host spends most of its time in \code{cuStreamSynchronize}, i.e.\
+  waiting for the GPU.
+\item \textbf{Many small kernels.} About 512 kernel launches per step
+  (107 different kernels), against about 47 per step in CGDycore's DGSEM.
+  ClimaCore turns each fused broadcast or column operator expression into
+  its own kernel. Every stage recomputes the full cache of diagnostic fields
+  (\code{update\_cache\_every: "stage"}): thermodynamic state, kinetic
+  energy, contravariant velocities and pressure. The prognostic energy
+  variable is the total energy $\rho e_\text{tot}$, so the temperature and
+  pressure have to be recovered from it.
+\item \textbf{Column kernels dominate.} The largest kernel is a vertical
+  finite-difference column operator. It takes 1.5~ms per call, is called 12
+  times per step and accounts for 17\,\% of the time. Column kernels of this
+  kind make up most of the list.
+\item \textbf{More function evaluations per step.} ARS343 has four
+  explicit and three implicit stages. Each implicit stage needs an implicit
+  tendency and a Newton linear solve. \code{SSP-Knoth} needs three tendency
+  evaluations and one Jacobian per step.
+\item \textbf{The Jacobian is not the cost.} Updating it once per step
+  instead of once per solve changes the step time by 2\,\%. The tridiagonal
+  solve (\code{tridiag\_pcr\_kernel}) takes less than 1\,\%.
+\item \textbf{Generality.} The code paths are those of the full model
+  (moisture, EDMF and tracer machinery are switched off but still structure
+  the state and cache), so the dry dycore carries their overhead. The time
+  could only be cut substantially by fusing the per-stage cache update and
+  the operator chains into far fewer kernels, a change in ClimaCore and
+  ClimaAtmos and not in the configuration. The minimal YAML configuration
+  only removes diagnostics and output, and those were already inactive in
+  the earlier run (0.239 against 0.234~s per step in Float64).
+\end{itemize}
+Float32 works in ClimaAtmos (0.09~hPa rms against Float64) and halves the
+cost.
+
+\section{TrixiAtmo}
+
+TrixiAtmo was installed in \code{GPUTests/TrixiAtmo} on Levante from the
+main branches of TrixiAtmo.jl and Trixi.jl. It is the closest
+counterpart of the DGSEM of CGDycore: the same grid, the same time step,
+a Rosenbrock-W method with a vertically implicit Jacobian, and flux
+differencing with entropy-conservative volume fluxes. TrixiAtmo is
+1.7 times faster than DGSEM VI in Float32 (10.3 against 17.7~ms per step)
+and 1.8 times faster in Float64 (17.4 against 31.2~ms). Against the
+conservative DGSEM it is 1.5 times faster in Float32 and 1.3 times in
+Float64. In Float64 its accuracy is the same as that of DGSEM
+(0.45~hPa rms). In Float32 it loses accuracy (1.05~hPa rms
+against Float64, up to 13~hPa in the lows), like the conservative DGSEM
+fluxes, but less severely. TrixiAtmo also carries the full pressure
+$p\approx10^5$~Pa in its fluxes. The vector-invariant elixir
+(\code{elixir\_vector\_invariant\_baroclinic\_instability.jl}) uses explicit,
+error-controlled time stepping on the CPU. The two-sided Jacobian is
+available only for the potential-temperature equations, so it was not
+run. These ratios refer to DGSEM before the kernel improvements of
+Section~\ref{sec:kernels}.
+
+\section{Vertical solvers of DGSEM}
+
+DGSEM has three vertically implicit solvers (\code{--HEVISolver}). Time
+per step, Float32/Float64, nPanel 20 (the 10-day runs used HDG):
+
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+ms per step & HDG & TwoSidedSplit & OneSided \\
+\midrule
+VI, Float32   & \textbf{17.7} & 27.8 & 23.2 \\
+VI, Float64   & \textbf{31.2} & 54.6 & 42.1 \\
+Cons, Float32 & \textbf{15.6} & 19.4 & 17.3 \\
+Cons, Float64 & \textbf{22.6} & 32.2 & 27.7 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+HDG, the default, is the fastest in all cases. In VI Float32 the two
+parts of the solver cost per step:
+
+\begin{center}
+\small
+\begin{tabular}{lrr}
+\toprule
+ms per step & Jacobian fill & solves (3 stages) \\
+\midrule
+HDG           & 0.84 & 3.6 \\
+TwoSidedSplit & 6.1  & 6.8 \\
+OneSided      & 3.2  & 6.2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The fill of the TwoSidedSplit Jacobian (\code{FillJacTwoSidedSplitKernel!})
+alone costs more than all solves of HDG together. Its banded edge system
+(\code{FactorBlockTri}, \code{ldivBlockTri}) and its forward and backward
+substitutions add another 6.8~ms. HDG condenses onto the element interfaces
+and solves only a small tridiagonal block system per column
+(\code{luTriBlk}, \code{ldivTriBlk}, 0.1~ms), so most of its cost is in
+the element-local forward and backward kernels.
+
+\section{Proposals for the DGSEM kernels}
+
+Kernel profile of DGSEM VI, Float32, HDG (19.2~ms per step in the profile,
+three stages):
+
+\begin{center}
+\small
+\begin{tabular}{lrr}
+\toprule
+kernel & ms per step & share \\
+\midrule
+horizontal volume integral (\code{FluxSplitVolumeNonLinHQuadKernel!}) & 5.15 & 27\,\% \\
+vertical volume integral (\code{FluxSplitVolumeNonLinV3Kernel!})      & 3.07 & 16\,\% \\
+HDG backward and forward solve                                      & 3.52 & 18\,\% \\
+broadcast \code{VnI .= V} (stage copy)                               & 1.42 & 7\,\% \\
+broadcast \code{F .= 0}                                              & 1.16 & 6\,\% \\
+HDG Jacobian fill                                                    & 0.84 & 4\,\% \\
+horizontal and vertical Riemann solvers                              & 1.43 & 7\,\% \\
+mass matrix, Coriolis, pressure and Exner broadcasts                 & 1.42 & 7\,\% \\
+Rosenbrock AXPY kernels                                              & 0.85 & 4\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The proposals are ordered by the expected gain. The estimates come from the
+profile and are not yet measured.
+
+\begin{enumerate}
+\item \textbf{Stage copy and zeroing (about 2.4~ms).} \code{@. VnI = V}
+  and \code{@. F = 0} run on views with four-dimensional Cartesian indexing
+  at 200--330~GB/s, a fraction of the 1.5--2~TB/s of the A100. Both arrays
+  are contiguous. The copy can be fused into the Rosenbrock AXPY kernel
+  ($V_n = V + \sum_j a_{ij} k_j$ in one pass). The zeroing disappears if
+  the first volume kernel assigns \code{F} instead of adding to it. The
+  remaining whole-array operations should use linear indexing.
+\item \textbf{Half sweep of the volume flux (up to 2.5~ms).} Every node
+  evaluates the two-point flux with all $N$ partners in its line, so each
+  symmetric pair is computed twice. Computing each pair once and adding it
+  to both nodes in shared memory halves the flux evaluations of the symmetric
+  part. This is Trixi's default \code{HalfSweep()} on GPUs. For VI the
+  non-symmetric non-conservative part is evaluated separately.
+\item \textbf{One kernel for the horizontal and vertical volume integral
+  (about 1--1.5~ms).} Both kernels load the state, the auxiliary fields and
+  the metric of the same nodes and update \code{F} in global memory. One
+  kernel per element ($N\times N\times M=125$ threads) would load each node
+  once and write \code{F} once.
+\item \textbf{Occupancy of the vertical kernel (about 0.5~ms).} With
+  \code{NumberThreadGPU=128} the workgroup is $(M,N_z,1)=(5,13,1)$, 65
+  threads in three warps with 31 idle lanes. With two or three columns per
+  workgroup (\code{NumberThreadGPU=256}, or a tile size independent of
+  \code{NumberThreadGPU}) the warps are full.
+\item \textbf{Pointwise terms in one kernel (about 0.8~ms).} The
+  pressure and the Exner pressure can be computed in the load phase of the
+  flux kernels instead of in separate broadcasts. The inverse mass matrix,
+  Coriolis and buoyancy can be applied in one pointwise kernel or in the
+  last kernel that writes \code{F}.
+\item \textbf{HDG forward and backward in one kernel (about 1~ms).} One
+  column has only $13\times5\times3$ unknowns. Keeping the column in shared
+  memory between the forward and the backward substitution saves a
+  round trip through global memory per stage. The right-hand side
+  $f + \sum_j c_{ij}k_j/\Delta t$, now a separate AXPY kernel, can be formed
+  in the load phase of the solve.
+\end{enumerate}
+Together, these could bring DGSEM VI in Float32 from 17.7 to about
+10--11~ms per step, the level of TrixiAtmo (10.3~ms) on the same grid.
+Items 1, 4 and 5 are local changes. Items 2, 3 and 6 restructure the main
+kernels. Section~\ref{sec:kernels} reports what was implemented.
+
+\section{Kernel improvements of DGSEM}
+\label{sec:kernels}
+
+The proposals were implemented one at a time. After each step the
+right-hand side was compared against the previous kernels on the CPU
+(one evaluation, Float64 and Float32), and the time per step was measured
+on one and on four GPUs (300 steps after three warm-up steps,
+\code{dgprof.jl}).
+
+\begin{enumerate}
+\item \textbf{Stage copy and zeroing.} \code{AXPYCopy!} forms
+  $V_n = V + \sum_j a_{ij}k_j$ in one pass and replaces the copy
+  \code{VnI .= V} in both Rosenbrock integrators. It works on the full
+  array including the halo nodes, which the multi-GPU run needs.
+  \code{F .= 0} became \code{fill!}, a \code{cuMemset}.
+\item \textbf{Occupancy of the vertical volume kernel.} Several columns per
+  workgroup, about $2\times$\code{NumberThreadGPU} threads, instead of one
+  column of 65 threads.
+\item \textbf{Occupancy of the pointwise kernels.} The same for
+  \code{ScaleMassMatrix!}, \code{Coriolis!} and the horizontal Riemann
+  solver.
+\item \textbf{Pressure and Exner pressure in one kernel.}
+  \code{PressureExner!} reads $\rho\theta$ once and writes both, first for
+  the interior nodes and after the halo exchange for the halo nodes.
+\item \textbf{HDG solve in one kernel.} Forward elimination, the
+  tridiagonal solve for the face traces and the backward substitution run
+  in one kernel per group of columns. The right-hand side of the face
+  system stays in shared memory.
+\item \textbf{Symmetric and antisymmetric part of the volume fluxes.}
+  Every volume flux got a second method returning $(S,A)$ with
+  $f(L,R)=S+A$ and $f(R,L)=S-A$. $A$ holds the non-conservative terms:
+  the gravity term, the pressure jump of the difference form, and the
+  $\frac12(q[\![v]\!]-n\,s)$ part of the vector-invariant flux.
+\item \textbf{One volume kernel for hexahedra with half sweep.}
+  \code{FluxSplitVolumeNonLinQuadKernel!} does the horizontal and the
+  vertical volume integral of one element ($N\times N\times M$ threads).
+  In round $k$ node $I$ pairs with $I+k$ (cyclic), evaluates the pair
+  once, keeps $S+A$ and passes $S-A$ to its partner through shared memory.
+\item \textbf{The same for prisms.} \code{FluxSplitVolumeNonLinTriKernel!}
+  with $TZ$ prisms on top of each other per workgroup.
+\item \textbf{No flux of a node with itself.} The split operators
+  $2D-M^{-1}B$ on Gauss--Lobatto nodes and the triangle operators have a
+  zero diagonal, so the three self-fluxes per node were wasted. This
+  removes 3 of 9 flux evaluations per node on hexahedra.
+\item \textbf{No atomics.} The horizontal Riemann solver added its
+  contributions with \code{@atomic}, so results differed in the last bits
+  from run to run. Only the corner nodes of an element get contributions
+  from two edges. These now write into slots of a small buffer, and a
+  gather kernel adds them in a fixed order. All other edge nodes are
+  written directly.
+\end{enumerate}
+
+Keeping the own state of a node in registers over all rounds of the
+half sweep was also tried. It made Float64 10--30\,\% slower, because the
+kernel is limited by registers, and it was dropped.
+
+\paragraph{Time per step on one GPU} (ms, DGSEM, nPanel 20,
+$N=M=5$, HDG):
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+step & VI Float32 & VI Float64 & Cons Float32 \\
+\midrule
+before               & 17.68 & 31.13 & 15.41 \\
+1 copy and zeroing   & 15.72 & 29.25 & 13.36 \\
+2 vertical occupancy & 15.47 & 28.95 & 13.01 \\
+3 pointwise occupancy& 15.28 & 28.96 & 12.87 \\
+4 pressure and Exner & 14.94 & 28.66 & 12.71 \\
+5 HDG in one kernel  & 13.75 & 25.83 & 11.78 \\
+7 one volume kernel  & 12.59 & 23.27 & 10.82 \\
+9 no self-flux       & 11.72 & 21.60 & 10.42 \\
+10 no atomics        & 12.16 & 22.20 & 10.86 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Step 6 changes no timing, and step 8 concerns the prisms only. Without
+the atomics a step costs 0.4--0.6~ms more: the atomic add only writes,
+whereas the plain update has to read \code{F} first. In exchange the
+results are bitwise reproducible. Two runs gave identical checksums in
+all cases, on one and on four GPUs, in Float32 and Float64.
+
+\paragraph{Four GPUs} (VI, the same grid split into four parts, ms per
+step, fastest and median of five repetitions):
+\begin{center}
+\small
+\begin{tabular}{lrr}
+\toprule
+step & Float32 & Float64 \\
+\midrule
+before       & 5.29 (7.33) & 8.66 (9.11) \\
+1--3         & 4.79 (4.92) & 8.67 (8.68) \\
+5            & 4.10 (6.0)  & 7.15 (9.04) \\
+7            & 3.76 (3.76) & 6.49 (6.55) \\
+9            & 3.55 (5.5)  & 6.03 (6.55) \\
+10 no atomics & 3.67 (3.67) & 6.20 (6.94) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Prisms} (icosahedral grid, RefineLevel 4, VI and Cons,
+ms per step):
+\begin{center}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+ & \multicolumn{3}{c}{one GPU} & \multicolumn{2}{c}{four GPUs, VI} \\
+step & VI Float32 & VI Float64 & Cons Float32 & Float32 & Float64 \\
+\midrule
+separate H and V kernels & 11.95 & 22.82 & 9.36 & -- & -- \\
+8 one volume kernel      & 10.69 & 19.97 & 9.09 & 3.37 & 6.03 \\
+9 no self-flux           & 10.37 & 19.48 & 8.45 & -- & -- \\
+10 no atomics            & 10.91 & 20.01 & 8.93 & 3.29 & 5.65 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Ten days with the final kernels.} The runs of the Timing
+section were repeated with the final code (one A100, nPanel 20, 10\,165
+steps of 85~s; the prisms take 11\,520 steps of 75~s):
+\begin{center}
+\small
+\begin{tabular}{llrrrr}
+\toprule
+run & precision & wall [s] & ms/step & SYPD & rms error [hPa] \\
+\midrule
+DGSEM VI       & Float32 & 123.8 & 12.2 & \textbf{19.1} & 0.41 \\
+DGSEM VI       & Float64 & 225.7 & 22.2 & 10.5 & 0.41 \\
+DGSEM Cons     & Float32 & 110.6 & 10.9 & 21.4 & 2.48 \\
+DGSEM Cons     & Float64 & 177.5 & 17.5 & 13.3 & 0.40 \\
+DGSEM VI, prisms & Float32 & 125.3 & 10.9 & 18.9 & 0.70 \\
+DGSEM VI, prisms & Float64 & 231.4 & 20.1 & 10.2 & 0.70 \\
+\midrule
+TrixiAtmo      & Float32 & 104.8 & 10.3 & 22.6 & 1.09 \\
+TrixiAtmo      & Float64 & 176.8 & 17.4 & 13.4 & 0.45 \\
+\bottomrule
+\end{tabular}
+\end{center}
+DGSEM VI in Float32 went from 13.1 to 19.1~SYPD, 46\,\% faster, with
+unchanged accuracy (0.41~hPa against 0.42~hPa before; Float32 against
+Float64 0.064~hPa rms). The conservative DGSEM is now as fast as TrixiAtmo:
+13.3 against 13.4~SYPD in Float64 and 21.4 against 22.6~SYPD in Float32.
+TrixiAtmo stays 16\,\% faster than DGSEM VI in Float32. But DGSEM VI in Float32 is as
+accurate as TrixiAtmo in Float64 and 1.4 times faster (19.1 against
+13.4~SYPD). TrixiAtmo in Float32 has 2.7 times the error (1.09 against
+0.41~hPa). With the atomics of step 9 DGSEM VI Float32 would reach about
+19.9~SYPD. The conservative DGSEM in Float32 still fails, as in
+Section~\ref{sec:findings}; its error varies between runs (2.08 and 2.48~hPa).
 
 \begin{figure}[p]
 \centering
 \includegraphics[height=0.8\textheight,keepaspectratio]{BaroWave10Days_ps.png}
 \caption{Day-10 surface pressure: DGSEM VI reference ($n_\text{Panel}=40$),
 CGSEM standard (order 3, $n_\text{Panel}=32$, shallow) and CG-A (order 4,
-$n_\text{Panel}=20$) in Float32, and the Float64 differences of DGSEM VI
-and CGSEM standard against the reference.}
+$n_\text{Panel}=20$) in Float32, and the Float64 differences of DGSEM VI,
+CGSEM standard, ClimaAtmos (shifted by $-13.25$~hPa) and TrixiAtmo
+against the reference.}
 \label{fig:all}
 \end{figure}
 
@@ -296,8 +692,15 @@ waves in Float32.}
 The scripts are in \code{bench/} of the Levante checkout. \code{bw10.jl}
 (DGSEM) and \code{cgbw10.jl} (CGSEM) take the arguments of a job file
 followed by overrides, run ten days without output and print the timing,
-and they write the surface pressure. \code{cmp10.sh}, \code{cmp10cg.sh} and
+and they write the surface pressure. ClimaAtmos runs in
+\code{/work/bb1143/b383021/runs/climaatmos\_bw10} (\code{min\_Float*.yml},
+\code{run\_jw.jl}, \code{prof\_ca.jl}), TrixiAtmo in
+\code{/work/bb1143/b383021/GPUTests/TrixiAtmo} (\code{run\_bw.jl},
+environment \code{env}), and the DGSEM solver timings and kernel profiles
+come from \code{bench/dgprof.jl}. \code{cmp10.sh}, \code{cmp10cg.sh} and
 \code{cmp10std.sh} are the batch scripts, and \code{cmp10\_all.py} produces
-the tables and Figure~\ref{fig:all}.
+the tables and Figure~\ref{fig:all}. The kernel steps were timed with
+\code{dgstep.sh}, \code{dgtri.sh}, \code{mgpu.sh} and \code{mgputri.sh},
+and the final ten-day runs with \code{final10.sh}.
 
 \end{document}

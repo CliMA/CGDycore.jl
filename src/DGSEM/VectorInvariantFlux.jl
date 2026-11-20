@@ -60,6 +60,41 @@ function (::VectorInvariantFlux)(::Val{ExPos}, ::Val{GPPos}, Cpd, ThMean = LogMe
       n3 * KAv + FT(0.5) * (q * dw - n3 * s),
       fRhoTh)
   end
+  # symmetric part (mass, kinetic energy, rho theta) and antisymmetric part
+  # 1/2 (q [[v]] - n s), s = v^num . [[v]] - cp theta^num [[Pi]] - [[phi]]
+  @inline function FluxNonLinAver(VL, VR, AuxL, AuxR, mL, mR, ::SymAnti)
+    FT = eltype(VL)
+    n1 = FT(0.5) * (mL[1] + mR[1])
+    n2 = FT(0.5) * (mL[2] + mR[2])
+    n3 = FT(0.5) * (mL[3] + mR[3])
+    RhoL = VL[1]
+    RhoR = VR[1]
+    RhoAv = FT(0.5) * (RhoL + RhoR)
+    m1 = FT(0.5) * (RhoL * VL[2] + RhoR * VR[2])
+    m2 = FT(0.5) * (RhoL * VL[3] + RhoR * VR[3])
+    m3 = FT(0.5) * (RhoL * VL[4] + RhoR * VR[4])
+    fRho = n1 * m1 + n2 * m2 + n3 * m3
+    ThNum = ThetaNum(ThMean, VL[5], VR[5])
+    fRhoTh = fRho * ThNum
+    KAv = FT(0.25) * (VL[2] * VL[2] + VL[3] * VL[3] + VL[4] * VL[4] +
+      VR[2] * VR[2] + VR[3] * VR[3] + VR[4] * VR[4])
+    v1 = m1 / RhoAv
+    v2 = m2 / RhoAv
+    v3 = m3 / RhoAv
+    du = VR[2] - VL[2]
+    dv = VR[3] - VL[3]
+    dw = VR[4] - VL[4]
+    q = n1 * v1 + n2 * v2 + n3 * v3
+    vdv = v1 * du + v2 * dv + v3 * dw
+    PG = Cpd * ThNum * (AuxR[ExPos] - AuxL[ExPos]) + (AuxR[GPPos] - AuxL[GPPos])
+    s = vdv - PG
+    return SVector(fRho, n1 * KAv, n2 * KAv, n3 * KAv, fRhoTh),
+      SVector(FT(0),
+        FT(0.5) * (q * du - n1 * s),
+        FT(0.5) * (q * dv - n2 * s),
+        FT(0.5) * (q * dw - n3 * s),
+        FT(0))
+  end
   return FluxNonLinAver
 end
 

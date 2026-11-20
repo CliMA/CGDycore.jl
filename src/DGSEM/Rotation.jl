@@ -36,7 +36,8 @@ function ScaleMassMatrix!(F,DG,Metric,Grid,NumberThreadGPU,NV)
   M = DG.V.OrdPolyZ + 1
   Nz = Grid.nz
   ND = DG.NumI
-  NDG = min(div(NumberThreadGPU,Nz*M),ND)
+  # several columns per workgroup, as in FluxVolumeNonLinV
+  NDG = min(max(div(2*NumberThreadGPU,Nz*M),1),ND)
   group = (M,Nz,NDG)
   ndrange = (M,Nz,ND)
   KScaleMassMatrixKernel! = ScaleMassMatrixKernel!(backend,group)

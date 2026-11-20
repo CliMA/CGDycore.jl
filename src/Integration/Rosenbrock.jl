@@ -33,15 +33,13 @@ NVTX.@annotate function TimeIntegration!(ROS::RosenbrockMethod,V,dt,Fcn,Aux,Jac,
   k = Cache.k
   fV = Cache.fV
   Vn = Cache.Vn
-  @views VnI = Vn[:,:,1:size(fV,3),1:size(fV,4)]
   dtau, = dt
   FcnFull, = Fcn
   Global.TimeStepper.dtauStage = dtau  
 
   JCache.CompTri = true
   @inbounds for iStage = 1 : nStage
-    @. VnI = V
-    @views AXPY!(VnI,k[:,:,:,:,1:iStage-1],ROS.a[iStage,1:iStage-1],Global)
+    @views AXPYCopy!(Vn,V,k[:,:,:,:,1:iStage-1],ROS.a[iStage,1:iStage-1],Global)
     CallFcn!(FcnFull,fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     if iStage == 1
       CallJac!(Jac,V,dtau*ROS.gammaD,FE,Metric,Phys,Aux,JCache,Global,DiscType)
@@ -63,12 +61,10 @@ NVTX.@annotate function TimeIntegrationFast!(ROS::RosenbrockMethod,V,dt,Fcn,FSlo
   k = Cache.CacheFast.k
   fV = Cache.CacheFast.fV
   Vn = Cache.CacheFast.Vn
-  @views VnI = Vn[:,:,1:size(fV,3),1:size(fV,4)]
   Global.TimeStepper.dtauStage = dt
 
   @inbounds for iStage = 1 : nStage
-    @. VnI = V
-    @views AXPY!(VnI,k[:,:,:,:,1:iStage-1],ROS.a[iStage,1:iStage-1],Global)
+    @views AXPYCopy!(Vn,V,k[:,:,:,:,1:iStage-1],ROS.a[iStage,1:iStage-1],Global)
     CallFcn!(Fcn,fV,Vn,FE,Metric,Phys,Aux,Exchange,Global,DiscType)
     @. fV += FSlow
     @views AXPY!(fV,k[:,:,:,:,1:iStage-1],1/dt,ROS.c[iStage,1:iStage-1],Global)

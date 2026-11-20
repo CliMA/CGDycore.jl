@@ -1,19 +1,48 @@
 # The interface solvers are two-sided, RiemannSolver!(FL,FR,VLL,VRR,AuxL,AuxR,n1,n2,n3):
 # the lower/left element gets -FL, the upper/right element +FR. Conservative
 # fluxes have FL = FR (see TwoSided), nonconservative surface terms differ.
-function RiemannNonLinH(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
+# Without atomics: the edge nodes of element nodes shared by several edges
+# (corners) write into CacheAux.FC, RiemannGatherKernel! adds them in a fixed
+# order, the result does not depend on the thread schedule.
+function RiemannNonLinH(RiemannSolver,F,U,Aux,CacheAux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
   backend = get_backend(F)
   DoF = DG.DoF
   DoFE = DG.DoFE
   M = DG.V.OrdPolyZ + 1
   NE = Grid.NumEdges
   Nz = Grid.nz
-  DoFEG = min(div(NumberThreadGPU,M*Nz),DoFE)
+  # several edge nodes per workgroup, as in FluxVolumeNonLinV
+  DoFEG = min(max(div(2*NumberThreadGPU,M*Nz),1),DoFE)
   group = (M,Nz,DoFEG,1)
   ndrange = (M,Nz,DoFE,NE)
   KRiemannNonLinH3Kernel! = RiemannNonLinH3Kernel!(backend,group)
-  KRiemannNonLinH3Kernel!(RiemannSolver,F,U,Aux,DG.GlobE,Grid.EF,Grid.FE,Metric.NH,
+  KRiemannNonLinH3Kernel!(RiemannSolver,F,CacheAux.FC,U,Aux,DG.GlobE,CacheAux.SlotE,Grid.EF,Metric.NH,
     Metric.VolSurfH,DG.wF,Grid.NumFaces,Val(NUMV),Val(NAUX);ndrange=ndrange)
+  NS = length(CacheAux.IndS)
+  if NS > 0
+    NSG = min(max(div(NumberThreadGPU,M*Nz),1),NS)
+    KRiemannGatherKernel! = RiemannGatherKernel!(backend,(M,Nz,NSG))
+    KRiemannGatherKernel!(F,CacheAux.FC,CacheAux.IndS,CacheAux.PtrS,Val(NUMV);ndrange=(M,Nz,NS))
+  end
+end
+
+@kernel inbounds = true function RiemannGatherKernel!(F,@Const(FC),@Const(IndS),@Const(PtrS),
+  ::Val{NUMV}) where {NUMV}
+
+  K, Iz, i = @index(Global, NTuple)
+
+  NS = @uniform @ndrange()[3]
+
+  if i <= NS
+    ind = IndS[i]
+    @unroll for iv = 1 : NUMV
+      FSum = F[K,Iz,ind,iv]
+      for l = PtrS[i] : PtrS[i+1] - 1
+        FSum += FC[K,Iz,l,iv]
+      end
+      F[K,Iz,ind,iv] = FSum
+    end
+  end
 end
 
 function RiemannNonLinV(RiemannSolver,F,U,Aux,DG,Metric,Grid,NumberThreadGPU,NUMV,NAUX)
@@ -110,8 +139,8 @@ end
   end  
 end
 
-@kernel inbounds = true function RiemannNonLinH3Kernel!(RiemannSolver!,F,@Const(U),@Const(Aux),@Const(GlobE),
-  @Const(EF),@Const(FTE),@Const(NH),@Const(VolSurfH),
+@kernel inbounds = true function RiemannNonLinH3Kernel!(RiemannSolver!,F,FC,@Const(U),@Const(Aux),@Const(GlobE),
+  @Const(SlotE),@Const(EF),@Const(NH),@Const(VolSurfH),
   @Const(w), NF, ::Val{NUMV}, ::Val{NAUX}) where {NUMV, NAUX}
 
   _,iz, = @index(Local, NTuple)
@@ -183,14 +212,28 @@ end
     RiemannSolver!(FLoc,FRLoc,UL,UR,AuxL,AuxR,n1,n2,n3)
     Surf = VolSurfH[K,Iz,I,IE] / w[I]  
     if 0 < iFL <= NF
-      @unroll for iv = 1 : NUMV  
-        @atomic :monotonic F[K,Iz,indL,iv] += -FLoc[iv] * Surf
-      end  
+      slot = SlotE[1,I,IE]
+      if slot == 0
+        @unroll for iv = 1 : NUMV  
+          F[K,Iz,indL,iv] += -FLoc[iv] * Surf
+        end  
+      else
+        @unroll for iv = 1 : NUMV  
+          FC[K,Iz,slot,iv] = -FLoc[iv] * Surf
+        end  
+      end
     end  
     if 0 < iFR <= NF
-      @unroll for iv = 1 : NUMV  
-        @atomic :monotonic F[K,Iz,indR,iv] += FRLoc[iv] * Surf
-      end  
+      slot = SlotE[2,I,IE]
+      if slot == 0
+        @unroll for iv = 1 : NUMV  
+          F[K,Iz,indR,iv] += FRLoc[iv] * Surf
+        end  
+      else
+        @unroll for iv = 1 : NUMV  
+          FC[K,Iz,slot,iv] = FRLoc[iv] * Surf
+        end  
+      end
     end  
   end  
 end  

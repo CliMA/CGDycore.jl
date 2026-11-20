@@ -8,7 +8,7 @@
 #   Block tridiagonal, NB x NB blocks        (JacOneSided, JacTwoSidedSplit)
 #     FactorBlockTriKernel!, ldivBlockTriKernel!
 #   Scalar tridiagonal from element blocks   (JacHDG)
-#     LUTriBlk!, ldivTriBlk!, luTriBlkKernel!, ldivTriBlkKernel!
+#     LUTriBlk!, luTriBlkKernel! (the solve is in ldivHDGVerticalKernel!)
 #
 # All factorizations are without pivoting. Always use the LU and ldiv routines
 # of the same family together.
@@ -143,40 +143,11 @@ end
   end
 end
 
-# Gather the face RHS from the element contributions and solve L U x = b.
-# Forward/backward sweeps carry the running value in a register; the backward
-# step is a single muladd on the dependency chain.
-@inline function ldivTriBlk!(ID, A, RsC, rs, N)
-  # Forward: L y = b
-  y = RsC[ID,2,1] + RsC[ID,1,2]
-  rs[ID,1] = y
-  for i in 2:N
-    bi = RsC[ID,2,i] + RsC[ID,1,i+1]
-    y  = muladd(-A[ID,3,i-1], y, bi)
-    rs[ID,i] = y
-  end
-  # Backward: U x = y
-  x = y * A[ID,2,N]
-  rs[ID,N] = x
-  for i in N-1:-1:1
-    x = muladd(-A[ID,1,i+1], x, rs[ID,i] * A[ID,2,i])
-    rs[ID,i] = x
-  end
-end
-
 @kernel inbounds = true function luTriBlkKernel!(A, @Const(Blk), cS2, N)
   ID, = @index(Global, NTuple)
   ND = @uniform @ndrange()[1]
   if ID <= ND
     LUTriBlk!(ID, A, Blk, cS2, N)
-  end
-end
-
-@kernel inbounds = true function ldivTriBlkKernel!(@Const(A), @Const(RsC), rs, N)
-  ID, = @index(Global, NTuple)
-  ND = @uniform @ndrange()[1]
-  if ID <= ND
-    ldivTriBlk!(ID, A, RsC, rs, N)
   end
 end
 
