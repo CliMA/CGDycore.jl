@@ -17,8 +17,10 @@
 
 # Numerical theta: LogMean 1/{{1/theta}}_log (entropy conservative,
 # well-balanced for T = const and theta = const) or ArithMean {{theta}}
-# (total energy conservative, well-balanced for theta = const)
-@inline ThetaNum(::LogMean, ThL, ThR) = inv_ln_mean(one(ThL) / ThL, one(ThR) / ThR)
+# (total energy conservative, well-balanced for theta = const).
+# f^2 of the means is the same for theta and 1/theta, so
+# 1/{{1/theta}}_log = ThL ThR inv_ln_mean(ThL, ThR) without the two divisions.
+@inline ThetaNum(::LogMean, ThL, ThR) = ThL * ThR * inv_ln_mean(ThL, ThR)
 @inline ThetaNum(::ArithMean, ThL, ThR) = typeof(ThL)(0.5) * (ThL + ThR)
 
 # Well-balanced, entropy and total energy conservative volume flux (Eq. 58),
@@ -44,9 +46,10 @@ function (::VectorInvariantFlux)(::Val{ExPos}, ::Val{GPPos}, Cpd, ThMean = LogMe
     KAv = FT(0.25) * (VL[2] * VL[2] + VL[3] * VL[3] + VL[4] * VL[4] +
       VR[2] * VR[2] + VR[3] * VR[3] + VR[4] * VR[4])
     # nonconservative part with v^num = {{rho v}} / {{rho}}
-    v1 = m1 / RhoAv
-    v2 = m2 / RhoAv
-    v3 = m3 / RhoAv
+    invRhoAv = FT(1) / RhoAv
+    v1 = m1 * invRhoAv
+    v2 = m2 * invRhoAv
+    v3 = m3 * invRhoAv
     du = VR[2] - VL[2]
     dv = VR[3] - VL[3]
     dw = VR[4] - VL[4]
@@ -78,9 +81,10 @@ function (::VectorInvariantFlux)(::Val{ExPos}, ::Val{GPPos}, Cpd, ThMean = LogMe
     fRhoTh = fRho * ThNum
     KAv = FT(0.25) * (VL[2] * VL[2] + VL[3] * VL[3] + VL[4] * VL[4] +
       VR[2] * VR[2] + VR[3] * VR[3] + VR[4] * VR[4])
-    v1 = m1 / RhoAv
-    v2 = m2 / RhoAv
-    v3 = m3 / RhoAv
+    invRhoAv = FT(1) / RhoAv
+    v1 = m1 * invRhoAv
+    v2 = m2 * invRhoAv
+    v3 = m3 * invRhoAv
     du = VR[2] - VL[2]
     dv = VR[3] - VL[3]
     dw = VR[4] - VL[4]

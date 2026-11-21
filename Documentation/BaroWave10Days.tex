@@ -666,6 +666,69 @@ accurate as TrixiAtmo in Float64 and 1.4 times faster (19.1 against
 19.9~SYPD. The conservative DGSEM in Float32 still fails, as in
 Section~\ref{sec:findings}; its error varies between runs (2.08 and 2.48~hPa).
 
+\paragraph{Where VI is slower than Cons.} The kernel profile of one step
+(10 steps, Float32, quads) and the register use of the kernels (from the
+SASS, \code{bench/dgregs.jl}) after step 10:
+\begin{center}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{ms per step} & \multicolumn{2}{c}{registers Float32 (Float64)} \\
+kernel & VI & Cons & VI & Cons \\
+\midrule
+volume (joined)      & 5.60 & 5.06 & 113 (156) & 96 (128) \\
+HDG solve            & 2.32 & 2.05 & 164 (255) & 128 (244) \\
+Riemann H            & 1.04 & 0.90 & 66 (99)   & 60 (84) \\
+Jacobian (FillJacHDG)& 0.84 & 0.76 & 105 (188) & 128 (176) \\
+Riemann V            & 0.64 & 0.56 & 54 (83)   & 40 (68) \\
+pressure and Exner   & 0.18 & 0.11 & 20 (30)   & 20 (30) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Of the 1.2~ms per step that VI costs more than Cons, about one half is the
+volume kernel and one quarter the HDG solve. VI needs more registers in
+the volume kernel, so one workgroup of $5^3$ threads less fits on a
+multiprocessor (4 instead of 5 in Float32, 3 instead of 4 in Float64).
+The HDG solve of VI spills to local memory (59 loads and 108 stores in
+Float32, 97 and 227 in Float64 at the limit of 255 registers), the
+solve of Cons does not load spilled values. The reason are the two full
+$M\times M$ matrices of the linearized pressure term of VI
+(\code{build\_GP}), which the kernel keeps over its synchronizations;
+for Cons one of them is the gravity matrix and the other a scaled
+derivative matrix.
+
+\paragraph{Fewer divisions in the VI volume flux.} The numerical
+$\theta$ is now computed as $\theta_L\theta_R\,\mathrm{inv\_ln\_mean}(\theta_L,\theta_R)$,
+which equals $1/\{\!\{1/\theta\}\!\}_{\log}$ exactly (the series variable
+$f^2$ is the same for $\theta$ and $1/\theta$), and $v^\text{num}$ uses one
+reciprocal of $\{\!\{\rho\}\!\}$. This removes 4 of 7 divisions per
+pair. The fluxes agree to about 30~ulp (Float64) and 4~ulp (Float32) on
+random states, the Float64 checksums are unchanged. Time per step (ms) and
+volume kernel per call:
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+ & step 10 & fewer divisions & volume kernel [ms] \\
+\midrule
+VI Float32          & 12.16 & 12.03 & 1.91 $\to$ 1.87 \\
+VI Float64          & 22.20 & 21.87 & 3.32 $\to$ 2.82 \\
+VI Float32, prisms  & 10.91 & 10.60 & 1.62 $\to$ 1.58 \\
+VI Float64, prisms  & 20.01 & 19.42 & 3.59 $\to$ 2.48 \\
+\bottomrule
+\end{tabular}
+\end{center}
+In Float32 the divisions were not the limit; in Float64 the volume kernel
+became 15\,\% (hexahedra) and 30\,\% (prisms) faster.
+
+Applying the pressure term of the HDG solve without the matrices, from
+the node vectors $\Pi$, $\rho$, $\theta$ and $\partial p/\partial(\rho\theta)$,
+was tried as well. The private vectors $r_1, r_2$ then went to local
+memory (384--787 local loads), the solve became 25--60\,\% slower for VI and
+Cons, and it was dropped. Closing the gap to TrixiAtmo in Float32 needs
+fewer registers in the VI volume kernel and a solve that keeps the
+pressure matrices out of the registers, e.g.\ in shared memory.
+
 \begin{figure}[p]
 \centering
 \includegraphics[height=0.8\textheight,keepaspectratio]{BaroWave10Days_ps.png}
