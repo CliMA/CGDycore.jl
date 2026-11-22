@@ -82,11 +82,26 @@ end
   PartX    = @localmem eltype(F)      (N, N, M, NV)
   PartY    = @localmem eltype(F)      (N, N, M, NV)
   PartZ    = @localmem eltype(F)      (N, N, M, NV)
+  # DVT, DVZT are indexed with the partner index, from the kernel argument (SMatrix)
+  # every thread would keep its own copy in local memory
+  DVTLoc   = @localmem eltype(F)      (N, N)
+  DVZTLoc  = @localmem eltype(F)      (M, M)
 
   FLoc = @private eltype(F) (NV,)
   # ---- load phase ----
   Iz = div(IZ - 1, M) + 1
   ID = I + (J - 1) * N
+  lid = ID + (K - 1) * N * N
+  @unroll for n = 1:N*N
+    if n == lid
+      DVTLoc[n] = DVT[n]
+    end
+  end
+  @unroll for n = 1:M*M
+    if n == lid
+      DVZTLoc[n] = DVZT[n]
+    end
+  end
   ind = Glob[ID, IF]
   @unroll for iaux = 1:NAUX
     AuxLoc[I, J, K, iaux] = Aux[K, Iz, ind, iaux]
@@ -120,8 +135,8 @@ end
           AuxL, LoadLoc(AuxLoc, Val(NAUX), Ip, J, K),
           LoadMetric(dXdxILoc, Val(1), I, J, K), LoadMetric(dXdxILoc, Val(1), Ip, J, K), SymAnti())
         @unroll for iv = 1:NV
-          FLoc[iv] -= DVT[Ip, I] * (S[iv] + A[iv])
-          PartX[Ip, J, K, iv] = -DVT[I, Ip] * (S[iv] - A[iv])
+          FLoc[iv] -= DVTLoc[Ip, I] * (S[iv] + A[iv])
+          PartX[Ip, J, K, iv] = -DVTLoc[I, Ip] * (S[iv] - A[iv])
         end
       else
         @unroll for iv = 1:NV
@@ -135,8 +150,8 @@ end
           AuxL, LoadLoc(AuxLoc, Val(NAUX), I, Jp, K),
           LoadMetric(dXdxILoc, Val(2), I, J, K), LoadMetric(dXdxILoc, Val(2), I, Jp, K), SymAnti())
         @unroll for iv = 1:NV
-          FLoc[iv] -= DVT[Jp, J] * (S[iv] + A[iv])
-          PartY[I, Jp, K, iv] = -DVT[J, Jp] * (S[iv] - A[iv])
+          FLoc[iv] -= DVTLoc[Jp, J] * (S[iv] + A[iv])
+          PartY[I, Jp, K, iv] = -DVTLoc[J, Jp] * (S[iv] - A[iv])
         end
       else
         @unroll for iv = 1:NV
@@ -152,8 +167,8 @@ end
           AuxL, LoadLoc(AuxLoc, Val(NAUX), I, J, Kp),
           LoadMetric(dXdxILoc, Val(3), I, J, K), LoadMetric(dXdxILoc, Val(3), I, J, Kp), SymAnti())
         @unroll for iv = 1:NV
-          FLoc[iv] -= DVZT[Kp, K] * (S[iv] + A[iv])
-          PartZ[I, J, Kp, iv] = -DVZT[K, Kp] * (S[iv] - A[iv])
+          FLoc[iv] -= DVZTLoc[Kp, K] * (S[iv] + A[iv])
+          PartZ[I, J, Kp, iv] = -DVZTLoc[K, Kp] * (S[iv] - A[iv])
         end
       else
         @unroll for iv = 1:NV
@@ -208,9 +223,17 @@ end
   dXdxILoc = @localmem eltype(dXdxI)  (3, 3, DoF, M, TZ)
   PartH    = @localmem eltype(F)      (DoF, M, TZ, NV)
   PartZ    = @localmem eltype(F)      (DoF, M, TZ, NV)
+  # DVZT (SMatrix) in shared memory, see the hexahedral kernel
+  DVZTLoc  = @localmem eltype(F)      (M, M)
 
   FLoc = @private eltype(F) (NV,)
   # ---- load phase ----
+  lid = ID + (K - 1) * DoF + (iz - 1) * DoF * M
+  @unroll for n = 1:M*M
+    if n == lid
+      DVZTLoc[n] = DVZT[n]
+    end
+  end
   if Iz <= Nz
     ind = Glob[ID, IF]
     @unroll for iaux = 1:NAUX
@@ -267,8 +290,8 @@ end
             AuxL, LoadLoc(AuxLoc, Val(NAUX), ID, Kp, iz),
             LoadMetric(dXdxILoc, Val(3), ID, K, iz), LoadMetric(dXdxILoc, Val(3), ID, Kp, iz), SymAnti())
           @unroll for iv = 1:NV
-            FLoc[iv] -= DVZT[Kp, K] * (S[iv] + A[iv])
-            PartZ[ID, Kp, iz, iv] = -DVZT[K, Kp] * (S[iv] - A[iv])
+            FLoc[iv] -= DVZTLoc[Kp, K] * (S[iv] + A[iv])
+            PartZ[ID, Kp, iz, iv] = -DVZTLoc[K, Kp] * (S[iv] - A[iv])
           end
         else
           @unroll for iv = 1:NV

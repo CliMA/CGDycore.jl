@@ -126,21 +126,14 @@ function JacHDG(backend, FT, M, nz, DG)
 end
 
 # Gravity matrix A31 for one element, rebuilt from the geopotential
-# (M^2 flops instead of loading M^2 values from global memory).
+# (M^2 flops instead of loading M^2 values from global memory), with static
+# vectors and broadcasts (loops over an MMatrix stay in local memory).
 @inline function build_A31(Geo, DS, iz, ID, ::Val{M}) where {M}
   FT = eltype(Geo)
-  G = ntuple(i -> Geo[i, iz, ID], Val(M))
-  A = MMatrix{M, M, FT, M*M}(undef)
-  @unroll for i = 1:M
-    acc = zero(FT)
-    @unroll for k = 1:M
-      dphi = G[k] - G[i]
-      A[i, k] = FT(0.5) * DS[i, k] * dphi
-      acc = muladd(DS[i, k], dphi, acc)
-    end
-    A[i, i] += FT(0.5) * acc
-  end
-  return SMatrix(A)
+  G = SVector{M, FT}(ntuple(i -> Geo[i, iz, ID], Val(M)))
+  DPhi = DS .* (transpose(G) .- G)
+  acc = DPhi * SVector{M, FT}(ntuple(i -> one(FT), Val(M)))
+  return FT(0.5) * (DPhi + diagm(acc))
 end
 
 # Sound speed of the lower (node 1) and upper (node M) face of element iz
@@ -160,7 +153,8 @@ end
 @inline function build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, ::Val{M}, ::Val{false}) where {M}
   FT = eltype(Geo)
   GM = build_A31(Geo, DWS, iz, ID, Val(M))
-  PrM = SMatrix{M, M, FT, M*M}(ntuple(n -> DWSS[mod1(n, M), div(n - 1, M) + 1] * dpdRhoTh[div(n - 1, M) + 1, iz, ID], Val(M*M)))
+  dpV = SVector{M, FT}(ntuple(i -> dpdRhoTh[i, iz, ID], Val(M)))
+  PrM = DWSS .* transpose(dpV)
   return GM, PrM
 end
 
@@ -168,30 +162,25 @@ end
 # linearized with delta theta^num = (delta theta_i + delta theta_k) / 2, which gives
 # the split form Bs_ik = cp (1/2 D_ik (Pi_k - Pi_i) + delta_ik 1/2 sum_m D_im (Pi_m - Pi_i))
 # acting on delta theta_k = (delta rhotheta_k - theta_k delta rho_k) / rho_k
+# Built with static vectors and broadcasts: the nested loops over an MMatrix were not
+# fully unrolled by LLVM, GM, PrM, P and DWSS then stayed in local memory.
 @inline function build_GP(Geo, Pi, Rm, Ps, Th, dpdRhoTh, DWS, DWSS, iz, ID, ::Val{M}, ::Val{true}) where {M}
   FT = eltype(Geo)
-  P = ntuple(i -> Pi[i, iz, ID], Val(M))
-  GM = MMatrix{M, M, FT, M*M}(undef)
-  PrM = MMatrix{M, M, FT, M*M}(undef)
-  @unroll for i = 1:M
-    # cp = Ps_i / theta_i
-    cp = Ps[i, iz, ID] * Rm[i, iz, ID] / Th[i, iz, ID]
-    acc = zero(FT)
-    @unroll for m = 1:M
-      acc = muladd(DWSS[i, m], P[m] - P[i], acc)
-    end
-    @unroll for k = 1:M
-      Bs = FT(0.5) * DWSS[i, k] * (P[k] - P[i])
-      if i == k
-        Bs += FT(0.5) * acc
-      end
-      Bs *= cp
-      rRho = FT(1) / Rm[k, iz, ID]
-      GM[i, k] = -Bs * Th[k, iz, ID] * rRho * rRho
-      PrM[i, k] = Ps[i, iz, ID] * DWSS[i, k] * dpdRhoTh[k, iz, ID] + Bs * rRho
-    end
-  end
-  return SMatrix(GM), SMatrix(PrM)
+  P   = SVector{M, FT}(ntuple(i -> Pi[i, iz, ID], Val(M)))
+  Rho = SVector{M, FT}(ntuple(i -> Rm[i, iz, ID], Val(M)))
+  ThV = SVector{M, FT}(ntuple(i -> Th[i, iz, ID], Val(M)))
+  PsV = SVector{M, FT}(ntuple(i -> Ps[i, iz, ID], Val(M)))
+  dpV = SVector{M, FT}(ntuple(i -> dpdRhoTh[i, iz, ID], Val(M)))
+  rRho = one(FT) ./ Rho
+  # cp = Ps_i / theta_i
+  cp = PsV .* Rho ./ ThV
+  # DP_ik = D_ik (Pi_k - Pi_i), Bs = cp (1/2 DP + 1/2 diag(sum_m DP_im))
+  DP = DWSS .* (transpose(P) .- P)
+  acc = DP * SVector{M, FT}(ntuple(i -> one(FT), Val(M)))
+  Bs = cp .* (FT(0.5) * (DP + diagm(acc)))
+  GM = -Bs .* transpose(ThV .* rRho .* rRho)
+  PrM = PsV .* DWSS .* transpose(dpV) + Bs .* transpose(rRho)
+  return GM, PrM
 end
 
 ################################################################################

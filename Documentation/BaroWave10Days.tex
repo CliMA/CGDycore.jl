@@ -33,7 +33,9 @@ compared against a DGSEM run with twice the resolution in both
 directions. After the kernel work of Section~\ref{sec:kernels}, DGSEM VI
 reaches 19.1~SYPD in Float32 (13.1 before) with bitwise reproducible
 results, against 22.6~SYPD of TrixiAtmo, which is 2.7 times less
-accurate in Float32.
+accurate in Float32. Removing local-memory arrays from the kernels
+brought the time per step further down to 9.85~ms (Float32) and
+15.81~ms (Float64), below the 10.3 and 17.4~ms of TrixiAtmo.
 \end{abstract}
 
 \section{Test case and setups}
@@ -115,6 +117,11 @@ it has $n_\text{Panel}(N+1)$ nodes. The smallest node distance is the
 first GLL gap: $0.276$ of the element width for $N=3$ and $0.173$ for
 $N=4$. It is evaluated for the element at the panel centre on the
 equator, with $1^\circ \approx 111.2$~km.
+The same holds for the columns: CGSEM counts a column on an element
+interface once and has $6(n_\text{Panel}N)^2+2$ columns, DGSEM has
+$6n_\text{Panel}^2(N+1)^2$. With the same $n_\text{Panel}$ and $N$,
+CG-A therefore has 38\,402 columns against 60\,000 of DGSEM, and CG-B
+($n_\text{Panel}=25$) was chosen to match the DGSEM count.
 
 \begin{center}
 \small
@@ -725,9 +732,67 @@ Applying the pressure term of the HDG solve without the matrices, from
 the node vectors $\Pi$, $\rho$, $\theta$ and $\partial p/\partial(\rho\theta)$,
 was tried as well. The private vectors $r_1, r_2$ then went to local
 memory (384--787 local loads), the solve became 25--60\,\% slower for VI and
-Cons, and it was dropped. Closing the gap to TrixiAtmo in Float32 needs
-fewer registers in the VI volume kernel and a solve that keeps the
-pressure matrices out of the registers, e.g.\ in shared memory.
+Cons, and it was dropped.
+
+\paragraph{Local memory without spills.} The PTX of the kernels
+(\code{CUDA.@device\_code}) and \code{ptxas -v} for sm\_80 show that the
+local loads and stores of the table above are in Float32 no register
+spills (0~bytes spill) but a stack frame: static arrays that the kernel
+indexes with values unknown at compile time stay as \code{alloca} in
+local memory. In the HDG solve and the Jacobian these were the matrices
+of \code{build\_GP} (VI) and \code{build\_A31} (Cons), built in nested
+\code{@unroll} loops over an \code{MMatrix}, which LLVM did not unroll
+completely (VI Float32: 7 arrays, 368~bytes stack frame; Cons: 4 arrays,
+200~bytes). In the volume kernels the derivative matrices \code{DVT} and
+\code{DVZT}, passed as \code{SMatrix} by value and indexed with the
+partner node, were copied to the stack of every thread (two arrays of
+25 floats, 232~bytes). Real spills were found only in the VI Float64
+solve (208~bytes). Two changes remove the arrays:
+\begin{itemize}
+\item \code{build\_GP} and \code{build\_A31} build the matrices with
+  static vectors and broadcasts ($D\circ(\mathbf{1}g^T-g\mathbf{1}^T)$
+  plus a diagonal of the row sums);
+\item the volume kernels copy \code{DVT} and \code{DVZT} (prisms:
+  \code{DVZT}) once per workgroup into shared memory.
+\end{itemize}
+The stack frame of all HDG and volume kernels is now 32~bytes without
+spills, except 24~bytes spill in the VI Float64 solve. Kernel times per
+call (ms, quads) and time per step (ms):
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+ & before & broadcasts & + shared $D$ \\
+\midrule
+HDG solve VI Float32        & 0.774 & 0.417 & 0.416 \\
+HDG solve VI Float64        & 1.83  & 0.843 & 0.845 \\
+HDG solve Cons Float32      & 0.683 & 0.398 & 0.399 \\
+volume VI Float32           & 1.87  & 1.87  & 1.52 \\
+volume VI Float64           & 2.82  & 2.90  & 2.01 \\
+volume Cons Float32         & 1.69  & 1.69  & 1.43 \\
+\midrule
+step VI Float32             & 12.03 & 10.93 & 9.85 \\
+step VI Float64             & 21.87 & 18.34 & 15.81 \\
+step Cons Float32           & 10.89 & 10.00 & 9.25 \\
+step VI Float32, prisms     & 10.60 & 9.59  & 9.49 \\
+step VI Float64, prisms     & 19.42 & 16.37 & 16.16 \\
+step Cons Float32, prisms   & 8.94  & 8.17  & 8.01 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The checksums of VI are unchanged, Cons Float32 changes by round-off
+(on the CPU old and new Float32 have the same distance to Float64).
+With 9.85~ms (Float32) and 15.81~ms (Float64) per step, DGSEM VI is now
+faster per step than TrixiAtmo (10.3 and 17.4~ms); the ten-day runs of
+the table above were made before these changes. On prisms the volume
+kernel gains little, because the horizontal derivatives \code{Dx1},
+\code{Dx2} are still read from global memory.
+
+Rejected: building the pressure matrices with \code{ntuple} closures (56
+arrays, 856~bytes stack frame), rebuilding them in the backward pass of
+the solve, keeping them in shared memory, and loading the states per
+direction in the volume kernel (fewer registers, no gain); all were
+slower or equal.
 
 \begin{figure}[p]
 \centering
