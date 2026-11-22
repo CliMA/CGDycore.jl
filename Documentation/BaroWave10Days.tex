@@ -314,7 +314,11 @@ Diff agree to $10^{-4}$~hPa, and VI and Cons differ by 0.13~hPa rms
   The conservative DGSEM fluxes with the full pressure
   ($p\approx10^5$~Pa) fail in Float32. A spurious wave train covers the whole
   hemisphere, and the deepest low is 6~hPa too shallow
-  (Figure~\ref{fig:dg}). Both the vector-invariant form, which works
+  (Figures~\ref{fig:dg} and~\ref{fig:consf32}). The wave train is the
+  difference between Float32 and Float64 of the same scheme (rms
+  2.75~hPa), so it is caused by round-off, not by the discretization:
+  in Float64 the conservative form is as accurate as VI (0.40~hPa).
+  Both the vector-invariant form, which works
   with the Exner pressure $\Pi\approx1$, and the difference form
   remove this.
 \item \textbf{Accuracy at about 100 km.} All DGSEM variants are within
@@ -814,6 +818,19 @@ Float32 ($n_\text{Panel}=20$, $N=4$) and the Float64 difference VI minus
 Cons. The conservative fluxes with the full pressure develop spurious
 waves in Float32.}
 \label{fig:dg}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.92\textwidth]{BaroWave10Days_ConsF32.png}
+\caption{Failure of the conservative DGSEM in Float32 (ten-day runs of
+the final code, $n_\text{Panel}=20$, $N=4$, interpolated to
+$0.5^\circ$ up to $85^\circ$N, common colour scale). From top:
+Float32 minus Float64 of the conservative form, the same for VI, and the
+conservative form in Float32 and in Float64 minus the reference. The
+Float32 wave train with wavenumber about 9 dominates the Float32 error;
+the Float64 error is confined to the fronts of the main cyclones.}
+\label{fig:consf32}
 \end{figure}
 
 \section*{Reproduction}
