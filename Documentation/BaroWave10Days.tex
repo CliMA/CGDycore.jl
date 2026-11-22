@@ -31,11 +31,9 @@ comparisons. All runs use one NVIDIA
 A100 on Levante and write no output. The day-10 surface pressure is
 compared against a DGSEM run with twice the resolution in both
 directions. After the kernel work of Section~\ref{sec:kernels}, DGSEM VI
-reaches 19.1~SYPD in Float32 (13.1 before) with bitwise reproducible
-results, against 22.6~SYPD of TrixiAtmo, which is 2.7 times less
-accurate in Float32. Removing local-memory arrays from the kernels
-brought the time per step further down to 9.85~ms (Float32) and
-15.81~ms (Float64), below the 10.3 and 17.4~ms of TrixiAtmo.
+reaches 23.6~SYPD in Float32 (13.1 before) and 14.7~SYPD in Float64
+with bitwise reproducible results, against 22.6 and 13.4~SYPD of
+TrixiAtmo, which is 2.7 times less accurate in Float32.
 \end{abstract}
 
 \section{Test case and setups}
@@ -642,36 +640,39 @@ separate H and V kernels & 11.95 & 22.82 & 9.36 & -- & -- \\
 \end{center}
 
 \paragraph{Ten days with the final kernels.} The runs of the Timing
-section were repeated with the final code (one A100, nPanel 20, 10\,165
-steps of 85~s; the prisms take 11\,520 steps of 75~s):
+section were repeated with the final code, including the removal of the
+local-memory arrays described below (one A100, nPanel 20, 10\,165 steps
+of 85~s; the prisms take 11\,520 steps of 75~s):
 \begin{center}
 \small
 \begin{tabular}{llrrrr}
 \toprule
 run & precision & wall [s] & ms/step & SYPD & rms error [hPa] \\
 \midrule
-DGSEM VI       & Float32 & 123.8 & 12.2 & \textbf{19.1} & 0.41 \\
-DGSEM VI       & Float64 & 225.7 & 22.2 & 10.5 & 0.41 \\
-DGSEM Cons     & Float32 & 110.6 & 10.9 & 21.4 & 2.48 \\
-DGSEM Cons     & Float64 & 177.5 & 17.5 & 13.3 & 0.40 \\
-DGSEM VI, prisms & Float32 & 125.3 & 10.9 & 18.9 & 0.70 \\
-DGSEM VI, prisms & Float64 & 231.4 & 20.1 & 10.2 & 0.70 \\
+DGSEM VI       & Float32 & 100.4 & 9.9  & \textbf{23.6} & 0.41 \\
+DGSEM VI       & Float64 & 161.1 & 15.8 & 14.7 & 0.41 \\
+DGSEM Cons     & Float32 &  94.3 & 9.3  & 25.1 & 2.80 \\
+DGSEM Cons     & Float64 & 145.8 & 14.3 & 16.2 & 0.40 \\
+DGSEM VI, prisms & Float32 & 110.5 & 9.6  & 21.4 & 0.70 \\
+DGSEM VI, prisms & Float64 & 186.8 & 16.2 & 12.7 & 0.70 \\
 \midrule
 TrixiAtmo      & Float32 & 104.8 & 10.3 & 22.6 & 1.09 \\
 TrixiAtmo      & Float64 & 176.8 & 17.4 & 13.4 & 0.45 \\
 \bottomrule
 \end{tabular}
 \end{center}
-DGSEM VI in Float32 went from 13.1 to 19.1~SYPD, 46\,\% faster, with
+DGSEM VI in Float32 went from 13.1 to 23.6~SYPD, 80\,\% faster, with
 unchanged accuracy (0.41~hPa against 0.42~hPa before; Float32 against
-Float64 0.064~hPa rms). The conservative DGSEM is now as fast as TrixiAtmo:
-13.3 against 13.4~SYPD in Float64 and 21.4 against 22.6~SYPD in Float32.
-TrixiAtmo stays 16\,\% faster than DGSEM VI in Float32. But DGSEM VI in Float32 is as
-accurate as TrixiAtmo in Float64 and 1.4 times faster (19.1 against
-13.4~SYPD). TrixiAtmo in Float32 has 2.7 times the error (1.09 against
-0.41~hPa). With the atomics of step 9 DGSEM VI Float32 would reach about
-19.9~SYPD. The conservative DGSEM in Float32 still fails, as in
-Section~\ref{sec:findings}; its error varies between runs (2.08 and 2.48~hPa).
+Float64 0.059~hPa rms). DGSEM VI is now faster than TrixiAtmo, by 4\,\%
+in Float32 (23.6 against 22.6~SYPD) and 10\,\% in Float64 (14.7 against
+13.4~SYPD); the conservative DGSEM by 11\,\% and 21\,\%. DGSEM VI in
+Float32 is as accurate as TrixiAtmo in Float64 and 1.8 times faster
+(23.6 against 13.4~SYPD). TrixiAtmo in Float32 has 2.7 times the error
+(1.09 against 0.41~hPa). The conservative DGSEM in Float32 still fails,
+as in Section~\ref{sec:findings}; its error varies between runs (2.08,
+2.48 and 2.80~hPa). The runs before the removal of the local-memory
+arrays gave 19.1 (VI Float32), 10.5 (VI Float64), 21.4 and 13.3~SYPD
+(Cons).
 
 \paragraph{Where VI is slower than Cons.} The kernel profile of one step
 (10 steps, Float32, quads) and the register use of the kernels (from the
@@ -783,8 +784,8 @@ step Cons Float32, prisms   & 8.94  & 8.17  & 8.01 \\
 The checksums of VI are unchanged, Cons Float32 changes by round-off
 (on the CPU old and new Float32 have the same distance to Float64).
 With 9.85~ms (Float32) and 15.81~ms (Float64) per step, DGSEM VI is now
-faster per step than TrixiAtmo (10.3 and 17.4~ms); the ten-day runs of
-the table above were made before these changes. On prisms the volume
+faster per step than TrixiAtmo (10.3 and 17.4~ms), as the ten-day runs
+of the table above confirm. On prisms the volume
 kernel gains little, because the horizontal derivatives \code{Dx1},
 \code{Dx2} are still read from global memory.
 
