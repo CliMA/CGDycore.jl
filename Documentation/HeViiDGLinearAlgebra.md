@@ -1,0 +1,71 @@
+*Converted from `HeViiDGLinearAlgebra.tex`; the PDF is the reference for layout.*
+
+After the first permutation we have the structure
+
+$$
+\mathcal{A} =
+	\begin{pmatrix}
+		.A & B \\
+		C & D
+	\end{pmatrix}
+$$
+
+or
+
+$$
+\begin{pmatrix}
+		.A_{1} & 0 & \cdots & 0 & B_{1} \\
+		0 & .A_{2}  &  \cdots & 0 & B_{2} \\
+		\vdots & \vdots &  \vdots  &  \vdots  &  \vdots \\
+		0 & .0  &  \cdots & A_{n} & B_{n} \\
+		C_1 & C_2 & \cdots  & C_{n} & D
+	\end{pmatrix}
+$$
+
+We want now solve a linear system
+
+$$
+\mathcal{A} 	x = b
+$$
+
+with the partition
+
+$$
+x =
+	\begin{pmatrix}
+		x_1 \\
+		x_2
+	\end{pmatrix}
+$$
+
+and
+
+$$
+x_1=
+	\begin{pmatrix}
+		x_{1i} \\
+		\vdots \\
+		x_{1n}
+	\end{pmatrix}
+$$
+
+and respectively for $b$.
+
+Computation of the Schur complement matrx
+
+$$
+\begin{aligned}
+		S& = D - \sum_i C_iA_i^{-1}B_i
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+		x_{1i}  & = A_i^{-1}b_{1i} \quad i=1,\ldots,n \\
+		x_2 & = S^{-1}(b_2-\sum_i C_ix_{1i}) \\
+		x_{1i} & = A_i^{-1}(b_{1i}-B_ix_2), \quad i=1,\ldots,n
+\end{aligned}
+$$
+
+The matrices $A_i$ are also in block structured where the upper left block is the identity matrix.
+
