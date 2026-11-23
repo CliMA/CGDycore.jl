@@ -19,7 +19,10 @@ compared against a DGSEM run with twice the resolution in both
 directions. After the kernel work of Section 11, DGSEM VI
 reaches 23.6 SYPD in Float32 (13.1 before) and 14.7 SYPD in Float64
 with bitwise reproducible results, against 22.6 and 13.4 SYPD of
-TrixiAtmo, which is 2.7 times less accurate in Float32.
+TrixiAtmo, which is 2.7 times less accurate in Float32. The standard
+CGSEM run reaches 20.7 SYPD in Float32 and ClimaAtmos on the same grid
+3.97 SYPD. All CGSEM and DGSEM timings and errors in this document are
+those of the final code.
 
 ## 1 Test case and setups
 
@@ -173,29 +176,34 @@ for a non-finite state, which costs less than 1 %. For ClimaAtmos the
 wall time is the `solve_atmos!` time of the 5 759 steps after the
 first one, and the GPU is an A100-SXM4-80GB. For TrixiAtmo it is the
 `Trixi.solve` time of the ten days after two warm-up steps, also on an
-A100-SXM4-80GB. The DGSEM timings in this section are those before the
-kernel improvements; Section 11 gives the final ones.
+A100-SXM4-80GB. All CGSEM and DGSEM runs were repeated with the final
+code (Section 11) on an A100-SXM4-80GB. The last column
+gives the SYPD of the first runs, before the kernel work; for CGSEM the
+gain of 2–8 % probably comes from the fused stage copy of the
+Rosenbrock integrator. The reference was not repeated.
 
-| run | precision | steps | wall [s] | ms/step | SYPD |
-|---|---|---|---|---|---|
-| CGSEM standard | Float32 | 5 760 | 120.3 | 20.9 | 19.7 |
-| CGSEM standard | Float64 | 5 760 | 218.7 | 38.0 | 10.8 |
-| CGSEM standard, deep | Float64 | 5 760 | 229.0 | 39.8 | 10.3 |
-| CG-A | Float32 | 5 760 | 73.2 | 12.7 | 32.3 |
-| CG-A | Float64 | 5 760 | 127.8 | 22.2 | 18.5 |
-| CG-B | Float32 | 7 200 | 174.3 | 24.2 | 13.6 |
-| CG-B | Float64 | 7 200 | 299.0 | 41.5 | 7.9 |
-| DGSEM VI | Float32 | 10 165 | 180.5 | 17.8 | 13.1 |
-| DGSEM VI | Float64 | 10 165 | 316.7 | 31.2 | 7.5 |
-| DGSEM Cons | Float32 | 10 165 | 157.1 | 15.5 | 15.1 |
-| DGSEM Cons | Float64 | 10 165 | 231.2 | 22.7 | 10.2 |
-| DGSEM Diff | Float32 | 10 165 | 157.4 | 15.5 | 15.0 |
-| DGSEM Diff | Float64 | 10 165 | 231.4 | 22.8 | 10.2 |
-| DGSEM reference | Float64 | 20 329 | 5426.4 | 266.9 | 0.44 |
-| ClimaAtmos | Float32 | 5 760 | 596.3 | 103.5 | 3.97 |
-| ClimaAtmos | Float64 | 5 760 | 1347.6 | 234.0 | 1.76 |
-| TrixiAtmo | Float32 | 10 165 | 104.8 | 10.3 | 22.6 |
-| TrixiAtmo | Float64 | 10 165 | 176.8 | 17.4 | 13.4 |
+| run | precision | steps | wall [s] | ms/step | SYPD | SYPD before |
+|---|---|---|---|---|---|---|
+| CGSEM standard | Float32 | 5 760 | 114.4 | 19.9 | 20.7 | 19.7 |
+| CGSEM standard | Float64 | 5 760 | 212.7 | 36.9 | 11.1 | 10.8 |
+| CGSEM standard, deep | Float64 | 5 760 | 223.2 | 38.8 | 10.6 | 10.3 |
+| CG-A | Float32 | 5 760 | 67.7 | 11.8 | 35.0 | 32.3 |
+| CG-A | Float64 | 5 760 | 120.7 | 21.0 | 19.6 | 18.5 |
+| CG-B | Float32 | 7 200 | 161.7 | 22.5 | 14.6 | 13.6 |
+| CG-B | Float64 | 7 200 | 280.6 | 39.0 | 8.4 | 7.9 |
+| DGSEM VI | Float32 | 10 165 | 100.4 | 9.9 | 23.6 | 13.1 |
+| DGSEM VI | Float64 | 10 165 | 161.1 | 15.8 | 14.7 | 7.5 |
+| DGSEM Cons | Float32 | 10 165 | 94.3 | 9.3 | 25.1 | 15.1 |
+| DGSEM Cons | Float64 | 10 165 | 145.8 | 14.3 | 16.2 | 10.2 |
+| DGSEM Diff | Float32 | 10 165 | 93.9 | 9.2 | 25.2 | 15.0 |
+| DGSEM Diff | Float64 | 10 165 | 145.9 | 14.4 | 16.2 | 10.2 |
+| DGSEM VI, prisms | Float32 | 11 520 | 110.5 | 9.6 | 21.4 |  |
+| DGSEM VI, prisms | Float64 | 11 520 | 186.8 | 16.2 | 12.7 |  |
+| DGSEM reference | Float64 | 20 329 | 5426.4 | 266.9 |  | 0.44 |
+| ClimaAtmos | Float32 | 5 760 | 596.3 | 103.5 | 3.97 |  |
+| ClimaAtmos | Float64 | 5 760 | 1347.6 | 234.0 | 1.76 |  |
+| TrixiAtmo | Float32 | 10 165 | 104.8 | 10.3 | 22.6 |  |
+| TrixiAtmo | Float64 | 10 165 | 176.8 | 17.4 | 13.4 |  |
 
 ## 5 Accuracy
 
@@ -211,24 +219,28 @@ extrapolated hydrostatically from the lowest level (234 m),
 $p_s=p_1\exp(g z_1/(R_d T_1))$. ClimaAtmos's baroclinic wave uses a
 sea-level reference pressure of 1013.25 hPa instead of 1000 hPa, so
 13.25 hPa are subtracted before the comparison. That offset holds
-only approximately.
+only approximately. The CGSEM and DGSEM values are those of the final
+runs. The error of DGSEM Cons in Float32 varies between runs (2.08, 2.48
+and 2.80 hPa); the other errors agree with the first runs to 0.01 hPa.
 
 | run | precision | $p_s$ min [hPa] | $p_s$ max [hPa] | rms error [hPa] | max error [hPa] |
 |---|---|---|---|---|---|
 | DGSEM reference | Float64 | 927.2 | 1023.4 | – | – |
-| CGSEM standard | Float32 | 929.2 | 1024.9 | 1.94 | 13.0 |
+| CGSEM standard | Float32 | 929.2 | 1024.9 | 1.94 | 12.9 |
 | CGSEM standard | Float64 | 929.1 | 1024.9 | 1.94 | 12.9 |
 | CGSEM standard, deep | Float64 | 927.2 | 1022.9 | 0.64 | 11.7 |
-| CG-A | Float32 | 926.6 | 1022.7 | 0.76 | 12.2 |
+| CG-A | Float32 | 926.6 | 1022.6 | 0.76 | 12.2 |
 | CG-A | Float64 | 926.7 | 1022.7 | 0.76 | 12.3 |
 | CG-B | Float32 | 926.6 | 1023.0 | 0.58 | 11.1 |
 | CG-B | Float64 | 926.6 | 1023.0 | 0.59 | 11.2 |
-| DGSEM VI | Float32 | 925.2 | 1023.3 | 0.42 | 8.6 |
+| DGSEM VI | Float32 | 925.2 | 1023.3 | 0.41 | 8.6 |
 | DGSEM VI | Float64 | 925.3 | 1023.2 | 0.41 | 8.5 |
-| DGSEM Cons | Float32 | 930.9 | 1023.2 | 2.08 | 19.9 |
+| DGSEM Cons | Float32 | 929.8 | 1023.2 | 2.80 | 24.1 |
 | DGSEM Cons | Float64 | 924.9 | 1023.2 | 0.40 | 9.4 |
 | DGSEM Diff | Float32 | 924.9 | 1023.3 | 0.41 | 9.4 |
 | DGSEM Diff | Float64 | 924.9 | 1023.2 | 0.40 | 9.4 |
+| DGSEM VI, prisms | Float32 | 926.5 | 1023.0 | 0.70 | 14.5 |
+| DGSEM VI, prisms | Float64 | 926.6 | 1023.0 | 0.70 | 14.4 |
 | ClimaAtmos ($-13.25$) | Float32 | 928.3 | 1023.5 | 1.09 | 17.2 |
 | ClimaAtmos ($-13.25$) | Float64 | 928.4 | 1023.3 | 1.09 | 17.2 |
 | TrixiAtmo | Float32 | 925.0 | 1024.0 | 1.09 | 15.7 |
@@ -238,16 +250,17 @@ only approximately.
 
 | run | rms [hPa] | max [hPa] |
 |---|---|---|
-| CGSEM standard | 0.036 | 0.47 |
-| CG-A | 0.049 | 0.45 |
-| CG-B | 0.052 | 0.88 |
-| DGSEM VI | 0.071 | 1.19 |
-| DGSEM Cons | 2.05 | 18.3 |
-| DGSEM Diff | 0.074 | 1.34 |
+| CGSEM standard | 0.031 | 0.30 |
+| CG-A | 0.046 | 0.52 |
+| CG-B | 0.043 | 0.68 |
+| DGSEM VI | 0.059 | 0.94 |
+| DGSEM Cons | 2.75 | 22.4 |
+| DGSEM Diff | 0.070 | 1.10 |
+| DGSEM VI, prisms | 0.106 | 2.87 |
 | ClimaAtmos | 0.089 | 1.82 |
 | TrixiAtmo | 1.05 | 12.8 |
 
-Node by node on the DGSEM grid, the values are 0.072/1.25 (VI),
+In the first runs, node by node on the DGSEM grid, the values were 0.072/1.25 (VI),
 1.89/18.7 (Cons) and 0.072/1.46 hPa (Diff). In Float64, Cons and
 Diff agree to $10^{-4}$ hPa, and VI and Cons differ by 0.13 hPa rms
 (max 5.0 hPa, in the deepest lows).
@@ -259,7 +272,7 @@ Diff agree to $10^{-4}$ hPa, and VI and Cons differ by 0.13 hPa rms
   the error against the reference.
   The conservative DGSEM fluxes with the full pressure
   ($p\approx10^5$ Pa) fail in Float32. A spurious wave train covers the whole
-  hemisphere, and the deepest low is 6 hPa too shallow
+  hemisphere, and the deepest low is 5 hPa too shallow
   (Figures 2 and 3). The wave train is the
   difference between Float32 and Float64 of the same scheme (rms
   2.75 hPa), so it is caused by round-off, not by the discretization:
@@ -267,9 +280,10 @@ Diff agree to $10^{-4}$ hPa, and VI and Cons differ by 0.13 hPa rms
   Both the vector-invariant form, which works
   with the Exner pressure $\Pi\approx1$, and the difference form
   remove this.
-- **Accuracy at about 100 km.** All DGSEM variants are within
-  0.40–0.42 hPa rms of the reference. CGSEM with the deep-atmosphere
-  equations is within 0.64 hPa (order 3) and 0.59 hPa (order 4, same
+- **Accuracy at about 100 km.** All DGSEM variants on
+  quadrilaterals are within 0.40–0.41 hPa rms of the reference (prisms
+  0.70 hPa). CGSEM with the deep-atmosphere
+  equations is within 0.64 hPa (order 3) and 0.58 hPa (order 4, same
   number of unknowns). The reference is a DGSEM VI run, so these numbers
   favour DGSEM.
 - **Shallow against deep.** The standard CGSEM job uses the
@@ -277,15 +291,17 @@ Diff agree to $10^{-4}$ hPa, and VI and Cons differ by 0.13 hPa rms
   almost uniform offset of 1–2 hPa (rms 1.94 hPa). With
   `--Equation=CompressibleDeep`, the same grid gives 0.64 hPa, and
   the deep run costs 5 % more.
-- **Cost.** In Float32 the standard CGSEM run reaches 19.7 SYPD,
-  DGSEM VI 13.1 and DGSEM Diff 15.0 SYPD. CGSEM takes 1.8 times fewer
-  steps, each 20–35 % more expensive than a DGSEM step. The vector-invariant DGSEM costs
-  15 % (Float32) to 37 % (Float64) more per step than the
-  conservative forms. Float32 is 1.5–1.8 times faster than Float64
-  for both dycores.
+- **Cost.** In Float32 the standard CGSEM run reaches 20.7 SYPD,
+  DGSEM VI 23.6 and DGSEM Diff 25.2 SYPD. CGSEM takes 1.8 times fewer
+  steps, each twice as expensive as a DGSEM VI step (19.9 against
+  9.9 ms). At the same number of unknowns (3.9 M) DGSEM VI is 1.6 times
+  faster than CG-B and more accurate (0.41 against 0.58 hPa). The
+  vector-invariant DGSEM costs 7 % (Float32) to 10 % (Float64) more
+  per step than the conservative forms. Float32 is 1.5–1.9 times faster
+  than Float64 for both dycores.
 - **ClimaAtmos.** On the same grid and with the same time step
   as the standard CGSEM run, ClimaAtmos reaches 3.97 SYPD in Float32 and
-  1.76 SYPD in Float64. CGSEM is 5.0 (Float32) and 6.2 (Float64) times
+  1.76 SYPD in Float64. CGSEM is 5.2 (Float32) and 6.3 (Float64) times
   faster per step. Building the Jacobian once per step instead of once per
   solve changes the cost by only 2 % (0.1056 s against 0.1035 s per
   step in a 1-day Float32 run), so the cost is in the tendency
@@ -301,7 +317,7 @@ Diff agree to $10^{-4}$ hPa, and VI and Cons differ by 0.13 hPa rms
 
 ClimaAtmos advances in time with its own package ClimaTimeSteppers.jl,
 here with the IMEX method ARS343. On the same grid and with the same time
-step as the standard CGSEM run, it is 5.0 (Float32) and 6.2 (Float64) times
+step as the standard CGSEM run, it is 5.2 (Float32) and 6.3 (Float64) times
 slower per step. A kernel profile of five Float32 steps
 (`CUDA.@profile`, 107 ms per step) shows:
 
@@ -345,11 +361,12 @@ TrixiAtmo was installed in `GPUTests/TrixiAtmo` on Levante from the
 main branches of TrixiAtmo.jl and Trixi.jl. It is the closest
 counterpart of the DGSEM of CGDycore: the same grid, the same time step,
 a Rosenbrock-W method with a vertically implicit Jacobian, and flux
-differencing with entropy-conservative volume fluxes. TrixiAtmo is
-1.7 times faster than DGSEM VI in Float32 (10.3 against 17.7 ms per step)
-and 1.8 times faster in Float64 (17.4 against 31.2 ms). Against the
-conservative DGSEM it is 1.5 times faster in Float32 and 1.3 times in
-Float64. In Float64 its accuracy is the same as that of DGSEM
+differencing with entropy-conservative volume fluxes. Before the kernel
+improvements of Section 11, TrixiAtmo was 1.7 times faster
+than DGSEM VI in Float32 (10.3 against 17.7 ms per step) and 1.8 times in
+Float64 (17.4 against 31.2 ms). With the final kernels DGSEM VI is faster
+than TrixiAtmo by 4 % (Float32, 9.9 ms) and 10 % (Float64, 15.8 ms),
+the conservative DGSEM by 11 % and 21 %. In Float64 its accuracy is the same as that of DGSEM
 (0.45 hPa rms). In Float32 it loses accuracy (1.05 hPa rms
 against Float64, up to 13 hPa in the lows), like the conservative DGSEM
 fluxes, but less severely. TrixiAtmo also carries the full pressure
@@ -357,8 +374,7 @@ $p\approx10^5$ Pa in its fluxes. The vector-invariant elixir
 (`elixir_vector_invariant_baroclinic_instability.jl`) uses explicit,
 error-controlled time stepping on the CPU. The two-sided Jacobian is
 available only for the potential-temperature equations, so it was not
-run. These ratios refer to DGSEM before the kernel improvements of
-Section 11.
+run.
 
 ## 9 Vertical solvers of DGSEM
 
@@ -556,6 +572,8 @@ of 85 s; the prisms take 11 520 steps of 75 s):
 | DGSEM VI | Float64 | 161.1 | 15.8 | 14.7 | 0.41 |
 | DGSEM Cons | Float32 | 94.3 | 9.3 | 25.1 | 2.80 |
 | DGSEM Cons | Float64 | 145.8 | 14.3 | 16.2 | 0.40 |
+| DGSEM Diff | Float32 | 93.9 | 9.2 | 25.2 | 0.41 |
+| DGSEM Diff | Float64 | 145.9 | 14.4 | 16.2 | 0.40 |
 | DGSEM VI, prisms | Float32 | 110.5 | 9.6 | 21.4 | 0.70 |
 | DGSEM VI, prisms | Float64 | 186.8 | 16.2 | 12.7 | 0.70 |
 | TrixiAtmo | Float32 | 104.8 | 10.3 | 22.6 | 1.09 |
