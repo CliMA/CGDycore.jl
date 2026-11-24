@@ -357,6 +357,42 @@ Base.@kwdef struct ParamNeutralCart{FT}
   cS::FT = 360
 end
 
+# horizontally homogeneous column for boundary-layer tests: theta = Th0 exp(NBr^2 z / g),
+# u = uMax + uAmp exp(-(z-zc)^2/(2 sigma^2))
+Base.@kwdef struct ParamColumnCart{FT}
+  Th0::FT = 300
+  NBr::FT = 0
+  uMax::FT = 10
+  vMax::FT = 0
+  wMax::FT = 0
+  uAmp::FT = 0
+  zc::FT = 1000
+  sigma::FT = 100
+  TSurf::FT = 300
+  RhoVSurf::FT = 0
+  CM::FT = 1.e-3
+  cS::FT = 360
+end
+
+# two-layer atmosphere of Doyle and Durran (2002, J. Atmos. Sci. 59, 186-201), Section 3:
+# U = 25 m/s, N = NLow below Hi and NUp above. The surface momentum flux is switched off
+# (free slip) for x < DragX0 and ramps linearly to no slip at DragX1.
+Base.@kwdef struct ParamRotorCart{FT}
+  Th0::FT = 280
+  uMax::FT = 25
+  vMax::FT = 0
+  wMax::FT = 0
+  NLow::FT = 0.025
+  NUp::FT = 0.01
+  Hi::FT = 3000
+  DragX0::FT = -20000
+  DragX1::FT = -10000
+  TSurf::FT = 280
+  RhoVSurf::FT = 0
+  CM::FT = 1.e-3
+  cS::FT = 360
+end
+
 Base.@kwdef struct ParamBryanFritschCart
   Th0::Float64 = 300.0
   uMax::Float64 = 0.0
@@ -599,6 +635,10 @@ function Parameters(FT,Problem::String)
   elseif Problem == "HillSchaerCart"
     @show Problem
     Param = ParamHillSchaerCart()
+  elseif Problem == "ColumnCart"
+    Param = ParamColumnCart{FT}()
+  elseif Problem == "RotorCart"
+    Param = ParamRotorCart{FT}()
   elseif Problem == "HillAgnesiXCart"
     @show Problem
     Param = ParamHillAgnesiXCart{FT}()
@@ -688,3 +728,17 @@ function Parameters(FT,Problem::String)
   end
 end
 
+
+# copy of a parameter struct with fields replaced from "name=value,name=value"
+function SetParameters(Param,Spec::AbstractString)
+  T = typeof(Param)
+  New = Dict{Symbol,Any}()
+  for item in split(Spec, ",")
+    isempty(strip(item)) && continue
+    name, value = strip.(split(item, "="))
+    f = Symbol(name)
+    f in fieldnames(T) || error("SetParameters: $T has no field $f")
+    New[f] = parse(fieldtype(T, f) <: Bool ? Bool : Float64, value)
+  end
+  return T(; (f => (haskey(New, f) ? convert(fieldtype(T, f), New[f]) : getfield(Param, f)) for f in fieldnames(T))...)
+end

@@ -371,7 +371,7 @@ end
   NumG = @uniform @ndrange()[2]
 
   if Iz < Nz && IC <= NumG
-    fac = eltype(F)(2) * K[Iz,IC] / (dz[Iz,IC] + dz[Iz+1,IC]) 
+    fac = eltype(F)(2) * K[1,Iz,IC] / (dz[Iz,IC] + dz[Iz+1,IC]) 
     facDiv1 = eltype(dz)(1) / dz[Iz,IC] / U[1,Iz,IC,1]
     facDiv2 = -eltype(dz)(1) / dz[Iz+1,IC] / U[1,Iz+1,IC,1]
     grad = fac * (U[1,Iz+1,IC,2] - U[1,Iz,IC,2])
@@ -384,7 +384,10 @@ end
 end  
 
 
-@kernel inbounds = true function SurfaceFluxMomentumKernel!(F,@Const(U),@Const(nS),@Const(CM),@Const(dz))
+# surface stress CM |v| v_t on the tangential velocity of the lowest layer, scaled by the
+# drag factor of the column (1 no-slip, 0 free-slip)
+@kernel inbounds = true function SurfaceFluxMomentumKernel!(F,@Const(U),@Const(nS),@Const(CM),
+  @Const(DragFac),@Const(dz))
   IC, = @index(Global, NTuple)
 
   NumG = @uniform @ndrange()[1]
@@ -393,10 +396,10 @@ end
     uCol = U[1,1,IC,2]
     vCol = U[1,1,IC,3]
     WS = -(nS[1,IC]* uCol + nS[2,IC] * vCol) / nS[3,IC]
-    ww = 0.5 * (WS + U[1,1,IC,4])
+    ww = eltype(F)(0.5) * (WS + U[1,1,IC,4])
     nU = nS[1,IC] * uCol + nS[2,IC] * vCol + nS[3,IC] * ww
-    uStar = sqrt((uCol - nS[1,IC] * nU)^2 + (vCol - nS[2,IC] * nU)^2 + (ww - nS[3,IC] * nU)^2)
-    facDiv = -eltype(dz)(2) / dz[1,IC] * CM[IC] * uStar
+    Ua = sqrt((uCol - nS[1,IC] * nU)^2 + (vCol - nS[2,IC] * nU)^2 + (ww - nS[3,IC] * nU)^2)
+    facDiv = -DragFac[IC] / dz[1,IC] * CM[IC] * Ua
     @atomic :monotonic F[1,1,IC,2] += facDiv * (uCol - nU * nS[1,IC])
     @atomic :monotonic F[1,1,IC,3] += facDiv * (vCol - nU * nS[2,IC])
   end

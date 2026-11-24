@@ -158,3 +158,49 @@ function AddExpStretchVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,
   Grid.dzeta = dzetaGPU
   copyto!(Grid.z,z)
 end
+
+# Geometric stretching: the layer thickness grows from dzBottom by a constant ratio until it
+# reaches dzTop and stays constant above; the ratio is chosen so that nz layers fill H.
+function AddGeomStretchVerticalGrid!(Grid::GridStruct,nz::Int,H::Float64,dzBottom::Float64,dzTop::Float64)
+  function layers(r)
+    dz = zeros(nz)
+    d = dzBottom
+    for i = 1 : nz
+      dz[i] = min(d, dzTop)
+      d *= r
+    end
+    return dz
+  end
+  nz * dzTop >= H || error("Geom stretching: nz*dzTop = $(nz*dzTop) < H = $H")
+  nz * dzBottom <= H || error("Geom stretching: nz*dzBottom = $(nz*dzBottom) > H = $H")
+  rL = 1.0
+  rH = 2.0
+  while sum(layers(rH)) < H
+    rH *= 2
+  end
+  for it = 1 : 200
+    r = 0.5 * (rL + rH)
+    sum(layers(r)) < H ? (rL = r) : (rH = r)
+  end
+  dzeta = layers(0.5 * (rL + rH))
+  dzeta .*= H / sum(dzeta)
+  z = zeros(nz+1)
+  zP = zeros(nz)
+  for i = 1 : nz
+    z[i+1] = z[i] + dzeta[i]
+    zP[i] = 0.5 * (z[i] + z[i+1])
+  end
+  z[nz+1] = H
+  Grid.H = H
+  backend = get_backend(Grid.z)
+  FT = eltype(Grid.z)
+  zGPU = KernelAbstractions.zeros(backend,FT,size(z))
+  copyto!(zGPU,z)
+  Grid.z = zGPU
+  zPGPU = KernelAbstractions.zeros(backend,FT,size(zP))
+  copyto!(zPGPU,zP)
+  Grid.zP = zPGPU
+  dzetaGPU = KernelAbstractions.zeros(backend,FT,size(dzeta))
+  copyto!(dzetaGPU,dzeta)
+  Grid.dzeta = dzetaGPU
+end

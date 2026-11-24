@@ -20,8 +20,10 @@ global const CTPos = 5
 global const CHPos = 6
 global const RiBSurfPos = 7
 global const hBLPos = 8
-global const zetaPos = 8
-global const LenSurfaceData = 9
+global const zetaPos = 9
+# wind speed |v| at the lowest level; uStarPos holds the friction velocity
+global const UaPos = 10
+global const LenSurfaceData = 10
 
 global const NumLandClasses = 2
 global const SeaClass = 2
@@ -34,27 +36,25 @@ mutable struct LandUseData{FT<:AbstractFloat,
   z0M::AT1
   z0H::AT1
   LandClass::IT1
+  # factor of the surface momentum flux per column (1 no-slip, 0 free-slip)
+  DragFac::AT1
 end
 
 
-function LandUseData{FT}(backend,NumG) where FT<:AbstractFloat
-  z0M = KernelAbstractions.zeros(backend,FT,NumLandClasses)
-  z0H = KernelAbstractions.zeros(backend,FT,NumLandClasses)
+function LandUseData{FT}(backend,NumG;z0M=0.01,z0H=0.01) where FT<:AbstractFloat
+  z0MD = KernelAbstractions.zeros(backend,FT,NumLandClasses)
+  z0HD = KernelAbstractions.zeros(backend,FT,NumLandClasses)
   LandClass = KernelAbstractions.zeros(backend,Int,NumG)
-  z0MCPU = zeros(NumLandClasses)
-  z0HCPU = zeros(NumLandClasses)
-  z0MCPU[1] = 0.01
-  z0MCPU[2] = 0.01
-  z0HCPU[1] = 0.01
-  z0HCPU[2] = 0.01
-  copyto!(z0M,z0MCPU)
-  copyto!(z0H,z0HCPU)
+  DragFac = KernelAbstractions.ones(backend,FT,NumG)
+  copyto!(z0MD,fill(FT(z0M),NumLandClasses))
+  copyto!(z0HD,fill(FT(z0H),NumLandClasses))
   return LandUseData{FT,
-                     typeof(z0M),
+                     typeof(z0MD),
                      typeof(LandClass)}(
-    z0M,
-    z0H,
+    z0MD,
+    z0HD,
     LandClass,
+    DragFac,
   )
 end  
 

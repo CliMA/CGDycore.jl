@@ -61,24 +61,78 @@ end
 end
 
 
-@kernel inbounds = true function TkeSourceKernel!(Source,FTke,KV,@Const(U),@Const(dz))
-  Iz,IC = @index(Global, NTuple)
+# TKE closure along a column (one thread per column). Writes the source of rho*e, the eddy
+# diffusivity rho*K at the interfaces Iz+1/2 (KV[1,Iz,IC], Iz < Nz) and the derivative of the
+# sinks for the implicit solve (DTke). The surface production is u*^3/(kappa z1) plus the
+# buoyancy flux of the surface heat flux; without surface data the lowest interface value is used.
+@kernel inbounds = true function TkeColumnKernel!(Turb,FTke,KV,DTke,@Const(U),@Const(p),@Const(Surf),
+  @Const(dz),@Const(zP),Grav,Rd,TkePos,SurfaceProd::Bool)
+  IC, = @index(Global, NTuple)
 
-  Nz = @uniform @ndrange()[1]
-  NumG = @uniform @ndrange()[2]
+  Nz = @uniform size(U,2)
+  NumG = @uniform @ndrange()[1]
 
-  if IC <= NumG && Iz < Nz
-    @views FLoc, KLoc = Source(U[1,Iz+1,IC,:],U[1,Iz,IC,:],dz[Iz+1,IC],dz[Iz,IC])  
-    @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc
-    @atomic :monotonic FTke[Iz+1,IC] += eltype(FTke)(.5) * FLoc
-    KV[Iz,IC] = KLoc
-    if Iz == 1
-      @atomic :monotonic FTke[Iz,IC] += eltype(FTke)(.5) * FLoc  
-    end  
-    if Iz == Nz
-      @atomic :monotonic FTke[Iz+1,IC] += eltype(FTke)(.5) * FLoc  
-    end  
-  end  
+  if IC <= NumG
+    FT = eltype(FTke)
+    zS = zP[1,IC] - FT(0.5) * dz[1,IC]
+    RhoB = U[1,1,IC,1]
+    uB = U[1,1,IC,2]
+    vB = U[1,1,IC,3]
+    ThB = U[1,1,IC,5] / RhoB
+    eB = max(U[1,1,IC,TkePos] / RhoB, Turb.EMin)
+    # production at the lower face of the current layer, N^2 below
+    PB = FT(0)
+    PT = FT(0)
+    if SurfaceProd
+      z1 = FT(0.5) * dz[1,IC]
+      uStar = Surf[Surfaces.uStarPos,IC]
+      TB = p[1,1,IC] / (Rd * RhoB)
+      SensFlux = -Surf[Surfaces.CTPos,IC] * Surf[Surfaces.UaPos,IC] * (TB - Surf[Surfaces.TSurfPos,IC])
+      PB = uStar * uStar * uStar / (Turb.Karman * z1) + Grav * SensFlux / TB
+    end
+    N2B = FT(0)
+    for Iz = 1 : Nz
+      if Iz < Nz
+        RhoT = U[1,Iz+1,IC,1]
+        uT = U[1,Iz+1,IC,2]
+        vT = U[1,Iz+1,IC,3]
+        ThT = U[1,Iz+1,IC,5] / RhoT
+        eT = max(U[1,Iz+1,IC,TkePos] / RhoT, Turb.EMin)
+        dzF = FT(0.5) * (dz[Iz,IC] + dz[Iz+1,IC])
+        S2 = ((uT - uB) * (uT - uB) + (vT - vB) * (vT - vB)) / (dzF * dzF)
+        N2T = FT(2) * Grav * (ThT - ThB) / (dzF * (ThT + ThB))
+        eF = FT(0.5) * (eB + eT)
+        zF = FT(0.5) * (zP[Iz,IC] + zP[Iz+1,IC]) - zS
+        lF = Models.MixingLength(Turb,zF,eF,N2T)
+        KF = Models.EddyDiffusivity(Turb,lF,eF)
+        KV[1,Iz,IC] = FT(0.5) * (RhoB + RhoT) * KF
+        PT = KF * (S2 - N2T)
+      else
+        N2T = N2B
+      end
+      if Iz == 1 && !SurfaceProd
+        PB = PT
+      end
+      if Iz == Nz
+        PT = PB
+      end
+      # dissipation in the layer
+      zC = zP[Iz,IC] - zS
+      N2C = Iz == 1 ? N2T : FT(0.5) * (N2B + N2T)
+      lC = Models.MixingLength(Turb,zC,eB,N2C)
+      FTke[Iz,IC] += RhoB * (FT(0.5) * (PB + PT) - Models.Dissipation(Turb,lC,eB))
+      DTke[Iz,IC] = Models.DissipationDerivative(Turb,lC,eB,N2C)
+      if Iz < Nz
+        PB = PT
+        N2B = N2T
+        RhoB = RhoT
+        uB = uT
+        vB = vT
+        ThB = ThT
+        eB = eT
+      end
+    end
+  end
 end
 
 
@@ -150,6 +204,7 @@ end
   end
 end
 
+# rho*K at the interfaces Iz+1/2 (Iz < Nz), from the pressure of the interface
 @kernel inbounds = true function EddyCoefficientKernel!(Eddy,KV,@Const(U),@Const(Surf),@Const(p),
   @Const(dz),@Const(Glob))
   K,Iz,IC = @index(Global, NTuple)
@@ -157,9 +212,10 @@ end
   Nz = @uniform @ndrange()[2]
   NumG = @uniform @ndrange()[3]
 
-  if IC <= NumG
-    LenScale = 100.0  
-    @views KV[K,Iz,IC] = Eddy(U[1,Iz,IC,:],Surf[:,IC],p[K,Iz,IC],dz[1,IC],LenScale) 
+  if IC <= NumG && Iz < Nz
+    LenScale = eltype(KV)(100)
+    pF = eltype(KV)(0.5) * (p[K,Iz,IC] + p[K,Iz+1,IC])
+    @views KV[K,Iz,IC] = Eddy(U[1,Iz,IC,:],Surf[:,IC],pF,dz[1,IC],LenScale) 
   end
 end
 
@@ -234,7 +290,7 @@ function FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
         KEddyCoefficientKernel!(Eddy,KV,U,SurfaceData.Data,p,dz,Glob,ndrange=ndrangeG)
       else    
         Surfaces.SurfaceData!(U,p,xS,Glob,SurfaceData.Data,Model,NumberThreadGPU)  
-        Surfaces.SurfaceFluxData!(U,p,dz,nSS,SurfaceData.Data,LandUseData,Model,NumberThreadGPU)  
+        Surfaces.SurfaceFluxData!(U,p,T,PotT,dz,nSS,SurfaceData.Data,LandUseData,Model,NumberThreadGPU)  
         KEddyCoefficientKernel! = EddyCoefficientKernel!(backend,groupG)
         KEddyCoefficientKernel!(Eddy,KV,U,SurfaceData.Data,p,dz,Glob,ndrange=ndrangeG)
       end

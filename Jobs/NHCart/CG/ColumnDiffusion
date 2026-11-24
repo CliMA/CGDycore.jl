@@ -1,0 +1,46 @@
+#!/bin/bash
+# single column: Gaussian bump of u diffused with constant K = 10 m^2/s (analytic solution
+# sigma^2 = sigma0^2 + 2 K t); implicit vertical diffusion at dtau = 60 s
+julia --project Examples/PBLRun.jl \
+  --Problem="ColumnCart" \
+  --Device="CPU" \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
+  --NumTr=0 \
+  --TkePos=0 \
+  --Equation="CompressibleShallow" \
+  --State="Dry" \
+  --Buoyancy=true \
+  --Coriolis=false \
+  --Curl=true \
+  --ModelType="VectorInvariant" \
+  --VerticalDiffusionMom=true \
+  --VerticalDiffusion=true \
+  --JacVerticalDiffusion=true \
+  --KConst=10.0 \
+  --SurfaceScheme="MOST" \
+  --Damping=false \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --SimHours=1 \
+  --dtau=60 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="Flat" \
+  --GridForm="Cartesian" \
+  --H=2000.0 \
+  --Lx=200000.0 \
+  --Ly=200000.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nz=100 \
+  --nx=2 \
+  --ny=2 \
+  --OrdPoly=2 \
+  --HyperVisc=true \
+  --HyperDCurl=1.0e-6 \
+  --HyperDGrad=1.0e-6 \
+  --HyperDDiv=1.0e-6 \
+  "$@"

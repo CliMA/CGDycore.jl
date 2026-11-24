@@ -1,0 +1,51 @@
+#!/bin/bash
+# single column, neutral, u = 10 m/s: MOST surface drag (z0 = 0.1 m) and the TKE closure
+julia --project Examples/PBLRun.jl \
+  --Problem="ColumnCart" \
+  --Device="CPU" \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
+  --NumTr=0 \
+  --TkePos=6 \
+  --Equation="CompressibleShallow" \
+  --State="Dry" \
+  --Buoyancy=true \
+  --Coriolis=false \
+  --Curl=true \
+  --ModelType="VectorInvariant" \
+  --VerticalDiffusionMom=true \
+  --VerticalDiffusion=true \
+  --JacVerticalDiffusion=true \
+  --Turbulence=true \
+  --SurfaceFluxMom=true \
+  --SurfaceFlux=false \
+  --LandClass=1 \
+  --z0M=0.1 \
+  --z0H=0.1 \
+  --MixingLength=100.0 \
+  --SurfaceScheme="MOST" \
+  --Damping=false \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --SimHours=2 \
+  --dtau=60 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="Flat" \
+  --GridForm="Cartesian" \
+  --H=2000.0 \
+  --Lx=200000.0 \
+  --Ly=200000.0 \
+  --x0=0.0 \
+  --y0=0.0 \
+  --nz=100 \
+  --nx=2 \
+  --ny=2 \
+  --OrdPoly=2 \
+  --HyperVisc=true \
+  --HyperDCurl=1.0e-6 \
+  --HyperDGrad=1.0e-6 \
+  --HyperDDiv=1.0e-6 \
+  "$@"

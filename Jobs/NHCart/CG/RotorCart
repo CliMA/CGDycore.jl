@@ -1,0 +1,68 @@
+#!/bin/bash
+# Mountain-wave induced rotors, two-layer case of Doyle and Durran (2002, J. Atmos. Sci. 59,
+# 186-201, Section 3): U = 25 m/s, N = 0.025 1/s below 3 km and 0.01 1/s above, Witch of Agnesi
+# ridge h0 = 600 m, a = 10 km, z0 = 0.1 m, no surface heat flux, TKE closure. Free slip
+# upstream of x = -2a, linear transition to no slip at x = -a (Param DragX0, DragX1).
+# 2D: periodic in x (259.2 km, 100 m mean node spacing) and in a thin y slab.
+# Vertical: 10 m at the ground, stretched by 1.1 to 100 m at 0.9 km, top 15 km,
+# w damped above 10 km. Run with Examples/PBLRun.jl (PBLMODE=slice) or Examples/DriverCG.jl.
+julia --project Examples/PBLRun.jl \
+  --Problem="RotorCart" \
+  --Device="GPU" \
+  --GPUType="CUDA" \
+  --NumberThreadGPU=256 \
+  --FloatTypeBackend="Float32" \
+  --NumV=5 \
+  --NumTr=0 \
+  --TkePos=6 \
+  --Equation="CompressibleShallow" \
+  --State="Dry" \
+  --Buoyancy=true \
+  --Coriolis=false \
+  --Curl=true \
+  --ModelType="VectorInvariant" \
+  --Turbulence=true \
+  --MixingLength=100.0 \
+  --VerticalDiffusionMom=true \
+  --VerticalDiffusion=true \
+  --JacVerticalDiffusion=true \
+  --SurfaceScheme="MOST" \
+  --SurfaceFluxMom=true \
+  --SurfaceFlux=false \
+  --LandClass=1 \
+  --z0M=0.1 \
+  --z0H=0.1 \
+  --Damping=true \
+  --StrideDamp=5000.0 \
+  --Relax=0.05 \
+  --Upwind=true \
+  --BoundaryWE="Period" \
+  --BoundarySN="Period" \
+  --BoundaryBT="" \
+  --SimHours=3 \
+  --dtau=0.1 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="AgnesiCartX" \
+  --P1=0.0 \
+  --P2=10000.0 \
+  --P3=600.0 \
+  --GridForm="Cartesian" \
+  --Stretch=true \
+  --StretchType="Geom" \
+  --dzBottom=10.0 \
+  --dzTop=100.0 \
+  --H=15000.0 \
+  --nz=165 \
+  --Lx=259200.0 \
+  --Ly=800.0 \
+  --x0=-120000.0 \
+  --y0=0.0 \
+  --nx=648 \
+  --ny=2 \
+  --OrdPoly=4 \
+  --HyperVisc=true \
+  --HyperDCurl=3.e4 \
+  --HyperDGrad=3.e4 \
+  --HyperDDiv=3.e4 \
+  "$@"

@@ -6,7 +6,7 @@ function JacGPU!(U,fac,CG,Metric,Phys,Cache,JCache,Global,Equation::Models.Equat
   Nz = size(U,2)
   NumG = size(U,3)
 
-  NG = div(256,Nz)
+  NG = max(1, div(256,Nz))
   group = (Nz, NG)
   ndrange = (Nz, NumG)
   dPresdRhoTh = Global.Model.dPresdRhoTh
@@ -24,13 +24,18 @@ function JacGPU!(U,fac,CG,Metric,Phys,Cache,JCache,Global,Equation::Models.Equat
   KJacAcousticKernel!(dPresdRhoTh,dPresdRho,JCache.JRhoW,JCache.JWRho,JCache.JWRhoTh,JCache.JRhoThW,U,
     p,Metric.dz,Phys,ndrange=ndrange)
 
-  if Global.Model.VerticalDiffusion
-    group = (Nz-1, NG)
-    ndrange = (Nz-1, NumG)  
-    @. JCache.JDiff = FT(0)  
+  if Global.Model.VerticalDiffusion || Global.Model.VerticalDiffusionMom
     KJacTransportKernel! = JacTransportKernel!(backend,group)
-    @views KJacTransportKernel!(JCache.JDiff,U[:,:,:,1],Cache.KV,Metric.dz,ndrange=ndrange)
+    @views KJacTransportKernel!(JCache.JDiff,JCache.JDiffMom,U[:,:,:,1],Cache.KV,Metric.dz,ndrange=ndrange)
   end  
+  if Global.Model.SurfaceFluxMom
+    groupS = min(NumG, 256)
+    KJacDragKernel! = JacDragKernel!(backend,groupS)
+    KJacDragKernel!(JCache.JDrag,Global.SurfaceData.Data,Global.LandUseData.DragFac,Metric.dz,ndrange=NumG)
+  end
+  if Global.Model.Turbulence
+    copyto!(JCache.JDiss,Cache.DTke)
+  end
 
 end
 
@@ -87,26 +92,43 @@ end
   end
 end
 
-@kernel inbounds = true function JacTransportKernel!(JDiff,@Const(Rho),@Const(KV),@Const(dz))
-  iz, iC   = @index(Local, NTuple)
+# Minus the Jacobian of the vertical diffusion, row by row (no atomics). rho*K at the interface
+# Iz+1/2 is KV[1,Iz,IC]. JDiff: scalars rho*q with the flux rho*K dq/dz; JDiffMom: velocities
+# with the tendency (1/rho) d/dz(rho*K du/dz). Storage: [2,i] diagonal of row i, [1,i+1] upper
+# entry of row i, [3,i-1] lower entry of row i.
+@kernel inbounds = true function JacTransportKernel!(JDiff,JDiffMom,@Const(Rho),@Const(KV),@Const(dz))
   Iz,IC = @index(Global, NTuple)
 
-  NG = @uniform @groupsize()[2]
   Nz = @uniform @ndrange()[1]
-  NumG = @uniform @ndrange()[2]    
+  NumG = @uniform @ndrange()[2]
 
   if IC <= NumG
-    dzT = dz[Iz+1,IC]
-    dzB = dz[Iz,IC]
-    RhoT = Rho[1,Iz+1,IC]
-    RhoB = Rho[1,Iz+1,IC]
-    KF = eltype(JDiff)(2) * KV[1,Iz,IC] / (dzT + dzB)
-    JDiff[3,Iz+1,IC] = -KF / RhoT / dzB
-    @atomic :monotonic JDiff[2,Iz,IC] += KF / RhoB/ dzB
-    JDiff[1,Iz,IC] = -KF / RhoB / dzT
-    @atomic :monotonic JDiff[2,Iz+1,IC] += KF / RhoT / dzT
-  end  
-end  
+    FT = eltype(JDiff)
+    RhoI = Rho[1,Iz,IC]
+    dzI = dz[Iz,IC]
+    KFm = Iz > 1 ? FT(2) * KV[1,Iz-1,IC] / (dz[Iz-1,IC] + dzI) : FT(0)
+    KFp = Iz < Nz ? FT(2) * KV[1,Iz,IC] / (dzI + dz[Iz+1,IC]) : FT(0)
+    Diag = (KFm + KFp) / (RhoI * dzI)
+    JDiff[2,Iz,IC] = Diag
+    JDiffMom[2,Iz,IC] = Diag
+    if Iz < Nz
+      JDiff[1,Iz+1,IC] = -KFp / (Rho[1,Iz+1,IC] * dzI)
+      JDiffMom[1,Iz+1,IC] = -KFp / (RhoI * dzI)
+    end
+    if Iz > 1
+      JDiff[3,Iz-1,IC] = -KFm / (Rho[1,Iz-1,IC] * dzI)
+      JDiffMom[3,Iz-1,IC] = -KFm / (RhoI * dzI)
+    end
+  end
+end
+
+@kernel inbounds = true function JacDragKernel!(JDrag,@Const(SurfaceData),@Const(DragFac),@Const(dz))
+  IC, = @index(Global, NTuple)
+  NumG = @uniform @ndrange()[1]
+  if IC <= NumG
+    JDrag[IC] = DragFac[IC] * SurfaceData[Surfaces.CMPos,IC] * SurfaceData[Surfaces.UaPos,IC] / dz[1,IC]
+  end
+end
 
 
 function JacSchur!(J,U,CG,Phys,Global,::Val{:Conservative})

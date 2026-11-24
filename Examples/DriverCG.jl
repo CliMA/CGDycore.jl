@@ -90,6 +90,13 @@ VerticalDiffusionMom = parsed_args["VerticalDiffusionMom"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 SurfaceScheme = parsed_args["SurfaceScheme"]
+LandClass = parsed_args["LandClass"]
+z0M = parsed_args["z0M"]
+z0H = parsed_args["z0H"]
+MixingLength = parsed_args["MixingLength"]
+KConst = parsed_args["KConst"]
+dzBottom = parsed_args["dzBottom"]
+dzTop = parsed_args["dzTop"]
 # Grid
 nx = parsed_args["nx"]
 ny = parsed_args["ny"]
@@ -187,6 +194,10 @@ end
 
 
 Param = Examples.Parameters(FTB,Problem)
+# override problem parameters, e.g. CGPARAM="uAmp=5,zc=1000"
+if haskey(ENV,"CGPARAM")
+  Param = Examples.SetParameters(Param,ENV["CGPARAM"])
+end
 
 KernelAbstractions.synchronize(backend)
 
@@ -270,6 +281,8 @@ Model.Thermo = Thermo
 Model.Curl = Curl
 Model.Stretch = Stretch
 Model.StretchType = StretchType
+Model.dzBottom = dzBottom
+Model.dzTop = dzTop
 Model.State = State
 Model.ModelType = ModelType
 Model.MetricType = FiniteElements.MetricDifferentiation(MetricType,FiniteElements.SingleDifferentiation())
@@ -331,6 +344,12 @@ if GridForm == "Cartesian"
               P3=P3,
               P4=P4,
               )
+  if BoundaryWE == "Open"
+    # one ghost element column east of the outflow x0 + Lx, see CGSEM.OpenBoundary
+    xOut = x0 + Lx
+    Lx = Lx * (nx + 1) / nx
+    nx = nx + 1
+  end
   Grid, CellToProc = Grids.InitGridCart(backend,FTB,OrdPoly,nx,ny,Lx,Ly,x0,y0,Boundary,nz,Model,ParallelCom)
 else  
   ns=50
@@ -347,8 +366,9 @@ end
 
 
 #Topography
-if TopoS == "AgnesiHill"
-  TopoProfile = Examples.AgnesiHill()()
+if TopoS == "AgnesiHill" || TopoS == "AgnesiCartX"
+  # Witch of Agnesi in x: centre P1, half width P2, height P3
+  TopoProfile = Examples.AgnesiHill{FTB}(x0C=FTB(P1),aC=FTB(P2),hC=FTB(P3))()
 elseif TopoS == "SchaerHill"
   TopoProfile = Examples.SchaerHill()()
 elseif TopoS == "BaroWaveHill"
@@ -362,6 +382,11 @@ elseif TopoS == "VortexHillSphere"
 else
   TopoProfile = Examples.Flat()()  
 end  
+if GridForm == "Cartesian" && BoundaryWE == "Open"
+  # topography mirrored at the outflow in the ghost elements, like the data
+  TopoProfileIn = TopoProfile
+  TopoProfile = X -> X[1] > xOut ? TopoProfileIn([2 * xOut - X[1],X[2],X[3]]) : TopoProfileIn(X)
+end
 
 Grid.AdaptGrid = Grids.AdaptGrid(FTB,AdaptGridType,FTB(H))
 
@@ -503,12 +528,27 @@ if Microphysics
   end
 end
 
+if BoundaryWE == "Open"
+  Model.LateralBC = CGSEM.OpenBoundary(backend,CG,Metric,U,xOut)
+end
+
 # Surface flux
-if Model.SurfaceFlux
+if Model.SurfaceFlux || Model.SurfaceFluxMom || Model.VerticalDiffusion || Model.VerticalDiffusionMom
 # SurfaceValues
   Global.SurfaceData = Surfaces.SurfaceData{FTB}(backend,CG.NumG)
-  Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG)
-  @. Global.LandUseData.LandClass = 2 # Need more Oswald
+  Global.LandUseData = Surfaces.LandUseData{FTB}(backend,CG.NumG;z0M=z0M,z0H=z0H)
+  @. Global.LandUseData.LandClass = LandClass
+  if Problem == "RotorCart"
+    # free slip upstream of DragX0, linear transition to no slip at DragX1
+    # x of the lowest node of every column (Metric.xS holds lon/lat)
+    XH = Array(Metric.X)
+    GlobH = Array(CG.Glob)
+    DragFacH = ones(FTB,CG.NumG)
+    for IF in axes(GlobH,2), ID in axes(GlobH,1)
+      DragFacH[GlobH[ID,IF]] = clamp((XH[ID,1,1,1,IF] - Param.DragX0) / (Param.DragX1 - Param.DragX0), 0, 1)
+    end
+    copyto!(Global.LandUseData.DragFac, DragFacH)
+  end
   if Problem == "HeldSuarezMoistSphere" || Problem == "BaroWaveMoistSphere" || Problem == "FriersonSphere"
     SurfaceValues = Surfaces.HeldSuarezMoistSurface()(Phys,Param,Model.uPos,Model.vPos,Model.wPos)  
     Model.SurfaceValues = SurfaceValues
@@ -539,7 +579,10 @@ end
 #Vertical Diffusion
 if Model.VerticalDiffusion || Model.VerticalDiffusionMom
   if Model.Turbulence
+    # the TKE kernel writes the eddy diffusivity itself
     Model.Eddy = Surfaces.TkeKoefficient()(Param,Phys,Model.TkePos,Model.RhoPos)
+  elseif KConst > 0
+    Model.Eddy = Surfaces.ConstKoefficient()(KConst)
   else
     Model.Eddy = Surfaces.SimpleKoefficient()(Param,Phys)
   end
@@ -547,8 +590,7 @@ end
 
 #Turbulence
 if Model.Turbulence
-  Model.TurbulenceSource = Models.TKEModel()(Param,Phys,Model.RhoPos,Model.uPos,
-    Model.vPos,Model.RhoThPos,Model.TkePos)
+  Model.TurbulenceSource = Models.TKEModel{FTB}(LMax=FTB(MixingLength))
 end
 # Damping
 if Damping

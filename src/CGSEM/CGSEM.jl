@@ -30,5 +30,6 @@ include("GradPressureKernel.jl")
 include("CartesianFrameKernel.jl")
 include("Cache.jl")
 include("HyperViscosity.jl")
+include("LateralBoundary.jl")
 
 end

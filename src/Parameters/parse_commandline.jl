@@ -336,8 +336,33 @@ function parse_commandline()
     arg_type = String
     default = "MOST"
 
+    "--LandClass"
+    help = "Land class of all columns: 1 land (roughness z0M, z0H), 2 sea (Charnock roughness)"
+    arg_type = Int
+    default = 2
+
+    "--z0M"
+    help = "Roughness length for momentum [m]"
+    arg_type = Float64
+    default = 0.01
+
+    "--z0H"
+    help = "Roughness length for heat [m]"
+    arg_type = Float64
+    default = 0.01
+
+    "--MixingLength"
+    help = "Asymptotic mixing length (Blackadar) of the TKE closure [m]"
+    arg_type = Float64
+    default = 100.0
+
+    "--KConst"
+    help = "Constant eddy diffusivity [m^2/s] instead of the simple boundary-layer scheme (0: off)"
+    arg_type = Float64
+    default = 0.0
+
     "--BoundaryWE"
-    help = "Boundary type in west east direction"
+    help = "Boundary type in west east direction (Period, Open: inflow west, outflow east, Cartesian CGSEM only)"
     arg_type = String
     default = ""
 
@@ -452,9 +477,19 @@ function parse_commandline()
     default = false
 
     "--StretchType"
-    help = "Type of grid stretching, ICON, Exp "
+    help = "Type of grid stretching, ICON, Exp, Geom"
     arg_type = String
     default = ""
+
+    "--dzBottom"
+    help = "Lowest layer thickness [m] for StretchType Exp and Geom"
+    arg_type = Float64
+    default = 30.0
+
+    "--dzTop"
+    help = "Top (Exp) or maximum (Geom) layer thickness [m]"
+    arg_type = Float64
+    default = 1500.0
 
     "--AdaptGridType"
     help = "Type of boundary following coordinate"

@@ -152,6 +152,57 @@ end
   end
 end
 
+# Implicit vertical diffusion of the listed variables, one thread per column:
+# (invfac I + D) x = v, v <- invfac x. D is JDiffMom for u and v (plus the surface drag JDrag
+# in the lowest row), JDiff for the density-weighted scalars, plus the TKE sinks JDiss for TKE.
+@kernel inbounds = true function SchurSolveDiffKernel!(::Val{Nz},NT,v,@Const(JDiff),@Const(JDiffMom),
+  @Const(JDrag),@Const(JDiss),invfac,@Const(ListTracer),TkePos,Drag::Bool,Diss::Bool) where {Nz}
+  IG,   = @index(Local, NTuple)
+  IC, = @index(Global, NTuple)
+
+  TilesDim = @uniform @groupsize()[1]
+  NumG = @uniform @ndrange()[1]
+
+  bCol = @localmem eltype(v) (Nz,TilesDim)
+  cCol = @localmem eltype(v) (Nz,TilesDim)
+
+  if IC <= NumG
+    FT = eltype(v)
+    for iT = 1 : NT
+      ind = ListTracer[iT]
+      Mom = ind == 2 || ind == 3
+      Tri = Mom ? JDiffMom : JDiff
+      # forward elimination
+      d = invfac + Tri[2,1,IC]
+      if Mom && Drag
+        d += JDrag[IC]
+      end
+      if ind == TkePos && Diss
+        d += JDiss[1,1,IC]
+      end
+      cCol[1,IG] = Nz > 1 ? Tri[1,2,IC] / d : FT(0)
+      bCol[1,IG] = v[1,1,IC,ind] / d
+      for i = 2 : Nz
+        a = Tri[3,i-1,IC]
+        d = invfac + Tri[2,i,IC]
+        if ind == TkePos && Diss
+          d += JDiss[1,i,IC]
+        end
+        m = d - a * cCol[i-1,IG]
+        cCol[i,IG] = i < Nz ? Tri[1,i+1,IC] / m : FT(0)
+        bCol[i,IG] = (v[1,i,IC,ind] - a * bCol[i-1,IG]) / m
+      end
+      # back substitution
+      x = bCol[Nz,IG]
+      v[1,Nz,IC,ind] = invfac * x
+      for i = Nz - 1 : -1 : 1
+        x = bCol[i,IG] - cCol[i,IG] * x
+        v[1,i,IC,ind] = invfac * x
+      end
+    end
+  end
+end
+
 @kernel inbounds = true function SchurSolveTriDiffKernel!(::Val{Nz},NT,v,@Const(triD),
   @Const(SN),@Const(C),invfac,@Const(ListTracer)) where {Nz}
   IG,   = @index(Local, NTuple)
@@ -189,9 +240,11 @@ function Solve!(k,v,J,fac,CG::FiniteElements.CGElement,Metric,Global)
   NumG = size(k,3)
   NumVTr = size(k,4)
 
-  group = (Nz,10)
+  # columns per block: at most 1024 threads
+  NGC = max(1, min(10, 1024 ÷ Nz))
+  group = (Nz,NGC)
   ndrange = (Nz,NumG)
-  groupTriDiag = (Nz-1,10)
+  groupTriDiag = (Nz-1,NGC)
   ndrangeTriDiag = (Nz-1,NumG)
   # the column solve keeps 5 Nz values per column in shared memory (48 kB per block)
   TilesTri = max(1, min(Global.ParallelCom.NumberThreadTriGPU, 49152 ÷ (5 * Nz * sizeof(eltype(v)))))
@@ -201,9 +254,11 @@ function Solve!(k,v,J,fac,CG::FiniteElements.CGElement,Metric,Global)
   NTDiff = length(J.ListTracer)
 
   if Global.Model.JacVerticalDiffusion
-    KSchurSolveTriDiffKernel! = SchurSolveTriDiffKernel!(backend,groupTri)
-    @views KSchurSolveTriDiffKernel!(Val(Nz),NTDiff,v,J.JDiff,J.SN,J.C,invfac,
-      J.ListTracer,ndrange=ndrangeTri)
+    TilesDiff = max(1, min(Global.ParallelCom.NumberThreadTriGPU, 49152 ÷ (2 * Nz * sizeof(eltype(v)))))
+    KSchurSolveDiffKernel! = SchurSolveDiffKernel!(backend,TilesDiff)
+    KSchurSolveDiffKernel!(Val(Nz),NTDiff,v,J.JDiff,J.JDiffMom,J.JDrag,J.JDiss,invfac,
+      J.ListTracer,Global.Model.TkePos,Global.Model.SurfaceFluxMom,Global.Model.Turbulence,
+      ndrange=NumG)
   end
 
   if J.CompTri

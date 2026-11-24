@@ -12,6 +12,9 @@ mutable struct JStruct{FT<:AbstractFloat,
     JWW::AT3
     tri::AT3
     JDiff::AT3
+    JDiffMom::AT3
+    JDrag::AT1
+    JDiss::AT3
     JAdvC::AT3
     JAdvF::AT3
     ListTracer::IT1
@@ -34,6 +37,9 @@ function JStruct{FT}(backend) where FT<:AbstractFloat
   JWW=KernelAbstractions.zeros(backend,FT,0,0,0)
   tri=KernelAbstractions.zeros(backend,FT,0,0,0)
   JDiff=KernelAbstractions.zeros(backend,FT,0,0,0)
+  JDiffMom=KernelAbstractions.zeros(backend,FT,0,0,0)
+  JDrag=KernelAbstractions.zeros(backend,FT,0)
+  JDiss=KernelAbstractions.zeros(backend,FT,0,0,0)
   JAdvC=KernelAbstractions.zeros(backend,FT,0,0,0)
   JAdvF=KernelAbstractions.zeros(backend,FT,0,0,0)
   ListTracer = KernelAbstractions.zeros(backend,Int32,0)
@@ -58,6 +64,9 @@ function JStruct{FT}(backend) where FT<:AbstractFloat
     JWW,
     tri,
     JDiff,
+    JDiffMom,
+    JDrag,
+    JDiss,
     JAdvC,
     JAdvF,
     ListTracer,
@@ -80,7 +89,13 @@ function JStruct{FT}(backend,NumG,nz,NumTr,TkePos) where FT<:AbstractFloat
   JTrW=KernelAbstractions.zeros(backend,FT,2,nz-1,NumG,NumTr)
   JWW=KernelAbstractions.zeros(backend,FT,1,nz-1,NumG)
   tri=KernelAbstractions.zeros(backend,FT,3,nz-1,NumG)
+  # tridiagonal diffusion matrices (minus the Jacobian): JDiff for the density-weighted
+  # scalars, JDiffMom for the velocities; JDrag linearized surface drag of the lowest layer
   JDiff=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
+  JDiffMom=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
+  JDrag=KernelAbstractions.zeros(backend,FT,NumG)
+  # derivative of the TKE sinks (diagonal)
+  JDiss=KernelAbstractions.zeros(backend,FT,1,nz,NumG)
   JAdvC=KernelAbstractions.zeros(backend,FT,3,nz,NumG)
   JAdvF=KernelAbstractions.zeros(backend,FT,3,nz-1,NumG)
   if TkePos > 0
@@ -127,6 +142,9 @@ function JStruct{FT}(backend,NumG,nz,NumTr,TkePos) where FT<:AbstractFloat
     JWW,
     tri,
     JDiff,
+    JDiffMom,
+    JDrag,
+    JDiss,
     JAdvC,
     JAdvF,
     ListTracer,

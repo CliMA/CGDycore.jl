@@ -89,6 +89,12 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
     Profile = Examples.StratifiedExample()(Param,Phys)
     Model.InitialProfile = Profile
     @show "Stratified"
+  elseif Problem == "ColumnCart"
+    Profile = Examples.ColumnCartExample()(Param,Phys)
+    Model.InitialProfile = Profile
+  elseif Problem == "RotorCart"
+    Profile = Examples.RotorCartExample()(Param,Phys)
+    Model.InitialProfile = Profile
   elseif Problem == "NeutralCart"
     Profile = Examples.NeutralCartExample()(Param,Phys)
     Model.InitialProfile = Profile

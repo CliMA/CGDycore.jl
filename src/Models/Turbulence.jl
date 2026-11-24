@@ -1,89 +1,49 @@
 abstract type TurbulenceModel end
 
-Base.@kwdef struct TKEModel <: TurbulenceModel end
+"""
+    TKEModel{FT}
 
-#=
-function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
-  @inline function Model(UB,UT,dzB,dzT)
-    FT = eltype(UB)
-    dzF = FT(0.5) * (dzB + dzT)
-    dudzF = (UT[uPos] - UB[uPos]) / dzF
-    dvdzF = (UT[vPos] - UB[vPos]) / dzF
-    ThT = UT[ThPos] / UT[RhoPos]
-    ThB = UB[ThPos] / UB[RhoPos]
-    N2 = Phys.Grav * FT(0.5) * (ThT- ThB) / dzF / (ThT + ThB)
-    S = sqrt(dudzF * dudzF + dvdzF * dvdzF)
-    LenScale = dzF
-    RhoF = FT(0.5) * (UT[RhoPos] + UB[RhoPos])
-    TkeF = UB[TkePos] / RhoF
-    TkeFAbs = max(TkeF, FT(1.e-8))
-    sqrTkeFAbs = sqrt(TkeFAbs)
-    DiffKoeff = Phys.Cd * sqrTkeFAbs / LenScale
-    S = DiffKoeff * S * S + FT(1.e-8)
-    P = S * (FT(1) - min(Phys.PrTke * DiffKoeff * N2 / S, FT(0.75)))
-    if N2 > FT(0)
-      Len = min(LenScale,FT(0.76) * sqrt(TkeF / N2))
-    else  
-      Len = LenScale
-    end
-    Cd = FT(1.9) * Phys.Cd +(FT(0.93) - FT(1.9) * Phys.Cd) * Len / LenScale
-    Diss = Phys.Cd * TkeF * sqrTkeFAbs / LenScale
-    F = P - Diss
-    KV = DiffKoeff * RhoF
-    return F, KV
-  end
-  return Model
-end  
-=#
+One-and-a-half order closure with a prognostic turbulent kinetic energy e (stored as rho*e).
 
+  K    = Cm * l * sqrt(e)                      eddy diffusivity (momentum, heat and e)
+  P    = K * (S^2 - N^2)                        shear and buoyancy production
+  eps  = Ceps * e^(3/2) / l                     dissipation
+  l    = kappa z / (1 + kappa z / LMax)         Blackadar, limited by Crit*sqrt(e/N^2) for N^2 > 0
 
-function (profile::TKEModel)(Param,Phys,RhoPos,uPos,vPos,ThPos,TkePos)
-  @inline function Model(UT,UB,dzT,dzB)
-
-    FT = eltype(UB)
-#   Constants
-    SigT = FT(0.74e0)
-    fTke = FT(0.1)
-
-    dzF = FT(0.5) * (dzB + dzT)
-
-    @inbounds begin
-      dudzF = (UT[uPos] - UB[uPos]) / dzF
-      dvdzF = (UT[vPos] - UB[vPos]) / dzF
-      S = sqrt(dudzF * dudzF + dvdzF * dvdzF)
-
-      ThT = UT[ThPos] / UT[RhoPos]
-      ThB = UB[ThPos] / UB[RhoPos]
-      N2 = Phys.Grav * FT(2.0) * (ThT- ThB) / dzF / (ThT + ThB)
-      N2 = 0.0
-
-      LenScale = min(dzF, FT(200.0))
-#     Diffusion Koefficient
-      RhoF = FT(0.5) * (UT[RhoPos] + UB[RhoPos])
-      TkeF = FT(0.5) * (UB[TkePos] / UB[RhoPos] + UT[TkePos] / UT[RhoPos])
-    end
-    TkeFAbs = max(TkeF, FT(1.e-8))
-    sqrTkeFAbs = sqrt(TkeFAbs)
-    DiffKoeff = RhoF * max(Phys.Cd * sqrTkeFAbs * LenScale, FT(1.e-1))
-
-#   Richardson-number and production terms
-    Rich = N2 / (S * S + FT(1.e-2))
-    Rich = max(Rich,FT(-4/3))
-    Ptke = max(FT(1) - Rich/SigT,fTke)
-
-#   Local Length Scale
-    if N2 > 0.0
-      Len = min(LenScale, FT(0.76) * sqrTkeFAbs / N2)
-    else
-      Len = LenScale
-    end
-
-    CDis = FT(1.9) * Phys.Cd +(FT(0.93) - FT(1.9) * Phys.Cd) * Len / LenScale
-    Diss = Phys.Cd * TkeF * sqrTkeFAbs / LenScale
-    F = DiffKoeff * S * S * Ptke - CDis * TkeF * sqrTkeFAbs * RhoF / Len
-
-    return F, DiffKoeff
-  end
-  return Model
+With Ceps = Cm^3 the neutral surface layer gives K = kappa u* z and e = u*^2 / Cm^2
+(Mellor-Yamada level 2.5: Cm = 0.554, Ceps = 0.17, Crit = 0.75).
+"""
+Base.@kwdef struct TKEModel{FT} <: TurbulenceModel
+  Cm::FT = 0.554
+  Ceps::FT = 0.554^3
+  LMax::FT = 100.0
+  LMin::FT = 0.1
+  Crit::FT = 0.75
+  EMin::FT = 1.0e-4
+  Karman::FT = 0.4
 end
 
+@inline function MixingLength(Turb::TKEModel,z,e,N2)
+  FT = eltype(e)
+  kz = Turb.Karman * max(z, FT(0))
+  l = kz / (FT(1) + kz / Turb.LMax)
+  if N2 > FT(0)
+    l = min(l, Turb.Crit * sqrt(e / N2))
+  end
+  return max(l, Turb.LMin)
+end
+
+@inline EddyDiffusivity(Turb::TKEModel,l,e) = Turb.Cm * l * sqrt(e)
+
+@inline Dissipation(Turb::TKEModel,l,e) = Turb.Ceps * e * sqrt(e) / l
+
+# derivative of the sinks (dissipation, buoyancy destruction) with respect to e;
+# it goes on the diagonal of the implicit column solve
+@inline function DissipationDerivative(Turb::TKEModel,l,e,N2)
+  FT = eltype(e)
+  D = FT(1.5) * Turb.Ceps * sqrt(e) / l
+  if N2 > FT(0)
+    D += FT(0.5) * Turb.Cm * l * N2 / sqrt(e)
+  end
+  return D
+end

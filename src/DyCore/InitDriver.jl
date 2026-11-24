@@ -24,7 +24,9 @@ function InitSphereDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,
       lambda = 3.16
       Grids.AddStretchICONVerticalGrid!(Global.Grid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"
-      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,30.0,1500.0)
+      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
+    elseif Model.StretchType == "Geom"
+      Grids.AddGeomStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
     else
       Grids.AddVerticalGrid!(Global.Grid,nz,H)
     end
@@ -74,7 +76,9 @@ function InitSphere(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys
       lambda = 3.16
       Grids.AddStretchICONVerticalGrid!(Global.Grid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"
-      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,30.0,1500.0)
+      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
+    elseif Model.StretchType == "Geom"
+      Grids.AddGeomStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
     else
       Grids.AddVerticalGrid!(Global.Grid,nz,H)
     end
@@ -137,7 +141,9 @@ function InitCart(backend,FT,OrdPoly,OrdPolyZ,OrdPrint,H,Topography,Model,Phys,T
       lambda = 3.16
       Grids.AddStretchICONVerticalGrid!(Global.Grid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"
-      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,30.0,1500.0)
+      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
+    elseif Model.StretchType == "Geom"
+      Grids.AddGeomStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
     else
       Grids.AddVerticalGrid!(Global.Grid,nz,H)
     end
@@ -197,7 +203,9 @@ function InitCartDG(backend,FT,OrdPoly,OrdPolyZ,DGMethod,OrdPrint,OrdPrintZ,H,To
       lambda = 3.16
       Grids.AddStretchICONVerticalGrid!(Global.Grid,nz,H,sigma,lambda)
     elseif Model.StretchType == "Exp"
-      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,30.0,1500.0)
+      Grids.AddExpStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
+    elseif Model.StretchType == "Geom"
+      Grids.AddGeomStretchVerticalGrid!(Global.Grid,nz,H,Float64(Model.dzBottom),Float64(Model.dzTop))
     else
       Grids.AddVerticalGrid!(Global.Grid,nz,H)
     end

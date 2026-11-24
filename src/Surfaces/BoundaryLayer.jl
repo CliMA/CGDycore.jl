@@ -37,12 +37,22 @@ Base.@kwdef struct SimpleKoefficient <: EddyKoefficient end
 
 function (profile::SimpleKoefficient)(Param,Phys)
   @inline function Eddy(U,Surf,p,dz,LenScale)
-    K = Param.CE * Surf[uStarPos] * dz / 2
+    K = Param.CE * Surf[UaPos] * dz / 2
     if p < Param.p_pbl
       dpR = (Param.p_pbl - p) / Param.p_strato
       K = K * exp(-dpR * dpR)
     end
     return K * U[1]
+  end
+  return Eddy
+end
+
+# constant eddy diffusivity K [m^2/s] (test cases)
+Base.@kwdef struct ConstKoefficient <: EddyKoefficient end
+
+function (profile::ConstKoefficient)(K)
+  @inline function Eddy(U,Surf,p,dz,LenScale)
+    return eltype(U)(K) * U[1]
   end
   return Eddy
 end

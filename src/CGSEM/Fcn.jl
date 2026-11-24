@@ -138,6 +138,7 @@ end
 
 function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.EquationType)
 
+  GhostMirror!(U,Global.Model.LateralBC,Global.ParallelCom.NumberThreadGPU)
   FcnPrepare!(U,FE,Metric,Phys,Cache,Exchange,Global)
 
   backend = get_backend(F)
@@ -560,9 +561,11 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   Parallels.ExchangeData3DRecvGPU!(F,Exchange)
 
   if Global.Model.Turbulence
-    KV = Cache.KV
-    KTkeSourceKernel! = TkeSourceKernel!(backend, groupG)
-    KTkeSourceKernel!(Global.Model.TurbulenceSource,FTke2,view(KV,1,:,:),U,dz,ndrange=ndrangeG)
+    groupT = min(NumberThreadGPU, NDoF)
+    KTkeColumnKernel! = TkeColumnKernel!(backend, groupT)
+    SurfaceProd = Global.Model.SurfaceFluxMom
+    KTkeColumnKernel!(Global.Model.TurbulenceSource,FTke2,Cache.KV,view(Cache.DTke,1,:,:),U,p,
+      Global.SurfaceData.Data,dz,Metric.zP,FT(Phys.Grav),FT(Phys.Rd),TkePos,SurfaceProd,ndrange=NDoF)
   end 
   if Global.Model.VerticalDiffusionMom
     KVerticalDiffusionMomentumKernel! = VerticalDiffusionMomentumKernel!(backend,groupG)
@@ -572,7 +575,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   if Global.Model.SurfaceFluxMom
     @views CM = Global.SurfaceData.Data[Surfaces.CMPos,:]
     KSurfaceFluxMomentumKernel! = SurfaceFluxMomentumKernel!(backend,groupS)
-    KSurfaceFluxMomentumKernel!(F,U,nSS,CM,dz,ndrange=ndrangeS)
+    KSurfaceFluxMomentumKernel!(F,U,nSS,CM,Global.LandUseData.DragFac,dz,ndrange=ndrangeS)
   end  
   if Global.Model.VerticalDiffusion
     KVerticalDiffusionScalarKernel! = VerticalDiffusionScalarKernel!(backend,groupG)
@@ -609,6 +612,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   if Global.Model.Damping
     Sources.Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU)  
   end  
+  if Global.Model.LateralBC !== nothing
+    OpenBoundary!(F,U,p,Global.Model.LateralBC,NumberThreadGPU)
+  end
   ProjectTangential!(F,Metric,Global,Frame)
 end
 

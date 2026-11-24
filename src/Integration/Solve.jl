@@ -9,8 +9,11 @@ CallFcn!(Fcn,F,U,FE::FiniteElements.CGElement,Metric,Phys,Aux,Exchange,Global,Ve
 # is projected onto the tangent plane. The tendencies are tangential, but the rounding of the
 # state update (each Cartesian component separately) has the same sign step by step in a
 # nearly steady flow, so that n . uh grows linearly (2e-3 m/s in two days in Float32).
-ProjectState!(U,FE::FiniteElements.CGElement,Metric,Global) =
+# Open lateral boundaries: the inflow values are reset after every step as well.
+function ProjectState!(U,FE::FiniteElements.CGElement,Metric,Global)
   CGSEM.ProjectTangential!(U,Metric,Global,Global.Model.VelocityFrame)
+  CGSEM.OpenBoundaryReset!(U,Global.Model.LateralBC,Global.ParallelCom.NumberThreadGPU)
+end
 ProjectState!(U,FE,Metric,Global) = nothing
 
 CallJac!(Jac,U,fac,FE::FiniteElements.DGElement,Metric,Phys,Aux,JCache,Global,VelForm) =

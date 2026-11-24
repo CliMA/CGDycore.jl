@@ -477,6 +477,73 @@ function (profile::NeutralCartExample)(Param,Phys)
   return local_profile
 end
 
+Base.@kwdef struct ColumnCartExample <: Example end
+
+function (profile::ColumnCartExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    z = x[3]
+    u = Param.uMax + Param.uAmp * exp(-(z - Param.zc)^2 / (FT(2) * Param.sigma^2))
+    v = Param.vMax
+    w = FT(0)
+    Grav = Phys.Grav
+    Cpd = Phys.Cpd
+    Rd = Phys.Rd
+    p0 = Phys.p0
+    Th0 = Param.Th0
+    S = Param.NBr * Param.NBr / Grav
+    if S > FT(0)
+      Th = Th0 * exp(z * S)
+      pi_ex = FT(1) - Grav / (Cpd * Th0 * S) * (FT(1) - exp(-S * z))
+    else
+      Th = Th0
+      pi_ex = FT(1) - Grav * z / (Cpd * Th0)
+    end
+    pLoc = p0 * pi_ex^(Cpd / Rd)
+    T = Th * pi_ex
+    Rho = pLoc / (Rd * T)
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys)
+    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
+    return (Rho,u,v,w,Th,E,IE,FT(0),FT(0),Th)
+  end
+  return local_profile
+end
+
+Base.@kwdef struct RotorCartExample <: Example end
+
+function (profile::RotorCartExample)(Param,Phys)
+  @inline function local_profile(x,time)
+    FT = eltype(x)
+    z = x[3]
+    u = Param.uMax
+    v = Param.vMax
+    w = FT(0)
+    Grav = Phys.Grav
+    Cpd = Phys.Cpd
+    Rd = Phys.Rd
+    p0 = Phys.p0
+    Th0 = Param.Th0
+    # hydrostatic Exner pressure of theta = Th0 exp(S z), S = N^2/g, piecewise in two layers
+    SL = Param.NLow * Param.NLow / Grav
+    SU = Param.NUp * Param.NUp / Grav
+    zL = min(z, Param.Hi)
+    Th = Th0 * exp(SL * zL)
+    pi_ex = FT(1) - Grav / (Cpd * Th0 * SL) * (FT(1) - exp(-SL * zL))
+    if z > Param.Hi
+      ThI = Th
+      Th = ThI * exp(SU * (z - Param.Hi))
+      pi_ex -= Grav / (Cpd * ThI * SU) * (FT(1) - exp(-SU * (z - Param.Hi)))
+    end
+    pLoc = p0 * pi_ex^(Cpd / Rd)
+    T = Th * pi_ex
+    Rho = pLoc / (Rd * T)
+    IE = Thermodynamics.InternalEnergyW(FT(1),FT(0),FT(0),T,Phys)
+    E = IE + FT(0.5) * (u * u + v * v) + Grav * z
+    return (Rho,u,v,w,Th,E,IE,FT(0),FT(0),Th)
+  end
+  return local_profile
+end
+
 Base.@kwdef struct StratifiedExample <: Example end
 
 function (profile::StratifiedExample)(Param,Phys)

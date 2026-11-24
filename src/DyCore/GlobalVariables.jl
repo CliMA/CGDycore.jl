@@ -311,6 +311,9 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Curl::Bool
   Stretch::Bool
   StretchType::String
+  dzBottom::FT
+  dzTop::FT
+  LateralBC::Any
   State::String
   InitialProfile::Any
   Eddy::Any
@@ -421,6 +424,9 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Curl = true
   Stretch = false
   StretchType = ""
+  dzBottom = 30.0
+  dzTop = 1500.0
+  LateralBC = nothing
   State = ""
   InitialProfile = ""
   Eddy = ""
@@ -529,6 +535,9 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Curl,
    Stretch,
    StretchType,
+   dzBottom,
+   dzTop,
+   LateralBC,
    State,
    InitialProfile,
    Eddy,

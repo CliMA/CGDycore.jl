@@ -30,7 +30,8 @@ Base.@kwdef struct HeldSuarezMoistSurfaceFlux <: SurfaceFluxValues end
 function (::HeldSuarezMoistSurfaceFlux)(Phys,Param,uPos,vPos,wPos)
   @inline function SurfaceFluxValues(SD,z,U,p,nS,z0M,z0H,LandClass)
     FT = eltype(U)
-    SD[uStarPos] = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    SD[UaPos] = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nS)
+    SD[uStarPos] = sqrt(FT(Param.CM)) * SD[UaPos]
     SD[CMPos] = FT(Param.CM)
     SD[CTPos] = FT(Param.CE)
     SD[CHPos] = FT(Param.CH)
@@ -101,13 +102,14 @@ end
 @inline function UzCoefficientGPU(v1,v2,w,nS)
 # Computation norm_v_a
 # |v_a| = |v - n(n*v)| = sqrt(v*v -(n*v)^2)
+  FT = eltype(v1)
   wS = -(nS[1]* v1 + nS[2] * v2) / nS[3]
-  wC = eltype(v1)(0.5) * (wS + w)
+  wC = FT(0.5) * (wS + w)
   nU = nS[1] * v1 + nS[2] * v2 + nS[3] * wC
   uT = sqrt((v1 - nS[1] * nU) * (v1 - nS[1] * nU) +
     (v2 - nS[2] * nU) * (v2 - nS[2] * nU) +
     (wC - nS[3] * nU) * (wC - nS[3] * nU))
-  uT = max(uT, 0.1)
+  uT = max(uT, FT(0.1))
   return uT
 end
 
@@ -129,6 +131,7 @@ function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos,z0MData,z0HData)
       CM, CT, uStar, zeta = MOSTIteration(uf,z0M,z0H,z,Uz,theta,TS,zeta,Phys)
     end  
     SD[uStarPos] = uStar
+    SD[UaPos] = Uz
     SD[CMPos] = CM
     SD[CTPos] = CT
     SD[CHPos] = CT
@@ -147,7 +150,7 @@ end
   NumG = @uniform @ndrange()[1]
 
   if IC <= NumG
-    SurfaceFluxValues!(view(SurfaceData,:,IC),dz[1,IC],
+    SurfaceFluxValues!(view(SurfaceData,:,IC),eltype(dz)(0.5)*dz[1,IC],
       view(U,1,1,IC,:),p[1,1,IC], view(nSS,:,IC),
       LandClass[IC])
   end
@@ -198,8 +201,8 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos)
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
     T = p / Rm
-    LatFlux = -SD[CHPos] * SD[uStarPos] * (RhoV - SD[RhoVSurfPos])
-    SensFlux = -SD[CTPos] * SD[uStarPos] * (T - SD[TSurfPos])
+    LatFlux = -SD[CHPos] * SD[UaPos] * (RhoV - SD[RhoVSurfPos])
+    SensFlux = -SD[CTPos] * SD[UaPos] * (T - SD[TSurfPos])
     FRho = LatFlux
     FRhoV = LatFlux
     PrePi=(p / Phys.p0)^(Rm / Cpml)
@@ -220,8 +223,7 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos)
     Rm = Phys.Rd * RhoD 
     Cpml = Phys.Cpd * RhoD 
     T = p / Rm
-    SensFlux = -SD[CTPos] * SD[uStarPos] * (T - SD[TSurfPos])
-    PrePi=(p / Phys.p0)^(Rm / Cpml)
+    SensFlux = -SD[CTPos] * SD[UaPos] * (T - SD[TSurfPos])
     FRhoTh = RhoTh * SensFlux / T 
     FU[ThPos] += FRhoTh  / dz
   end  
