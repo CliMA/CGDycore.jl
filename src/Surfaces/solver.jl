@@ -10,7 +10,7 @@ end
 @inline function MOSTIteration(uf,z0M,z0H,z,U,theta,thetaS,zeta,Phys)
   FT = eltype(theta)
   Karm = FT(0.4)
-  Pr = FT(0.74)
+  Pr = FT(uf.Pr)
   U2 = U^2
   Ri_b = max(min(Phys.Grav / thetaS *(theta - thetaS) * z  / U2, FT(0.2)), FT(-10.0))
   for Iter = 1 : 10
@@ -32,8 +32,9 @@ end
   end  
 
   CM = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport()))^2
+  # heat profile Pr (log(z/z0H) - psi_h) / Karm, consistent with Ri_b above
   CT = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport())) /
-    (log(z/z0H) - psi(uf, zeta, HeatTransport()))
+    (Pr * (log(z/z0H) - psi(uf, zeta, HeatTransport())))
   uStar = Karm * U / VertProfile(uf, z0M, z, zeta, MomentumTransport())
   return CM, CT, uStar, zeta
 
@@ -42,7 +43,7 @@ end
 @inline function MOSTSeaIteration(uf,z0M,z0H,z,U,theta,thetaS,zeta,uStar,Phys)
   FT = eltype(theta)
   Karm = FT(0.4)
-  Pr = FT(0.74)
+  Pr = FT(uf.Pr)
   U2 = U^2
   Ri_b = max(min(Phys.Grav / thetaS *(theta - thetaS) * z  / U2, FT(0.2)), FT(-10.0))
   for Iter = 1 : 10
@@ -67,8 +68,9 @@ end
   end  
 
   CM = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport()))^2
+  # heat profile Pr (log(z/z0H) - psi_h) / Karm, consistent with Ri_b above
   CT = Karm^2 / (log(z/z0M) - psi(uf, zeta, MomentumTransport())) /
-    (log(z/z0H) - psi(uf, zeta, HeatTransport()))
+    (Pr * (log(z/z0H) - psi(uf, zeta, HeatTransport())))
   uStar = Karm * U / VertProfile(uf, z0M, z, zeta, MomentumTransport())
   return CM, CT, uStar, zeta
 

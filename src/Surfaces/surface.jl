@@ -115,12 +115,15 @@ end
 
 Base.@kwdef struct MOSurfaceFlux <: SurfaceFluxValues end
 
-function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos,z0MData,z0HData)
+function (::MOSurfaceFlux)(uf,Phys,RhoPos,uPos,vPos,wPos,ThPos,z0MData,z0HData;Gustiness=0)
   @inline function SurfaceFluxValues(SD,z,U,p,nSS,LandClass)
     FT = eltype(U)
-    TS = SD[TSurfPos]
-    Uz = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
+    # wind speed with a gustiness velocity (Beljaars 1995), used for all fluxes
+    Uz = sqrt(UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)^2 + FT(Gustiness)^2)
     theta = U[ThPos] / U[RhoPos]
+    # potential temperature of the surface, surface pressure hydrostatic from the first level
+    pS = p + U[RhoPos] * Phys.Grav * z
+    TS = SD[TSurfPos] * (Phys.p0 / pS)^(Phys.Rd / Phys.Cpd)
     z0M = z0MData[LandClass]
     z0H = z0HData[LandClass]
     zeta = SD[zetaPos]
@@ -201,8 +204,11 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos,RhoVPos)
     Rm = Phys.Rd * RhoD + Phys.Rv * RhoV
     Cpml = Phys.Cpd * RhoD + Phys.Cpv * RhoV
     T = p / Rm
+    # theta_1 - theta_S: T_S brought to the pressure of the first level
+    pS = p + Rho * Phys.Grav * FT(0.5) * dz
+    TS = SD[TSurfPos] * (p / pS)^(Rm / Cpml)
     LatFlux = -SD[CHPos] * SD[UaPos] * (RhoV - SD[RhoVSurfPos])
-    SensFlux = -SD[CTPos] * SD[UaPos] * (T - SD[TSurfPos])
+    SensFlux = -SD[CTPos] * SD[UaPos] * (T - TS)
     FRho = LatFlux
     FRhoV = LatFlux
     PrePi=(p / Phys.p0)^(Rm / Cpml)
@@ -223,7 +229,10 @@ function SurfaceFlux(Phys,Param,ThPos,RhoPos)
     Rm = Phys.Rd * RhoD 
     Cpml = Phys.Cpd * RhoD 
     T = p / Rm
-    SensFlux = -SD[CTPos] * SD[UaPos] * (T - SD[TSurfPos])
+    # theta_1 - theta_S: T_S brought to the pressure of the first level
+    pS = p + Rho * Phys.Grav * FT(0.5) * dz
+    TS = SD[TSurfPos] * (p / pS)^(Rm / Cpml)
+    SensFlux = -SD[CTPos] * SD[UaPos] * (T - TS)
     FRhoTh = RhoTh * SensFlux / T 
     FU[ThPos] += FRhoTh  / dz
   end  

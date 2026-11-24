@@ -196,10 +196,13 @@ inflow (u, w, θ prescribed, ρ mirrored) or a relaxation zone is the next step 
 
 ## 6 Known limitations
 
-1. **Pr in CT.** The Ri_b iteration uses Pr = 0.74, but CT has no factor 1/Pr. The heat and
-   moisture fluxes are about 26 % smaller than the stability functions imply.
-2. **Temperature difference.** The sensible heat flux uses T₁ − T_s instead of θ₁ − θ_s (or the
-   dry static energy). The error is g z₁/c_p, 0.05 K for z₁ = 5 m, 0.25 K for z₁ = 25 m.
+1. **Pr in CT (fixed).** CT = κ²/(V_M · Pr · V_H) with the Businger heat profile
+   φ_h = Pr + 4.7ζ, consistent with the Ri_b iteration; before, the factor 1/Pr was missing and
+   CT was 26 % too small. Heated column (T_s = 305 K, 2 h): CT 0.0097 → 0.0125, θ at 10 m
+   302.88 → 303.13 K.
+2. **Temperature difference (fixed).** Ri_b and the sensible heat flux use θ₁ − θ_s with
+   θ_s = T_s (p₀/p_s)^κ and p_s = p₁ + ρ₁ g Δz₁/2; before, they used θ₁ − T_s and T₁ − T_s,
+   which is wrong by g z₁/c_p and, in Ri_b, by T_s((p₀/p_s)^κ − 1) (8 K at p_s = 900 hPa).
 3. **Layer averages.** The similarity laws are applied at z₁ = Δz₁/2 to layer averages. For
    z₀ = 0.1 m and Δz₁ = 10 m this underestimates u\* by about 8 % (Nishizawa and Kitamura 2018).
    We keep this conventional scheme for now.
@@ -207,7 +210,9 @@ inflow (u, w, θ prescribed, ρ mirrored) or a relaxation zone is the next step 
    buoyancy and no cloud-top or saturated mixing.
 5. **Explicit surface heat and moisture fluxes.** Only the drag is in the Jacobian; for thin
    lowest layers and long time steps the heat flux can become stiff.
-6. **Minimum wind** of 0.1 m/s in U_a instead of a gustiness velocity.
+6. **Minimum wind.** U_a has a floor of 0.1 m/s; `--Gustiness=u_g` (default 0) adds a constant
+   gustiness velocity, U_a = (|v|² + u_g²)^½, for the MOST scheme. A convective gustiness
+   (β w\*, Beljaars 1995) is not implemented.
 7. **Mixing length** λ is a fixed number, not scaled with the boundary-layer depth.
 8. **DGSEM** has none of this yet; see Section 4 of [PBLPlan.md](PBLPlan.md).
 

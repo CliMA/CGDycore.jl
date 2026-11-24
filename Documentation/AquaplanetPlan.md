@@ -99,11 +99,11 @@ From the limitations in [CGSEMTurbulenceSurface.md](CGSEMTurbulenceSurface.md), 
 
 | Item | Why it matters for aquaplanets |
 |---|---|
-| 1/Pr in CT | 26 % too small latent and sensible fluxes bias evaporation and precipitation directly |
-| θ₁ − θ_s instead of T₁ − T_s | for z₁ ≈ 25–50 m a bias of 0.25–0.5 K, comparable to the air–sea difference over warm SST |
+| 1/Pr in CT (done) | 26 % too small latent and sensible fluxes bias evaporation and precipitation directly |
+| θ₁ − θ_s instead of T₁ − T_s (done) | for z₁ ≈ 25–50 m a bias of 0.25–0.5 K, comparable to the air–sea difference over warm SST |
 | Moist buoyancy | N² and the surface buoyancy flux with θ_v (and the saturated N² in clouds); otherwise the marine boundary layer is too stable |
 | Implicit surface heat and moisture fluxes | Δt = 150–300 s with Δz₁ ≈ 30 m: CT·U_a·Δt/Δz₁ approaches 0.1–0.2, more over strong winds |
-| Gustiness | a minimum wind of about 1 m/s (Beljaars 1995) instead of 0.1 m/s keeps fluxes in the calm subtropics |
+| Gustiness (done, constant `--Gustiness`) | a minimum wind of about 1 m/s (Beljaars 1995) instead of 0.1 m/s keeps fluxes in the calm subtropics |
 | Mixing length | λ of 100 m is set for the rotor case; for the global boundary layer scale it with the boundary-layer depth or use λ ≈ 150 m |
 | Water and energy budgets | global E − P and the energy budget as running diagnostics; needed to trust multi-year means |
 

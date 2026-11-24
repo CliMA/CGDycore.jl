@@ -356,6 +356,11 @@ function parse_commandline()
     arg_type = Float64
     default = 100.0
 
+    "--Gustiness"
+    help = "Gustiness velocity u_g in the MOST wind speed U_a = sqrt(|v|^2 + u_g^2) [m/s]"
+    arg_type = Float64
+    default = 0.0
+
     "--KConst"
     help = "Constant eddy diffusivity [m^2/s] instead of the simple boundary-layer scheme (0: off)"
     arg_type = Float64

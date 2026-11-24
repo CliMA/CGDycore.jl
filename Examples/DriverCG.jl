@@ -94,6 +94,7 @@ LandClass = parsed_args["LandClass"]
 z0M = parsed_args["z0M"]
 z0H = parsed_args["z0H"]
 MixingLength = parsed_args["MixingLength"]
+Gustiness = parsed_args["Gustiness"]
 KConst = parsed_args["KConst"]
 dzBottom = parsed_args["dzBottom"]
 dzTop = parsed_args["dzTop"]
@@ -564,7 +565,8 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
   elseif SurfaceScheme == "MOST"
     @show "SurfaceScheme MOST"
     SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
-      Model.vPos,Model.wPos,Model.RhoThPos,Global.LandUseData.z0M,Global.LandUseData.z0H)
+      Model.vPos,Model.wPos,Model.RhoThPos,Global.LandUseData.z0M,Global.LandUseData.z0H;
+      Gustiness=FTB(Gustiness))
     Model.SurfaceFluxValues = SurfaceFluxValues
   end
 end
