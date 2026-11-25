@@ -77,6 +77,13 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
           Statistics.AverageInTime!(UAver,U,iAv)
           iAv += 1
         end
+        if Global.Model.ZonalMean !== nothing
+          Statistics.ZonalMeanSample!(Global.Model.ZonalMean,time[1],U,view(Aux,:,:,:,1),
+            Global.SurfaceData.Data,Metric,Phys,Global.Model)
+          if mod(i,PrintInt) == 0
+            Statistics.ZonalMeanWrite(Global.Model.ZonalMean,time[1])
+          end
+        end
       end
       percent = i/nIter*100
       if Proc == 1
@@ -90,6 +97,9 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
     Outputs.unstructured_vtkSphere(UAver,Trans,FE,Metric,Phys,Global,Proc,ProcNumber;Thermo=Aux)
     Outputs.unstructured_vtkSphere(UAver,Trans,FE,Metric,Phys,Global,VelForm,Grid.Form,Proc,ProcNumber;Thermo=Aux,KV=KV)
   end  
+  if Global.Model.ZonalMean !== nothing
+    Statistics.ZonalMeanWrite(Global.Model.ZonalMean,time[1])
+  end
   Outputs.close_output!(Global)
 end
 

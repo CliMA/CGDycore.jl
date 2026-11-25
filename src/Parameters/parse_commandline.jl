@@ -698,6 +698,11 @@ function parse_commandline()
      arg_type = Int
      default = -1
 
+    "--ZonalMeanHours"
+     help = "Sampling interval [h] of the zonal means from StartAverageDays on (0: off)"
+     arg_type = Float64
+     default = 0.0
+
     "--Flat"
      help = "Output as sphere or cube"
      arg_type = Bool

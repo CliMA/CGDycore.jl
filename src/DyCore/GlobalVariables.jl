@@ -314,6 +314,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   dzBottom::FT
   dzTop::FT
   LateralBC::Any
+  ZonalMean::Any
   State::String
   InitialProfile::Any
   Eddy::Any
@@ -427,6 +428,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   dzBottom = 30.0
   dzTop = 1500.0
   LateralBC = nothing
+  ZonalMean = nothing
   State = ""
   InitialProfile = ""
   Eddy = ""
@@ -538,6 +540,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    dzBottom,
    dzTop,
    LateralBC,
+   ZonalMean,
    State,
    InitialProfile,
    Eddy,

@@ -1,6 +1,6 @@
 import CGDycore:
   Parameters, Thermodynamics, Examples, Sources, Parallels, Models, Grids, Surfaces,  Outputs, Integration,  
-    FiniteElements, CGSEM, DyCore, IMEXRosenbrock
+    FiniteElements, CGSEM, DyCore, IMEXRosenbrock, Statistics
 using MPI
 using Base
 using CUDA
@@ -682,6 +682,10 @@ else
   Global.Output.OrdPrint = OrdPrint
 end 
 Global.Output.vtkFileName = vtkFileName
+if parsed_args["ZonalMeanHours"] > 0
+  Model.ZonalMean = Statistics.ZonalMeanStruct(Metric,nz,parsed_args["ZonalMeanHours"],
+    parsed_args["StartAverageDays"],vtkFileName * "_zonal")
+end
 Global.Output.OutputType = OutputType
 Global.Output.OutputCompression = OutputCompression
 Global.vtkCache = Outputs.vtkStruct{FTB}(backend,Global.Output.OrdPrint,Global.Output.OrdPrintZ,Trans,CG,Metric,Global)

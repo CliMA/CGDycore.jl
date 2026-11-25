@@ -123,6 +123,14 @@ From the limitations in [CGSEMTurbulenceSurface.md](CGSEMTurbulenceSurface.md), 
 
 ## 6 Diagnostics
 
+Implemented (`--ZonalMeanHours=h`, `src/Statistics/ZonalMean.jl`): samples every h hours from
+`--StartAverageDays` on, 90 latitude bands of 2°, volume weighted on model levels: u, v, w, T,
+θ, q_v, p, uu, vv, uv, vT; area weighted surface fields: precipitation (condensation rate with
+immediate fall-out), evaporation, sensible heat flux, u\*, T_s, column water vapour. Output
+`<vtkFileName>_zonal.bin` (Float64, level fields then surface fields) and `.txt` header. Still
+missing: interpolation to pressure levels, mass stream function, global budgets.
+
+
 - Zonal and time means: u, v, ω, T, θ, q_v, RH, precipitation, evaporation, sensible heat flux,
   TKE, K, boundary-layer height.
 - Global means: precipitation = evaporation in equilibrium, energy budget at the top (Stage B).
