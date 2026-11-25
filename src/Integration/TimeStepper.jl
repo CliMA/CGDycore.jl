@@ -82,6 +82,7 @@ function TimeStepper(IntMethod,dt,U,Fcn,Jac,FE,Exchange,Metric,Trans,Phys,Param,
             Global.SurfaceData.Data,Metric,Phys,Global.Model)
           if mod(i,PrintInt) == 0
             Statistics.ZonalMeanWrite(Global.Model.ZonalMean,time[1])
+            Statistics.ExtremaPrint(time[1],U,view(Aux,:,:,:,1),Metric,Phys,Global.Model)
           end
         end
       end

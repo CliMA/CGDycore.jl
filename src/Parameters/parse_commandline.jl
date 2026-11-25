@@ -272,7 +272,7 @@ function parse_commandline()
     default = false
 
     "--TypeMicrophysics"
-    help = "TypeMicrophysics"
+    help = "TypeMicrophysics (SimpleMicrophysicsPot, SimpleMicrophysicsIE, OneMomentMicrophysicsMoistEquil, Adjustment: saturation adjustment with immediate fall-out after every step)"
     arg_type = String
     default = ""
 

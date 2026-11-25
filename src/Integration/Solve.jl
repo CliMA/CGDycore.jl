@@ -10,9 +10,11 @@ CallFcn!(Fcn,F,U,FE::FiniteElements.CGElement,Metric,Phys,Aux,Exchange,Global,Ve
 # state update (each Cartesian component separately) has the same sign step by step in a
 # nearly steady flow, so that n . uh grows linearly (2e-3 m/s in two days in Float32).
 # Open lateral boundaries: the inflow values are reset after every step as well.
+# Large-scale condensation as saturation adjustment (--TypeMicrophysics="Adjustment").
 function ProjectState!(U,FE::FiniteElements.CGElement,Metric,Global)
   CGSEM.ProjectTangential!(U,Metric,Global,Global.Model.VelocityFrame)
   CGSEM.OpenBoundaryReset!(U,Global.Model.LateralBC,Global.ParallelCom.NumberThreadGPU)
+  CGSEM.CondensationAdjust!(U,Metric,Global,Global.Model.Condensation)
 end
 ProjectState!(U,FE,Metric,Global) = nothing
 

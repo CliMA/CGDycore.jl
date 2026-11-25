@@ -2,7 +2,8 @@
 # StartAverageDays on. Level fields are volume weighted with the assembled nodal mass, surface
 # fields area weighted with the mass of the lowest layer divided by its thickness.
 # Precipitation is the condensation rate of the large-scale condensation with immediate
-# fall-out (Rain = 1): RelCloud * max(rho_v - rho_vs(T), 0), summed over the column.
+# fall-out (Rain = 1): RelCloud * max(rho_v - rho_vs(T), 0), summed over the column, or with
+# --TypeMicrophysics="Adjustment" the condensed mass of the last step (CGSEM.Condensation).
 const ZonalLevelNames = ["u","v","w","T","theta","qv","p","uu","vv","uv","vT"]
 const ZonalSurfNames = ["precip","evap","shf","ustar","TS","cwv"]
 
@@ -51,6 +52,7 @@ function ZonalMeanSample!(ZM::ZonalMeanStruct,time,U,p,SurfaceData,Metric,Phys,M
   pH = Array(p)
   dzH = Array(Metric.dz)
   SD = Array(SurfaceData)
+  PrecipH = Model.Condensation !== nothing ? Array(Model.Condensation.Precip) : nothing
   RhoVPos = Model.RhoVPos
   RhoCPos = Model.RhoCPos
   RelCloud = Model.RelCloud
@@ -77,10 +79,15 @@ function ZonalMeanSample!(ZM::ZonalMeanStruct,time,U,p,SurfaceData,Metric,Phys,M
       end
       ZM.SumW[iz,ib] += Wi
       if RhoVPos > 0
-        RhoVS = Thermodynamics.fpws(T,Phys) / (Phys.Rv * T)
-        Precip += RelCloud * max(RhoV - RhoVS,0.0) * dzH[iz,ic]
+        if PrecipH === nothing
+          RhoVS = Thermodynamics.fpws(T,Phys) / (Phys.Rv * T)
+          Precip += RelCloud * max(RhoV - RhoVS,0.0) * dzH[iz,ic]
+        end
         CWV += RhoV * dzH[iz,ic]
       end
+    end
+    if PrecipH !== nothing
+      Precip = PrecipH[ic]
     end
     # surface fluxes as in Surfaces.SurfaceFlux
     Rho1 = UH[1,1,ic,1]
@@ -125,4 +132,40 @@ function ZonalMeanWrite(ZM::ZonalMeanStruct,time)
     println(io,"surface ",join(ZonalSurfNames," "))
     println(io,"lat bins: equal width from -90 to 90 degrees, level fields at model levels (not pressure)")
   end
+end
+
+# extrema of the state with position (lat, lon in degrees, level), printed with the outputs
+function ExtremaPrint(time,U,p,Metric,Phys,Model)
+  UH = Array(U)
+  pH = Array(p)
+  xS = Array(Metric.xS)
+  RhoVPos = Model.RhoVPos
+  nz = size(UH,2)
+  Ext = Dict{String,Tuple{Float64,Int,Int}}()
+  function upd!(name,val,iz,ic,larger)
+    if !haskey(Ext,name) || (larger ? val > Ext[name][1] : val < Ext[name][1]) || isnan(val)
+      Ext[name] = (val,iz,ic)
+    end
+  end
+  for ic in axes(UH,3), iz = 1 : nz
+    Rho = UH[1,iz,ic,1]
+    RhoV = RhoVPos > 0 ? UH[1,iz,ic,RhoVPos] : 0.0
+    T = pH[1,iz,ic] / (Phys.Rd * (Rho - RhoV) + Phys.Rv * RhoV)
+    upd!("max|w|",abs(UH[1,iz,ic,4]),iz,ic,true)
+    upd!("max|u|",hypot(UH[1,iz,ic,2],UH[1,iz,ic,3]),iz,ic,true)
+    upd!("minT",T,iz,ic,false)
+    upd!("maxT",T,iz,ic,true)
+    if RhoVPos > 0
+      upd!("maxqv",RhoV / Rho,iz,ic,true)
+      upd!("maxRH",RhoV * Phys.Rv * T / Thermodynamics.fpws(T,Phys),iz,ic,true)
+    end
+  end
+  s = "Extrema t=$(round(time / 86400,digits=3)) d:"
+  for name in sort(collect(keys(Ext)))
+    val, iz, ic = Ext[name]
+    s *= " $name $(round(val,sigdigits=4)) (lat $(round(rad2deg(xS[2,ic]),digits=1)) " *
+      "lon $(round(rad2deg(xS[1,ic]),digits=1)) iz $iz)"
+  end
+  println(s)
+  flush(stdout)
 end

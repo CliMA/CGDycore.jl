@@ -507,7 +507,11 @@ else
 end
 
 #Microphysics
-if Microphysics
+if Microphysics && TypeMicrophysics == "Adjustment"
+  # saturation adjustment after every step instead of a tendency, see CGSEM.Condensation
+  Model.Microphysics = false
+  Model.Condensation = CGSEM.Condensation(backend,FTB,CG.NumG,Phys,dtau)
+elseif Microphysics
   if TypeMicrophysics == "SimpleMicrophysicsPot"
     MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.RhoThPos,
       Model.RhoVPos,Model.RhoCPos,Model.RelCloud,Model.Rain)
@@ -525,7 +529,7 @@ if Microphysics
     Model.MicrophysicsSource = MicrophysicsSource
     Model.SedimentationSource = SedimentationSource
   else
-    error("TypeMicrophysics = $TypeMicrophysics is not available, choose SimpleMicrophysicsPot, SimpleMicrophysicsIE or OneMomentMicrophysicsMoistEquil")
+    error("TypeMicrophysics = $TypeMicrophysics is not available, choose SimpleMicrophysicsPot, SimpleMicrophysicsIE, OneMomentMicrophysicsMoistEquil or Adjustment")
   end
 end
 

@@ -3,8 +3,10 @@
 # temperature relaxation, no Rayleigh friction (surface drag instead), bulk surface fluxes and
 # boundary-layer diffusion of Reed and Jablonowski (2012), large-scale condensation, SST of
 # HeldSuarezMoistSurface. 1000 days, zonal means every 6 h from day 200 (<vtkFileName>_zonal.bin/.txt).
-# Large-scale condensation: supersaturation relaxed with RelCloud = 1/(2 dtau) (explicit), all
-# condensate falls out at once (Rain=1, cloud water stays zero).
+# Large-scale condensation: saturation adjustment after every step, all condensate falls out at
+# once (CGSEM.Condensation). The explicit relaxation (SimpleMicrophysicsPot, Rain=1) was unstable
+# with RelCloud = 3.3e-3 (lambda dt = 2.1 with the latent heat feedback) and let the upper
+# tropical troposphere become strongly supersaturated with RelCloud = 1e-3.
 julia --project Examples/DriverCG.jl \
   --Problem="HeldSuarezMoistSphere" \
   --NumberThreadGPU=256 \
@@ -21,10 +23,8 @@ julia --project Examples/DriverCG.jl \
   --Equation="CompressibleShallow" \
   --State="Moist" \
   --Microphysics=true \
-  --TypeMicrophysics="SimpleMicrophysicsPot" \
+  --TypeMicrophysics="Adjustment" \
   --Sedimentation=false \
-  --Rain=1.0 \
-  --RelCloud=3.3e-3 \
   --Buoyancy=true \
   --Damping=true \
   --StrideDamp=10000 \
