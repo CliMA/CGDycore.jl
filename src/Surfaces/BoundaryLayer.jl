@@ -47,6 +47,22 @@ function (profile::SimpleKoefficient)(Param,Phys)
   return Eddy
 end
 
+# boundary-layer diffusion of Reed and Jablonowski (2012): K = C_E |v_a| z_a below p_pbl,
+# decaying with exp(-((p_pbl - p) / p_strato)^2) above; C_E from the surface data
+Base.@kwdef struct BulkKoefficient <: EddyKoefficient end
+
+function (profile::BulkKoefficient)(Param,Phys)
+  @inline function Eddy(U,Surf,p,dz,LenScale)
+    K = Surf[CTPos] * Surf[UaPos] * dz / 2
+    if p < Param.p_pbl
+      dpR = (Param.p_pbl - p) / Param.p_strato
+      K = K * exp(-dpR * dpR)
+    end
+    return K * U[1]
+  end
+  return Eddy
+end
+
 # constant eddy diffusivity K [m^2/s] (test cases)
 Base.@kwdef struct ConstKoefficient <: EddyKoefficient end
 

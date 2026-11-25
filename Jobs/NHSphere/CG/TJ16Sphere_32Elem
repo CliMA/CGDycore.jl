@@ -1,0 +1,65 @@
+#!/bin/bash
+# Moist Held-Suarez aquaplanet of Thatcher and Jablonowski (2016, GMD 9, 1263-1292): Held-Suarez
+# temperature relaxation, no Rayleigh friction (surface drag instead), bulk surface fluxes and
+# boundary-layer diffusion of Reed and Jablonowski (2012), large-scale condensation, SST of
+# HeldSuarezMoistSurface. 1000 days, averages from day 200.
+julia --project Examples/DriverCG.jl \
+  --Problem="HeldSuarezMoistSphere" \
+  --NumberThreadGPU=256 \
+  --FloatTypeBackend="Float64" \
+  --NumV=5 \
+  --NumTr=2 \
+  --TkePos=0 \
+  --RhoVPos=6 \
+  --RhoCPos=7 \
+  --ModelType="VectorInvariant" \
+  --Coriolis=true \
+  --Upwind=true \
+  --HorLimit=false \
+  --Equation="CompressibleShallow" \
+  --State="Moist" \
+  --Microphysics=true \
+  --TypeMicrophysics="SimpleMicrophysicsPot" \
+  --Sedimentation=false \
+  --Rain=0.0 \
+  --Buoyancy=true \
+  --Damping=true \
+  --StrideDamp=10000 \
+  --Relax=1.0e-3 \
+  --Forcing=true \
+  --pAuxPos=1 \
+  --SurfaceFlux=true \
+  --SurfaceFluxMom=true \
+  --VerticalDiffusionMom=true \
+  --JacVerticalDiffusion=true \
+  --VerticalDiffusion=true \
+  --Turbulence=false \
+  --SurfaceScheme="Bulk" \
+  --Decomp="EqualArea" \
+  --SimSeconds=0 \
+  --SimDays=1000 \
+  --PrintSeconds=0 \
+  --PrintMinutes=0 \
+  --PrintHours=0 \
+  --PrintDays=10 \
+  --StartAverageDays=200 \
+  --Flat=true \
+  --OrdPrint=2 \
+  --vtkFileName="output/VTK/TJ16/CG32Quad" \
+  --dtau=150 \
+  --IntMethod="Rosenbrock" \
+  --Table="SSP-Knoth" \
+  --TopoS="" \
+  --Stretch=true \
+  --StretchType="Exp" \
+  --GridType="CubedSphere" \
+  --nz=64 \
+  --nPanel=32 \
+  --H=30000.0 \
+  --OrdPoly=3 \
+  --HyperVisc=true \
+  --HyperDCurl=5.e14 \
+  --HyperDGrad=5.e14 \
+  --HyperDDiv=5.e14 \
+  --HyperDDivW=0.e15 \
+  "$@"

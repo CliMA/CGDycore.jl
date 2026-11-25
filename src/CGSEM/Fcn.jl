@@ -564,8 +564,11 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
     groupT = min(NumberThreadGPU, NDoF)
     KTkeColumnKernel! = TkeColumnKernel!(backend, groupT)
     SurfaceProd = Global.Model.SurfaceFluxMom
+    SurfaceHeat = Global.Model.SurfaceFlux
     KTkeColumnKernel!(Global.Model.TurbulenceSource,FTke2,Cache.KV,view(Cache.DTke,1,:,:),U,p,
-      Global.SurfaceData.Data,dz,Metric.zP,FT(Phys.Grav),FT(Phys.Rd),TkePos,SurfaceProd,ndrange=NDoF)
+      Global.SurfaceData.Data,dz,Metric.zP,FT(Phys.Grav),FT(Phys.Rd),FT(Phys.Cpd),
+      FT(Phys.Rv / Phys.Rd - 1),TkePos,Global.Model.RhoVPos,Global.Model.RhoCPos,
+      SurfaceProd,SurfaceHeat,ndrange=NDoF)
   end 
   if Global.Model.VerticalDiffusionMom
     KVerticalDiffusionMomentumKernel! = VerticalDiffusionMomentumKernel!(backend,groupG)

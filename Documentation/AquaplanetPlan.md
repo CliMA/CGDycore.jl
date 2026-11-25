@@ -38,10 +38,12 @@ Held–Suarez by bulk surface fluxes and the boundary-layer diffusion of Reed an
 
 Work:
 
-1. Turn off the Rayleigh friction in `HeldSuarezMoistExample` when surface drag is on.
-2. Add the Reed–Jablonowski bulk coefficients as a surface scheme (`--SurfaceScheme="Bulk"`):
-   C_d = 7·10⁻⁴ + 6.5·10⁻⁵ |v| (constant 2·10⁻³ above 20 m/s), C_E = C_H = 1.1·10⁻³, and their
-   K profile (`SimpleKoefficient` is already this profile).
+1. (done) The Rayleigh friction of `HeldSuarezMoistExample` is only applied without surface
+   drag (`--SurfaceFluxMom=false`).
+2. (done) `--SurfaceScheme="Bulk"`: Reed–Jablonowski coefficients C_d = 7·10⁻⁴ + 6.5·10⁻⁵ |v|
+   (2·10⁻³ above 20 m/s), C_E = C_H = 1.1·10⁻³, and their K profile K = C_E |v₁| z₁ below
+   850 hPa (`BulkKoefficient`; one K for momentum and scalars, RJ12 use C_d for momentum).
+   Job: `Jobs/NHSphere/CG/TJ16Sphere_32Elem`.
 3. Run TJ16 with these settings for 2–3 years, average after the first 6 months.
 4. Compare with TJ16: zonal-mean u, T, q, relative humidity, precipitation; global mean
    precipitation and evaporation.
@@ -101,7 +103,7 @@ From the limitations in [CGSEMTurbulenceSurface.md](CGSEMTurbulenceSurface.md), 
 |---|---|
 | 1/Pr in CT (done) | 26 % too small latent and sensible fluxes bias evaporation and precipitation directly |
 | θ₁ − θ_s instead of T₁ − T_s (done) | for z₁ ≈ 25–50 m a bias of 0.25–0.5 K, comparable to the air–sea difference over warm SST |
-| Moist buoyancy | N² and the surface buoyancy flux with θ_v (and the saturated N² in clouds); otherwise the marine boundary layer is too stable |
+| Moist buoyancy (done for unsaturated air) | N² and the surface buoyancy flux with θ_v (and the saturated N² in clouds); otherwise the marine boundary layer is too stable |
 | Implicit surface heat and moisture fluxes | Δt = 150–300 s with Δz₁ ≈ 30 m: CT·U_a·Δt/Δz₁ approaches 0.1–0.2, more over strong winds |
 | Gustiness (done, constant `--Gustiness`) | a minimum wind of about 1 m/s (Beljaars 1995) instead of 0.1 m/s keeps fluxes in the calm subtropics |
 | Mixing length | λ of 100 m is set for the rotor case; for the global boundary layer scale it with the boundary-layer depth or use λ ≈ 150 m |

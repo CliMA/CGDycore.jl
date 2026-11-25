@@ -65,8 +65,17 @@ end
 # diffusivity rho*K at the interfaces Iz+1/2 (KV[1,Iz,IC], Iz < Nz) and the derivative of the
 # sinks for the implicit solve (DTke). The surface production is u*^3/(kappa z1) plus the
 # buoyancy flux of the surface heat flux; without surface data the lowest interface value is used.
+# virtual potential temperature (unsaturated), buoyancy of the TKE closure
+@inline function ThetaV(U,Iz,IC,RhoVPos,RhoCPos,Eps1)
+  FT = eltype(U)
+  Rho = U[1,Iz,IC,1]
+  qv = RhoVPos > 0 ? U[1,Iz,IC,RhoVPos] / Rho : FT(0)
+  qc = RhoCPos > 0 ? U[1,Iz,IC,RhoCPos] / Rho : FT(0)
+  return U[1,Iz,IC,5] / Rho * (FT(1) + Eps1 * qv - qc)
+end
+
 @kernel inbounds = true function TkeColumnKernel!(Turb,FTke,KV,DTke,@Const(U),@Const(p),@Const(Surf),
-  @Const(dz),@Const(zP),Grav,Rd,TkePos,SurfaceProd::Bool)
+  @Const(dz),@Const(zP),Grav,Rd,Cpd,Eps1,TkePos,RhoVPos,RhoCPos,SurfaceProd::Bool,SurfaceHeat::Bool)
   IC, = @index(Global, NTuple)
 
   Nz = @uniform size(U,2)
@@ -78,7 +87,7 @@ end
     RhoB = U[1,1,IC,1]
     uB = U[1,1,IC,2]
     vB = U[1,1,IC,3]
-    ThB = U[1,1,IC,5] / RhoB
+    ThB = ThetaV(U,1,IC,RhoVPos,RhoCPos,Eps1)
     eB = max(U[1,1,IC,TkePos] / RhoB, Turb.EMin)
     # production at the lower face of the current layer, N^2 below
     PB = FT(0)
@@ -86,9 +95,20 @@ end
     if SurfaceProd
       z1 = FT(0.5) * dz[1,IC]
       uStar = Surf[Surfaces.uStarPos,IC]
-      TB = p[1,1,IC] / (Rd * RhoB)
-      SensFlux = -Surf[Surfaces.CTPos,IC] * Surf[Surfaces.UaPos,IC] * (TB - Surf[Surfaces.TSurfPos,IC])
-      PB = uStar * uStar * uStar / (Turb.Karman * z1) + Grav * SensFlux / TB
+      PB = uStar * uStar * uStar / (Turb.Karman * z1)
+      if SurfaceHeat
+        # surface buoyancy flux g (w'theta'/T + Eps1 w'q_v'), theta_1 - theta_S as in the fluxes
+        TB = p[1,1,IC] / (Rd * RhoB)
+        pS = p[1,1,IC] + RhoB * Grav * z1
+        TS = Surf[Surfaces.TSurfPos,IC] * (p[1,1,IC] / pS)^(Rd / Cpd)
+        SensFlux = -Surf[Surfaces.CTPos,IC] * Surf[Surfaces.UaPos,IC] * (TB - TS)
+        PB += Grav * SensFlux / TB
+        if RhoVPos > 0
+          LatFlux = -Surf[Surfaces.CHPos,IC] * Surf[Surfaces.UaPos,IC] *
+            (U[1,1,IC,RhoVPos] - Surf[Surfaces.RhoVSurfPos,IC])
+          PB += Grav * Eps1 * LatFlux / RhoB
+        end
+      end
     end
     N2B = FT(0)
     for Iz = 1 : Nz
@@ -96,7 +116,7 @@ end
         RhoT = U[1,Iz+1,IC,1]
         uT = U[1,Iz+1,IC,2]
         vT = U[1,Iz+1,IC,3]
-        ThT = U[1,Iz+1,IC,5] / RhoT
+        ThT = ThetaV(U,Iz+1,IC,RhoVPos,RhoCPos,Eps1)
         eT = max(U[1,Iz+1,IC,TkePos] / RhoT, Turb.EMin)
         dzF = FT(0.5) * (dz[Iz,IC] + dz[Iz+1,IC])
         S2 = ((uT - uB) * (uT - uB) + (vT - vB) * (vT - vB)) / (dzF * dzF)

@@ -332,7 +332,7 @@ function parse_commandline()
     default = false
 
     "--SurfaceScheme"
-    help = "Surface scheme"
+    help = "Surface scheme (MOST, Bulk: Reed and Jablonowski 2012 coefficients and K profile)"
     arg_type = String
     default = "MOST"
 

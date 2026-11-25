@@ -126,7 +126,7 @@ The surface heat and moisture fluxes are explicit.
 
 | Option | Meaning |
 |---|---|
-| `--SurfaceScheme="MOST"` | required as soon as any of the switches below is on |
+| `--SurfaceScheme="MOST"` | required as soon as any of the switches below is on; `"Bulk"` gives the constant-type coefficients and K profile of Reed and Jablonowski (2012) |
 | `--SurfaceFlux`, `--SurfaceFluxMom` | surface heat/moisture fluxes, surface drag |
 | `--VerticalDiffusion`, `--VerticalDiffusionMom` | vertical diffusion of scalars, velocity |
 | `--JacVerticalDiffusion` | implicit vertical diffusion |
@@ -206,8 +206,10 @@ inflow (u, w, θ prescribed, ρ mirrored) or a relaxation zone is the next step 
 3. **Layer averages.** The similarity laws are applied at z₁ = Δz₁/2 to layer averages. For
    z₀ = 0.1 m and Δz₁ = 10 m this underestimates u\* by about 8 % (Nishizawa and Kitamura 2018).
    We keep this conventional scheme for now.
-4. **Dry closure.** N² and the surface buoyancy flux use the dry θ; there is no moisture in the
-   buoyancy and no cloud-top or saturated mixing.
+4. **Unsaturated buoyancy only.** N² uses θ_v = θ (1 + (R_v/R_d − 1) q_v − q_c) and the surface
+   buoyancy flux g (w′θ′/T₁ + (R_v/R_d − 1) w′q_v′); the surface buoyancy term is only active
+   with `--SurfaceFlux=true` (before, it was also added without surface heat flux). There is no
+   saturated N² in clouds and no cloud-top mixing.
 5. **Explicit surface heat and moisture fluxes.** Only the drag is in the Jacobian; for thin
    lowest layers and long time steps the heat flux can become stiff.
 6. **Minimum wind.** U_a has a floor of 0.1 m/s; `--Gustiness=u_g` (default 0) adds a constant

@@ -1321,7 +1321,7 @@ end
 
 Base.@kwdef struct HeldSuarezMoistExample <: Example end
 
-function (::HeldSuarezMoistExample)(Param,Phys)
+function (::HeldSuarezMoistExample)(Param,Phys;Friction=true)
   @inline function profile(x,time)
     FT = eltype(x)
     (lon,lat,R)= Grids.cart2sphere(x[1],x[2],x[3])
@@ -1386,8 +1386,9 @@ function (::HeldSuarezMoistExample)(Param,Phys)
     lat = x[2]
     coslat = cos(lat)
     sinlat = sin(lat)
-    F[2] = -(Param.k_f * height_factor) * U[2]
-    F[3] = -(Param.k_f * height_factor) * U[3]
+    kF = Friction ? Param.k_f * height_factor : FT(0)
+    F[2] = -kF * U[2]
+    F[3] = -kF * U[3]
     kT = Param.k_a + (Param.k_s - Param.k_a) * height_factor * coslat * coslat * coslat * coslat
     Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
       Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa

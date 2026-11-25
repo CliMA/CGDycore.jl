@@ -561,13 +561,15 @@ end
 # SurfaceFlux
 if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model.VerticalDiffusionMom
   if SurfaceScheme == ""
-    error("SurfaceFlux, VerticalDiffusion, SurfaceFluxMom or VerticalDiffusionMom need a SurfaceScheme, choose MOST")
+    error("SurfaceFlux, VerticalDiffusion, SurfaceFluxMom or VerticalDiffusionMom need a SurfaceScheme, choose MOST or Bulk")
   elseif SurfaceScheme == "MOST"
     @show "SurfaceScheme MOST"
     SurfaceFluxValues = Surfaces.MOSurfaceFlux()(Surfaces.Businger(),Phys,Model.RhoPos,Model.uPos,
       Model.vPos,Model.wPos,Model.RhoThPos,Global.LandUseData.z0M,Global.LandUseData.z0H;
       Gustiness=FTB(Gustiness))
     Model.SurfaceFluxValues = SurfaceFluxValues
+  elseif SurfaceScheme == "Bulk"
+    Model.SurfaceFluxValues = Surfaces.BulkSurfaceFlux()(Model.uPos,Model.vPos,Model.wPos)
   end
 end
 if Model.SurfaceFlux
@@ -585,6 +587,8 @@ if Model.VerticalDiffusion || Model.VerticalDiffusionMom
     Model.Eddy = Surfaces.TkeKoefficient()(Param,Phys,Model.TkePos,Model.RhoPos)
   elseif KConst > 0
     Model.Eddy = Surfaces.ConstKoefficient()(KConst)
+  elseif SurfaceScheme == "Bulk"
+    Model.Eddy = Surfaces.BulkKoefficient()(Param,Phys)
   else
     Model.Eddy = Surfaces.SimpleKoefficient()(Param,Phys)
   end

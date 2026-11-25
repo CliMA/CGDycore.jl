@@ -39,6 +39,24 @@ function (::HeldSuarezMoistSurfaceFlux)(Phys,Param,uPos,vPos,wPos)
   return SurfaceFluxValues
 end  
 
+# bulk coefficients of Reed and Jablonowski (2012), used by the moist Held-Suarez aquaplanet of
+# Thatcher and Jablonowski (2016): C_d = 7e-4 + 6.5e-5 |v| (2e-3 above 20 m/s), C_E = C_H = 1.1e-3
+Base.@kwdef struct BulkSurfaceFlux <: SurfaceFluxValues end
+
+function (::BulkSurfaceFlux)(uPos,vPos,wPos)
+  @inline function SurfaceFluxValues(SD,z,U,p,nSS,LandClass)
+    FT = eltype(U)
+    Ua = UzCoefficientGPU(U[uPos],U[vPos],U[wPos],nSS)
+    CM = Ua < FT(20) ? FT(7.0e-4) + FT(6.5e-5) * Ua : FT(2.0e-3)
+    SD[UaPos] = Ua
+    SD[uStarPos] = sqrt(CM) * Ua
+    SD[CMPos] = CM
+    SD[CTPos] = FT(1.1e-3)
+    SD[CHPos] = FT(1.1e-3)
+  end
+  return SurfaceFluxValues
+end
+
 Base.@kwdef struct HeldSuarezDrySurface <: SurfaceValues end
 
 function (::HeldSuarezDrySurface)(Phys,Param,uPos,vPos,wPos)
