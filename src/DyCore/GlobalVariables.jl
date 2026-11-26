@@ -281,6 +281,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   Geos::Bool
   Relax::FT
   StrideDamp::FT
+  DampIzStart::Int
   Coriolis::Bool
   CoriolisType::String
   Buoyancy::Bool
@@ -396,6 +397,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   Geos = false
   Relax = 0.0
   StrideDamp = 0.0
+  DampIzStart = 1
   Coriolis = false
   CoriolisType = ""
   Buoyancy = true
@@ -509,6 +511,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    Geos,
    Relax,
    StrideDamp,
+   DampIzStart,
    Coriolis,
    CoriolisType,
    Buoyancy,

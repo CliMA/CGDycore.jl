@@ -780,6 +780,8 @@ end
 
   for iT = NumV + 1 : NumV + NumTr
 #   Second tracer  
+#   all threads have finished reading cCol of the previous variable before it is overwritten
+    @synchronize
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
     if Iz <= Nz
@@ -910,6 +912,8 @@ end
 
   for iT = NumV + 1 : NumV + NumTr
 #   Second tracer  
+#   all threads have finished reading cCol of the previous variable before it is overwritten
+    @synchronize
     ID = I + (J - 1) * N  
     ind = Glob[ID,IF]
     if Iz <= Nz

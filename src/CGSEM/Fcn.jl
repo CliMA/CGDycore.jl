@@ -613,7 +613,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   end
 
   if Global.Model.Damping
-    Sources.Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU)  
+    Sources.Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU;IzStart=Global.Model.DampIzStart)
   end  
   if Global.Model.LateralBC !== nothing
     OpenBoundary!(F,U,p,Global.Model.LateralBC,NumberThreadGPU)

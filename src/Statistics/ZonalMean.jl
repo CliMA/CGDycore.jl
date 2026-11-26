@@ -108,18 +108,31 @@ function ZonalMeanSample!(ZM::ZonalMeanStruct,time,U,p,SurfaceData,Metric,Phys,M
 end
 
 # binary Float64: level fields (nz,nLat,nVar), then surface fields (nLat,nSurf); header in .txt
+# With MPI the sums of all processes are added on the first one, which writes; columns on the
+# boundaries between processes are counted on each of them.
 function ZonalMeanWrite(ZM::ZonalMeanStruct,time)
   if ZM.nSample == 0
     return
   end
-  nz, nLat, nVar = size(ZM.Sum)
+  Sum, SumW, SumS, SumWS = ZM.Sum, ZM.SumW, ZM.SumS, ZM.SumWS
+  if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) > 1
+    comm = MPI.COMM_WORLD
+    Sum = MPI.Reduce(Sum,+,comm;root=0)
+    SumW = MPI.Reduce(SumW,+,comm;root=0)
+    SumS = MPI.Reduce(SumS,+,comm;root=0)
+    SumWS = MPI.Reduce(SumWS,+,comm;root=0)
+    if MPI.Comm_rank(comm) > 0
+      return
+    end
+  end
+  nz, nLat, nVar = size(Sum)
   Mean = zeros(nz,nLat,nVar)
   for iv = 1 : nVar, ib = 1 : nLat, iz = 1 : nz
-    Mean[iz,ib,iv] = ZM.Sum[iz,ib,iv] / max(ZM.SumW[iz,ib],eps())
+    Mean[iz,ib,iv] = Sum[iz,ib,iv] / max(SumW[iz,ib],eps())
   end
   MeanS = zeros(nLat,length(ZonalSurfNames))
   for iv in axes(MeanS,2), ib = 1 : nLat
-    MeanS[ib,iv] = ZM.SumS[ib,iv] / max(ZM.SumWS[ib],eps())
+    MeanS[ib,iv] = SumS[ib,iv] / max(SumWS[ib],eps())
   end
   open(ZM.FileName * ".bin","w") do io
     write(io,Mean)

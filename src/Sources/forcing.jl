@@ -175,23 +175,21 @@ end
   ND = @uniform @ndrange()[3]
 
   FLoc = @private eltype(F) (NUMV,)
-  ULoc = @private eltype(F) (NUMV,)
-  AuxLoc = @private eltype(F) (NUMAUX,)
   xSLoc = @private eltype(F) (2,)
 
   if ID <= ND
     xSLoc[1] = xS[1,ID]
     xSLoc[2] = xS[2,ID]
     @unroll for iv = 1 : NUMV
-      ULoc[iv] = U[K,Iz,ID,iv]
       FLoc[iv] = eltype(F)(0)
     end  
-    @unroll for iAux = 1 : NUMAUX
-      AuxLoc[iAux] = Aux[K,Iz,ID,iAux]
-    end  
-    Force(FLoc,ULoc,AuxLoc,xSLoc)
+    # U and Aux as views: only the components the forcing uses are loaded
+    Force(FLoc,view(U,K,Iz,ID,:),view(Aux,K,Iz,ID,:),xSLoc)
+    # only the components the forcing changes are written
     @unroll for iv = 1 : NUMV
-      F[K,Iz,ID,iv] += FLoc[iv]
+      if FLoc[iv] != eltype(F)(0)
+        F[K,Iz,ID,iv] += FLoc[iv]
+      end
     end  
   end
 end 

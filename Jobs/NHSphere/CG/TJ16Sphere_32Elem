@@ -49,6 +49,7 @@ julia --project Examples/DriverCG.jl \
   --ZonalMeanHours=6 \
   --Flat=true \
   --OrdPrint=2 \
+  --OutputType="ADIOS2" \
   --vtkFileName="output/VTK/TJ16/CG32Quad" \
   --dtau=150 \
   --IntMethod="Rosenbrock" \

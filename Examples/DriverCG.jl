@@ -607,6 +607,7 @@ if Damping
   Damp = Sources.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),
     Model.uPos,Model.vPos,Model.wPos,VelForm,Grid.Form)
   Model.Damp = Damp
+  Model.DampIzStart = Sources.DampingIzStart(Metric.zP,H,StrideDamp)
 end  
 
 CGSEM.CheckVelocityFrame(Model,Model.VelocityFrame)

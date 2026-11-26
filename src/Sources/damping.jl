@@ -74,21 +74,33 @@ function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityC,
   return Damping
 end
 
-function Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU)
+# IzStart: lowest level that reaches the damping layer in any column, the levels below are skipped
+function Damping!(Damp,F,U,Aux,FE,Metric,NumberThreadGPU;IzStart=1)
   backend = get_backend(F)
   M = size(F,1)
-  Nz = size(F,2)
+  Nz = size(F,2) - IzStart + 1
   NumG = size(F,3)
   NumV = size(F,4)
   NumGG = min(div(NumberThreadGPU,Nz*M),NumG)
   group = (M,Nz,NumGG)
   ndrange = (M,Nz,NumG)
   KDampKernel! = DampKernel!(backend, group)
-  KDampKernel!(Damp,F,U,Aux,Metric.xS,Metric.zP,Val(NumV);ndrange=ndrange)
+  KDampKernel!(Damp,F,U,Aux,Metric.xS,Metric.zP,Val(NumV),IzStart - 1;ndrange=ndrange)
+end
+
+# lowest level with zP >= H - StrideDamp in any column
+function DampingIzStart(zP,H,StrideDamp)
+  zPH = Array(zP)
+  for Iz in axes(zPH,1)
+    if maximum(view(zPH,Iz,:)) >= H - StrideDamp
+      return Iz
+    end
+  end
+  return size(zPH,1)
 end
 
 @kernel inbounds = true function DampKernel!(Damp,F,@Const(U),@Const(Aux),@Const(xS),@Const(zP),
-  ::Val{NUMV}) where {NUMV}
+  ::Val{NUMV},IzOffset) where {NUMV}
 
   _,_,iD  = @index(Local, NTuple)
   K,Iz,ID = @index(Global, NTuple)
@@ -96,20 +108,22 @@ end
   ND = @uniform @ndrange()[3]
 
   FLoc = @private eltype(F) (NUMV,)
-  ULoc = @private eltype(F) (NUMV,)
   xSLoc = @private eltype(F) (2,)
 
+  Iz += IzOffset
   if ID <= ND
     zPLoc = zP[Iz,ID]
     xSLoc[1] = xS[1,ID]
     xSLoc[2] = xS[2,ID]
     @unroll for iv = 1 : NUMV
-      ULoc[iv] = U[K,Iz,ID,iv]
       FLoc[iv] = eltype(F)(0)
     end
-    Damp(FLoc,ULoc,xSLoc,zPLoc)
+    # U as view: only the components the damping uses are loaded, only changed ones written
+    Damp(FLoc,view(U,K,Iz,ID,:),xSLoc,zPLoc)
     @unroll for iv = 1 : NUMV
-      F[K,Iz,ID,iv] += FLoc[iv]
+      if FLoc[iv] != eltype(F)(0)
+        F[K,Iz,ID,iv] += FLoc[iv]
+      end
     end
   end
 end
