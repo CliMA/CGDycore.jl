@@ -166,6 +166,8 @@ end
   end
 end
 
+# The metric (a_ij = dXdxI[i,j,1] + dXdxI[i,j,2], J), the density and the nodal mass are loaded
+# once into registers, the loop over the tracers only loads the tracer.
 @kernel inbounds = true function HyperViscTracerKernel!(FTr,NumTr,@Const(Tr),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob)) 
 
@@ -177,45 +179,53 @@ end
   Nz = @uniform @ndrange()[3]
   NF = @uniform @ndrange()[4]
 
-
   TrCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
+
+  FT = eltype(FTr)
+  ID = I + (J - 1) * N  
+  Inside = Iz <= Nz && IF <= NF
+  ind = Inside ? Glob[ID,IF] : 1
+  a11 = a12 = a21 = a22 = JInv = RhoInv = MInv = FT(0)
+  if Inside
+    a11 = dXdxI[1,1,1,ID,Iz,IF] + dXdxI[1,1,2,ID,Iz,IF]
+    a12 = dXdxI[1,2,1,ID,Iz,IF] + dXdxI[1,2,2,ID,Iz,IF]
+    a21 = dXdxI[2,1,1,ID,Iz,IF] + dXdxI[2,1,2,ID,Iz,IF]
+    a22 = dXdxI[2,2,1,ID,Iz,IF] + dXdxI[2,2,2,ID,Iz,IF]
+    JInv = FT(1) / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    RhoInv = FT(1) / Rho[1,Iz,ind]
+    MInv = FT(1) / (M[Iz,ind,1] + M[Iz,ind,2])
+  end
+
   for it = 1 : NumTr
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-  if Iz <= Nz && IF <= NF
-    TrCol[I,J,iz] = Tr[1,Iz,ind,it] / Rho[1,Iz,ind]
-  end
-  @synchronize
-
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-
-  if Iz <= Nz && IF <= NF
-    Dxc = D[I,1] * TrCol[1,J,iz]
-    Dyc = D[J,1] * TrCol[I,1,iz]
-    for k = 2 : N
-      Dxc += D[I,k] * TrCol[k,J,iz]
-      Dyc += D[J,k] * TrCol[I,k,iz] 
+    if Inside
+      TrCol[I,J,iz] = Tr[1,Iz,ind,it] * RhoInv
     end
-    @views (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @views (tempx, tempy) = Contra12(GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
-    TrCxCol[I,J,iz] = tempx
-    TrCyCol[I,J,iz] = tempy
-  end
+    @synchronize
 
-  @synchronize 
-
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-  if Iz <= Nz && IF <= NF
-    DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
-    for k = 2 : N
-      DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+    if Inside
+      Dxc = D[I,1] * TrCol[1,J,iz]
+      Dyc = D[J,1] * TrCol[I,1,iz]
+      for k = 2 : N
+        Dxc += D[I,k] * TrCol[k,J,iz]
+        Dyc += D[J,k] * TrCol[I,k,iz] 
+      end
+      GradDx = (a11 * Dxc + a21 * Dyc) * JInv
+      GradDy = (a12 * Dxc + a22 * Dyc) * JInv
+      TrCxCol[I,J,iz] = a11 * GradDx + a12 * GradDy
+      TrCyCol[I,J,iz] = a21 * GradDx + a22 * GradDy
     end
-    @atomic :monotonic FTr[1,Iz,ind,it] += DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
-  end
+
+    @synchronize 
+
+    if Inside
+      DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
+      for k = 2 : N
+        DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+      end
+      @atomic :monotonic FTr[1,Iz,ind,it] += DivTr * MInv
+    end
   end
 end
 
@@ -276,6 +286,7 @@ end
   end
 end
 
+# as HyperViscTracerKernel!, metric, density and nodal mass loaded once
 @kernel inbounds = true function HyperViscTracerKoeffKernel!(FTr,NumTr,@Const(Cache),@Const(Rho),@Const(D),@Const(DW),@Const(dXdxI),
   @Const(JJ),@Const(M),@Const(Glob),KoeffDiv) 
 
@@ -291,42 +302,49 @@ end
   TrCxCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
   TrCyCol = @localmem eltype(FTr) (N,N, ColumnTilesDim)
 
+  FT = eltype(FTr)
+  ID = I + (J - 1) * N  
+  Inside = Iz <= Nz && IF <= NF
+  ind = Inside ? Glob[ID,IF] : 1
+  a11 = a12 = a21 = a22 = JInv = RhoL = MInv = FT(0)
+  if Inside
+    a11 = dXdxI[1,1,1,ID,Iz,IF] + dXdxI[1,1,2,ID,Iz,IF]
+    a12 = dXdxI[1,2,1,ID,Iz,IF] + dXdxI[1,2,2,ID,Iz,IF]
+    a21 = dXdxI[2,1,1,ID,Iz,IF] + dXdxI[2,1,2,ID,Iz,IF]
+    a22 = dXdxI[2,2,1,ID,Iz,IF] + dXdxI[2,2,2,ID,Iz,IF]
+    JInv = FT(1) / (JJ[ID,1,Iz,IF] + JJ[ID,2,Iz,IF])
+    RhoL = Rho[1,Iz,ind]
+    MInv = -KoeffDiv / (M[Iz,ind,1] + M[Iz,ind,2])
+  end
+
   for it = 1 : NumTr
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-
-  if Iz <= Nz && IF <= NF
-    TrCol[I,J,iz] = Cache[1,Iz,ind,it] 
-  end
-  @synchronize
-
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-
-  if Iz <= Nz && IF <= NF
-    Dxc = D[I,1] * TrCol[1,J,iz]
-    Dyc = D[J,1] * TrCol[I,1,iz]
-    for k = 2 : N
-      Dxc += D[I,k] * TrCol[k,J,iz]
-      Dyc += D[J,k] * TrCol[I,k,iz] 
+    if Inside
+      TrCol[I,J,iz] = Cache[1,Iz,ind,it] 
     end
-    @views (GradDx, GradDy) = Grad12(Dxc,Dyc,dXdxI[1:2,1:2,:,ID,Iz,IF],JJ[ID,:,Iz,IF])
-    @views (tempx, tempy) = Contra12(Rho[1,Iz,ind],GradDx,GradDy,dXdxI[1:2,1:2,:,ID,Iz,IF])
-    TrCxCol[I,J,iz] = tempx
-    TrCyCol[I,J,iz] = tempy
-  end
+    @synchronize
 
-  @synchronize 
-
-  ID = I + (J - 1) * N  
-  ind = Glob[ID,IF]
-  if Iz <= Nz && IF <= NF
-    DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
-    for k = 2 : N
-      DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+    if Inside
+      Dxc = D[I,1] * TrCol[1,J,iz]
+      Dyc = D[J,1] * TrCol[I,1,iz]
+      for k = 2 : N
+        Dxc += D[I,k] * TrCol[k,J,iz]
+        Dyc += D[J,k] * TrCol[I,k,iz] 
+      end
+      GradDx = (a11 * Dxc + a21 * Dyc) * JInv
+      GradDy = (a12 * Dxc + a22 * Dyc) * JInv
+      TrCxCol[I,J,iz] = RhoL * (a11 * GradDx + a12 * GradDy)
+      TrCyCol[I,J,iz] = RhoL * (a21 * GradDx + a22 * GradDy)
     end
-    @atomic :monotonic FTr[1,Iz,ind,it] += -KoeffDiv * DivTr / (M[Iz,ind,1] + M[Iz,ind,2])
-  end
+
+    @synchronize 
+
+    if Inside
+      DivTr = DW[I,1] * TrCxCol[1,J,iz] + DW[J,1] * TrCyCol[I,1,iz]
+      for k = 2 : N
+        DivTr += DW[I,k] * TrCxCol[k,J,iz] + DW[J,k] * TrCyCol[I,k,iz]
+      end
+      @atomic :monotonic FTr[1,Iz,ind,it] += DivTr * MInv
+    end
   end
 end
 

@@ -155,6 +155,8 @@ end
 # Implicit vertical diffusion of the listed variables, one thread per column:
 # (invfac I + D) x = v, v <- invfac x. D is JDiffMom for u and v (plus the surface drag JDrag
 # in the lowest row), JDiff for the density-weighted scalars, plus the TKE sinks JDiss for TKE.
+# The LU factors (sub-diagonal a, c and 1/m) are computed only when the matrix changes, i.e.
+# once for u and v and once for the scalars; each variable then needs only the substitutions.
 @kernel inbounds = true function SchurSolveDiffKernel!(::Val{Nz},NT,v,@Const(JDiff),@Const(JDiffMom),
   @Const(JDrag),@Const(JDiss),invfac,@Const(ListTracer),TkePos,Drag::Bool,Diss::Bool) where {Nz}
   IG,   = @index(Local, NTuple)
@@ -163,34 +165,52 @@ end
   TilesDim = @uniform @groupsize()[1]
   NumG = @uniform @ndrange()[1]
 
-  bCol = @localmem eltype(v) (Nz,TilesDim)
+  aCol = @localmem eltype(v) (Nz,TilesDim)
   cCol = @localmem eltype(v) (Nz,TilesDim)
+  mCol = @localmem eltype(v) (Nz,TilesDim)
+  bCol = @localmem eltype(v) (Nz,TilesDim)
 
   if IC <= NumG
     FT = eltype(v)
+    PrevMom = false
+    PrevTke = false
     for iT = 1 : NT
       ind = ListTracer[iT]
       Mom = ind == 2 || ind == 3
-      Tri = Mom ? JDiffMom : JDiff
-      # forward elimination
-      d = invfac + Tri[2,1,IC]
-      if Mom && Drag
-        d += JDrag[IC]
-      end
-      if ind == TkePos && Diss
-        d += JDiss[1,1,IC]
-      end
-      cCol[1,IG] = Nz > 1 ? Tri[1,2,IC] / d : FT(0)
-      bCol[1,IG] = v[1,1,IC,ind] / d
-      for i = 2 : Nz
-        a = Tri[3,i-1,IC]
-        d = invfac + Tri[2,i,IC]
-        if ind == TkePos && Diss
-          d += JDiss[1,i,IC]
+      Tke = ind == TkePos && Diss
+      if iT == 1 || Mom != PrevMom || Tke || PrevTke
+        # LU factors of the matrix of this variable
+        Tri = Mom ? JDiffMom : JDiff
+        d = invfac + Tri[2,1,IC]
+        if Mom && Drag
+          d += JDrag[IC]
         end
-        m = d - a * cCol[i-1,IG]
-        cCol[i,IG] = i < Nz ? Tri[1,i+1,IC] / m : FT(0)
-        bCol[i,IG] = (v[1,i,IC,ind] - a * bCol[i-1,IG]) / m
+        if Tke
+          d += JDiss[1,1,IC]
+        end
+        mInv = FT(1) / d
+        mCol[1,IG] = mInv
+        cCol[1,IG] = Nz > 1 ? Tri[1,2,IC] * mInv : FT(0)
+        for i = 2 : Nz
+          a = Tri[3,i-1,IC]
+          d = invfac + Tri[2,i,IC]
+          if Tke
+            d += JDiss[1,i,IC]
+          end
+          mInv = FT(1) / (d - a * cCol[i-1,IG])
+          aCol[i,IG] = a
+          mCol[i,IG] = mInv
+          cCol[i,IG] = i < Nz ? Tri[1,i+1,IC] * mInv : FT(0)
+        end
+      end
+      PrevMom = Mom
+      PrevTke = Tke
+      # forward elimination
+      b = v[1,1,IC,ind] * mCol[1,IG]
+      bCol[1,IG] = b
+      for i = 2 : Nz
+        b = (v[1,i,IC,ind] - aCol[i,IG] * b) * mCol[i,IG]
+        bCol[i,IG] = b
       end
       # back substitution
       x = bCol[Nz,IG]
@@ -254,7 +274,7 @@ function Solve!(k,v,J,fac,CG::FiniteElements.CGElement,Metric,Global)
   NTDiff = length(J.ListTracer)
 
   if Global.Model.JacVerticalDiffusion
-    TilesDiff = max(1, min(Global.ParallelCom.NumberThreadTriGPU, 49152 ÷ (2 * Nz * sizeof(eltype(v)))))
+    TilesDiff = max(1, min(Global.ParallelCom.NumberThreadTriGPU, 49152 ÷ (4 * Nz * sizeof(eltype(v)))))
     KSchurSolveDiffKernel! = SchurSolveDiffKernel!(backend,TilesDiff)
     KSchurSolveDiffKernel!(Val(Nz),NTDiff,v,J.JDiff,J.JDiffMom,J.JDrag,J.JDiss,invfac,
       J.ListTracer,Global.Model.TkePos,Global.Model.SurfaceFluxMom,Global.Model.Turbulence,
