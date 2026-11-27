@@ -184,6 +184,7 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   Koeff = Global.Model.HyperDDiv
   Temp1 = Cache.Temp1
   @views q = Cache.q[:,:,:,1:2*NumTr]
+  @views qB = Cache.q[:,:,:,2*NumTr+1:4*NumTr]
   NumberThreadGPU = Global.ParallelCom.NumberThreadGPU
   Proc = Global.ParallelCom.Proc
   Force = Global.Model.Force
@@ -359,8 +360,12 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   KDivRhoTrUpwind3Kernel! = DivRhoTrUpwind3Kernel!(backend, groupTr)
   KDivRhoTrUpwind3New2Kernel! = Frame isa Models.CartesianFrame ?
     DivRhoTrUpwind3New2CartKernel!(backend, groupTr) : DivRhoTrUpwind3New2Kernel!(backend, groupTr)
-  KDivRhoTrUpwind3LimKernel! = DivRhoTrUpwind3LimKernel!(backend, groupTr)
+  KDivRhoTrUpwind3LimKernel! = Global.Model.HorLimitType in ("CAAS","CAASSplit") ?
+    DivRhoTrUpwind3CAASKernel!(backend, groupTr) : DivRhoTrUpwind3LimKernel!(backend, groupTr)
   KLimitKernel! = LimitKernel!(backend, groupL)
+  HorLimitFused = Global.Model.HorLimitType == "CAAS" && !(Frame isa Models.CartesianFrame)
+  KDivRhoTrUpwind3New2CAASKernel! = DivRhoTrUpwind3New2CAASKernel!(backend, groupTr)
+  KStencilBoundKernel! = StencilBoundKernel!(backend, groupL)
 
 # BoundaryValues
   @. @views U[:,:,BoundaryDoF,vPos] = FT(0)
@@ -403,6 +408,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
 
   if HorLimit
     Parallels.ExchangeDataFRecvGPU!(q,Exchange)  
+  end  
+  if HorLimit && HorLimitFused
+    KStencilBoundKernel!(qB,q,Stencil,NumTr,ndrange=ndrangeL)
   end  
   @views Parallels.ExchangeData3DSendGPU(Temp1[:,:,:,1:LenTemp1],Exchange)
 
@@ -457,7 +465,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
     State == "IceInternalEnergy"
-    if HorLimit  
+    if HorLimit && HorLimitFused
+      KDivRhoTrUpwind3New2CAASKernel!(F,NumV,NumTr,U,DS,dXdxI,J,M,Glob,dtau,ww,qB,ndrange=ndrangeB)
+    elseif HorLimit  
       KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI,J,M,Glob,ndrange=ndrangeB)
       for iT = 1 : NumTr
         @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,:,iT],U,DS,
@@ -524,7 +534,9 @@ function Fcn!(F,U,FE,Metric,Phys,Cache,Exchange,Global,Equation::Models.Equation
   if State == "Dry" || State == "ShallowWater" || State == "Moist" ||
     State == "DryInternalEnergy" || State == "MoistInternalEnergy" ||
     State == "IceInternalEnergy"
-    if HorLimit  
+    if HorLimit && HorLimitFused
+      @views KDivRhoTrUpwind3New2CAASKernel!(F,NumV,NumTr,U,DS,dXdxI_I,J_I,M,Glob_I,dtau,ww,qB[:,:,NBF+1:end,:],ndrange=ndrangeI)
+    elseif HorLimit  
       KDivRhoThUpwind3Kernel!(F,U,DS,dXdxI_I,J_I,M,Glob_I,ndrange=ndrangeI)
       for iT = 1 : NumTr
         @views KDivRhoTrUpwind3LimKernel!(FTr[:,:,:,iT],UTr[:,:,:,iT],U,DS,

@@ -191,6 +191,11 @@ function parse_commandline()
     arg_type = Bool
     default = false
 
+    "--HorLimitType"
+    help = "Horizontal limiter: Secant (iterative mass fixer), CAAS (clip and assured sum, one kernel with rho and rhotheta), CAASSplit (CAAS, one kernel per tracer)"
+    arg_type = String
+    default = "Secant"
+
     "--Upwind"
     help = "Vertical differencing"
     arg_type = Bool

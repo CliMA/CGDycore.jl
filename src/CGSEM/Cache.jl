@@ -20,7 +20,7 @@ function CacheAuxStruct(backend,FT,FE::FiniteElements.CGElement,M,nz,Model,Grid)
     lenghthTemp1 += 2
   end
   Temp1 = KernelAbstractions.zeros(backend,FT,M,nz,NumG,lenghthTemp1)
-  q = KernelAbstractions.zeros(backend,FT,M,nz,Grid.NumFaces+Grid.NumFacesG,2*(Model.NumTr+1))
+  q = KernelAbstractions.zeros(backend,FT,M,nz,Grid.NumFaces+Grid.NumFacesG,4*(Model.NumTr+1))
   return CacheAuxStructCG{FT,
                         typeof(KV),
                         typeof(Aux)}(

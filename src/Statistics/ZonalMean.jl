@@ -170,6 +170,7 @@ function ExtremaPrint(time,U,p,Metric,Phys,Model)
     upd!("maxT",T,iz,ic,true)
     if RhoVPos > 0
       upd!("maxqv",RhoV / Rho,iz,ic,true)
+      upd!("minqv",RhoV / Rho,iz,ic,false)
       upd!("maxRH",RhoV * Phys.Rv * T / Thermodynamics.fpws(T,Phys),iz,ic,true)
     end
   end

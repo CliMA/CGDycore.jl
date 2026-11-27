@@ -297,6 +297,7 @@ Base.@kwdef mutable struct ModelStruct{FT}
   HyperDDivW::FT
   Upwind::Bool
   HorLimit::Bool
+  HorLimitType::String
   Microphysics::Bool
   Sedimentation::Bool
   TypeMicrophysics::String
@@ -413,6 +414,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
   HyperDDivW = 0.0
   Upwind = false
   HorLimit = false
+  HorLimitType = "Secant"
   Microphysics = false
   Sedimentation = false
   TypeMicrophysics = ""
@@ -527,6 +529,7 @@ function ModelStruct{FT}() where FT <:AbstractFloat
    HyperDDivW,
    Upwind,
    HorLimit,
+   HorLimitType,
    Microphysics,
    Sedimentation,
    TypeMicrophysics,
