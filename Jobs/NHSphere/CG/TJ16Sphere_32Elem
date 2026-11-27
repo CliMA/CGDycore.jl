@@ -1,10 +1,19 @@
 #!/bin/bash
 # Moist Held-Suarez aquaplanet of Thatcher and Jablonowski (2016, GMD 9, 1263-1292): Held-Suarez
-# temperature relaxation, no Rayleigh friction (surface drag instead), bulk surface fluxes and
-# boundary-layer diffusion of Reed and Jablonowski (2012), large-scale condensation, SST of
-# HeldSuarezMoistSurface. 1000 days, zonal means every 6 h from day 200 (<vtkFileName>_zonal.bin/.txt).
+# temperature relaxation with T_equator = 294 K and (Delta T)_y = 65 K, Held-Suarez Rayleigh
+# friction as the only momentum mixing (no surface drag, SurfaceFluxMom=false), bulk sensible and
+# latent heat fluxes with C_H = C_E = 4.4e-3 and the K profile of Reed and Jablonowski (2012) for
+# theta and q_v, large-scale condensation, SST of HeldSuarezMoistSurface. TJ16 spin up 6 months
+# and average the following 30 months (30-day months). Reference (CAM5 SE, FV, EUL, SLD at 1 deg):
+# global-mean precipitation 2.10-2.27 mm/day, equatorial 18.6-22.8 mm/day (TJ16 Table 3), jets
+# about 65 m/s at 150 hPa near 30 deg, global-mean temperature 246.3-246.6 K.
+# 1000 days, zonal means every 6 h from day 200 (<vtkFileName>_zonal.bin/.txt).
 # Large-scale condensation: saturation adjustment after every step, all condensate falls out at
-# once (CGSEM.Condensation). The explicit relaxation (SimpleMicrophysicsPot, Rain=1) was unstable
+# once (CGSEM.Condensation, latent heat L - Rv*T at constant volume since 2026-11-27).
+# dtau = 150 with HyperD 5e14 blew up after 9 days in grid-scale equatorial convection (stable
+# without condensation); dtau = 100 with the CAM-SE ne30 values (1e15, div 2.5e15) ran 90 days:
+# zonal jets 56-60 m/s at 25 deg and 200 hPa, P 2.33 mm/day, equatorial P 16.8 (days 30-90).
+# --CondRelaxTime > dtau (relaxation) gave strong supersaturation aloft and no gain in stability. The explicit relaxation (SimpleMicrophysicsPot, Rain=1) was unstable
 # with RelCloud = 3.3e-3 (lambda dt = 2.1 with the latent heat feedback) and let the upper
 # tropical troposphere become strongly supersaturated with RelCloud = 1e-3.
 julia --project Examples/DriverCG.jl \
@@ -19,7 +28,8 @@ julia --project Examples/DriverCG.jl \
   --ModelType="VectorInvariant" \
   --Coriolis=true \
   --Upwind=true \
-  --HorLimit=false \
+  --HorLimit=true \
+  --HorLimitType="CAAS" \
   --Equation="CompressibleShallow" \
   --State="Moist" \
   --Microphysics=true \
@@ -32,12 +42,13 @@ julia --project Examples/DriverCG.jl \
   --Forcing=true \
   --pAuxPos=1 \
   --SurfaceFlux=true \
-  --SurfaceFluxMom=true \
-  --VerticalDiffusionMom=true \
+  --SurfaceFluxMom=false \
+  --VerticalDiffusionMom=false \
   --JacVerticalDiffusion=true \
   --VerticalDiffusion=true \
   --Turbulence=false \
   --SurfaceScheme="Bulk" \
+  --BulkCE=4.4e-3 \
   --Decomp="EqualArea" \
   --SimSeconds=0 \
   --SimDays=1000 \
@@ -51,7 +62,7 @@ julia --project Examples/DriverCG.jl \
   --OrdPrint=2 \
   --OutputType="ADIOS2" \
   --vtkFileName="output/VTK/TJ16/CG32Quad" \
-  --dtau=150 \
+  --dtau=100 \
   --IntMethod="Rosenbrock" \
   --Table="SSP-Knoth" \
   --TopoS="" \
@@ -63,8 +74,8 @@ julia --project Examples/DriverCG.jl \
   --H=30000.0 \
   --OrdPoly=3 \
   --HyperVisc=true \
-  --HyperDCurl=5.e14 \
-  --HyperDGrad=5.e14 \
-  --HyperDDiv=5.e14 \
+  --HyperDCurl=1.e15 \
+  --HyperDGrad=1.e15 \
+  --HyperDDiv=2.5e15 \
   --HyperDDivW=0.e15 \
   "$@"

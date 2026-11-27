@@ -7,42 +7,56 @@ Base.@kwdef struct DampingW <: DampingValue end
 @inline PosVal(::Val{P}) where {P} = P
 @inline PosVal(P::Integer) = P
 
+# RelaxH [1/s]: optional sponge for the horizontal wind with the same vertical profile
 function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,
-  ::Union{Examples.VelocityC,Examples.VelocityS},::Grids.CartesianGrid)
+  ::Union{Examples.VelocityC,Examples.VelocityS},::Grids.CartesianGrid;RelaxH=zero(Relax))
+  uPos = PosVal(uPosV)
+  vPos = PosVal(vPosV)
   wPos = PosVal(wPosV)
   @inline function Damping(F,U,xS,z)
     FT = eltype(z)
     if z>=H-StrideDamp
-      Damp = Relax *
-        sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
-      F[wPos] += -Damp * U[wPos]
+      Prof = sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
+      F[wPos] += -Relax * Prof * U[wPos]
+      if RelaxH > 0
+        F[uPos] += -RelaxH * Prof * U[uPos]
+        F[vPos] += -RelaxH * Prof * U[vPos]
+      end
     end
   end
   return Damping
 end
 
-function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityS,::Grids.SphericalGrid)
+function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityS,::Grids.SphericalGrid;
+  RelaxH=zero(Relax))
+  uPos = PosVal(uPosV)
+  vPos = PosVal(vPosV)
   wPos = PosVal(wPosV)
   @inline function Damping(F,U,xS,z)
     FT = eltype(z)
     if z>=H-StrideDamp
-      Damp = Relax *
-        sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
-      F[wPos] += -Damp * U[wPos]
+      Prof = sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
+      F[wPos] += -Relax * Prof * U[wPos]
+      if RelaxH > 0
+        F[uPos] += -RelaxH * Prof * U[uPos]
+        F[vPos] += -RelaxH * Prof * U[vPos]
+      end
     end
   end
   return Damping
 end
 
-function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityC,::Grids.SphericalGrid)
+function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityC,::Grids.SphericalGrid;
+  RelaxH=zero(Relax))
   uPos = PosVal(uPosV)
   vPos = PosVal(vPosV)
   wPos = PosVal(wPosV)
   @inline function Damping(F,U,xS,z)
     FT = eltype(F)
     if z>=H-StrideDamp
-      Damp = Relax *
-        sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
+      Prof = sin(FT(0.5) * pi * (FT(1) - (H - z)/StrideDamp))^2
+      Damp = Relax * Prof
+      DampH = RelaxH * Prof
       lon = xS[1]
       lat = xS[2]
       sinlat = sin(lat)
@@ -62,10 +76,11 @@ function (::DampingW)(H,StrideDamp,Relax,uPosV,vPosV,wPosV,::Examples.VelocityC,
       vC = U[vPos]
       wC = U[wPos]
       wS = rot31 * uC + rot32 * vC + rot33 * wC
-      FwS = -Damp * wS 
-      FuC = rot31 * FwS
-      FvC = rot32 * FwS
-      FwC = rot33 * FwS
+      # radial part with Relax, horizontal part (U - wS*e_r) with RelaxH
+      FwS = -Damp * wS + DampH * wS
+      FuC = rot31 * FwS - DampH * uC
+      FvC = rot32 * FwS - DampH * vC
+      FwC = rot33 * FwS - DampH * wC
       F[uPos] += FuC
       F[vPos] += FvC
       F[wPos] += FwC

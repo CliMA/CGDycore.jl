@@ -221,6 +221,11 @@ function parse_commandline()
     arg_type = Float64
     default = 0.0
 
+    "--RelaxH"
+    help = "Relaxation parameter [1/s] for Rayleigh damping of the horizontal wind in the damping layer"
+    arg_type = Float64
+    default = 0.0
+
     "--Coriolis"
     help = "Coriolis"
     arg_type = Bool
@@ -275,6 +280,11 @@ function parse_commandline()
     help = "Microphysics"
     arg_type = Bool
     default = false
+
+    "--CondRelaxTime"
+    help = "Relaxation time [s] of the saturation adjustment (TypeMicrophysics Adjustment), at most dtau gives the full adjustment"
+    arg_type = Float64
+    default = 0.0
 
     "--TypeMicrophysics"
     help = "TypeMicrophysics (SimpleMicrophysicsPot, SimpleMicrophysicsIE, OneMomentMicrophysicsMoistEquil, Adjustment: saturation adjustment with immediate fall-out after every step)"
@@ -341,6 +351,11 @@ function parse_commandline()
     arg_type = String
     default = "MOST"
 
+    "--EddyScheme"
+    help = "Eddy diffusivity without TKE and KConst: Bulk (Reed and Jablonowski 2012 K profile), Simple; default: Bulk with SurfaceScheme Bulk, else Simple"
+    arg_type = String
+    default = ""
+
     "--LandClass"
     help = "Land class of all columns: 1 land (roughness z0M, z0H), 2 sea (Charnock roughness)"
     arg_type = Int
@@ -360,6 +375,11 @@ function parse_commandline()
     help = "Asymptotic mixing length (Blackadar) of the TKE closure [m]"
     arg_type = Float64
     default = 100.0
+
+    "--BulkCE"
+    help = "Bulk transfer coefficient C_E = C_H of SurfaceScheme Bulk (RJ12 1.1e-3, TJ16 4.4e-3)"
+    arg_type = Float64
+    default = 1.1e-3
 
     "--Gustiness"
     help = "Gustiness velocity u_g in the MOST wind speed U_a = sqrt(|v|^2 + u_g^2) [m/s]"

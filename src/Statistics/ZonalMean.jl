@@ -4,7 +4,7 @@
 # Precipitation is the condensation rate of the large-scale condensation with immediate
 # fall-out (Rain = 1): RelCloud * max(rho_v - rho_vs(T), 0), summed over the column, or with
 # --TypeMicrophysics="Adjustment" the condensed mass of the last step (CGSEM.Condensation).
-const ZonalLevelNames = ["u","v","w","T","theta","qv","p","uu","vv","uv","vT"]
+const ZonalLevelNames = ["u","v","w","T","theta","qv","p","uu","vv","uv","vT","rh","qc"]
 const ZonalSurfNames = ["precip","evap","shf","ustar","TS","cwv"]
 
 mutable struct ZonalMeanStruct
@@ -72,7 +72,8 @@ function ZonalMeanSample!(ZM::ZonalMeanStruct,time,U,p,SurfaceData,Metric,Phys,M
       u = UH[1,iz,ic,2]
       v = UH[1,iz,ic,3]
       w = UH[1,iz,ic,4]
-      Val = (u,v,w,T,UH[1,iz,ic,5] / Rho,RhoV / Rho,pL,u * u,v * v,u * v,v * T)
+      RH = RhoV * Phys.Rv * T / Thermodynamics.fpws(T,Phys)
+      Val = (u,v,w,T,UH[1,iz,ic,5] / Rho,RhoV / Rho,pL,u * u,v * v,u * v,v * T,RH,RhoC / Rho)
       Wi = ZM.W[iz,ic]
       for iv in eachindex(Val)
         ZM.Sum[iz,ib,iv] += Wi * Val[iv]

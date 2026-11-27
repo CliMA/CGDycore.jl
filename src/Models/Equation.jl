@@ -153,8 +153,10 @@ function (::Moist)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos)
     Thermo[2] = TLoc
     Thermo[3] = PotT
   end
+  # dry kappa for the Jacobian, kappaM of the moist pressure differs by about one percent
   @inline function dPresdRhoTh(RhoTh)
-    dpdRhoTh = Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (eltype(RhoTh)(1) - Phys.kappa))
+    FT = eltype(RhoTh)
+    dpdRhoTh = FT(1) / (FT(1) - Phys.kappa) * Phys.Rd * (Phys.Rd * RhoTh / Phys.p0)^(Phys.kappa / (FT(1) - Phys.kappa))
     return dpdRhoTh
   end  
   @inline function dPresdRho()

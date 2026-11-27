@@ -41,6 +41,7 @@ Upwind = parsed_args["Upwind"]
 Damping = parsed_args["Damping"]
 Relax = parsed_args["Relax"]
 StrideDamp = parsed_args["StrideDamp"]
+RelaxH = parsed_args["RelaxH"]
 Forcing = parsed_args["Forcing"]
 BoundaryWE = parsed_args["BoundaryWE"]
 BoundarySN = parsed_args["BoundarySN"]
@@ -56,6 +57,7 @@ Microphysics = parsed_args["Microphysics"]
 Sedimentation = parsed_args["Sedimentation"]
 TypeMicrophysics = parsed_args["TypeMicrophysics"]
 RelCloud = parsed_args["RelCloud"]
+CondRelaxTime = parsed_args["CondRelaxTime"]
 Rain = parsed_args["Rain"]
 #Orography
 TopoS = parsed_args["TopoS"]
@@ -91,11 +93,14 @@ VerticalDiffusionMom = parsed_args["VerticalDiffusionMom"]
 SurfaceFlux = parsed_args["SurfaceFlux"]
 SurfaceFluxMom = parsed_args["SurfaceFluxMom"]
 SurfaceScheme = parsed_args["SurfaceScheme"]
+EddyScheme = parsed_args["EddyScheme"] == "" ? (SurfaceScheme == "Bulk" ? "Bulk" : "Simple") :
+  parsed_args["EddyScheme"]
 LandClass = parsed_args["LandClass"]
 z0M = parsed_args["z0M"]
 z0H = parsed_args["z0H"]
 MixingLength = parsed_args["MixingLength"]
 Gustiness = parsed_args["Gustiness"]
+BulkCE = parsed_args["BulkCE"]
 KConst = parsed_args["KConst"]
 dzBottom = parsed_args["dzBottom"]
 dzTop = parsed_args["dzTop"]
@@ -512,7 +517,7 @@ end
 if Microphysics && TypeMicrophysics == "Adjustment"
   # saturation adjustment after every step instead of a tendency, see CGSEM.Condensation
   Model.Microphysics = false
-  Model.Condensation = CGSEM.Condensation(backend,FTB,CG.NumG,Phys,dtau)
+  Model.Condensation = CGSEM.Condensation(backend,FTB,CG.NumG,Phys,dtau;TauR=CondRelaxTime)
 elseif Microphysics
   if TypeMicrophysics == "SimpleMicrophysicsPot"
     MicrophysicsSource  = Models.SimpleMicrophysicsPot()(Phys,Model.RhoPos,Model.RhoThPos,
@@ -575,7 +580,7 @@ if Model.SurfaceFlux || Model.VerticalDiffusion || Model.SurfaceFluxMom || Model
       Gustiness=FTB(Gustiness))
     Model.SurfaceFluxValues = SurfaceFluxValues
   elseif SurfaceScheme == "Bulk"
-    Model.SurfaceFluxValues = Surfaces.BulkSurfaceFlux()(Model.uPos,Model.vPos,Model.wPos)
+    Model.SurfaceFluxValues = Surfaces.BulkSurfaceFlux()(Model.uPos,Model.vPos,Model.wPos;CE=BulkCE)
   end
 end
 if Model.SurfaceFlux
@@ -593,7 +598,7 @@ if Model.VerticalDiffusion || Model.VerticalDiffusionMom
     Model.Eddy = Surfaces.TkeKoefficient()(Param,Phys,Model.TkePos,Model.RhoPos)
   elseif KConst > 0
     Model.Eddy = Surfaces.ConstKoefficient()(KConst)
-  elseif SurfaceScheme == "Bulk"
+  elseif EddyScheme == "Bulk"
     Model.Eddy = Surfaces.BulkKoefficient()(Param,Phys)
   else
     Model.Eddy = Surfaces.SimpleKoefficient()(Param,Phys)
@@ -607,7 +612,7 @@ end
 # Damping
 if Damping
   Damp = Sources.DampingW()(FTB(H),FTB(StrideDamp),FTB(Relax),
-    Model.uPos,Model.vPos,Model.wPos,VelForm,Grid.Form)
+    Model.uPos,Model.vPos,Model.wPos,VelForm,Grid.Form;RelaxH=FTB(RelaxH))
   Model.Damp = Damp
   Model.DampIzStart = Sources.DampingIzStart(Metric.zP,H,StrideDamp)
 end  

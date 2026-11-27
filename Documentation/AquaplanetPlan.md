@@ -1,8 +1,8 @@
 # Plan: aquaplanet simulations with CGSEM
 
 November 2026. Builds on the boundary-layer physics described in
-[CGSEMTurbulenceSurface.md](CGSEMTurbulenceSurface.md). No code has been written for this plan
-yet.
+[CGSEMTurbulenceSurface.md](CGSEMTurbulenceSurface.md). Status as of 27 November 2026: Section 4
+partly done, zonal-mean diagnostics done, Stage A runs.
 
 ## 1 Goal
 
@@ -31,23 +31,48 @@ diagnostics.
 
 ### Stage A: moist Held–Suarez aquaplanet (Thatcher and Jablonowski 2016)
 
-The SST of `HeldSuarezMoistSurface` (T_s = 29 K · exp(−φ²/(2 · 26°²)) + 271 K) is already the
-TJ16 SST. TJ16 keeps the Newtonian relaxation of temperature, replaces the Rayleigh friction of
-Held–Suarez by bulk surface fluxes and the boundary-layer diffusion of Reed and Jablonowski
-(2012), and uses large-scale condensation only.
+The SST of `HeldSuarezMoistSurface` (T_s = 29 K · exp(−φ²/(2 · 26°²)) + 271 K) is the TJ16 SST,
+and `HeldSuarezMoistExample` already has the modified equilibrium temperature of TJ16
+(T_equator = 294 K, (ΔT)_y = 65 K, (Δθ)_z = 10 K). TJ16 keep the Held–Suarez Rayleigh friction
+(k_f = 1/day below σ = 0.7) as the only momentum mixing, with no surface drag and no momentum
+diffusion. They add bulk sensible and latent heat fluxes with C_H = C_E = 4.4·10⁻³ (four times
+the RJ12 value), the K profile of Reed and Jablonowski (2012) for θ and q_v
+(K = C_E |v_a| z_a below 850 hPa, Gaussian decay in p above), and large-scale condensation with
+immediate fall-out. They spin up for 6 months and average the following 30 months (30-day
+months), at about 1° with the four CAM5 dynamical cores.
+
+Reference values (TJ16, Table 3 and Sect. 4.1):
+
+| Quantity | TJ16 |
+|---|---|
+| Global-mean precipitation | 2.10 (SE, FV), 2.18 (EUL), 2.27 (SLD) mm/day |
+| Zonal-mean precipitation at the Equator | 19.68 (SE), 18.62 (FV), 19.54 (EUL), 22.76 (SLD) mm/day |
+| Jets | about 65 m/s near 150 hPa, centred around 30° N/S (SE) |
+| Global-mean temperature | 246.3–246.6 K |
+| Eddy heat flux, eddy kinetic energy | extrema about ±20 K m/s and 400 m²/s² |
 
 Work:
 
-1. (done) The Rayleigh friction of `HeldSuarezMoistExample` is only applied without surface
-   drag (`--SurfaceFluxMom=false`).
+1. (done) `--SurfaceFluxMom=false` keeps the Held–Suarez Rayleigh friction of
+   `HeldSuarezMoistExample`; with surface drag (`--SurfaceFluxMom=true`) it is switched off.
 2. (done) `--SurfaceScheme="Bulk"`: Reed–Jablonowski coefficients C_d = 7·10⁻⁴ + 6.5·10⁻⁵ |v|
-   (2·10⁻³ above 20 m/s), C_E = C_H = 1.1·10⁻³, and their K profile K = C_E |v₁| z₁ below
-   850 hPa (`BulkKoefficient`; one K for momentum and scalars, RJ12 use C_d for momentum).
-   Job: `Jobs/NHSphere/CG/TJ16Sphere_32Elem`.
-3. Run TJ16 with these settings for 2–3 years, average after the first 6 months.
+   (2·10⁻³ above 20 m/s), C_E = C_H from `--BulkCE` (RJ12 1.1·10⁻³, TJ16 4.4·10⁻³), and their
+   K profile (`BulkKoefficient`, also selectable with `--EddyScheme=Bulk` for MOST).
+   Job: `Jobs/NHSphere/CG/TJ16Sphere_32Elem` with the TJ16 settings.
+3. (running) TJ16 for 900 days, zonal means from day 200 on. Large-scale condensation by
+   saturation adjustment after every step (`--TypeMicrophysics="Adjustment"`); the explicit
+   relaxation was unstable or left the upper tropical troposphere supersaturated. Tracers with
+   the CAAS limiter (`--HorLimit=true --HorLimitType=CAAS`): with hyperdiffusion q_v fell to
+   −3·10⁻³ within 30 days, with the limiter it stays above −10⁻⁵. The initial state is dry
+   (TJ16 advise a moist one); the 200 days before averaging cover the spin-up.
 4. Compare with TJ16: zonal-mean u, T, q, relative humidity, precipitation; global mean
    precipitation and evaporation.
-5. Replace bulk + K profile by MOST + TKE (one change at a time) and document the differences.
+5. (running) Towards MOST + TKE, one change at a time, each 900 days:
+   - `tj16drag`: surface drag and K diffusion of momentum instead of the Rayleigh friction
+     (`--SurfaceFluxMom=true --VerticalDiffusionMom=true`);
+   - `tj16most`: MOST transfer coefficients in the same K profile
+     (`--SurfaceScheme=MOST --EddyScheme=Bulk --Gustiness=1`);
+   - `tj16tke`: MOST and the TKE closure (`--Turbulence=true --TkePos=8 --MixingLength=150`).
 
 Why first: radiation and SST are fixed, so the run isolates surface fluxes, mixing and
 condensation, and a published multi-model reference exists.
@@ -109,6 +134,9 @@ From the limitations in [CGSEMTurbulenceSurface.md](CGSEMTurbulenceSurface.md), 
 | Mixing length | λ of 100 m is set for the rotor case; for the global boundary layer scale it with the boundary-layer depth or use λ ≈ 150 m |
 | Water and energy budgets | global E − P and the energy budget as running diagnostics; needed to trust multi-year means |
 
+Cost of Stage A (Float64, one A100, Δt = 150 s): 59.7 ms per step with the CAAS limiter,
+56.7 ms with tracer hyperdiffusion, about 35 s per model day, 900 days in about 9 hours.
+
 ## 5 Configuration
 
 | | Stage A/B |
@@ -125,9 +153,10 @@ From the limitations in [CGSEMTurbulenceSurface.md](CGSEMTurbulenceSurface.md), 
 
 Implemented (`--ZonalMeanHours=h`, `src/Statistics/ZonalMean.jl`): samples every h hours from
 `--StartAverageDays` on, 90 latitude bands of 2°, volume weighted on model levels: u, v, w, T,
-θ, q_v, p, uu, vv, uv, vT; area weighted surface fields: precipitation (condensation rate with
+θ, q_v, p, uu, vv, uv, vT, rh, q_c; area weighted surface fields: precipitation (condensation rate with
 immediate fall-out), evaporation, sensible heat flux, u\*, T_s, column water vapour. Output
-`<vtkFileName>_zonal.bin` (Float64, level fields then surface fields) and `.txt` header. Still
+`<vtkFileName>_zonal.bin` (Float64, level fields then surface fields) and `.txt` header.
+Level fields also include the relative humidity rh (mean of the local values) and q_c. Still
 missing: interpolation to pressure levels, mass stream function, global budgets.
 
 
