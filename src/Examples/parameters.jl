@@ -267,6 +267,10 @@ Base.@kwdef struct ParamHeldSuarezMoistSphere{FT}
   #      Moist
   q_0::FT = 0.018                # Maximum specific humidity (default: 0.018)
   q_t::FT = 1.0e-12
+  # initial humidity of Thatcher and Jablonowski (2016), Eq. (A1)
+  lat_w::FT = 2.0 * pi / 9.0     # horizontal half-width
+  p_w::FT = 30000.0              # vertical half-width [Pa]
+  p_t::FT = 10000.0              # dry above [Pa]
 
   day::FT = 3600.0 * 24.0
   k_a::FT= 1.0 / (40.0 * day)

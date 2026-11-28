@@ -1345,16 +1345,31 @@ function (::HeldSuarezMoistExample)(Param,Phys;Friction=true)
     end
     InteriorTerm = (RRatio * cos(lat))^Param.K -
     Param.K / (Param.K + FT(2.0)) * (RRatio * cos(lat))^(Param.K + FT(2.0))
-    Temperature = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
+    # Initial state of Thatcher and Jablonowski (2016), Appendix A: the balanced state of the
+    # baroclinic wave of Ullrich et al. (2014) with its temperature as virtual temperature,
+    # surface pressure p0, the zonal wind perturbation and the humidity of Eq. (A1)
+    TempV = FT(1.0) / (RRatio * RRatio) / (Tau1 - Tau2 * InteriorTerm)
     Pressure = Phys.p0 * exp(-Phys.Grav/Phys.Rd *
       (IntTau1 - IntTau2 * InteriorTerm))
-    Rho = Pressure / (Phys.Rd * Temperature)
-    Th = Temperature * (Phys.p0 / Pressure)^(Phys.Rd / Phys.Cpd)
+    if Pressure >= Param.p_t
+      qV = Param.q_0 * exp(-(lat / Param.lat_w)^4) *
+        exp(-((Pressure / Phys.p0 - FT(1)) * Phys.p0 / Param.p_w)^2)
+    else
+      qV = Param.q_t
+    end
+    qC = FT(0)
+    # T_v = T * Rm / Rd with the specific gas constant Rm = (1 - q_v) * Rd + q_v * Rv
+    Rm = (FT(1) - qV) * Phys.Rd + qV * Phys.Rv
+    Cpm = (FT(1) - qV) * Phys.Cpd + qV * Phys.Cpv
+    Temperature = TempV * Phys.Rd / Rm
+    Rho = Pressure / (Phys.Rd * TempV)
+    # rho theta of the moist pressure law: Rd * rho * theta = rho * Rm * T * (p0 / p)^kappaM
+    Th = TempV * (Phys.p0 / Pressure)^(Rm / Cpm)
 
     InteriorTermU = (RRatio * cos(lat))^(Param.K - FT(1.0)) -
          (RRatio * cos(lat))^(Param.K + FT(1.0))
     BigU = Phys.Grav / Phys.RadEarth * Param.K *
-      IntTau2 * InteriorTermU * Temperature
+      IntTau2 * InteriorTermU * TempV
     if Param.Deep
       RCoslat = R * cos(lat)
     else
@@ -1367,12 +1382,21 @@ function (::HeldSuarezMoistExample)(Param,Phys;Friction=true)
     #                 }
 
     uS = -OmegaRCoslat + sqrt(OmegaRCoslat * OmegaRCoslat + RCoslat * BigU)
-    uS = FT(0)
+    # exponential perturbation of the zonal wind, tapered with height
+    GreatCircleR = acos(min(FT(1), sin(Param.PertLat) * sin(lat) +
+      cos(Param.PertLat) * cos(lat) * cos(lon - Param.PertLon))) / Param.PertExpR
+    if Z < Param.PertZ
+      PertTaper = FT(1.0) - FT(3.0) * Z * Z / (Param.PertZ * Param.PertZ) +
+         FT(2.0) * Z * Z * Z / (Param.PertZ * Param.PertZ * Param.PertZ)
+    else
+      PertTaper = FT(0.0)
+    end
+    if GreatCircleR < FT(1.0)
+      uS += Param.Up * PertTaper * exp(-GreatCircleR * GreatCircleR)
+    end
     vS = FT(0)
     w = FT(0)
-    qV = FT(0)
-    qC = FT(0)
-    IE = Thermodynamics.InternalEnergyW(FT(1.0),qV,qC,Temperature,Phys) 
+    IE = Thermodynamics.InternalEnergyW(FT(1.0),qV,qC,Temperature,Phys)
     E = IE + FT(0.5) * (uS * uS + vS * vS) + Phys.Grav * Z
 
     return (Rho,uS,vS,w,Th,E,IE,qV,qC)
@@ -1393,7 +1417,8 @@ function (::HeldSuarezMoistExample)(Param,Phys;Friction=true)
     Teq = (Param.T_equator - Param.DeltaT_y * sinlat * sinlat -
       Param.DeltaTh_z * log(Sigma) * coslat * coslat) * SigmaPowKappa
     Teq = max(Param.T_min, Teq)
-    T = p / (U[1] * Phys.Rd)
+    # temperature of the moist pressure law (p / (rho * Rd) would be the virtual temperature)
+    T = Aux[2]
     DeltaT =  kT * (T - Teq)
     F[5]  = - U[5] / T * DeltaT 
   end

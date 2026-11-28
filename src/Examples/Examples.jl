@@ -80,9 +80,11 @@ function InitialProfile!(backend,FTB,Model,Problem,Param,Phys,VelForm)
     Model.InitialProfile = Profile
   elseif Problem == "HeldSuarezMoistSphere" || Problem == "HeldSuarezMoistSphereOro"
     # Rayleigh friction of Held-Suarez only without surface drag (Thatcher and Jablonowski 2016)
-    _, Force = Examples.HeldSuarezMoistExample()(Param,Phys;Friction=!Model.SurfaceFluxMom)
-#   Model.InitialProfile = Profile
-    Profile = Examples.StratifiedSphereExample()(Param,Phys)
+    # initial state of Thatcher and Jablonowski (2016, Appendix A) without orography
+    Profile, Force = Examples.HeldSuarezMoistExample()(Param,Phys;Friction=!Model.SurfaceFluxMom)
+    if Problem == "HeldSuarezMoistSphereOro"
+      Profile = Examples.StratifiedSphereExample()(Param,Phys)
+    end
     Model.InitialProfile = Profile
     Model.Force = Force
   elseif Problem == "Stratified" || Problem == "HillAgnesiXCart" || Problem == "HillSchaerCart" ||

@@ -8,14 +8,19 @@
 # global-mean precipitation 2.10-2.27 mm/day, equatorial 18.6-22.8 mm/day (TJ16 Table 3), jets
 # about 65 m/s at 150 hPa near 30 deg, global-mean temperature 246.3-246.6 K.
 # 1000 days, zonal means every 6 h from day 200 (<vtkFileName>_zonal.bin/.txt).
+# Initial state of TJ16 Appendix A (balanced Ullrich et al. 2014 state, T as virtual
+# temperature, humidity Eq. A1); before 2026-11-28 the runs started dry and at rest from a
+# constant-N profile with 64 K at the model top.
 # Large-scale condensation: saturation adjustment after every step, all condensate falls out at
-# once (CGSEM.Condensation, latent heat L - Rv*T at constant volume since 2026-11-27).
-# dtau = 150 with HyperD 5e14 blew up after 9 days in grid-scale equatorial convection (stable
-# without condensation); dtau = 100 with the CAM-SE ne30 values (1e15, div 2.5e15) ran 90 days:
-# zonal jets 56-60 m/s at 25 deg and 200 hPa, P 2.33 mm/day, equatorial P 16.8 (days 30-90).
-# --CondRelaxTime > dtau (relaxation) gave strong supersaturation aloft and no gain in stability. The explicit relaxation (SimpleMicrophysicsPot, Rain=1) was unstable
-# with RelCloud = 3.3e-3 (lambda dt = 2.1 with the latent heat feedback) and let the upper
-# tropical troposphere become strongly supersaturated with RelCloud = 1e-3.
+# once (CGSEM.Condensation). Until 2026-11-27 the fall-out added theta * (condensed mass) to
+# rho theta, 10-13 % of the latent heat too much; the heating of the phase change was right.
+# From the dry start, dtau = 150 with HyperD 5e14 blew up after 9 days in grid-scale equatorial
+# convection (stable without condensation); dtau = 100 with the CAM-SE ne30 values (1e15, div
+# 2.5e15) ran 90 days: zonal jets 56-60 m/s at 25 deg and 200 hPa, P 2.33 mm/day, equatorial P
+# 16.8 mm/day (days 30-90). --CondRelaxTime 300 and 900 s were as stable, zonal-mean RH stayed
+# below 100 % (the large pointwise RH was in the very cold upper levels of the dry start).
+# The explicit relaxation (SimpleMicrophysicsPot, Rain=1) was unstable with RelCloud = 3.3e-3
+# (lambda dt = 2.1 with the latent heat feedback).
 julia --project Examples/DriverCG.jl \
   --Problem="HeldSuarezMoistSphere" \
   --NumberThreadGPU=256 \

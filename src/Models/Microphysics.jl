@@ -20,11 +20,16 @@ function (::SimpleMicrophysicsPot)(Phys,RhoPos,ThPos,RhoVPos,RhoCPos,RelCloud,Ra
     a = p_vs / (Phys.Rv * T) - RhoV
     b = RhoC
     FPh = FT(0.5) * RelCloud * (a + b - sqrt(a * a + b * b))
-    L = Thermodynamics.LatHeatV(T,Phys)
+    # heating at constant volume (L - Rv*T) / Cvml per condensed mass, rho theta from the moist
+    # pressure law Rd*rho*theta = Rm*T*(p0/p)^kappaM: phase change FPh changes Rm, T and kappaM,
+    # the rain FR leaves at the temperature of the air and changes only kappaM
+    Q = Thermodynamics.LatHeatV(T,Phys) - Phys.Rv * T
+    kappaM = Rm / Cpml
+    lpp0 = log(p / Phys.p0)
     FR = -FPh * Rain
-    FRhoTh = RhoTh*((-L/(Cpml*T) - log(p / Phys.p0) * (Rm / Cpml) * (Phys.Rv / Rm + 
-      (Phys.Cpl - Phys.Cpv) / Cpml)  + Phys.Rv / Rm) * FPh +
-      (FT(1) / Rho - log(p/Phys.p0) * (Rm / Cpml) * (Phys.Cpl / Cpml)) * FR)
+    FRhoTh = RhoTh * ((-Q / (Cpml * T) + (FT(1) - kappaM) * Phys.Rv / Rm -
+      lpp0 * kappaM * (Phys.Rv / Rm + (Phys.Cpl - Phys.Cpv) / Cpml)) * FPh -
+      lpp0 * kappaM * (Phys.Cpl / Cpml) * FR)
     F[RhoPos] += -FR
     F[ThPos] += FRhoTh
     F[RhoVPos] += FPh
